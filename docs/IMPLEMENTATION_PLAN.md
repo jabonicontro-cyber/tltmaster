@@ -112,5 +112,21 @@ Phase 2 — Quotes (initial portion)
 - [x] Email provider abstraction with preview/test mode and delivery records
 - [x] Status workflow: sent / accepted / declined / expired / canceled
 
-Next (Phase 3) — Orders and tickets: convert accepted quote → order (idempotent),
-direct orders, dispatch assignments, printable tickets.
+### Verified so far
+- Unit tests (money, quote math, status rules, document model, PDF rendering, email provider, error mapping)
+- Database tests against real migrations: RLS for anon / pending / inactive / dispatcher / office / owner,
+  append-only audit, immutable issued revisions, revision history, failed/preview/test email handling,
+  status transitions, override permission, concurrent numbering, TS ↔ DB calculation parity, sample-data removal
+- Browser tests: sign-in/out, redirects, noindex, permissions, customer CRUD, rates, full quote lifecycle
+
+### Known gaps / not yet verified
+- Real email delivery has not been exercised against Resend (no credentials yet); the provider is unit-tested with a fake HTTP client.
+- Password-reset and invitation emails depend on Supabase Auth email settings (custom SMTP recommended) — not testable without a hosted project.
+- Overdue quotes are flagged, not expired automatically (by design; a nightly job can be added).
+- No quote duplication ("copy to new quote") yet.
+
+## Next (Phase 3) — Orders and tickets
+1. `orders` + `order_lines` tables; `convert_quote_to_order(quote_id)` — idempotent (unique `orders.quote_id`), copies the accepted revision's line snapshots.
+2. Direct order entry reusing the quote line editor.
+3. Trucks and drivers (minimal) so assignments can reference them.
+4. Dispatch assignments (several per order) and printable delivery tickets with planned vs actual quantities.

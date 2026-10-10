@@ -15,7 +15,9 @@ export function dbErrorMessage(error: DbError | null | undefined): string {
   if (!error) return "Something went wrong.";
   switch (error.code) {
     case "42501":
-      return error.message?.startsWith("You do not have permission")
+      // Our database functions raise 42501 with a specific, user-facing reason;
+      // PostgreSQL's own "permission denied for table …" is replaced by a generic message.
+      return error.message && !/^permission denied/i.test(error.message)
         ? error.message
         : "You do not have permission to do that.";
     case "PT409":

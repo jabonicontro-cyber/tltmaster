@@ -143,3 +143,17 @@ describe("row level security and permissions", () => {
     });
   });
 });
+
+describe("audit noise", () => {
+  it("allocating document numbers is not audited, but manual numbering changes are", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      await s.as(owner);
+      await s.query("insert into public.customers (name) values ('Audit Test Co')");
+      await s.query("update public.document_sequences set pad = 6 where key = 'order'");
+      await s.asAdmin();
+      const rows = await s.query<{ action: string }>("select action from public.audit_events where entity_type = 'document_sequence' and actor_id = $1", [owner]);
+      expect(rows.rows.map((r) => r.action)).toEqual(["document_sequence.updated"]);
+    });
+  });
+});

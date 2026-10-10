@@ -2,9 +2,11 @@
 
 import { DropdownMenu as M } from "radix-ui";
 import { ChevronDown, LogOut, UserRound } from "lucide-react";
+import { useTransition } from "react";
 import { signOut } from "@/app/(auth)/actions";
 
 export function UserMenu({ name, email, roleLabel }: { name: string; email: string; roleLabel: string }) {
+  const [signingOut, startSignOut] = useTransition();
   return (
     <M.Root>
       <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-white hover:bg-white/10">
@@ -24,14 +26,15 @@ export function UserMenu({ name, email, roleLabel }: { name: string; email: stri
             <p className="truncate text-xs text-muted">{email}</p>
           </div>
           <M.Separator className="my-1 h-px bg-line" />
-          <form action={signOut}>
-            <M.Item asChild>
-              <button type="submit" className="flex w-full items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">
-                <LogOut className="size-4" aria-hidden />
-                Sign out
-              </button>
-            </M.Item>
-          </form>
+          {/* Call the action directly: a <form> inside the menu would unmount before it submits. */}
+          <M.Item
+            disabled={signingOut}
+            onSelect={() => startSignOut(() => signOut())}
+            className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface data-[disabled]:opacity-60"
+          >
+            <LogOut className="size-4" aria-hidden />
+            {signingOut ? "Signing out…" : "Sign out"}
+          </M.Item>
         </M.Content>
       </M.Portal>
     </M.Root>

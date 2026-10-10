@@ -100,6 +100,7 @@ export function editorStateFromVersion(quote: { id: string; quote_number: string
       rate: centsToInput(l.unit_rate_cents),
       percent: bpToInput(l.percent_bp),
       taxable: l.taxable,
+      isCustom: l.kind !== "material" && !l.charge_item_id,
     })),
   };
 }

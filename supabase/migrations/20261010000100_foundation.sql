@@ -380,9 +380,12 @@ insert into public.document_sequences (key, label, prefix, include_year, pad) va
 create trigger document_sequences_touch before update on public.document_sequences
   for each row execute function private.touch_updated_at();
 
+-- Audit manual changes only; routine number allocation sets tlt.number_allocation.
 create trigger document_sequences_audit
   after update on public.document_sequences
-  for each row execute function private.audit_row_change('document_sequence');
+  for each row
+  when (current_setting('tlt.number_allocation', true) is distinct from 'on')
+  execute function private.audit_row_change('document_sequence');
 
 create or replace function private.next_document_number(p_key text)
 returns text
@@ -406,10 +409,12 @@ begin
     v_value := v_seq.next_value;
   end if;
 
+  perform set_config('tlt.number_allocation', 'on', true);
   update public.document_sequences
      set next_value = v_value + 1,
          current_year = v_year
    where key = p_key;
+  perform set_config('tlt.number_allocation', 'off', true);
 
   return v_seq.prefix
       || case when v_seq.include_year then v_year::text || '-' else '' end

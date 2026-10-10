@@ -35,6 +35,8 @@ export interface EditorLine {
   rate: string;
   percent: string;
   taxable: boolean;
+  /** A free-form line (no configured charge). */
+  isCustom?: boolean;
 }
 
 export interface EditorState {
@@ -278,6 +280,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
     // Default the quantity of a per-ton/per-load hauling line to the material quantity above it.
     const lastMaterial = [...state.lines].reverse().find((l) => l.kind === "material" && l.unitCode === c.default_unit_code && l.quantity);
     updateLine(key, {
+      isCustom: false,
       kind: c.kind,
       calcMethod: c.calc_method,
       materialId: null,
@@ -583,7 +586,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                     {/* Item */}
                     <div className="col-span-12 lg:col-span-4">
                       <label htmlFor={`line-${l.key}-item`} className="mb-1 block text-xs font-bold text-muted uppercase">
-                        {l.kind === "material" ? "Material" : l.chargeItemId ? "Charge" : "Line type"}
+                        {l.kind === "material" ? "Material" : "Charge"}
                       </label>
                       {l.kind === "material" ? (
                         <Select id={`line-${l.key}-item`} value={l.materialId ?? ""} onChange={(e) => chooseMaterial(l.key, e.target.value)}>
@@ -598,13 +601,14 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                       ) : (
                         <Select
                           id={`line-${l.key}-item`}
-                          value={l.chargeItemId ? `c:${l.chargeItemId}` : `k:${l.kind}`}
+                          value={l.chargeItemId ? `c:${l.chargeItemId}` : l.isCustom ? `k:${l.kind}` : ""}
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v.startsWith("c:")) chooseCharge(l.key, v.slice(2));
-                            else updateLine(l.key, { chargeItemId: null, kind: v.slice(2) as ChargeKind, calcMethod: v.slice(2) === "discount" && l.calcMethod === "percent_of_subtotal" ? "percent_of_subtotal" : l.calcMethod });
+                            else if (v.startsWith("k:")) updateLine(l.key, { chargeItemId: null, isCustom: true, kind: v.slice(2) as ChargeKind, unitCode: l.unitCode ?? "each", quantity: l.quantity || "1" });
                           }}
                         >
+                          {!l.chargeItemId && !l.isCustom && <option value="">Choose a charge…</option>}
                           <optgroup label="Configured charges">
                             {activeCharges
                               .filter((c) => canOverride || c.kind !== "discount")
@@ -695,7 +699,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
 
                     <div className="col-span-12 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                       <Checkbox checked={l.taxable} onChange={(e) => updateLine(l.key, { taxable: e.target.checked })} label="Taxable" />
-                      {isCharge && !l.chargeItemId && (
+                      {isCharge && l.isCustom && (
                         <label className="inline-flex items-center gap-2">
                           <span className="text-muted">Calculated</span>
                           <select
