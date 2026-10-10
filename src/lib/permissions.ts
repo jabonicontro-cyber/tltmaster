@@ -18,6 +18,8 @@ export const PERMISSIONS = [
   "fleet.view",
   "fleet.edit",
   "fleet.service",
+  "dispatch.view",
+  "dispatch.edit",
   "settings.manage",
   "users.manage",
   "audit.view",

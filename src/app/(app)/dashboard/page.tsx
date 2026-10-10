@@ -15,6 +15,7 @@ import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
+import { countUnassignedLoadsToday } from "@/server/data/dispatch";
 import { fleetOverview } from "@/server/data/fleet";
 import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
@@ -63,7 +64,6 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 }
 
 const PLANNED = [
-  { label: "Orders needing a truck or driver", phase: "Dispatch (Phase 3–4)" },
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
   { label: "Completed deliveries awaiting ticket review", phase: "Tickets (Phase 3)" },
   { label: "Deliveries ready for billing", phase: "Reconciliation (Phase 5)" },
@@ -81,13 +81,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const canOrders = can(access, "orders.view");
   const canFleet = can(access, "fleet.view");
-  const [quotes, activity, names, customers, scheduledToday, fleet] = await Promise.all([
+  const canDispatch = can(access, "dispatch.view");
+  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
     canQuotes ? listCustomerOptions() : Promise.resolve([]),
     canOrders ? countOrdersScheduledToday() : Promise.resolve(null),
     canFleet ? fleetOverview() : Promise.resolve(null),
+    canDispatch ? countUnassignedLoadsToday() : Promise.resolve(null),
   ]);
 
   return (
@@ -172,6 +174,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scheduledToday !== null && (
             <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
+          )}
+          {unassignedLoads !== null && (
+            <Stat
+              icon={<ClipboardList className="size-5" />}
+              label="Loads today needing a truck"
+              value={unassignedLoads}
+              sub="Open the dispatch board"
+              href="/dispatch"
+              tone={unassignedLoads > 0 ? "warn" : "default"}
+            />
           )}
           {fleet && (
             <Stat

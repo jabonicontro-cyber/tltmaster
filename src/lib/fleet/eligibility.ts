@@ -91,7 +91,6 @@ export function evaluateAssignment(
   const { truck, trailer, driver } = input;
   const blockers: string[] = [];
   const warnings: string[] = [];
-  const soon = addDays(on, EXPIRY_WARNING_DAYS);
 
   if (truck) {
     if (!truck.active) blockers.push("truck_inactive");
@@ -112,16 +111,27 @@ export function evaluateAssignment(
   }
 
   if (driver) {
-    if (!driver.active) blockers.push("driver_inactive");
-    const min = requiredCdlClass(Boolean(trailer));
-    const cdl = qualificationCheck(driver.qualifications, "cdl", min, on);
-    if (cdl !== "ok") blockers.push(`cdl_${cdl}`);
-    else if (!expiresAfter(driver.qualifications, "cdl", min, soon)) warnings.push("cdl_expiring_soon");
-    const med = qualificationCheck(driver.qualifications, "medical_card", null, on);
-    if (med !== "ok") blockers.push(`medical_card_${med}`);
-    else if (!expiresAfter(driver.qualifications, "medical_card", null, soon)) warnings.push("medical_card_expiring_soon");
+    const d = driverChecks(driver, Boolean(trailer), on);
+    blockers.push(...d.blockers);
+    warnings.push(...d.warnings);
   }
 
+  return { eligible: blockers.length === 0, blockers, warnings };
+}
+
+/** The driver part of the rules: active, CDL of the required class, medical card. */
+export function driverChecks(driver: EligibilityDriver, withTrailer: boolean, on: string): EligibilityResult {
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  const soon = addDays(on, EXPIRY_WARNING_DAYS);
+  if (!driver.active) blockers.push("driver_inactive");
+  const min = requiredCdlClass(withTrailer);
+  const cdl = qualificationCheck(driver.qualifications, "cdl", min, on);
+  if (cdl !== "ok") blockers.push(`cdl_${cdl}`);
+  else if (!expiresAfter(driver.qualifications, "cdl", min, soon)) warnings.push("cdl_expiring_soon");
+  const med = qualificationCheck(driver.qualifications, "medical_card", null, on);
+  if (med !== "ok") blockers.push(`medical_card_${med}`);
+  else if (!expiresAfter(driver.qualifications, "medical_card", null, soon)) warnings.push("medical_card_expiring_soon");
   return { eligible: blockers.length === 0, blockers, warnings };
 }
 
@@ -137,6 +147,7 @@ export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   trailer_capacity_unverified: "Trailer capacity is recorded but not verified.",
   trailer_incompatible: "This trailer is not recorded as compatible with this truck type.",
   trailer_compatibility_unknown: "Trailer compatibility is not recorded.",
+  trailer_required: "A tractor needs a trailer for this load.",
   driver_inactive: "Driver is inactive.",
   cdl_missing: "No CDL is recorded for this driver.",
   cdl_class_insufficient: "Driver's CDL class is not high enough for this combination.",

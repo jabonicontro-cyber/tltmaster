@@ -10,10 +10,11 @@ import { Notice } from "@/components/ui/states";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatBp, formatCents } from "@/lib/money";
 import { buildOrderTimeline } from "@/lib/orders/history";
-import { formatScheduleDates, formatWindow, isPastRequested } from "@/lib/orders/schedule";
+import { formatScheduleDates, formatTime, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { canEditOrderLines, ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
+import { getOrderDispatch } from "@/server/data/dispatch";
 import { getOrderDetail } from "@/server/data/orders";
 import { businessToday } from "@/server/data/settings";
 
@@ -25,7 +26,8 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names } = detail;
-  const { timezone, today } = await businessToday();
+  const [{ timezone, today }, dispatch] = await Promise.all([businessToday(), getOrderDispatch(id)]);
+  const canDispatch = can(access, "dispatch.view");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const billTo = order.bill_to_snapshot;
   const billing = billTo
@@ -128,6 +130,51 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                 ]}
               />
             </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Loads and assignments"
+              description="Planned trips and the truck, trailer and driver assigned to each."
+              actions={
+                canDispatch && order.scheduled_start ? (
+                  <Link href={`/dispatch?date=${dispatch.loads.find((l) => l.status === "planned" && l.load_date >= today)?.load_date ?? order.scheduled_start}`} className="text-sm font-semibold underline">
+                    Open dispatch board
+                  </Link>
+                ) : undefined
+              }
+            />
+            {dispatch.loads.length === 0 ? (
+              <CardBody>
+                <p className="text-sm text-muted">No loads planned yet{canDispatch ? " — plan them on the dispatch board once the order is scheduled." : "."}</p>
+              </CardBody>
+            ) : (
+              <ul className="divide-y divide-line" aria-label="Loads">
+                {dispatch.loads.map((l) => {
+                  const a = dispatch.assignments.find((x) => x.load_id === l.id);
+                  return (
+                    <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
+                      <span>
+                        <strong>Load {l.load_number}</strong>{" "}
+                        <span className="text-sm text-muted tabular">
+                          {formatDate(l.load_date)}, {formatTime(l.start_time)} – {formatTime(l.end_time)}
+                        </span>
+                      </span>
+                      {l.status === "canceled" ? (
+                        <Badge tone="gray">Canceled</Badge>
+                      ) : a ? (
+                        <span className="text-sm">
+                          Truck {dispatch.truckNames.get(a.truck_id) ?? "—"}
+                          {a.trailer_id ? ` + ${dispatch.trailerNames.get(a.trailer_id) ?? "trailer"}` : ""} · {dispatch.driverNames.get(a.driver_id) ?? "driver"}
+                        </span>
+                      ) : (
+                        <Badge tone="amber">Needs a truck</Badge>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </Card>
 
           <Card>

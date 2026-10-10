@@ -61,6 +61,9 @@ no direct writes at all.
 | Capacities and qualifications are never assumed | Unknown = `NULL`, shown as "Unknown"; verification stamped by the database (who/when); eligibility treats missing, expired, unverified or undated qualifications as blockers. |
 | Equipment service status has history | Status columns have no client grants; `set_equipment_service_status` requires `fleet.service` and a reason, writes `equipment_status_events` (append-only). |
 | Dispatch readiness | `public.check_assignment_eligibility` (DB) mirrored by `src/lib/fleet/eligibility.ts`; parity-tested. |
+| No double-booking of trucks, trailers or drivers | Exclusion constraints on `dispatch_assignments` (half-open time ranges, active rows); `assign_load` pre-checks to name the conflict and maps a concurrent loss to a clear "reload" message. Tested with two concurrent transactions. |
+| Dispatch uses the fleet rules | `assign_load` calls `private.assignment_eligibility` (the body of `check_assignment_eligibility`); error texts mirror `ELIGIBILITY_MESSAGES` (parity-tested). |
+| Assignment history | Reassignment cancels and inserts; rows are immutable except cancellation and never deleted; every change is audited on the order. |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
 ## Companies (tenant isolation)
@@ -80,8 +83,9 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 46 `SECURITY DEFINER` functions were reviewed (35 with
-  company separation, 7 with order management, 4 with the fleet registry). Each
+- **Elevated functions**: all 56 `SECURITY DEFINER` functions were reviewed (35 with
+  company separation, 7 with order management, 4 with the fleet registry, 10 with
+  dispatch). Each
   public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller. Internal helpers
@@ -108,7 +112,7 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
 
 ## Security model
 
-- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery; cannot create, price, confirm or cancel), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
+- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery, plans loads and assigns trucks and drivers; cannot create, price, confirm or cancel orders), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
 - **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
 - **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
 - **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.

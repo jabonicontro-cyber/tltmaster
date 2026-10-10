@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2) and the fleet registry (N3). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3) and dispatch assignments (N4). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -49,7 +49,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Quote email | 🟡 | `src/server/email/provider.ts`, `sendQuoteEmail` | Preview and test modes are tested. Real Resend delivery has never been exercised. |
 | Quote → order conversion | ✅ | `orders`, `order_lines`, `convert_quote_to_order` | — |
 | Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
-| Scheduling and dispatch | 🧱 | `src/app/(app)/dispatch/page.tsx` | No tables. |
+| Scheduling and dispatch | ✅ day board (N4, see §5c) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history. No week view, notifications or derived order status. |
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
 | Delivery tickets and documents | 🧱 | `src/app/(app)/tickets/page.tsx` | No tables. `document_sequences` has a `ticket` key. **No file storage** is used anywhere. |
 | Reconciliation and billing-ready records | ❌ | — | — |
@@ -161,7 +161,7 @@ These build on B1 and are listed in dependency order.
 | N1 ✅ | Order lifecycle | Done (§5a) — loads per order move to N4 | `orders`, `order_status_events` | `set_order_status()` with a transition table (Confirmed → Scheduled → Dispatched → In progress → Partially completed / Completed; On hold; Canceled), reasons, history; delivery window / requested dates; loads planned per order. | Keep status in sync with assignments and tickets (derive where possible). |
 | N2 ✅ | Direct orders | Done (§5a) | Quote editor + `save_quote_draft` pricing rules | `save_order_draft()` reusing the price resolution and override checks; editor component shared with quotes. | Do not fork the pricing rules — reuse them. |
 | N3 ✅ | Fleet registry (minimal) | Done (§5b) | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
-| N4 | Dispatch assignments | Placeholder | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
+| N4 ✅ | Dispatch assignments | Done (§5c) — day board | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
 | N5 | Delivery tickets | Placeholder | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
 | N6 | Reconciliation and billing-ready records | None | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
 | N7 | Operations dashboard | Placeholder cards | N1–N6 | Replace the placeholder cards with real counts as each module lands. | — |
@@ -388,14 +388,93 @@ reviewed definer functions).
 - No truck–trailer pairing history; "usually paired with" is a single link.
 - Eligibility is checked on demand; dispatch (N4) must call it when assigning.
 
+## 5c. Dispatch assignments (N4) — completed
+
+### Data model decision
+
+**What existed** (inspected before building): orders have a scheduled *date
+range* (`scheduled_start`/`scheduled_end`) and an optional *daily time window*
+(`window_start`/`window_end`, times without a date or timezone). Order lines
+carry priced quantities ("22.5 tons", "4 loads" as a pricing unit), but there was
+**no load or trip entity** and no per-truck start/end time, so neither "loads per
+order" nor overlapping bookings could be expressed.
+
+**Smallest sound extension** (migration `20261014000100_dispatch_assignments.sql`):
+
+- `order_loads` — a planned trip for an order on one day: `load_number` (1, 2, 3…
+  per order), `load_date`, `start_time`, `end_time` (local business time; the
+  database derives `starts_at`/`ends_at` in the company's timezone), optional
+  planned quantity + unit (company units; never derived or assumed), notes,
+  status `planned` / `canceled`. A load must fall within the order's scheduled
+  date range, and the order must be Scheduled, Dispatched, In progress or
+  Partially completed. Times default to the order's window in the UI.
+  Same-day only (end after start).
+- `dispatch_assignments` — one truck, optional trailer, and one driver for one
+  load, with the load's interval copied in. `active` or `canceled`; rows are
+  never deleted or rewritten. Reassigning cancels the active row ("Reassigned")
+  and inserts a new one linked by `replaces_assignment_id`. At most one active
+  assignment per load.
+- **Overlap** = half-open intervals `[starts_at, ends_at)` intersect for the same
+  truck, trailer or driver among active assignments (back-to-back is allowed).
+  Enforced by `EXCLUDE USING gist` constraints, so concurrent requests cannot
+  double-book; the functions also pre-check to name the conflicting load.
+- **Eligibility** reuses the fleet rules (`private.assignment_eligibility`, the
+  body of `check_assignment_eligibility`) on the load's date. A tractor requires
+  a trailer. Blockers refuse the assignment; warnings are stored on it.
+- Order changes: when an order is canceled, put on hold or moved back to
+  Confirmed, its active assignments that have not ended are canceled
+  automatically (and loads canceled with the order); history is kept.
+- Permissions: `dispatch.view`, `dispatch.edit` (owner, office, dispatcher).
+
+### What was built (N4)
+
+- Migration `20261014000100_dispatch_assignments.sql` (additive; enables the
+  `btree_gist` extension in the `extensions` schema; no existing row changed).
+  Reversal: drop `dispatch_assignments`, `order_loads`, their types, the
+  functions and the `orders_release_assignments` trigger added there, and the
+  `dispatch.*` permissions.
+- Functions: `save_order_load`, `cancel_order_load`, `assign_load` (assign or
+  reassign; optimistic check on the current assignment), `cancel_assignment`.
+  `check_assignment_eligibility` now delegates to `private.assignment_eligibility`
+  (same rules, shared by dispatch). Eligibility failures raise "Not eligible on
+  …: <reasons>"; conflicts raise "Truck 101 is already assigned to O-… load 2 from
+  7:00 AM to 9:00 AM."; a booking lost to a concurrent request raises a PT409
+  "was just assigned … Reload the board".
+- Audit: every plan/change/cancel/assign/reassign/unassign/release is logged on
+  the order, so it appears in the order's history. Assignment rows are immutable
+  except for cancellation (trigger), and are never deleted.
+- UI: `/dispatch` day board (previous / today / next / date picker; counts),
+  order cards with customer, site, window, PO, materials, loads and their
+  assignments, inline history of earlier assignments; add / edit / cancel load,
+  assign / reassign / remove with reason; resource panel of trucks and drivers
+  for the day. The assign dialog groups each list into *Available*, *Already
+  assigned at this time* and *Unavailable* and previews the server's verdict.
+  The order page shows its loads; the dashboard shows loads needing a truck.
+- Tests: `tests/db/dispatch.test.ts` (9, incl. a two-connection concurrent
+  double-booking test and SQL/TS message parity), `tests/unit/dispatch-board.test.ts`
+  (6), `tests/e2e/dispatch.spec.ts` (2); tenancy guards updated (29 business
+  tables, 56 reviewed definer functions).
+
+### Remaining limits (N4)
+
+- Day view only (no week view or drag-and-drop); loads are same-day (no
+  overnight work); no multi-load "repeat N times" shortcut.
+- Planned quantity per load is informational; it is not checked against truck
+  capacity or the order's line quantities (capacities are often unknown).
+- Order status is not derived from assignments (marking Dispatched / In
+  progress stays manual); assignments do not notify drivers.
+- Changing an order's dates does not move its loads; loads outside the new
+  dates are flagged on the board.
+- Driver availability/PTO does not exist yet, so "available" means eligible and
+  not booked.
+
 ## Recommended next task
 
 **B3 — staging deployment** (hosted Supabase project, `supabase db push` of all
 migrations, auth URLs, email templates and SMTP, deploy the app, real
-password-reset and test-mode quote emails, backup/restore drill B5). Then **N4
-dispatch assignments**: assign order loads to a truck, trailer and driver per day,
-refuse ineligible combinations with `check_assignment_eligibility`, and prevent
-double-booking with database constraints.
+password-reset and test-mode quote emails, backup/restore drill B5). Then **N5
+delivery tickets**: a numbered ticket per completed load (actual quantity,
+signature/photo once Storage exists), feeding reconciliation and billing.
 
 ---
 

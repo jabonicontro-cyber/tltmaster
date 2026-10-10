@@ -1,23 +1,28 @@
-import { PlannedModule } from "@/components/layout/planned-module";
-import { requireAccess } from "@/server/auth";
+import { DispatchBoard } from "@/components/dispatch/dispatch-board";
+import { PageHeader } from "@/components/ui/page-header";
+import { formatDateLong, isIsoDate } from "@/lib/dates";
+import { can } from "@/lib/permissions";
+import { requirePagePermission } from "@/server/auth";
+import { getDispatchDay } from "@/server/data/dispatch";
+import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Dispatch" };
 
-export default async function DispatchPage() {
-  await requireAccess();
+export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  const access = await requirePagePermission("dispatch.view");
+  const { date: param } = await searchParams;
+  const { today } = await businessToday();
+  const date = param && isIsoDate(param) ? param : today;
+  const day = await getDispatchDay(date);
+  const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
+
   return (
-    <PlannedModule
-      title="Dispatch"
-      phase="Phase 3–4"
-      summary="Day and week board for assigning trucks and drivers to orders."
-      features={[
-        "Day / week views with date navigation, search and filters",
-        "Orders needing a truck or driver, scheduled work, time windows and job instructions",
-        "Create, edit and remove assignments — with keyboard-accessible alternatives to drag-and-drop",
-        "Conflict detection: double-booked trucks or drivers, unavailable equipment",
-        "Several assignments and tickets per order",
-      ]}
-      dependsOn="Orders and Fleet."
-    />
+    <>
+      <PageHeader
+        title="Dispatch"
+        description={`${weekday}, ${formatDateLong(date)}${date === today ? " — today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`}
+      />
+      <DispatchBoard day={day} canEdit={can(access, "dispatch.edit")} />
+    </>
   );
 }

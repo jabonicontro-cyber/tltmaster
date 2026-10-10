@@ -164,8 +164,23 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 - **History**: audit triggers on every fleet table; fleet audit entries are
   readable with `fleet.view` (policy `audit_read_fleet`).
 
+## Dispatch
+
+| Table | Purpose |
+| --- | --- |
+| `order_loads` | Planned trips of an order: `load_number` (per order), `load_date`, `start_time`, `end_time` (local business time) and the derived `starts_at` / `ends_at` (timestamptz in the company's timezone), optional `planned_quantity` + `unit_code` (company units, both or neither), notes, `status` (`planned` / `canceled`, with reason). Must fall within the order's scheduled dates; the order must be Scheduled, Dispatched, In progress or Partially completed. |
+| `dispatch_assignments` | Truck, optional trailer and driver for a load, with the load's interval copied in; `status` (`active` / `canceled` with reason), note, accepted eligibility `warnings`, `replaces_assignment_id`. One active assignment per load. Immutable except cancellation; never deleted. |
+
+### Dispatch rules
+
+- **No double-booking**: `EXCLUDE USING gist` on `(truck_id | trailer_id | driver_id, tstzrange(starts_at, ends_at, '[)'))` for active rows — half-open intervals, so back-to-back loads are allowed; holds under concurrent requests.
+- **Eligibility**: `assign_load` applies the fleet rules (`private.assignment_eligibility`) on the load date, plus "a tractor needs a trailer"; blockers refuse, warnings are stored.
+- **Functions** (`dispatch.edit`): `save_order_load(payload)`, `cancel_order_load(load, reason)`, `assign_load(load, truck, trailer, driver, note, replace_assignment_id)`, `cancel_assignment(assignment, reason)`. Changing an assigned load's time re-checks eligibility and conflicts.
+- **Order changes**: canceling an order, putting it on hold or moving it back to Confirmed cancels its active assignments that have not ended (trigger `orders_release_assignments`); canceling also cancels its planned loads.
+- **Reading**: `dispatch.view` or `orders.view`; no client writes.
+
 ## Planned tables (later phases)
 
-Loads per order, maintenance and work orders, drivers, dispatch assignments, route plans and
+Maintenance and work orders, drivers, dispatch assignments, route plans and
 stops, delivery tickets and ticket lines, planning runs, integration records
 (QuickBooks IDs, sync status, errors).
