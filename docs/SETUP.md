@@ -37,10 +37,18 @@ dashboard (production). Never commit real values.
 6. **Authentication → SMTP**: Supabase's built-in mailer is rate-limited and meant for testing.
    Configure custom SMTP (Resend provides SMTP credentials) before go-live so password-reset
    emails are delivered reliably.
-7. Create the first owner from a trusted machine:
+7. Create the first owner from a trusted machine (the company slug defaults to
+   `top-line-trucking`, which the migrations create):
    ```bash
    node --env-file=.env.local scripts/create-owner.mjs owner@yourcompany.com "Owner Name"
    ```
+   To add another company (operators only, SQL editor or psql as `postgres`):
+   ```sql
+   select private.create_company('Example Hauling LLC', 'example-hauling');
+   ```
+   then run `create-owner.mjs owner@example.com "Name" example-hauling`. Each
+   company's data, settings, numbering and permissions are isolated (see
+   docs/ARCHITECTURE.md → Companies).
 8. Sign in, open **Settings → Company** and enter the company address, phone and email that
    should appear on quotes. Confirm the default sales-tax rate with your accountant.
 
@@ -61,6 +69,18 @@ Behavior guarantees (covered by tests):
 - A failed or test send releases the revision so the draft stays editable.
 - One automatic retry on temporary errors, with an idempotency key so the customer never gets
   duplicates.
+
+### Upgrading an existing database to company separation
+
+Migrations `20261011000100_mechanic_role.sql` and
+`20261011000200_company_separation.sql` convert a single-company database:
+every existing row is assigned to Top Line Trucking, roles move from `profiles`
+to `company_memberships`, and a verification block aborts the whole migration
+if any row count, ownership or quote total does not match. Before applying to a
+database with real data: take a backup (docs/BACKUP_RESTORE.md), apply to a
+staging copy first, deploy the app version from the same commit (the old app
+version reads `profiles.role`, which the migration removes), then sign in and
+check customers, quotes and orders.
 
 ## 4. Deploying (Vercel or any Node host)
 

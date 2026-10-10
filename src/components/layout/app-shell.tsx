@@ -26,7 +26,7 @@ export function AppShell({ access, children }: { access: Access; children: React
             <BrandMark />
           </Link>
         </div>
-        <UserMenu name={access.fullName} email={access.email} roleLabel={access.role ? ROLE_LABELS[access.role] : "No role"} />
+        <UserMenu name={access.fullName} email={access.email} roleLabel={`${access.role ? ROLE_LABELS[access.role] : "No role"}${access.companyName ? ` · ${access.companyName}` : ""}`} />
       </header>
 
       <main id="main" className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">

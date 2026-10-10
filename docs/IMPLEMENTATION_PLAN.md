@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1, 2026-10-11). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -26,7 +26,7 @@ database. Issued quote revisions are immutable at the database level. Numbering
 is safe under concurrency. Audit and status history are append-only. Quote →
 order conversion is idempotent.
 
-**Biggest structural gap: the system is single-company.** No table has a
+**Biggest structural gap (resolved by B1, see §5): the system was single-company.** No table has a
 company/tenant column. `company_settings` is a one-row table (`id boolean check
 (id)`). `document_sequences`, `role_permissions` and `units_of_measure` are
 global. Uniqueness is global too: quote/order/customer numbers, material and
@@ -41,7 +41,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Area | State | Where it lives | Notes / gaps |
 | --- | --- | --- | --- |
 | Auth: sign-in, sign-out, reset, invite, no-access | ✅ (reset/invite email 🟡) | `src/app/(auth)`, `src/proxy.ts`, `src/server/auth.ts`, `scripts/create-owner.mjs` | Reset and invitation emails have never been delivered: they need a hosted Supabase project with SMTP. |
-| Roles and permissions | ✅ single company | `permissions`, `role_permissions`, `profiles.role`, Settings → Permissions | Roles are an enum (`owner, office, dispatcher, driver`). There is no **mechanic** role. Users have one role each and no company membership. |
+| Roles and permissions | ✅ per company | `company_memberships`, `role_permissions` (per company), `role_permission_defaults`, Settings → Permissions | Roles: owner, office, dispatcher, **mechanic** (no permissions yet), driver. A user can belong to several companies; one is active at a time (no switcher UI yet). |
 | Customers, contacts, job sites | ✅ | `customers`, `customer_contacts`, `customer_sites`; `src/app/(app)/customers` | Saved site instructions exist (`customer_sites.directions`). There is no customer portal. |
 | Materials, charges, units, price lists | ✅ | `materials`, `charge_items`, `units_of_measure`, `price_lists`, `price_list_entries` | Customer price lists have dated history. **No supplier costs** anywhere. |
 | Quotes: editor, revisions, status, history | ✅ | `quotes`, `quote_versions`, `quote_lines`, `save_quote_draft` and related functions | Quote lines snapshot **prices, not costs**. There is no quote duplication and no automatic expiry (by design). |
@@ -60,8 +60,8 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Supplier price imports and price history | ❌ | — | — |
 | Operational exceptions queue | ❌ | — | The dashboard flags overdue and follow-up quotes only. |
 | AI assistant / smart dispatch | ❌ | — | — |
-| Multi-tenant isolation | ❌ | — | See §2, issue S1. |
-| Audit log | ✅ single company | `audit_events`, Settings → Audit log | It has no company scope. |
+| Multi-tenant isolation | ✅ (B1, 2026-10-11) | `companies`, `company_memberships`, `company_id` on 22 tables, migration `20261011000200_company_separation.sql`, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts` | No self-serve sign-up, company switcher, per-company branding (sidebar logo is still Top Line's) or billing. |
+| Audit log | ✅ per company | `audit_events.company_id`, Settings → Audit log | — |
 | Sample data handling | ✅ | `is_sample`, `remove_sample_data()` | — |
 | Local dev stack | 🟡 | `scripts/dev-stack` | No Supabase Storage. The `supabase start` path (Docker) has never been run. |
 | Hosted deployment | ❌ unverified | `docs/SETUP.md` | `supabase db push` to a real project has never been run. Backup and restore have never been tested. |
@@ -75,12 +75,12 @@ SaaS goal.
 
 | # | Severity | Finding | Evidence | Action |
 | --- | --- | --- | --- | --- |
-| S1 | **Blocker** | No tenant boundary. Every row is visible to every user who has the right role permission, regardless of company. Settings, numbering, permission grants and uniqueness are global. | No `company_id` column (schema query); `company_settings` check `(id)`; global unique indexes on `quote_number`, `order_number`, `customer_number`, `lower(name)`. | Tenant foundation (§4.1). |
-| S2 | **Blocker** (once there are 2+ companies) | `SECURITY DEFINER` functions bypass RLS and look up rows by id only, for example `convert_quote_to_order`, `save_quote_draft`, `revise_quote`, `set_quote_status`, `effective_prices` and `remove_sample_data`. With tenants, a guessed id from another company would be processed. | 30 definer functions listed from `pg_proc`. | Every definer function must check `row.company_id = current company`. Add a test helper that calls every public RPC with another company's ids and expects refusal. |
-| S3 | High (with tenants) | Parent and child rows are linked by single-column foreign keys, so the database cannot stop a quote referencing another company's customer or material. | FKs in migrations 0200–0600. | Use composite keys `(company_id, id)` for core relations (customer, contact, site, material, charge, price list, quote, version, order). |
-| S4 | Medium | `user_directory()` returns the name **and email** of every staff account to every user with a role. Drivers and mechanics will see the whole staff list. | `20261010000500_user_directory.sql`. | Return names only, or gate emails behind a permission; scope to the company. |
-| S5 | Medium (performance) | 37 of 42 RLS policies call `private.has_permission()` per row instead of `(select private.has_permission(...))`, which Postgres can evaluate once per query. Fine at today's volumes; slow at scale. | `pg_policies`. | Rewrite policies in the tenancy migration using the `(select …)` form. |
-| S6 | Medium | Roles are a fixed enum. Adding mechanic requires a migration; per-company role customization is limited to toggling grants. | `app_role` enum. | Add `mechanic` with tenancy. Keep the enum for now; per-company custom roles are a Phase 6 decision. |
+| S1 | ✅ Resolved (B1) | No tenant boundary. | — | `company_id` on every business table; per-company settings, numbering, grants, units and uniqueness; RLS rewritten. Proven by `tests/db/tenancy.test.ts`. |
+| S2 | ✅ Resolved (B1) | `SECURITY DEFINER` functions bypassed RLS and looked rows up by id only. | 35 definer functions after B1. | Every public definer function resolves the company itself and filters every lookup by it; none accepts a company id; internal helpers are not executable by app users. Each public RPC is tested with another company's ids. A test fails if an unreviewed definer function is added. |
+| S3 | ✅ Resolved (B1) | Single-column foreign keys allowed cross-company links. | — | Composite `(company_id, …)` FKs on all business relations; tested even as the database owner. |
+| S4 | ✅ Resolved (B1) | Staff directory exposed every email. | — | `user_directory()` lists only the caller's company; emails only with `users.manage`. |
+| S5 | ✅ Resolved (B1) | RLS helpers evaluated per row. | — | All policies use `(select private.current_company_id())` / `(select private.has_permission(…))`. |
+| S6 | ✅ Partly (B1) | Fixed role enum, no mechanic. | — | `mechanic` added (no permissions yet). Per-company custom roles remain a Phase 6 decision. |
 | S7 | Medium | No file storage exists, and the local dev stack has no Storage service. Maintenance photos, ticket scans and onboarding documents all need it. | `storage` schema absent; no storage calls in `src`. | Before the first upload feature: create tenant-scoped buckets (paths prefixed by `company_id`) with Storage RLS. Run Supabase Storage in the dev stack or switch tests to the Supabase CLI. |
 | S8 | Medium | The browser tests are not in CI, and the hosted-Supabase path is unverified (`db push`, auth email templates, SMTP). | `.github/workflows/ci.yml`; docs/SETUP.md "not yet verified". | Add an e2e job to CI. Do a one-time staging deployment before real data is entered. |
 | S9 | Low | PDFs for sample quotes look like real quotes when printed. | `src/lib/quotes/document.ts` has no `is_sample` input. | Add a "SAMPLE — not a real quote" watermark. |
@@ -145,8 +145,8 @@ service-role use limited to invitations (`src/app/(app)/settings/actions.ts`).
 
 | Order | Task | Concrete steps | Done when |
 | --- | --- | --- | --- |
-| **B1** | **Tenant foundation** (recommended next task, §5) | See §5. | Two-company isolation tests pass for every table and every public function. |
-| B2 | Close S4–S6 inside B1 | Scope `user_directory` and stop exposing emails; wrap RLS calls in `(select …)`; add the `mechanic` role. | Covered by B1 tests. |
+| ~~B1~~ | ✅ **Tenant foundation — done** (§5) | Migrations `20261011000100_mechanic_role.sql`, `20261011000200_company_separation.sql`. | 17 database isolation tests + 1 browser isolation test pass; all previous tests pass. |
+| ~~B2~~ | ✅ Done inside B1 | S4–S6. | Covered by B1 tests. |
 | B3 | Staging deployment | Create a Supabase staging project; `supabase db push`; configure auth URLs, email templates and SMTP; deploy the app; send a real reset email and a real test quote email (test mode). | SETUP.md steps verified and corrected; S8 hosted part closed. |
 | B4 | CI completeness | Add an e2e job (dev stack + `next build && next start` + Playwright). | e2e green in CI. |
 | B5 | Backup / restore drill | Follow docs/BACKUP_RESTORE.md against staging. | Restore time recorded. |
@@ -187,53 +187,76 @@ These build on B1 and are listed in dependency order.
 
 ---
 
-## 5. Recommended next task: tenant foundation (B1)
+## 5. Tenant foundation (B1) — completed 2026-10-11
 
-**Why this one.** The quote → order workflow is complete. Everything that comes
-next (fleet, dispatch, tickets, maintenance, portal) adds tables, and each table
-added before tenancy has to be migrated, re-policied and re-tested later. Today
-the retrofit touches 23 tables and 30 functions with no production data, so the
-Top Line backfill is trivial. It also clears the SaaS blocker (S1–S3) and closes
-S4–S6 in the same pass. For the Top Line user nothing visible changes, which
-keeps the risk low.
+**What changed**
+- `companies`, `company_memberships` (role + active per company; replaces
+  `profiles.role/active`), `profiles.active_company_id`, `role_permission_defaults`.
+- `company_id` on 22 tables (21 existing business tables + memberships); existing
+  rows assigned to Top Line Trucking (`00000000-0000-4000-8000-000000000001`) by a
+  constant column default (no row triggers fired, no row rewritten by UPDATE).
+- Per company: settings (`company_settings` PK `company_id`), numbering
+  (`document_sequences` PK `(company_id, key)`), role grants, units (PK
+  `(company_id, code)`), one standard price list, and uniqueness of
+  customer/quote/order numbers and material/charge/price-list names and codes.
+- Composite same-company foreign keys on every business relation; `company_id`
+  immutable (`a_company_guard` trigger on 22 tables).
+- All 42 RLS policies replaced by company-scoped policies (now 45 across all 26
+  tables) using the once-per-statement `(select …)` form.
+- All 30 pre-existing `SECURITY DEFINER` functions reviewed; 25 rewritten to resolve
+  and verify the company; 5 unchanged because they only act on rows already
+  verified by their caller or on the triggering row (`issue_quote_version`
+  wrapper around the verified `issue_current_version`, `recompute_quote_totals`,
+  `stamp_updated_by`, `require_permission`, `handle_new_auth_user`). 5 new definer
+  functions (`current_company_id`, `require_company`, `is_company_member`,
+  `create_company`, `add_company_member`) — 35 in total.
+- `mechanic` role; staff directory limited to the company, emails only for user managers.
+- App: `getAccess()` carries the company (shown in the header); settings save,
+  user list and invitations scoped to the company; `create-owner.mjs` takes a
+  company slug; seed data names Top Line explicitly.
+- Safety: one transaction; a verification block compares row counts, ownership
+  and quote totals and aborts on any mismatch. Applied to the existing dev
+  database without reset (pre-migration counts: 4 customers, 3 quotes, 3 versions,
+  7 lines, 1 order, 66 audit events, 2 profiles — identical afterwards, all owned
+  by Top Line). The migrated database's schema is identical to a fresh build from
+  the migration files.
 
-**Scope**
-1. New migration (do not edit applied migrations): `companies`,
-   `company_memberships`; backfill Top Line as company #1 and move
-   `profiles.role/active` into memberships (keep the columns read-only for one
-   release, or drop them in the same migration with a compatibility view).
-2. Add `company_id` (not null, default = resolved current company for inserts
-   made through RLS) to every business table, the views, `audit_events` and the
-   history tables. Make settings, numbering, role grants and units per company.
-   Convert global unique indexes to `(company_id, …)`.
-3. Composite FKs `(company_id, id)` for core relations (S3).
-4. `private.current_company_id()`; rewrite `has_permission` and
-   `require_permission` to check the membership; rewrite every policy as
-   `company_id = (select private.current_company_id()) and (select private.has_permission(...))`.
-5. Add company checks to all 30 `SECURITY DEFINER` functions (S2).
-6. `user_directory` scoped and email-free (S4); add the `mechanic` role (S6).
-7. App: `getAccess()` returns the company; settings and the layout read the
-   current company. No switcher UI unless a user has more than one membership.
-8. Seed: sample data belongs to company #1. Add a second **test-only** company
-   in the database tests.
+**Tests**: `tests/db/tenancy.test.ts` (17 tests) — schema guards (RLS on every
+table, `company_id` on every business table, reviewed list of definer
+functions, no caller-supplied company ids, internal functions not callable);
+reads across all 22 tables and both views in both directions; refused inserts,
+updates, deletes and company moves; cross-company references refused by RLS and by
+composite FKs even for the database owner; every public quote/order RPC called
+with another company's ids; user/permission administration; per-company sample
+data, settings, numbering and name reuse; inactive memberships/companies,
+pending users and users in two companies; per-company audit. Browser:
+`tests/e2e/tenancy.spec.ts` — a second company's owner sees no Top Line
+customers, quotes, materials or users, and gets "Not found" / HTTP 404 for Top
+Line customer, quote and PDF URLs.
 
-**Tests (acceptance criteria)**
-- For every table: a user of company B cannot select, insert, update or delete company A rows.
-- For every public RPC: company A ids passed by a company B user are refused.
-- Numbering, settings and role grants are independent per company.
-- Unique rules apply per company (two companies can both have "Gravel #53" and `Q-2026-0001`).
-- All existing unit, database and browser tests still pass unchanged in behavior.
+**Remaining risks and limits**
+- Not yet applied to a hosted Supabase project (B3). The migration needs Postgres
+  15+ (`ON DELETE SET NULL (column)`); Supabase provides 15/17.
+- The app version and the migration must be deployed together (the old app reads
+  `profiles.role`).
+- `add_company_member()` lets a company's owner add any existing account id to
+  their own company. That grants the account access to that company only — never
+  another company's data, and it cannot rename them — but ids should still be
+  treated as non-public.
+- No company switcher UI for people in several companies (selection is
+  `profiles.active_company_id`, set by an operator).
+- Branding: the sidebar logo is still Top Line's for every company.
+- No Storage or background jobs exist yet; their tenant rules are documented
+  (ARCHITECTURE.md → Companies) and must be implemented with the first feature
+  that needs them.
 
-**Out of scope:** company sign-up, billing, a company switcher UI, branding
-beyond the existing company settings, and Storage (handled in S7 when the first
-upload feature arrives).
+## Recommended next task
 
-**Estimated size:** one migration (~500–800 lines including policy rewrites),
-small app changes in `src/server/auth.ts` and the settings data access, and a
-new `tests/db/tenancy.test.ts`. Comparable to the orders change, mostly in SQL.
-
-After B1, the recommended order is **B3 staging deployment**, then **N1 order
-lifecycle → N3 fleet registry → N4 dispatch assignments → N5 delivery tickets**.
+**B3 — staging deployment** (hosted Supabase project, `supabase db push` of all
+migrations including company separation, auth URLs, email templates and SMTP,
+deploy the app, real password-reset and test-mode quote emails, backup/restore
+drill B5). Then **N1 order lifecycle → N3 fleet registry → N4 dispatch → N5
+tickets**, each built on the company model from the start.
 
 ---
 

@@ -57,11 +57,54 @@ no direct writes at all.
 | Orders keep the accepted prices | Order lines are copied from the accepted revision's snapshots; no client write access to order tables. |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
+## Companies (tenant isolation)
+
+The application serves several independent companies from one database. Top Line
+Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
+
+- **Ownership**: every business table has `company_id uuid not null` (audit events
+  may be null, then visible to nobody). Global tables: `companies`, `profiles`
+  (personal data), `permissions`, `role_permission_defaults`.
+- **Current company**: `private.current_company_id()` resolves it from the
+  signed-in user's active membership (`company_memberships`, active, with a role,
+  in an active company; `profiles.active_company_id` picks one if there are
+  several). It is **never** taken from the request. `my_access()` returns it to
+  the app, and the header shows it.
+- **RLS**: every policy is `company_id = (select private.current_company_id()) and
+  (select private.has_permission('…'))`. The `(select …)` form evaluates each
+  helper once per statement. `has_permission` reads the caller's role in the
+  current company and that company's `role_permissions`.
+- **Elevated functions**: all 35 `SECURITY DEFINER` functions were reviewed. Each
+  public one resolves the company itself (`private.require_company()`), looks up
+  every referenced row with `and company_id = v_company`, and writes the verified
+  company id. None accepts a company id from the caller. Internal helpers
+  (`next_document_number`, `create_company`, `resolve_price`, …) are not
+  executable by app users. A database test fails if a new definer function
+  appears without being added to the reviewed list.
+- **Same-company references**: composite foreign keys `(company_id, x_id) →
+  parent (company_id, id)` on every business relation, so even the database owner
+  cannot link a quote to another company's customer, material, unit, contact or
+  site. `company_id` can never change (`a_company_guard` triggers).
+- **Per company**: settings, document numbering (`C-00001`, `Q-2026-0001` restart
+  per company), role grants, units, standard price list, and uniqueness of
+  names/codes/numbers.
+- **Server code**: pages, server actions and the PDF route use the user-bound
+  Supabase client, so RLS applies everywhere. The service-role key is used only
+  to send an invitation email; the membership is then created by
+  `add_company_member()` running as the inviting owner.
+- **Storage / background jobs**: none exist yet. When added, object paths must
+  start with `company_id` and policies must use the same membership check; jobs
+  must run per company.
+- **Creating a company** (operator only): `select private.create_company('Name', 'slug');`
+  then `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no self-serve
+  sign-up or billing.
+
 ## Security model
 
-- **Roles**: owner, office, dispatcher, driver (future). A new account has no role and sees nothing until an owner assigns one.
-- **Permissions** (`public.permissions`, `public.role_permissions`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner must always exist.
-- **RLS**: enabled on every table. `anon` has no grants. Quote tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
+- **Roles** (per company membership): owner, office, dispatcher, mechanic (no permissions until fleet features exist), driver (future). A new account has no membership and sees nothing until an owner adds it.
+- **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
+- **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
+- **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
 - **Secrets**: the service-role key is only read in `src/server/supabase/admin.ts` (server-only) for invitations, after the caller's `users.manage` permission has been checked.
 - **Indexing**: `X-Robots-Tag: noindex`, `robots.txt` disallow, and `robots` metadata.
 - **Input**: all server actions validate with zod; database functions validate again.

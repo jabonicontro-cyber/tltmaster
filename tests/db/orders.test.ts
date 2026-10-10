@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, sampleIds, saveQuote, withSession, type Session } from "./helpers";
+import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -264,11 +264,14 @@ describe("converting accepted quotes into orders", () => {
           await setup.query("reset role");
         },
         query: (sql, params) => setup.query(sql, params as unknown[]),
+        createCompany: async () => {
+          throw new Error("not used");
+        },
         createUser: async (role) => {
           await setup.query("reset role");
           const id = (await setup.query<{ id: string }>("select gen_random_uuid() as id")).rows[0].id;
           await setup.query("insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')", [id, `race-${id.slice(0, 8)}@test.example`]);
-          await setup.query("update public.profiles set role = $2 where id = $1", [id, role]);
+          await setup.query("insert into public.company_memberships (company_id, user_id, role) values ($1, $2, $3)", [TOP_LINE, id, role]);
           return id;
         },
       };

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { parsePercentToBp } from "@/lib/money";
+import { ROLES } from "@/lib/permissions";
 import { optionalEmail, optionalPhone, optionalText, postalCode, requiredText, stateCode } from "./common";
 
 export const TIMEZONES = ["America/Chicago", "America/New_York", "America/Indiana/Indianapolis", "America/Denver", "America/Los_Angeles"] as const;
@@ -38,11 +39,11 @@ export const sequenceSchema = z.object({
 export const inviteSchema = z.object({
   email: z.email("Enter a valid email address."),
   full_name: requiredText(120, "Name"),
-  role: z.enum(["owner", "office", "dispatcher", "driver"]),
+  role: z.enum(ROLES),
 });
 
 export const userAccessSchema = z.object({
   full_name: requiredText(120, "Name"),
-  role: z.preprocess((v) => (v === "" ? null : v), z.enum(["owner", "office", "dispatcher", "driver"]).nullable()),
+  role: z.preprocess((v) => (v === "" ? null : v), z.enum(ROLES).nullable()),
   active: z.preprocess((v) => v === "on" || v === "true", z.boolean()),
 });

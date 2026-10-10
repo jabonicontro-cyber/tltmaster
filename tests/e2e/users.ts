@@ -1,10 +1,16 @@
 export const PASSWORD = process.env.E2E_PASSWORD ?? "E2E-Test-Passw0rd!";
 
+/** Top Line Trucking (company #1, owns the seed data). */
+export const TOP_LINE_SLUG = "top-line-trucking";
+/** A second, fictional company used only to prove isolation. */
+export const OTHER_COMPANY = { slug: "e2e-brookside-aggregates", name: "Brookside Aggregates (e2e test)" };
+
 export const USERS = {
-  owner: { email: "e2e-owner@toplinetest.example", name: "Erin Owner", role: "owner" },
-  office: { email: "e2e-office@toplinetest.example", name: "Omar Office", role: "office" },
-  dispatcher: { email: "e2e-dispatch@toplinetest.example", name: "Dana Dispatch", role: "dispatcher" },
-  pending: { email: "e2e-pending@toplinetest.example", name: "Pat Pending", role: null },
+  owner: { email: "e2e-owner@toplinetest.example", name: "Erin Owner", role: "owner", company: TOP_LINE_SLUG },
+  office: { email: "e2e-office@toplinetest.example", name: "Omar Office", role: "office", company: TOP_LINE_SLUG },
+  dispatcher: { email: "e2e-dispatch@toplinetest.example", name: "Dana Dispatch", role: "dispatcher", company: TOP_LINE_SLUG },
+  pending: { email: "e2e-pending@toplinetest.example", name: "Pat Pending", role: null, company: TOP_LINE_SLUG },
+  otherOwner: { email: "e2e-brookside-owner@brooksidetest.example", name: "Bea Brookside", role: "owner", company: OTHER_COMPANY.slug },
 } as const;
 
 export type UserKey = keyof typeof USERS;

@@ -21,18 +21,22 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number];
 
-export const ROLES = ["owner", "office", "dispatcher", "driver"] as const;
+export const ROLES = ["owner", "office", "dispatcher", "mechanic", "driver"] as const;
 export type AppRole = (typeof ROLES)[number];
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Owner / Administrator",
   office: "Office staff",
   dispatcher: "Dispatcher",
+  mechanic: "Mechanic (future)",
   driver: "Driver (future)",
 };
 
 export interface Access {
   userId: string;
+  /** The company this session works in; every query is limited to it by the database. */
+  companyId: string | null;
+  companyName: string | null;
   email: string;
   fullName: string;
   role: AppRole | null;

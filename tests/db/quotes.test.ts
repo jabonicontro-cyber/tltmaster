@@ -375,9 +375,9 @@ describe("quote numbering under concurrency", () => {
     try {
       await a.query("begin");
       await b.query("begin");
-      const first = await a.query<{ n: string }>("select private.next_document_number('quote') as n");
+      const first = await a.query<{ n: string }>("select private.next_document_number('00000000-0000-4000-8000-000000000001', 'quote') as n");
       // b blocks on the sequence row until a commits
-      const secondPromise = b.query<{ n: string }>("select private.next_document_number('quote') as n");
+      const secondPromise = b.query<{ n: string }>("select private.next_document_number('00000000-0000-4000-8000-000000000001', 'quote') as n");
       let settled = false;
       void secondPromise.then(() => (settled = true));
       await new Promise((r) => setTimeout(r, 300));

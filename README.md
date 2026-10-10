@@ -19,6 +19,7 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 | Quote print preview and PDF | ✅ |
 | Quote email | ✅ code complete — **preview mode until an email provider is configured** |
 | Settings: company, numbering, users, permissions, sample data, audit log | ✅ |
+| Company separation: several isolated companies in one database (Top Line is company #1) | ✅ — no self-serve sign-up or billing |
 | Orders: convert accepted quotes (one order per quote), order list and detail | ✅ — scheduling, editing and direct orders next |
 | Dispatch, Route Planner, Tickets, Fleet, Reports | Planned — pages say so; nothing fake |
 
@@ -63,7 +64,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` · `npm run typecheck` | ESLint · TypeScript |
 | `npm test` | Unit tests (money, quote calculation, status rules, PDF, email) |
-| `npm run test:db` | Database tests: RLS, permissions, quote workflow, quote-to-order conversion, numbering (needs a migrated DB) |
+| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, numbering (needs a migrated DB) |
 | `npm run test:e2e` | Browser tests against a running app + local backend |
 | `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker |
 

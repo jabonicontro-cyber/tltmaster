@@ -17,7 +17,7 @@ export async function saveCompanySettings(formData: FormData): Promise<ActionRes
     const parsed = companySettingsSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
-    const { data, error } = await supabase.from("company_settings").update({ ...parsed.data, updated_by: access.userId }).eq("id", true).select("id");
+    const { data, error } = await supabase.from("company_settings").update({ ...parsed.data, updated_by: access.userId }).eq("company_id", access.companyId!).select("company_id");
     if (error) return fail(dbErrorMessage(error));
     if (!data?.length) return fail("Settings could not be saved.");
     revalidatePath("/", "layout");
@@ -74,16 +74,16 @@ export async function inviteUser(formData: FormData): Promise<ActionResult> {
     if (error) {
       return fail(/already/i.test(error.message) ? "A user with this email already exists. Change their role in the list below." : `The invitation could not be sent: ${error.message}`);
     }
-    // The role is set through the normal permission-checked function, as the inviting owner.
+    // Membership in the inviter's company is created by the permission-checked
+    // database function, running as the inviting user (never the service role).
     const supabase = await createClient();
-    const { error: roleErr } = await supabase.rpc("set_user_access", {
+    const { error: roleErr } = await supabase.rpc("add_company_member", {
       p_user_id: data.user.id,
       p_role: parsed.data.role,
-      p_active: true,
       p_full_name: parsed.data.full_name,
     });
     revalidatePath("/settings");
-    if (roleErr) return fail(`Invitation sent, but the role could not be set: ${dbErrorMessage(roleErr)} Set it in the user list.`);
+    if (roleErr) return fail(`Invitation sent, but the user could not be added to your company: ${dbErrorMessage(roleErr)}`);
     console.info("User invited", { by: access.userId, user: data.user.id });
     return ok(undefined, `Invitation sent to ${parsed.data.email}.`);
   });

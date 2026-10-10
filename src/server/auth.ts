@@ -20,9 +20,13 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     role: AppRole | null;
     active: boolean;
     permissions: Permission[];
+    company_id: string | null;
+    company_name: string | null;
   };
   return {
     userId: row.user_id,
+    companyId: row.company_id,
+    companyName: row.company_name,
     email: row.email,
     fullName: row.full_name,
     role: row.role,
@@ -35,7 +39,7 @@ export const getAccess = cache(async (): Promise<Access | null> => {
 export async function requireAccess(): Promise<Access> {
   const access = await getAccess();
   if (!access) redirect("/login");
-  if (!access.active || !access.role) redirect("/no-access");
+  if (!access.active || !access.role || !access.companyId) redirect("/no-access");
   return access;
 }
 
@@ -56,7 +60,7 @@ export class PermissionError extends Error {
 /** For server actions and route handlers: throws PermissionError. */
 export async function assertPermission(permission: Permission): Promise<Access> {
   const access = await getAccess();
-  if (!access || !access.active || !can(access, permission)) {
+  if (!access || !access.active || !access.companyId || !can(access, permission)) {
     throw new PermissionError(permission);
   }
   return access;

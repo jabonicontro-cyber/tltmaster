@@ -6,16 +6,23 @@ Timestamps are `timestamptz`; calendar dates (quote date, expiration) are `date`
 Money is integer cents (`bigint`); quantities are `numeric(12,3)`; percentages are
 basis points (`525` = 5.25%).
 
-## Access and administration
+## Companies and access
+
+Every business table below carries `company_id` (see docs/ARCHITECTURE.md →
+Companies). Relations between business tables are composite foreign keys
+`(company_id, …)`, so a row can only reference rows of its own company.
 
 | Table | Purpose |
 | --- | --- |
-| `profiles` | One row per Supabase Auth user: name, email, `role` (`owner`/`office`/`dispatcher`/`driver`, null = pending), `active`. Created by trigger on `auth.users`. |
-| `permissions` | Catalog of permission codes (`quotes.edit`, `pricing.override`, …). |
-| `role_permissions` | Which role has which permission. Owner always has all. |
-| `company_settings` | Single row: company name/address/contact, timezone, default tax rate, quote validity and follow-up days, default terms, footer. |
-| `document_sequences` | Prefix, year handling, padding and next value for customer, quote, order and ticket numbers. |
-| `audit_events` | Append-only log: who, when, action, entity, summary, JSON details of changed fields. |
+| `companies` | Tenant: name, unique slug, active. Top Line Trucking is `00000000-0000-4000-8000-000000000001`. |
+| `company_memberships` | User ↔ company with `role` (`owner`/`office`/`dispatcher`/`mechanic`/`driver`, null = waiting for a role) and `active`. Unique per (company, user). |
+| `profiles` | One row per Supabase Auth user: name, email, `active_company_id` (which company to work in when the user has several memberships). Created by trigger on `auth.users`. No role. |
+| `permissions` | Global catalog of permission codes (`quotes.edit`, `pricing.override`, …). |
+| `role_permission_defaults` | Global default grants copied to each new company. |
+| `role_permissions` | Per company: which role has which permission. Owner always has all. |
+| `company_settings` | One row per company: name/address/contact, timezone, default tax rate, quote validity and follow-up days, default terms, footer. |
+| `document_sequences` | Per company: prefix, year handling, padding and next value for customer, quote, order and ticket numbers. |
+| `audit_events` | Append-only log per company: who, when, action, entity, summary, JSON details of changed fields. |
 
 ## Customers
 
@@ -29,10 +36,10 @@ basis points (`525` = 5.25%).
 
 | Table | Purpose |
 | --- | --- |
-| `units_of_measure` | `ton`, `load`, `cu_yd`, `hour`, `mile`, `day`, `each` (+ your own). |
+| `units_of_measure` | Per company (key `(company_id, code)`): `ton`, `load`, `cu_yd`, `hour`, `mile`, `day`, `each` (+ your own). |
 | `materials` | Name, optional code, default unit, taxable default. |
 | `charge_items` | Non-material charges: hauling, service, surcharge, discount, other; per unit or % of subtotal. |
-| `price_lists` | `Standard rates` (exactly one) plus customer-specific or shared lists. |
+| `price_lists` | `Standard rates` (exactly one per company) plus customer-specific or shared lists. |
 | `price_list_entries` | Rate (cents per unit) or percentage for a material/charge, with `effective_from`/`effective_to` for history. |
 
 Price resolution for a quote line (`private.resolve_price`, `public.effective_prices`):

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, withSession } from "./helpers";
+import { pgError, pool, TOP_LINE, withSession } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -113,12 +113,12 @@ describe("row level security and permissions", () => {
     await withSession(async (s) => {
       await s.asAdmin();
       // Make this owner the only active owner within the transaction.
-      await s.query("update public.profiles set active = false where role = 'owner'");
+      await s.query("update public.company_memberships set active = false where role = 'owner' and company_id = $1", [TOP_LINE]);
       const owner = await s.createUser("owner");
       const office = await s.createUser("office");
       await s.as(owner);
       await s.query("select public.set_user_access($1, 'dispatcher', true, 'Dana Dispatcher')", [office]);
-      const p = await s.query<{ role: string }>("select role from public.profiles where id = $1", [office]);
+      const p = await s.query<{ role: string }>("select role from public.company_memberships where user_id = $1", [office]);
       expect(p.rows[0].role).toBe("dispatcher");
       const err = await pgError(s.query("select public.set_user_access($1, 'office', true, 'Owner')", [owner]));
       expect(err.message).toMatch(/at least one active owner/i);

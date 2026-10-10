@@ -9,7 +9,10 @@ export const DATABASE_URL = process.env.TEST_DATABASE_URL ?? "postgres://postgre
 
 export const pool = new pg.Pool({ connectionString: DATABASE_URL, max: 6 });
 
-export type Role = "owner" | "office" | "dispatcher" | "driver" | null;
+export type Role = "owner" | "office" | "dispatcher" | "mechanic" | "driver" | null;
+
+/** Top Line Trucking — company #1, owner of all seed data. */
+export const TOP_LINE = "00000000-0000-4000-8000-000000000001";
 
 export interface Session {
   client: pg.PoolClient;
@@ -18,7 +21,13 @@ export interface Session {
   /** Run SQL as the database superuser (setup only). */
   asAdmin(): Promise<void>;
   query<T extends pg.QueryResultRow = pg.QueryResultRow>(sql: string, params?: unknown[]): Promise<pg.QueryResult<T>>;
-  createUser(role: Role, opts?: { active?: boolean }): Promise<string>;
+  /**
+   * Create an auth user with a membership (default: Top Line). role = null
+   * means a membership waiting for a role; membership: false creates none.
+   */
+  createUser(role: Role, opts?: { active?: boolean; companyId?: string; membership?: boolean }): Promise<string>;
+  /** Create a throwaway company (rolled back with the test). */
+  createCompany(name: string): Promise<string>;
 }
 
 export async function withSession(fn: (s: Session) => Promise<void>): Promise<void> {
@@ -62,13 +71,20 @@ export async function withSession(fn: (s: Session) => Promise<void>): Promise<vo
         "insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')",
         [id, `${role ?? "pending"}-${id.slice(0, 8)}@test.example`],
       );
-      await client.query("update public.profiles set role = $2, active = $3, full_name = $4 where id = $1", [
-        id,
-        role,
-        opts.active ?? true,
-        `Test ${role ?? "pending"}`,
-      ]);
+      await client.query("update public.profiles set full_name = $2 where id = $1", [id, `Test ${role ?? "pending"}`]);
+      if (opts.membership !== false) {
+        await client.query(
+          "insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, $3, $4)",
+          [opts.companyId ?? TOP_LINE, id, role, opts.active ?? true],
+        );
+      }
       return id;
+    },
+    async createCompany(name) {
+      await client.query("reset role");
+      const slug = `test-${randomUUID().slice(0, 8)}`;
+      const r = await client.query<{ id: string }>("select private.create_company($1, $2) as id", [name, slug]);
+      return r.rows[0].id;
     },
   };
   try {
@@ -92,12 +108,12 @@ export async function pgError(p: Promise<unknown>): Promise<{ code: string; mess
 
 export async function sampleIds(s: Session) {
   await s.asAdmin();
-  const customer = await s.query<{ id: string }>("select id from customers where name = 'Prairie View Landscaping'");
-  const contractCustomer = await s.query<{ id: string }>("select id from customers where name = 'Lakeshore Paving Co.'");
-  const gravel = await s.query<{ id: string }>("select id from materials where code = 'GRV-53'");
-  const haulTon = await s.query<{ id: string }>("select id from charge_items where code = 'HAUL-TON'");
-  const fuel = await s.query<{ id: string }>("select id from charge_items where code = 'FUEL-SC'");
-  const discPct = await s.query<{ id: string }>("select id from charge_items where code = 'DISC-PCT'");
+  const customer = await s.query<{ id: string }>("select id from customers where name = 'Prairie View Landscaping' and company_id = '00000000-0000-4000-8000-000000000001'");
+  const contractCustomer = await s.query<{ id: string }>("select id from customers where name = 'Lakeshore Paving Co.' and company_id = '00000000-0000-4000-8000-000000000001'");
+  const gravel = await s.query<{ id: string }>("select id from materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
+  const haulTon = await s.query<{ id: string }>("select id from charge_items where code = 'HAUL-TON' and company_id = '00000000-0000-4000-8000-000000000001'");
+  const fuel = await s.query<{ id: string }>("select id from charge_items where code = 'FUEL-SC' and company_id = '00000000-0000-4000-8000-000000000001'");
+  const discPct = await s.query<{ id: string }>("select id from charge_items where code = 'DISC-PCT' and company_id = '00000000-0000-4000-8000-000000000001'");
   return {
     customerId: customer.rows[0].id,
     contractCustomerId: contractCustomer.rows[0].id,

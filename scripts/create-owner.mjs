@@ -1,7 +1,10 @@
 #!/usr/bin/env node
-// Creates (or promotes) the first Owner account.
+// Creates (or promotes) an Owner account for a company.
 //
-//   node --env-file=.env.local scripts/create-owner.mjs owner@example.com "Full Name"
+//   node --env-file=.env.local scripts/create-owner.mjs owner@example.com "Full Name" [company-slug]
+//
+// company-slug defaults to "top-line-trucking". Other companies are created by
+// an operator with `select private.create_company('Name', 'slug')` (see docs/SETUP.md).
 //
 // Prompts for a password (or reads OWNER_PASSWORD). Requires
 // NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Run from a trusted
@@ -10,7 +13,7 @@ import { createClient } from "@supabase/supabase-js";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 
-const [email, fullName = ""] = process.argv.slice(2);
+const [email, fullName = "", companySlug = "top-line-trucking"] = process.argv.slice(2);
 if (!email || !email.includes("@")) {
   console.error('Usage: node --env-file=.env.local scripts/create-owner.mjs <email> "<full name>"');
   process.exit(1);
@@ -60,12 +63,18 @@ if (created.error) {
   userId = created.data.user.id;
 }
 
+const { data: company, error: companyError } = await admin.from("companies").select("id, name").eq("slug", companySlug).maybeSingle();
+if (companyError || !company) {
+  console.error(`Company "${companySlug}" not found:`, companyError?.message ?? "no such slug");
+  process.exit(1);
+}
+
+if (fullName) await admin.from("profiles").update({ full_name: fullName }).eq("id", userId);
 const { error: roleError } = await admin
-  .from("profiles")
-  .update({ role: "owner", active: true, ...(fullName ? { full_name: fullName } : {}) })
-  .eq("id", userId);
+  .from("company_memberships")
+  .upsert({ company_id: company.id, user_id: userId, role: "owner", active: true }, { onConflict: "company_id,user_id" });
 if (roleError) {
   console.error("Could not set the owner role:", roleError.message);
   process.exit(1);
 }
-console.log(`Owner account ready: ${email}`);
+console.log(`Owner account ready: ${email} (${company.name})`);

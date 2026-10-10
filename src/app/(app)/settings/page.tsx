@@ -57,6 +57,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             items={[
               { label: "Name", value: access.fullName },
               { label: "Email", value: access.email },
+              { label: "Company", value: access.companyName ?? "" },
               { label: "Role", value: access.role ? ROLE_LABELS[access.role] : "None" },
               { label: "Permissions", value: access.permissions.join(", "), wide: true },
             ]}
@@ -71,8 +72,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     const { data } = await supabase.from("document_sequences").select("*").order("key");
     content = <SequencesPanel rows={(data ?? []) as SequenceRow[]} year={Number(today.slice(0, 4))} />;
   } else if (tab === "users") {
-    const { data } = await supabase.from("profiles").select("id, email, full_name, role, active, created_at").order("created_at");
-    content = <UsersPanel users={(data ?? []) as UserRow[]} currentUserId={access.userId} inviteAvailable={adminAvailable()} />;
+    const { data } = await supabase
+      .from("company_memberships")
+      .select("user_id, role, active, created_at, profiles(email, full_name)")
+      .eq("company_id", access.companyId!)
+      .order("created_at");
+    const users: UserRow[] = ((data ?? []) as unknown as Array<{ user_id: string; role: UserRow["role"]; active: boolean; created_at: string; profiles: { email: string; full_name: string } | null }>).map((m) => ({
+      id: m.user_id,
+      email: m.profiles?.email ?? "",
+      full_name: m.profiles?.full_name ?? "",
+      role: m.role,
+      active: m.active,
+      created_at: m.created_at,
+    }));
+    content = <UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} />;
   } else if (tab === "permissions") {
     const [{ data: perms }, { data: grants }] = await Promise.all([
       supabase.from("permissions").select("*").order("category").order("code"),

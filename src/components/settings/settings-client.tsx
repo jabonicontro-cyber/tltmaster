@@ -189,7 +189,7 @@ export function UsersPanel({ users, currentUserId, inviteAvailable }: { users: U
     <>
       <CardHeader
         title="Users"
-        description="New sign-ins without a role cannot see any data until you assign one."
+        description="People in your company. Accounts without a role cannot see any data until you assign one."
         actions={<Button size="sm" icon={<UserPlus className="size-4" />} onClick={() => setInviting(true)}>Invite user</Button>}
       />
       {!inviteAvailable && (
