@@ -252,6 +252,37 @@ number and id, description, unit, ordered quantity, accepted delivered quantity
 subtotal / discounts / tax / total, ticket numbers and paper ticket numbers.
 Undone orders are left out. It is **not** a QuickBooks import format.
 
+## Command center
+
+Exceptions are **derived on every read** by `private.operational_exceptions(company)`
+(SECURITY DEFINER, not callable by app users) from loads, assignments, tickets,
+the billing views and equipment status. One row per underlying issue, keyed
+`kind:entity`: `missing_ticket:<load>`, `unassigned_load:<load>`,
+`ticket_review:<ticket number>`, `billing_blocked:<order>`,
+`equipment_out_of_service:<truck|trailer>:<id>`, `assignment_problem:<assignment>`.
+Each row has `priority` (1 urgent, 2 high, 3 normal), `since` (null when not
+reliably known), the affected order / load / ticket / equipment / assignment,
+`reasons` (codes) and `details`. Rules and deduplication: docs/IMPLEMENTATION_PLAN.md §5f.
+
+| Function | Permission | Does |
+| --- | --- | --- |
+| `command_center_summary()` | any of dispatch / tickets / billing / fleet view | Counts per kind and overview figures; a figure the caller may not see is `null`. |
+| `command_center_exceptions(kind, mine, limit, offset)` | same | Visible exceptions, priority then oldest first, with the current assignee; `limit` clamped to 1–100; returns `total`. |
+| `exception_assignee_options()` | `exceptions.assign` | Active members (name, role) and the kinds their role can resolve. |
+| `assign_exception(key, user, note)` | `exceptions.assign` | Only for an exception that is open and visible to the caller, only to an active member whose role holds the resolving permission (`tickets.edit`, `dispatch.edit`, `tickets.review`, `billing.manage`, `fleet.service`); ends the previous assignee; audited. |
+| `unassign_exception(key)` | `exceptions.assign` | Ends the current assignment; audited. |
+
+Visibility per kind: missing tickets — `tickets.view` or `billing.view`; loads
+without a truck and assignment problems — `dispatch.view`; tickets to review —
+`tickets.view`; billing blocks — `billing.view`; equipment — `fleet.view`.
+
+| Table | Purpose |
+| --- | --- |
+| `exception_assignments` | Who was asked to handle an exception: key, kind, `assigned_to` (same-company member; removed with the member), note, who/when; `ended_at/by` + `end_reason` (`reassigned`, `unassigned`). One current row per key. Not a status: the exception stays until its record changes. Readable by `exceptions.assign` holders and by the assignee. |
+
+Order history entries whose action starts with `billing.` are readable only with
+`billing.view` (policy `audit_read_orders`).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

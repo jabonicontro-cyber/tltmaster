@@ -8,7 +8,7 @@ import type { Permission } from "@/lib/permissions";
 
 export function SidebarNav({ permissions, onNavigate }: { permissions: Permission[]; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((i) => !i.permission || permissions.includes(i.permission));
+  const items = NAV_ITEMS.filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))));
   return (
     <nav aria-label="Main" className="flex flex-col gap-0.5 px-2">
       {items.map((item) => {

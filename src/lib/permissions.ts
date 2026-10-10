@@ -25,6 +25,7 @@ export const PERMISSIONS = [
   "tickets.review",
   "billing.view",
   "billing.manage",
+  "exceptions.assign",
   "settings.manage",
   "users.manage",
   "audit.view",

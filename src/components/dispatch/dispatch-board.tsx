@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Truck, UserRound, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
@@ -40,8 +40,12 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null }) {
   const router = useRouter();
+  // Opened from the command center: bring the affected load into view.
+  useEffect(() => {
+    if (focusLoadId) document.getElementById(`load-${focusLoadId}`)?.scrollIntoView({ block: "center" });
+  }, [focusLoadId]);
   const [loadDialog, setLoadDialog] = useState<{ order: OrderListRow; load: OrderLoadRow | null } | null>(null);
   const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null } | null>(null);
   const [cancelTarget, setCancelTarget] = useState<{ kind: "assignment" | "load"; id: string; orderId: string; title: string } | null>(null);
@@ -121,6 +125,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false }: { day: 
                 tickets={day.tickets}
                 today={day.today}
                 canEnterTickets={canEnterTickets}
+                focusLoadId={focusLoadId}
                 lk={lk}
                 canEdit={canEdit}
                 onAddLoad={() => setLoadDialog({ order: o, load: null })}
@@ -209,6 +214,7 @@ function OrderCard({
   tickets,
   today,
   canEnterTickets,
+  focusLoadId,
   lk,
   canEdit,
   onAddLoad,
@@ -224,6 +230,7 @@ function OrderCard({
   tickets: DispatchDay["tickets"];
   today: string;
   canEnterTickets: boolean;
+  focusLoadId: string | null;
   lk: Lookup;
   canEdit: boolean;
   onAddLoad: () => void;
@@ -286,7 +293,13 @@ function OrderCard({
             const previous = assignments.filter((a) => a.load_id === l.id && a.status === "canceled");
             const canceled = l.status === "canceled";
             return (
-              <li key={l.id} className={cn("grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-12 sm:px-5", canceled && "bg-surface/60 text-muted")} aria-label={`Load ${l.load_number}`}>
+              <li
+                key={l.id}
+                id={`load-${l.id}`}
+                aria-current={focusLoadId === l.id ? "true" : undefined}
+                className={cn("grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-12 sm:px-5", canceled && "bg-surface/60 text-muted", focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset")}
+                aria-label={`Load ${l.load_number}`}
+              >
                 <div className="sm:col-span-3">
                   <p className="font-bold">Load {l.load_number}</p>
                   <p className="text-sm tabular">{timeRange(l)}</p>

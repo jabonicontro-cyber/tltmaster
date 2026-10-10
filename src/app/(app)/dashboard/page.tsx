@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, FileClock, FileText, Plus, Truck } from "lucide-react";
+import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, FileClock, FileText, Plus, Siren, Truck } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
 import { QuoteStatusBadge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -11,13 +11,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
-import { can } from "@/lib/permissions";
+import { can, type Permission } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
-import { countUnassignedLoadsToday } from "@/server/data/dispatch";
-import { ticketCounts } from "@/server/data/tickets";
-import { billingCounts } from "@/server/data/billing";
+import { loadSummary } from "@/server/data/command-center";
 import { fleetOverview } from "@/server/data/fleet";
 import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
@@ -81,19 +79,15 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   const canOrders = can(access, "orders.view");
   const canFleet = can(access, "fleet.view");
-  const canDispatch = can(access, "dispatch.view");
-  const canTickets = can(access, "tickets.view");
-  const canBilling = can(access, "billing.view");
-  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads, ticketsToReview, billing] = await Promise.all([
+  const canCommand = ["dispatch.view", "tickets.view", "billing.view", "fleet.view"].some((p) => can(access, p as Permission));
+  const [quotes, activity, names, customers, scheduledToday, fleet, command] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
     canQuotes ? listCustomerOptions() : Promise.resolve([]),
     canOrders ? countOrdersScheduledToday() : Promise.resolve(null),
     canFleet ? fleetOverview() : Promise.resolve(null),
-    canDispatch ? countUnassignedLoadsToday() : Promise.resolve(null),
-    canTickets ? ticketCounts() : Promise.resolve(null),
-    canBilling ? billingCounts() : Promise.resolve(null),
+    canCommand ? loadSummary() : Promise.resolve(null),
   ]);
 
   return (
@@ -174,39 +168,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <Card className="mt-5">
-        <CardHeader title="Operations" description="Live figures from orders, dispatch, tickets and billing readiness. Nothing here is estimated." />
+        <CardHeader title="Operations" description="Live figures. Everything that needs attention is listed in the Command Center. Nothing here is estimated." />
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scheduledToday !== null && (
             <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
           )}
-          {ticketsToReview && (
+          {command && (
             <Stat
-              icon={<FileText className="size-5" />}
-              label="Delivery tickets to review"
-              value={ticketsToReview.review + ticketsToReview.submitted}
-              sub={`${ticketsToReview.review} flagged · ${ticketsToReview.submitted} awaiting acceptance`}
-              href={ticketsToReview.review ? "/tickets?view=review" : "/tickets?view=submitted"}
-              tone={ticketsToReview.review > 0 ? "warn" : "default"}
-            />
-          )}
-          {billing && (
-            <Stat
-              icon={<CheckCircle2 className="size-5" />}
-              label="Orders ready to bill"
-              value={billing.ready}
-              sub={`${billing.attention} order${billing.attention === 1 ? "" : "s"} blocked by missing tickets, review or exceptions`}
-              href={billing.ready ? "/billing?view=ready" : "/billing"}
-              tone={billing.ready > 0 ? "good" : "default"}
-            />
-          )}
-          {unassignedLoads !== null && (
-            <Stat
-              icon={<ClipboardList className="size-5" />}
-              label="Loads today needing a truck"
-              value={unassignedLoads}
-              sub="Open the dispatch board"
-              href="/dispatch"
-              tone={unassignedLoads > 0 ? "warn" : "default"}
+              icon={<Siren className="size-5" />}
+              label="Command Center"
+              value={command.ok ? `${command.data.exceptions.total} open` : "Not available"}
+              sub={command.ok ? `${command.data.exceptions.urgent} urgent · open the attention queue` : "The figures could not be loaded"}
+              href="/command-center"
+              tone={command.ok && command.data.exceptions.urgent > 0 ? "warn" : "default"}
             />
           )}
           {fleet && (

@@ -132,17 +132,3 @@ export async function getOrderDispatch(orderId: string) {
     driverNames: name(drivers.data as Array<{ id: string; display_name: string }> | null, "display_name"),
   };
 }
-
-/** Today's planned loads without an active assignment (dashboard). */
-export async function countUnassignedLoadsToday(): Promise<number | null> {
-  const supabase = await createClient();
-  const { today } = await businessToday();
-  const loads = await supabase.from("order_loads").select("id").eq("load_date", today).eq("status", "planned");
-  if (loads.error) return null;
-  const ids = (loads.data ?? []).map((l) => l.id as string);
-  if (!ids.length) return 0;
-  const assigned = await supabase.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", ids);
-  if (assigned.error) return null;
-  const done = new Set((assigned.data ?? []).map((a) => a.load_id as string));
-  return ids.filter((id) => !done.has(id)).length;
-}

@@ -27,6 +27,7 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 | Dispatch: day board, loads per order with times, assign / reassign / remove trucks, trailers and drivers, eligibility and no double-booking | ✅ — week view and notifications later |
 | Delivery tickets: enter actual quantities from paper/scale tickets, review, correct (revisions), void, history | ✅ — office entry; photos, signatures and printing later |
 | Billing readiness: missing tickets, tickets to review, planned/ordered vs delivered (same unit only), acknowledged exceptions, handoff batches with a CSV file | ✅ — no invoices, payments or QuickBooks sync; the CSV is not a QuickBooks import format |
+| Command Center: live overview and a prioritized attention queue (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems) with links into each module and assignment to a person | ✅ — no maintenance data yet; no notifications |
 | Route Planner, Reports | Planned — pages say so; nothing fake |
 
 ## Quick start (local)
@@ -70,7 +71,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` · `npm run typecheck` | ESLint · TypeScript |
 | `npm test` | Unit tests (money, quote calculation, status rules, PDF, email) |
-| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, delivery tickets (numbering, revisions, duplicates), billing readiness (reconciliation, acknowledgments, handoff and concurrency), numbering (needs a migrated DB) |
+| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, delivery tickets (numbering, revisions, duplicates), billing readiness (reconciliation, acknowledgments, handoff and concurrency), command center (classification, deduplication, visibility, paging, assignment), numbering (needs a migrated DB) |
 | `npm run test:e2e` | Browser tests against a running app + local backend |
 | `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker |
 

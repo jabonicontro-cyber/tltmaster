@@ -53,12 +53,12 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
 | Delivery tickets and documents | ✅ office entry (N5, see §5d) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migration `20261015000100_delivery_tickets.sql` | Numbered tickets with revisions, review and void history. **No file storage**, photos, signatures, printing or driver entry. |
 | Reconciliation and billing-ready records | ✅ first version (N6, see §5e) | `src/app/(app)/billing`, `src/components/billing`, `src/lib/billing`, migration `20261016000100_billing_readiness.sql` | Derived readiness, exception acknowledgments, handoff batches with a CSV file. **No invoices, payments, tax, AR or QuickBooks sync**; the CSV is not a QuickBooks import format. No quantity tolerance setting yet (exact match). |
-| Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures and the real "orders scheduled today" count; the other operations cards are placeholders. Reports is a placeholder. |
+| Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/command-center`, `src/app/(app)/reports` | Dashboard: real quote figures, orders scheduled today, fleet readiness and a Command Center summary; one "Deliveries in progress" placeholder remains. The Command Center (N7, §5f) is the operational overview. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
 | Employee / driver portal, qualifications, PTO, announcements, incidents | ❌ | — | The `driver` role exists but has no permissions. |
 | Supplier price imports and price history | ❌ | — | — |
-| Operational exceptions queue | ❌ | — | The dashboard flags overdue and follow-up quotes only. |
+| Operational exceptions queue | ✅ first version (N7, see §5f) | `src/app/(app)/command-center`, `src/lib/command-center`, migration `20261017000100_command_center.sql` | Six kinds (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems), derived live, prioritized, assignable to a person. No maintenance (no data), no supplier-cost or quote kinds yet, no notifications. |
 | AI assistant / smart dispatch | ❌ | — | — |
 | Multi-tenant isolation | ✅ (B1, 2026-10-11) | `companies`, `company_memberships`, `company_id` on 22 tables, migration `20261011000200_company_separation.sql`, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts` | No self-serve sign-up, company switcher, per-company branding (sidebar logo is still Top Line's) or billing. |
 | Audit log | ✅ per company | `audit_events.company_id`, Settings → Audit log | — |
@@ -164,7 +164,7 @@ These build on B1 and are listed in dependency order.
 | N4 ✅ | Dispatch assignments | Done (§5c) — day board | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
 | N5 ✅ | Delivery tickets | Done (§5d) — office entry from paper; storage, printing and signatures later | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
 | N6 ✅ | Reconciliation and billing-ready records | Done (§5e) — derived readiness, acknowledgments, handoff batches + CSV | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
-| N7 | Operations dashboard | Placeholder cards | N1–N6 | Replace the placeholder cards with real counts as each module lands. | — |
+| N7 ✅ | Operations dashboard | Done (§5f) — Command Center with live counts and an attention queue | N1–N6 | Replace the placeholder cards with real counts as each module lands. | — |
 
 ### 4.3 Phase 3 — fleet and employee operations
 
@@ -663,13 +663,123 @@ service-date range, customer, status and exception filters), `/billing/orders/[i
   companies will need server-side paging.
 - Tickets corrected after a handoff are flagged, not blocked.
 
+## 5f. Owner command center and exception resolution (N7)
+
+### Plan (written before building)
+
+**Inspected first.** The dashboard shows quote figures and an "Operations" card
+built from separate per-module queries (`countUnassignedLoadsToday` loads ids
+into the app, `ticketCounts`, `billingCounts`, `fleetOverview`). Reusable
+sources: billing views (`billing_load_status`, `billing_order_status`) for
+missing tickets and billing blocks; `private.assignment_eligibility` (the same
+rules `assign_load` applies) for assignment problems; equipment
+`service_status` / `out_of_service_since`; the audit log (RLS: `audit.view`, or
+order entries with `orders.view`, fleet entries with `fleet.view`). Role
+defaults: owner and office have everything operational (office lacks
+`audit.view`); dispatcher has dispatch, orders, tickets view/edit and fleet view;
+mechanic has fleet view/service; driver has nothing. **No maintenance data
+exists**, so no maintenance metric is shown as a number. Finding: since N6,
+billing actions are logged on the order, so `orders.view` (dispatchers) can read
+billing audit entries — to be closed here.
+
+**Approach — derived, never stored.**
+
+- One SECURITY DEFINER function computes the exceptions for the caller's
+  company (`private.operational_exceptions`), reusing the billing views and the
+  eligibility function; it filters every row by the company it resolves itself
+  and gates each exception kind by the caller's permissions. Public entry points:
+  `command_center_summary()` (counts, `null` when not permitted) and
+  `command_center_exceptions(kind, mine, limit, offset)` (prioritized, paged,
+  with a total). Nothing is cached or stored, so a fix in any module shows on the
+  next page load. No polling; a Refresh button and an "as of" time.
+- Exception kinds and permission gates: `missing_ticket` (tickets.view or
+  billing.view), `unassigned_load` (dispatch.view), `ticket_review`
+  (tickets.view), `billing_blocked` (billing.view), `equipment_out_of_service`
+  (fleet.view), `assignment_problem` (dispatch.view).
+- **Deduplication** — one row per underlying issue, keyed `kind:entity id`:
+  a due load without a live ticket is a *missing ticket* (also when it was never
+  assigned — the reason says so), never also an *unassigned load*; *unassigned*
+  covers only today's loads that have not ended. A ticket waiting for review
+  appears once (its current revision); its order is not also listed as a
+  billing exception (billing lists only orders whose readiness is *blocked*, i.e.
+  everything is documented and reviewed but exceptions are unacknowledged). An
+  assignment appears once with all its blockers; equipment out of service appears
+  once per unit (with the number of upcoming loads booked on it).
+- **Assignment to a person**, using existing memberships and permissions:
+  `exception_assignments` (who, by whom, note, when; ended on reassign/unassign),
+  only for a currently open exception, only to an active member whose role holds
+  the permission that resolves that kind; `exceptions.assign` (owner, office);
+  audited. An assignment is not a status: the exception stays until its record
+  changes, and a stale assignment simply stops showing.
+- No dismissal or snooze (nothing may hide an open problem). No AI or automatic
+  actions; each row carries a structured reason (codes), which leaves room for
+  explainable, human-approved recommendations later.
+- Links into existing workflows: ticket entry or dispatch (with the load
+  highlighted), ticket page, billing order page, truck/trailer page.
+- UI: `/command-center` (navigation for anyone with one of the source
+  permissions; drivers and signed-out users are refused), metric cards linking to
+  filtered lists, the attention queue with filters and paging, recent activity
+  (bounded, paged, billing entries only with `billing.view`); the dashboard's
+  Operations card becomes a summary that links to it.
+
+### What was built (N7)
+
+- Migration `20261017000100_command_center.sql`: `exceptions.assign` (owner,
+  office); `exception_assignments` (current assignee per exception key, ended on
+  reassign/unassign, guard: rows only end once, never edited or deleted except
+  with the member); `private.operational_exceptions`,
+  `private.exception_visible`, `private.exception_resolve_permission`,
+  `private.require_command_center`; public `command_center_summary`,
+  `command_center_exceptions` (kind / mine filter, limit 1–100, offset, total),
+  `exception_assignee_options`, `assign_exception`, `unassign_exception`;
+  `audit_read_orders` narrowed so billing entries need `billing.view`.
+- Priority: **Urgent** — a load today without a truck; an upcoming (today or
+  tomorrow) assignment the rules would now refuse. **High** — a delivered load
+  without a ticket; a ticket flagged for review; a later assignment problem;
+  equipment out of service with loads booked on it. **Normal** — a ticket waiting
+  for acceptance; an order blocked from billing; equipment out of service with
+  nothing booked. Within a priority, oldest first. Age comes from the record
+  (load end, last unassignment or load creation, ticket revision time,
+  out-of-service time); billing blocks and assignment problems have no reliable
+  start, so no age is shown.
+- `src/lib/command-center/rules.ts`: kind labels, who handles each kind, reason
+  texts (reusing the eligibility and ticket review texts), titles, the
+  recommended action and its link, age and the overview cards (a card the role
+  may not see is left out; maintenance reads "Not available").
+- UI: `/command-center` (status strip, overview cards linking to filtered lists,
+  attention queue with kind / "assigned to me" filters, priority explanation,
+  20 per page, recent activity 15 per page with Older/Newer, Refresh button and
+  "as of" time, separate error states per section, empty states); dispatch board
+  accepts `?load=` and highlights that load; navigation item for anyone with
+  dispatch, tickets, billing or fleet view; dashboard Operations card now shows
+  the Command Center summary instead of its own counts (the old
+  `countUnassignedLoadsToday` and `billingCounts` helpers were removed).
+- Tests: `tests/db/command-center.test.ts` (8), `tests/unit/command-center-rules.test.ts`
+  (5), `tests/e2e/command-center.spec.ts` (4); tenancy guards updated
+  (35 business tables, 72 reviewed definer functions).
+
+### Remaining limits (N7)
+
+- Computed on every page load from all open records; fine at the current scale,
+  but a company with tens of thousands of open loads would need indexes tuned or
+  a materialized summary with explicit invalidation.
+- No maintenance exceptions (no maintenance data), no expiring-qualification or
+  quote follow-up kinds yet, no notifications or e-mail digests, no automatic
+  refresh (Refresh button only).
+- Assignment is a pointer to a person, not a workflow: no due dates, no
+  comments thread, no notification to the assignee.
+- Recent activity is the audit log as each role may read it; it is not filtered
+  to "operational" actions beyond the entity types.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 13 migrations via
+**B3 — staging deployment** (hosted Supabase, all 14 migrations via
 `supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then decide
 QuickBooks Desktop vs Online and verify an import or API mapping against a test
 company before adding any QuickBooks-specific export; and consider an explicit
-per-company quantity tolerance for billing exceptions.
+per-company quantity tolerance for billing exceptions. For the command center,
+the next useful kinds are expiring driver qualifications (data exists) and,
+once maintenance is built, service due dates.
 
 ---
 

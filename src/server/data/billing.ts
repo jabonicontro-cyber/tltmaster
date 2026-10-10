@@ -331,14 +331,3 @@ export async function getHandoffBatch(handoffId: string) {
     items: (items ?? []) as Array<{ id: string; order_id: string; reverted_at: string | null; snapshot: HandoffSnapshot }>,
   };
 }
-
-/** Readiness counts for the dashboard. */
-export async function billingCounts() {
-  const supabase = await createClient();
-  const { data } = await supabase.from("billing_order_status").select("readiness").neq("readiness", "handed_off");
-  const rows = (data ?? []) as Array<{ readiness: Readiness }>;
-  return {
-    ready: rows.filter((r) => r.readiness === "ready").length,
-    attention: rows.filter((r) => ["missing_documentation", "needs_review", "blocked"].includes(r.readiness)).length,
-  };
-}
