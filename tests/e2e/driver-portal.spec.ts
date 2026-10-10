@@ -65,10 +65,13 @@ test("a driver sees only their own day, sends a ticket (with a failed send and a
   // Direct access to someone else's load or to office pages is refused.
   await page.goto(`/driver/assignments/${f.otherAssignment}/ticket`);
   await expect(page.getByText("This load is not available")).toBeVisible();
-  for (const path of ["/tickets", "/billing", "/command-center", "/orders", "/field-reports"]) {
+  for (const path of ["/tickets", "/billing", "/orders", "/field-reports"]) {
     await page.goto(path);
     await expect(page, path).toHaveURL(/no-access/);
   }
+  // The Command Center sends a driver-only account to its own day (it never shows office data).
+  await page.goto("/command-center");
+  await expect(page).toHaveURL(/\/driver$/);
 
   // The office sees the report, resolves it, and the driver sees the result.
   await page.context().clearCookies();
@@ -78,7 +81,7 @@ test("a driver sees only their own day, sends a ticket (with a failed send and a
   const item = page.getByRole("listitem", { name: new RegExp(`Drew Driver reported a problem with truck ${f.myTruck}`) });
   await expect(item.getByText("Urgent", { exact: true })).toBeVisible();
   await item.getByRole("link", { name: "Open the report" }).click();
-  await expect(page).toHaveURL(/\/field-reports\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/field-reports\/[0-9a-f-]{36}(\?back=[^\s]+)?$/);
   await expect(page.getByRole("heading", { name: "Breakdown — Drew Driver" })).toBeVisible();
   await expect(page.getByText("Air leak on the tag axle (e2e)")).toBeVisible();
   await page.getByRole("button", { name: "Resolve" }).click();

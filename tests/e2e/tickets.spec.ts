@@ -104,9 +104,13 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await signIn(page, "office");
   await page.goto(`/tickets?view=submitted&q=${number}`);
   await page.getByRole("link", { name: number }).click();
-  await page.getByRole("button", { name: "Accept" }).click();
+  const ticketUrl = page.url().split("?")[0];
+  // Opened from the list, the ticket is in the review queue: accepting moves on (next ticket or back to the list).
+  await page.getByRole("button", { name: /^Accept/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Accept" }).click();
   await expectToast(page, "Ticket accepted.");
+  await page.waitForURL((u) => u.toString().split("?")[0] !== ticketUrl);
+  await page.goto(ticketUrl);
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
 
   // A second ticket for the same load needs an explicit confirmation and is flagged.

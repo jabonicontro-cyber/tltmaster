@@ -19,7 +19,7 @@ test("another company sees none of Top Line's records and cannot open them by UR
   await tl.close();
 
   await signIn(page, "otherOwner");
-  await expect(page.getByText("Brookside Aggregates (e2e test)")).toBeVisible(); // header shows the company
+  await expect(page.getByRole("banner").getByText(/Brookside Aggregates \(e2e test\)/)).toBeVisible(); // header shows the company
 
   await page.goto("/customers");
   await expect(page.locator("tbody a[href^='/customers/']")).toHaveCount(0);

@@ -109,8 +109,14 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   });
   await page.getByRole("button", { name: "Refresh" }).click();
   await expect(missing).toHaveCount(0);
-  await page.goto("/command-center?kind=ticket_review");
-  await expect(page.getByRole("listitem", { name: new RegExp(`\\(${f.orderNumber} · load 1\\) awaits acceptance`) })).toBeVisible();
+  // Oldest first: on a database with earlier runs the new ticket may be on a later page.
+  const review = page.getByRole("listitem", { name: new RegExp(`\\(${f.orderNumber} · load 1\\) awaits acceptance`) });
+  for (let p = 1; p <= 10; p++) {
+    await page.goto(`/command-center?kind=ticket_review&page=${p}`);
+    await page.getByRole("list", { name: "Attention items" }).waitFor();
+    if (await review.count()) break;
+  }
+  await expect(review).toBeVisible();
 
   // Phone width: no horizontal scrolling.
   await page.setViewportSize({ width: 390, height: 844 });
