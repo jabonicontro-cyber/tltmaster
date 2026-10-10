@@ -23,7 +23,7 @@ export const metadata = { title: "Command Center" };
 
 type Search = { kind?: string; mine?: string; page?: string; activity?: string };
 
-const SOURCE_PERMISSIONS = ["dispatch.view", "tickets.view", "billing.view", "fleet.view"] as const;
+const SOURCE_PERMISSIONS = ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view"] as const;
 
 const positive = (v: string | undefined) => {
   const n = Number.parseInt(v ?? "1", 10);
@@ -71,7 +71,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   };
   const visibleKinds = summary.ok ? EXCEPTION_KINDS.filter((k) => k in summary.data.by_kind || (
     { unassigned_load: summary.data.unassigned_loads, assignment_problem: summary.data.assignment_problems, missing_ticket: summary.data.missing_tickets,
-      ticket_review: summary.data.tickets_to_review, billing_blocked: summary.data.billing_blocked, equipment_out_of_service: summary.data.trucks_out_of_service }[k] !== null)) : [];
+      ticket_review: summary.data.tickets_to_review, billing_blocked: summary.data.billing_blocked, equipment_out_of_service: summary.data.trucks_out_of_service,
+      delay_report: summary.data.can.dispatch ? summary.data.driver_reports ?? null : null, equipment_report: summary.data.driver_reports ?? null }[k] !== null)) : [];
 
   return (
     <>

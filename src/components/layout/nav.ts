@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, ReceiptText, Siren, CalendarRange, ClipboardList, FileText, LayoutDashboard, Map, Settings, Ticket, Truck, Users,
+  BarChart3, Boxes, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, LayoutDashboard, Map, Settings, Ticket, Truck, Users,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -17,14 +17,16 @@ export interface NavItem {
 }
 
 export const NAV_ITEMS: NavItem[] = [
+  { href: "/driver", label: "My Day", icon: Route, permission: "driver.portal" },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/command-center", label: "Command Center", icon: Siren, anyOf: ["dispatch.view", "tickets.view", "billing.view", "fleet.view"] },
+  { href: "/command-center", label: "Command Center", icon: Siren, anyOf: ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view"] },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers.view" },
   { href: "/quotes", label: "Quotes", icon: FileText, permission: "quotes.view" },
   { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.view" },
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, permission: "dispatch.view" },
   { href: "/route-planner", label: "Route Planner", icon: Map, planned: true },
   { href: "/tickets", label: "Delivery Tickets", icon: Ticket, permission: "tickets.view" },
+  { href: "/field-reports", label: "Driver Reports", icon: MessageSquareWarning, permission: "field_reports.view" },
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view" },
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view" },

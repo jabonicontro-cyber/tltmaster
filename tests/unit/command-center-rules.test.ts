@@ -41,6 +41,8 @@ describe("links into the existing workflows", () => {
     expect(exceptionAction({ ...base, kind: "billing_blocked" }, all).href).toBe("/billing/orders/o1");
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "trailer", equipment_id: "e1" }, all).href).toBe("/fleet/trailers/e1");
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "truck", equipment_id: "e2" }, all).href).toBe("/fleet/trucks/e2");
+    expect(exceptionAction({ ...base, kind: "delay_report", details: { report_id: "r1" } }, all)).toEqual({ label: "Open the report", href: "/field-reports/r1" });
+    expect(exceptionTitle({ ...base, kind: "equipment_report", equipment_kind: "trailer", unit_number: "T7", details: { driver_name: "Drew" } })).toBe("Drew reported a problem with trailer T7 (O-2026-0007 · load 2)");
   });
 
   it("names the affected record and explains every reason", () => {
@@ -113,6 +115,7 @@ describe("overview cards", () => {
     ]);
     expect(cards.find((c) => c.key === "unassigned_loads")?.tone).toBe("bad");
     expect(cards.find((c) => c.key === "assignment_problems")?.tone).toBe("default");
-    expect(EXCEPTION_KINDS).toHaveLength(6);
+    expect(EXCEPTION_KINDS).toHaveLength(8);
+    expect(metricCards(summary({ driver_reports: 2 })).map((c) => [c.key, c.href, c.tone])).toEqual([["driver_reports", "/field-reports", "bad"]]);
   });
 });

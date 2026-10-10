@@ -283,6 +283,31 @@ without a truck and assignment problems — `dispatch.view`; tickets to review �
 Order history entries whose action starts with `billing.` are readable only with
 `billing.view` (policy `audit_read_orders`).
 
+## Driver portal and field reports
+
+A portal user is the active member of the current company whose account is
+linked to an **active** driver record (`drivers.user_id`, same-company FK, one
+driver per account). Drivers have no table access; they use these functions
+(all SECURITY DEFINER, `driver.portal`), which resolve the driver from the
+session and accept only the driver's own active assignments:
+
+| Function | Does |
+| --- | --- |
+| `driver_portal_home()` | Own assignments (two days back without a ticket, today, tomorrow) with driver-safe order, site, load, truck/trailer and ticket fields — no prices, totals, internal or scheduling notes; own recent tickets and reports; own qualification dates. |
+| `driver_assignment_form(assignment)` | One own assignment plus the order's per-unit lines (description, unit) and the company's units. |
+| `driver_submit_ticket(payload)` | Through `private.create_ticket` (the same path as `submit_delivery_ticket`): own active assignment, load dated today or earlier, driver/truck/trailer from the assignment, required submission key (retry → same ticket; another user's key → refused). |
+| `driver_submit_field_report(payload)` | Report on an own assignment (two days back to tomorrow), idempotent. |
+
+| Table | Purpose |
+| --- | --- |
+| `field_reports` | `kind` (`delay`, `cannot_complete`, `breakdown`, `equipment_issue`, `inspection_issue`), `status` (`open` → `acknowledged` → `resolved`), driver, assignment, load, order, `equipment` (`truck`/`trailer` for equipment kinds) + ids, description, `snapshot` (order/load numbers, date, customer, units, driver name), `submission_key`, reporter, acknowledge/resolve actor, time and note (resolution note required). Guard: only review fields change, forward only; never deleted (except with a sample order). Read: `field_reports.view`; delay kinds also need `dispatch.view`. |
+
+`review_field_report(report, acknowledge | resolve, note)` (`field_reports.manage`,
+same kind rule) records the decision and audits it on the order (delays) or the
+truck/trailer (equipment). Reports never change equipment status or
+assignments. Open and acknowledged reports appear in the command center as
+`delay_report` / `equipment_report`.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

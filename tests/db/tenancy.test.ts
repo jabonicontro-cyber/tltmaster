@@ -15,6 +15,7 @@ const TENANT_TABLES = [
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
+  "field_reports",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -39,6 +40,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.revert_billing_handoff", "public.record_billing_export",
   "private.operational_exceptions", "private.require_command_center", "public.command_center_summary",
   "public.command_center_exceptions", "public.exception_assignee_options", "public.assign_exception", "public.unassign_exception",
+  "private.create_ticket", "private.portal_driver", "private.driver_assignments", "public.driver_portal_home",
+  "public.driver_assignment_form", "public.driver_submit_ticket", "public.driver_submit_field_report", "public.review_field_report",
 ];
 
 interface World {

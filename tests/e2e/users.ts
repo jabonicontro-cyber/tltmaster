@@ -10,6 +10,7 @@ export const USERS = {
   office: { email: "e2e-office@toplinetest.example", name: "Omar Office", role: "office", company: TOP_LINE_SLUG },
   dispatcher: { email: "e2e-dispatch@toplinetest.example", name: "Dana Dispatch", role: "dispatcher", company: TOP_LINE_SLUG },
   mechanic: { email: "e2e-mechanic@toplinetest.example", name: "Max Mechanic", role: "mechanic", company: TOP_LINE_SLUG },
+  driver: { email: "e2e-driver@toplinetest.example", name: "Drew Driver", role: "driver", company: TOP_LINE_SLUG },
   pending: { email: "e2e-pending@toplinetest.example", name: "Pat Pending", role: null, company: TOP_LINE_SLUG },
   otherOwner: { email: "e2e-brookside-owner@brooksidetest.example", name: "Bea Brookside", role: "owner", company: OTHER_COMPANY.slug },
 } as const;

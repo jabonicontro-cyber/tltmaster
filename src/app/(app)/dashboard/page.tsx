@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { AlertTriangle, CalendarClock, CheckCircle2, ClipboardList, FileClock, FileText, Plus, Siren, Truck } from "lucide-react";
 import { ButtonLink } from "@/components/ui/button";
@@ -71,6 +72,9 @@ type Search = { from?: string; to?: string; customer?: string };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requireAccess();
+  // Drivers with no office permissions start on their own day.
+  const office: Permission[] = ["quotes.view", "orders.view", "dispatch.view", "fleet.view", "tickets.view", "billing.view", "field_reports.view"];
+  if (can(access, "driver.portal") && !office.some((p) => can(access, p))) redirect("/driver");
   const sp = await searchParams;
   const [{ today, timezone }, settings] = await Promise.all([businessToday(), getSettings()]);
   const from = sp.from && isIsoDate(sp.from) ? sp.from : addDays(today, -30);

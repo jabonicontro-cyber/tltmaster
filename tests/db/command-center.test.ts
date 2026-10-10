@@ -153,7 +153,9 @@ describe("visibility by role and company", () => {
       expect(m).toMatchObject({ loads_today: null, missing_tickets: null, tickets_to_review: null, billing_blocked: null, unassigned_loads: null, assignment_problems: null });
       expect(m.trucks_out_of_service).not.toBeNull();
       const mq = await queue(s);
-      expect(new Set(mq.items.map((i) => i.kind))).toEqual(new Set(["equipment_out_of_service"]));
+      // Mechanics see equipment only: out-of-service units and drivers' equipment reports.
+      expect(mq.items.every((i) => ["equipment_out_of_service", "equipment_report"].includes(i.kind))).toBe(true);
+      expect(mq.items.some((i) => i.kind === "equipment_out_of_service")).toBe(true);
 
       for (const role of ["driver", null] as const) {
         const u = await s.createUser(role);
@@ -241,7 +243,7 @@ describe("assigning an item to a person", () => {
       const options = (await s.query<{ r: Array<{ user_id: string; kinds: string[] }> }>("select public.exception_assignee_options() as r")).rows[0].r;
       expect(options.find((o) => o.user_id === dispatcher)?.kinds).toEqual(expect.arrayContaining(["missing_ticket", "unassigned_load"]));
       expect(options.find((o) => o.user_id === dispatcher)?.kinds).not.toContain("billing_blocked");
-      expect(options.find((o) => o.user_id === mechanic)?.kinds).toEqual(["equipment_out_of_service"]);
+      expect(options.find((o) => o.user_id === mechanic)?.kinds).toEqual(["equipment_out_of_service", "equipment_report"]);
 
       expect((await pgError(s.query("select public.assign_exception($1, $2, '')", [key, mechanic]))).message).toMatch(/cannot resolve this item \(needs tickets.edit\)/);
       await s.query("select public.assign_exception($1, $2, 'Paper is in the truck (test)')", [key, dispatcher]);

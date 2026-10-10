@@ -56,7 +56,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/command-center`, `src/app/(app)/reports` | Dashboard: real quote figures, orders scheduled today, fleet readiness and a Command Center summary; one "Deliveries in progress" placeholder remains. The Command Center (N7, §5f) is the operational overview. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
-| Employee / driver portal, qualifications, PTO, announcements, incidents | ❌ | — | The `driver` role exists but has no permissions. |
+| Employee / driver portal, qualifications, PTO, announcements, incidents | 🟡 driver portal (N8, see §5g) | `src/app/(app)/driver`, `src/components/driver`, `src/app/(app)/field-reports`, migration `20261018000100_driver_portal.sql` | Drivers see their own assignments, enter tickets and send field reports; qualification reminders. **No photos** (no private file storage yet), no offline queue, no PTO, announcements or incident records. |
 | Supplier price imports and price history | ❌ | — | — |
 | Operational exceptions queue | ✅ first version (N7, see §5f) | `src/app/(app)/command-center`, `src/lib/command-center`, migration `20261017000100_command_center.sql` | Six kinds (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems), derived live, prioritized, assignable to a person. No maintenance (no data), no supplier-cost or quote kinds yet, no notifications. |
 | AI assistant / smart dispatch | ❌ | — | — |
@@ -771,15 +771,130 @@ billing audit entries — to be closed here.
 - Recent activity is the audit log as each role may read it; it is not filtered
   to "operational" actions beyond the entity types.
 
+## 5g. Driver portal and field reports (N8)
+
+### Plan (written before building)
+
+**Inspected first.** Driver identity: `drivers.user_id` → `company_memberships
+(company_id, user_id)` (composite FK, same company), at most one driver record
+per account per company (`drivers_user_key`); the office links them on the
+fleet driver page. The `driver` role exists with **no permissions**, so drivers
+can read nothing today. Tickets are written only by `submit_delivery_ticket`
+(`tickets.edit`) through `private.prepare_ticket`. There is **no file storage**
+in the local stack (no `storage` schema), and Supabase Storage has never been
+configured for a hosted project.
+
+**Identity rule (no schema change needed).** A portal user is the active
+member of the current company whose account is linked to an *active* driver
+record of that company. Every driver function resolves that driver from the
+session (`auth.uid()` + `private.current_company_id()`); IDs from the browser
+are only accepted if they belong to that driver's own active assignments.
+
+**Scope.**
+
+- Permission `driver.portal` (driver role). Drivers get no table grants beyond
+  what they have: all reads and writes go through SECURITY DEFINER functions
+  that return only their own data and only driver-safe fields.
+- `/driver` (mobile-first): today's assignments in time order (plus the next
+  day's, read-only), order number, customer and job site with directions, job
+  instructions, load and dispatch notes, planned quantity and unit, truck and
+  trailer, the load's ticket status and the next action; recent tickets with
+  their review status; qualification reminders (expired / expiring in 30 days /
+  unverified CDL and medical card). Never prices, totals, internal or
+  scheduling notes, other drivers' work, billing or order history.
+- Ticket entry by the driver for their own assigned load from the start of the
+  load's day: same validation, numbering, duplicate confirmation, idempotency
+  key, review flags and office review as office entry (a shared private
+  helper; `submit_delivery_ticket` keeps its behavior). The driver cannot choose
+  another driver or other equipment (taken from the assignment), and the ticket
+  is never accepted automatically. The event records the source (driver portal).
+- **Photos: not in this milestone** — blocked on private storage (bucket with
+  company-scoped policies and signed URLs) that is not available locally;
+  documented in §5g limits and SETUP.
+- Field reports: new `field_reports` (delay, cannot complete, breakdown,
+  equipment issue, inspection issue) tied to one of the driver's own
+  assignments and its truck/trailer; idempotency key; status open →
+  acknowledged → resolved by office/dispatch (equipment kinds also by the
+  shop), with notes, actor and time; audited; nothing changes service status or
+  assignments automatically. They appear in the Command Center as a new
+  exception kind and on a `/field-reports` list and detail page.
+- Permissions: `field_reports.view` (owner, office, dispatcher, mechanic —
+  mechanics see equipment kinds only), `field_reports.manage` (owner, office,
+  dispatcher; mechanic for equipment kinds).
+- Mobile: large touch targets, minimal typing, explicit sending / sent / failed
+  + retry states, no success before the server confirms, the same submission
+  key on retries, nothing stored in browser storage. **No offline queue** (not
+  claimed).
+
+### What was built (N8)
+
+- Migration `20261018000100_driver_portal.sql`: permissions `driver.portal`
+  (driver), `field_reports.view` / `field_reports.manage` (owner, office,
+  dispatcher, mechanic — mechanics only for equipment kinds);
+  `private.create_ticket` (the former body of `submit_delivery_ticket`, which
+  now calls it — office behavior unchanged, verified by the existing ticket
+  tests); `private.portal_driver`, `private.driver_assignments`;
+  `driver_portal_home`, `driver_assignment_form`, `driver_submit_ticket`,
+  `driver_submit_field_report`, `review_field_report`; `field_reports` with a
+  guard (only review fields change, forward only; never deleted) and RLS (delay
+  reports need `dispatch.view`); the command center gains `delay_report` and
+  `equipment_report` (open → priority 1 for breakdown / cannot complete, else 2;
+  acknowledged → 3), a "Driver reports open" figure, and assignment rules
+  (delay reports only to people with dispatch access).
+- Driver tickets: the load must be on the driver's own active assignment and
+  dated today or earlier; driver, truck and trailer come from the assignment
+  (anything else in the request is ignored); the submission key is required, a
+  retry returns the same ticket, and a key used by someone else is refused;
+  the event and audit entry record "entered by the driver". Review, correction
+  and void stay with the office roles.
+- Field reports: delay, cannot complete, breakdown, equipment issue,
+  inspection issue; tied to one of the driver's own assignments from two days
+  ago to tomorrow, with the truck or trailer of that assignment for equipment
+  kinds; snapshot of order/load/units/driver; idempotent; audited on the order
+  (delays) or the truck/trailer (equipment). Office page `/field-reports` and
+  detail with acknowledge / resolve (resolution note required) and links to the
+  load, order and truck/trailer. Reports never change service status or
+  assignments.
+- UI: `/driver` (My Day: reminders, "tickets still needed" for the two previous
+  days, today, tomorrow, recent tickets with their review status, own reports),
+  `/driver/assignments/[id]/ticket`, `/driver/assignments/[id]/report`;
+  navigation "My Day" and "Driver Reports"; drivers without office permissions
+  are sent from the dashboard to My Day. Large touch targets; the order line's
+  unit is marked but never preselected; date prefilled with the load date and
+  time with the current time only on the load's day; sending / failed + "Send
+  again" / server-confirmed success; no browser storage.
+- Tests: `tests/db/driver-portal.test.ts` (7), `tests/unit/driver-rules.test.ts`
+  (3), `tests/e2e/driver-portal.spec.ts` (2, phone viewport, including an
+  offline send, a retry and a double tap producing one ticket); command center
+  and tenancy tests updated (36 business tables, 80 reviewed definer functions).
+
+### Remaining limits (N8)
+
+- **No ticket photos.** Blocker: no private file storage. The local stack has
+  no Supabase Storage, and no hosted bucket has been configured or tested. Safe
+  implementation needs a private bucket, object paths starting with the company
+  id, storage policies using the same membership check, short-lived signed URLs,
+  and size/type limits — to be built and tested on staging (B3) first.
+- No offline queue: a send without signal fails visibly and nothing is kept on
+  the phone; the driver re-sends when back in coverage.
+- Drivers cannot correct their own tickets (the office corrects); no inspection
+  records (DVIR) exist, so "inspection issue" is a free-text report.
+- Loads more than two days old drop off the driver's list (the office enters
+  late tickets as before).
+- No push notifications to the driver or the office; the office sees reports
+  in the Command Center and on Driver Reports.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 14 migrations via
+**B3 — staging deployment** (hosted Supabase, all 15 migrations via
 `supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then decide
 QuickBooks Desktop vs Online and verify an import or API mapping against a test
 company before adding any QuickBooks-specific export; and consider an explicit
 per-company quantity tolerance for billing exceptions. For the command center,
 the next useful kinds are expiring driver qualifications (data exists) and,
-once maintenance is built, service due dates.
+once maintenance is built, service due dates. For the driver portal, the next
+step is ticket photos once a private Supabase Storage bucket is configured and
+tested on staging (see §5g limits).
 
 ---
 

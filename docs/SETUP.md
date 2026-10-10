@@ -88,7 +88,8 @@ check customers, quotes and orders.
 records and only apply migrations added since your last update (for example
 `20261012000100_order_management.sql`, `20261013000100_fleet_registry.sql`,
 `20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
-`20261016000100_billing_readiness.sql` and `20261017000100_command_center.sql`):
+`20261016000100_billing_readiness.sql`, `20261017000100_command_center.sql` and
+`20261018000100_driver_portal.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -96,8 +97,8 @@ npx supabase migration up      # Supabase CLI
 psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -1 \
   -f supabase/migrations/20261012000100_order_management.sql
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
-# 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql and
-# 20261017000100_command_center.sql, in that order
+# 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql,
+# 20261017000100_command_center.sql and 20261018000100_driver_portal.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -111,7 +112,16 @@ adds tables, views, functions and permissions, adds the `billing` key to the
 allowed document sequences and creates a `B-` batch sequence for every company; it
 changes no existing rows. The command-center migration adds a permission, a
 table and functions, and replaces the `audit_read_orders` policy with a narrower
-one (billing entries in order history need `billing.view`); no rows change.
+one (billing entries in order history need `billing.view`); no rows change. The
+driver-portal migration adds permissions, the `field_reports` table and
+functions, moves the ticket insert into a shared helper (same behavior) and
+replaces some command center functions; no rows change.
+
+**Driver accounts.** Invite the person with the *Driver* role (Settings → Users),
+then link the account on their driver record (Fleet → Drivers → Edit → *Linked
+user account*). Until it is linked, *My Day* says so and shows nothing. **Ticket photos
+are not available**: they need a private Supabase Storage bucket with
+company-scoped policies, which has not been set up or tested yet.
 
 ## 4. Deploying (Vercel or any Node host)
 

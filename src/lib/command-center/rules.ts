@@ -14,6 +14,8 @@ export const EXCEPTION_KINDS = [
   "ticket_review",
   "billing_blocked",
   "equipment_out_of_service",
+  "delay_report",
+  "equipment_report",
 ] as const;
 export type ExceptionKind = (typeof EXCEPTION_KINDS)[number];
 
@@ -24,6 +26,8 @@ export const KIND_LABELS: Record<ExceptionKind, string> = {
   ticket_review: "Ticket to review",
   billing_blocked: "Billing blocked",
   equipment_out_of_service: "Equipment out of service",
+  delay_report: "Driver report: delay",
+  equipment_report: "Driver report: equipment",
 };
 
 /** Who normally handles each kind (the permission that resolves it). */
@@ -34,15 +38,17 @@ export const KIND_OWNERS: Record<ExceptionKind, string> = {
   ticket_review: "Office",
   billing_blocked: "Office (billing)",
   equipment_out_of_service: "Shop / fleet",
+  delay_report: "Dispatch",
+  equipment_report: "Shop / fleet or dispatch",
 };
 
 export const PRIORITY_LABELS: Record<number, string> = { 1: "Urgent", 2: "High", 3: "Normal" };
 
 /** How priority is decided (shown on the page; mirrors the SQL). */
 export const PRIORITY_RULES = [
-  "Urgent: a load today with no truck, or an upcoming load (today or tomorrow) whose assignment the dispatch rules would now refuse.",
-  "High: a delivered load without a ticket, a ticket flagged for review, a later assignment problem, or equipment out of service with loads booked on it.",
-  "Normal: a ticket waiting for acceptance, an order blocked from billing by unacknowledged differences, or equipment out of service with nothing booked.",
+  "Urgent: a load today with no truck, an upcoming load (today or tomorrow) whose assignment the dispatch rules would now refuse, or a new driver report of a breakdown or a load that cannot be completed.",
+  "High: a delivered load without a ticket, a ticket flagged for review, a later assignment problem, equipment out of service with loads booked on it, or another new driver report.",
+  "Normal: a ticket waiting for acceptance, an order blocked from billing by unacknowledged differences, equipment out of service with nothing booked, or a driver report already acknowledged.",
 ];
 
 export interface ExceptionItem {
@@ -82,6 +88,12 @@ const REASONS: Record<string, string> = {
   acknowledgment_outdated: "The differences changed after they were acknowledged.",
   out_of_service: "Marked out of service.",
   load_outside_schedule: "The load date is outside the order's scheduled dates.",
+  report_delay: "The driver reported a delay.",
+  report_cannot_complete: "The driver reported that the load cannot be completed.",
+  report_breakdown: "The driver reported a breakdown.",
+  report_equipment_issue: "The driver reported an equipment problem.",
+  report_inspection_issue: "The driver reported an inspection problem.",
+  report_acknowledged: "Acknowledged by the office; not resolved yet.",
 };
 
 export function reasonText(code: string): string {
@@ -118,6 +130,10 @@ export function exceptionTitle(e: ExceptionItem): string {
       return `${e.equipment_kind === "trailer" ? "Trailer" : "Truck"} ${e.unit_number} is out of service`;
     case "assignment_problem":
       return `${loadRef(e)}${e.load_date ? ` on ${formatDate(e.load_date)}` : ""}: assignment no longer valid`;
+    case "delay_report":
+      return `${String(e.details.driver_name ?? "Driver")} reported ${e.details.report_kind === "cannot_complete" ? "a load that cannot be completed" : "a delay"} on ${loadRef(e)}`;
+    case "equipment_report":
+      return `${String(e.details.driver_name ?? "Driver")} reported a problem with ${e.equipment_kind === "trailer" ? "trailer" : "truck"} ${e.unit_number ?? ""} (${loadRef(e)})`;
   }
 }
 
@@ -132,6 +148,9 @@ export function exceptionReasons(e: ExceptionItem): string[] {
     if (e.details.expected_return_date) out.push(`Expected back ${formatDate(String(e.details.expected_return_date))}.`);
     const n = Number(e.details.upcoming_loads ?? 0);
     if (n > 0) out.push(`${n} upcoming load${n === 1 ? " is" : "s are"} still booked on it.`);
+  }
+  if ((e.kind === "delay_report" || e.kind === "equipment_report") && e.details.description) {
+    out.push(`“${String(e.details.description)}”`);
   }
   return out;
 }
@@ -154,6 +173,9 @@ export function exceptionAction(e: ExceptionItem, can: { ticketsEdit: boolean; d
       return { label: "Open the service record", href: `/fleet/${e.equipment_kind === "trailer" ? "trailers" : "trucks"}/${e.equipment_id}` };
     case "assignment_problem":
       return { label: "Reassign the load", href: board(e.load_date, e.load_id) };
+    case "delay_report":
+    case "equipment_report":
+      return { label: "Open the report", href: `/field-reports/${String(e.details.report_id)}` };
   }
 }
 
@@ -189,6 +211,8 @@ export interface CommandSummary {
   missing_tickets: number | null;
   billing_blocked: number | null;
   billing_ready: number | null;
+  /** Open + acknowledged driver reports the caller may see; absent before N8. */
+  driver_reports?: number | null;
   can: { dispatch: boolean; fleet: boolean; billing: boolean; tickets: boolean; assign: boolean };
 }
 
@@ -227,6 +251,9 @@ export function metricCards(s: CommandSummary): MetricCard[] {
       tone: warnIf(s.trucks_out_of_service),
     });
     cards.push({ key: "maintenance", label: "Maintenance due", value: null, sub: "Not tracked yet — no maintenance records exist", href: null, tone: "default" });
+  }
+  if (s.driver_reports !== undefined && s.driver_reports !== null) {
+    cards.push({ key: "driver_reports", label: "Driver reports open", value: s.driver_reports, sub: "Delays, breakdowns, inspection problems", href: "/field-reports", tone: warnIf(s.driver_reports, "bad") });
   }
   if (s.missing_tickets !== null) {
     cards.push({ key: "missing_tickets", label: "Missing delivery tickets", value: s.missing_tickets, sub: "Delivered loads without a ticket", href: queue("missing_ticket"), tone: warnIf(s.missing_tickets) });
