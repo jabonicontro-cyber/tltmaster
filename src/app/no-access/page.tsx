@@ -1,0 +1,51 @@
+import Link from "next/link";
+import { BrandMark } from "@/components/layout/brand";
+import { buttonClasses } from "@/components/ui/button";
+import { getAccess } from "@/server/auth";
+import { signOut } from "@/app/(auth)/actions";
+import { redirect } from "next/navigation";
+
+export default async function NoAccessPage({ searchParams }: { searchParams: Promise<{ missing?: string }> }) {
+  const access = await getAccess();
+  if (!access) redirect("/login");
+  const { missing } = await searchParams;
+  const pending = !access.role || !access.active;
+
+  return (
+    <main id="main" className="flex min-h-dvh items-center justify-center bg-surface px-4">
+      <div className="w-full max-w-md rounded-lg border border-line bg-white p-6 text-center shadow-sm">
+        <div className="mb-4 flex justify-center">
+          <BrandMark tone="dark" />
+        </div>
+        {pending ? (
+          <>
+            <h1 className="text-lg font-bold">Your account is waiting for access</h1>
+            <p className="mt-2 text-sm text-muted">
+              You are signed in as <strong>{access.email}</strong>, but an owner has not assigned you a role yet
+              {access.active ? "" : " or your account has been deactivated"}. Ask the business owner to grant access in Settings → Users.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-lg font-bold">You do not have access to that page</h1>
+            <p className="mt-2 text-sm text-muted">
+              Your role does not include the permission needed{missing ? ` (${missing})` : ""}. Ask an owner if you need it.
+            </p>
+          </>
+        )}
+        <div className="mt-5 flex justify-center gap-2">
+          {!pending && (
+            <Link href="/dashboard" className={buttonClasses("primary")}>
+              Go to dashboard
+            </Link>
+          )}
+          <form action={signOut}>
+            <button type="submit" className={buttonClasses("secondary")}>
+              Sign out
+            </button>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+}

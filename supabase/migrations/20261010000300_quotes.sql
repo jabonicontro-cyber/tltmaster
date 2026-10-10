@@ -787,7 +787,7 @@ $$;
 -- -----------------------------------------------------------------------------
 -- Record the outcome of a delivery attempt.
 --   status 'sent'      → quote becomes Sent, version.sent_at set
---   status 'test_sent' → test mode; quote status unchanged
+--   status 'test_sent' → test mode; quote status unchanged, lock released
 --   status 'preview'   → nothing was sent; quote status unchanged
 --   status 'failed'    → nothing was sent; if the version was never delivered
 --                        it is unlocked again so it can still be edited
@@ -864,7 +864,8 @@ begin
       format('%s v%s emailed to %s', v_quote.quote_number, v_version.version_no, array_to_string(p_to, ', ')),
       jsonb_build_object('delivery_id', v_delivery, 'version_id', p_version_id,
                          'provider_message_id', p_provider_message_id));
-  elsif p_status = 'failed' then
+  elsif p_status in ('failed', 'test_sent') then
+    -- Nothing reached the customer: release the lock so the draft stays editable.
     if v_version.sent_at is null and v_version.locked_at is not null then
       perform set_config('tlt.allow_version_unlock', 'on', true);
       update public.quote_versions set locked_at = null, locked_by = null,
@@ -872,8 +873,14 @@ begin
       where id = v_version.id;
       perform set_config('tlt.allow_version_unlock', 'off', true);
     end if;
-    perform private.log_event('quote.email_failed', 'quote', p_quote_id,
-      format('Email of %s v%s failed', v_quote.quote_number, v_version.version_no),
+    perform private.log_event(
+      case when p_status = 'failed' then 'quote.email_failed' else 'quote.email_test_sent' end,
+      'quote', p_quote_id,
+      case when p_status = 'failed'
+        then format('Email of %s v%s failed', v_quote.quote_number, v_version.version_no)
+        else format('%s v%s test email sent to %s (not delivered to customer)', v_quote.quote_number,
+                    v_version.version_no, array_to_string(p_to, ', '))
+      end,
       jsonb_build_object('delivery_id', v_delivery, 'error', left(p_error, 500)));
   else
     perform private.log_event('quote.email_' || p_status::text, 'quote', p_quote_id,

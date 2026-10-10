@@ -151,6 +151,12 @@ SQL
     psql_admin -f "$ROOT/supabase/seed.sql"
   fi
   psql_admin -c "notify pgrst, 'reload schema';"
+  # Auth keeps prepared statements for the old schema; restart it if running.
+  if [[ -f "$STATE/auth.pid" ]] && kill -0 "$(cat "$STATE/auth.pid")" 2>/dev/null; then
+    stop_bg auth
+    auth_env
+    start_bg auth bash -c "cd '$BIN' && exec ./auth serve"
+  fi
   echo "database reset complete"
 }
 
