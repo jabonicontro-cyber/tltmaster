@@ -17,5 +17,5 @@ export async function switchCompany(companyId: string): Promise<ActionResult> {
   const { error } = await supabase.rpc("switch_company", { p_company_id: companyId });
   if (error) return { ok: false, error: dbErrorMessage(error) };
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/command-center");
 }

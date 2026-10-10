@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { PRODUCT_NAME } from "@/lib/product";
 import { BrandMark } from "@/components/layout/brand";
 
 export default function AuthLayout({ children }: { children: ReactNode }) {
@@ -11,7 +12,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             <BrandMark className="scale-125" />
           </div>
           <div className="rounded-lg bg-white p-6 shadow-xl">{children}</div>
-          <p className="mt-6 text-center text-xs text-white/50">Top Line Trucking Manager · Authorized users only</p>
+          <p className="mt-6 text-center text-xs text-white/50">{PRODUCT_NAME} · Authorized users only</p>
         </div>
       </main>
     </div>

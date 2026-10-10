@@ -47,7 +47,7 @@ export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): 
     case "ready":
       return { why: "All loads have accepted tickets and every exception is resolved.", action: "Hand it off for billing." };
     case "handed_off":
-      return { why: "Handed off for billing.", action: "Enter the invoice in QuickBooks. Undo the handoff only if it was a mistake." };
+      return { why: "Handed off for billing.", action: "Enter the invoice in your accounting system. Undo the handoff only if it was a mistake." };
   }
 }
 

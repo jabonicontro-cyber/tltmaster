@@ -57,13 +57,17 @@ dashboard (production). Never commit real values.
    The code (`TLT-XXXXX-XXXXX-XXXXX-XXXXX`) is printed once and stored only as a hash; send it
    to the customer directly. The customer opens `/signup`, enters the code, company name, name,
    email and password, confirms the email, and lands on `/onboarding`, where "Create my company"
-   creates the company with them as Owner. Failed code attempts are limited (10 per address and
+   creates the company with them as Owner (they choose the company's time zone there; nothing
+   from any other company is copied in). Failed code attempts are limited (10 per address and
    5 per email per 15 minutes; 5 per signed-in user). A signed-in user can create another company with a
    new code on `/onboarding` (owners find it in the account menu → "Create a company").
-7. Create the first owner from a trusted machine (the company slug defaults to
-   `top-line-trucking`, which the migrations create):
+7. Or create an owner from a trusted machine for an existing company (the slug is required;
+   no company is assumed). Note: the historical migration
+   `20261011000200_company_separation.sql` creates an empty company "Top Line Trucking"
+   (`top-line-trucking`) on every install; on an install for another customer, rename or
+   deactivate it — it has no members and receives no other company's data.
    ```bash
-   node --env-file=.env.local scripts/create-owner.mjs owner@yourcompany.com "Owner Name"
+   node --env-file=.env.local scripts/create-owner.mjs owner@yourcompany.com "Owner Name" your-company-slug
    ```
    To add another company (operators only, SQL editor or psql as `postgres`):
    ```sql
@@ -138,7 +142,8 @@ records and only apply migrations added since your last update (for example
 `20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
 `20261016000100_billing_readiness.sql`, `20261017000100_command_center.sql` and
 `20261018000100_driver_portal.sql`,
-`20261019000100_ticket_photos.sql` and `20261020000100_company_onboarding.sql`):
+`20261019000100_ticket_photos.sql`, `20261020000100_company_onboarding.sql` and
+`20261021000100_command_center_coordination.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -148,7 +153,8 @@ psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
 # 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql,
 # 20261017000100_command_center.sql, 20261018000100_driver_portal.sql and
-# 20261019000100_ticket_photos.sql and 20261020000100_company_onboarding.sql, in that order
+# 20261019000100_ticket_photos.sql, 20261020000100_company_onboarding.sql and
+# 20261021000100_command_center_coordination.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -170,7 +176,19 @@ adds the `ticket_attachments` table and functions, replaces `driver_submit_ticke
 and creates the storage bucket and policies if storage is installed; no rows change.
 The company-onboarding migration adds three private tables (early-access codes, redemptions,
 attempts) and functions, and replaces `add_company_member` and `set_user_access` with versions
-that let only owners grant or remove the Owner role; no rows change.
+that let only owners grant or remove the Owner role; no rows change. The
+command-center-coordination migration adds urgent orders (`order_urgencies`,
+`order_urgency_events`), personal Command Center state (`user_preferences`,
+`exception_dismissals`), the `urgent_ack_minutes` setting and replaces the Command Center
+functions; it removes the company-specific column defaults (`company_name`, `state`), and
+grants the fixed Owner role `driver.portal` in every company (the only change to existing
+rows). After applying it, deploy the app from the same commit (onboarding now sends a time
+zone).
+
+**Urgent orders and escalation.** Settings → Company → *Urgent orders*: leave the escalation
+time empty for no escalation, or enter minutes (5–1440). An urgent order nobody in dispatch
+acknowledged in that time is marked overdue in the Command Center. No email, text or push
+message is sent.
 
 **Driver accounts.** Invite the person with the *Driver* role (Settings → Users),
 then link the account on their driver record (Fleet → Drivers → Edit → *Linked
@@ -233,8 +251,9 @@ browser. Nothing leaves the machine. Public sign-up stays disabled, as on hosted
    database or API URL and never prints the password):
    ```bash
    TEST_USER_PASSWORD='choose-a-10+-char-password' \
-     node --env-file=.env.local scripts/create-test-company.mjs "Ridgeway Aggregates (test)" ridgeway
+     node --env-file=.env.local scripts/create-test-company.mjs "Ridgeway Aggregates (test)" ridgeway America/Denver
    ```
+   (The third argument, the company's time zone, is optional.)
    It creates `owner@ridgeway.test`, `office@ridgeway.test`, `dispatcher@ridgeway.test`,
    `mechanic@ridgeway.test` and `driver@ridgeway.test` (email confirmed, the driver linked to a
    driver record with valid qualifications), all with that password. Running it again changes

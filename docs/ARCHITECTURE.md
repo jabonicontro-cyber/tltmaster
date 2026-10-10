@@ -78,8 +78,10 @@ no direct writes at all.
 
 ## Companies (tenant isolation)
 
-The application serves several independent companies from one database. Top Line
-Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
+The application serves several independent companies from one database. The seeded
+sample company "Top Line Trucking" is company #1 (`00000000-0000-4000-8000-000000000001`);
+it is development data and no shared code refers to it. New companies start with their own
+name, empty address, their chosen time zone and no records.
 
 - **Ownership**: every business table has `company_id uuid not null` (audit events
   may be null, then visible to nobody). Global tables: `companies`, `profiles`
@@ -96,10 +98,11 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 101 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 110 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
   dispatch, 4 with delivery tickets, 5 with billing readiness, 7 with the command
-  center, 8 with the driver portal, 6 with ticket photos, 15 with company onboarding).
+  center, 8 with the driver portal, 6 with ticket photos, 15 with company onboarding, 9 with
+  workflow coordination).
   Each public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller, except `switch_company`,
@@ -160,6 +163,29 @@ Signed-in users with a verified email create another company with a new code
 for owners, `/no-access` for people without a company). Operators issue, list and revoke codes with
 `scripts/early-access.mjs`. Codes: 20 random characters (100 bits), shown once,
 stored as SHA-256, with label, maximum uses, expiry and revocation.
+
+## Command Center and workflow coordination
+
+- **One home page** (`/command-center`; `/dashboard` redirects). Every figure and queue item
+  comes from the database for the caller's company and permissions
+  (`command_center_summary`, `command_center_exceptions` over
+  `private.operational_exceptions`); nothing is stored as a count. A section that cannot load
+  says so — it never shows zero instead.
+- **Responsibilities vs permissions**: sections appear by permission (operations, quotes, a
+  linked driver record for "Your loads today"). Arranging, collapsing or hiding never changes
+  what the database returns. Owners hold `driver.portal`, but the portal still requires a
+  linked, active driver record.
+- **Personal state**: `user_preferences` (layout only) and `exception_dismissals` (hide a
+  non-urgent item for yourself, time-limited; urgent items cannot be hidden; hidden items
+  stay counted). Both are per user and per company.
+- **Urgent orders**: `order_urgencies` + append-only `order_urgency_events`; the office
+  flags (orders.edit), dispatch acknowledges and moves states (dispatch.edit); "truck
+  assigned" requires a real assignment; completion or cancellation closes the flag. Optional
+  escalation time per company (`company_settings.urgent_ack_minutes`). No notifications.
+- **Continuity**: queue links carry a validated `back` parameter
+  (`src/lib/safe-redirect.ts` → `returnTarget` accepts only known list pages); the ticket
+  review queue offers position and "Accept and next"; the order page shows progress across
+  dispatch, tickets and billing from the same records (`src/lib/orders/progress.ts`).
 
 ## Security model
 

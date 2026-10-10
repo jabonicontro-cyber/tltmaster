@@ -119,12 +119,12 @@ describe("creating a company", () => {
 
       await s.as(u);
       expect((await s.query<{ r: Row }>("select public.my_onboarding() as r")).rows[0].r).toEqual({ email_verified: false, pending_company: "Ridgeway Aggregates (test)", membership_count: 0 });
-      expect((await pgError(s.query("select public.complete_company_onboarding(null)"))).message).toMatch(/Confirm your email/);
+      expect((await pgError(s.query("select public.complete_company_onboarding(null, 'America/New_York')"))).message).toMatch(/Confirm your email/);
       await verify(s, u);
       await s.as(u);
-      const r = (await s.query<{ r: { company_id: string; created: boolean; name: string } }>("select public.complete_company_onboarding('Ridgeway Aggregates LLC (test)') as r")).rows[0].r;
+      const r = (await s.query<{ r: { company_id: string; created: boolean; name: string } }>("select public.complete_company_onboarding('Ridgeway Aggregates LLC (test)', 'America/New_York') as r")).rows[0].r;
       expect(r).toMatchObject({ created: true, name: "Ridgeway Aggregates LLC (test)" });
-      expect((await s.query<{ r: { company_id: string; created: boolean } }>("select public.complete_company_onboarding(null) as r")).rows[0].r).toMatchObject({ company_id: r.company_id, created: false });
+      expect((await s.query<{ r: { company_id: string; created: boolean } }>("select public.complete_company_onboarding(null, 'America/New_York') as r")).rows[0].r).toMatchObject({ company_id: r.company_id, created: false });
 
       const access = (await s.query<{ r: Row }>("select public.my_access() as r")).rows[0].r;
       expect(access).toMatchObject({ company_id: r.company_id, role: "owner", company_name: "Ridgeway Aggregates LLC (test)" });
@@ -161,13 +161,13 @@ describe("creating a company", () => {
       await s.query("select public.early_access_revoke_code($1, 'Withdrawn')", [a.id]);
       await verify(s, u);
       await s.as(u);
-      expect((await pgError(s.query("select public.complete_company_onboarding(null)"))).message).toMatch(/revoked/);
+      expect((await pgError(s.query("select public.complete_company_onboarding(null, 'America/New_York')"))).message).toMatch(/revoked/);
       const nobody = await s.createUser(null, { membership: false });
       await verify(s, nobody);
       await s.as(nobody);
-      expect((await pgError(s.query("select public.complete_company_onboarding(null)"))).message).toMatch(/no company waiting/);
+      expect((await pgError(s.query("select public.complete_company_onboarding(null, 'America/New_York')"))).message).toMatch(/no company waiting/);
       await s.as(null);
-      expect((await pgError(s.query("select public.complete_company_onboarding(null)"))).code).toBe("42501");
+      expect((await pgError(s.query("select public.complete_company_onboarding(null, 'America/New_York')"))).code).toBe("42501");
     });
   });
 
@@ -179,11 +179,11 @@ describe("creating a company", () => {
       await s.as(office);
       expect((await s.query("select 1 from public.customers where company_id = $1 limit 1", [TOP_LINE])).rowCount).toBe(1);
       const key = randomUUID();
-      const bad = (await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2) as r", [hash(code()), randomUUID()])).rows[0].r;
+      const bad = (await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2, 'America/New_York') as r", [hash(code()), randomUUID()])).rows[0].r;
       expect(bad).toEqual({ ok: false, reason: "unknown" });
-      const r = (await s.query<{ r: { ok: boolean; company_id: string; created: boolean } }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2) as r", [hash(a.code), key])).rows[0].r;
+      const r = (await s.query<{ r: { ok: boolean; company_id: string; created: boolean } }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2, 'America/New_York') as r", [hash(a.code), key])).rows[0].r;
       expect(r).toMatchObject({ ok: true, created: true });
-      expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2) as r", [hash(a.code), key])).rows[0].r).toMatchObject({ company_id: r.company_id, created: false });
+      expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Side Hauling (test)', $2, 'America/New_York') as r", [hash(a.code), key])).rows[0].r).toMatchObject({ company_id: r.company_id, created: false });
 
       // Now working in the new company: Top Line's data is invisible.
       expect((await s.query<{ r: Row }>("select public.my_access() as r")).rows[0].r).toMatchObject({ company_id: r.company_id, role: "owner" });
@@ -212,11 +212,11 @@ describe("creating a company", () => {
       await verify(s, u);
       await s.as(u);
       for (let i = 0; i < 5; i++) {
-        expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Guess (test)', $2) as r", [hash(code()), randomUUID()])).rows[0].r).toMatchObject({ reason: "unknown" });
+        expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Guess (test)', $2, 'America/New_York') as r", [hash(code()), randomUUID()])).rows[0].r).toMatchObject({ reason: "unknown" });
       }
       const good = await newCode(s);
       await s.as(u);
-      expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Guess (test)', $2) as r", [hash(good.code), randomUUID()])).rows[0].r).toEqual({ ok: false, reason: "rate_limited" });
+      expect((await s.query<{ r: Row }>("select public.create_company_with_access_code($1, 'Guess (test)', $2, 'America/New_York') as r", [hash(good.code), randomUUID()])).rows[0].r).toEqual({ ok: false, reason: "rate_limited" });
     });
   });
 });

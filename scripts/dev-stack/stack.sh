@@ -88,14 +88,14 @@ auth_env() {
   export GOTRUE_SMTP_USER=dev
   export GOTRUE_SMTP_PASS=dev
   export GOTRUE_SMTP_ADMIN_EMAIL=no-reply@tlt.local
-  export GOTRUE_SMTP_SENDER_NAME="Top Line Trucking Manager (dev)"
+  export GOTRUE_SMTP_SENDER_NAME="Taviron (dev)"
   export GOTRUE_MAILER_URLPATHS_CONFIRMATION="/verify"
   export GOTRUE_MAILER_TEMPLATES_CONFIRMATION="http://127.0.0.1:$GATEWAY_PORT/dev-templates/confirmation.html"
   export GOTRUE_MAILER_TEMPLATES_INVITE="http://127.0.0.1:$GATEWAY_PORT/dev-templates/invite.html"
   export GOTRUE_MAILER_TEMPLATES_RECOVERY="http://127.0.0.1:$GATEWAY_PORT/dev-templates/recovery.html"
   export GOTRUE_MAILER_SUBJECTS_CONFIRMATION="Confirm your email"
-  export GOTRUE_MAILER_SUBJECTS_INVITE="You're invited to Top Line Trucking Manager"
-  export GOTRUE_MAILER_SUBJECTS_RECOVERY="Reset your Top Line Trucking Manager password"
+  export GOTRUE_MAILER_SUBJECTS_INVITE="You're invited to Taviron"
+  export GOTRUE_MAILER_SUBJECTS_RECOVERY="Reset your Taviron password"
   export GOTRUE_RATE_LIMIT_EMAIL_SENT=1000
   export GOTRUE_LOG_LEVEL=warn
 }

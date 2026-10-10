@@ -61,7 +61,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Billing Readiness"
-        description="Which delivered work is documented, reviewed and ready to invoice. This is a checklist for the office — invoices are entered in QuickBooks, and nothing here changes prices or marks anything paid."
+        description="Which delivered work is documented, reviewed and ready to invoice. This is a checklist for the office — invoices are entered in your accounting system, and nothing here changes prices or marks anything paid."
       />
       <nav aria-label="Billing views" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (
@@ -309,7 +309,7 @@ function HandedOff({ board, canManage, highlight }: { board: Extract<Awaited<Ret
                       <Link href={`/billing/orders/${r.order_id}`} className={cn("font-semibold tabular hover:underline", r.reverted_at && "line-through")}>{r.order.order_number}</Link>
                       <span className="text-sm text-muted"> · {r.order.customer_name}</span>
                       {r.reverted_at && <div className="text-sm text-muted">Undone by {board.people[r.reverted_by ?? ""] ?? "someone"}: {r.revert_reason}</div>}
-                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff — check the invoice in QuickBooks.</div>}
+                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff — check the invoice in your accounting system.</div>}
                     </Td>
                     <Td className="hidden sm:table-cell tabular">{serviceDates(r.order.service_start, r.order.service_end)}</Td>
                     <Td align="right" className="tabular">{formatCents(r.order.total_cents)}</Td>

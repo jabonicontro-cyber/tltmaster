@@ -7,11 +7,12 @@ import type { UserKey } from "./users";
  * just by what the navigation shows. (Data-level checks are in tests/db.)
  */
 const MATRIX: Record<string, { allowed: string[]; refused: string[] }> = {
-  owner: { allowed: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center", "/field-reports", "/settings?tab=users"], refused: ["/driver"] },
+  // Owners may use My Day (it shows nothing until their account is linked to a driver record).
+  owner: { allowed: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center", "/field-reports", "/settings?tab=users", "/driver"], refused: [] },
   office: { allowed: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center"], refused: ["/driver"] },
   dispatcher: { allowed: ["/orders", "/dispatch", "/tickets", "/command-center", "/fleet"], refused: ["/billing", "/driver"] },
   mechanic: { allowed: ["/fleet", "/command-center", "/field-reports"], refused: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/driver"] },
-  driver: { allowed: ["/driver"], refused: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center", "/field-reports"] },
+  driver: { allowed: ["/driver"], refused: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/field-reports"] },
 };
 
 for (const [role, { allowed, refused }] of Object.entries(MATRIX)) {
@@ -24,6 +25,11 @@ for (const [role, { allowed, refused }] of Object.entries(MATRIX)) {
     for (const path of refused) {
       await page.goto(path);
       await expect(page, `${role} ${path}`).toHaveURL(/no-access/);
+    }
+    // A driver-only account starts on its own day instead of the Command Center.
+    if (role === "driver") {
+      await page.goto("/command-center");
+      await expect(page).toHaveURL(/\/driver$/);
     }
     // Users and permissions are owner-only by default.
     await page.goto("/settings?tab=users");

@@ -74,21 +74,3 @@ export async function loadQuoteDashboard(filters: DashboardFilters, today: strin
     staleDrafts: drafts.filter((q) => q.updated_at < addDays(today, -7)),
   };
 }
-
-export async function loadRecentActivity(canViewAudit: boolean) {
-  const supabase = await createClient();
-  if (canViewAudit) {
-    const { data } = await supabase.from("audit_events").select("id, occurred_at, actor_id, action, entity_type, entity_id, summary").order("occurred_at", { ascending: false }).limit(10);
-    return (data ?? []) as Array<{ id: string; occurred_at: string; actor_id: string | null; action: string; entity_type: string; entity_id: string | null; summary: string }>;
-  }
-  const { data } = await supabase.from("quote_status_events").select("id, occurred_at, actor_id, quote_id, to_status, note, quotes(quote_number)").order("occurred_at", { ascending: false }).limit(10);
-  return ((data ?? []) as unknown as Array<{ id: string; occurred_at: string; actor_id: string | null; quote_id: string; to_status: string; note: string; quotes: { quote_number: string } | null }>).map((e) => ({
-    id: e.id,
-    occurred_at: e.occurred_at,
-    actor_id: e.actor_id,
-    action: `quote.${e.to_status}`,
-    entity_type: "quote",
-    entity_id: e.quote_id,
-    summary: `${e.quotes?.quote_number ?? "Quote"} → ${e.to_status}${e.note ? `: ${e.note}` : ""}`,
-  }));
-}

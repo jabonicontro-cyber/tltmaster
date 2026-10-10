@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { EquipmentActions } from "@/components/fleet/equipment-actions";
@@ -15,7 +16,8 @@ import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Trailer" };
 
-export default async function TrailerPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TrailerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  const { back } = await searchParams;
   const access = await requirePagePermission("fleet.view");
   const { id } = await params;
   const detail = await getTrailer(id);
@@ -29,6 +31,7 @@ export default async function TrailerPage({ params }: { params: Promise<{ id: st
       <Suspense>
         <FlashToast messages={{ saved: { text: "Trailer saved." } }} />
       </Suspense>
+      <ReturnLink back={back} />
       <PageHeader
         title={`Trailer ${t.unit_number}`}
         crumbs={[{ label: "Fleet", href: "/fleet" }, { label: "Trailers", href: "/fleet/trailers" }, { label: t.unit_number }]}

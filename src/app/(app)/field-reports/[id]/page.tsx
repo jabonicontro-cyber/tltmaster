@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ReturnLink } from "@/components/ui/return-link";
 import { CalendarRange, ClipboardList, Truck } from "lucide-react";
 import { ReportActions } from "@/components/field-reports/report-actions";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +19,8 @@ export const metadata = { title: "Driver report" };
 
 const tone = { open: "amber", acknowledged: "blue", resolved: "green" } as const;
 
-export default async function FieldReportPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function FieldReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  const { back } = await searchParams;
   const access = await requirePagePermission("field_reports.view");
   const { id } = await params;
   const r = await getFieldReport(id);
@@ -28,6 +30,7 @@ export default async function FieldReportPage({ params }: { params: Promise<{ id
   const unit = r.equipment === "truck" ? r.snapshot.truck_unit : r.equipment === "trailer" ? r.snapshot.trailer_unit : null;
   return (
     <>
+      <ReturnLink back={back} />
       <PageHeader
         crumbs={[{ label: "Driver Reports", href: "/field-reports" }, { label: REPORT_KIND_LABELS[r.kind] }]}
         title={`${REPORT_KIND_LABELS[r.kind]} — ${r.snapshot.driver_name}`}

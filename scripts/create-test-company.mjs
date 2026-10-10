@@ -4,7 +4,7 @@
 // database. Refuses any non-local URL. Idempotent: running it again reuses the
 // company and accounts.
 //
-//   TEST_USER_PASSWORD='choose-10+-chars' node --env-file=.env.local scripts/create-test-company.mjs "Ridgeway Aggregates (test)" ridgeway
+//   TEST_USER_PASSWORD='choose-10+-chars' node --env-file=.env.local scripts/create-test-company.mjs "Ridgeway Aggregates (test)" ridgeway [America/Denver]
 //
 // Accounts: owner@<key>.test, office@<key>.test, dispatcher@<key>.test,
 // mechanic@<key>.test, driver@<key>.test (the .test domain never receives
@@ -13,7 +13,7 @@
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 
-const [name, key] = process.argv.slice(2);
+const [name, key, timezone] = process.argv.slice(2);
 if (!name || !key || !/^[a-z0-9-]{2,30}$/.test(key)) {
   console.error('Usage: TEST_USER_PASSWORD=... node --env-file=.env.local scripts/create-test-company.mjs "Company Name (test)" short-key');
   process.exit(1);
@@ -38,7 +38,11 @@ await db.connect();
 const slug = `test-${key}`;
 try {
   let companyId = (await db.query("select id from public.companies where slug = $1", [slug])).rows[0]?.id;
-  if (!companyId) companyId = (await db.query("select private.create_company($1, $2) as id", [name, slug])).rows[0].id;
+  if (!companyId) {
+    companyId = (await db.query("select private.create_company($1, $2) as id", [name, slug])).rows[0].id;
+    // A new company's own time zone (optional third argument), as onboarding asks for it.
+    if (timezone) await db.query("update public.company_settings set timezone = private.valid_timezone($1) where company_id = $2", [timezone, companyId]);
+  }
 
   const roles = ["owner", "office", "dispatcher", "mechanic", "driver"];
   const people = { owner: "Olivia Owner", office: "Owen Office", dispatcher: "Dee Dispatch", mechanic: "Mack Mechanic", driver: "Drew Driver" };

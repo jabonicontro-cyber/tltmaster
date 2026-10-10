@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
 import { ClipboardList, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
@@ -31,7 +32,8 @@ const LOAD_STATE: Record<string, { label: string; tone: "red" | "amber" | "green
   not_due: { label: "Not delivered yet", tone: "gray" },
 };
 
-export default async function OrderBillingPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderBillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  const { back } = await searchParams;
   const access = await requirePagePermission("billing.view");
   const { id } = await params;
   const data = await getOrderBilling(id);
@@ -45,6 +47,7 @@ export default async function OrderBillingPage({ params }: { params: Promise<{ i
 
   return (
     <>
+      <ReturnLink back={back} />
       <PageHeader
         crumbs={[{ label: "Billing", href: "/billing" }, { label: o.order_number }]}
         title={`Billing — ${o.order_number}`}
@@ -59,7 +62,7 @@ export default async function OrderBillingPage({ params }: { params: Promise<{ i
           {o.readiness === "handed_off" && (
             <> Batch {o.batch_number}{o.handoff_reference ? ` (${o.handoff_reference})` : ""}, {formatDateTime(o.handed_off_at, timezone)} by {person(o.handed_off_by)}.</>
           )}
-          {o.changed_since_handoff && <strong> Tickets changed after the handoff — check the invoice in QuickBooks.</strong>}
+          {o.changed_since_handoff && <strong> Tickets changed after the handoff — check the invoice in your accounting system.</strong>}
         </Notice>
 
         <Card>

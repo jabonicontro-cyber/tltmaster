@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
+import { PRODUCT_NAME } from "@/lib/product";
 
 export const metadata: Metadata = {
-  title: { default: "Top Line Trucking Manager", template: "%s · Top Line Trucking" },
-  description: "Operations management for Top Line Trucking.",
+  title: { default: PRODUCT_NAME, template: `%s · ${PRODUCT_NAME}` },
+  description: "Operations management for hauling companies.",
   robots: { index: false, follow: false, nocache: true },
 };
 

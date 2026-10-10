@@ -14,6 +14,7 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
+import { withReturn } from "@/lib/safe-redirect";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
 import { listLoadsAwaitingTickets, listTickets, photoCounts, ticketCounts, TICKET_VIEWS, type TicketView } from "@/server/data/tickets";
@@ -34,6 +35,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
     businessToday(),
   ]);
   const photos = await photoCounts(tickets.map((t) => t.ticket_number));
+  const listHref = `/tickets?${new URLSearchParams({ view, ...(sp.q ? { q: sp.q } : {}) })}`;
   const tabCount: Partial<Record<TicketView, number>> = { awaiting: awaiting.rows.length, review: counts.review, submitted: counts.submitted };
 
   return (
@@ -127,7 +129,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                   {tickets.map((t) => (
                     <Tr key={t.id}>
                       <Td>
-                        <Link href={`/tickets/${t.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">{t.ticket_number}</Link>
+                        <Link href={t.status === "needs_review" || t.status === "submitted" ? withReturn(`/tickets/${t.id}?queue=review`, listHref) : withReturn(`/tickets/${t.id}`, listHref)} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">{t.ticket_number}</Link>
                         {t.revision > 1 && <span className="ml-1 text-xs text-muted">rev {t.revision}</span>}
                         {photos.get(t.ticket_number) ? (
                           <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted" title="Paper ticket photo attached">

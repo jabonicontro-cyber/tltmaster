@@ -6,7 +6,7 @@ export default function NotFound() {
     <EmptyState
       title="Not found"
       description="The record does not exist, was removed, or you do not have access to it."
-      action={<ButtonLink href="/dashboard" variant="secondary">Go to dashboard</ButtonLink>}
+      action={<ButtonLink href="/command-center" variant="secondary">Go to the Command Center</ButtonLink>}
     />
   );
 }

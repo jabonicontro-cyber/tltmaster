@@ -1,4 +1,5 @@
 import "server-only";
+import { PRODUCT_NAME } from "@/lib/product";
 import { createHash } from "node:crypto";
 import { Document, Page, StyleSheet, Text, View, renderToBuffer } from "@react-pdf/renderer";
 import type { QuoteDocument } from "@/lib/quotes/document";
@@ -49,7 +50,7 @@ const s = StyleSheet.create({
 
 function QuotePdf({ doc }: { doc: QuoteDocument }) {
   return (
-    <Document title={doc.title} author={doc.company.name} subject={`Quote for ${doc.billTo.name}`} creator="Top Line Trucking Manager">
+    <Document title={doc.title} author={doc.company.name} subject={`Quote for ${doc.billTo.name}`} creator={PRODUCT_NAME}>
       <Page size="LETTER" style={s.page}>
         {doc.isDraft && <Text style={s.draft}>DRAFT — NOT YET SENT TO THE CUSTOMER</Text>}
         <View style={s.header}>

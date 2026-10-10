@@ -40,6 +40,19 @@ Functions: `early_access_check`, `early_access_reserve`, `early_access_request`,
 `set_user_access` let only owners grant or remove the Owner role. Migration
 `20261020000100_company_onboarding.sql`.
 
+### Coordination (N10)
+
+| Table | Purpose |
+| --- | --- |
+| `order_urgencies` | An order flagged urgent: reason, optional `needed_by`, `state` (`awaiting_acknowledgement` → `acknowledged` / `evaluating` / `waiting_for_information` / `blocked` / `assigned` → `resolved` or `canceled`), who flagged and who acknowledged. One open flag per order; closed flags are read-only history. Read with `orders.view` or `dispatch.view`. |
+| `order_urgency_events` | Append-only history of each flag (flagged, updated, state changed, closed with the order). |
+| `user_preferences` | Per user and company: Command Center layout (`order`, `collapsed` section ids). Own rows only. |
+| `exception_dismissals` | Per user and company: a non-urgent Command Center item hidden until `hidden_until`. Own rows only; never resolves anything. |
+
+`company_settings.urgent_ack_minutes` (5–1440 or null) sets the escalation time. Functions:
+`flag_order_urgent`, `update_order_urgency`, `save_my_preference`, `hide_exception`,
+`unhide_exception`. Migration `20261021000100_command_center_coordination.sql`.
+
 ## Customers
 
 | Table | Purpose |

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 // Creates (or promotes) an Owner account for a company.
 //
-//   node --env-file=.env.local scripts/create-owner.mjs owner@example.com "Full Name" [company-slug]
+//   node --env-file=.env.local scripts/create-owner.mjs owner@example.com "Full Name" company-slug
 //
-// company-slug defaults to "top-line-trucking". Other companies are created by
-// an operator with `select private.create_company('Name', 'slug')` (see docs/SETUP.md).
+// The company slug is required: no company is assumed. Companies are created
+// through onboarding (access code) or by an operator with
+// `select private.create_company('Name', 'slug')` (see docs/SETUP.md).
 //
 // Prompts for a password (or reads OWNER_PASSWORD). Requires
 // NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Run from a trusted
@@ -13,9 +14,9 @@ import { createClient } from "@supabase/supabase-js";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
 
-const [email, fullName = "", companySlug = "top-line-trucking"] = process.argv.slice(2);
-if (!email || !email.includes("@")) {
-  console.error('Usage: node --env-file=.env.local scripts/create-owner.mjs <email> "<full name>"');
+const [email, fullName = "", companySlug = ""] = process.argv.slice(2);
+if (!email || !email.includes("@") || !companySlug) {
+  console.error('Usage: node --env-file=.env.local scripts/create-owner.mjs <email> "<full name>" <company-slug>');
   process.exit(1);
 }
 

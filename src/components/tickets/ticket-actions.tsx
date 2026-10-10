@@ -16,9 +16,11 @@ interface Props {
   orderId: string;
   status: TicketStatus;
   permissions: { edit: boolean; review: boolean };
+  /** Opened from the review queue: after a decision, go to the next ticket (or back to the queue when it is empty). */
+  queue?: { nextHref: string | null; doneHref: string } | null;
 }
 
-export function TicketActions({ ticketId, ticketNumber, orderId, status, permissions }: Props) {
+export function TicketActions({ ticketId, ticketNumber, orderId, status, permissions, queue }: Props) {
   const router = useRouter();
   const [action, setAction] = useState<"accept" | "flag" | "void" | null>(null);
   const [note, setNote] = useState("");
@@ -30,7 +32,7 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
     <div className="flex flex-wrap gap-2">
       {permissions.review && status !== "accepted" && (
         <Button icon={<CheckCircle2 className="size-4" />} onClick={() => { setNote(""); setAction("accept"); }}>
-          Accept
+          {queue?.nextHref ? "Accept and next" : "Accept"}
         </Button>
       )}
       {canCorrect && (
@@ -66,8 +68,13 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
           if (!action) return;
           const r = await reviewTicket({ ticketId, orderId, action, note });
           if (!r.ok) return r.error;
-          toast.success(r.message ?? "Saved");
-          router.refresh();
+          if (queue) {
+            toast.success(`${r.message ?? "Saved"}${queue.nextHref ? " Opening the next ticket." : " The review queue is done."}`);
+            router.push(queue.nextHref ?? queue.doneHref);
+          } else {
+            toast.success(r.message ?? "Saved");
+            router.refresh();
+          }
         }}
       >
         <Field label={action === "accept" ? "Note (optional)" : "Reason"} htmlFor="review-note" required={action !== "accept"} hint="Kept in the ticket history.">

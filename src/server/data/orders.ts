@@ -68,19 +68,6 @@ export async function getOrderForQuote(quoteId: string) {
   return (data ?? null) as Pick<OrderRow, "id" | "order_number" | "status"> | null;
 }
 
-/** Number of orders whose scheduled delivery covers today (canceled excluded). */
-export async function countOrdersScheduledToday(): Promise<number | null> {
-  const supabase = await createClient();
-  const { today } = await businessToday();
-  const { count, error } = await supabase
-    .from("orders")
-    .select("id", { count: "exact", head: true })
-    .lte("scheduled_start", today)
-    .or(`scheduled_end.gte.${today},and(scheduled_end.is.null,scheduled_start.eq.${today})`)
-    .neq("status", "canceled");
-  return error ? null : (count ?? 0);
-}
-
 export async function getOrderDetail(id: string) {
   if (!uuid.safeParse(id).success) return null;
   const supabase = await createClient();

@@ -1,6 +1,6 @@
 import "server-only";
 import { uuid } from "@/lib/schemas/common";
-import type { ExceptionKind, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness } from "@/lib/billing/rules";
+import type { ExceptionKind, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
 import type { TicketStatus } from "@/lib/tickets/rules";
 import { createClient } from "@/server/supabase/server";
 import { getUserNames } from "./quotes";
@@ -330,4 +330,16 @@ export async function getHandoffBatch(handoffId: string) {
     batch: batch as HandoffBatchRow,
     items: (items ?? []) as Array<{ id: string; order_id: string; reverted_at: string | null; snapshot: HandoffSnapshot }>,
   };
+}
+
+/** One order's billing readiness (the same view the billing board uses), or null without billing access. */
+export async function getOrderReadiness(orderId: string) {
+  if (!uuid.safeParse(orderId).success) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("billing_order_status")
+    .select("readiness, status, loads_missing, loads_not_due, tickets_live, tickets_pending, exceptions_count")
+    .eq("order_id", orderId)
+    .maybeSingle();
+  return (data ?? null) as (ReadinessCounts & { readiness: Readiness }) | null;
 }

@@ -289,6 +289,7 @@ export interface CompanySettings {
   quote_followup_days: number;
   default_quote_terms: string;
   quote_footer_note: string;
+  urgent_ack_minutes: number | null;
   updated_at: string;
 }
 

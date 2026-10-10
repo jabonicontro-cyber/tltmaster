@@ -37,7 +37,7 @@ describe("links into the existing workflows", () => {
     expect(exceptionAction(base, { ticketsEdit: false, dispatch: false }).href).toBe("/billing/orders/o1");
     expect(exceptionAction({ ...base, kind: "unassigned_load" }, all).href).toBe("/dispatch?date=2026-10-09&load=l1");
     expect(exceptionAction({ ...base, kind: "assignment_problem" }, all).label).toBe("Reassign the load");
-    expect(exceptionAction({ ...base, kind: "ticket_review", ticket_id: "t1" }, all).href).toBe("/tickets/t1");
+    expect(exceptionAction({ ...base, kind: "ticket_review", ticket_id: "t1" }, all).href).toBe("/tickets/t1?queue=review"); // opens in the review queue
     expect(exceptionAction({ ...base, kind: "billing_blocked" }, all).href).toBe("/billing/orders/o1");
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "trailer", equipment_id: "e1" }, all).href).toBe("/fleet/trailers/e1");
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "truck", equipment_id: "e2" }, all).href).toBe("/fleet/trucks/e2");
@@ -115,7 +115,7 @@ describe("overview cards", () => {
     ]);
     expect(cards.find((c) => c.key === "unassigned_loads")?.tone).toBe("bad");
     expect(cards.find((c) => c.key === "assignment_problems")?.tone).toBe("default");
-    expect(EXCEPTION_KINDS).toHaveLength(8);
+    expect(EXCEPTION_KINDS).toHaveLength(9); // incl. urgent_order (N10)
     expect(metricCards(summary({ driver_reports: 2 })).map((c) => [c.key, c.href, c.tone])).toEqual([["driver_reports", "/field-reports", "bad"]]);
   });
 });

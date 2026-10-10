@@ -91,7 +91,7 @@ export function HandOffForm({ orders, canManage }: { orders: ReadyOrder[]; canMa
         open={open}
         onOpenChange={setOpen}
         title={`Hand off ${chosen.length} order${chosen.length === 1 ? "" : "s"} for billing`}
-        description="Creates a numbered batch and marks these orders as handed off. It does not create invoices or change prices; enter the invoices in QuickBooks from the batch file. An order can be in only one active batch."
+        description="Creates a numbered batch and marks these orders as handed off. It does not create invoices or change prices; enter the invoices in your accounting system from the batch file. An order can be in only one active batch."
         confirmLabel="Create batch"
         onConfirm={async () => {
           const r = await handOffOrders({ orderIds: chosen.map((o) => o.order_id), reference, notes, submissionKey: key });
@@ -102,7 +102,7 @@ export function HandOffForm({ orders, canManage }: { orders: ReadyOrder[]; canMa
         }}
       >
         <p className="text-sm">{chosen.map((o) => o.order_number).join(", ")}</p>
-        <Field label="Reference (optional)" htmlFor="handoff-ref" hint="For example the QuickBooks batch or the person entering the invoices.">
+        <Field label="Reference (optional)" htmlFor="handoff-ref" hint="For example the accounting batch or the person entering the invoices.">
           <Input id="handoff-ref" maxLength={80} value={reference} onChange={(e) => setReference(e.target.value)} />
         </Field>
         <Field label="Notes (optional)" htmlFor="handoff-notes">

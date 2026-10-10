@@ -19,18 +19,29 @@ import { liveTicketsForLoads } from "@/server/data/tickets";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
 import { getOrderDetail } from "@/server/data/orders";
+import { getOrderReadiness } from "@/server/data/billing";
+import { getOrderUrgency } from "@/server/data/urgency";
+import { OrderProgress } from "@/components/orders/order-progress";
+import { UrgencyPanel } from "@/components/orders/urgency-panel";
+import { ReturnLink } from "@/components/ui/return-link";
+import { orderProgress } from "@/lib/orders/progress";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Order" };
 
-export default async function OrderPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
+  const { back } = await searchParams;
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names } = detail;
   const [{ timezone, today }, dispatch] = await Promise.all([businessToday(), getOrderDispatch(id)]);
-  const loadTickets = await liveTicketsForLoads(dispatch.loads.map((l) => l.id));
+  const [loadTickets, readiness, urgency] = await Promise.all([
+    liveTicketsForLoads(dispatch.loads.map((l) => l.id)),
+    can(access, "billing.view") ? getOrderReadiness(id) : Promise.resolve(null),
+    getOrderUrgency(id),
+  ]);
   const canDispatch = can(access, "dispatch.view");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const billTo = order.bill_to_snapshot;
@@ -44,9 +55,24 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   const linesEditable = canEditOrderLines(order.status, order.source_quote_id);
   const late = isPastRequested(order, today);
   const scheduled = formatScheduleDates(order.scheduled_start, order.scheduled_end);
+  const progress = orderProgress({
+    orderId: order.id,
+    orderStatus: order.status,
+    loads: dispatch.loads.map((l) => ({
+      id: l.id,
+      status: l.status,
+      load_date: l.load_date,
+      ends_at: l.ends_at,
+      assigned: dispatch.assignments.some((a) => a.load_id === l.id && a.status === "active"),
+      tickets: loadTickets.filter((t) => t.load_id === l.id).map((t) => ({ id: t.id, status: t.status })),
+    })),
+    billing: readiness,
+    now: new Date(),
+  });
 
   return (
     <>
+      <ReturnLink back={back} />
       <PageHeader
         title={order.order_number}
         crumbs={[{ label: "Orders", href: "/orders" }, { label: order.order_number }]}
@@ -107,6 +133,23 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             )}
           </Notice>
         )}
+      </div>
+
+      <div className="mb-5 space-y-5">
+        {urgency && (
+          <UrgencyPanel
+            orderId={order.id}
+            orderClosed={order.status === "completed" || order.status === "canceled"}
+            open={urgency.open}
+            events={urgency.events}
+            permissions={access.permissions}
+            names={names}
+            timezone={timezone}
+            today={today}
+            now={new Date().toISOString()}
+          />
+        )}
+        {order.status !== "draft" && <OrderProgress steps={progress} />}
       </div>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">

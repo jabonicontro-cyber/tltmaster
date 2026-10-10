@@ -13,7 +13,7 @@ const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Enter a v
 
 function revalidateBoard(orderId?: string) {
   revalidatePath("/dispatch");
-  revalidatePath("/dashboard");
+  revalidatePath("/command-center");
   if (orderId) revalidatePath(`/orders/${orderId}`);
 }
 

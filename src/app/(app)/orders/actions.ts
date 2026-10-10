@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { uuid } from "@/lib/schemas/common";
 import {
@@ -17,6 +18,9 @@ import {
   type OrderStatusInput,
 } from "@/lib/schemas/order";
 import { ORDER_STATUS_LABELS, orderTransitionPermission } from "@/lib/orders/status";
+import { NOTE_REQUIRED, URGENCY_LABELS, URGENCY_STATES } from "@/lib/orders/urgency";
+import { zonedTimeToUtc } from "@/lib/dates";
+import { businessToday } from "@/server/data/settings";
 import { assertPermission } from "@/server/auth";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -26,7 +30,7 @@ import type { EffectivePrice, OrderStatus } from "@/server/data/types";
 function revalidateOrder(id: string) {
   revalidatePath("/orders");
   revalidatePath(`/orders/${id}`);
-  revalidatePath("/dashboard");
+  revalidatePath("/command-center");
 }
 
 /**
@@ -45,7 +49,7 @@ export async function convertQuoteToOrder(quoteId: string): Promise<ActionResult
     const r = data as { order_id: string; order_number: string; created: boolean };
     revalidatePath("/orders");
     revalidatePath(`/quotes/${quoteId}`);
-    revalidatePath("/dashboard");
+    revalidatePath("/command-center");
     return ok(
       { orderId: r.order_id, orderNumber: r.order_number, created: r.created },
       r.created ? `Order ${r.order_number} created.` : `This quote was already converted — opening order ${r.order_number}.`,
@@ -146,5 +150,64 @@ export async function setOrderStatus(input: OrderStatusInput & { from: OrderStat
     const r = data as { status: OrderStatus; edit_seq: number };
     revalidateOrder(parsed.data.orderId);
     return ok({ status: r.status, editSeq: r.edit_seq }, `Order marked ${ORDER_STATUS_LABELS[r.status].toLowerCase()}.`);
+  });
+}
+
+const urgencyFlagInput = z.object({
+  orderId: z.uuid("Invalid order."),
+  reason: z.string().trim().min(3, "Say why the order is urgent.").max(500),
+  /** Optional needed-by time in the business time zone. */
+  neededDate: z.string().trim().default(""),
+  neededTime: z.string().trim().default(""),
+});
+
+/**
+ * Flag an order as urgent (or update the reason/deadline of its open flag).
+ * Safe to repeat: one open flag per order. It never assigns a truck, changes an
+ * assignment or promises the customer a time.
+ */
+export async function flagOrderUrgent(input: z.input<typeof urgencyFlagInput>): Promise<ActionResult<{ created: boolean }>> {
+  return guard(async () => {
+    await assertPermission("orders.edit");
+    const parsed = urgencyFlagInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const f = parsed.data;
+    let neededBy: string | null = null;
+    if (f.neededDate || f.neededTime) {
+      const { timezone } = await businessToday();
+      neededBy = zonedTimeToUtc(f.neededDate, f.neededTime || "23:59", timezone);
+      if (!neededBy) return fail("Enter a valid needed-by date and time.", { neededDate: "Enter a valid date and time." });
+    }
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("flag_order_urgent", { p_order_id: f.orderId, p_reason: f.reason, p_needed_by: neededBy });
+    if (error) return fail(dbErrorMessage(error));
+    const r = data as { created: boolean; changed: boolean };
+    revalidateOrder(f.orderId);
+    revalidatePath("/dispatch");
+    return ok({ created: r.created }, r.created ? "Flagged urgent. Dispatch sees it on the board and in the Command Center." : r.changed ? "Urgent flag updated." : "Already flagged with these details.");
+  });
+}
+
+const urgencyUpdateInput = z.object({
+  urgencyId: z.uuid("Invalid flag."),
+  orderId: z.uuid("Invalid order."),
+  state: z.enum(URGENCY_STATES),
+  note: z.string().trim().max(500).default(""),
+});
+
+/** Move an urgent flag on (acknowledge, evaluating, waiting, blocked, assigned, resolve, withdraw). The database checks permission and state. */
+export async function updateOrderUrgency(input: z.input<typeof urgencyUpdateInput>): Promise<ActionResult> {
+  return guard(async () => {
+    const parsed = urgencyUpdateInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const f = parsed.data;
+    if (NOTE_REQUIRED.includes(f.state) && !f.note) return fail("Add a note.", { note: "Required for this step." });
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("update_order_urgency", { p_urgency_id: f.urgencyId, p_state: f.state, p_note: f.note });
+    if (error) return fail(dbErrorMessage(error));
+    revalidateOrder(f.orderId);
+    revalidatePath("/dispatch");
+    const r = data as { changed: boolean };
+    return ok(undefined, r.changed ? `Urgent order: ${URGENCY_LABELS[f.state].toLowerCase()}.` : "No change.");
   });
 }

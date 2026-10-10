@@ -13,14 +13,14 @@ test("anonymous visitors are sent to sign in, then back to the page they wanted"
   await expect(page.getByLabel("Email")).toHaveValue(USERS.office.email);
 });
 
-test("sign in lands on the dashboard and sign out returns to sign in", async ({ page }) => {
+test("sign in lands on the Command Center and sign out returns to sign in", async ({ page }) => {
   await signIn(page, "office");
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
+  await expect(page).toHaveURL(/\/command-center/);
+  await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
   await page.getByRole("button", { name: /Omar Office/ }).click();
   await page.getByRole("menuitem", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login/);
-  await page.goto("/dashboard");
+  await page.goto("/command-center");
   await expect(page).toHaveURL(/\/login/);
 });
 

@@ -98,8 +98,10 @@ test("a new customer signs up with an access code, verifies the email, creates a
   await page.goto(mail.link);
   await expect(page).toHaveURL(/\/onboarding$/);
   await expect(page.getByLabel("Company name")).toHaveValue(company);
+  // The time zone is the new company's own choice (nothing inherited from another company).
+  await page.getByLabel("Time zone").selectOption("America/Denver");
   await page.getByRole("button", { name: "Create my company" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/command-center/);
   await expect(page.getByRole("banner")).toContainText(company);
   const companyId = (await sql<{ id: string }>("select id from public.companies where name = $1", [company]))[0].id;
   expect(await sql("select role from public.company_memberships where company_id = $1", [companyId])).toEqual([{ role: "owner" }]);
@@ -131,7 +133,7 @@ test("a new customer signs up with an access code, verifies the email, creates a
   await page.getByLabel("New password", { exact: true }).fill(`Office-${id}-Passw0rd`);
   await page.getByLabel("Confirm new password").fill(`Office-${id}-Passw0rd`);
   await page.getByRole("button", { name: "Save password" }).click();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/command-center/);
   await expect(page.getByRole("banner")).toContainText(`Office staff · ${company}`);
 
   // Top Line's dispatcher now has two companies and switches between them; data never mixes.
@@ -141,7 +143,7 @@ test("a new customer signs up with an access code, verifies the email, creates a
     await signIn(page, "dispatcher");
     await page.getByRole("banner").getByRole("button").last().click();
     await page.getByRole("menuitem", { name: `Switch to ${company}` }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await expect(page).toHaveURL(/\/command-center/);
     await expect(page.getByRole("banner")).toContainText(`Dispatcher · ${company}`);
     await page.goto(`/orders/${tlOrder}`);
     await expect(page.getByText("Not found", { exact: true })).toBeVisible(); // Top Line's order, by URL

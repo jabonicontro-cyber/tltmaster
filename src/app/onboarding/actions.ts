@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import type { ActionResult } from "@/lib/action-result";
 import { ACCESS_CODE_ERRORS, looksLikeAccessCode } from "@/lib/early-access";
+import { timezoneSchema } from "@/lib/schemas/settings";
 import { getAccess } from "@/server/auth";
 import { accessCodeHash, clientIp, rateKey } from "@/server/early-access";
 import { dbErrorMessage } from "@/server/errors";
@@ -17,16 +18,19 @@ const nameSchema = z.string().trim().min(2, "Enter the company name (2 to 120 ch
 export async function completeOnboarding(formData: FormData): Promise<ActionResult> {
   const name = nameSchema.safeParse(formData.get("companyName"));
   if (!name.success) return { ok: false, error: name.error.issues[0].message, fieldErrors: { companyName: name.error.issues[0].message } };
+  const tz = timezoneSchema.safeParse(formData.get("timezone"));
+  if (!tz.success) return { ok: false, error: tz.error.issues[0].message, fieldErrors: { timezone: tz.error.issues[0].message } };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("complete_company_onboarding", { p_company_name: name.data });
+  const { error } = await supabase.rpc("complete_company_onboarding", { p_company_name: name.data, p_timezone: tz.data });
   if (error) return { ok: false, error: dbErrorMessage(error) };
   revalidatePath("/", "layout");
-  redirect("/dashboard?welcome=1");
+  redirect("/command-center?welcome=1");
 }
 
 const createSchema = z.object({
   accessCode: z.string().trim().min(1, "Enter your access code."),
   companyName: nameSchema,
+  timezone: timezoneSchema,
   requestKey: z.uuid(),
 });
 
@@ -35,7 +39,10 @@ export async function createAnotherCompany(formData: FormData): Promise<ActionRe
   const access = await getAccess();
   if (!access) redirect("/login");
   const parsed = createSchema.safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  if (!parsed.success) {
+    const issue = parsed.error.issues[0];
+    return { ok: false, error: issue?.message ?? "Check the form.", fieldErrors: issue ? { [String(issue.path[0])]: issue.message } : {} };
+  }
   const codeHash = looksLikeAccessCode(parsed.data.accessCode) ? accessCodeHash(parsed.data.accessCode) : "0".repeat(64);
 
   // Per-IP and per-email limits (server, service role); the database also limits per user.
@@ -47,11 +54,11 @@ export async function createAnotherCompany(formData: FormData): Promise<ActionRe
   }
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_company_with_access_code", {
-    p_code_hash: codeHash, p_company_name: parsed.data.companyName, p_request_key: parsed.data.requestKey,
+    p_code_hash: codeHash, p_company_name: parsed.data.companyName, p_request_key: parsed.data.requestKey, p_timezone: parsed.data.timezone,
   });
   if (error) return { ok: false, error: dbErrorMessage(error) };
   const r = data as { ok: boolean; reason?: string };
   if (!r.ok) return { ok: false, error: ACCESS_CODE_ERRORS[r.reason ?? ""] ?? ACCESS_CODE_ERRORS.unknown };
   revalidatePath("/", "layout");
-  redirect("/dashboard?welcome=1");
+  redirect("/command-center?welcome=1");
 }

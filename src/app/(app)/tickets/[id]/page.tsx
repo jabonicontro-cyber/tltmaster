@@ -14,7 +14,9 @@ import { can } from "@/lib/permissions";
 import { reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
-import { getTicket } from "@/server/data/tickets";
+import { getTicket, reviewQueuePosition } from "@/server/data/tickets";
+import { ReturnLink } from "@/components/ui/return-link";
+import { returnTarget, withReturn } from "@/lib/safe-redirect";
 
 export const metadata = { title: "Delivery ticket" };
 
@@ -31,11 +33,17 @@ const FIELD_LABELS: Record<string, string> = {
   notes: "Notes",
 };
 
-export default async function TicketPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ queue?: string; back?: string }> }) {
   const access = await requirePagePermission("tickets.view");
   const { id } = await params;
+  const { queue: queueParam, back } = await searchParams;
   const detail = await getTicket(id);
   if (!detail) notFound();
+  // Opened from the review queue: show its position and where to go next.
+  const inQueue = queueParam === "review";
+  const queue = inQueue ? await reviewQueuePosition(id) : null;
+  const returnTo = returnTarget(back)?.href ?? (inQueue ? "/tickets?view=review" : null);
+  const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=review`, returnTo) : `/tickets/${ticketId}?queue=review`);
   const { ticket: t, revisions, events, units, people, photos } = detail;
   const { timezone } = await businessToday();
   const who = (uid: string | null) => (uid ? people[uid] ?? "Former user" : "System");
@@ -45,6 +53,16 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
 
   return (
     <>
+      <ReturnLink back={returnTo ?? undefined} />
+      {queue && (
+        <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm">
+          <span className="font-semibold">
+            {queue.position ? `Review queue: ${queue.position} of ${queue.total}` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
+          </span>
+          {queue.prevId && <Link href={queueHref(queue.prevId)} className="underline">Previous</Link>}
+          {queue.nextId && queue.nextId !== t.id && <Link href={queueHref(queue.nextId)} className="underline">Next</Link>}
+        </nav>
+      )}
       <PageHeader
         title={`Ticket ${t.ticket_number}`}
         crumbs={[{ label: "Delivery Tickets", href: "/tickets" }, { label: t.ticket_number }]}
@@ -61,7 +79,14 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
         }
         actions={
           t.status !== "superseded" ? (
-            <TicketActions ticketId={t.id} ticketNumber={t.ticket_number} orderId={t.order_id} status={t.status} permissions={{ edit: can(access, "tickets.edit"), review: can(access, "tickets.review") }} />
+            <TicketActions
+              ticketId={t.id}
+              ticketNumber={t.ticket_number}
+              orderId={t.order_id}
+              status={t.status}
+              permissions={{ edit: can(access, "tickets.edit"), review: can(access, "tickets.review") }}
+              queue={queue ? { nextHref: queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null, doneHref: returnTo ?? "/tickets?view=review" } : null}
+            />
           ) : undefined
         }
       />

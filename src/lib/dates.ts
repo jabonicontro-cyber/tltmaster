@@ -1,6 +1,7 @@
 // Dates. Calendar dates (quote date, expiration) are stored as DATE and
 // handled as "YYYY-MM-DD" strings; timestamps are displayed in the business
-// timezone (company_settings.timezone, default America/Chicago).
+// timezone (company_settings.timezone, chosen by each company; DEFAULT_TIMEZONE
+// is only a fallback for display when no setting is available).
 
 export const DEFAULT_TIMEZONE = "America/Chicago";
 
@@ -50,4 +51,27 @@ export function addDays(isoDate: string, days: number): string {
   const d = new Date(`${isoDate}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
+}
+
+function zoneOffsetMs(utcMs: number, timeZone: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+  }).formatToParts(new Date(utcMs));
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  return Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second")) - utcMs;
+}
+
+/**
+ * A wall-clock date and time in the business time zone ("2026-10-12", "14:30")
+ * as a UTC ISO timestamp, or null when the input is not a valid date/time.
+ * Handles daylight-saving offsets (two passes, as the offset depends on the instant).
+ */
+export function zonedTimeToUtc(isoDate: string, hhmm: string, timeZone: string): string | null {
+  if (!isIsoDate(isoDate) || !/^([01]\d|2[0-3]):[0-5]\d$/.test(hhmm)) return null;
+  const [y, m, d] = isoDate.split("-").map(Number);
+  const [h, mi] = hhmm.split(":").map(Number);
+  const wall = Date.UTC(y, m - 1, d, h, mi);
+  let utc = wall - zoneOffsetMs(wall, timeZone);
+  utc = wall - zoneOffsetMs(utc, timeZone);
+  return new Date(utc).toISOString();
 }

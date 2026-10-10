@@ -119,7 +119,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
       {!compact && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
           <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Billing and pricing</legend>
-          <Field label="Payment terms" htmlFor="payment_terms" error={fieldError("payment_terms")} className="sm:col-span-2" hint="Informational — invoices stay in QuickBooks.">
+          <Field label="Payment terms" htmlFor="payment_terms" error={fieldError("payment_terms")} className="sm:col-span-2" hint="Informational — invoices are issued in your accounting system.">
             <Input {...f("payment_terms")} defaultValue={initial.payment_terms} list="payment-terms" />
             <datalist id="payment-terms">
               {PAYMENT_TERMS_SUGGESTIONS.map((t) => (

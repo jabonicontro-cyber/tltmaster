@@ -2,8 +2,10 @@ import { ArrowRight, Clock } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import {
-  KIND_LABELS, KIND_OWNERS, PRIORITY_LABELS, ageLabel, exceptionAction, exceptionReasons, exceptionTitle, type ExceptionItem,
+  KIND_LABELS, PRIORITY_LABELS, ageLabel, exceptionAction, exceptionOwner, exceptionReasons, exceptionTitle, type ExceptionItem,
 } from "@/lib/command-center/rules";
+import { withReturn } from "@/lib/safe-redirect";
+import { HideControl } from "./hide-control";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
 import { AssignControl, type Person } from "./assign-control";
@@ -14,8 +16,9 @@ const priorityTone: Record<number, string> = {
   3: "bg-surface text-charcoal ring-1 ring-line",
 };
 
-export function ExceptionCard({ item, can, people, timezone, now }: { item: ExceptionItem; can: { ticketsEdit: boolean; dispatch: boolean; assign: boolean }; people: Person[]; timezone: string; now: Date }) {
+export function ExceptionCard({ item, can, people, timezone, now, back }: { item: ExceptionItem & { hidden_until?: string | null }; can: { ticketsEdit: boolean; dispatch: boolean; assign: boolean }; people: Person[]; timezone: string; now: Date; back: string }) {
   const action = exceptionAction(item, can);
+  const hiddenUntil = item.hidden_until ?? null;
   const title = exceptionTitle(item);
   const age = ageLabel(item.since, now);
   return (
@@ -37,14 +40,16 @@ export function ExceptionCard({ item, can, people, timezone, now }: { item: Exce
             <li key={i}>{r}</li>
           ))}
         </ul>
+        {hiddenUntil && <p className="text-xs font-semibold text-muted">Hidden from your view until {formatDateTime(hiddenUntil, timezone)} — still open.</p>}
         <p className="text-sm text-muted">
-          Handled by: {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : KIND_OWNERS[item.kind]}
+          Next action: {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : exceptionOwner(item)}
           {item.assignment_note ? ` — ${item.assignment_note}` : ""}
         </p>
       </div>
       <div className="flex flex-col items-start gap-2 sm:items-end">
-        <ButtonLink href={action.href} size="sm" icon={<ArrowRight className="size-4" />}>{action.label}</ButtonLink>
+        <ButtonLink href={withReturn(action.href, back)} size="sm" icon={<ArrowRight className="size-4" />}>{action.label}</ButtonLink>
         {can.assign && <AssignControl itemKey={item.exception_key} kind={item.kind} title={title} assignedTo={item.assigned_to} people={people} />}
+        {item.priority > 1 && <HideControl itemKey={item.exception_key} hiddenUntil={hiddenUntil} />}
       </div>
     </li>
   );

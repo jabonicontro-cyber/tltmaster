@@ -82,5 +82,5 @@ export async function updatePassword(formData: FormData): Promise<ActionResult> 
   if (error) {
     return { ok: false, error: error.message.includes("different") ? "Choose a password you have not used before." : "Password could not be updated. Try again." };
   }
-  redirect("/dashboard");
+  redirect("/command-center");
 }

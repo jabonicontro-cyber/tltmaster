@@ -3,7 +3,20 @@ import { parsePercentToBp } from "@/lib/money";
 import { ROLES } from "@/lib/permissions";
 import { optionalEmail, optionalPhone, optionalText, postalCode, requiredText, stateCode } from "./common";
 
-export const TIMEZONES = ["America/Chicago", "America/New_York", "America/Indiana/Indianapolis", "America/Denver", "America/Los_Angeles"] as const;
+/** Business time zones a company can choose (each company sets its own; nothing is assumed). */
+export const TIMEZONE_OPTIONS = [
+  { value: "America/New_York", label: "Eastern (New York)" },
+  { value: "America/Indiana/Indianapolis", label: "Eastern (Indianapolis)" },
+  { value: "America/Detroit", label: "Eastern (Detroit)" },
+  { value: "America/Chicago", label: "Central (Chicago)" },
+  { value: "America/Denver", label: "Mountain (Denver)" },
+  { value: "America/Phoenix", label: "Mountain, no DST (Phoenix)" },
+  { value: "America/Los_Angeles", label: "Pacific (Los Angeles)" },
+  { value: "America/Anchorage", label: "Alaska (Anchorage)" },
+  { value: "Pacific/Honolulu", label: "Hawaii (Honolulu)" },
+] as const;
+export const TIMEZONES = TIMEZONE_OPTIONS.map((t) => t.value) as [string, ...string[]];
+export const timezoneSchema = z.enum(TIMEZONES, "Choose the time zone your business runs on.");
 
 export const companySettingsSchema = z
   .object({
@@ -16,7 +29,12 @@ export const companySettingsSchema = z
     phone: optionalPhone,
     email: optionalEmail,
     website: optionalText(120),
-    timezone: z.enum(TIMEZONES),
+    timezone: timezoneSchema,
+    /** Escalate urgent orders nobody acknowledged within this many minutes; empty = off. */
+    urgent_ack_minutes: z.preprocess(
+      (v) => (v === "" || v === undefined || v === null ? null : v),
+      z.coerce.number().int("Whole minutes.").min(5, "At least 5 minutes.").max(1440, "At most 1440 minutes (24 hours).").nullable(),
+    ),
     default_tax_rate: z.string().trim().default("0"),
     quote_validity_days: z.coerce.number().int().min(1, "At least 1 day.").max(365),
     quote_followup_days: z.coerce.number().int().min(1).max(90),

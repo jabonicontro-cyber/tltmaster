@@ -14,7 +14,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { bpToInput } from "@/lib/money";
 import { ROLE_LABELS, ROLES, type AppRole } from "@/lib/permissions";
-import { TIMEZONES } from "@/lib/schemas/settings";
+import { TIMEZONE_OPTIONS } from "@/lib/schemas/settings";
 import type { CompanySettings } from "@/server/data/types";
 import { inviteUser, removeSampleData, saveCompanySettings, saveSequence, setRolePermission, updateUserAccess } from "@/app/(app)/settings/actions";
 
@@ -65,10 +65,10 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
             <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Quote defaults</legend>
-            <Field label="Business timezone" htmlFor="timezone" error={fe("timezone")} className="sm:col-span-3" hint="Lake and Porter counties use Central time.">
+            <Field label="Business timezone" htmlFor="timezone" error={fe("timezone")} className="sm:col-span-3" hint="Decides what “today” means for loads, tickets and the Command Center.">
               <Select {...ctl("timezone", fe("timezone"))} defaultValue={settings.timezone}>
-                {TIMEZONES.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                {TIMEZONE_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
               </Select>
             </Field>
@@ -78,7 +78,7 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             <Field label="Quotes valid for (days)" htmlFor="quote_validity_days" error={fe("quote_validity_days")} className="sm:col-span-3">
               <Input {...ctl("quote_validity_days", fe("quote_validity_days"))} type="number" min={1} max={365} defaultValue={settings.quote_validity_days} />
             </Field>
-            <Field label="Follow up after (days)" htmlFor="quote_followup_days" error={fe("quote_followup_days")} className="sm:col-span-3" hint="Sent quotes without a response appear on the dashboard after this many days.">
+            <Field label="Follow up after (days)" htmlFor="quote_followup_days" error={fe("quote_followup_days")} className="sm:col-span-3" hint="Sent quotes without a response appear in the Command Center after this many days.">
               <Input {...ctl("quote_followup_days", fe("quote_followup_days"))} type="number" min={1} max={90} defaultValue={settings.quote_followup_days} />
             </Field>
             <Field label="Default quote terms" htmlFor="default_quote_terms" error={fe("default_quote_terms")} className="sm:col-span-6" hint="Starting text for new quotes. Have these reviewed before relying on them.">
@@ -86,6 +86,18 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             </Field>
             <Field label="Quote footer note" htmlFor="quote_footer_note" error={fe("quote_footer_note")} className="sm:col-span-6">
               <Input {...ctl("quote_footer_note", fe("quote_footer_note"))} defaultValue={settings.quote_footer_note} />
+            </Field>
+          </fieldset>
+          <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+            <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Urgent orders</legend>
+            <Field
+              label="Escalate when not acknowledged within (minutes)"
+              htmlFor="urgent_ack_minutes"
+              error={fe("urgent_ack_minutes")}
+              className="sm:col-span-3"
+              hint="An urgent order nobody in dispatch acknowledged in time is marked overdue in the Command Center. Leave empty for no escalation. No messages are sent."
+            >
+              <Input {...ctl("urgent_ack_minutes", fe("urgent_ack_minutes"))} type="number" min={5} max={1440} defaultValue={settings.urgent_ack_minutes ?? ""} />
             </Field>
           </fieldset>
           {canEdit ? (

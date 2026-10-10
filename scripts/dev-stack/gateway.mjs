@@ -47,6 +47,12 @@ http
       },
     );
     upstream.on("error", (err) => {
+      // The upstream may fail after its response started (e.g. Storage closing
+      // the connection on an oversized upload): cut this response, keep serving.
+      if (res.headersSent) {
+        res.destroy();
+        return;
+      }
       res.writeHead(502, { "content-type": "application/json" });
       res.end(JSON.stringify({ message: `Upstream unavailable: ${err.message}` }));
     });

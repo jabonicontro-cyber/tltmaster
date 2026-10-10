@@ -45,8 +45,8 @@ export default async function NoAccessPage({ searchParams }: { searchParams: Pro
         )}
         <div className="mt-5 flex justify-center gap-2">
           {!pending && (
-            <Link href="/dashboard" className={buttonClasses("primary")}>
-              Go to dashboard
+            <Link href="/command-center" className={buttonClasses("primary")}>
+              Go to the start page
             </Link>
           )}
           <form action={signOut}>

@@ -16,6 +16,7 @@ const TENANT_TABLES = [
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments",
+  "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -49,6 +50,10 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.early_access_list_codes", "public.early_access_revoke_code", "public.my_onboarding",
   "public.complete_company_onboarding", "public.create_company_with_access_code", "public.my_companies",
   "public.switch_company", "public.add_existing_member",
+  // N10: onboarding with a time zone (second overloads), urgent orders, personal Command Center state.
+  "public.complete_company_onboarding", "public.create_company_with_access_code",
+  "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
+  "public.save_my_preference", "public.hide_exception", "public.unhide_exception",
 ];
 
 /**

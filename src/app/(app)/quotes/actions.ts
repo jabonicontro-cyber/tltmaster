@@ -22,7 +22,7 @@ import type { EffectivePrice } from "@/server/data/types";
 function revalidateQuote(id: string) {
   revalidatePath("/quotes");
   revalidatePath(`/quotes/${id}`);
-  revalidatePath("/dashboard");
+  revalidatePath("/command-center");
 }
 
 export async function saveQuoteDraft(input: QuoteDraftInput): Promise<ActionResult<{ quoteId: string; editSeq: number; quoteNumber: string; totalCents: number }>> {

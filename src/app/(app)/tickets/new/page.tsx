@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
 import { TicketForm } from "@/components/tickets/ticket-form";
 import { DescriptionList } from "@/components/ui/description-list";
@@ -14,9 +15,9 @@ import { getLoadForTicket } from "@/server/data/tickets";
 
 export const metadata = { title: "Enter delivery ticket" };
 
-export default async function NewTicketPage({ searchParams }: { searchParams: Promise<{ load?: string }> }) {
+export default async function NewTicketPage({ searchParams }: { searchParams: Promise<{ load?: string; back?: string }> }) {
   await requirePagePermission("tickets.edit");
-  const { load: loadId } = await searchParams;
+  const { load: loadId, back } = await searchParams;
   if (!loadId || !uuid.safeParse(loadId).success) notFound();
   const ctx = await getLoadForTicket(loadId);
   if (!ctx) notFound();
@@ -25,6 +26,7 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <ReturnLink back={back} />
       <PageHeader title={`Ticket for ${order.order_number} load ${load.load_number}`} crumbs={crumbs} description={`${order.customer_name}${order.project_name ? ` · ${order.project_name}` : ""}`} />
       <Card className="mb-5">
         <CardBody>

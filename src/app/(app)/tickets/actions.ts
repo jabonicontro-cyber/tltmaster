@@ -66,7 +66,7 @@ function confirmOrFail(error: DbError) {
 function revalidateTickets(orderId?: string) {
   revalidatePath("/tickets", "layout");
   revalidatePath("/dispatch");
-  revalidatePath("/dashboard");
+  revalidatePath("/command-center");
   if (orderId) revalidatePath(`/orders/${orderId}`);
 }
 

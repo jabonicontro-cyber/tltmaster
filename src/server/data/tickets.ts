@@ -162,7 +162,9 @@ export async function resourceNames() {
 /** Current revisions (superseded ones are history). */
 export async function listTickets(view: TicketView, q?: string) {
   const supabase = await createClient();
-  let query = supabase.from("delivery_tickets").select("*").neq("status", "superseded").order("delivered_at", { ascending: false }).limit(300);
+  // Review views work like a queue: oldest first (as in the Command Center). Others: newest delivery first.
+  const queue = view === "review" || view === "submitted";
+  let query = supabase.from("delivery_tickets").select("*").neq("status", "superseded").order(queue ? "created_at" : "delivered_at", { ascending: queue }).limit(300);
   if (view === "review") query = query.eq("status", "needs_review");
   else if (view === "submitted") query = query.eq("status", "submitted");
   else if (view === "accepted") query = query.eq("status", "accepted");
@@ -261,3 +263,23 @@ export async function liveTicketsForLoads(loadIds: string[]) {
   return (data ?? []) as Array<Pick<TicketRow, "id" | "load_id" | "ticket_number" | "status" | "quantity" | "unit_code">>;
 }
 
+
+/** Tickets waiting for verification (received or flagged), oldest first — the same order as the Command Center. */
+export const REVIEW_QUEUE_STATUSES: TicketStatus[] = ["needs_review", "submitted"];
+
+/** Where a ticket sits in the review queue: its position, and the tickets before and after it. */
+export async function reviewQueuePosition(ticketId: string): Promise<{ position: number | null; total: number; prevId: string | null; nextId: string | null } | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("delivery_tickets")
+    .select("id")
+    .in("status", REVIEW_QUEUE_STATUSES)
+    .order("created_at")
+    .order("id")
+    .limit(500);
+  if (error) return null;
+  const ids = ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+  const i = ids.indexOf(ticketId);
+  if (i === -1) return { position: null, total: ids.length, prevId: null, nextId: ids[0] ?? null };
+  return { position: i + 1, total: ids.length, prevId: ids[i - 1] ?? null, nextId: ids[i + 1] ?? (ids.length > 1 ? ids[0] : null) };
+}

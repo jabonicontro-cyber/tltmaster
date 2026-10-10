@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
           </>
         )}
         <div className="mt-4 text-center text-sm">
-          {state.membership_count ? <Link href="/dashboard" className={buttonClasses("ghost", "sm")}>Back to the app</Link> : null}
+          {state.membership_count ? <Link href="/command-center" className={buttonClasses("ghost", "sm")}>Back to the app</Link> : null}
         </div>
       </div>
     </main>

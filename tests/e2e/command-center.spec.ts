@@ -60,7 +60,7 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   const f = await fixture();
   await signIn(page, "office");
   await page.goto("/command-center");
-  await expect(page.getByRole("heading", { name: "Command Center" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
   const overview = page.getByRole("list", { name: "Overview" });
   for (const label of ["Loads today", "Missing delivery tickets", "Tickets to review", "Orders blocked from billing", "Orders ready to bill", "Trucks out of service"]) {
     await expect(overview.getByRole("listitem", { name: label, exact: true })).toBeVisible();
@@ -73,7 +73,13 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   const missingTitle = `${f.orderNumber} · load 1 has no delivery ticket`;
   const missing = page.getByRole("listitem", { name: missingTitle });
   await expect(missing).toContainText("The load has ended and no delivery ticket was entered.");
-  await expect(missing.getByRole("link", { name: "Enter the ticket" })).toHaveAttribute("href", `/tickets/new?load=${f.pastLoad}`);
+  // The link opens the exact workflow step and remembers this queue view.
+  await expect(missing.getByRole("link", { name: "Enter the ticket" })).toHaveAttribute("href", `/tickets/new?load=${f.pastLoad}&back=${encodeURIComponent("/command-center?kind=missing_ticket#attention")}`);
+  await missing.getByRole("link", { name: "Enter the ticket" }).click();
+  await expect(page).toHaveURL(new RegExp(`/tickets/new\\?load=${f.pastLoad}`));
+  await page.getByRole("link", { name: "Back to the Command Center" }).click();
+  await expect(page).toHaveURL(/\/command-center\?kind=missing_ticket#attention$/);
+  await expect(missing).toBeVisible();
 
   // Today's load without a truck is urgent and opens dispatch on that load.
   await page.goto("/command-center?kind=unassigned_load");

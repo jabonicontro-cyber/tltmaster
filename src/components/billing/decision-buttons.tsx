@@ -53,7 +53,7 @@ export function RevertHandoffButton({ handoffOrderId, orderId, orderNumber, batc
         open={open}
         onOpenChange={setOpen}
         title={`Undo handoff of ${orderNumber}`}
-        description={`Takes the order out of batch ${batchNumber} and back into billing review. If it was already invoiced in QuickBooks, fix that there too. The handoff stays on record as undone.`}
+        description={`Takes the order out of batch ${batchNumber} and back into billing review. If it was already invoiced in your accounting system, fix that there too. The handoff stays on record as undone.`}
         confirmLabel="Undo handoff"
         tone="danger"
         onConfirm={async () => {

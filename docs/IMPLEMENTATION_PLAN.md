@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3), dispatch assignments (N4), delivery tickets (N5) and the later milestones in §5e–§5i. The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3), dispatch assignments (N4), delivery tickets (N5) and the later milestones in §5e–§5j. The product's working name is Taviron (not final; set in `src/lib/product.ts`). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -49,18 +49,19 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Quote email | 🟡 | `src/server/email/provider.ts`, `sendQuoteEmail` | Preview and test modes are tested. Real Resend delivery has never been exercised. |
 | Quote → order conversion | ✅ | `orders`, `order_lines`, `convert_quote_to_order` | — |
 | Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
-| Scheduling and dispatch | ✅ day board (N4, see §5c) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history. No week view, notifications or derived order status. |
+| Scheduling and dispatch | ✅ day board (N4, see §5c) · urgent orders (N10, §5j) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history; urgent orders shown on the board with acknowledgement. No week view, recurring loads, PTO or notifications. |
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
 | Delivery tickets and documents | ✅ office entry (N5, see §5d) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migration `20261015000100_delivery_tickets.sql` | Numbered tickets with revisions, review and void history. **No file storage**, photos, signatures, printing or driver entry. |
 | Reconciliation and billing-ready records | ✅ first version (N6, see §5e) | `src/app/(app)/billing`, `src/components/billing`, `src/lib/billing`, migration `20261016000100_billing_readiness.sql` | Derived readiness, exception acknowledgments, handoff batches with a CSV file. **No invoices, payments, tax, AR or QuickBooks sync**; the CSV is not a QuickBooks import format. No quantity tolerance setting yet (exact match). |
-| Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/command-center`, `src/app/(app)/reports` | Dashboard: real quote figures, orders scheduled today, fleet readiness and a Command Center summary; one "Deliveries in progress" placeholder remains. The Command Center (N7, §5f) is the operational overview. Reports is a placeholder. |
+| Command Center (merged dashboard) and reports | ✅ Command Center (N10, see §5j) · 🧱 Reports | `src/app/(app)/command-center`, `src/lib/command-center`, `src/components/command-center`; `/dashboard` redirects | One home page: pinned attention summary, your work (assigned items, your own loads when linked to a driver record), the prioritized queue (now with urgent orders), operations figures from one database summary, sales (quotes) and one activity feed; sections arranged and collapsed per person; non-urgent items hidden per person. Reports is still a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
 | Employee / driver portal, qualifications, PTO, announcements, incidents | 🟡 driver portal (N8, see §5g) | `src/app/(app)/driver`, `src/components/driver`, `src/app/(app)/field-reports`, migration `20261018000100_driver_portal.sql` | Drivers see their own assignments, enter tickets with paper-ticket photos (N8.1, §5h) and send field reports; qualification reminders. No offline queue, no PTO, announcements or incident records. |
 | Supplier price imports and price history | ❌ | — | — |
-| Operational exceptions queue | ✅ first version (N7, see §5f) | `src/app/(app)/command-center`, `src/lib/command-center`, migration `20261017000100_command_center.sql` | Six kinds (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems), derived live, prioritized, assignable to a person. No maintenance (no data), no supplier-cost or quote kinds yet, no notifications. |
+| Operational exceptions queue | ✅ (N7, extended N10 — see §5f, §5j) | `private.operational_exceptions`, migrations `20261017000100_command_center.sql`, `20261021000100_command_center_coordination.sql` | Nine kinds incl. urgent orders, derived live, prioritized, assignable, hideable per person (non-urgent only). No notifications (email/SMS/push), no maintenance or supplier-cost kinds, no payroll kinds. |
 | AI assistant / smart dispatch | ❌ | — | — |
-| Multi-tenant isolation | ✅ (B1, 2026-10-11) | `companies`, `company_memberships`, `company_id` on 22 tables, migration `20261011000200_company_separation.sql`, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts` | Self-serve company creation behind the early-access gate and a company switcher (N9, §5i). No per-company branding (sidebar logo is still Top Line's) or subscription billing. |
+| Payroll readiness / driver pay | ❌ planned (see §8 A) | — | Not built: no pay rules, periods or approvals exist; billing readiness never implies payroll. |
+| Multi-tenant isolation | ✅ (B1; onboarding N9; defaults N10) | `companies`, `company_memberships`, `company_id` on 41 tables, `tests/db/tenancy.test.ts`, `tests/db/coordination.test.ts`, `tests/e2e/tenancy.spec.ts` | Self-serve company creation behind the early-access gate, company switcher, no company-specific defaults; new companies choose their time zone. No per-company branding or subscription billing. |
 | Audit log | ✅ per company | `audit_events.company_id`, Settings → Audit log | — |
 | Sample data handling | ✅ | `is_sample`, `remove_sample_data()` | — |
 | Local dev stack | 🟡 | `scripts/dev-stack` | Postgres, Auth, PostgREST, optional Storage (N8.1) and a mail catcher (N9). The `supabase start` path (Docker) has never been run. |
@@ -1119,19 +1120,158 @@ drivers.
   list, marketing site or subscription payment (out of scope for N9).
 - A person cannot leave a company themselves; an owner deactivates them.
 
+## 5j. Unified Command Center and workflow coordination (N10)
+
+### Found before changing anything
+
+- Start: branch `claude/top-line-trucking-manager-vmw04i`, commit `dc21c1d` (N9), clean tree.
+  The N9 report matched the code (sign-up, onboarding, switcher, invitations, tests).
+- **Baseline**: vitest 263/265 (2 storage tests failed) and the browser suite could not
+  start. Cause: the local dev gateway (`scripts/dev-stack/gateway.mjs`) crashed when Storage
+  closed a connection after its response started (the 5 MB rejection), taking Auth and
+  PostgREST offline. A dev-tool bug, not an app bug: fixed (cut that one response, keep
+  serving). After the fix: vitest 265/265, browser 36/36.
+- **Dashboard** (`/dashboard`): quote figures with a date/customer filter, follow-up lists,
+  recent activity (audit or quote events), "Orders scheduled today", a fleet card, a card
+  repeating the Command Center total, and a "Deliveries in progress — not available"
+  placeholder. Everyone landed here after sign-in.
+- **Command Center** (`/command-center`, N7/N8): operational overview cards and a
+  prioritized attention queue derived live in the database
+  (`private.operational_exceptions`), assignable to a person, plus operational activity.
+  Required dispatch/tickets/billing/fleet/field-report permissions.
+- **Overlap**: two entry points with overlapping figures computed in different places
+  (out-of-service trucks in `fleetOverview()` and in `command_center_summary`; the dashboard
+  repeated the queue total); two activity feeds with different rules.
+- **Orders → dispatch → tickets → billing**: one chain of shared records — loads and
+  assignments reference the order, tickets reference load/assignment/order line, billing
+  readiness is a set of live views (`billing_load_status`, `billing_order_status`). A ticket
+  correction therefore re-evaluates readiness automatically; nothing is copied. Received
+  (submitted), needs review, accepted, voided and superseded are explicit ticket states;
+  accepted ≠ billed. Payroll does not exist (no pay rules, no data).
+- **Gaps**: no urgency on orders (no flag, owner or acknowledgement); after reviewing a
+  ticket the reviewer stays on it (no "next"); opening a queue item loses the queue context;
+  the order page does not say where the order stands in billing; nothing can be hidden or
+  arranged per person.
+- **Authorization**: unchanged model (role per membership, per-company `role_permissions`,
+  RLS on everything, definer functions checking company and permission). Owner permissions
+  are fixed — and lacked `driver.portal`, so an owner who also drives could not see their
+  own loads.
+- **Company-specific assumptions**: `company_settings` column defaults `company_name =
+  'Top Line Trucking'`, `state = 'IN'`, `timezone = 'America/Chicago'` (new companies
+  inherited Central time without being asked); sidebar logo "TOP LINE TRUCKING", page
+  titles, PDF creator and dev email subjects name Top Line; the settings time-zone hint
+  mentions Lake and Porter counties; `create-owner.mjs` defaulted to the Top Line slug.
+  The B1 migration (historical, not editable) creates the company row "Top Line Trucking"
+  on every install; it has no members and receives no data from other companies. No live
+  function references that company. `private.create_company` copies nothing from another
+  company.
+
+### Plan
+
+- One Command Center at `/command-center` (`/dashboard` redirects, keeping old links):
+  pinned status strip, "Your work" (items assigned to you, your own loads when your
+  account is linked to a driver record), the attention queue, operations figures from one
+  database summary, sales (quotes) for people with quotes access, one activity feed.
+  Sections can be reordered and collapsed per person; the strip with urgent counts cannot.
+- Hide-for-me on non-urgent items (per person, time-limited, never resolves the record,
+  still counted); urgent items cannot be hidden.
+- Urgent orders: office flags an order with a reason and optional deadline; dispatch sees
+  it on the board and in the queue, acknowledges and moves it through explicit states;
+  optional company escalation time; full history; no automatic assignment.
+- Ticket review queue: queue position, "Accept and next", return to the same filter.
+- Order page: one progress panel (loads, assignments, tickets, billing readiness, urgency)
+  with the next step and who handles it.
+- Company defaults: no company-specific defaults; time zone chosen at onboarding; neutral
+  product name in shared UI (working name in one constant).
+
+### What was built (N10)
+
+- Migration `20261021000100_command_center_coordination.sql` (additive; dev database backed
+  up first):
+  - `company_settings`: no company-specific defaults (`company_name`, `state` default to
+    empty); new `urgent_ack_minutes` (escalation time, null = off). Onboarding functions take
+    a time zone (`complete_company_onboarding(name, timezone)`,
+    `create_company_with_access_code(…, timezone)`); the one-argument versions are no longer
+    executable by app users.
+  - Owner role gains `driver.portal` (owner permissions are fixed; the portal still needs a
+    linked, active driver record).
+  - `order_urgencies` (one open flag per order: reason, needed-by, state, who flagged, who
+    acknowledged) and append-only `order_urgency_events`; `flag_order_urgent` (orders.edit,
+    idempotent), `update_order_urgency` (dispatch.edit for working states, orders.edit to
+    withdraw, either to resolve; notes required for blocked / waiting / resolved / withdrawn;
+    "truck assigned" only when an assignment exists); a completed or canceled order closes its
+    flag with a history entry. Nothing assigns trucks or changes assignments. Flags and
+    their history cannot be deleted, except together with a sample order by "Remove sample
+    data" (same rule as every other order record).
+  - `user_preferences` (section order and collapsed sections only) and `exception_dismissals`
+    (hide a non-urgent item from your own view for 4 h / 1 day / 3 days; still open and
+    counted); `save_my_preference`, `hide_exception`, `unhide_exception`.
+  - Command Center: `urgent_order` kind (priority 1 until acknowledged or when past its
+    needed-by time; escalation reason when the company's time passes), `orders_today` and
+    `urgent_orders` in the summary (one source for the merged page), hidden counts, queue
+    paging of hidden items; `orders.view` alone now opens the Command Center.
+- **Command Center** (`/command-center`, the only home page; `/dashboard` redirects): pinned
+  attention summary (urgent count always visible, not collapsible), "Your work", attention
+  queue, operations figures (incl. orders today, urgent orders, drivers ready), sales and
+  quotes, one activity feed (full audit with `audit.view`, otherwise operations + quote
+  events). "Arrange sections" and collapse per person; "Hide for me" on non-urgent items.
+  Drivers without office permissions start on My Day.
+- **Context**: records opened from the queue, the ticket list or the dispatch board carry a
+  validated `back` link ("Back to the Command Center" / "ticket queue" / "dispatch board")
+  that returns to the same filter and page.
+- **Ticket review queue**: "Review queue: n of N", previous/next, "Accept and next" (after
+  accept, flag or void the next ticket opens; when the queue is empty, back to the list);
+  review views list oldest first, like the Command Center.
+- **Order page**: "Progress" panel (dispatch → delivery tickets → billing readiness, from the
+  same records and the same due rule as billing) with the next step and who handles it;
+  "Urgent order" panel with history.
+- **Dispatch board**: urgent orders banner (oldest first) with "Acknowledge".
+- **Company-neutral shared code**: product name in `src/lib/product.ts`; sidebar shows the
+  active company; email templates, titles, PDF creator and dev email subjects no longer name a
+  customer; billing texts say "your accounting system"; `create-owner.mjs` requires a slug;
+  time zones offered nationally with labels; Settings hint no longer names counties.
+- **Dev stack**: the gateway no longer crashes when an upstream closes a connection mid-response.
+- **Tests**: `tests/db/coordination.test.ts` (10), `tests/unit/coordination.test.ts` (9),
+  `tests/e2e/coordination.spec.ts` (3: urgent order office → dispatch → Command Center with
+  another company seeing nothing; review queue accept-and-next and return; per-person
+  layout, hide/show, owner who drives); updated `command-center.spec.ts` (return to the
+  filtered queue), `auth.spec.ts`, `roles.spec.ts`, `onboarding.spec.ts` (time zone),
+  `tests/db/onboarding.test.ts`, tenancy guards (41 business tables, 110 reviewed definer
+  functions).
+
+### Remaining limits (N10)
+
+- No notifications: escalation marks an urgent order overdue in the Command Center; nobody is
+  emailed, texted or paged. Escalation rules beyond one time limit (business hours, holidays,
+  per-customer rules) are not modelled — they need the companies' real rules first.
+- Urgency is not shown in the orders list (only on the order, the board and the queue).
+- Billing readiness requirements are the same for every company (all loads documented and
+  accepted, differences acknowledged). Company-specific requirements (e.g. photo required,
+  PO required) are a planned setting (§8 B/G).
+- No OCR/extraction: tickets are entered by hand or by the driver; "received" (submitted) and
+  "verified" (accepted) are explicit states; suspected duplicates require confirmation.
+- The review queue and position are computed on each page load (no locking between two
+  reviewers; the second decision on the same ticket is refused by the database).
+- Payroll readiness does not exist yet (§8 A). Nothing in billing implies driver pay.
+- The historical B1 migration creates an empty "Top Line Trucking" company on a fresh install;
+  an operator can rename or deactivate it (it has no members and receives no other company's
+  data).
+
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 17 migrations via
-`supabase db push`, auth email settings, templates and SMTP per SETUP §2, deploy,
-backup/restore drill, then the sign-up → onboarding → invitation flow with a real
-inbox and one early-access code). Then decide
-QuickBooks Desktop vs Online and verify an import or API mapping against a test
-company before adding any QuickBooks-specific export; and consider an explicit
-per-company quantity tolerance for billing exceptions. For the command center,
-the next useful kinds are expiring driver qualifications (data exists) and,
-once maintenance is built, service due dates. On staging, verify the
-`ticket-photos` bucket is private, run the storage tests against it with test
-users, schedule the photo cleanup and set up a storage backup (§5h).
+**B3 — staging deployment** (hosted Supabase, all 18 migrations via `supabase db push`, auth
+email settings, templates and SMTP per SETUP §2, deploy, backup/restore drill, the sign-up →
+onboarding → invitation flow with a real inbox, the `ticket-photos` bucket checks and a
+storage backup). It is the dependency for every external verification below.
+
+Then, in order of value and readiness:
+1. **Payroll readiness (§8 A)** — only after the pay rules of the participating companies are
+   written down and the export target (QuickBooks Online payroll or another system, file vs
+   API) is confirmed with a test company.
+2. **Company billing requirements and order-list urgency** (§8 B, small).
+3. **Fleet maintenance and defects (§8 D)** — feeds dispatch eligibility and the Command
+   Center (data model first; safety-critical defects block dispatch per company policy).
 
 ---
 
@@ -1202,3 +1342,127 @@ External accounts: Supabase (staging + production), Resend (verified domain),
 a Next.js host. Later: a heavy-truck routing provider (evaluation pending);
 QuickBooks (Desktop vs Online to be confirmed); possibly an LLM provider for the
 assistant (Phase 5).
+
+---
+
+## 8. Product roadmap — status by requirement (Taviron)
+
+Status words: **Verified** (implemented and covered by tests that ran) · **Implemented,
+unverified** (built; not exercised end to end, usually because it needs an external system)
+· **Partial** · **Planned** (agreed, not started) · **Deferred** (not before its dependency)
+· **Blocked** (waiting on a decision or an external fact). No row is a promise of a date.
+
+Principles that hold for every row: each company's data, numbering, pricing, permissions and
+settings stay its own; no company's practices become a global default; estimates stay
+separate from actuals; recommendations never act on their own (dispatch changes, invoices,
+payroll and external commitments need an authorized person); missing or stale data is never
+shown as "no problems".
+
+### Foundation (for reference)
+
+| Requirement | Status | Where |
+| --- | --- | --- |
+| Tenant isolation (RLS, definer checks, composite keys, storage policies) | Verified | §5, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts`, `tests/db/coordination.test.ts` |
+| Secure onboarding with early-access gate, invitations, switcher | Verified locally · hosted email unverified | §5i |
+| Clean company defaults (no inherited data or company-specific defaults; own time zone) | Verified | §5j |
+| One Command Center with role-aware sections, per-person layout and hiding | Verified | §5j |
+| Urgent office → dispatch coordination (flag, acknowledge, states, escalation flag, history) | Verified · notifications planned | §5j |
+| Order → dispatch → ticket → billing progress from shared records | Verified | §5j, §5e |
+| Staging / production separation, backups and tested recovery | Planned (B3) | SETUP, BACKUP_RESTORE |
+
+### A. Payroll readiness and accounting integration
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Payroll access restricted to explicitly authorized users (new `payroll.view` / `payroll.approve`, owner-only by default) | Planned | Fits the existing permission model; no other role gets it by default. |
+| Preliminary driver earnings from verified (accepted) ticket/load data | Blocked | Needs each participating company's pay rules (per load, per ton, per hour, minimums, special rates). Do not invent a formula. |
+| Driver pay rules separate from customer billing rates | Planned | Separate tables; never read from price lists. |
+| Pay periods, period summaries, drill-down to loads | Planned | After pay rules. |
+| Exceptions (missing/unverified tickets in a period, corrections after approval) | Planned | Reuses the Command Center (new kind, payroll permission only). |
+| Review and approval; calculated → approved → exported → externally processed states | Planned | Approval never automatic; corrections after approval reopen with history. |
+| Duplicate-safe exports with audit trail | Planned | Same pattern as billing handoff batches (idempotency key, one active batch per item). |
+| QuickBooks Online as first integration target | Blocked | Verify each company's actual QuickBooks setup (Online vs Desktop, payroll product), the supported API or import, required identifiers and format, against a test company — before building. |
+| Provider-neutral integration boundary (other accounting/payroll systems) | Planned | Export model in Taviron's terms; provider adapters separate. |
+| Payroll execution, taxes, withholding | Out of scope | Remain in the payroll system. |
+
+### B. Quotes, customers and pricing
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Customers, contacts, sites | Verified | §1 matrix |
+| Duplicate-aware global search | Partial | Per-module search exists; no cross-module search or duplicate warnings on create. |
+| Quote versions, approval (sent/accepted), expiry dates, revisions; accepted versions immutable | Verified | Quotes never change silently; orders copy the accepted version. |
+| Automatic expiry | Deferred | By design shown as "past expiration"; decide per company. |
+| Materials and dated customer/standard rates | Verified | |
+| Supplier costs, margins, cost-informed suggestions | Planned | Needs supplier price data and an import format. |
+| Delivery zones / distance bands, minimums, contracts, fuel surcharges | Partial | Charges and percentage surcharges exist; zones, distance and minimum rules do not. |
+| Volume (L × W × D) and density-based tonnage estimates | Planned | Estimates must stay labelled as estimates, separate from delivered quantities. |
+| Company-specific billing requirements (photo required, PO required, tolerance) | Planned | Company settings feeding the billing views; currently one rule set for all. |
+| Pricing and numbering isolated per company | Verified | |
+
+### C. Dispatch and driver fairness
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Daily board with eligibility, qualifications and no double-booking | Verified | |
+| Weekly / monthly planning, recurring loads with exceptions | Planned | |
+| Driver/truck availability, PTO, maintenance downtime | Partial | Out-of-service equipment and qualifications block assignment; no PTO or planned downtime. |
+| Replacement assignments with history | Verified | |
+| Urgent work coordination | Verified (N10) | Configurable escalation time; richer policies need real rules. |
+| Explainable recommendations (AI-assisted) | Deferred | After reliable history; safety/legal constraints are hard limits; humans approve changes. |
+| Fairness analysis (eligibility, opportunities, load mix, duration, distance, waiting, verified earnings) | Deferred | Needs payroll data (A) and enough history; load count alone is not fairness. |
+
+### D. Fleet, maintenance and parts
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Out-of-service status with history and dispatch impact | Verified | |
+| Defects from driver reports | Partial | Breakdown/equipment reports exist; no defect records or severity. |
+| Maintenance histories, preventive schedules, inspections | Planned | Data model first. |
+| Work orders, labor, parts, external shop invoices, downtime, repeat issues | Planned | |
+| Repair completed ≠ authorized return to service; safety-critical defects block dispatch per company policy | Planned | Company setting for which defects block. |
+| Parts: ordered / shipped / delivered / physically received (tracking never confirms receipt) | Planned | |
+| AI risk and repair-window suggestions with stated uncertainty | Deferred | After maintenance data exists. |
+
+### E. Route and conditions intelligence
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Configurable operating regions per company | Planned | No region is assumed (not only Northwest Indiana). |
+| Official closures, construction, incidents, detours, bridge/weight limits, weather, frost laws | Blocked | Sources and their coverage must be researched and verified first; show source and freshness; confirmed vs forecast. |
+| Matching restrictions to trips | Deferred | Needs routes and vehicle/load data; never treat "no alerts" as "clear"; never recommend violating a restriction; humans approve reroutes. |
+
+### F. Employees, drivers, mobile and breakdowns
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Driver portal: assignments, instructions, tickets with photos, delays and breakdown reports | Verified | §5g, §5h |
+| Qualification and document expirations | Partial | Qualifications with expiry and reminders; no document storage for them. |
+| Owner/office staff who also drive | Verified (N10) | Linked driver record + `driver.portal`; responsibilities never add permissions. |
+| Availability, PTO, announcements, assignment acknowledgement | Planned | |
+| Breakdown workflow (confirmed location/map pin, affected assignments, repair, reassignment, return to service) | Partial | Reports exist; location, repair coordination and return-to-service do not. |
+| GPS / location / offline | Deferred | Needs a privacy model, permissions, freshness and conflict handling first. No compliance claims. |
+
+### G. Reporting, proactive assistance and commercial readiness
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Revenue, cost, profitability, maintenance spend, utilization, ticket-to-billing time, payroll exceptions, pricing performance | Planned | Mark actual / estimated / incomplete / unavailable; profitability only with reliable costs. |
+| Predictive optimization | Deferred | Only when data quality justifies it. |
+| Onboarding, training, support, data export, offboarding | Partial | Onboarding done (N9/N10); export and offboarding planned. |
+| Backups and tested recovery; staging/production separation | Planned (B3) | |
+| Public website, subscription payments | Out of this work | Separate project; access stays server-enforced. |
+| Controlled beta: parallel testing, baseline metrics, acceptance criteria, readiness review | Planned | Existing procedures stay authoritative during parallel testing; no duplicate live dispatch or billing without a plan. |
+| Product name | Working name "Taviron", not cleared | One constant (`src/lib/product.ts`); no rebranding work until cleared. |
+
+### Unresolved business rules and external dependencies
+
+- Driver pay formulas, special rates, pay periods, adjustments, approvals and export format
+  (per participating company).
+- Accounting/payroll systems actually used by each company, and their supported import/API.
+- Urgent-order escalation beyond a single time limit (business hours, holidays, who is
+  notified and how).
+- Company-specific billing documentation requirements and quantity tolerances.
+- Maintenance policies: which defects stop dispatch, who may return equipment to service.
+- Operating regions and official data sources for road and weather conditions.
+- Hosted environment (B3): SMTP, templates, URLs, storage bucket and backups.

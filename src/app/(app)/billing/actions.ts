@@ -9,7 +9,7 @@ import { createClient } from "@/server/supabase/server";
 
 function revalidateBilling(orderIds: string[] = []) {
   revalidatePath("/billing", "layout");
-  revalidatePath("/dashboard");
+  revalidatePath("/command-center");
   for (const id of orderIds) revalidatePath(`/orders/${id}`);
 }
 
