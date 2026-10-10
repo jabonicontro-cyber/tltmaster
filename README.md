@@ -3,8 +3,8 @@
 Operations software for Top Line Trucking — customers, materials and pricing,
 quotes with PDF and email, order management (from accepted quotes or entered directly,
 scheduling and status tracking), a fleet registry (trucks, trailers, drivers and
-their qualifications), a dispatch board, and (in later phases) delivery
-tickets, route planning and QuickBooks export.
+their qualifications), a dispatch board, delivery tickets, and (in later phases) route planning and
+QuickBooks export.
 
 Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 (PostgreSQL + Auth). Accounting stays in QuickBooks.
@@ -25,7 +25,8 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 | Orders: convert accepted quotes (one order per quote), direct orders, status workflow, delivery dates and time windows, detail edits, history, search and filters | ✅ — loads, trucks and drivers arrive with dispatch |
 | Fleet: trucks, trailers, drivers, licenses and medical cards, service status with history, dispatch-readiness check | ✅ — maintenance, documents and PTO later |
 | Dispatch: day board, loads per order with times, assign / reassign / remove trucks, trailers and drivers, eligibility and no double-booking | ✅ — week view and notifications later |
-| Route Planner, Tickets, Reports | Planned — pages say so; nothing fake |
+| Delivery tickets: enter actual quantities from paper/scale tickets, review, correct (revisions), void, history | ✅ — office entry; photos, signatures and printing later |
+| Route Planner, Reports | Planned — pages say so; nothing fake |
 
 ## Quick start (local)
 
@@ -68,7 +69,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` · `npm run typecheck` | ESLint · TypeScript |
 | `npm test` | Unit tests (money, quote calculation, status rules, PDF, email) |
-| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, numbering (needs a migrated DB) |
+| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, delivery tickets (numbering, revisions, duplicates), numbering (needs a migrated DB) |
 | `npm run test:e2e` | Browser tests against a running app + local backend |
 | `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker |
 

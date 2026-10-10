@@ -22,7 +22,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         title="Dispatch"
         description={`${weekday}, ${formatDateLong(date)}${date === today ? " — today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`}
       />
-      <DispatchBoard day={day} canEdit={can(access, "dispatch.edit")} />
+      <DispatchBoard day={day} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} />
     </>
   );
 }

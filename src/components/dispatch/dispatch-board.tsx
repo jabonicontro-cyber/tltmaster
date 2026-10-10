@@ -19,6 +19,7 @@ import { TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS, trimNumber } from "@/lib/fleet/
 import { formatTime } from "@/lib/orders/schedule";
 import type { AssignmentRow, DispatchDay, OrderLoadRow } from "@/server/data/dispatch";
 import type { OrderListRow } from "@/server/data/types";
+import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { assignLoad, cancelAssignment, cancelLoad, saveLoad } from "@/app/(app)/dispatch/actions";
 
 const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
@@ -39,7 +40,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit }: { day: DispatchDay; canEdit: boolean }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean }) {
   const router = useRouter();
   const [loadDialog, setLoadDialog] = useState<{ order: OrderListRow; load: OrderLoadRow | null } | null>(null);
   const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null } | null>(null);
@@ -117,6 +118,9 @@ export function DispatchBoard({ day, canEdit }: { day: DispatchDay; canEdit: boo
                 date={day.date}
                 loads={day.loads.filter((l) => l.order_id === o.id)}
                 assignments={day.assignments}
+                tickets={day.tickets}
+                today={day.today}
+                canEnterTickets={canEnterTickets}
                 lk={lk}
                 canEdit={canEdit}
                 onAddLoad={() => setLoadDialog({ order: o, load: null })}
@@ -202,6 +206,9 @@ function OrderCard({
   date,
   loads,
   assignments,
+  tickets,
+  today,
+  canEnterTickets,
   lk,
   canEdit,
   onAddLoad,
@@ -214,6 +221,9 @@ function OrderCard({
   date: string;
   loads: OrderLoadRow[];
   assignments: AssignmentRow[];
+  tickets: DispatchDay["tickets"];
+  today: string;
+  canEnterTickets: boolean;
   lk: Lookup;
   canEdit: boolean;
   onAddLoad: () => void;
@@ -296,6 +306,11 @@ function OrderCard({
                     </p>
                   )}
                   {l.notes && <p className="mt-1 text-sm text-muted">{l.notes}</p>}
+                  <LoadTickets
+                    tickets={tickets.filter((t) => t.load_id === l.id)}
+                    canEnter={canEnterTickets && Boolean(current) && !canceled && l.load_date <= today}
+                    loadId={l.id}
+                  />
                   {previous.length > 0 && (
                     <details className="mt-1 text-sm">
                       <summary className="cursor-pointer text-muted">History ({previous.length} earlier)</summary>
@@ -650,5 +665,26 @@ function AssignDialog({
         <p className="text-xs text-muted">The server checks eligibility and conflicts again when you save; another dispatcher may have booked a resource since this page loaded.</p>
       </div>
     </Dialog>
+  );
+}
+
+/** Delivery tickets of a load: their status, or a link to enter one once the load's day has come. */
+function LoadTickets({ tickets, canEnter, loadId }: { tickets: DispatchDay["tickets"]; canEnter: boolean; loadId: string }) {
+  if (!tickets.length && !canEnter) return null;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+      {tickets.map((t) => (
+        <Link key={t.id} href={`/tickets/${t.id}`} className="inline-flex items-center gap-1.5 hover:underline">
+          <span className="font-semibold tabular">{t.ticket_number}</span>
+          <span className="tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
+          <TicketStatusBadge status={t.status} />
+        </Link>
+      ))}
+      {!tickets.length && canEnter && (
+        <Link href={`/tickets/new?load=${loadId}`} className="font-semibold text-brand underline">
+          Enter delivery ticket
+        </Link>
+      )}
+    </div>
   );
 }

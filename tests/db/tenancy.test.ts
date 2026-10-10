@@ -13,7 +13,7 @@ const TENANT_TABLES = [
   "price_list_entries", "quotes", "quote_versions", "quote_lines", "quote_status_events", "documents",
   "email_deliveries", "orders", "order_lines", "order_status_events", "company_memberships",
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
-  "order_loads", "dispatch_assignments",
+  "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -33,6 +33,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.assignment_eligibility", "private.local_time_label", "private.resource_conflict", "private.check_assignment",
   "private.assignment_label", "private.release_order_assignments",
   "public.save_order_load", "public.cancel_order_load", "public.assign_load", "public.cancel_assignment",
+  "private.prepare_ticket", "public.submit_delivery_ticket", "public.correct_delivery_ticket", "public.review_delivery_ticket",
 ];
 
 interface World {

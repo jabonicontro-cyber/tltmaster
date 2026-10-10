@@ -15,6 +15,9 @@ import { canEditOrderLines, ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderDispatch } from "@/server/data/dispatch";
+import { liveTicketsForLoads } from "@/server/data/tickets";
+import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
+import { trimNumber } from "@/lib/fleet/labels";
 import { getOrderDetail } from "@/server/data/orders";
 import { businessToday } from "@/server/data/settings";
 
@@ -27,6 +30,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names } = detail;
   const [{ timezone, today }, dispatch] = await Promise.all([businessToday(), getOrderDispatch(id)]);
+  const loadTickets = await liveTicketsForLoads(dispatch.loads.map((l) => l.id));
   const canDispatch = can(access, "dispatch.view");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const billTo = order.bill_to_snapshot;
@@ -170,6 +174,15 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
                       ) : (
                         <Badge tone="amber">Needs a truck</Badge>
                       )}
+                      {loadTickets
+                        .filter((t) => t.load_id === l.id)
+                        .map((t) => (
+                          <Link key={t.id} href={`/tickets/${t.id}`} className="flex w-full items-center justify-end gap-2 text-sm hover:underline">
+                            <span className="font-semibold tabular">{t.ticket_number}</span>
+                            <span className="tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
+                            <TicketStatusBadge status={t.status} />
+                          </Link>
+                        ))}
                     </li>
                   );
                 })}

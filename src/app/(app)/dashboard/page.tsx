@@ -16,6 +16,7 @@ import { requireAccess } from "@/server/auth";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
 import { countUnassignedLoadsToday } from "@/server/data/dispatch";
+import { ticketCounts } from "@/server/data/tickets";
 import { fleetOverview } from "@/server/data/fleet";
 import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
@@ -65,7 +66,6 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 
 const PLANNED = [
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
-  { label: "Completed deliveries awaiting ticket review", phase: "Tickets (Phase 3)" },
   { label: "Deliveries ready for billing", phase: "Reconciliation (Phase 5)" },
 ];
 
@@ -82,7 +82,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canOrders = can(access, "orders.view");
   const canFleet = can(access, "fleet.view");
   const canDispatch = can(access, "dispatch.view");
-  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads] = await Promise.all([
+  const canTickets = can(access, "tickets.view");
+  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads, ticketsToReview] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
@@ -90,6 +91,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     canOrders ? countOrdersScheduledToday() : Promise.resolve(null),
     canFleet ? fleetOverview() : Promise.resolve(null),
     canDispatch ? countUnassignedLoadsToday() : Promise.resolve(null),
+    canTickets ? ticketCounts() : Promise.resolve(null),
   ]);
 
   return (
@@ -174,6 +176,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scheduledToday !== null && (
             <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
+          )}
+          {ticketsToReview && (
+            <Stat
+              icon={<FileText className="size-5" />}
+              label="Delivery tickets to review"
+              value={ticketsToReview.review + ticketsToReview.submitted}
+              sub={`${ticketsToReview.review} flagged · ${ticketsToReview.submitted} awaiting acceptance`}
+              href={ticketsToReview.review ? "/tickets?view=review" : "/tickets?view=submitted"}
+              tone={ticketsToReview.review > 0 ? "warn" : "default"}
+            />
           )}
           {unassignedLoads !== null && (
             <Stat

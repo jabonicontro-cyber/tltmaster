@@ -179,6 +179,35 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 - **Order changes**: canceling an order, putting it on hold or moving it back to Confirmed cancels its active assignments that have not ended (trigger `orders_release_assignments`); canceling also cancels its planned loads.
 - **Reading**: `dispatch.view` or `orders.view`; no client writes.
 
+## Delivery tickets
+
+| Table | Purpose |
+| --- | --- |
+| `delivery_tickets` | One row per **revision**. `ticket_number` (per-company `ticket` sequence, e.g. `T-2026-00001`) stays the same across revisions; `revision`, `supersedes_id`. `status` (`submitted`, `needs_review`, `accepted`, `voided`, `superseded`). References (same company): order, load, the assignment active at submission, order line (and its material), truck, trailer, driver, unit. Actual `delivered_at`, `quantity numeric(12,3)` + `unit_code` (explicit, never defaulted or converted), `external_reference` (paper/scale ticket number), notes, `review_reasons[]`, `snapshot` (order/load numbers, customer, line description and unit, truck/trailer unit numbers, driver name, planned quantity), `correction_reason`, review and void metadata, `submission_key` (idempotency). |
+| `delivery_ticket_events` | Append-only history per ticket number: submitted, flagged, accepted, voided, corrected (with field changes). |
+
+### Ticket rules
+
+- **Writes** only through `submit_delivery_ticket(payload)` (`tickets.edit`),
+  `correct_delivery_ticket(ticket, payload, reason)` (`tickets.edit`; an accepted
+  ticket needs `tickets.review`) and `review_delivery_ticket(ticket, accept | flag
+  | void, note)` (`tickets.review`; flag and void need a reason). Reading:
+  `tickets.view` or `orders.view`.
+- **Validation** (`private.prepare_ticket`): planned load with an active
+  assignment; order Scheduled / Dispatched / In progress / Partially completed /
+  Completed; per-unit order line of that order; quantity > 0 with ≤ 3 decimals,
+  whole numbers for `load` and `each`; delivery time not in the future and not
+  over a year ago; truck / trailer / driver of the company.
+- **Review flags** (status `needs_review`): unit differs from the order line,
+  delivered on another day than planned, equipment differs from the assignment,
+  no external reference, another ticket on the load, reused external reference.
+- **Immutability**: revisions never change except status and review/void
+  fields along allowed paths (`guard_delivery_ticket`); never deleted (except
+  with their sample order). A load with live tickets cannot be canceled
+  (`order_loads_guard_tickets`), nor can its order.
+- One current revision per number (partial unique index); repeated submissions
+  return the same ticket (unique `submission_key`).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

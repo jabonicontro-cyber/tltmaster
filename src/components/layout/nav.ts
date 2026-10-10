@@ -21,7 +21,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.view" },
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, permission: "dispatch.view" },
   { href: "/route-planner", label: "Route Planner", icon: Map, planned: true },
-  { href: "/tickets", label: "Delivery Tickets", icon: Ticket, planned: true },
+  { href: "/tickets", label: "Delivery Tickets", icon: Ticket, permission: "tickets.view" },
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view" },
   { href: "/reports", label: "Reports", icon: BarChart3, planned: true },

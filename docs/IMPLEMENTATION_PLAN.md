@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3) and dispatch assignments (N4). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3), dispatch assignments (N4) and delivery tickets (N5). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -51,7 +51,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
 | Scheduling and dispatch | ✅ day board (N4, see §5c) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history. No week view, notifications or derived order status. |
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
-| Delivery tickets and documents | 🧱 | `src/app/(app)/tickets/page.tsx` | No tables. `document_sequences` has a `ticket` key. **No file storage** is used anywhere. |
+| Delivery tickets and documents | ✅ office entry (N5, see §5d) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migration `20261015000100_delivery_tickets.sql` | Numbered tickets with revisions, review and void history. **No file storage**, photos, signatures, printing or driver entry. |
 | Reconciliation and billing-ready records | ❌ | — | — |
 | Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures and the real "orders scheduled today" count; the other operations cards are placeholders. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
@@ -162,7 +162,7 @@ These build on B1 and are listed in dependency order.
 | N2 ✅ | Direct orders | Done (§5a) | Quote editor + `save_quote_draft` pricing rules | `save_order_draft()` reusing the price resolution and override checks; editor component shared with quotes. | Do not fork the pricing rules — reuse them. |
 | N3 ✅ | Fleet registry (minimal) | Done (§5b) | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
 | N4 ✅ | Dispatch assignments | Done (§5c) — day board | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
-| N5 | Delivery tickets | Placeholder | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
+| N5 ✅ | Delivery tickets | Done (§5d) — office entry from paper; storage, printing and signatures later | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
 | N6 | Reconciliation and billing-ready records | None | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
 | N7 | Operations dashboard | Placeholder cards | N1–N6 | Replace the placeholder cards with real counts as each module lands. | — |
 
@@ -468,13 +468,103 @@ order" nor overlapping bookings could be expressed.
 - Driver availability/PTO does not exist yet, so "available" means eligible and
   not booked.
 
+## 5d. Delivery tickets (N5) — completed
+
+### Plan (written before building)
+
+**Inspected first.** Loads (`order_loads`) carry an optional planned quantity +
+unit; assignments are immutable rows (reassign = cancel + insert). Order lines
+store `quantity numeric(12,3)` with a company `unit_code` (`ton`, `load`,
+`cu_yd`, `hour`, `mile`, `day`, `each`); materials have a default unit. No unit
+conversions exist anywhere and none are added. A per-company `ticket` document
+sequence (`T-2026-00001`) already exists and is allocated under a row lock.
+
+**Model** (migration `20261015000100_delivery_tickets.sql`, additive):
+
+- `delivery_tickets`: one row per *revision*. `ticket_number` is stable across
+  revisions; a correction inserts revision n+1 (`supersedes_id`) and marks the
+  previous row `superseded` — nothing is overwritten. Exactly one current
+  (non-superseded) revision per number (partial unique index).
+- References (all composite, same company): order, load, the assignment active
+  at submission, the order line delivered (material from it), truck, trailer,
+  driver, unit. **Snapshot** (order/load numbers, customer, line description,
+  truck/trailer unit numbers, driver name, planned quantity) so later
+  reassignment or renaming never changes the record.
+- Actual `delivered_at`, `quantity` + explicit `unit_code` (no default; >0, ≤3
+  decimals, whole numbers for `load` and `each`), external paper/scale ticket
+  reference, notes.
+- Status: `submitted` → `accepted` (office review), `needs_review` (flagged
+  automatically or by a reviewer), `voided` (reason required), `superseded`
+  (replaced by a correction). Automatic review reasons: unit differs from the
+  order line's unit (no conversion), delivered on another day than planned,
+  truck/driver differ from the assignment, no external reference, a second
+  ticket for the same load, a reused external reference.
+- Duplicate safeguards: a per-submission idempotency key (unique; a repeated
+  submit returns the same ticket) and an explicit confirmation for a second
+  ticket on the same load or a reused external reference (multiple tickets per
+  load are allowed — e.g. split loads — but never by accident).
+- `delivery_ticket_events`: append-only history (submitted, flagged, accepted,
+  voided, corrected) with actor and note; events also go to the order history.
+- Rules: the load must be planned (not canceled) and have an active assignment;
+  the order must be Scheduled, Dispatched, In progress, Partially completed or
+  Completed. A load with live tickets cannot be canceled. Tickets never change
+  order status, pricing or billing.
+- Permissions: `tickets.view` (owner, office, dispatcher), `tickets.edit`
+  (create and correct non-accepted tickets: owner, office, dispatcher),
+  `tickets.review` (accept, flag, void, correct accepted tickets: owner,
+  office). Writes only through `SECURITY DEFINER` functions.
+
+**UI**: `/tickets` (loads awaiting tickets, needs review, submitted, accepted,
+voided, search), new-ticket form from a load, ticket page with history and
+correction/void/accept actions; ticket status on the dispatch board and order
+page. Out of scope: files/photos/signatures/OCR, driver portal, billing.
+
+### What was built (N5)
+
+- Migration `20261015000100_delivery_tickets.sql` (additive): `delivery_tickets`,
+  `delivery_ticket_events`, `ticket_status`, permissions, a `(company_id, id)` key
+  on `order_lines`, `submit_delivery_ticket`, `correct_delivery_ticket`,
+  `review_delivery_ticket`, `private.prepare_ticket` (all validation and review
+  flags in one place), a guard that keeps revisions immutable, a guard that
+  stops canceling a load (or its order) with live tickets, and
+  `prevent_modification` extended so the sample purge can remove ticket events.
+- Numbers come from the existing per-company `ticket` sequence; two concurrent
+  submissions get consecutive numbers (tested with two connections).
+- Duplicate protection: per-form idempotency key (unique), explicit confirmation
+  (error `PT422` → confirmation box) for a second ticket on a load or a reused
+  paper/scale number; concurrent submissions on the same load are serialized by
+  a row lock on the load.
+- A correction falls back to the assignment the ticket was recorded against if
+  the load has none any more, so a later unassignment never blocks a correction.
+- UI: `/tickets` (loads awaiting a ticket, needs review, submitted, accepted,
+  voided, all; search), `/tickets/new?load=…`, `/tickets/[id]` (delivery,
+  review flags, revisions, history, accept / flag / void / correct),
+  `/tickets/[id]/correct`; ticket status and an "Enter delivery ticket" link on
+  the dispatch board; tickets per load on the order page; dashboard card.
+- Tests: `tests/db/tickets.test.ts` (12), `tests/unit/ticket-rules.test.ts` (4),
+  `tests/e2e/tickets.spec.ts` (2); tenancy guards updated (31 business tables,
+  60 reviewed definer functions).
+
+### Remaining limits (N5)
+
+- Entered by the office from paper; no file storage, photos, signatures, OCR or
+  driver portal. No printable ticket layout yet.
+- One quantity per ticket (one order line). A load carrying two materials needs
+  two tickets (confirmed as separate deliveries) — a multi-line ticket may be
+  wanted later.
+- Quantities are never compared across units; reconciliation of delivered vs
+  ordered quantities, billing readiness and QuickBooks are not started.
+- A reused paper ticket number on two *different* loads submitted at the same
+  instant is not serialized (each is flagged only if it sees the other).
+- Tickets do not move order status (Dispatched / Completed stays manual).
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase project, `supabase db push` of all
-migrations, auth URLs, email templates and SMTP, deploy the app, real
-password-reset and test-mode quote emails, backup/restore drill B5). Then **N5
-delivery tickets**: a numbered ticket per completed load (actual quantity,
-signature/photo once Storage exists), feeding reconciliation and billing.
+**B3 — staging deployment** (hosted Supabase, all 12 migrations via
+`supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then **N6
+reconciliation**: compare accepted ticket quantities with order lines in the
+same unit, list exceptions (unit mismatches, over/under delivery, loads without
+tickets) and mark records ready for billing — still without invoicing.
 
 ---
 

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
+import { liveTicketsForLoads } from "./tickets";
 import type { DriverListRow, OrderListRow, QualificationRow, TrailerRow, TruckRow, UnitRow } from "./types";
 
 export type LoadStatus = "planned" | "canceled";
@@ -83,6 +84,7 @@ export async function getDispatchDay(date: string) {
   }
 
   const loadIds = loadRows.map((l) => l.id);
+  const tickets = await liveTicketsForLoads(loadIds);
   const assignments = loadIds.length
     ? await supabase.from("dispatch_assignments").select("*").in("load_id", loadIds).order("created_at", { ascending: false })
     : { data: [], error: null };
@@ -104,6 +106,8 @@ export async function getDispatchDay(date: string) {
     trailers: (trailers.data ?? []) as BoardTrailer[],
     drivers: ((drivers.data ?? []) as Array<Pick<DriverListRow, "id" | "display_name" | "active">>).map((d) => ({ ...d, qualifications: qualsByDriver.get(d.id) ?? [] })),
     units: (units.data ?? []) as UnitRow[],
+    /** Live delivery tickets of the day's loads. */
+    tickets,
   };
 }
 
