@@ -27,16 +27,39 @@ dashboard (production). Never commit real values.
    npx supabase db push            # applies supabase/migrations
    ```
    Do **not** load `seed.sql` into production unless you want the sample data for training.
-3. **Authentication → Sign In / Providers**: keep Email enabled, **turn off "Allow new users to sign up"**.
-   Users are invited by an owner.
-4. **Authentication → URL Configuration**: Site URL = `APP_BASE_URL`; add
-   `<APP_BASE_URL>/auth/confirm` to Redirect URLs.
-5. **Authentication → Email Templates**: replace the *Reset password* and *Invite user*
-   templates with `supabase/templates/recovery.html` and `invite.html`
-   (they link to `/auth/confirm`, which works with server-side sessions).
+3. **Authentication → Sign In / Providers**: keep Email enabled, **turn off "Allow new users
+   to sign up"** and **turn on "Confirm email"**. Public sign-up must stay off: new customers
+   sign up only through the app's `/signup` page with an early-access code (the server creates
+   the account with the admin API), and everyone else is invited by an owner.
+4. **Authentication → URL Configuration**: Site URL = `APP_BASE_URL` (the email templates build
+   their links from it); add `<APP_BASE_URL>/auth/confirm` and `<APP_BASE_URL>/auth/confirm**`
+   to Redirect URLs.
+5. **Authentication → Email Templates**: replace *Confirm signup*, *Invite user* and *Reset
+   password* with `supabase/templates/confirmation.html`, `invite.html` and `recovery.html`
+   (they link to `/auth/confirm`, which works with server-side sessions; the confirmation
+   link continues to `/onboarding`). Suggested subjects: "Confirm your email", "You have been
+   invited to Top Line Trucking Manager", "Reset your password".
 6. **Authentication → SMTP**: Supabase's built-in mailer is rate-limited and meant for testing.
-   Configure custom SMTP (Resend provides SMTP credentials) before go-live so password-reset
-   emails are delivered reliably.
+   Configure custom SMTP (Resend provides SMTP credentials) before go-live so verification,
+   invitation and password-reset emails are delivered reliably. Check the Auth email rate
+   limit (Authentication → Rate Limits) fits the number of invitations you expect.
+6a. **Server secret for sign-up and invitations.** `SUPABASE_SERVICE_ROLE_KEY` must be set in the
+   app host's server environment (never as a `NEXT_PUBLIC_` variable). Without it `/signup`
+   says sign-up is not available and invitations fail. Rate limiting reads the client address
+   from `X-Forwarded-For` as set by the host (Vercel sets it); behind a different proxy make
+   sure the proxy overwrites that header.
+6b. **Early-access codes** (operators, from a trusted machine with the service-role key):
+   ```bash
+   node --env-file=.env.local scripts/early-access.mjs create --label "Ridgeway Aggregates" --uses 1 --days 14
+   node --env-file=.env.local scripts/early-access.mjs list
+   node --env-file=.env.local scripts/early-access.mjs revoke <code-id> --reason "Sent to the wrong person"
+   ```
+   The code (`TLT-XXXXX-XXXXX-XXXXX-XXXXX`) is printed once and stored only as a hash; send it
+   to the customer directly. The customer opens `/signup`, enters the code, company name, name,
+   email and password, confirms the email, and lands on `/onboarding`, where "Create my company"
+   creates the company with them as Owner. Failed code attempts are limited (10 per address and
+   5 per email per 15 minutes; 5 per signed-in user). A signed-in user can create another company with a
+   new code on `/onboarding` (owners find it in the account menu → "Create a company").
 7. Create the first owner from a trusted machine (the company slug defaults to
    `top-line-trucking`, which the migrations create):
    ```bash
@@ -114,8 +137,8 @@ records and only apply migrations added since your last update (for example
 `20261012000100_order_management.sql`, `20261013000100_fleet_registry.sql`,
 `20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
 `20261016000100_billing_readiness.sql`, `20261017000100_command_center.sql` and
-`20261018000100_driver_portal.sql` and
-`20261019000100_ticket_photos.sql`):
+`20261018000100_driver_portal.sql`,
+`20261019000100_ticket_photos.sql` and `20261020000100_company_onboarding.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -125,7 +148,7 @@ psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
 # 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql,
 # 20261017000100_command_center.sql, 20261018000100_driver_portal.sql and
-# 20261019000100_ticket_photos.sql, in that order
+# 20261019000100_ticket_photos.sql and 20261020000100_company_onboarding.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -145,6 +168,9 @@ functions, moves the ticket insert into a shared helper (same behavior) and
 replaces some command center functions; no rows change. The ticket-photos migration
 adds the `ticket_attachments` table and functions, replaces `driver_submit_ticket` (photos),
 and creates the storage bucket and policies if storage is installed; no rows change.
+The company-onboarding migration adds three private tables (early-access codes, redemptions,
+attempts) and functions, and replaces `add_company_member` and `set_user_access` with versions
+that let only owners grant or remove the Owner role; no rows change.
 
 **Driver accounts.** Invite the person with the *Driver* role (Settings → Users),
 then link the account on their driver record (Fleet → Drivers → Edit → *Linked
@@ -189,6 +215,40 @@ need the `storage` schema.
 
 `scripts/dev-stack/stack.sh` runs Supabase Auth and PostgREST (downloaded from their GitHub
 releases) against a PostgreSQL you provide on `127.0.0.1:54322`, with a small gateway on
-`:54321` that behaves like the Supabase API. CI uses it for database tests. Password-reset
-emails are not delivered by this stack; use the Supabase CLI (which includes a test inbox)
-to try that flow locally.
+`:54321` that behaves like the Supabase API. CI uses it for database tests.
+
+**Email.** The stack also runs a development-only mail catcher (`scripts/dev-stack/mailbox.mjs`,
+SMTP on `127.0.0.1:54325`). Supabase Auth requires email confirmation and sends verification,
+invitation and reset emails with the repository templates to it; each message is saved as
+JSON in `.dev-stack/mail/` (newest file last). Open the file and copy the `href` link into the
+browser. Nothing leaves the machine. Public sign-up stays disabled, as on hosted projects.
+
+### Two independent test companies (local only)
+
+1. Start the stack and the app as in the README quick start (`npm run stack -- up`,
+   `npm run stack -- env > .env.local`, `npm run dev`). `npm run stack -- db-reset` is for a
+   **first-time** setup only (it rebuilds the database); on an existing database apply new
+   migrations as described above instead. The seed gives you **Top Line Trucking** (sample data).
+2. Create a second company with one account per role (the script refuses any non-local
+   database or API URL and never prints the password):
+   ```bash
+   TEST_USER_PASSWORD='choose-a-10+-char-password' \
+     node --env-file=.env.local scripts/create-test-company.mjs "Ridgeway Aggregates (test)" ridgeway
+   ```
+   It creates `owner@ridgeway.test`, `office@ridgeway.test`, `dispatcher@ridgeway.test`,
+   `mechanic@ridgeway.test` and `driver@ridgeway.test` (email confirmed, the driver linked to a
+   driver record with valid qualifications), all with that password. Running it again changes
+   nothing. Use another name and key for a third company.
+3. Give Top Line accounts in the same way through the app: sign in as the Top Line owner
+   (`create-owner.mjs`), Settings → Users → Invite user, then open the invitation link from
+   `.dev-stack/mail/` and choose a password.
+4. To try the real sign-up flow instead, create a code
+   (`node --env-file=.env.local scripts/early-access.mjs create --label "Local test" --days 1`),
+   open `http://localhost:3000/signup`, then follow the verification email in `.dev-stack/mail/`.
+5. Check isolation: sign in as `dispatcher@ridgeway.test` in one browser profile and a Top Line
+   user in another; each sees only its own company. Copy an order or ticket URL from one
+   company into the other's browser: it shows "Not found". To test the company switcher,
+   invite an existing account (for example `dispatcher@ridgeway.test`) from Top Line's
+   Settings → Users: it is added to Top Line, and the account menu then lists both companies.
+   What each role can open is listed in `tests/e2e/roles.spec.ts` (run it with
+   `npx playwright test tests/e2e/roles.spec.ts`).

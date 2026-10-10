@@ -63,6 +63,28 @@ export async function inviteUser(formData: FormData): Promise<ActionResult> {
     const access = await assertPermission("users.manage");
     const parsed = inviteSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
+    if (parsed.data.role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.");
+    const supabase = await createClient();
+
+    // Someone who already has an account (for example in another company) is
+    // added to this company directly — no second account, no new password.
+    const existing = await supabase.rpc("add_existing_member", {
+      p_email: parsed.data.email,
+      p_role: parsed.data.role,
+      p_full_name: parsed.data.full_name,
+    });
+    if (existing.error) return fail(dbErrorMessage(existing.error));
+    const found = existing.data as { found: boolean; already?: boolean };
+    if (found.found) {
+      revalidatePath("/settings");
+      return ok(
+        undefined,
+        found.already
+          ? `${parsed.data.email} is already a member of your company.`
+          : `${parsed.data.email} already has an account and was added to your company. They can switch to it from the account menu after signing in.`,
+      );
+    }
+
     if (!adminAvailable()) {
       return fail("Inviting users needs SUPABASE_SERVICE_ROLE_KEY on the server. Until then, add users in the Supabase dashboard (Authentication → Users) and assign their role here.");
     }
@@ -72,11 +94,10 @@ export async function inviteUser(formData: FormData): Promise<ActionResult> {
       redirectTo: `${env().APP_BASE_URL}/auth/confirm?next=/update-password`,
     });
     if (error) {
-      return fail(/already/i.test(error.message) ? "A user with this email already exists. Change their role in the list below." : `The invitation could not be sent: ${error.message}`);
+      return fail(/already/i.test(error.message) ? "An account with this email was just created. Try the invitation again." : `The invitation could not be sent: ${error.message}`);
     }
     // Membership in the inviter's company is created by the permission-checked
     // database function, running as the inviting user (never the service role).
-    const supabase = await createClient();
     const { error: roleErr } = await supabase.rpc("add_company_member", {
       p_user_id: data.user.id,
       p_role: parsed.data.role,

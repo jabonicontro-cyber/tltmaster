@@ -24,6 +24,22 @@ Companies). Relations between business tables are composite foreign keys
 | `document_sequences` | Per company: prefix, year handling, padding and next value for customer, quote, order and ticket numbers. |
 | `audit_events` | Append-only log per company: who, when, action, entity, summary, JSON details of changed fields. |
 
+### Early access and onboarding (private schema, not reachable through the API)
+
+| Table | Purpose |
+| --- | --- |
+| `private.early_access_codes` | Operator-issued codes: `code_hash` (SHA-256 of the normalized code, unique — the code is never stored), `label`, `max_uses` (1–1000), `expires_at`, `revoked_at`, `revoke_reason`. |
+| `private.early_access_redemptions` | One use of a code: `code_id`, `user_id`, `company_name`, `request_key` (unique; makes retries idempotent), `status` (`reserved` → `completed`), `company_id`. At most one pending reservation per account. |
+| `private.access_attempts` | Failed and successful code attempts by scope (`ip`, `email`, `user`) and keyed hash, for rate limiting (failures in the last 15 minutes). |
+
+Functions: `early_access_check`, `early_access_reserve`, `early_access_request`,
+`early_access_create_code`, `early_access_list_codes`, `early_access_revoke_code`
+(service role only); `my_onboarding`, `complete_company_onboarding`,
+`create_company_with_access_code`, `my_companies`, `switch_company`,
+`add_existing_member` (signed-in users, checked inside). `add_company_member` and
+`set_user_access` let only owners grant or remove the Owner role. Migration
+`20261020000100_company_onboarding.sql`.
+
 ## Customers
 
 | Table | Purpose |

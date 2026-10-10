@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3), dispatch assignments (N4) and delivery tickets (N5). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2), the fleet registry (N3), dispatch assignments (N4), delivery tickets (N5) and the later milestones in §5e–§5i. The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -40,8 +40,8 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 
 | Area | State | Where it lives | Notes / gaps |
 | --- | --- | --- | --- |
-| Auth: sign-in, sign-out, reset, invite, no-access | ✅ (reset/invite email 🟡) | `src/app/(auth)`, `src/proxy.ts`, `src/server/auth.ts`, `scripts/create-owner.mjs` | Reset and invitation emails have never been delivered: they need a hosted Supabase project with SMTP. |
-| Roles and permissions | ✅ per company | `company_memberships`, `role_permissions` (per company), `role_permission_defaults`, Settings → Permissions | Roles: owner, office, dispatcher, mechanic (fleet view + service status), driver (no permissions yet). A user can belong to several companies; one is active at a time (no switcher UI yet). |
+| Auth: sign-in, sign-out, reset, invite, no-access, early-access sign-up | ✅ locally (hosted email 🟡) (N9, see §5i) | `src/app/(auth)`, `src/app/onboarding`, `src/proxy.ts`, `src/server/auth.ts`, `scripts/early-access.mjs` | Verification, invitation and reset emails are sent by Supabase Auth and tested end to end with the local mail catcher. Not yet delivered by a hosted project (needs SMTP, templates and URLs, §5i). Public Auth sign-up stays disabled. |
+| Roles and permissions | ✅ per company | `company_memberships`, `role_permissions` (per company), `role_permission_defaults`, Settings → Permissions | Roles: owner, office, dispatcher, mechanic (fleet view + service status), driver (no permissions yet). A user can belong to several companies; one is active at a time, chosen in the account menu (N9). Only owners can grant or remove Owner. |
 | Customers, contacts, job sites | ✅ | `customers`, `customer_contacts`, `customer_sites`; `src/app/(app)/customers` | Saved site instructions exist (`customer_sites.directions`). There is no customer portal. |
 | Materials, charges, units, price lists | ✅ | `materials`, `charge_items`, `units_of_measure`, `price_lists`, `price_list_entries` | Customer price lists have dated history. **No supplier costs** anywhere. |
 | Quotes: editor, revisions, status, history | ✅ | `quotes`, `quote_versions`, `quote_lines`, `save_quote_draft` and related functions | Quote lines snapshot **prices, not costs**. There is no quote duplication and no automatic expiry (by design). |
@@ -60,10 +60,10 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Supplier price imports and price history | ❌ | — | — |
 | Operational exceptions queue | ✅ first version (N7, see §5f) | `src/app/(app)/command-center`, `src/lib/command-center`, migration `20261017000100_command_center.sql` | Six kinds (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems), derived live, prioritized, assignable to a person. No maintenance (no data), no supplier-cost or quote kinds yet, no notifications. |
 | AI assistant / smart dispatch | ❌ | — | — |
-| Multi-tenant isolation | ✅ (B1, 2026-10-11) | `companies`, `company_memberships`, `company_id` on 22 tables, migration `20261011000200_company_separation.sql`, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts` | No self-serve sign-up, company switcher, per-company branding (sidebar logo is still Top Line's) or billing. |
+| Multi-tenant isolation | ✅ (B1, 2026-10-11) | `companies`, `company_memberships`, `company_id` on 22 tables, migration `20261011000200_company_separation.sql`, `tests/db/tenancy.test.ts`, `tests/e2e/tenancy.spec.ts` | Self-serve company creation behind the early-access gate and a company switcher (N9, §5i). No per-company branding (sidebar logo is still Top Line's) or subscription billing. |
 | Audit log | ✅ per company | `audit_events.company_id`, Settings → Audit log | — |
 | Sample data handling | ✅ | `is_sample`, `remove_sample_data()` | — |
-| Local dev stack | 🟡 | `scripts/dev-stack` | No Supabase Storage. The `supabase start` path (Docker) has never been run. |
+| Local dev stack | 🟡 | `scripts/dev-stack` | Postgres, Auth, PostgREST, optional Storage (N8.1) and a mail catcher (N9). The `supabase start` path (Docker) has never been run. |
 | Hosted deployment | ❌ unverified | `docs/SETUP.md` | `supabase db push` to a real project has never been run. Backup and restore have never been tested. |
 
 ---
@@ -1005,10 +1005,126 @@ drivers.
   on the phone, stored privately and never executed or served inline from the
   app's own origin.
 
+## 5i. Accounts, company onboarding and early access (N9)
+
+### Found before changing anything
+
+- N8.1 is complete and pushed (`51862bf`); all suites were green. Open items are
+  external: the hosted `ticket-photos` bucket has never been created or tested, and
+  storage files need their own backup (both staging tasks).
+- Sign-in, sign-out and password reset exist (`src/app/(auth)`, `/auth/confirm`
+  handles `token_hash` links). Public sign-up is off in Supabase Auth
+  (`enable_signup = false`; locally `GOTRUE_DISABLE_SIGNUP=true`) and stays off.
+- **No email delivery locally**: the no-Docker stack had no mail server, so reset
+  and invitation emails went nowhere and could not be tested.
+- Companies: only operators create them (`private.create_company` + the
+  `create-owner.mjs` script). It seeds settings, numbering, role permissions,
+  units and the standard price list atomically; the `billing` sequence comes from
+  a trigger. There is no self-serve company creation.
+- Invitations: Settings → Users calls `auth.admin.inviteUserByEmail` (service role)
+  and then `add_company_member` as the inviting user. Inviting an email that
+  already has an account (e.g. a member of another company) fails with "already
+  exists" — the person cannot be added at all.
+- Multiple companies: memberships per company and `profiles.active_company_id`
+  exist, `my_access` returns `membership_count`, but users cannot change the active
+  company (no grant, no function, no UI).
+- Roles: a non-owner holding `users.manage` (only owners have it by default) could
+  grant the Owner role through `set_user_access` / `add_company_member`.
+
+### Plan
+
+- **Local email**: a development-only mail catcher in the dev stack; Supabase Auth
+  sends confirmation, invitation and reset emails to it using the repository's
+  templates (new `confirmation.html`). E2E tests read the links from it.
+- **Early-access gate (needed now)**: self-serve accounts and companies would be
+  public registration without it. Separate component in the `private` schema (not
+  reachable through the API): codes stored only as SHA-256 hashes, with label,
+  maximum uses, expiry and revocation; redemptions; attempts for rate limiting
+  (per IP, per email, per user). Operators create, list and revoke codes with
+  `scripts/early-access.mjs` (the code is shown once). Auth stays in Supabase Auth.
+- **Sign-up** (`/signup`): access code + name + email + password + company name.
+  The server checks the code and rate limits, creates the account through the Auth
+  admin API (unconfirmed), reserves one use of the code for that account, and asks
+  Auth to send the verification email. Public `/auth/v1/signup` remains disabled.
+- **Onboarding** (`/onboarding`): after verifying the email and signing in, one
+  database transaction creates the company (`private.create_company`), the owner
+  membership and the active company, and completes the reservation — repeated
+  submissions return the same company. Existing accounts create an additional
+  company with an access code on the same page.
+- **Invitations**: inviting an existing account adds the membership (no second
+  account); repeated invitations are idempotent; only owners can grant or remove
+  the Owner role.
+- **Company switcher** in the account menu for people with several companies
+  (`switch_company`, own active memberships only); every query already follows the
+  active company in the database.
+- **Test companies**: `scripts/create-test-company.mjs` (local databases only)
+  creates a company with owner, office, dispatcher, mechanic and driver accounts.
+
+### What was built (N9)
+
+- Migration `20261020000100_company_onboarding.sql`:
+  - Private tables `private.early_access_codes` (SHA-256 hash only, label, max
+    uses, expiry, revocation), `private.early_access_redemptions` (one reservation
+    per account, unique request key) and `private.access_attempts` (failed
+    attempts for rate limiting). None are reachable through the API.
+  - Service-role functions `early_access_check` (10 failures per IP and 5 per
+    email per 15 minutes), `early_access_reserve` (idempotent per request key,
+    row-locked so the last use cannot be taken twice), `early_access_request`,
+    and `early_access_create_code` / `early_access_list_codes` /
+    `early_access_revoke_code`.
+  - For signed-in users: `my_onboarding`, `complete_company_onboarding` (verified
+    email required, one transaction: company with settings, numbering, permissions,
+    units and price list via `private.create_company`, owner membership, active
+    company, completed reservation, audit event; a repeat returns the same
+    company), `create_company_with_access_code` (existing accounts; 5 failures per
+    user), `my_companies`, `switch_company` (own active memberships only).
+  - Invitations: `add_existing_member` (adds an existing account by email; reports
+    "already a member"; refuses deactivated people). `add_company_member` and
+    `set_user_access` now let only owners grant or remove Owner.
+- Sign-up `/signup` (access code, company, name, email, password): the server
+  checks the code and rate limits, creates the unconfirmed account with the Auth
+  admin API, reserves one use, and has Supabase Auth send the verification email.
+  A retry of the same form is recognised and only resends the email. The repeat
+  key is made in the browser on first submit (the page is prerendered).
+- `/onboarding` (finish creating the company; or another company with a new code),
+  `/no-access` sends people with a pending company there.
+- Company switcher in the account menu (only shown with two or more companies);
+  "Create a company" for owners.
+- Settings → Users: inviting an existing account adds it to the company (no second
+  account), repeats are idempotent; the Owner role is offered only to owners.
+- Operator scripts: `scripts/early-access.mjs` (create — shows the code once —,
+  list, revoke, hash) and `scripts/create-test-company.mjs` (local databases only:
+  a company with owner, office, dispatcher, mechanic and driver accounts).
+- Dev stack: `scripts/dev-stack/mailbox.mjs` (SMTP catcher writing
+  `.dev-stack/mail/*.json`), Auth sends with the repository templates (new
+  `supabase/templates/confirmation.html`), email confirmation required.
+- Tests: `tests/db/onboarding.test.ts` (10), `tests/unit/early-access.test.ts` (4),
+  `tests/e2e/onboarding.spec.ts` (2: code refused / used up, unverified sign-in
+  refused, verification email → company, invitation emails, existing account
+  added, switcher, cross-company URL, public Auth sign-up closed, no shared repeat
+  key), `tests/e2e/roles.spec.ts` (5: allowed and refused pages per role);
+  tenancy guards updated (101 reviewed definer functions).
+
+### Remaining limits (N9)
+
+- Hosted Supabase is **not configured** for any of this yet (see SETUP §2): Confirm
+  email, the three templates, SMTP, Site URL and redirect URLs must be set by hand;
+  `SUPABASE_SERVICE_ROLE_KEY` is required on the server for sign-up and invitations.
+- Rate limiting uses the first `X-Forwarded-For` address; the host must set that
+  header itself (Vercel does). Behind another proxy, check it before launch.
+- No self-serve "resend verification email" button: a person who loses the email
+  can retry the same form, or an operator resends it. Unverified accounts with an
+  unused reservation are not cleaned up automatically.
+- Access codes are managed with a script, not an admin screen. There is no waiting
+  list, marketing site or subscription payment (out of scope for N9).
+- A person cannot leave a company themselves; an owner deactivates them.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 16 migrations via
-`supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then decide
+**B3 — staging deployment** (hosted Supabase, all 17 migrations via
+`supabase db push`, auth email settings, templates and SMTP per SETUP §2, deploy,
+backup/restore drill, then the sign-up → onboarding → invitation flow with a real
+inbox and one early-access code). Then decide
 QuickBooks Desktop vs Online and verify an import or API mapping against a test
 company before adding any QuickBooks-specific export; and consider an explicit
 per-company quantity tolerance for billing exceptions. For the command center,
@@ -1078,7 +1194,7 @@ tests/unit · tests/db · tests/e2e
 | Variable | Needed for |
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | everything |
-| `SUPABASE_SERVICE_ROLE_KEY` | invitations, owner bootstrap (server only) |
+| `SUPABASE_SERVICE_ROLE_KEY` | early-access sign-up, invitations, owner bootstrap (server only) |
 | `APP_BASE_URL` | auth email links |
 | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `EMAIL_TEST_RECIPIENT` | quote email |
 

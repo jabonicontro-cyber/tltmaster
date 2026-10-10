@@ -27,6 +27,9 @@ export function LoginForm({ next }: { next?: string }) {
           Forgot your password?
         </Link>
       </p>
+      <p className="border-t border-line pt-3 text-center text-sm">
+        Have an access code? <Link href="/signup" className="font-semibold text-ink hover:underline">Create a company account</Link>
+      </p>
     </form>
   );
 }

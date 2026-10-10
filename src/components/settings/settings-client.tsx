@@ -181,7 +181,7 @@ export interface UserRow {
   created_at: string;
 }
 
-export function UsersPanel({ users, currentUserId, inviteAvailable }: { users: UserRow[]; currentUserId: string; inviteAvailable: boolean }) {
+export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = false }: { users: UserRow[]; currentUserId: string; inviteAvailable: boolean; isOwner?: boolean }) {
   const [editing, setEditing] = useState<UserRow | null>(null);
   const [inviting, setInviting] = useState(false);
   const router = useRouter();
@@ -220,7 +220,7 @@ export function UsersPanel({ users, currentUserId, inviteAvailable }: { users: U
         </Table>
       </TableWrap>
       {editing && <UserDialog user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); router.refresh(); }} />}
-      {inviting && <InviteDialog onClose={() => setInviting(false)} onSaved={() => { setInviting(false); router.refresh(); }} />}
+      {inviting && <InviteDialog isOwner={isOwner} onClose={() => setInviting(false)} onSaved={() => { setInviting(false); router.refresh(); }} />}
     </>
   );
 }
@@ -255,7 +255,7 @@ function UserDialog({ user, onClose, onSaved }: { user: UserRow; onClose: () => 
   );
 }
 
-function InviteDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function InviteDialog({ onClose, onSaved, isOwner }: { onClose: () => void; onSaved: () => void; isOwner: boolean }) {
   const { pending, onSubmit, fieldError: fe, formError } = useFormAction(inviteUser, {
     onSuccess: (r) => {
       toast.success(r.message ?? "Invited");
@@ -263,14 +263,14 @@ function InviteDialog({ onClose, onSaved }: { onClose: () => void; onSaved: () =
     },
   });
   return (
-    <Dialog open onOpenChange={(o) => !o && !pending && onClose()} title="Invite user" description="They receive an email link to choose a password.">
+    <Dialog open onOpenChange={(o) => !o && !pending && onClose()} title="Invite user" description="New people receive an email link to choose a password. Someone who already has an account (for example in another company) is added directly and can switch companies from the account menu.">
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormError message={formError} />
         <Field label="Email" htmlFor="email" required error={fe("email")}><Input {...ctl("email", fe("email"))} type="email" /></Field>
         <Field label="Name" htmlFor="full_name" required error={fe("full_name")}><Input {...ctl("full_name", fe("full_name"))} /></Field>
         <Field label="Role" htmlFor="role" required error={fe("role")}>
           <Select {...ctl("role", fe("role"))} defaultValue="office">
-            {ROLES.map((r) => (
+            {ROLES.filter((r) => isOwner || r !== "owner").map((r) => (
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}
           </Select>

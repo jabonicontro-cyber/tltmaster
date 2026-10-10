@@ -13,7 +13,8 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 
 | Area | Status |
 | --- | --- |
-| Sign in, sign out, password reset, invitations, roles | ✅ |
+| Sign in, sign out, password reset, invitations (new or existing accounts), roles | ✅ — emails tested locally with the dev mail catcher; hosted email needs setup (SETUP §2) |
+| Early-access sign-up: access code → account → email verification → company with you as Owner; company switcher for people in several companies | ✅ — codes issued by operators (`scripts/early-access.mjs`); public sign-up stays off |
 | Dashboard (quote figures from real records) | ✅ — operations figures arrive with later modules |
 | Customers, contacts, job sites, search, archive | ✅ |
 | Materials, hauling/charges, units, price lists with rate history | ✅ |
@@ -21,7 +22,7 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 | Quote print preview and PDF | ✅ |
 | Quote email | ✅ code complete — **preview mode until an email provider is configured** |
 | Settings: company, numbering, users, permissions, sample data, audit log | ✅ |
-| Company separation: several isolated companies in one database (Top Line is company #1) | ✅ — no self-serve sign-up or billing |
+| Company separation: several isolated companies in one database (Top Line is company #1) | ✅ — self-serve only with an access code; no subscription billing |
 | Orders: convert accepted quotes (one order per quote), direct orders, status workflow, delivery dates and time windows, detail edits, history, search and filters | ✅ — loads, trucks and drivers arrive with dispatch |
 | Fleet: trucks, trailers, drivers, licenses and medical cards, service status with history, dispatch-readiness check | ✅ — maintenance, documents and PTO later |
 | Dispatch: day board, loads per order with times, assign / reassign / remove trucks, trailers and drivers, eligibility and no double-booking | ✅ — week view and notifications later |
@@ -73,9 +74,11 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` · `npm run typecheck` | ESLint · TypeScript |
 | `npm test` | Unit tests (money, quote calculation, status rules, PDF, email) |
-| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, delivery tickets (numbering, revisions, duplicates), billing readiness (reconciliation, acknowledgments, handoff and concurrency), command center (classification, deduplication, visibility, paging, assignment), driver portal (identity, own assignments only, idempotent tickets, field reports), ticket photos and storage policies, numbering (needs a migrated DB) |
-| `npm run test:e2e` | Browser tests against a running app + local backend |
-| `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker |
+| `npm run test:db` | Database tests: RLS, permissions, cross-company isolation, quote workflow, quote-to-order conversion, order management, fleet registry and eligibility rules, dispatch assignments and concurrent double-booking, delivery tickets (numbering, revisions, duplicates), billing readiness (reconciliation, acknowledgments, handoff and concurrency), command center (classification, deduplication, visibility, paging, assignment), driver portal (identity, own assignments only, idempotent tickets, field reports), ticket photos and storage policies, early access and company onboarding (codes, rate limits, atomic company creation, existing members, owner-only Owner role), numbering (needs a migrated DB) |
+| `npm run test:e2e` | Browser tests against a running app + local backend (incl. sign-up → onboarding → invitations, and allowed/refused pages per role) |
+| `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker (with a local mail catcher) |
+| `node --env-file=.env.local scripts/early-access.mjs create\|list\|revoke` | Early-access codes (operators) |
+| `node --env-file=.env.local scripts/create-test-company.mjs "Name (test)" key` | A local test company with one account per role (see SETUP → Two independent test companies) |
 
 ## Documentation
 

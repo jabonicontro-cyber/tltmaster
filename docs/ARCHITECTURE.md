@@ -88,18 +88,23 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   signed-in user's active membership (`company_memberships`, active, with a role,
   in an active company; `profiles.active_company_id` picks one if there are
   several). It is **never** taken from the request. `my_access()` returns it to
-  the app, and the header shows it.
+  the app, and the header shows it. People with several companies change it in the
+  account menu: `switch_company(id)` sets `active_company_id` only to a company where
+  they have an active membership with a role (otherwise 42501), and every query
+  follows it in the database.
 - **RLS**: every policy is `company_id = (select private.current_company_id()) and
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 86 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 101 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
   dispatch, 4 with delivery tickets, 5 with billing readiness, 7 with the command
-  center, 8 with the driver portal, 6 with ticket photos). Each
-  public one resolves the company itself (`private.require_company()`), looks up
+  center, 8 with the driver portal, 6 with ticket photos, 15 with company onboarding).
+  Each public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
-  company id. None accepts a company id from the caller. Internal helpers
+  company id. None accepts a company id from the caller, except `switch_company`,
+  which only accepts the caller's own active memberships (a reviewed exception the
+  tenancy test names). Internal helpers
   (`next_document_number`, `create_company`, `resolve_price`, …) are not
   executable by app users. A database test fails if a new definer function
   appears without being added to the reviewed list.
@@ -112,8 +117,11 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   names/codes/numbers.
 - **Server code**: pages, server actions and the PDF route use the user-bound
   Supabase client, so RLS applies everywhere. The service-role key is used only
-  to send an invitation email; the membership is then created by
-  `add_company_member()` running as the inviting owner.
+  for the Auth admin API (invitation emails, creating an unconfirmed account at
+  early-access sign-up) and the service-role-only early-access functions;
+  memberships are created by `add_existing_member()` / `add_company_member()`
+  running as the inviting user, and companies by `complete_company_onboarding()`
+  running as the verified new owner.
 - **Storage**: Supabase Storage, private bucket `ticket-photos`. Object paths start
   with `company_id` and are chosen by the database; storage RLS calls SECURITY DEFINER
   helpers that check the caller's company, permission and the attachment record, so a
@@ -124,17 +132,42 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   against the real storage server (`tests/storage`).
 - **Background jobs**: none run inside the app. The abandoned-upload cleanup is an
   operator script with the service role (`scripts/cleanup-ticket-photos.mjs`).
-- **Creating a company** (operator only): `select private.create_company('Name', 'slug');`
-  then `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no self-serve
-  sign-up or billing.
+- **Creating a company**: with an early-access code (below), or by an operator:
+  `select private.create_company('Name', 'slug');` then
+  `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no subscription billing.
+
+## Early access and company onboarding
+
+Supabase Auth does the authentication (passwords, email verification, sessions);
+public Auth sign-up stays **disabled**. The early-access gate is a separate
+component in the `private` schema, reachable only through service-role functions:
+
+1. `/signup` (server action): `early_access_check` (code hash + rate limits per IP
+   and email; keys are HMACs, the code itself is never stored) → Auth admin API
+   creates the account **unconfirmed** (an existing email is told to sign in
+   instead, so a code is never attached to someone else's account) →
+   `early_access_reserve` takes one use for that account under a row lock (undone if
+   it fails) → Auth sends the verification email. A per-form request key makes
+   retries return the same result.
+2. The email link (`/auth/confirm`) signs the person in and opens `/onboarding`.
+3. `complete_company_onboarding()` (as the user, verified email required) creates the
+   company, its settings, numbering, permissions, units and price list, the owner
+   membership and active company, and completes the reservation, in one transaction.
+   Running it again returns the same company. A revoked code stops it.
+
+Signed-in users with a verified email create another company with a new code
+(`create_company_with_access_code`, on `/onboarding`; the account menu links to it
+for owners, `/no-access` for people without a company). Operators issue, list and revoke codes with
+`scripts/early-access.mjs`. Codes: 20 random characters (100 bits), shown once,
+stored as SHA-256, with label, maximum uses, expiry and revocation.
 
 ## Security model
 
-- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery, plans loads and assigns trucks and drivers; cannot create, price, confirm or cancel orders), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
+- **Roles** (per company membership; only owners can grant or remove Owner): owner, office, dispatcher (views orders, schedules them and moves them through delivery, plans loads and assigns trucks and drivers; cannot create, price, confirm or cancel orders), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
 - **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
 - **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
 - **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
-- **Secrets**: the service-role key is only read in `src/server/supabase/admin.ts` (server-only) for invitations, after the caller's `users.manage` permission has been checked.
+- **Secrets**: the service-role key is only read in `src/server/supabase/admin.ts` (server-only) for invitations (after the caller's `users.manage` permission has been checked) and early-access sign-up (after the code and rate limits have been checked).
 - **Indexing**: `X-Robots-Tag: noindex`, `robots.txt` disallow, and `robots` metadata.
 - **Input**: all server actions validate with zod; database functions validate again.
 

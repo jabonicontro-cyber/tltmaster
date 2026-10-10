@@ -5,6 +5,7 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import http from "node:http";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -136,6 +137,16 @@ async function reserve(sub: string, assignment: string, size = JPEG.length) {
   paths.push(data.object_path);
   return data as { attachment_id: string; object_path: string };
 }
+/** Upload on a one-off connection (outside fetch's keep-alive pool); resolves to the HTTP status, 0 if the socket was cut. */
+const rawUpload = (sub: string, path: string, body: Buffer) =>
+  new Promise<number>((resolve) => {
+    const req = http.request(`${URL_}/storage/v1/object/${BUCKET}/${path}`, {
+      method: "POST", agent: false,
+      headers: { apikey: env.DEV_ANON_KEY, Authorization: `Bearer ${token(sub)}`, "content-type": "image/jpeg", "content-length": body.length },
+    }, (res) => { res.resume(); resolve(res.statusCode ?? 0); });
+    req.on("error", () => resolve(0));
+    req.end(body);
+  });
 const upload = (sub: string | null, path: string, body: Buffer = JPEG, contentType = "image/jpeg", upsert = false) =>
   as(sub).storage.from(BUCKET).upload(path, body, { contentType, upsert });
 
@@ -174,9 +185,11 @@ describe.skipIf(!available)("ticket photos on the real storage server", () => {
     await as(w.users.driver).storage.from(BUCKET).remove([r.object_path]);
     expect((await admin().storage.from(BUCKET).download(r.object_path)).error).toBeNull();
 
-    // Over the bucket's 5 MB limit (last: the server closes the connection on rejection).
+    // Over the bucket's 5 MB limit. The server closes the connection when it rejects
+    // the body, so this goes on its own connection (never reused by later requests).
     const big = await reserve(w.users.driver, w.a1!, 5 * 1024 * 1024);
-    expect((await upload(w.users.driver, big.object_path, Buffer.alloc(5 * 1024 * 1024 + 10, 1))).error).toBeTruthy();
+    const status = await rawUpload(w.users.driver, big.object_path, Buffer.alloc(5 * 1024 * 1024 + 10, 1));
+    expect(status === 0 || status >= 400).toBe(true);
     expect((await admin().storage.from(BUCKET).download(big.object_path)).error).toBeTruthy();
   });
 

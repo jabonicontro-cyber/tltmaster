@@ -85,7 +85,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       active: m.active,
       created_at: m.created_at,
     }));
-    content = <UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} />;
+    content = <UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} isOwner={access.role === "owner"} />;
   } else if (tab === "permissions") {
     const [{ data: perms }, { data: grants }] = await Promise.all([
       supabase.from("permissions").select("*").order("category").order("code"),

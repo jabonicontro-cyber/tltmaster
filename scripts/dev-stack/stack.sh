@@ -32,6 +32,7 @@ REST_PORT=54330
 POSTGREST_VERSION=v12.2.12
 AUTH_VERSION=v2.180.0
 STORAGE_PORT=5000
+MAILBOX_PORT=54325
 # Newest supabase/storage release that runs on Node 22.
 STORAGE_VERSION=v1.45.0
 STORAGE_API_DIR="${STORAGE_API_DIR:-$STATE/storage-api}"
@@ -75,9 +76,27 @@ auth_env() {
   export GOTRUE_JWT_AUD=authenticated
   export GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated
   export GOTRUE_JWT_ADMIN_ROLES=service_role
+  # Public sign-up stays off: accounts are created by the server after the
+  # early-access check (src/app/(auth)/signup) or by invitation.
   export GOTRUE_DISABLE_SIGNUP=true
   export GOTRUE_EXTERNAL_EMAIL_ENABLED=true
-  export GOTRUE_MAILER_AUTOCONFIRM=true
+  # Email addresses must be verified (as in the hosted project).
+  export GOTRUE_MAILER_AUTOCONFIRM=false
+  # Emails go to the local mail catcher (scripts/dev-stack/mailbox.mjs).
+  export GOTRUE_SMTP_HOST=127.0.0.1
+  export GOTRUE_SMTP_PORT=$MAILBOX_PORT
+  export GOTRUE_SMTP_USER=dev
+  export GOTRUE_SMTP_PASS=dev
+  export GOTRUE_SMTP_ADMIN_EMAIL=no-reply@tlt.local
+  export GOTRUE_SMTP_SENDER_NAME="Top Line Trucking Manager (dev)"
+  export GOTRUE_MAILER_URLPATHS_CONFIRMATION="/verify"
+  export GOTRUE_MAILER_TEMPLATES_CONFIRMATION="http://127.0.0.1:$GATEWAY_PORT/dev-templates/confirmation.html"
+  export GOTRUE_MAILER_TEMPLATES_INVITE="http://127.0.0.1:$GATEWAY_PORT/dev-templates/invite.html"
+  export GOTRUE_MAILER_TEMPLATES_RECOVERY="http://127.0.0.1:$GATEWAY_PORT/dev-templates/recovery.html"
+  export GOTRUE_MAILER_SUBJECTS_CONFIRMATION="Confirm your email"
+  export GOTRUE_MAILER_SUBJECTS_INVITE="You're invited to Top Line Trucking Manager"
+  export GOTRUE_MAILER_SUBJECTS_RECOVERY="Reset your Top Line Trucking Manager password"
+  export GOTRUE_RATE_LIMIT_EMAIL_SENT=1000
   export GOTRUE_LOG_LEVEL=warn
 }
 
@@ -167,6 +186,7 @@ cmd_up() {
   migrate_auth
   write_postgrest_conf
   auth_env
+  start_bg mailbox env MAILBOX_PORT=$MAILBOX_PORT MAILBOX_DIR="$STATE/mail" node "$ROOT/scripts/dev-stack/mailbox.mjs"
   start_bg auth bash -c "cd '$BIN' && exec ./auth serve"
   start_bg postgrest "$BIN/postgrest" "$STATE/postgrest.conf"
   if [[ "${DEV_STORAGE:-}" == "1" || -f "$STATE/storage.pid" ]]; then
@@ -215,6 +235,7 @@ EOF
 }
 
 cmd_down() {
+  stop_bg mailbox
   stop_bg storage
   stop_bg gateway
   stop_bg postgrest

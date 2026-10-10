@@ -44,7 +44,19 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.driver_assignment_form", "public.driver_submit_ticket", "public.driver_submit_field_report", "public.review_field_report",
   "private.can_upload_ticket_photo", "private.can_read_ticket_photo", "public.driver_begin_ticket_photo", "public.driver_confirm_ticket_photo",
   "public.abandoned_ticket_photos", "public.mark_ticket_photos_discarded",
+  "private.early_access_code_state", "private.access_rate_limited", "private.provision_company",
+  "public.early_access_check", "public.early_access_reserve", "public.early_access_request", "public.early_access_create_code",
+  "public.early_access_list_codes", "public.early_access_revoke_code", "public.my_onboarding",
+  "public.complete_company_onboarding", "public.create_company_with_access_code", "public.my_companies",
+  "public.switch_company", "public.add_existing_member",
 ];
+
+/**
+ * Public functions that take a company id on purpose. switch_company only
+ * accepts companies where the caller has an active membership (tested in
+ * tests/db/onboarding.test.ts).
+ */
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;
@@ -112,7 +124,9 @@ describe("schema guards", () => {
       expect(defs.rows.map((r) => r.name).sort()).toEqual([...REVIEWED_DEFINER_FUNCTIONS].sort());
       for (const d of defs.rows) {
         expect(d.config ?? [], d.name).toContain('search_path=""');
-        if (d.name.startsWith("public.")) expect(d.args, d.name).not.toMatch(/company/);
+        if (d.name.startsWith("public.") && !COMPANY_ID_ARGUMENT_REVIEWED.includes(d.name)) {
+          expect(d.args.replace(/p_company_name text/g, ""), d.name).not.toMatch(/company/);
+        }
       }
     });
   });

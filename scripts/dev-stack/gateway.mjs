@@ -2,7 +2,9 @@
 // Auth (GoTrue), /rest/v1 to PostgREST and (when started) /storage/v1 to
 // Supabase Storage, the way supabase-js expects.
 // Development / CI only.
+import fs from "node:fs";
 import http from "node:http";
+import nodePath from "node:path";
 
 const port = Number(process.env.GATEWAY_PORT ?? 54321);
 const authPort = Number(process.env.AUTH_PORT ?? 9999);
@@ -17,6 +19,19 @@ const routes = [
 
 http
   .createServer((req, res) => {
+    // Email templates for the local Auth server (it loads templates by URL).
+    const tpl = req.url.match(/^\/dev-templates\/([a-z]+)\.html$/);
+    if (tpl) {
+      const file = nodePath.join(new URL("../../supabase/templates", import.meta.url).pathname, `${tpl[1]}.html`);
+      if (!fs.existsSync(file)) {
+        res.writeHead(404);
+        res.end();
+        return;
+      }
+      res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+      res.end(fs.readFileSync(file));
+      return;
+    }
     const route = routes.find((r) => req.url === r.prefix || req.url.startsWith(r.prefix + "/") || req.url.startsWith(r.prefix + "?"));
     if (!route) {
       res.writeHead(404, { "content-type": "application/json" });
