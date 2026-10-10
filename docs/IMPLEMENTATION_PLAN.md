@@ -87,7 +87,8 @@ Later phases: a commercial-truck routing provider (evaluation pending) and Quick
    sum of the quote's per-unit lines.
 6. Prices are optional: when no catalog price exists, the user enters a rate. A rate
    that differs from a configured price is an “override” and needs the
-   `pricing.override` permission (owner by default). Discounts need it too.
+   `pricing.override` permission (owner only — confirmed by the business). Discounts need it too.
+   Owners can grant it to another role in Settings → Permissions.
 7. Quote expiration is set per version; overdue quotes are flagged and can be marked
    expired (no silent automatic status change).
 8. Business timezone: America/Chicago.
