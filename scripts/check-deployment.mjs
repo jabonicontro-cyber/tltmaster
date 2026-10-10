@@ -26,9 +26,17 @@ for (const path of ["/", "/login", "/signup", "/command-center", "/orders", "/se
   const loc = r.headers.get("location") ?? "";
   check(r.status >= 300 && r.status < 400 && loc.includes("/early-access"), `page ${path} sends visitors to the Early Access page`, `${r.status} ${loc}`);
 }
-for (const [method, path] of [["GET", `/tickets/photos/${randomUUID()}`], ["GET", `/quotes/${randomUUID()}/versions/${randomUUID()}/pdf`], ["POST", `/tickets/${randomUUID()}/scans`], ["POST", "/login"]]) {
-  const r = await get(path, { method, headers: { accept: "*/*", "next-action": "check" } });
-  check(r.status === 401, `${method} ${path} is refused without early access`, String(r.status));
+// Files and APIs: refused (401 from the app, or 403 from the host's edge), and nothing is served.
+for (const [method, path, headers] of [
+  ["GET", `/tickets/photos/${randomUUID()}`, { accept: "image/*,*/*" }],
+  ["GET", `/quotes/${randomUUID()}/versions/${randomUUID()}/pdf`, { accept: "application/pdf,*/*" }],
+  ["POST", `/tickets/${randomUUID()}/scans`, { accept: "*/*" }],
+  ["POST", "/login", { accept: "text/x-component", "next-action": "check" }],
+]) {
+  const r = await get(path, { method, headers });
+  const type = r.headers.get("content-type") ?? "";
+  const served = /^(image|application\/pdf)/.test(type);
+  check((r.status === 401 || r.status === 403) && !served, `${method} ${path} is refused without early access`, `${r.status} ${type}`);
 }
 
 const page = await get("/early-access");
