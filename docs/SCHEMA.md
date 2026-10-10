@@ -237,6 +237,18 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 - One current revision per number (partial unique index); repeated submissions
   return the same ticket (unique `submission_key`).
 
+### Ticket processing (N11)
+
+- `company_settings.ticket_reference_required` — flag tickets without a paper/scale number
+  (default true).
+- `begin_ticket_scan(ticket, upload_key, mime, size, sha256)` / `attach_ticket_scan(attachment,
+  ticket)` — office scans of paper tickets into `ticket_attachments` (same rules as driver
+  photos); history action `photo_added` on `delivery_ticket_events`.
+- View `verified_delivery_inputs` — accepted current revisions: ticket, revision,
+  `supersedes_id`, order, load (date, times), assignment, order line, material, driver,
+  truck, trailer, delivered at, quantity, unit, paper #, verified by/at. Security invoker
+  (tickets.view); no money.
+
 ## Billing readiness
 
 Readiness is **derived**, not stored: four `security_invoker` views compute it

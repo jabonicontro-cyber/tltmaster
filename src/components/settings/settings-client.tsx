@@ -88,6 +88,13 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
               <Input {...ctl("quote_footer_note", fe("quote_footer_note"))} defaultValue={settings.quote_footer_note} />
             </Field>
           </fieldset>
+          <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-2 sm:grid-cols-6">
+            <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Delivery tickets</legend>
+            <div className="sm:col-span-6">
+              <Checkbox name="ticket_reference_required" defaultChecked={settings.ticket_reference_required} label="Require the paper or scale ticket number" />
+              <p className="mt-1 text-sm text-muted">When on, a ticket entered without that number is flagged for review. Turn it off if your tickets do not carry one. Applies to tickets entered from now on.</p>
+            </div>
+          </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
             <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Urgent orders</legend>
             <Field

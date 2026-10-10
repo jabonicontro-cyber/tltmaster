@@ -123,3 +123,49 @@ export async function reviewTicket(input: z.input<typeof reviewInput>): Promise<
     return ok(undefined, parsed.data.action === "accept" ? "Ticket accepted." : parsed.data.action === "flag" ? "Ticket flagged for review." : "Ticket voided.");
   });
 }
+
+const bulkInput = z.object({ ticketIds: z.array(z.uuid()).min(1, "Choose at least one ticket.").max(50, "At most 50 tickets at a time.") });
+
+export interface BulkAcceptResult {
+  ticketId: string;
+  ticketNumber: string | null;
+  outcome: "accepted" | "skipped" | "failed";
+  message: string;
+}
+
+/**
+ * Accept several received tickets that nothing flagged. Each ticket is checked
+ * again on the server (still "submitted", still no review reason) and accepted
+ * on its own, so one failure never blocks or undoes the others. Repeating is
+ * safe: an already accepted ticket is reported, not accepted twice.
+ */
+export async function acceptCleanTickets(input: z.input<typeof bulkInput>): Promise<ActionResult<{ results: BulkAcceptResult[] }>> {
+  return guard(async () => {
+    await assertPermission("tickets.review");
+    const parsed = bulkInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const ids = [...new Set(parsed.data.ticketIds)];
+    const { data, error } = await supabase.from("delivery_tickets").select("id, ticket_number, status, review_reasons, order_id").in("id", ids);
+    if (error) return fail(dbErrorMessage(error));
+    const rows = new Map(((data ?? []) as Array<{ id: string; ticket_number: string; status: string; review_reasons: string[]; order_id: string }>).map((r) => [r.id, r]));
+    const results: BulkAcceptResult[] = [];
+    const orders = new Set<string>();
+    for (const id of ids) {
+      const t = rows.get(id);
+      if (!t) { results.push({ ticketId: id, ticketNumber: null, outcome: "skipped", message: "Not found." }); continue; }
+      if (t.status === "accepted") { results.push({ ticketId: id, ticketNumber: t.ticket_number, outcome: "skipped", message: "Already accepted." }); continue; }
+      if (t.status !== "submitted" || t.review_reasons.length > 0) {
+        results.push({ ticketId: id, ticketNumber: t.ticket_number, outcome: "skipped", message: "Needs individual review." });
+        continue;
+      }
+      const r = await supabase.rpc("review_delivery_ticket", { p_ticket_id: id, p_action: "accept", p_note: "Accepted in a batch of clean tickets" });
+      if (r.error) results.push({ ticketId: id, ticketNumber: t.ticket_number, outcome: "failed", message: dbErrorMessage(r.error) });
+      else { results.push({ ticketId: id, ticketNumber: t.ticket_number, outcome: "accepted", message: "Accepted." }); orders.add(t.order_id); }
+    }
+    revalidateTickets();
+    for (const o of orders) revalidatePath(`/orders/${o}`);
+    const n = results.filter((r) => r.outcome === "accepted").length;
+    return ok({ results }, `${n} ticket${n === 1 ? "" : "s"} accepted.${results.length > n ? ` ${results.length - n} not accepted — see the list.` : ""}`);
+  });
+}

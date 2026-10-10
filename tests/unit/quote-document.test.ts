@@ -5,7 +5,7 @@ import type { CompanySettings, CustomerRow, QuoteLineRow, QuoteVersionRow } from
 const settings = {
   company_name: "Top Line Trucking", address_line1: "", address_line2: "", city: "", state: "IN", postal_code: "",
   phone: "(219) 555-0000", email: "", website: "", timezone: "America/Chicago", default_tax_rate_bp: 0,
-  quote_validity_days: 30, quote_followup_days: 3, default_quote_terms: "", quote_footer_note: "Thanks", urgent_ack_minutes: null, updated_at: "",
+  quote_validity_days: 30, quote_followup_days: 3, default_quote_terms: "", quote_footer_note: "Thanks", urgent_ack_minutes: null, ticket_reference_required: true, updated_at: "",
 } satisfies CompanySettings;
 
 const customer = {

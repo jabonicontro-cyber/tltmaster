@@ -4,7 +4,8 @@ import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { FilterBar } from "@/components/ui/filter-bar";
+import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
+import { BulkAccept } from "@/components/tickets/bulk-accept";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
@@ -13,7 +14,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
-import { reviewReasonLabel } from "@/lib/tickets/rules";
+import { REVIEW_REASON_LABELS, reviewReasonLabel } from "@/lib/tickets/rules";
 import { withReturn } from "@/lib/safe-redirect";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
@@ -21,7 +22,7 @@ import { listLoadsAwaitingTickets, listTickets, photoCounts, ticketCounts, TICKE
 
 export const metadata = { title: "Delivery Tickets" };
 
-type Search = { view?: string; q?: string };
+type Search = { view?: string; q?: string; reason?: string; photo?: string };
 
 export default async function TicketsPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("tickets.view");
@@ -35,7 +36,15 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
     businessToday(),
   ]);
   const photos = await photoCounts(tickets.map((t) => t.ticket_number));
-  const listHref = `/tickets?${new URLSearchParams({ view, ...(sp.q ? { q: sp.q } : {}) })}`;
+  // Narrow the current list by review reason and by whether a photo/scan is attached (shown list only).
+  const reason = sp.reason && sp.reason in REVIEW_REASON_LABELS ? sp.reason : "";
+  const photoFilter = sp.photo === "with" || sp.photo === "without" ? sp.photo : "";
+  const shown = tickets.filter((t) => (!reason || t.review_reasons.includes(reason)) && (!photoFilter || (photoFilter === "with") === Boolean(photos.get(t.ticket_number))));
+  const clean = view === "submitted" && can(access, "tickets.review")
+    ? shown.filter((t) => t.status === "submitted" && t.review_reasons.length === 0).slice(0, 50)
+        .map((t) => ({ id: t.id, number: t.ticket_number, summary: `${t.snapshot.order_number} load ${t.snapshot.load_number} · ${trimNumber(t.quantity)} ${t.unit_code} · ${photos.get(t.ticket_number) ? "photo attached" : "no photo"}` }))
+    : [];
+  const listHref = `/tickets?${new URLSearchParams({ view, ...(sp.q ? { q: sp.q } : {}), ...(reason ? { reason } : {}), ...(photoFilter ? { photo: photoFilter } : {}) })}`;
   const tabCount: Partial<Record<TicketView, number>> = { awaiting: awaiting.rows.length, review: counts.review, submitted: counts.submitted };
 
   return (
@@ -110,8 +119,16 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         <Card>
           <FilterBar action="/tickets" query={sp.q} placeholder="Search ticket #, paper ticket #, order #, customer, truck, driver…" clearHref={`/tickets?view=${view}`}>
             <input type="hidden" name="view" value={view} />
+            <FilterSelect name="reason" label="Review reason" value={reason} options={[{ value: "", label: "Any" }, ...Object.entries(REVIEW_REASON_LABELS).map(([value, label]) => ({ value, label: label.split(" (")[0].replace(/\.$/, "") }))]} />
+            <FilterSelect name="photo" label="Photo or scan" value={photoFilter} options={[{ value: "", label: "Any" }, { value: "with", label: "Attached" }, { value: "without", label: "Missing" }]} />
           </FilterBar>
-          {tickets.length === 0 ? (
+          {clean.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2 sm:px-5">
+              <BulkAccept tickets={clean} />
+              <span className="text-sm text-muted">Tickets with any review reason are reviewed one by one.</span>
+            </div>
+          )}
+          {shown.length === 0 ? (
             <EmptyState title={sp.q ? "No tickets match this search" : `No tickets — ${TICKET_VIEWS[view].toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
           ) : (
             <TableWrap>
@@ -126,7 +143,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                   </tr>
                 </thead>
                 <tbody>
-                  {tickets.map((t) => (
+                  {shown.map((t) => (
                     <Tr key={t.id}>
                       <Td>
                         <Link href={t.status === "needs_review" || t.status === "submitted" ? withReturn(`/tickets/${t.id}?queue=review`, listHref) : withReturn(`/tickets/${t.id}`, listHref)} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">{t.ticket_number}</Link>

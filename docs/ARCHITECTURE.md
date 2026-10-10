@@ -98,11 +98,11 @@ name, empty address, their chosen time zone and no records.
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 110 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 112 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
   dispatch, 4 with delivery tickets, 5 with billing readiness, 7 with the command
   center, 8 with the driver portal, 6 with ticket photos, 15 with company onboarding, 9 with
-  workflow coordination).
+  workflow coordination, 2 with ticket processing).
   Each public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller, except `switch_company`,
@@ -186,6 +186,21 @@ stored as SHA-256, with label, maximum uses, expiry and revocation.
   (`src/lib/safe-redirect.ts` → `returnTarget` accepts only known list pages); the ticket
   review queue offers position and "Accept and next"; the order page shows progress across
   dispatch, tickets and billing from the same records (`src/lib/orders/progress.ts`).
+
+## Delivery tickets: from paper to verified
+
+- **One chain of records**: order → load → dispatch assignment → ticket (revisions) →
+  billing views. A ticket is *received* (`submitted`), *flagged* (`needs_review`, with
+  reasons computed by the database) or *verified* (`accepted` by `tickets.review`); a
+  correction is a new revision that must be verified again; nothing completes an order or
+  changes an assignment automatically.
+- **Evidence**: driver photos and office scans share one private bucket; the database
+  reserves each path for one user in one company, storage policies accept only that path,
+  and the database confirms size and type before attaching; images are never replaced or
+  deleted and stay with the ticket number.
+- **Downstream**: billing readiness is a view over the same tickets, so a correction or
+  verification re-evaluates it at once; `verified_delivery_inputs` names the facts future
+  payroll will use (no money; billing amounts are never driver pay).
 
 ## Security model
 

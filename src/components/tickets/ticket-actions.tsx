@@ -31,7 +31,7 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
   return (
     <div className="flex flex-wrap gap-2">
       {permissions.review && status !== "accepted" && (
-        <Button icon={<CheckCircle2 className="size-4" />} onClick={() => { setNote(""); setAction("accept"); }}>
+        <Button data-accept-ticket icon={<CheckCircle2 className="size-4" />} onClick={() => { setNote(""); setAction("accept"); }}>
           {queue?.nextHref ? "Accept and next" : "Accept"}
         </Button>
       )}

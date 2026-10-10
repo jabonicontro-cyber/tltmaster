@@ -15,7 +15,8 @@ import { canEditOrderLines, ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderDispatch } from "@/server/data/dispatch";
-import { liveTicketsForLoads } from "@/server/data/tickets";
+import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
+import { lineProgress } from "@/lib/tickets/context";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
 import { getOrderDetail } from "@/server/data/orders";
@@ -42,6 +43,14 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
     can(access, "billing.view") ? getOrderReadiness(id) : Promise.resolve(null),
     getOrderUrgency(id),
   ]);
+  const lineTickets = can(access, "tickets.view") && order.status !== "draft" ? await orderLineTickets(id) : null;
+  const now = new Date();
+  const plannedLoads = dispatch.loads.filter((l) => l.status === "planned");
+  const completionCheck = {
+    loadsStillToRun: plannedLoads.filter((l) => new Date(l.ends_at) > now).length,
+    loadsWithoutTicket: plannedLoads.filter((l) => new Date(l.ends_at) <= now && !loadTickets.some((t) => t.load_id === l.id)).length,
+    ticketsAwaitingReview: loadTickets.filter((t) => t.status === "submitted" || t.status === "needs_review").length,
+  };
   const canDispatch = can(access, "dispatch.view");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const billTo = order.bill_to_snapshot;
@@ -100,6 +109,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             orderDate={order.order_date}
             schedule={{ start: order.scheduled_start, end: order.scheduled_end, windowStart: order.window_start, windowEnd: order.window_end, notes: order.scheduling_notes }}
             permissions={{ edit: can(access, "orders.edit"), schedule: can(access, "orders.schedule") }}
+            completionCheck={completionCheck}
           />
         }
       />
@@ -274,6 +284,37 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               </CardBody>
             ) : (
               <QuoteLinesTable lines={lines} />
+            )}
+            {lineTickets && lines.length > 0 && (
+              <div className="border-t border-line px-4 py-3 sm:px-5">
+                <h3 className="mb-2 text-sm font-bold text-ink">Delivered so far</h3>
+                <table className="w-full text-sm" aria-label="Delivered so far">
+                  <thead>
+                    <tr className="text-left text-xs text-muted uppercase">
+                      <th className="py-1 font-semibold">Line</th>
+                      <th className="py-1 text-right font-semibold">Ordered</th>
+                      <th className="py-1 text-right font-semibold">Verified</th>
+                      <th className="hidden py-1 text-right font-semibold sm:table-cell">Awaiting review</th>
+                      <th className="py-1 text-right font-semibold">Remaining</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lines.filter((ln) => ln.unit_code && ln.quantity !== null).map((ln) => {
+                      const p = lineProgress({ unit_code: ln.unit_code!, quantity: ln.quantity! }, lineTickets.filter((t) => t.order_line_id === ln.id), "");
+                      return (
+                        <tr key={ln.id} className="border-t border-line">
+                          <td className="py-1.5">{ln.description}</td>
+                          <td className="py-1.5 text-right tabular">{p.ordered} {ln.unit_code}</td>
+                          <td className="py-1.5 text-right tabular">{p.verifiedOthers}</td>
+                          <td className="hidden py-1.5 text-right tabular sm:table-cell">{p.pendingOthers}</td>
+                          <td className={p.over ? "py-1.5 text-right font-semibold text-brand tabular" : "py-1.5 text-right tabular"}>{p.over ? `${p.remainingAfterThis.replace("-", "")} over` : p.remainingAfterThis}{p.otherUnitTickets ? ` (+${p.otherUnitTickets} in another unit)` : ""}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                <p className="mt-1 text-xs text-muted">From delivery tickets in each line&apos;s unit. Only verified (accepted) tickets count as delivered; prices are not changed by deliveries.</p>
+              </div>
             )}
             <div className="flex justify-end border-t border-line px-4 py-3 sm:px-5">
               <dl className="w-full max-w-xs space-y-1 text-[15px]">

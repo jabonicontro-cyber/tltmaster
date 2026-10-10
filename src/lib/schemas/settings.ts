@@ -30,6 +30,8 @@ export const companySettingsSchema = z
     email: optionalEmail,
     website: optionalText(120),
     timezone: timezoneSchema,
+    /** Flag tickets without a paper/scale ticket number for review (company choice). */
+    ticket_reference_required: z.preprocess((v) => v === "on" || v === "true" || v === true, z.boolean()),
     /** Escalate urgent orders nobody acknowledged within this many minutes; empty = off. */
     urgent_ack_minutes: z.preprocess(
       (v) => (v === "" || v === undefined || v === null ? null : v),

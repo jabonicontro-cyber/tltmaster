@@ -31,6 +31,8 @@ interface Props {
   schedule: { start: string | null; end: string | null; windowStart: string | null; windowEnd: string | null; notes: string };
   orderDate: string;
   permissions: { edit: boolean; schedule: boolean };
+  /** Facts shown before completing the order (completing never waits for tickets; billing readiness does). */
+  completionCheck?: { loadsWithoutTicket: number; ticketsAwaitingReview: number; loadsStillToRun: number };
 }
 
 const FORWARD: OrderStatus[] = ["confirmed", "scheduled", "dispatched", "in_progress", "completed"];
@@ -58,7 +60,7 @@ function iconFor(to: OrderStatus) {
 /** "HH:MM:SS" → "HH:MM" for <input type="time">. */
 const hhmm = (t: string | null) => (t ? t.slice(0, 5) : "");
 
-export function OrderActions({ orderId, orderNumber, status: shownStatus, sourceQuoteId, editSeq: shownSeq, lineCount, schedule, orderDate, permissions }: Props) {
+export function OrderActions({ orderId, orderNumber, status: shownStatus, sourceQuoteId, editSeq: shownSeq, lineCount, schedule, orderDate, permissions, completionCheck }: Props) {
   const router = useRouter();
   // The server returns the new status and edit counter immediately; the page
   // props catch up after router.refresh(). Use whichever is newer so a quick
@@ -127,6 +129,17 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
           router.refresh();
         }}
       >
+        {target === "completed" && completionCheck && completionCheck.loadsWithoutTicket + completionCheck.ticketsAwaitingReview + completionCheck.loadsStillToRun > 0 && (
+          <div role="note" className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+            <p className="font-semibold">Before you complete it:</p>
+            <ul className="list-disc pl-5">
+              {completionCheck.loadsStillToRun > 0 && <li>{completionCheck.loadsStillToRun} planned load(s) have not run yet.</li>}
+              {completionCheck.loadsWithoutTicket > 0 && <li>{completionCheck.loadsWithoutTicket} delivered load(s) have no delivery ticket.</li>}
+              {completionCheck.ticketsAwaitingReview > 0 && <li>{completionCheck.ticketsAwaitingReview} ticket(s) are received but not verified.</li>}
+            </ul>
+            <p className="mt-1">You can still complete it (paper tickets often arrive later); billing stays blocked until every load has a verified ticket.</p>
+          </div>
+        )}
         {target && (
           <Field
             label={orderTransitionNeedsReason(target) ? "Reason" : "Note (optional)"}

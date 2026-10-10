@@ -14,13 +14,19 @@ import { can } from "@/lib/permissions";
 import { reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
-import { getTicket, reviewQueuePosition } from "@/server/data/tickets";
+import { getTicket, getTicketContext, reviewQueuePosition } from "@/server/data/tickets";
+import { QueueKeys } from "@/components/tickets/queue-keys";
+import { TicketScanUpload } from "@/components/tickets/ticket-scan-upload";
+import { lineProgress } from "@/lib/tickets/context";
+import { REVIEW_REASON_HELP } from "@/lib/tickets/rules";
+import { formatCents } from "@/lib/money";
+import { cn } from "@/lib/cn";
 import { ReturnLink } from "@/components/ui/return-link";
 import { returnTarget, withReturn } from "@/lib/safe-redirect";
 
 export const metadata = { title: "Delivery ticket" };
 
-const ACTION_LABELS = { submitted: "Submitted", flagged: "Flagged for review", accepted: "Accepted", voided: "Voided", corrected: "Corrected" } as const;
+const ACTION_LABELS = { submitted: "Submitted", flagged: "Flagged for review", accepted: "Accepted", voided: "Voided", corrected: "Corrected", photo_added: "Scan or photo added" } as const;
 const FIELD_LABELS: Record<string, string> = {
   quantity: "Quantity",
   unit_code: "Unit",
@@ -41,7 +47,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   if (!detail) notFound();
   // Opened from the review queue: show its position and where to go next.
   const inQueue = queueParam === "review";
-  const queue = inQueue ? await reviewQueuePosition(id) : null;
+  const [queue, context] = await Promise.all([inQueue ? reviewQueuePosition(id) : Promise.resolve(null), getTicketContext(detail.ticket)]);
   const returnTo = returnTarget(back)?.href ?? (inQueue ? "/tickets?view=review" : null);
   const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=review`, returnTo) : `/tickets/${ticketId}?queue=review`);
   const { ticket: t, revisions, events, units, people, photos } = detail;
@@ -50,10 +56,16 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const unitLabel = (code: string | null) => units.find((u) => u.code === code)?.label.toLowerCase() ?? code ?? "";
   const current = revisions.find((r) => r.status !== "superseded");
   const s = t.snapshot;
+  const live = t.status !== "voided" && t.status !== "superseded";
+  const progress = context.line ? lineProgress(context.line, context.lineTickets, t.id) : null;
+  const loadTickets = context.lineTickets.filter((x) => x.load_id === t.load_id && x.id !== t.id);
+  const a = context.assignment;
+  const differs = (field: "truck_id" | "trailer_id" | "driver_id") => Boolean(a && (a[field] ?? null) !== (t[field] ?? null));
 
   return (
     <>
       <ReturnLink back={returnTo ?? undefined} />
+      {queue && <QueueKeys nextHref={queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null} prevHref={queue.prevId ? queueHref(queue.prevId) : null} />}
       {queue && (
         <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm">
           <span className="font-semibold">
@@ -61,6 +73,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           </span>
           {queue.prevId && <Link href={queueHref(queue.prevId)} className="underline">Previous</Link>}
           {queue.nextId && queue.nextId !== t.id && <Link href={queueHref(queue.nextId)} className="underline">Next</Link>}
+          <span className="ml-auto hidden text-xs text-muted sm:inline">Keys: J next · K previous · A accept (asks to confirm)</span>
         </nav>
       )}
       <PageHeader
@@ -103,12 +116,29 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           </Notice>
         )}
         {t.review_reasons.length > 0 && t.status !== "voided" && (
-          <Notice tone="warning" title={t.status === "needs_review" ? "Needs office review" : "Flags raised when submitted"}>
-            <ul className="space-y-0.5">
-              {t.review_reasons.map((r) => (
-                <li key={r} className="flex gap-1.5"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {reviewReasonLabel(r)}</li>
-              ))}
+          <Notice tone="warning" title={t.status === "accepted" ? "Flags raised when submitted — resolved: accepted by a reviewer" : t.status === "superseded" ? "Flags on this revision" : "Needs office review before it counts as verified"}>
+            <ul className="space-y-2" aria-label="Review reasons">
+              {t.review_reasons.map((r) => {
+                const help = REVIEW_REASON_HELP[r];
+                return (
+                  <li key={r}>
+                    <p className="flex gap-1.5 font-semibold"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {reviewReasonLabel(r)}</p>
+                    {help && t.status !== "accepted" && (
+                      <dl className="mt-0.5 ml-6 grid gap-0.5 text-sm">
+                        <div><dt className="inline font-semibold">Why it matters: </dt><dd className="inline">{help.why}</dd></div>
+                        <div><dt className="inline font-semibold">Next: </dt><dd className="inline">{help.next}</dd></div>
+                        <div><dt className="inline font-semibold">Handled by: </dt><dd className="inline">{help.who}</dd></div>
+                      </dl>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
+          </Notice>
+        )}
+        {t.status === "submitted" && t.review_reasons.length === 0 && (
+          <Notice title="Received, not verified yet">
+            Nothing was flagged. Compare it with the paper ticket or photo, then accept it. Until then it does not count as verified for billing.
           </Notice>
         )}
       </div>
@@ -139,10 +169,54 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           </Card>
 
           <Card>
+            <CardHeader title="Delivery context" description="From the order, the dispatch assignment and the other tickets on this order line. Same unit only — nothing is converted." />
+            <CardBody className="space-y-4">
+              {progress ? (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="Order line progress">
+                  <div><dt className="text-muted">Ordered</dt><dd className="font-semibold tabular">{progress.ordered} {unitLabel(progress.unit)}</dd></div>
+                  <div><dt className="text-muted">Verified on other tickets</dt><dd className="font-semibold tabular">{progress.verifiedOthers}</dd></div>
+                  <div><dt className="text-muted">This ticket</dt><dd className="font-semibold tabular">{progress.thisTicket ?? `other unit (${unitLabel(t.unit_code)})`}</dd></div>
+                  <div>
+                    <dt className="text-muted">Remaining after this</dt>
+                    <dd className={cn("font-semibold tabular", progress.over && "text-brand")}>{progress.over ? `${progress.remainingAfterThis.replace("-", "")} over the order` : progress.remainingAfterThis}</dd>
+                  </div>
+                  {progress.pendingOthers !== "0" && <div className="col-span-2 sm:col-span-4 text-muted">Also waiting for review on this line: {progress.pendingOthers} {unitLabel(progress.unit)}.</div>}
+                  {progress.otherUnitTickets > 0 && <div className="col-span-2 sm:col-span-4 text-muted">{progress.otherUnitTickets} ticket(s) on this line are in another unit and are not added.</div>}
+                </dl>
+              ) : (
+                <p className="text-sm text-muted">The order line could not be loaded.</p>
+              )}
+              <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} / {unitLabel(context.line.unit_code)} — not changed by tickets</dd></div>}
+                {context.order && <div><dt className="inline text-muted">Customer PO: </dt><dd className="inline">{context.order.customer_po || "none on the order"}</dd></div>}
+                {context.order && <div><dt className="inline text-muted">Site: </dt><dd className="inline">{[context.order.site_label, context.order.site_city].filter(Boolean).join(", ") || "—"}</dd></div>}
+                <div>
+                  <dt className="inline text-muted">Dispatch assignment: </dt>
+                  <dd className="inline">
+                    {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : "matches this ticket"}
+                    {a?.status === "canceled" ? " (assignment since removed)" : ""}
+                  </dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="inline text-muted">Other tickets on this load: </dt>
+                  <dd className="inline">
+                    {loadTickets.length === 0 ? "none" : loadTickets.map((x, i) => (
+                      <span key={x.id}>{i > 0 ? ", " : ""}<Link href={`/tickets/${x.id}`} className="font-semibold underline">{x.ticket_number}</Link> ({TICKET_STATUS_LABELS[x.status].toLowerCase()}, {trimNumber(x.quantity)} {unitLabel(x.unit_code)})</span>
+                    ))}
+                  </dd>
+                </div>
+              </dl>
+            </CardBody>
+          </Card>
+
+          <Card>
             <CardHeader
               title={`Paper ticket photos (${photos.length})`}
-              description={photos.length ? "Sent by the driver with the ticket. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute." : "No photo was attached. Check the paper ticket."}
+              description={photos.length ? "From the driver or the office. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute." : "No photo or scan is attached yet."}
             />
+            {live && can(access, "tickets.edit") && (
+              <div className="border-b border-line px-4 py-3 sm:px-5"><TicketScanUpload ticketId={t.id} /></div>
+            )}
             {photos.length > 0 && (
               <CardBody>
                 <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Paper ticket photos">

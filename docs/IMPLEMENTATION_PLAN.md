@@ -51,7 +51,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
 | Scheduling and dispatch | ✅ day board (N4, see §5c) · urgent orders (N10, §5j) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history; urgent orders shown on the board with acknowledgement. No week view, recurring loads, PTO or notifications. |
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
-| Delivery tickets and documents | ✅ office entry (N5, see §5d) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migration `20261015000100_delivery_tickets.sql` | Numbered tickets with revisions, review and void history. **No file storage**, photos, signatures, printing or driver entry. |
+| Delivery tickets and documents | ✅ office entry, driver entry, office scans, review queue (N5, N8, N8.1, N11 — see §5k) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migrations `20261015000100_delivery_tickets.sql`, `20261022000100_ticket_processing.sql` | Revisions, review with explained reasons, delivery context, scans of paper tickets, bulk accept of clean tickets, verified-delivery facts. No OCR/extraction, signatures or printing. |
 | Reconciliation and billing-ready records | ✅ first version (N6, see §5e) | `src/app/(app)/billing`, `src/components/billing`, `src/lib/billing`, migration `20261016000100_billing_readiness.sql` | Derived readiness, exception acknowledgments, handoff batches with a CSV file. **No invoices, payments, tax, AR or QuickBooks sync**; the CSV is not a QuickBooks import format. No quantity tolerance setting yet (exact match). |
 | Command Center (merged dashboard) and reports | ✅ Command Center (N10, see §5j) · 🧱 Reports | `src/app/(app)/command-center`, `src/lib/command-center`, `src/components/command-center`; `/dashboard` redirects | One home page: pinned attention summary, your work (assigned items, your own loads when linked to a driver record), the prioritized queue (now with urgent orders), operations figures from one database summary, sales (quotes) and one activity feed; sections arranged and collapsed per person; non-urgent items hidden per person. Reports is still a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
@@ -1258,9 +1258,113 @@ drivers.
   data).
 
 
+## 5k. Delivery ticket processing and billing readiness (N11)
+
+### Found before changing anything
+
+- Start: branch `claude/top-line-trucking-manager-vmw04i`, commit `4cede5c` (N10 + a test
+  fix), clean tree. Baseline: vitest 284 passed (after making two DB tests read every queue
+  page — the dev database holds more than 100 open items), browser 39/39, lint, typecheck and
+  build clean; fresh migration chain (18) identical to dev, 145 DB tests passed there.
+- **Chain of records (sound, kept)**: order (accepted quote version copied onto it) → loads
+  (planned quantity, times) → dispatch assignment (truck, trailer, driver) → delivery ticket
+  (order line, material, truck, trailer, driver, delivered quantity and unit, paper ticket #,
+  revisions with `supersedes_id`, snapshot of names at entry) → billing views
+  (`billing_load_status`, `billing_line_status`, `billing_exceptions`, `billing_order_status`)
+  → acknowledgments → handoff batches. One order can have many loads; one load can have more
+  than one ticket (explicitly confirmed and flagged).
+- **Intake**: office entry from paper (`submit_delivery_ticket`) and driver entry with up to 3
+  photos (`driver_submit_ticket`), both idempotent by submission key; possible duplicates
+  (same load, same paper #) need explicit confirmation and are flagged; review reasons are
+  computed by the database (unit differs from the order line, delivered on another day,
+  equipment differs from the assignment, missing paper #, additional ticket, duplicate
+  paper #). No OCR or automatic extraction exists — every value is typed by a person.
+- **Statuses**: `submitted` (received) → `needs_review` (flagged, with reasons) → `accepted`
+  (verified by someone with `tickets.review`); `voided`; `superseded` by a correction (a
+  correction always creates a new revision that must be verified again). Order completion is
+  a manual, permission-checked transition; nothing completes an order automatically.
+- **Billing readiness**: derived live; per-customer "PO required" already configurable;
+  handoff batches idempotent and reversible with history; nothing is invoiced or paid in the
+  app.
+- **Gaps**: (1) the office cannot attach a scan/photo of a paper ticket — the source image of
+  office-entered tickets is lost; (2) the review page lacks delivery context (ordered vs
+  already delivered on the line, other tickets on the load, the plan) and pricing context;
+  (3) review reasons say what, not why, what next or who; (4) the queue has no reason or photo
+  filter, no keyboard flow and no bulk accept of clean tickets; (5) completing an order gives no
+  warning about loads without verified tickets; (6) "missing paper ticket #" is forced on every
+  company; (7) nothing names the verified facts future payroll will rely on.
+
+### Plan
+
+- Office scans/photos on any live ticket (tickets.edit), same private bucket and storage
+  policy, reserve → upload → confirm, idempotent, recorded in the ticket history.
+- Company setting: whether a paper/scale ticket number is required (default: required, as
+  today).
+- Review page: delivery context, per-reason explanations (what, why, next, who), keyboard
+  shortcuts in the queue; list filters by reason and photo; bulk accept of tickets without
+  any review reason (confirmed, per-ticket results).
+- Order page: verified delivered vs ordered per line; completion dialog states loads without
+  verified tickets (warning, not a block — paper often arrives later).
+- `verified_delivery_inputs` view: accepted current revisions with driver, truck, load and
+  quantity — no money, tickets.view only — as the documented input for future payroll.
+
+### What was built (N11)
+
+- Migration `20261022000100_ticket_processing.sql` (additive; dev database backed up first):
+  - `company_settings.ticket_reference_required` (default true = previous behavior): when a
+    company turns it off, a ticket without a paper/scale number is not flagged
+    (`private.prepare_ticket` reads it). Settings → Company → *Delivery tickets*.
+  - Office scans/photos: `begin_ticket_scan` (tickets.edit; live tickets only; at most 6
+    images per ticket; idempotent per upload key) and `attach_ticket_scan` (confirms the
+    stored object's size and type, attaches it to the current revision, records
+    `photo_added` in the ticket history; safe to repeat). Same private bucket and storage
+    policies as driver photos; images cannot be replaced or deleted; they stay with the
+    ticket number through corrections and voids.
+  - `verified_delivery_inputs` view (security invoker): accepted current revisions with
+    driver, truck, trailer, load, date, quantity and unit, who verified it and when, and the
+    revision chain — the documented input for future payroll. No prices, no pay.
+- Ticket page: "Received, not verified yet" state; every review reason explains why it
+  matters, the next step and who handles it; **Delivery context** (ordered vs verified on
+  other tickets vs this ticket vs remaining, same unit only; what is still waiting on the
+  line; order price as accepted; customer PO; site; whether the dispatch assignment matches;
+  other tickets on the same load); **Add a scan or photo** (re-encoded in the browser, EXIF
+  removed, progress, "Try again" with the same key, kept on failure); queue keys J / K / A
+  (A only opens the confirmation).
+- Ticket list: filters by review reason and by photo/scan attached or missing; **Accept
+  clean tickets** on the Submitted view — only tickets received with no review reason, listed
+  and confirmed, each re-checked and accepted on its own with per-ticket results.
+- Order page: **Delivered so far** per line (ordered, verified, awaiting review, remaining or
+  over; other units never added); "Mark completed" lists planned loads not run, delivered
+  loads without a ticket and tickets not verified (a warning — completion stays a human
+  decision; billing stays blocked until every load has a verified ticket).
+- Upload route `POST /tickets/[id]/scans` (same-origin, session, tickets.edit, content check,
+  SHA-256, reserve → upload with the user's token → attach).
+- Tests: `tests/db/ticket-processing.test.ts` (4: company requirement; scans reserve/upload/
+  attach/retry/history/corrections; permissions and two companies; verified facts),
+  `tests/storage/ticket-photos.storage.test.ts` (+1, real storage server: office scan,
+  other company cannot write, attach or read), `tests/unit/ticket-processing.test.ts` (3),
+  `tests/e2e/ticket-processing.spec.ts` (2: received → explained → scanned → corrected →
+  verified → order and billing → completion warning → other company refused; bulk accept and
+  reason filter); tenancy guards (112 reviewed definer functions).
+
+### Remaining limits (N11)
+
+- **No automatic extraction (OCR)** and no automatic matching of an image to a load: a
+  person reads the paper and types the values; scans are evidence attached to a ticket.
+  Extraction would need a provider decision, accuracy testing on real tickets from several
+  companies, and a "suggested vs verified" field model (planned, §8 B/G).
+- Images only (JPEG/PNG/WebP, 5 MB); PDF scans are not accepted (the bucket allows images).
+  HEIC works where the browser can decode it.
+- A scan cannot be attached before the ticket exists (enter the ticket, then add the scan).
+- Company requirements beyond the paper number (photo required, quantity tolerance,
+  required fields per customer) are not settings yet; per-customer PO requirement exists.
+- Bulk accept is limited to 50 tickets per action and to tickets without review reasons.
+- Payroll: only the verified inputs exist (`verified_delivery_inputs`); no rules, periods,
+  approvals or exports (§8 A).
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 18 migrations via `supabase db push`, auth
+**B3 — staging deployment** (hosted Supabase, all 19 migrations via `supabase db push`, auth
 email settings, templates and SMTP per SETUP §2, deploy, backup/restore drill, the sign-up →
 onboarding → invitation flow with a real inbox, the `ticket-photos` bucket checks and a
 storage backup). It is the dependency for every external verification below.
@@ -1375,6 +1479,7 @@ shown as "no problems".
 | Requirement | Status | Dependencies / notes |
 | --- | --- | --- |
 | Payroll access restricted to explicitly authorized users (new `payroll.view` / `payroll.approve`, owner-only by default) | Planned | Fits the existing permission model; no other role gets it by default. |
+| Verified delivery inputs (driver, truck, load, date, quantity, unit, verifier, revision chain) | Verified (N11) | `verified_delivery_inputs` view; corrections traceable through `supersedes_id`; no money. |
 | Preliminary driver earnings from verified (accepted) ticket/load data | Blocked | Needs each participating company's pay rules (per load, per ton, per hour, minimums, special rates). Do not invent a formula. |
 | Driver pay rules separate from customer billing rates | Planned | Separate tables; never read from price lists. |
 | Pay periods, period summaries, drill-down to loads | Planned | After pay rules. |
@@ -1397,7 +1502,10 @@ shown as "no problems".
 | Supplier costs, margins, cost-informed suggestions | Planned | Needs supplier price data and an import format. |
 | Delivery zones / distance bands, minimums, contracts, fuel surcharges | Partial | Charges and percentage surcharges exist; zones, distance and minimum rules do not. |
 | Volume (L × W × D) and density-based tonnage estimates | Planned | Estimates must stay labelled as estimates, separate from delivered quantities. |
-| Company-specific billing requirements (photo required, PO required, tolerance) | Planned | Company settings feeding the billing views; currently one rule set for all. |
+| Company-specific ticket and billing requirements | Partial | Paper/scale number required — company setting (N11); PO required — per customer; photo required, quantity tolerance and required fields per customer — planned. |
+| Ticket intake: office entry, driver entry with photos, office scans of paper tickets | Verified (N11) | Idempotent, duplicates confirmed and flagged, images private and tenant-scoped. |
+| Automated ticket extraction (OCR) and automatic matching | Planned | Provider choice, accuracy on real tickets from several companies, suggested-vs-verified fields; never auto-verify. |
+| Ticket review queue (reasons explained, context, keys, filters, bulk accept of clean tickets) | Verified (N11) | |
 | Pricing and numbering isolated per company | Verified | |
 
 ### C. Dispatch and driver fairness
@@ -1466,3 +1574,7 @@ shown as "no problems".
 - Maintenance policies: which defects stop dispatch, who may return equipment to service.
 - Operating regions and official data sources for road and weather conditions.
 - Hosted environment (B3): SMTP, templates, URLs, storage bucket and backups.
+- Ticket formats and numbering conventions of participating companies (before any OCR or
+  company-specific required fields).
+- Billing handoff target per company (QuickBooks Online or other): import vs API, required
+  identifiers, tested against a test company file — the CSV handoff is not an import format.

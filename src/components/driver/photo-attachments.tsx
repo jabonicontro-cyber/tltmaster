@@ -5,6 +5,7 @@ import { Camera, CheckCircle2, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { MAX_PHOTOS_PER_TICKET } from "@/lib/files/images";
+import { toJpeg } from "@/lib/files/to-jpeg";
 
 type Photo = {
   key: string;
@@ -20,21 +21,6 @@ export interface PhotoState {
   ids: string[];
   busy: boolean;
   failed: boolean;
-}
-
-/**
- * Re-encode to JPEG, at most 2000 px on the long side. This keeps uploads
- * small on a phone connection and drops EXIF data (GPS, device).
- */
-async function toJpeg(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext("2d")!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  return new Promise((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("encode"))), "image/jpeg", 0.82));
 }
 
 export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignmentId: string; onChange: (s: PhotoState) => void; disabled?: boolean }) {

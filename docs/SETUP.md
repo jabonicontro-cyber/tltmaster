@@ -142,8 +142,8 @@ records and only apply migrations added since your last update (for example
 `20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
 `20261016000100_billing_readiness.sql`, `20261017000100_command_center.sql` and
 `20261018000100_driver_portal.sql`,
-`20261019000100_ticket_photos.sql`, `20261020000100_company_onboarding.sql` and
-`20261021000100_command_center_coordination.sql`):
+`20261019000100_ticket_photos.sql`, `20261020000100_company_onboarding.sql`,
+`20261021000100_command_center_coordination.sql` and `20261022000100_ticket_processing.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -153,8 +153,8 @@ psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
 # 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql,
 # 20261017000100_command_center.sql, 20261018000100_driver_portal.sql and
-# 20261019000100_ticket_photos.sql, 20261020000100_company_onboarding.sql and
-# 20261021000100_command_center_coordination.sql, in that order
+# 20261019000100_ticket_photos.sql, 20261020000100_company_onboarding.sql,
+# 20261021000100_command_center_coordination.sql and 20261022000100_ticket_processing.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -184,6 +184,11 @@ functions; it removes the company-specific column defaults (`company_name`, `sta
 grants the fixed Owner role `driver.portal` in every company (the only change to existing
 rows). After applying it, deploy the app from the same commit (onboarding now sends a time
 zone).
+
+The ticket-processing migration adds the `ticket_reference_required` setting (default on, as
+before), the office scan functions, a `photo_added` ticket history action and the
+`verified_delivery_inputs` view; no rows change. Office scans use the existing
+`ticket-photos` bucket (step 9) — nothing new to configure.
 
 **Urgent orders and escalation.** Settings → Company → *Urgent orders*: leave the escalation
 time empty for no escalation, or enter minutes (5–1440). An urgent order nobody in dispatch

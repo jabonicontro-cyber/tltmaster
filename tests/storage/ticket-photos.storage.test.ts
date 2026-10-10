@@ -231,6 +231,33 @@ describe.skipIf(!available)("ticket photos on the real storage server", () => {
     expect((await admin().storage.from(BUCKET).download(r.object_path)).error).toBeNull();
   });
 
+  it("the office attaches a scan of a paper ticket through the real storage server; other companies can neither add nor read it", async () => {
+    const { data: a } = await admin().from("dispatch_assignments").select("load_id").eq("id", w.a2!).single();
+    const sent = await as(w.users.office).rpc("submit_delivery_ticket", { p_payload: {
+      load_id: a!.load_id, order_line_id: w.line, delivered_date: w.yesterday, delivered_time: "09:30", quantity: "18",
+      unit_code: "ton", external_reference: `OF-${randomUUID().slice(0, 6)}`, submission_key: randomUUID() } });
+    expect(sent.error).toBeNull();
+    const ticketId = (sent.data as { ticket_id: string }).ticket_id;
+    const key = randomUUID();
+    const begin = await as(w.users.office).rpc("begin_ticket_scan", { p_ticket_id: ticketId, p_upload_key: key, p_mime: "image/jpeg", p_size: JPEG.length, p_sha256: "b".repeat(64) });
+    expect(begin.error).toBeNull();
+    const r = begin.data as { attachment_id: string; object_path: string };
+    paths.push(r.object_path);
+    // Another company cannot write to the reserved path, nor attach it.
+    expect((await upload(w.users.bOwner, r.object_path)).error).toBeTruthy();
+    expect((await upload(w.users.office, r.object_path)).error).toBeNull();
+    expect((await as(w.users.bOwner).rpc("attach_ticket_scan", { p_attachment_id: r.attachment_id, p_ticket_id: ticketId })).error).toBeTruthy();
+    const att = await as(w.users.office).rpc("attach_ticket_scan", { p_attachment_id: r.attachment_id, p_ticket_id: ticketId });
+    expect(att.error).toBeNull();
+    expect(att.data).toMatchObject({ status: "attached", ticket_id: ticketId });
+    // Readable by the office through a short link; not by another company, the mechanic or anonymous callers.
+    expect((await as(w.users.office).storage.from(BUCKET).createSignedUrl(r.object_path, 60)).error).toBeNull();
+    for (const who of ["bOwner", "mechanic"]) expect((await as(w.users[who]).storage.from(BUCKET).createSignedUrl(r.object_path, 60)).error, who).toBeTruthy();
+    expect((await as(null).storage.from(BUCKET).createSignedUrl(r.object_path, 60)).error).toBeTruthy();
+    // The original cannot be overwritten.
+    expect((await upload(w.users.office, r.object_path, JPEG, "image/jpeg", true)).error).toBeTruthy();
+  });
+
   it("the cleanup script removes abandoned uploads and marks them discarded", async () => {
     const r = await reserve(w.users.driver, w.a1!);
     expect((await upload(w.users.driver, r.object_path)).error).toBeNull();

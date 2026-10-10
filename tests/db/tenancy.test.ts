@@ -54,6 +54,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.complete_company_onboarding", "public.create_company_with_access_code",
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception",
+  // N11: office scans of paper tickets.
+  "public.begin_ticket_scan", "public.attach_ticket_scan",
 ];
 
 /**

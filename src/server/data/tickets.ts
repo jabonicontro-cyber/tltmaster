@@ -58,7 +58,7 @@ export interface TicketEventRow {
   id: string;
   ticket_id: string;
   ticket_number: string;
-  action: "submitted" | "flagged" | "accepted" | "voided" | "corrected";
+  action: "submitted" | "flagged" | "accepted" | "voided" | "corrected" | "photo_added";
   from_status: TicketStatus | null;
   to_status: TicketStatus;
   note: string;
@@ -282,4 +282,43 @@ export async function reviewQueuePosition(ticketId: string): Promise<{ position:
   const i = ids.indexOf(ticketId);
   if (i === -1) return { position: null, total: ids.length, prevId: null, nextId: ids[0] ?? null };
   return { position: i + 1, total: ids.length, prevId: ids[i - 1] ?? null, nextId: ids[i + 1] ?? (ids.length > 1 ? ids[0] : null) };
+}
+
+export interface TicketContext {
+  line: { description: string; unit_code: string; quantity: number | string; unit_rate_cents: number } | null;
+  /** Live tickets on the same order line, by status and unit (this ticket included). */
+  lineTickets: Array<Pick<TicketRow, "id" | "ticket_number" | "status" | "quantity" | "unit_code" | "load_id">>;
+  /** What dispatch assigned to the load (truck, trailer, driver), for comparison with the ticket. */
+  assignment: { truck_id: string; trailer_id: string | null; driver_id: string; status: string } | null;
+  order: { customer_po: string; site_label: string; site_city: string; status: string } | null;
+}
+
+/** Everything a reviewer needs next to the ticket, read from the same records billing uses (RLS applies). */
+export async function getTicketContext(t: TicketRow): Promise<TicketContext> {
+  const supabase = await createClient();
+  const [line, lineTickets, assignment, order] = await Promise.all([
+    supabase.from("order_lines").select("description, unit_code, quantity, unit_rate_cents").eq("id", t.order_line_id).maybeSingle(),
+    supabase.from("delivery_tickets").select("id, ticket_number, status, quantity, unit_code, load_id").eq("order_line_id", t.order_line_id).not("status", "in", "(voided,superseded)").order("ticket_number").limit(500),
+    supabase.from("dispatch_assignments").select("truck_id, trailer_id, driver_id, status").eq("id", t.assignment_id).maybeSingle(),
+    supabase.from("orders").select("customer_po, site_label, site_city, status").eq("id", t.order_id).maybeSingle(),
+  ]);
+  return {
+    line: (line.data ?? null) as TicketContext["line"],
+    lineTickets: (lineTickets.data ?? []) as TicketContext["lineTickets"],
+    assignment: (assignment.data ?? null) as TicketContext["assignment"],
+    order: (order.data ?? null) as TicketContext["order"],
+  };
+}
+
+/** Live tickets of an order with their order line (for delivered-so-far per line). RLS applies (tickets.view). */
+export async function orderLineTickets(orderId: string) {
+  if (!uuid.safeParse(orderId).success) return [];
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("delivery_tickets")
+    .select("id, order_line_id, status, quantity, unit_code")
+    .eq("order_id", orderId)
+    .in("status", ["submitted", "needs_review", "accepted"])
+    .limit(2000);
+  return (data ?? []) as Array<Pick<TicketRow, "id" | "order_line_id" | "status" | "quantity" | "unit_code">>;
 }

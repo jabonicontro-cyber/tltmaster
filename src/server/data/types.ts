@@ -290,6 +290,7 @@ export interface CompanySettings {
   default_quote_terms: string;
   quote_footer_note: string;
   urgent_ack_minutes: number | null;
+  ticket_reference_required: boolean;
   updated_at: string;
 }
 
