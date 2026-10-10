@@ -58,6 +58,9 @@ no direct writes at all.
 | Direct orders use the quote pricing rules | `public.save_order_draft` uses the same price resolution and `pricing.override` check as `save_quote_draft`; parity with the TypeScript calculator is tested. |
 | Order status transitions | `private.order_transition_allowed` + `order_transition_permission` (DB) mirrored by `src/lib/orders/status.ts`; parity-tested. |
 | Order edits never lose work silently | `orders.edit_seq` optimistic concurrency on every order function; field-level audit diffs shown in the order timeline. |
+| Capacities and qualifications are never assumed | Unknown = `NULL`, shown as "Unknown"; verification stamped by the database (who/when); eligibility treats missing, expired, unverified or undated qualifications as blockers. |
+| Equipment service status has history | Status columns have no client grants; `set_equipment_service_status` requires `fleet.service` and a reason, writes `equipment_status_events` (append-only). |
+| Dispatch readiness | `public.check_assignment_eligibility` (DB) mirrored by `src/lib/fleet/eligibility.ts`; parity-tested. |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
 ## Companies (tenant isolation)
@@ -77,8 +80,8 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 42 `SECURITY DEFINER` functions were reviewed (35 with
-  company separation, 7 with order management). Each
+- **Elevated functions**: all 46 `SECURITY DEFINER` functions were reviewed (35 with
+  company separation, 7 with order management, 4 with the fleet registry). Each
   public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller. Internal helpers
@@ -105,7 +108,7 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
 
 ## Security model
 
-- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery; cannot create, price, confirm or cancel), mechanic (no permissions until fleet features exist), driver (future). A new account has no membership and sees nothing until an owner adds it.
+- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery; cannot create, price, confirm or cancel), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
 - **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
 - **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
 - **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.

@@ -15,6 +15,7 @@ import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
+import { fleetOverview } from "@/server/data/fleet";
 import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
@@ -66,7 +67,6 @@ const PLANNED = [
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
   { label: "Completed deliveries awaiting ticket review", phase: "Tickets (Phase 3)" },
   { label: "Deliveries ready for billing", phase: "Reconciliation (Phase 5)" },
-  { label: "Fleet availability", phase: "Fleet (Phase 4)" },
 ];
 
 type Search = { from?: string; to?: string; customer?: string };
@@ -80,12 +80,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canQuotes = can(access, "quotes.view");
 
   const canOrders = can(access, "orders.view");
-  const [quotes, activity, names, customers, scheduledToday] = await Promise.all([
+  const canFleet = can(access, "fleet.view");
+  const [quotes, activity, names, customers, scheduledToday, fleet] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
     canQuotes ? listCustomerOptions() : Promise.resolve([]),
     canOrders ? countOrdersScheduledToday() : Promise.resolve(null),
+    canFleet ? fleetOverview() : Promise.resolve(null),
   ]);
 
   return (
@@ -170,6 +172,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scheduledToday !== null && (
             <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
+          )}
+          {fleet && (
+            <Stat
+              icon={<Truck className="size-5" />}
+              label="Fleet ready today"
+              value={`${fleet.trucks.inService} trucks · ${fleet.drivers.ready} drivers`}
+              sub={`${fleet.trucks.outOfService.length + fleet.trailers.outOfService.length} out of service · ${fleet.drivers.notReady.length} drivers not eligible`}
+              href="/fleet"
+              tone={fleet.trucks.outOfService.length + fleet.drivers.notReady.length > 0 ? "warn" : "default"}
+            />
           )}
           {PLANNED.map((p) => (
             <div key={p.label} className="flex items-start gap-3 rounded-md border border-dashed border-line px-3 py-3">

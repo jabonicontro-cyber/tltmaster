@@ -135,8 +135,37 @@ tables, and the pricing triggers above keep the accepted prices, so prices on an
 order cannot be changed around the owner-only override rules. Orders created from
 sample quotes, and direct orders of sample customers, are removed with the sample data.
 
+## Fleet
+
+| Table | Purpose |
+| --- | --- |
+| `trucks` | Unit number (unique per company, case-insensitive), `truck_type`, make, model, year, VIN, plate. `weight_capacity` + `weight_unit` (`ton` / `lb`) and `volume_capacity` + `volume_unit` (`cu_yd`), each pair both-or-neither, `NULL` = unknown; `capacity_source`, `capacity_verified_at/by`. `active`; `service_status` (`in_service` / `out_of_service`) with `out_of_service_reason` (required when out), `out_of_service_since`, `expected_return_date`. |
+| `trailers` | Same as trucks with `trailer_type`, `compatible_truck_types truck_type[]` (empty = not recorded), `compatibility_notes`, `default_truck_id` (same company). Own service status. |
+| `equipment_status_events` | Append-only service-status history (truck or trailer, from, to, reason, expected return, who, when). |
+| `drivers` | Optional `user_id` → `company_memberships (company_id, user_id)` (one driver per account), or a `name`; employee number (unique per company), phone, hire date, active, notes. |
+| `driver_qualifications` | `kind` (`cdl`, `medical_card`, `hazmat`, `twic`, `other`), `cdl_class` (required for CDLs), endorsements, description (required for other), issuing state, issued / expires (`NULL` = unknown), `verified_at/by`, notes. No license numbers. |
+| `driver_list` (view) | Drivers with a display name (the linked account's name, else the stored name) and the account's active flag and role (security-invoker; names via `private.member_summary`, limited to the caller's company). |
+
+### Fleet rules
+
+- **Writes**: tables are written directly under RLS (`fleet.edit`), but the service
+  columns have no client grants: `set_equipment_service_status(kind, id, status,
+  reason, expected_return)` (`fleet.service`) changes them and writes the history.
+  Trucks, trailers and drivers are never deleted (deactivate); qualifications may
+  be deleted (audited).
+- **Verification**: clients send any non-null `*_verified_at` to mean "verified";
+  the trigger `private.stamp_fleet_row` records the time and the user, keeps the
+  original stamp when the values are unchanged, and the app clears the flag when
+  values are edited.
+- **Eligibility**: `check_assignment_eligibility(truck, trailer, driver, on)`
+  (`fleet.view`) returns `{eligible, blockers[], warnings[]}` — rules in
+  docs/IMPLEMENTATION_PLAN.md §5b; helpers `private.qualification_check`,
+  `private.cdl_class_rank`.
+- **History**: audit triggers on every fleet table; fleet audit entries are
+  readable with `fleet.view` (policy `audit_read_fleet`).
+
 ## Planned tables (later phases)
 
-Loads per order, trucks, drivers, dispatch assignments, route plans and
+Loads per order, maintenance and work orders, drivers, dispatch assignments, route plans and
 stops, delivery tickets and ticket lines, planning runs, integration records
 (QuickBooks IDs, sync status, errors).

@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1) and order management (N1 + N2). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1), order management (N1 + N2) and the fleet registry (N3). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -41,7 +41,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Area | State | Where it lives | Notes / gaps |
 | --- | --- | --- | --- |
 | Auth: sign-in, sign-out, reset, invite, no-access | ✅ (reset/invite email 🟡) | `src/app/(auth)`, `src/proxy.ts`, `src/server/auth.ts`, `scripts/create-owner.mjs` | Reset and invitation emails have never been delivered: they need a hosted Supabase project with SMTP. |
-| Roles and permissions | ✅ per company | `company_memberships`, `role_permissions` (per company), `role_permission_defaults`, Settings → Permissions | Roles: owner, office, dispatcher, **mechanic** (no permissions yet), driver. A user can belong to several companies; one is active at a time (no switcher UI yet). |
+| Roles and permissions | ✅ per company | `company_memberships`, `role_permissions` (per company), `role_permission_defaults`, Settings → Permissions | Roles: owner, office, dispatcher, mechanic (fleet view + service status), driver (no permissions yet). A user can belong to several companies; one is active at a time (no switcher UI yet). |
 | Customers, contacts, job sites | ✅ | `customers`, `customer_contacts`, `customer_sites`; `src/app/(app)/customers` | Saved site instructions exist (`customer_sites.directions`). There is no customer portal. |
 | Materials, charges, units, price lists | ✅ | `materials`, `charge_items`, `units_of_measure`, `price_lists`, `price_list_entries` | Customer price lists have dated history. **No supplier costs** anywhere. |
 | Quotes: editor, revisions, status, history | ✅ | `quotes`, `quote_versions`, `quote_lines`, `save_quote_draft` and related functions | Quote lines snapshot **prices, not costs**. There is no quote duplication and no automatic expiry (by design). |
@@ -50,7 +50,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Quote → order conversion | ✅ | `orders`, `order_lines`, `convert_quote_to_order` | — |
 | Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
 | Scheduling and dispatch | 🧱 | `src/app/(app)/dispatch/page.tsx` | No tables. |
-| Trucks, trailers, drivers, equipment | 🧱 | `src/app/(app)/fleet/page.tsx` | No tables. |
+| Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
 | Delivery tickets and documents | 🧱 | `src/app/(app)/tickets/page.tsx` | No tables. `document_sequences` has a `ticket` key. **No file storage** is used anywhere. |
 | Reconciliation and billing-ready records | ❌ | — | — |
 | Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures and the real "orders scheduled today" count; the other operations cards are placeholders. Reports is a placeholder. |
@@ -160,7 +160,7 @@ These build on B1 and are listed in dependency order.
 | --- | --- | --- | --- | --- | --- |
 | N1 ✅ | Order lifecycle | Done (§5a) — loads per order move to N4 | `orders`, `order_status_events` | `set_order_status()` with a transition table (Confirmed → Scheduled → Dispatched → In progress → Partially completed / Completed; On hold; Canceled), reasons, history; delivery window / requested dates; loads planned per order. | Keep status in sync with assignments and tickets (derive where possible). |
 | N2 ✅ | Direct orders | Done (§5a) | Quote editor + `save_quote_draft` pricing rules | `save_order_draft()` reusing the price resolution and override checks; editor component shared with quotes. | Do not fork the pricing rules — reuse them. |
-| N3 | Fleet registry (minimal) | Placeholder | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
+| N3 ✅ | Fleet registry (minimal) | Done (§5b) | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
 | N4 | Dispatch assignments | Placeholder | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
 | N5 | Delivery tickets | Placeholder | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
 | N6 | Reconciliation and billing-ready records | None | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
@@ -173,8 +173,8 @@ These build on B1 and are listed in dependency order.
 | Maintenance requests (driver-submitted, photos) | `maintenance_requests` + storage; driver portal form | B1, S7, N3 |
 | Work orders, parts, labor, history | `work_orders`, `work_order_lines`; mechanic role | Maintenance requests |
 | Service schedules and reminders (date / mileage / engine hours) | `service_schedules`, odometer and hour readings; nightly reminder job | N3; background job runner (none exists — choose Supabase cron / pg_cron or a scheduled route) |
-| Out-of-service enforcement and clearance | `service_status` change only through `return_to_service()` requiring a permission; dispatch rule refuses OOS equipment; downtime log | N3, N4 |
-| Driver qualifications, licenses, training, expirations | `driver_qualifications` with expiry; eligibility rule used by dispatch | N3 |
+| Out-of-service enforcement and clearance | ✅ status changes only through `set_equipment_service_status()` (`fleet.service`), reason required, append-only history; eligibility refuses out-of-service equipment. Remaining: dispatch must call the rule (N4). | N3, N4 |
+| Driver qualifications, licenses, training, expirations | ✅ CDL / medical card / hazmat / TWIC / other with expiry and verification; eligibility rule ready for dispatch. Remaining: training records, document uploads, reminder notifications. | N3 |
 | PTO and availability | `time_off_requests` (request → approve), availability calendar feeding dispatch "available" | N4 |
 | Announcements, directory, onboarding documents, safety and incident reports | Tables + storage; employee portal pages | B1, S7 |
 | Responsive driver portal | Role-specific layout: today's assignments, submit ticket, report delay/breakdown, upload documents | N4, N5 |
@@ -323,13 +323,79 @@ flow now edits the converted order's details.
   expiration). A per-company default for order terms is a small follow-up.
 - An order's customer cannot change after confirmation; cancel and re-create.
 
+## 5b. Fleet registry (N3) — completed
+
+Migration `20261013000100_fleet_registry.sql` (additive: new types, tables,
+functions, policies and permissions only; no existing row is changed).
+
+**What was added**
+- Permissions `fleet.view` (owner, office, dispatcher, mechanic), `fleet.edit`
+  (owner, office), `fleet.service` (owner, office, mechanic).
+- `trucks` and `trailers`: unit number unique per company (case- and
+  space-insensitive), type, make/model/year, VIN (validated), plate, weight
+  capacity with an explicit unit (tons or pounds) and body volume in cubic yards
+  — each `NULL` = unknown — capacity source, `capacity_verified_at/by` stamped by
+  the database, active flag, service status. Trailers add compatible truck types
+  (empty = not recorded), compatibility notes and the usual truck (same company,
+  composite FK); a trailer's status is independent of its truck.
+- `equipment_status_events` (append-only). Service columns cannot be written by
+  clients (column grants); `set_equipment_service_status()` requires
+  `fleet.service`, a reason to go out of service, and records the history.
+- `drivers` linked optionally to a company member (`company_memberships`, composite
+  FK — no duplicate identity; the name comes from the account), or with their own
+  name; employee number unique per company. `driver_list` view (name resolved by
+  `private.member_summary`, which only answers for the caller's own company).
+- `driver_qualifications`: CDL (class A/B/C, endorsements), DOT medical card,
+  hazmat, TWIC, other; issuing state, issue and expiry dates (`NULL` = unknown),
+  verification stamped by the database and cleared when the document details
+  change. License numbers are deliberately not stored.
+- Audit triggers on all fleet tables; people with `fleet.view` can read fleet
+  audit entries (policy `audit_read_fleet`), as with orders.
+
+**Dispatch readiness** (`public.check_assignment_eligibility`, mirrored by
+`src/lib/fleet/eligibility.ts`, parity-tested on 20 scenarios):
+- *active* = not deactivated; *available* = active and (equipment) in service;
+  *eligible* = available, trailer compatible with the truck type, and the driver
+  has a **verified, unexpired** CDL of the required class (A with a trailer,
+  otherwise B or A) and a **verified, unexpired** medical card on the date.
+- Missing, expired, unverified or undated qualifications block; unknown
+  capacity, unverified capacity, unrecorded compatibility and expiries within 30
+  days are warnings.
+
+**UI**: Fleet area with Overview (counts, out-of-service list, drivers needing
+attention, expiring qualifications, a "check a combination" tool), Trucks,
+Trailers and Drivers lists with search, status/type filters and empty states;
+detail pages with status, capacity (explicit Unknown / Not verified), history;
+create/edit forms; out-of-service dialog with reason; qualification editor. The
+dashboard's fleet card is real.
+
+**Tests**: `tests/db/fleet.test.ts` (9): CRUD and audit, unit-number uniqueness,
+capacity units and validation, verification stamping, service-status rules and
+history, trailer independence, driver identity linking, qualification rules,
+role permissions (office, dispatcher, mechanic, driver, pending, anonymous),
+eligibility parity, company isolation (reads, writes, cross-company references,
+functions). `tests/unit/fleet-rules.test.ts` (10). Browser:
+`tests/e2e/fleet.spec.ts` (3). Tenancy guards updated (27 business tables, 46
+reviewed definer functions).
+
+**Remaining limits**
+- The CDL class rule (B for a truck, A with a trailer) is a conservative default,
+  not configured per truck; a per-truck "CDL class required" setting may be
+  needed (e.g. non-CDL single-axle trucks).
+- No maintenance/work orders, odometer or engine hours, inspection records,
+  document or photo uploads (needs Storage, S7), driver availability/PTO, or
+  expiry notifications (needs a background job runner).
+- No truck–trailer pairing history; "usually paired with" is a single link.
+- Eligibility is checked on demand; dispatch (N4) must call it when assigning.
+
 ## Recommended next task
 
 **B3 — staging deployment** (hosted Supabase project, `supabase db push` of all
-migrations including company separation and order management, auth URLs, email
-templates and SMTP, deploy the app, real password-reset and test-mode quote
-emails, backup/restore drill B5). Then **N3 fleet registry → N4 dispatch → N5
-tickets**, each built on the company model from the start.
+migrations, auth URLs, email templates and SMTP, deploy the app, real
+password-reset and test-mode quote emails, backup/restore drill B5). Then **N4
+dispatch assignments**: assign order loads to a truck, trailer and driver per day,
+refuse ineligible combinations with `check_assignment_eligibility`, and prevent
+double-booking with database constraints.
 
 ---
 

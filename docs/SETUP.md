@@ -86,19 +86,21 @@ check customers, quotes and orders.
 
 `supabase db reset` rebuilds the database from scratch. To keep your local
 records and only apply migrations added since your last update (for example
-`20261012000100_order_management.sql`):
+`20261012000100_order_management.sql` and `20261013000100_fleet_registry.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
 # or, for the no-Docker stack:
 psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -1 \
   -f supabase/migrations/20261012000100_order_management.sql
+# then the same for supabase/migrations/20261013000100_fleet_registry.sql
 ```
 
 The order-management migration only adds columns, rules and functions; existing
 orders are kept (order date and confirmation time are filled from their creation
 time) and it aborts if any quote-linked order's totals would differ from its
-accepted revision.
+accepted revision. The fleet-registry migration only adds new tables, functions,
+permissions and policies; it does not change existing rows.
 
 ## 4. Deploying (Vercel or any Node host)
 

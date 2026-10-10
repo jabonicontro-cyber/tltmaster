@@ -15,6 +15,9 @@ export const PERMISSIONS = [
   "orders.view",
   "orders.edit",
   "orders.schedule",
+  "fleet.view",
+  "fleet.edit",
+  "fleet.service",
   "settings.manage",
   "users.manage",
   "audit.view",
@@ -29,7 +32,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Owner / Administrator",
   office: "Office staff",
   dispatcher: "Dispatcher",
-  mechanic: "Mechanic (future)",
+  mechanic: "Mechanic",
   driver: "Driver (future)",
 };
 

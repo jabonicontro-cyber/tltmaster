@@ -407,3 +407,101 @@ export interface AuditEventRow {
   summary: string;
   details: Record<string, unknown>;
 }
+
+// Fleet -----------------------------------------------------------------------
+
+export type TruckType = "single_axle_dump" | "tandem_axle_dump" | "tri_axle_dump" | "quad_axle_dump" | "tractor" | "other";
+export type TrailerType = "end_dump" | "belly_dump" | "side_dump" | "live_floor" | "pup" | "lowboy" | "flatbed" | "other";
+export type ServiceStatus = "in_service" | "out_of_service";
+export type WeightUnit = "ton" | "lb";
+export type VolumeUnit = "cu_yd";
+export type QualificationKind = "cdl" | "medical_card" | "hazmat" | "twic" | "other";
+export type CdlClass = "A" | "B" | "C";
+
+interface EquipmentBase {
+  id: string;
+  company_id: string;
+  unit_number: string;
+  make: string;
+  model: string;
+  model_year: number | null;
+  vin: string;
+  license_plate: string;
+  plate_state: string;
+  /** numeric (a number from the API); null = unknown */
+  weight_capacity: number | string | null;
+  weight_unit: WeightUnit | null;
+  volume_capacity: number | string | null;
+  volume_unit: VolumeUnit | null;
+  capacity_source: string;
+  capacity_verified_at: string | null;
+  capacity_verified_by: string | null;
+  active: boolean;
+  service_status: ServiceStatus;
+  out_of_service_reason: string;
+  out_of_service_since: string | null;
+  expected_return_date: string | null;
+  notes: string;
+  created_by: string | null;
+  created_at: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
+export interface TruckRow extends EquipmentBase {
+  truck_type: TruckType;
+}
+
+export interface TrailerRow extends EquipmentBase {
+  trailer_type: TrailerType;
+  compatible_truck_types: TruckType[];
+  compatibility_notes: string;
+  default_truck_id: string | null;
+}
+
+export interface EquipmentStatusEventRow {
+  id: string;
+  truck_id: string | null;
+  trailer_id: string | null;
+  from_status: ServiceStatus;
+  to_status: ServiceStatus;
+  reason: string;
+  expected_return_date: string | null;
+  actor_id: string | null;
+  occurred_at: string;
+}
+
+export interface DriverListRow {
+  id: string;
+  company_id: string;
+  user_id: string | null;
+  display_name: string;
+  name: string;
+  employee_number: string;
+  phone: string;
+  hire_date: string | null;
+  active: boolean;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+  /** Linked account's membership; null when the driver has no account. */
+  account_active: boolean | null;
+  account_role: string | null;
+}
+
+export interface QualificationRow {
+  id: string;
+  driver_id: string;
+  kind: QualificationKind;
+  cdl_class: CdlClass | null;
+  endorsements: string;
+  description: string;
+  issuing_state: string;
+  issued_on: string | null;
+  expires_on: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  notes: string;
+  created_at: string;
+  updated_at: string;
+}

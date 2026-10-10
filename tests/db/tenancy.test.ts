@@ -12,6 +12,7 @@ const TENANT_TABLES = [
   "price_lists", "customers", "customer_contacts", "customer_sites", "materials", "charge_items",
   "price_list_entries", "quotes", "quote_versions", "quote_lines", "quote_status_events", "documents",
   "email_deliveries", "orders", "order_lines", "order_status_events", "company_memberships",
+  "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -27,6 +28,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.revise_quote", "public.sample_data_counts", "public.save_quote_draft", "public.set_quote_status",
   "public.set_role_permission", "public.set_user_access", "public.user_directory",
   "public.save_order_draft", "public.update_order_details", "public.update_order_schedule", "public.set_order_status",
+  "private.qualification_check", "private.member_summary", "public.set_equipment_service_status", "public.check_assignment_eligibility",
 ];
 
 interface World {

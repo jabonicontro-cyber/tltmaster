@@ -22,7 +22,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, planned: true },
   { href: "/route-planner", label: "Route Planner", icon: Map, planned: true },
   { href: "/tickets", label: "Delivery Tickets", icon: Ticket, planned: true },
-  { href: "/fleet", label: "Fleet", icon: Truck, planned: true },
+  { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view" },
   { href: "/reports", label: "Reports", icon: BarChart3, planned: true },
   { href: "/settings", label: "Settings", icon: Settings },

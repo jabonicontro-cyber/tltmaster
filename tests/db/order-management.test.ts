@@ -453,7 +453,8 @@ describe("permissions", () => {
       const r = await directOrder(s, ids);
       await s.as(r.office);
       await details(s, r.order_id, { project_name: "Driveway base, phase 2" });
-      const rows = await s.query("select action, entity_type from public.audit_events");
+      // Fleet history is also readable (fleet.view); nothing else without audit.view.
+      const rows = await s.query("select action, entity_type from public.audit_events where entity_type not in ('truck', 'trailer', 'driver', 'driver_qualification')");
       expect(rows.rows.length).toBeGreaterThanOrEqual(2);
       expect(new Set(rows.rows.map((a) => a.entity_type))).toEqual(new Set(["order"]));
       const changed = await s.query<{ details: { changes: Record<string, unknown> } }>("select details from public.audit_events where action = 'order.updated' and entity_id = $1", [r.order_id]);
