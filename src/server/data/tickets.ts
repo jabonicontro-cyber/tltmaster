@@ -113,7 +113,7 @@ export async function listLoadsAwaitingTickets() {
   return { rows, today };
 }
 
-async function resourceNames() {
+export async function resourceNames() {
   const supabase = await createClient();
   const [trucks, trailers, drivers] = await Promise.all([
     supabase.from("trucks").select("id, unit_number"),

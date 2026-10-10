@@ -28,7 +28,7 @@ export async function saveCompanySettings(formData: FormData): Promise<ActionRes
 export async function saveSequence(key: string, formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("settings.manage");
-    if (!["customer", "quote", "order", "ticket"].includes(key)) return fail("Unknown sequence.");
+    if (!["customer", "quote", "order", "ticket", "billing"].includes(key)) return fail("Unknown sequence.");
     const parsed = sequenceSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();

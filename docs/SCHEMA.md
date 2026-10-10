@@ -208,6 +208,50 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 - One current revision per number (partial unique index); repeated submissions
   return the same ticket (unique `submission_key`).
 
+## Billing readiness
+
+Readiness is **derived**, not stored: four `security_invoker` views compute it
+from the records on every read (the caller's RLS applies).
+
+| View | One row per | Gives |
+| --- | --- | --- |
+| `billing_load_status` | planned load of an order that is Scheduled / Dispatched / In progress / Partially completed / Completed | `is_due` (planned end passed, or order Completed), live / accepted / pending ticket counts, `delivered_quantity` (live tickets in the load's planned unit), `other_unit_count`, voided ticket numbers, `documentation_state` (`missing`, `not_due`, `needs_review`, `documented`), `quantity_check` (`no_tickets`, `not_planned`, `units_differ`, `match`, `over`, `under`) and `quantity_difference`. Canceled loads are not listed. |
+| `billing_line_status` | per-unit, non-discount order line of such an order | Ordered vs delivered (live tickets for the line in the line's unit); `quantity_check` evaluated once the order is Completed (`in_progress` before); `pricing_check` (`ok`, `zero_rate`). Prices are shown, never recalculated. |
+| `billing_exceptions` | exception | `load_quantity`, `load_units_differ`, `line_quantity`, `line_units_differ`, `line_no_tickets`, `line_zero_rate`, `po_missing` (customer requires a PO, order has none), with expected / actual quantity, unit and difference, and a `key` holding the compared values. |
+| `billing_order_status` | order in scope | Counts, service dates (first/last load, else scheduled dates), `exceptions_fingerprint` (md5 of the exception keys), `documents_fingerprint` (md5 of current ticket ids and statuses), the current acknowledgment, the active handoff, `changed_since_handoff`, and `readiness`. |
+
+**Readiness precedence** (first that applies): `handed_off` › `missing_documentation`
+(a due load without a live ticket, or a Completed order with no ticket) ›
+`needs_review` (a live ticket not accepted) › `blocked` (exceptions without a
+current acknowledgment) › `in_progress` (order not Completed) › `ready`.
+
+| Table | Purpose |
+| --- | --- |
+| `billing_reviews` | Append-only office acknowledgment of an order's exceptions: `fingerprint`, the exceptions as reviewed (JSON), required `reason`, who and when. Counts only while the order's current fingerprint matches. |
+| `billing_handoffs` | Batch: `batch_number` (per-company `billing` sequence, `B-2026-0001`), reference, notes, `submission_key` (idempotency), who and when, `export_count` / `last_exported_at/by` (file downloads). |
+| `billing_handoff_orders` | Order in a batch with the `documents_fingerprint` and a frozen `snapshot` (order header and totals, all lines with accepted prices, accepted tickets). `reverted_at/by` + `revert_reason` when undone. Partial unique index: one active handoff per order. |
+
+### Billing functions (all `SECURITY DEFINER`, company- and permission-checked)
+
+| Function | Permission | Does |
+| --- | --- | --- |
+| `acknowledge_billing_exceptions(order, fingerprint, reason)` | `billing.manage` | Records the acknowledgment if the fingerprint still matches (else `PT409`); reason required; audited on the order. |
+| `hand_off_orders(order_ids, reference, notes, submission_key)` | `billing.manage` | Locks the orders, their loads and tickets; refuses orders already handed off (`PT409`) or not `ready`; allocates the batch number; stores snapshots; audits each order. Repeating the key returns the same batch. |
+| `revert_billing_handoff(handoff_order, reason)` | `billing.manage` | Undoes one order's handoff once, with a reason; audited. |
+| `record_billing_export(handoff)` | `billing.view` | Counts and logs a download of the batch file. |
+
+Guards: batch rows change only by counting downloads; handoff rows only by being
+undone once; acknowledgments are append-only; deletes only with a sample order.
+Reading: `billing.view` (owner, office). Clients have no write grants.
+
+**Handoff file** (`/billing/batches/[id]/csv`, format `tlt-billing-handoff-v1`):
+one row per order line from the frozen snapshot — batch number and reference,
+order number and id, customer number and name, PO, project, service dates, line
+number and id, description, unit, ordered quantity, accepted delivered quantity
+(blank when none), unit rate, percent, line amount, taxable, price source, order
+subtotal / discounts / tax / total, ticket numbers and paper ticket numbers.
+Undone orders are left out. It is **not** a QuickBooks import format.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

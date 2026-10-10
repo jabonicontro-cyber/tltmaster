@@ -66,6 +66,9 @@ no direct writes at all.
 | Assignment history | Reassignment cancels and inserts; rows are immutable except cancellation and never deleted; every change is audited on the order. |
 | Delivery records are never overwritten | Tickets are revisions: a correction inserts revision n+1 and supersedes the old row; voids keep the row with a reason; a trigger blocks any other change or delete. Snapshots keep truck/driver/material identity when dispatch changes later. |
 | No unit conversions | Ticket quantities keep the unit entered; a unit different from the order line is flagged for review, never converted. Whole-number units mirrored in `src/lib/tickets/rules.ts` (parity-tested). |
+| Billing readiness cannot drift | Readiness is derived by views (`billing_order_status` and friends) from loads, assignments, order lines and current ticket revisions on every read; the only stored items are office decisions. An acknowledgment is bound to a fingerprint of the exceptions it covered and stops counting when they change. |
+| No double billing handoff | Partial unique index: an order is in at most one active handoff; `hand_off_orders` locks orders, loads and tickets, re-checks readiness and refuses an order already handed off (`PT409`); per-form idempotency key; undo keeps the row with a reason. Tested with two concurrent connections. |
+| Billing never changes prices | Handoff and acknowledgment write only billing tables; order pricing triggers are untouched; tests compare the order and its lines before and after. |
 | No accidental duplicate tickets | Unique per-form submission key; explicit confirmation for a second ticket on a load or a reused paper number; ticket numbers from the row-locked sequence (tested with concurrent submissions). |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
@@ -86,9 +89,9 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 60 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 65 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
-  dispatch, 4 with delivery tickets). Each
+  dispatch, 4 with delivery tickets, 5 with billing readiness). Each
   public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller. Internal helpers

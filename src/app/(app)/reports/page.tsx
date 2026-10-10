@@ -9,13 +9,12 @@ export default async function ReportsPage() {
     <PlannedModule
       title="Reports"
       phase="Phase 5 — Reconciliation and reporting"
-      summary="Operational reporting and billing exports."
+      summary="Operational reporting. Billing readiness and handoff files are under Billing."
       features={[
         "Quote conversion, volume by material and customer, deliveries by truck and driver",
-        "Export of approved billing records for QuickBooks (safe to repeat — no duplicate invoices)",
         "Direct QuickBooks integration after confirming Desktop vs Online and the supported integration method",
       ]}
-      dependsOn="Orders, tickets and reconciliation."
+      dependsOn="Orders, tickets and billing readiness."
     />
   );
 }

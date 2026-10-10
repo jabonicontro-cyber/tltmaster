@@ -23,6 +23,8 @@ export const PERMISSIONS = [
   "tickets.view",
   "tickets.edit",
   "tickets.review",
+  "billing.view",
+  "billing.manage",
   "settings.manage",
   "users.manage",
   "audit.view",

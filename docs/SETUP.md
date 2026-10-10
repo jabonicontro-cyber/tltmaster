@@ -87,7 +87,8 @@ check customers, quotes and orders.
 `supabase db reset` rebuilds the database from scratch. To keep your local
 records and only apply migrations added since your last update (for example
 `20261012000100_order_management.sql`, `20261013000100_fleet_registry.sql`,
-`20261014000100_dispatch_assignments.sql` and `20261015000100_delivery_tickets.sql`):
+`20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
+`20261016000100_billing_readiness.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -95,7 +96,7 @@ npx supabase migration up      # Supabase CLI
 psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -1 \
   -f supabase/migrations/20261012000100_order_management.sql
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
-# and 20261015000100_delivery_tickets.sql, in that order
+# 20261015000100_delivery_tickets.sql and 20261016000100_billing_readiness.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -104,7 +105,10 @@ time) and it aborts if any quote-linked order's totals would differ from its
 accepted revision. The fleet-registry migration only adds new tables, functions,
 permissions and policies; it does not change existing rows. The dispatch migration
 is additive too; it enables the `btree_gist` extension (available on Supabase and
-in PostgreSQL contrib). The delivery-tickets migration is additive as well.
+in PostgreSQL contrib). The delivery-tickets migration is additive as well. The billing-readiness migration
+adds tables, views, functions and permissions, adds the `billing` key to the
+allowed document sequences and creates a `B-` batch sequence for every company; it
+changes no existing rows.
 
 ## 4. Deploying (Vercel or any Node host)
 

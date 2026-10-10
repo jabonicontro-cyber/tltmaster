@@ -14,6 +14,7 @@ const TENANT_TABLES = [
   "email_deliveries", "orders", "order_lines", "order_status_events", "company_memberships",
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
+  "billing_reviews", "billing_handoffs", "billing_handoff_orders",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -34,6 +35,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.assignment_label", "private.release_order_assignments",
   "public.save_order_load", "public.cancel_order_load", "public.assign_load", "public.cancel_assignment",
   "private.prepare_ticket", "public.submit_delivery_ticket", "public.correct_delivery_ticket", "public.review_delivery_ticket",
+  "private.add_billing_sequence", "public.acknowledge_billing_exceptions", "public.hand_off_orders",
+  "public.revert_billing_handoff", "public.record_billing_export",
 ];
 
 interface World {
@@ -131,7 +134,7 @@ describe("reads are limited to the caller's company", () => {
           const r = await s.query<{ n: number }>(`select count(*)::int as n from public.${t} where company_id = $1`, [other]);
           expect(r.rows[0].n, `${t} visible across companies`).toBe(0);
         }
-        for (const v of ["quote_list", "order_list"]) {
+        for (const v of ["quote_list", "order_list", "billing_order_status", "billing_load_status"]) {
           // Views have no company column: every customer they list must be one of the caller's own customers.
           const listed = new Set((await s.query<{ customer_id: string }>(`select customer_id from public.${v}`)).rows.map((r) => r.customer_id));
           const own = await s.query<{ n: number }>("select count(*)::int as n from public.customers where id = any($1)", [[...listed]]);

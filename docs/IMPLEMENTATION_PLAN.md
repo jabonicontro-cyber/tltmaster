@@ -52,7 +52,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Scheduling and dispatch | ✅ day board (N4, see §5c) | `src/app/(app)/dispatch`, `src/components/dispatch`, `src/lib/dispatch`, migration `20261014000100_dispatch_assignments.sql` | Loads per order with explicit times, assignments with eligibility and database-enforced no double-booking, history. No week view, notifications or derived order status. |
 | Trucks, trailers, drivers, qualifications | ✅ (N3, see §5b) | `src/app/(app)/fleet`, `src/components/fleet`, `src/lib/fleet`, migration `20261013000100_fleet_registry.sql` | Registry, service status with history, qualifications with expiry, dispatch-readiness rules. No maintenance, odometer, documents/photos or PTO yet. |
 | Delivery tickets and documents | ✅ office entry (N5, see §5d) | `src/app/(app)/tickets`, `src/components/tickets`, `src/lib/tickets`, migration `20261015000100_delivery_tickets.sql` | Numbered tickets with revisions, review and void history. **No file storage**, photos, signatures, printing or driver entry. |
-| Reconciliation and billing-ready records | ❌ | — | — |
+| Reconciliation and billing-ready records | ✅ first version (N6, see §5e) | `src/app/(app)/billing`, `src/components/billing`, `src/lib/billing`, migration `20261016000100_billing_readiness.sql` | Derived readiness, exception acknowledgments, handoff batches with a CSV file. **No invoices, payments, tax, AR or QuickBooks sync**; the CSV is not a QuickBooks import format. No quantity tolerance setting yet (exact match). |
 | Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures and the real "orders scheduled today" count; the other operations cards are placeholders. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
@@ -163,7 +163,7 @@ These build on B1 and are listed in dependency order.
 | N3 ✅ | Fleet registry (minimal) | Done (§5b) | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
 | N4 ✅ | Dispatch assignments | Done (§5c) — day board | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
 | N5 ✅ | Delivery tickets | Done (§5d) — office entry from paper; storage, printing and signatures later | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
-| N6 | Reconciliation and billing-ready records | None | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
+| N6 ✅ | Reconciliation and billing-ready records | Done (§5e) — derived readiness, acknowledgments, handoff batches + CSV | N5 | Review queue: awaiting data / awaiting review / missing info / ready for billing; price-change flags vs order; billing export (CSV) with idempotent export batches. | No invoices or QuickBooks posting until an integration is approved. |
 | N7 | Operations dashboard | Placeholder cards | N1–N6 | Replace the placeholder cards with real counts as each module lands. | — |
 
 ### 4.3 Phase 3 — fleet and employee operations
@@ -558,13 +558,118 @@ page. Out of scope: files/photos/signatures/OCR, driver portal, billing.
   instant is not serialized (each is flagged only if it sees the other).
 - Tickets do not move order status (Dispatched / Completed stays manual).
 
+## 5e. Ticket reconciliation and billing readiness (N6) — first version
+
+### Plan (written before building)
+
+**Inspected first.** Order statuses: draft, confirmed, scheduled, dispatched,
+in_progress, partially_completed, completed, on_hold, canceled (Completed and
+Canceled are final). Ticket states: submitted, needs_review, accepted, voided,
+superseded (one current revision per number). Loads carry an optional planned
+quantity + unit; order lines carry `quantity numeric(12,3)` + `unit_code` and
+locked accepted prices (`order_lines_guard`). Company units: ton, load, cu_yd,
+hour, mile, day, each — no conversions anywhere. No billing, export or
+accounting fields existed; Reports was a placeholder promising "billing exports",
+and the dashboard had a placeholder "Deliveries ready for billing" card. Customers
+have `po_required`.
+
+**Model** (migration `20261016000100_billing_readiness.sql`, additive):
+
+- *Derived, not stored*: views `billing_load_status`, `billing_line_status`,
+  `billing_exceptions`, `billing_order_status` compute readiness from loads,
+  assignments, order lines and current ticket revisions on every read, so no
+  status can drift. The handoff function re-reads them under row locks.
+- *Office decisions are the only stored state*: `billing_reviews`
+  (acknowledgment with reason, bound to a fingerprint of the exact exceptions),
+  `billing_handoffs` + `billing_handoff_orders` (batch, actor, time, reference,
+  frozen snapshot, undo with reason). One active handoff per order (partial
+  unique index), idempotency key per form.
+- Permissions `billing.view`, `billing.manage` (owner, office). Writes only
+  through definer functions; RLS read-only; audit on the order.
+
+**Rules.**
+
+- *Scope*: orders that are Scheduled, Dispatched, In progress, Partially
+  completed or Completed. Draft / Confirmed (not scheduled), On hold and Canceled
+  orders are out of scope; canceled loads are ignored (a load with live tickets
+  cannot be canceled, so canceling never hides a delivery). Tickets of out-of-scope
+  orders still appear in the Tickets review queue.
+- *Missing ticket*: a planned load is **due** once its planned end time has passed
+  or its order is Completed; a due load without a live (submitted / needs review /
+  accepted) ticket is missing — also when its ticket was voided and not replaced.
+  Future loads are never "missing". A Completed order without any ticket is
+  missing documentation.
+- *Review*: any live ticket not yet accepted blocks the order. Superseded
+  revisions never count (only the current revision of each number).
+- *Quantities* — exact-match policy, no invented tolerance: compared only when
+  the expected quantity exists and the ticket units equal the expected unit.
+  Load: planned vs the sum of its live tickets (no plan → "not compared", not an
+  exception). Order line: ordered vs the sum of live tickets for the line, once
+  the order is Completed (before that, deliveries are partial by nature). Any
+  difference, a unit that cannot be compared, or a line with no ticket is an
+  exception; nothing is converted or assumed zero.
+- *Pricing / documentation*: a per-unit line with a $0.00 rate and a missing PO
+  (customer requires one) are exceptions. Prices are only shown, never
+  recalculated or changed.
+- *Precedence*: handed off › missing documentation › needs review › blocked
+  (exceptions without a current acknowledgment) › work not completed › ready.
+- *Acknowledgment*: `billing.manage`, reason required, refused if the exceptions
+  changed since the page was loaded; stops counting automatically when the
+  exceptions change (fingerprint).
+- *Handoff*: only `ready` orders; one batch number per submit; refuses orders
+  already in an active handoff; never marks anything billed or paid and never
+  changes the order. Corrections after a handoff are allowed (the ticket record
+  stays the truth) and show "changed after handoff". Undo keeps the record.
+
+**UI**: `/billing` (All orders with status and the reason + action, Missing
+tickets, Tickets to review, Exceptions with acknowledgment, Ready to bill with
+selection and handoff, Handed off batches with file download and undo; search,
+service-date range, customer, status and exception filters), `/billing/orders/[id]`
+(loads, lines, exceptions, decisions history), dashboard card, nav item.
+
+### What was built (N6)
+
+- Migration `20261016000100_billing_readiness.sql`: the four views, three tables
+  with guards (batch: download counter only; handoff row: undo once;
+  acknowledgments append-only), `acknowledge_billing_exceptions`,
+  `hand_off_orders`, `revert_billing_handoff`, `record_billing_export`, the
+  `billing` document sequence (`B-2026-0001`) for every company plus a trigger for
+  new companies, permissions and RLS.
+- `src/lib/billing/rules.ts`: labels, explanations ("why" + "what to do"), the
+  quantity policy text and the handoff CSV builder (`tlt-billing-handoff-v1`,
+  RFC 4180 quoting, spreadsheet-formula neutralization). CSV columns and their
+  manual QuickBooks mapping are listed in docs/SCHEMA.md → Billing readiness.
+- Pages: `/billing`, `/billing/orders/[id]`, `/billing/batches/[id]/csv`;
+  dashboard "Orders ready to bill"; Billing in the navigation; Reports
+  placeholder no longer promises the export.
+- Tests: `tests/db/billing.test.ts` (10: missing / review / correction / void,
+  out-of-scope orders, unit-safe comparisons, PO and zero rate, acknowledgment
+  and invalidation, handoff with unchanged order and snapshot, undo and changed
+  after handoff, permissions and isolation, two-connection concurrent handoff,
+  SQL/TS parity), `tests/unit/billing-rules.test.ts` (6),
+  `tests/e2e/billing.spec.ts` (2); tenancy guards updated (34 business tables,
+  65 reviewed definer functions, billing views in the cross-company check).
+
+### Remaining limits (N6)
+
+- Exact-match quantities only; a per-company tolerance setting (explicit, off by
+  default) would reduce acknowledgments on weighed loads.
+- Handoff is per whole order, and only once it is Completed; no per-load partial
+  billing of long-running orders.
+- The CSV is a plain handoff list, **not** a QuickBooks import file; the mapping
+  to QuickBooks fields is manual until Desktop vs Online is decided.
+- No invoices, payments, tax calculation, AR, GL or QuickBooks sync.
+- Lists are built from up to 2,000 open orders and filtered in the app; large
+  companies will need server-side paging.
+- Tickets corrected after a handoff are flagged, not blocked.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 12 migrations via
-`supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then **N6
-reconciliation**: compare accepted ticket quantities with order lines in the
-same unit, list exceptions (unit mismatches, over/under delivery, loads without
-tickets) and mark records ready for billing — still without invoicing.
+**B3 — staging deployment** (hosted Supabase, all 13 migrations via
+`supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then decide
+QuickBooks Desktop vs Online and verify an import or API mapping against a test
+company before adding any QuickBooks-specific export; and consider an explicit
+per-company quantity tolerance for billing exceptions.
 
 ---
 

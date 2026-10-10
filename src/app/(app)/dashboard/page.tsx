@@ -17,6 +17,7 @@ import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
 import { countUnassignedLoadsToday } from "@/server/data/dispatch";
 import { ticketCounts } from "@/server/data/tickets";
+import { billingCounts } from "@/server/data/billing";
 import { fleetOverview } from "@/server/data/fleet";
 import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
@@ -66,7 +67,6 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 
 const PLANNED = [
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
-  { label: "Deliveries ready for billing", phase: "Reconciliation (Phase 5)" },
 ];
 
 type Search = { from?: string; to?: string; customer?: string };
@@ -83,7 +83,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const canFleet = can(access, "fleet.view");
   const canDispatch = can(access, "dispatch.view");
   const canTickets = can(access, "tickets.view");
-  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads, ticketsToReview] = await Promise.all([
+  const canBilling = can(access, "billing.view");
+  const [quotes, activity, names, customers, scheduledToday, fleet, unassignedLoads, ticketsToReview, billing] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
@@ -92,6 +93,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     canFleet ? fleetOverview() : Promise.resolve(null),
     canDispatch ? countUnassignedLoadsToday() : Promise.resolve(null),
     canTickets ? ticketCounts() : Promise.resolve(null),
+    canBilling ? billingCounts() : Promise.resolve(null),
   ]);
 
   return (
@@ -172,7 +174,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <Card className="mt-5">
-        <CardHeader title="Operations" description="Figures for dispatch and tickets will appear once those modules are built. Nothing here is estimated." />
+        <CardHeader title="Operations" description="Live figures from orders, dispatch, tickets and billing readiness. Nothing here is estimated." />
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {scheduledToday !== null && (
             <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
@@ -185,6 +187,16 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               sub={`${ticketsToReview.review} flagged · ${ticketsToReview.submitted} awaiting acceptance`}
               href={ticketsToReview.review ? "/tickets?view=review" : "/tickets?view=submitted"}
               tone={ticketsToReview.review > 0 ? "warn" : "default"}
+            />
+          )}
+          {billing && (
+            <Stat
+              icon={<CheckCircle2 className="size-5" />}
+              label="Orders ready to bill"
+              value={billing.ready}
+              sub={`${billing.attention} order${billing.attention === 1 ? "" : "s"} blocked by missing tickets, review or exceptions`}
+              href={billing.ready ? "/billing?view=ready" : "/billing"}
+              tone={billing.ready > 0 ? "good" : "default"}
             />
           )}
           {unassignedLoads !== null && (
