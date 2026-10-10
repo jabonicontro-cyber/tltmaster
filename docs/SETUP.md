@@ -15,6 +15,10 @@ dashboard (production). Never commit real values.
 | `RESEND_API_KEY`, `EMAIL_FROM` | for real email | `EMAIL_FROM` must be on a domain verified in Resend |
 | `EMAIL_REPLY_TO` | optional | Replies from customers go here |
 | `EMAIL_TEST_RECIPIENT` | optional | Test mode: every email goes here, subject gets `[TEST]`, quotes are **not** marked sent |
+| `EARLY_ACCESS_GATE` | no (default: on in production builds, off in `npm run dev`) | `on` / `off`. See docs/DEPLOYMENT.md |
+| `SITE_ACCESS_SECRET` | **yes when the gate is on** | ≥ 32 random characters (`openssl rand -base64 32`). Server only. Without it the app answers 503 to everything (fails closed). Changing it signs every device out of early access |
+| `EARLY_ACCESS_DAYS` | no (30) | How long a device stays admitted (1–90 days, never beyond the code's expiry) |
+| `EARLY_ACCESS_RECHECK_SECONDS` | no (300) | How often an admitted device is re-checked against the database (revocation delay) |
 | `TEST_DATABASE_URL` | for `npm run test:db` | Superuser URL of a **local/disposable** database |
 
 ## 2. Supabase project (hosted)
@@ -222,6 +226,17 @@ remote URLs unless `E2E_ALLOW_REMOTE=1`):
 set -a; source .env.local; set +a
 npm run dev &                 # or npm run build && npm start
 npm run test:e2e              # creates e2e users with known passwords in the local DB
+```
+
+**Early-access gate tests** run against a production build with the gate on (the dev server
+runs with the gate off):
+
+```bash
+npm run build
+EARLY_ACCESS_GATE=on SITE_ACCESS_SECRET="$(openssl rand -base64 32)" EARLY_ACCESS_RECHECK_SECONDS=0 \
+  npx next start -p 3001 &
+E2E_BASE_URL=http://localhost:3001 E2E_GATE=on npx playwright test tests/e2e/gate.spec.ts
+node scripts/check-deployment.mjs http://localhost:3001
 ```
 
 ## 6. Local backend without Docker

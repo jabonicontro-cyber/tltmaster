@@ -7,6 +7,7 @@ import { accessCodeHash, clientIp, rateKey } from "@/server/early-access";
 import { env } from "@/server/env";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
+import { EARLY_ACCESS_REQUIRED, hasSiteAccess } from "@/server/site-access-request";
 
 const signupSchema = z
   .object({
@@ -31,6 +32,7 @@ const EXISTS = "An account with this email already exists. Sign in, then choose 
  * Public sign-up stays disabled in Supabase Auth, so this is the only way in.
  */
 export async function signUpWithAccessCode(formData: FormData): Promise<ActionResult> {
+  if (!(await hasSiteAccess())) return { ok: false, error: EARLY_ACCESS_REQUIRED };
   const parsed = signupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     const fieldErrors: Record<string, string> = {};

@@ -53,6 +53,18 @@ Functions: `early_access_check`, `early_access_reserve`, `early_access_request`,
 `flag_order_urgent`, `update_order_urgency`, `save_my_preference`, `hide_exception`,
 `unhide_exception`. Migration `20261021000100_command_center_coordination.sql`.
 
+### Early-access gate (N12, private schema)
+
+| Table | Purpose |
+| --- | --- |
+| `private.early_access_codes.purpose` | `company_signup` (N9) or `site_access` (gate); a code never works for the other purpose. |
+| `private.site_access_grants` | One per admitted device: code, expiry (≤ code expiry), keyed hash of the address, last seen, revocation. |
+| `private.early_access_audit` | Code created / revoked, devices revoked — who (database role) and when. |
+
+Service-role functions: `site_access_redeem`, `site_access_validate`,
+`site_access_revoke_grants` (plus `early_access_create_code` with a purpose,
+`early_access_list_codes`, `early_access_revoke_code`).
+
 ## Customers
 
 | Table | Purpose |

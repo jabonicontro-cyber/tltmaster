@@ -56,6 +56,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception",
   // N11: office scans of paper tickets.
   "public.begin_ticket_scan", "public.attach_ticket_scan",
+  // N12: early-access site gate (service role only).
+  "public.site_access_revoke_grants", "public.site_access_redeem", "public.site_access_validate",
 ];
 
 /**

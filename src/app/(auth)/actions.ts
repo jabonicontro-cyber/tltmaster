@@ -6,6 +6,7 @@ import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
 import { safeNextPath } from "@/lib/safe-redirect";
 import type { ActionResult } from "@/lib/action-result";
+import { EARLY_ACCESS_REQUIRED, hasSiteAccess } from "@/server/site-access-request";
 
 const signInSchema = z.object({
   email: z.email("Enter a valid email address."),
@@ -14,6 +15,7 @@ const signInSchema = z.object({
 });
 
 export async function signIn(formData: FormData): Promise<ActionResult> {
+  if (!(await hasSiteAccess())) return { ok: false, error: EARLY_ACCESS_REQUIRED };
   const parsed = signInSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
@@ -44,6 +46,7 @@ export async function signOut() {
 const resetSchema = z.object({ email: z.email("Enter a valid email address.") });
 
 export async function requestPasswordReset(formData: FormData): Promise<ActionResult> {
+  if (!(await hasSiteAccess())) return { ok: false, error: EARLY_ACCESS_REQUIRED };
   const parsed = resetSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
 

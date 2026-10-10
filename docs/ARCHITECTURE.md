@@ -98,11 +98,11 @@ name, empty address, their chosen time zone and no records.
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 112 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 115 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
   dispatch, 4 with delivery tickets, 5 with billing readiness, 7 with the command
   center, 8 with the driver portal, 6 with ticket photos, 15 with company onboarding, 9 with
-  workflow coordination, 2 with ticket processing).
+  workflow coordination, 2 with ticket processing, 3 with the early-access gate).
   Each public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller, except `switch_company`,
@@ -138,6 +138,22 @@ name, empty address, their chosen time zone and no records.
 - **Creating a company**: with an early-access code (below), or by an operator:
   `select private.create_company('Name', 'slug');` then
   `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no subscription billing.
+
+## Early access gate (in front of everything)
+
+Four separate questions, answered by four separate mechanisms:
+
+1. **May this browser reach the app at all?** — the early-access gate: a site-access code
+   (`private.early_access_codes`, purpose `site_access`) redeemed on the server for a device
+   grant (`private.site_access_grants`), carried in a signed HttpOnly cookie and re-checked
+   with the database every 5 minutes. Enforced in `src/proxy.ts` for every route; sign-in,
+   reset and sign-up actions re-check it. Signed-in users pass (they already have an
+   account). Configuration: `EARLY_ACCESS_GATE`, `SITE_ACCESS_SECRET` (fails closed).
+2. **Who is this?** — Supabase Auth (password, email links). Unchanged.
+3. **Which companies?** — `company_memberships` + `active_company_id`. Unchanged.
+4. **What may they do?** — role permissions and RLS. Unchanged.
+
+Passing (1) never creates an account, a company, a membership or a permission.
 
 ## Early access and company onboarding
 

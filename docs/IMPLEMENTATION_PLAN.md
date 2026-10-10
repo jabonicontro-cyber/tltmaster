@@ -1362,12 +1362,81 @@ drivers.
 - Payroll: only the verified inputs exist (`verified_delivery_inputs`); no rules, periods,
   approvals or exports (§8 A).
 
+## 5l. Early Access portal and web deployment (N12)
+
+### Found before changing anything
+
+- Start: commit `cfb908d` (N11), clean tree. Baseline (N11 run): vitest 292/292, browser
+  41/41, lint, typecheck and build clean.
+- Next.js 16 (App Router, `src/proxy.ts` on the Node.js runtime), Supabase (Postgres, Auth,
+  Storage), no hosting configured: no Vercel/Netlify/Fly config, no hosting credentials in
+  this environment, no domain. CI runs lint, typecheck, unit tests, build and DB tests.
+- Early access existed only for **company sign-up** (N9: hashed codes with label, uses,
+  expiry, revocation, rate limits; `scripts/early-access.mjs`). Nothing restricted who could
+  reach the sign-in page.
+
+### What was built (N12)
+
+- Migration `20261023000100_site_access_gate.sql` (additive; dev backed up first): the
+  existing codes gain a `purpose` (`company_signup` | `site_access`; one never works as the
+  other); `private.site_access_grants` (one per admitted device, expiry, revocation);
+  `private.early_access_audit` (code created / revoked, devices revoked); service-role
+  functions `site_access_redeem` (rate limit 10 failures per address per 15 min, device
+  limit = code uses, grant expiry ≤ code expiry), `site_access_validate`,
+  `site_access_revoke_grants`; `early_access_create_code` takes a purpose,
+  `early_access_list_codes` shows purpose and active devices, revoking a code ends its
+  devices' grants.
+- **Early Access page** (`/early-access`): branded, phone-first, code field (forgiving about
+  case, spaces and dashes), Continue, checking/error states, keeps the typed code on error,
+  then on to the normal sign-in (or the page asked for, after sign-in).
+- **Enforcement** (`src/proxy.ts`): before any page, server action, API or file route,
+  a visitor who is not signed in needs a valid grant cookie (HMAC-signed, HttpOnly, Secure +
+  `__Host-` on HTTPS, SameSite=Lax, re-checked with the database every 5 minutes; a database
+  outage keeps a recently confirmed grant for at most an hour). Pages redirect to the gate;
+  everything else gets 401. Exempt: the gate page and Auth email links. Signed-in users
+  pass. Gate on without `SITE_ACCESS_SECRET` → 503 for everything (fails closed). Sign-in,
+  password reset and sign-up actions re-verify the cookie themselves.
+- Operator script: `create --purpose site`, `list` (purpose, active devices), `revoke`
+  (also ends its devices), `revoke-devices`. `scripts/check-deployment.mjs <url>` checks a
+  deployment from outside (HTTPS, gate on pages/API/files, noindex, HSTS, no secrets in the
+  page or its scripts).
+- `docs/DEPLOYMENT.md`: Supabase + Vercel free-tier staging setup, environment variables,
+  admitting yourself and testers, rotation and revocation, custom domain, updates and
+  rollback.
+- Tests: `tests/unit/site-access.test.ts` (4), `tests/db/site-access.test.ts` (4),
+  `tests/e2e/gate.spec.ts` (5, against a production build with the gate on: every way in
+  locked, phone layout, wrong/right code, cookie flags, refresh, normal sign-in and roles,
+  signed-in users, revocation, no secrets in bundles, rate limiting). Also verified by hand
+  on the production build: `Secure; HttpOnly; SameSite=lax` `__Host-` cookie behind HTTPS,
+  and 503 everywhere without the secret. Tenancy guards: 115 reviewed definer functions.
+
+### Status
+
+| Capability | Status |
+| --- | --- |
+| Early Access page, server-enforced gate, revocation, rate limiting, audit | Implemented and verified (local production build) |
+| Separation: gate ≠ account ≠ company membership ≠ role | Implemented and verified |
+| Hosted deployment (HTTPS address) | **Blocked on your accounts** — Vercel and Supabase projects must be created by you (docs/DEPLOYMENT.md); not deployed by this work |
+| Custom domain / DNS | Planned — no domain available; steps documented |
+| Admin screen for codes | Planned — codes are managed with the operator script (service-role key) |
+| Per-tester invitations tied to an email | Planned — today: one code per tester group, device-limited and revocable |
+
+### Remaining limits (N12)
+
+- Revocation takes effect within the recheck interval (5 minutes) for devices that are not
+  signed in; signed-in users are governed by their account (deactivate the user to cut
+  access).
+- Rate limiting relies on the host's `X-Forwarded-For` (Vercel sets it).
+- The gate admits devices, not people: anyone holding a valid code can pass until it is
+  revoked or used up; keep device limits small and codes per group.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 19 migrations via `supabase db push`, auth
-email settings, templates and SMTP per SETUP §2, deploy, backup/restore drill, the sign-up →
-onboarding → invitation flow with a real inbox, the `ticket-photos` bucket checks and a
-storage backup). It is the dependency for every external verification below.
+**B3 — staging deployment**, now prepared step by step in docs/DEPLOYMENT.md (Supabase +
+Vercel, all 20 migrations via `supabase db push`, gate secret, auth email settings, then
+`scripts/check-deployment.mjs` against the live URL, a backup/restore drill, the sign-up →
+onboarding → invitation flow with a real inbox and the `ticket-photos` bucket checks). It
+needs your accounts and is the dependency for every external verification below.
 
 Then, in order of value and readiness:
 1. **Payroll readiness (§8 A)** — only after the pay rules of the participating companies are

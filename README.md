@@ -35,6 +35,7 @@ final; it is set in `src/lib/product.ts`.
 | Ticket review queue (position, accept and next, keys, reason/photo filters, bulk accept of clean tickets), explained review reasons, delivery context, office scans of paper tickets; order progress and delivered-so-far per line | ✅ — no OCR; driver pay / payroll not built yet |
 | Driver portal (My Day): own assignments with site and instructions, ticket entry from the phone, delay / breakdown / inspection reports reviewed by the office; qualification reminders | ✅ — no offline queue |
 | Paper scale-ticket photos from the phone (up to 3 per ticket), private storage, office viewing through one-minute links | ✅ — needs the storage bucket (see SETUP); storage files need their own backup |
+| Early Access page and server-enforced gate in front of the whole app (device codes, revocation, rate limiting); deployment guide for Vercel + Supabase | ✅ locally on a production build — hosting needs your accounts (docs/DEPLOYMENT.md) |
 | Route Planner, Reports | Planned — pages say so; nothing fake |
 
 ## Quick start (local)
@@ -88,6 +89,7 @@ npm run dev                  # http://localhost:3000
 
 - [docs/IMPLEMENTATION_PLAN.md](docs/IMPLEMENTATION_PLAN.md) — architecture summary, assumptions, phase checklist
 - [docs/SETUP.md](docs/SETUP.md) — environment variables, Supabase, email, deployment, tests
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — putting it on a real HTTPS address with the Early Access gate
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the code is organized and how security works
 - [docs/SCHEMA.md](docs/SCHEMA.md) — database tables and rules
 - [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) — backups and restoring them
