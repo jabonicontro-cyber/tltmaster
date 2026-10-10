@@ -87,24 +87,56 @@ total           = subtotal − discounts + tax
 
 | Table | Purpose |
 | --- | --- |
-| `orders` | Order number (`O-2026-0001`), customer, status (`draft`, `confirmed`, `scheduled`, `dispatched`, `in_progress`, `partially_completed`, `completed`, `on_hold`, `canceled`), **`source_quote_id` (unique) + `source_quote_version_id`** — the permanent link to the quote and the exact revision accepted — and copies of that revision's bill-to snapshot, contact, job site, project, PO, instructions, terms, internal notes, tax rate and totals. |
-| `order_lines` | Copies of the accepted revision's lines with their pricing snapshots (rate, configured rate at the time, price source incl. overrides, discounts), plus `source_quote_line_id`. |
-| `order_status_events` | Append-only order status history. |
-| `order_list` (view) | Order + customer + source quote number for lists (security-invoker). |
+| `orders` | Order number (`O-2026-0001`), customer, status (`draft`, `confirmed`, `scheduled`, `dispatched`, `in_progress`, `partially_completed`, `completed`, `on_hold`, `canceled`) and `status_note` (last reason), **`source_quote_id` (unique) + `source_quote_version_id`** — the permanent link to the quote and the exact revision accepted, null for direct orders — bill-to snapshot, contact (`contact_id` + copied name/email/phone), job site, project, PO, instructions, terms, internal notes, tax rate and totals. Scheduling: `order_date`, `requested_date`, `scheduled_start` / `scheduled_end` (date range), `window_start` / `window_end` (daily time window), `scheduling_notes`. `edit_seq` (optimistic concurrency), `confirmed_at`, `completed_at`, `canceled_at`, `updated_by`. |
+| `order_lines` | Line items with pricing snapshots (rate, configured rate at the time, price source incl. overrides, discounts). Quote-linked orders: copies of the accepted revision's lines plus `source_quote_line_id`. |
+| `order_status_events` | Append-only order status history (from, to, note, who, when). |
+| `order_list` (view) | Order + customer + source quote number + scheduling fields + material summary for lists (security-invoker). |
+
+### Order rules
+
+- **Pricing protection** (triggers `orders_guard_pricing`, `order_lines_guard`, which
+  also bind the database owner): lines, totals, tax rate, terms and customer can
+  change only while the order is a **direct order in Draft**. Order number and
+  source quote never change. Lines are otherwise written only by the quote
+  conversion (`tlt.order_conversion` transaction flag) or removed by the owner-only
+  sample purge.
+- **Status transitions**: `private.order_transition_allowed` (table in
+  docs/IMPLEMENTATION_PLAN.md §5a, mirrored by `src/lib/orders/status.ts`).
+  Confirming a draft and canceling need `orders.edit`; every other move needs
+  `orders.schedule`. Scheduled / dispatched / in progress need a scheduled date;
+  on hold and canceled need a reason; confirming needs a line. Completed and
+  canceled are final: no further status, detail or schedule changes.
+- **Checks**: scheduled end ≥ start (no end without a start); time window both or
+  neither, end after start; requested and scheduled dates not before the order date.
+
+### Order functions (all `SECURITY DEFINER`, company- and permission-checked)
+
+| Function | Permission | Does |
+| --- | --- | --- |
+| `save_order_draft(payload)` | `orders.edit` | Create a direct order (allocates number, status Draft) or update its draft: customer, contact, site, dates, terms, tax, lines priced like quotes on the order date; `pricing.override` for overrides and discounts; `edit_seq` conflict check. |
+| `update_order_details(order, edit_seq, payload)` | `orders.edit` | Contact, job site, project, PO, instructions, internal notes, requested date of any open order. Never prices. Audits a field diff. |
+| `update_order_schedule(order, edit_seq, payload)` | `orders.schedule` | Scheduled date range, time window, scheduling notes. Audits a field diff. |
+| `set_order_status(order, status, note, edit_seq)` | per transition | Applies the transition rules, sets timestamps, writes a status event and an audit entry. |
+| `convert_quote_to_order(quote)` | `orders.edit` | See below. |
+
+Audit entries of orders (`entity_type = 'order'`) are readable by everyone with
+`orders.view` in the company (policy `audit_read_orders`); the rest of the audit
+log needs `audit.view`.
 
 `convert_quote_to_order(quote_id)` (`SECURITY DEFINER`, requires `orders.edit`):
 locks the quote row, returns the existing order (`created: false`) if the quote
 was already converted, otherwise requires status `accepted` and an issued
 accepted revision, allocates an order number, copies header and lines, sets the
-order to **Confirmed**, and writes order history and audit events on both the
+order to **Confirmed** (recording the order date, contact and confirmation time), and writes order history and audit events on both the
 order and the quote. The unique `source_quote_id` is the final guard against
 duplicates. Once converted, the quote's status can no longer change
 (`quotes_guard_converted` trigger). Clients have read-only access to order
-tables, so prices on an order cannot be changed around the owner-only override
-rules. Orders created from sample quotes are removed with the sample data.
+tables, and the pricing triggers above keep the accepted prices, so prices on an
+order cannot be changed around the owner-only override rules. Orders created from
+sample quotes, and direct orders of sample customers, are removed with the sample data.
 
 ## Planned tables (later phases)
 
-Order scheduling (delivery dates, loads), trucks, drivers, dispatch assignments, route plans and
+Loads per order, trucks, drivers, dispatch assignments, route plans and
 stops, delivery tickets and ticket lines, planning runs, integration records
 (QuickBooks IDs, sync status, errors).

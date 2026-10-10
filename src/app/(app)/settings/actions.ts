@@ -108,11 +108,11 @@ export async function removeSampleData(): Promise<ActionResult> {
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("remove_sample_data");
     if (error) return fail(dbErrorMessage(error));
-    const r = data as { quotes: number; customers: number; materials: number; charge_items: number; price_lists: number; deactivated_in_use: number };
+    const r = data as { quotes: number; direct_orders: number; customers: number; materials: number; charge_items: number; price_lists: number; deactivated_in_use: number };
     revalidatePath("/", "layout");
     return ok(
       undefined,
-      `Removed ${r.quotes} quotes, ${r.customers} customers, ${r.materials} materials, ${r.charge_items} charges and ${r.price_lists} price lists.` +
+      `Removed ${r.quotes} quotes (with their orders), ${r.direct_orders} direct orders, ${r.customers} customers, ${r.materials} materials, ${r.charge_items} charges and ${r.price_lists} price lists.` +
         (r.deactivated_in_use ? ` ${r.deactivated_in_use} sample records used by real quotes were deactivated instead.` : ""),
     );
   });

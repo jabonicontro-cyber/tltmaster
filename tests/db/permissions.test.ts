@@ -85,7 +85,8 @@ describe("row level security and permissions", () => {
       expect((await pgError(s.query("select public.set_user_access($1, 'owner', true, 'Me')", [office]))).code).toBe("42501");
       expect((await pgError(s.query("select public.set_role_permission('office', 'pricing.override', true)"))).code).toBe("42501");
       expect((await pgError(s.query("select public.remove_sample_data()"))).code).toBe("42501");
-      expect((await s.query("select * from public.audit_events")).rowCount).toBe(0);
+      // Only order history is visible without audit.view (see 20261012000100_order_management.sql).
+      expect((await s.query("select * from public.audit_events where entity_type <> 'order'")).rowCount).toBe(0);
     });
   });
 

@@ -54,7 +54,10 @@ no direct writes at all.
 | Email honesty | `sendQuoteEmail` marks a quote sent only after the provider accepts; all attempts recorded in `email_deliveries`. |
 | Audit trail | Row triggers on customers, catalog, prices, settings, users, permissions; explicit events in quote functions. `audit_events` is append-only. |
 | One order per accepted quote | `public.convert_quote_to_order` locks the quote, returns the existing order on repeat calls; unique `orders.source_quote_id`. Tested with two concurrent transactions. |
-| Orders keep the accepted prices | Order lines are copied from the accepted revision's snapshots; no client write access to order tables. |
+| Orders keep the accepted prices | Order lines are copied from the accepted revision's snapshots; no client write access to order tables; triggers `orders_guard_pricing` / `order_lines_guard` refuse any change to lines, totals, tax, terms or customer unless the order is a direct order in Draft — even for the database owner. |
+| Direct orders use the quote pricing rules | `public.save_order_draft` uses the same price resolution and `pricing.override` check as `save_quote_draft`; parity with the TypeScript calculator is tested. |
+| Order status transitions | `private.order_transition_allowed` + `order_transition_permission` (DB) mirrored by `src/lib/orders/status.ts`; parity-tested. |
+| Order edits never lose work silently | `orders.edit_seq` optimistic concurrency on every order function; field-level audit diffs shown in the order timeline. |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
 ## Companies (tenant isolation)
@@ -74,7 +77,8 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 35 `SECURITY DEFINER` functions were reviewed. Each
+- **Elevated functions**: all 42 `SECURITY DEFINER` functions were reviewed (35 with
+  company separation, 7 with order management). Each
   public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller. Internal helpers
@@ -101,7 +105,7 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
 
 ## Security model
 
-- **Roles** (per company membership): owner, office, dispatcher, mechanic (no permissions until fleet features exist), driver (future). A new account has no membership and sees nothing until an owner adds it.
+- **Roles** (per company membership): owner, office, dispatcher (views orders, schedules them and moves them through delivery; cannot create, price, confirm or cancel), mechanic (no permissions until fleet features exist), driver (future). A new account has no membership and sees nothing until an owner adds it.
 - **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
 - **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
 - **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
@@ -118,6 +122,6 @@ the quote editor).
 
 ## Extension points for later phases
 
-- **Orders**: conversion is done (`convert_quote_to_order`). Next: direct orders, operational edits (delivery dates, loads) through permission-checked functions that keep pricing changes subject to `pricing.override`, and status transitions with history.
+- **Orders**: conversion, direct orders, detail edits, scheduling and status transitions are done. Next: loads per order and assignments (dispatch), then deriving status from dispatch and tickets where possible.
 - **Routing**: implement a `RoutingProvider` interface (geocode, matrix, route) with a "not configured" implementation; no fabricated results.
 - **QuickBooks**: export approved billing records first; store external IDs and sync status per record to prevent duplicates.

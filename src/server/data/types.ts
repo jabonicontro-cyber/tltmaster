@@ -320,6 +320,16 @@ export interface OrderListRow {
   total_cents: number;
   is_sample: boolean;
   created_at: string;
+  order_date: string;
+  requested_date: string | null;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  window_start: string | null;
+  window_end: string | null;
+  contact_name: string;
+  status_note: string;
+  updated_at: string;
+  material_summary: string | null;
 }
 
 export interface OrderRow {
@@ -356,6 +366,20 @@ export interface OrderRow {
   created_by: string | null;
   created_at: string;
   updated_at: string;
+  contact_id: string | null;
+  order_date: string;
+  requested_date: string | null;
+  scheduled_start: string | null;
+  scheduled_end: string | null;
+  /** "HH:MM:SS" */
+  window_start: string | null;
+  window_end: string | null;
+  scheduling_notes: string;
+  edit_seq: number;
+  confirmed_at: string | null;
+  completed_at: string | null;
+  canceled_at: string | null;
+  updated_by: string | null;
 }
 
 export type OrderLineRow = Omit<QuoteLineRow, "quote_version_id"> & {
@@ -371,4 +395,15 @@ export interface OrderStatusEventRow {
   note: string;
   actor_id: string | null;
   occurred_at: string;
+}
+
+export interface AuditEventRow {
+  id: string;
+  occurred_at: string;
+  actor_id: string | null;
+  action: string;
+  entity_type: string;
+  entity_id: string | null;
+  summary: string;
+  details: Record<string, unknown>;
 }

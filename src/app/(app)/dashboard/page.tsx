@@ -15,6 +15,7 @@ import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard, loadRecentActivity } from "@/server/data/dashboard";
+import { countOrdersScheduledToday } from "@/server/data/orders";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import type { QuoteListRow } from "@/server/data/types";
@@ -61,7 +62,6 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 }
 
 const PLANNED = [
-  { label: "Orders scheduled today", phase: "order scheduling (Phase 3)" },
   { label: "Orders needing a truck or driver", phase: "Dispatch (Phase 3–4)" },
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
   { label: "Completed deliveries awaiting ticket review", phase: "Tickets (Phase 3)" },
@@ -79,11 +79,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const to = sp.to && isIsoDate(sp.to) ? sp.to : today;
   const canQuotes = can(access, "quotes.view");
 
-  const [quotes, activity, names, customers] = await Promise.all([
+  const canOrders = can(access, "orders.view");
+  const [quotes, activity, names, customers, scheduledToday] = await Promise.all([
     canQuotes ? loadQuoteDashboard({ from, to, customer: sp.customer }, today, settings.quote_followup_days) : Promise.resolve(null),
     loadRecentActivity(can(access, "audit.view")),
     getUserNames(),
     canQuotes ? listCustomerOptions() : Promise.resolve([]),
+    canOrders ? countOrdersScheduledToday() : Promise.resolve(null),
   ]);
 
   return (
@@ -144,6 +146,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                     <li key={a.id} className="px-4 py-2.5 text-sm sm:px-5">
                       {a.entity_type === "quote" && a.entity_id ? (
                         <Link href={`/quotes/${a.entity_id}`} className="hover:underline">{a.summary}</Link>
+                      ) : a.entity_type === "order" && a.entity_id && canOrders ? (
+                        <Link href={`/orders/${a.entity_id}`} className="hover:underline">{a.summary}</Link>
                       ) : a.entity_type === "customer" && a.entity_id ? (
                         <Link href={`/customers/${a.entity_id}`} className="hover:underline">{a.summary}</Link>
                       ) : (
@@ -162,8 +166,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
 
       <Card className="mt-5">
-        <CardHeader title="Operations" description="These figures will come from orders, dispatch and tickets once those modules are built. Nothing here is estimated." />
+        <CardHeader title="Operations" description="Figures for dispatch and tickets will appear once those modules are built. Nothing here is estimated." />
         <CardBody className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {scheduledToday !== null && (
+            <Stat icon={<CalendarClock className="size-5" />} label="Orders scheduled today" value={scheduledToday} sub="Open the list for times and sites" href="/orders?when=today" />
+          )}
           {PLANNED.map((p) => (
             <div key={p.label} className="flex items-start gap-3 rounded-md border border-dashed border-line px-3 py-3">
               {p.label.includes("Fleet") ? <Truck className="mt-0.5 size-5 text-muted" aria-hidden /> : p.label.includes("today") ? <CalendarClock className="mt-0.5 size-5 text-muted" aria-hidden /> : <ClipboardList className="mt-0.5 size-5 text-muted" aria-hidden />}

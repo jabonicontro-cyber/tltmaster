@@ -2,9 +2,9 @@ import { z } from "zod";
 import { isIsoDate } from "@/lib/dates";
 import { parseMoneyToCents, parsePercentToBp, parseQuantityToMilli } from "@/lib/money";
 
-const text = (max: number) => z.string().trim().max(max, `Maximum ${max} characters.`).default("");
-const isoDate = z.string().refine(isIsoDate, "Enter a valid date.");
-const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable());
+export const text = (max: number) => z.string().trim().max(max, `Maximum ${max} characters.`).default("");
+export const isoDate = z.string().refine(isIsoDate, "Enter a valid date.");
+export const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable());
 
 export const quoteLineInput = z
   .object({
@@ -35,30 +35,35 @@ export const quoteLineInput = z
     }
   });
 
+/** Contact, job site and job fields shared by quotes and orders. */
+export const jobDetailFields = {
+  contactId: optionalUuid,
+  contactName: text(120),
+  contactEmail: text(254).refine((v) => v === "" || z.email().safeParse(v).success, "Enter a valid email address."),
+  contactPhone: text(40),
+  siteId: optionalUuid,
+  siteLabel: text(120),
+  siteLine1: text(200),
+  siteLine2: text(200),
+  siteCity: text(80),
+  siteState: text(2).transform((v) => v.toUpperCase()),
+  sitePostalCode: text(10).refine((v) => v === "" || /^\d{5}(-\d{4})?$/.test(v), "Enter a 5-digit ZIP code."),
+  saveSite: z.boolean().default(false),
+  projectName: text(160),
+  customerPo: text(60),
+  jobInstructions: text(4000),
+  internalNotes: text(4000),
+};
+
 export const quoteDraftInput = z
   .object({
     quoteId: optionalUuid,
     expectedEditSeq: z.number().int().nullable().default(null),
     customerId: z.uuid("Choose a customer."),
-    contactId: optionalUuid,
-    contactName: text(120),
-    contactEmail: text(254).refine((v) => v === "" || z.email().safeParse(v).success, "Enter a valid email address."),
-    contactPhone: text(40),
-    siteId: optionalUuid,
-    siteLabel: text(120),
-    siteLine1: text(200),
-    siteLine2: text(200),
-    siteCity: text(80),
-    siteState: text(2).transform((v) => v.toUpperCase()),
-    sitePostalCode: text(10).refine((v) => v === "" || /^\d{5}(-\d{4})?$/.test(v), "Enter a 5-digit ZIP code."),
-    saveSite: z.boolean().default(false),
+    ...jobDetailFields,
     quoteDate: isoDate,
     validUntil: isoDate,
-    projectName: text(160),
-    customerPo: text(60),
-    jobInstructions: text(4000),
     terms: text(8000),
-    internalNotes: text(4000),
     taxRate: z.string().default("0"),
     lines: z.array(quoteLineInput).max(200, "A quote can have at most 200 lines."),
   })
@@ -98,18 +103,45 @@ export function toSavePayload(q: z.output<typeof quoteDraftInput>) {
     terms: q.terms,
     internal_notes: q.internalNotes,
     tax_rate_bp: parsePercentToBp(q.taxRate || "0") ?? 0,
-    lines: q.lines.map((l) => ({
-      kind: l.kind,
-      calc_method: l.calcMethod,
-      material_id: l.materialId,
-      charge_item_id: l.chargeItemId,
-      description: l.description,
-      unit_code: l.calcMethod === "per_unit" ? l.unitCode : null,
-      // quantity as a decimal string; the database stores numeric(12,3)
-      quantity: l.calcMethod === "per_unit" ? l.quantity.trim().replace(/,/g, "") : null,
-      unit_rate_cents: l.calcMethod === "per_unit" ? parseMoneyToCents(l.rate) : null,
-      percent_bp: l.calcMethod === "percent_of_subtotal" ? parsePercentToBp(l.percent) : null,
-      taxable: l.taxable,
-    })),
+    lines: q.lines.map(toLinePayload),
+  };
+}
+
+/** Database payload of one validated line (save_quote_draft / save_order_draft). */
+export function toLinePayload(l: z.output<typeof quoteLineInput>) {
+  return {
+    kind: l.kind,
+    calc_method: l.calcMethod,
+    material_id: l.materialId,
+    charge_item_id: l.chargeItemId,
+    description: l.description,
+    unit_code: l.calcMethod === "per_unit" ? l.unitCode : null,
+    // quantity as a decimal string; the database stores numeric(12,3)
+    quantity: l.calcMethod === "per_unit" ? l.quantity.trim().replace(/,/g, "") : null,
+    unit_rate_cents: l.calcMethod === "per_unit" ? parseMoneyToCents(l.rate) : null,
+    percent_bp: l.calcMethod === "percent_of_subtotal" ? parsePercentToBp(l.percent) : null,
+    taxable: l.taxable,
+  };
+}
+
+/** Database payload of the shared contact / job-site / job fields. */
+export function toJobDetailPayload(q: z.output<z.ZodObject<typeof jobDetailFields>>) {
+  return {
+    contact_id: q.contactId,
+    contact_name: q.contactName,
+    contact_email: q.contactEmail,
+    contact_phone: q.contactPhone,
+    site_id: q.siteId,
+    site_label: q.siteLabel,
+    site_line1: q.siteLine1,
+    site_line2: q.siteLine2,
+    site_city: q.siteCity,
+    site_state: q.siteState,
+    site_postal_code: q.sitePostalCode,
+    save_site: q.saveSite,
+    project_name: q.projectName,
+    customer_po: q.customerPo,
+    job_instructions: q.jobInstructions,
+    internal_notes: q.internalNotes,
   };
 }

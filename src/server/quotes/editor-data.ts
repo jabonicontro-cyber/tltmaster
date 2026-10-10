@@ -6,7 +6,7 @@ import { listChargeItems, listMaterials, listPriceLists, listUnits } from "@/ser
 import { getCustomerQuoteContext, listCustomerOptions } from "@/server/data/customers";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
-import type { EffectivePrice, QuoteLineRow, QuoteVersionRow } from "@/server/data/types";
+import type { EffectivePrice, OrderLineRow, OrderRow, QuoteLineRow, QuoteVersionRow } from "@/server/data/types";
 
 export async function loadEditorReferenceData() {
   const [customers, materials, charges, units, settings, priceLists] = await Promise.all([
@@ -61,7 +61,14 @@ export async function newEditorState(customerId: string | null): Promise<EditorS
   };
 }
 
-export function editorStateFromVersion(quote: { id: string; quote_number: string; customer_id: string }, v: QuoteVersionRow, lines: QuoteLineRow[]): EditorState {
+type EditorSource = Pick<
+  QuoteVersionRow,
+  | "version_no" | "edit_seq" | "contact_id" | "contact_name" | "contact_email" | "contact_phone" | "site_id" | "site_label" | "site_line1"
+  | "site_line2" | "site_city" | "site_state" | "site_postal_code" | "quote_date" | "valid_until" | "project_name" | "customer_po"
+  | "job_instructions" | "terms" | "internal_notes" | "tax_rate_bp"
+>;
+
+export function editorStateFromVersion(quote: { id: string; quote_number: string; customer_id: string }, v: EditorSource, lines: Array<Omit<QuoteLineRow, "quote_version_id">>): EditorState {
   return {
     quoteId: quote.id,
     quoteNumber: quote.quote_number,
@@ -103,4 +110,21 @@ export function editorStateFromVersion(quote: { id: string; quote_number: string
       isCustom: l.kind !== "material" && !l.charge_item_id,
     })),
   };
+}
+
+/** Editor state for a new direct order (no quote). */
+export async function newOrderEditorState(customerId: string | null): Promise<EditorState> {
+  const state = await newEditorState(customerId);
+  // Quote terms talk about the quote's expiration; direct orders start without terms.
+  return { ...state, validUntil: state.quoteDate, requestedDate: "", terms: "" };
+}
+
+/** Editor state for a direct order in Draft. */
+export function editorStateFromOrder(o: OrderRow, lines: OrderLineRow[]): EditorState {
+  const fromVersion = editorStateFromVersion(
+    { id: o.id, quote_number: o.order_number, customer_id: o.customer_id },
+    { ...o, version_no: 1, quote_date: o.order_date, valid_until: o.order_date },
+    lines,
+  );
+  return { ...fromVersion, requestedDate: o.requested_date ?? "" };
 }

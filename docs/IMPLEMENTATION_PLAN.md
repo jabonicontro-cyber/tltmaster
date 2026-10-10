@@ -3,7 +3,7 @@
 Top Line Trucking is the first customer. The long-term goal is a hauling
 operating system that other trucking and hauling companies could also use.
 This plan is grounded in an audit of the code as it exists (commit `a2a5f0b`,
-audited 2026-10-10), updated after the tenant foundation (B1, 2026-10-11). The code, migrations and tests are the source of truth;
+audited 2026-10-10), updated after the tenant foundation (B1) and order management (N1 + N2). The code, migrations and tests are the source of truth;
 where this document and the code disagree, the code wins and this document
 should be fixed.
 
@@ -48,12 +48,12 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Quote PDF and print preview | ✅ | `src/server/pdf/quote-pdf.tsx`, `src/lib/quotes/document.ts` | PDFs for sample quotes carry **no SAMPLE watermark**. |
 | Quote email | 🟡 | `src/server/email/provider.ts`, `sendQuoteEmail` | Preview and test modes are tested. Real Resend delivery has never been exercised. |
 | Quote → order conversion | ✅ | `orders`, `order_lines`, `convert_quote_to_order` | — |
-| Order management | 🟡 | `src/app/(app)/orders` | Orders are read-only. There are no status transitions, edits, direct orders, delivery dates or loads. |
+| Order management | ✅ (N1 + N2, see §5a) | `src/app/(app)/orders`, `src/components/orders`, `src/lib/orders`, migration `20261012000100_order_management.sql` | Status transitions, detail edits, scheduling (date range + time window), direct orders, history. **Loads per order, trucks and drivers** come with dispatch (N4). No order PDF / confirmation email yet. |
 | Scheduling and dispatch | 🧱 | `src/app/(app)/dispatch/page.tsx` | No tables. |
 | Trucks, trailers, drivers, equipment | 🧱 | `src/app/(app)/fleet/page.tsx` | No tables. |
 | Delivery tickets and documents | 🧱 | `src/app/(app)/tickets/page.tsx` | No tables. `document_sequences` has a `ticket` key. **No file storage** is used anywhere. |
 | Reconciliation and billing-ready records | ❌ | — | — |
-| Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures; its operations cards are placeholders. Reports is a placeholder. |
+| Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/reports` | The dashboard shows real quote figures and the real "orders scheduled today" count; the other operations cards are placeholders. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
 | Employee / driver portal, qualifications, PTO, announcements, incidents | ❌ | — | The `driver` role exists but has no permissions. |
@@ -158,8 +158,8 @@ These build on B1 and are listed in dependency order.
 
 | # | Feature | Current state | Builds on | Concrete next steps | Risks |
 | --- | --- | --- | --- | --- | --- |
-| N1 | Order lifecycle | Read-only orders | `orders`, `order_status_events` | `set_order_status()` with a transition table (Confirmed → Scheduled → Dispatched → In progress → Partially completed / Completed; On hold; Canceled), reasons, history; delivery window / requested dates; loads planned per order. | Keep status in sync with assignments and tickets (derive where possible). |
-| N2 | Direct orders | None | Quote editor + `save_quote_draft` pricing rules | `save_order_draft()` reusing the price resolution and override checks; editor component shared with quotes. | Do not fork the pricing rules — reuse them. |
+| N1 ✅ | Order lifecycle | Done (§5a) — loads per order move to N4 | `orders`, `order_status_events` | `set_order_status()` with a transition table (Confirmed → Scheduled → Dispatched → In progress → Partially completed / Completed; On hold; Canceled), reasons, history; delivery window / requested dates; loads planned per order. | Keep status in sync with assignments and tickets (derive where possible). |
+| N2 ✅ | Direct orders | Done (§5a) | Quote editor + `save_quote_draft` pricing rules | `save_order_draft()` reusing the price resolution and override checks; editor component shared with quotes. | Do not fork the pricing rules — reuse them. |
 | N3 | Fleet registry (minimal) | Placeholder | — | `trucks`, `trailers`, `drivers` (linked to memberships), equipment type, verified capacity, `service_status` (in service / out of service with reason). | Never assume capacities; leave them blank until verified. |
 | N4 | Dispatch assignments | Placeholder | N1, N3 | `dispatch_assignments (order, date, load #, truck, trailer, driver, planned qty/unit, status)`; a day/week board; conflict rules: double-booking, out-of-service equipment, driver unavailable; keyboard-accessible editing. | Concurrency: use DB exclusion/uniqueness to prevent double-booking. |
 | N5 | Delivery tickets | Placeholder | N4, storage (S7) | `delivery_tickets` numbered via `document_sequences('ticket')`, revisions, print layouts (full and half page), planned vs actual quantity, signature/photo upload, printed status. | Ticket immutability once reviewed, like quote revisions. |
@@ -250,12 +250,85 @@ Line customer, quote and PDF URLs.
   (ARCHITECTURE.md → Companies) and must be implemented with the first feature
   that needs them.
 
+## 5a. Order management (N1 + N2) — completed
+
+Migration `20261012000100_order_management.sql` (additive; existing orders are
+backfilled, nothing is deleted; a verification block aborts if any quote-linked
+order's totals differ from its accepted revision).
+
+**Status rules** (`private.order_transition_allowed`, mirrored in
+`src/lib/orders/status.ts`, parity-tested over all 81 pairs):
+
+| From | To | Permission | Requirement |
+| --- | --- | --- | --- |
+| Draft | Confirmed | `orders.edit` | at least one line |
+| Draft | Canceled | `orders.edit` | reason |
+| Confirmed | Scheduled · On hold · Canceled | `orders.schedule` (cancel: `orders.edit`) | Scheduled needs a scheduled date; hold/cancel need a reason |
+| Scheduled | Dispatched · In progress · Confirmed (unschedule) · On hold · Canceled | `orders.schedule` (cancel: `orders.edit`) | — |
+| Dispatched | In progress · Scheduled (recall) · On hold · Canceled | `orders.schedule` (cancel: `orders.edit`) | — |
+| In progress | Completed · Partially completed · On hold | `orders.schedule` | — |
+| Partially completed | Completed · In progress · On hold | `orders.schedule` | — |
+| On hold | Confirmed · Scheduled · Canceled | `orders.schedule` (cancel: `orders.edit`) | — |
+| Completed, Canceled | — (final) | | |
+
+**What changed**
+- New permission `orders.schedule` (owner, office, dispatcher). Dispatchers can
+  schedule and move work along; they cannot create, edit, confirm or cancel.
+- `orders`: `contact_id`, `order_date`, `requested_date`, `scheduled_start` /
+  `scheduled_end`, `window_start` / `window_end`, `scheduling_notes`, `edit_seq`
+  (optimistic concurrency), `confirmed_at`, `completed_at`, `canceled_at`,
+  `updated_by`.
+- `save_order_draft()` — direct orders priced with exactly the quote rules
+  (customer list → standard list → manual; overrides and discounts need
+  `pricing.override`) on the order date. Editable only while Draft.
+- `update_order_details()` (contact, job site, project, PO, instructions, notes,
+  requested date) for any open order; `update_order_schedule()`;
+  `set_order_status()`. All resolve the caller's company and verify every
+  referenced customer, contact, site, material, charge and unit belongs to it.
+- Pricing protection by triggers (holds even for the database owner): lines,
+  prices, totals, tax, terms and customer of an order change only while it is a
+  **direct order in Draft**; order number and source quote never change.
+  Quote-linked orders keep the accepted prices forever.
+- `convert_quote_to_order()` keeps its lock + unique-index idempotency; it now also
+  records the contact, order date and confirmation time.
+- History: every edit is audited with a field-by-field diff; status events as
+  before. People with `orders.view` can read the audit entries **of orders only**
+  (new policy `audit_read_orders`); the full log still needs `audit.view`.
+- `effective_prices()` is also available to `orders.edit` (direct-order editor).
+- `remove_sample_data()` also removes direct orders of sample customers.
+- UI: order list with search (incl. contact and material), quick filters (open,
+  scheduled today, next 7 days, not scheduled, drafts, on hold), status/source/
+  schedule filters, delivery column with "requested date passed" flags; `/orders/new`
+  (the quote editor in order mode); `/orders/[id]/edit` (full editor for drafts,
+  details form otherwise); detail page with status actions, schedule dialog,
+  source quote, timeline; dashboard "Orders scheduled today" is real.
+
+**Tests**: `tests/db/order-management.test.ts` (18): status parity; direct-order
+pricing parity with the TypeScript calculator; override/discount refusal;
+invalid data; draft edits vs locked lines (also for the database owner);
+quote-linked edits leaving quote and prices untouched; idempotent conversion;
+the full lifecycle with timestamps, events and audit diffs; transition
+requirements and conflicts; dispatcher / mechanic / driver / pending
+permissions; order-history visibility; a second company refused for every
+reference and every order function. `tests/unit/order-rules.test.ts` (11).
+Browser: `tests/e2e/orders.spec.ts` (direct order → confirm → schedule →
+dispatch → start → complete; dispatcher cannot create) and the quote-conversion
+flow now edits the converted order's details.
+
+**Remaining limits**
+- No loads, trucks or drivers per order (N4). Status is set by people; once
+  dispatch and tickets exist, derive it from them where possible.
+- No order confirmation PDF or email; no order duplication.
+- Direct orders start with empty terms (the default quote terms mention a quote
+  expiration). A per-company default for order terms is a small follow-up.
+- An order's customer cannot change after confirmation; cancel and re-create.
+
 ## Recommended next task
 
 **B3 — staging deployment** (hosted Supabase project, `supabase db push` of all
-migrations including company separation, auth URLs, email templates and SMTP,
-deploy the app, real password-reset and test-mode quote emails, backup/restore
-drill B5). Then **N1 order lifecycle → N3 fleet registry → N4 dispatch → N5
+migrations including company separation and order management, auth URLs, email
+templates and SMTP, deploy the app, real password-reset and test-mode quote
+emails, backup/restore drill B5). Then **N3 fleet registry → N4 dispatch → N5
 tickets**, each built on the company model from the start.
 
 ---

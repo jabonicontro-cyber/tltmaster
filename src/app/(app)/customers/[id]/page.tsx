@@ -60,6 +60,11 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
                 New quote
               </ButtonLink>
             )}
+            {can(access, "orders.edit") && customer.active && (
+              <ButtonLink href={`/orders/new?customer=${customer.id}`} variant="secondary" icon={<Plus className="size-4" />}>
+                New order
+              </ButtonLink>
+            )}
             {canEdit && (
               <ButtonLink href={`/customers/${customer.id}/edit`} variant="secondary" icon={<Pencil className="size-4" />}>
                 Edit

@@ -21,11 +21,12 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.has_permission", "private.is_company_member", "private.issue_current_version", "private.log_event",
   "private.next_document_number", "private.purge_sample_quote_orders", "private.recompute_quote_totals",
   "private.record_status_change", "private.require_company", "private.require_permission", "private.resolve_price",
-  "private.stamp_updated_by",
+  "private.stamp_updated_by", "private.apply_order_details", "private.customer_bill_to", "private.recompute_order_totals",
   "public.add_company_member", "public.convert_quote_to_order", "public.effective_prices", "public.issue_quote_version",
   "public.mark_quote_sent", "public.my_access", "public.record_quote_delivery", "public.remove_sample_data",
   "public.revise_quote", "public.sample_data_counts", "public.save_quote_draft", "public.set_quote_status",
   "public.set_role_permission", "public.set_user_access", "public.user_directory",
+  "public.save_order_draft", "public.update_order_details", "public.update_order_schedule", "public.set_order_status",
 ];
 
 interface World {
@@ -210,7 +211,7 @@ describe("writes cannot cross companies", () => {
         "insert into public.quotes (company_id, quote_number, customer_id) values ($1, 'Q-X', $2)", [w.B, w.ids.customerId],
       ))).code).toBe("23503");
       expect((await pgError(s.query(
-        "insert into public.orders (company_id, order_number, customer_id) values ($1, 'O-X', $2)", [w.B, w.ids.customerId],
+        "insert into public.orders (company_id, order_number, customer_id, order_date) values ($1, 'O-X', $2, current_date)", [w.B, w.ids.customerId],
       ))).code).toBe("23503");
       expect((await pgError(s.query(
         "insert into public.materials (company_id, name, default_unit_code) values ($1, 'Unit from elsewhere', 'pallet')", [w.B],

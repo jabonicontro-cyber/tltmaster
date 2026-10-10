@@ -110,6 +110,23 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
 
   await page.goto(`/orders?q=${orderNumber}`);
   await expect(page.getByRole("link", { name: orderNumber })).toBeVisible();
+
+  // Details of the quote-linked order can change; its accepted prices cannot.
+  await page.goto(orderUrl);
+  await page.getByRole("link", { name: "Edit details" }).click();
+  await expect(page.getByText("Prices are as accepted on the quote")).toBeVisible();
+  await page.getByLabel("Customer PO").fill("PO-E2E-2");
+  await page.getByLabel("Job instructions").fill("Use the north gate");
+  await page.getByRole("button", { name: "Save details" }).click();
+  await expect(page).toHaveURL(orderUrl);
+  await expectToast(page, "Order details saved.");
+  await expect(page.getByText("PO-E2E-2", { exact: true })).toBeVisible();
+  await expect(page.getByText("$388.90").first()).toBeVisible();
+  await expect(page.getByRole("list", { name: "Order history" }).getByText("PO-E2E-1")).toBeVisible();
+
+  // The quote keeps the PO it was accepted with.
+  await page.goto(quoteUrl);
+  await expect(page.getByText("PO-E2E-1").first()).toBeVisible();
 });
 
 test("dispatchers can view orders but cannot convert quotes", async ({ page }) => {

@@ -18,9 +18,11 @@ import { addDays } from "@/lib/dates";
 import { bpToInput, centsToInput, formatBp, formatCents, parseMoneyToCents, parsePercentToBp, parseQuantityToMilli } from "@/lib/money";
 import { calculateQuote, type CalcLine, type CalcMethod, type ChargeKind } from "@/lib/quotes/calc";
 import { CHARGE_KIND_LABELS } from "@/lib/schemas/catalog";
+import type { OrderDraftInput } from "@/lib/schemas/order";
 import type { QuoteDraftInput } from "@/lib/schemas/quote";
 import type { ChargeItemRow, ContactRow, EffectivePrice, MaterialRow, SiteRow, UnitRow } from "@/server/data/types";
 import { quickCreateCustomer } from "@/app/(app)/customers/actions";
+import { loadOrderCustomerContext, saveOrderDraft } from "@/app/(app)/orders/actions";
 import { loadCustomerContext, saveQuoteDraft } from "@/app/(app)/quotes/actions";
 
 export interface EditorLine {
@@ -40,6 +42,7 @@ export interface EditorLine {
 }
 
 export interface EditorState {
+  /** Id of the quote — or of the order when the editor is in order mode. */
   quoteId: string | null;
   quoteNumber: string | null;
   versionNo: number;
@@ -57,8 +60,12 @@ export interface EditorState {
   siteState: string;
   sitePostalCode: string;
   saveSite: boolean;
+  /** Quote date, or order date in order mode. */
   quoteDate: string;
+  /** Quotes only. */
   validUntil: string;
+  /** Orders only: requested delivery date ("" = none). */
+  requestedDate?: string;
   projectName: string;
   customerPo: string;
   jobInstructions: string;
@@ -88,6 +95,8 @@ interface Props {
   canEditCustomers: boolean;
   priceLists: Array<{ id: string; name: string }>;
   revisionReason?: string;
+  /** "order": direct order (no quote) — order date, requested delivery date, saved as an order draft. */
+  mode?: "quote" | "order";
 }
 
 let keySeq = 0;
@@ -108,8 +117,11 @@ function toCalcLine(l: EditorLine): CalcLine {
   };
 }
 
-export function QuoteEditor({ initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason }: Props) {
+export function QuoteEditor({ initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote" }: Props) {
   const router = useRouter();
+  const isOrder = mode === "order";
+  const docLabel = isOrder ? "order" : "quote";
+  const basePath = isOrder ? "/orders" : "/quotes";
   const [state, setState] = useState<EditorState>(initial);
   const [context, setContext] = useState<CustomerContext | null>(initialContext);
   const [customers, setCustomers] = useState(initialCustomers);
@@ -175,7 +187,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
     const previousCustomerId = state.customerId;
     update({ customerId });
     startContext(async () => {
-      const r = await loadCustomerContext(customerId, quoteDate);
+      const r = await (isOrder ? loadOrderCustomerContext : loadCustomerContext)(customerId, quoteDate);
       if (!r.ok) {
         setFormError(r.error);
         return;
@@ -317,6 +329,12 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
   const blockedByPermission = !canOverride && (overrideLines.length > 0 || discountLines.length > 0);
 
   // Save -------------------------------------------------------------------------
+  function buildOrderInput(): OrderDraftInput {
+    const { quoteId, quoteDate, validUntil, ...q } = buildInput();
+    void validUntil;
+    return { ...q, orderId: quoteId, orderDate: quoteDate, requestedDate: state.requestedDate ?? "" };
+  }
+
   function buildInput(): QuoteDraftInput {
     return {
       quoteId: state.quoteId,
@@ -372,9 +390,15 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       return;
     }
     startSaving(async () => {
-      let r: Awaited<ReturnType<typeof saveQuoteDraft>>;
+      let r: { ok: true; data: { id: string; editSeq: number }; message?: string } | { ok: false; error: string; fieldErrors?: Record<string, string> };
       try {
-        r = await saveQuoteDraft(buildInput());
+        if (isOrder) {
+          const res = await saveOrderDraft(buildOrderInput());
+          r = res.ok ? { ok: true, data: { id: res.data.orderId, editSeq: res.data.editSeq }, message: res.message } : res;
+        } else {
+          const res = await saveQuoteDraft(buildInput());
+          r = res.ok ? { ok: true, data: { id: res.data.quoteId, editSeq: res.data.editSeq }, message: res.message } : res;
+        }
       } catch {
         setFormError("The server could not be reached. Nothing was saved — your changes are still on this page. Try again.");
         return;
@@ -388,12 +412,13 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       }
       setDirty(false);
       toast.success(r.message ?? "Saved");
+      const saved = r.data;
       if (andView) {
-        router.push(`/quotes/${r.data.quoteId}`);
+        router.push(`${basePath}/${saved.id}`);
       } else if (!state.quoteId) {
-        router.replace(`/quotes/${r.data.quoteId}/edit`);
+        router.replace(`${basePath}/${saved.id}/edit`);
       } else {
-        setState((s) => ({ ...s, editSeq: r.data.editSeq, siteId: s.siteId === "new" && s.saveSite ? "" : s.siteId }));
+        setState((s) => ({ ...s, editSeq: saved.editSeq, siteId: s.siteId === "new" && s.saveSite ? "" : s.siteId }));
         router.refresh();
       }
     });
@@ -442,7 +467,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                     onChange={(v) => selectCustomer(v)}
                     placeholder="Search customers by name or number…"
                     invalid={Boolean(fieldErrors.customerId)}
-                    disabled={Boolean(state.quoteId && state.versionNo > 1)}
+                    disabled={Boolean(!isOrder && state.quoteId && state.versionNo > 1)}
                   />
                 </div>
                 {canEditCustomers && !state.quoteId && (
@@ -465,20 +490,33 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
               </div>
             )}
           </div>
-          <Field label="Quote date" htmlFor="quoteDate" required error={fieldErrors.quoteDate} className="md:col-span-1">
-            <Input
-              id="quoteDate"
-              type="date"
-              value={state.quoteDate}
-              onChange={(e) => {
-                const quoteDate = e.target.value;
-                update({ quoteDate, validUntil: state.validUntil < quoteDate ? addDays(quoteDate, validityDays) : state.validUntil });
-              }}
-            />
-          </Field>
-          <Field label="Valid until" htmlFor="validUntil" required error={fieldErrors.validUntil} className="md:col-span-1">
-            <Input id="validUntil" type="date" value={state.validUntil} min={state.quoteDate} onChange={(e) => update({ validUntil: e.target.value })} />
-          </Field>
+          {isOrder ? (
+            <>
+              <Field label="Order date" htmlFor="quoteDate" required error={fieldErrors.orderDate} className="md:col-span-1" hint="Prices as of this date">
+                <Input id="quoteDate" type="date" value={state.quoteDate} onChange={(e) => update({ quoteDate: e.target.value })} />
+              </Field>
+              <Field label="Requested delivery" htmlFor="requestedDate" error={fieldErrors.requestedDate} className="md:col-span-1" hint="Optional">
+                <Input id="requestedDate" type="date" value={state.requestedDate ?? ""} min={state.quoteDate} onChange={(e) => update({ requestedDate: e.target.value })} />
+              </Field>
+            </>
+          ) : (
+            <>
+              <Field label="Quote date" htmlFor="quoteDate" required error={fieldErrors.quoteDate} className="md:col-span-1">
+                <Input
+                  id="quoteDate"
+                  type="date"
+                  value={state.quoteDate}
+                  onChange={(e) => {
+                    const quoteDate = e.target.value;
+                    update({ quoteDate, validUntil: state.validUntil < quoteDate ? addDays(quoteDate, validityDays) : state.validUntil });
+                  }}
+                />
+              </Field>
+              <Field label="Valid until" htmlFor="validUntil" required error={fieldErrors.validUntil} className="md:col-span-1">
+                <Input id="validUntil" type="date" value={state.validUntil} min={state.quoteDate} onChange={(e) => update({ validUntil: e.target.value })} />
+              </Field>
+            </>
+          )}
 
           {hasCustomer && (
             <>
@@ -757,10 +795,10 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
         <Card className="lg:col-span-2">
           <CardHeader title="Instructions and terms" />
           <CardBody className="space-y-4">
-            <Field label="Job instructions (printed on the quote)" htmlFor="jobInstructions" error={fieldErrors.jobInstructions}>
+            <Field label={isOrder ? "Job instructions (for the customer and crew)" : "Job instructions (printed on the quote)"} htmlFor="jobInstructions" error={fieldErrors.jobInstructions}>
               <Textarea id="jobInstructions" rows={3} value={state.jobInstructions} onChange={(e) => update({ jobInstructions: e.target.value })} placeholder="Delivery window, where to dump, site access…" />
             </Field>
-            <Field label="Terms (printed on the quote)" htmlFor="terms" error={fieldErrors.terms}>
+            <Field label={isOrder ? "Terms" : "Terms (printed on the quote)"} htmlFor="terms" error={fieldErrors.terms}>
               <Textarea id="terms" rows={4} value={state.terms} onChange={(e) => update({ terms: e.target.value })} />
             </Field>
             <Field label="Internal notes (not printed)" htmlFor="internalNotes" error={fieldErrors.internalNotes}>
@@ -817,11 +855,11 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] backdrop-blur lg:left-68">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted">
-            {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : "New quote — not saved yet"}
+            {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : `New ${docLabel} — not saved yet`}
             <span className="ml-3 font-bold text-ink tabular">Total {formatCents(totals.totalCents)}</span>
           </div>
           <div className="flex gap-2">
-            <Link href={state.quoteId ? `/quotes/${state.quoteId}` : "/quotes"} className={buttonClasses("ghost")}>
+            <Link href={state.quoteId ? `${basePath}/${state.quoteId}` : basePath} className={buttonClasses("ghost")}>
               {dirty ? "Discard" : "Back"}
             </Link>
             <Button variant="secondary" onClick={() => save(false)} loading={saving} disabled={!hasCustomer}>
@@ -835,7 +873,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       </div>
 
       {newCustomerOpen && (
-        <Dialog open onOpenChange={setNewCustomerOpen} title="New customer" description="Creates the customer record and selects it for this quote." size="lg">
+        <Dialog open onOpenChange={setNewCustomerOpen} title="New customer" description={`Creates the customer record and selects it for this ${docLabel}.`} size="lg">
           <CustomerForm
             initial={EMPTY_CUSTOMER}
             priceLists={priceLists}

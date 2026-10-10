@@ -82,6 +82,24 @@ staging copy first, deploy the app version from the same commit (the old app
 version reads `profiles.role`, which the migration removes), then sign in and
 check customers, quotes and orders.
 
+### Applying new migrations without losing local data
+
+`supabase db reset` rebuilds the database from scratch. To keep your local
+records and only apply migrations added since your last update (for example
+`20261012000100_order_management.sql`):
+
+```bash
+npx supabase migration up      # Supabase CLI
+# or, for the no-Docker stack:
+psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -1 \
+  -f supabase/migrations/20261012000100_order_management.sql
+```
+
+The order-management migration only adds columns, rules and functions; existing
+orders are kept (order date and confirmation time are filled from their creation
+time) and it aborts if any quote-linked order's totals would differ from its
+accepted revision.
+
 ## 4. Deploying (Vercel or any Node host)
 
 - Framework preset: Next.js. Node 22.
