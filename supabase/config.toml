@@ -27,7 +27,10 @@ enable_signup = false
 minimum_password_length = 10
 
 [auth.email]
-enable_signup = false
+# Must stay true: in this section it enables the email/password provider
+# itself (sign-in, invitations, password reset). Public sign-up is blocked by
+# [auth] enable_signup = false above.
+enable_signup = true
 enable_confirmations = false
 double_confirm_changes = true
 
