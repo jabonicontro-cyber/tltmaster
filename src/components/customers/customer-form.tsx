@@ -52,11 +52,11 @@ interface Props<T> {
   /** Ask for a first contact (new customers). */
   withContact?: boolean;
   compact?: boolean;
-  onSuccess?: (data: T) => void;
+  onSuccess?: (data: T, message?: string) => void;
 }
 
 export function CustomerForm<T>({ initial, priceLists, action, submitLabel, cancelHref, onCancel, withContact, compact, onSuccess }: Props<T>) {
-  const { pending, onSubmit, fieldError, formError } = useFormAction(action, { onSuccess: (r) => onSuccess?.(r.data) });
+  const { pending, onSubmit, fieldError, formError } = useFormAction(action, { onSuccess: (r) => onSuccess?.(r.data, r.message) });
   const f = (name: keyof CustomerFormValues | string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
 
   return (

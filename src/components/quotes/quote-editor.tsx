@@ -844,10 +844,11 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
             onCancel={() => setNewCustomerOpen(false)}
             withContact
             compact
-            onSuccess={(c) => {
+            onSuccess={(c, message) => {
               setCustomers((list) => [...list, { ...c, is_sample: false }].sort((a, b) => a.name.localeCompare(b.name)));
               setNewCustomerOpen(false);
-              toast.success(`Customer ${c.name} created.`);
+              if (message) toast.warning(message);
+              else toast.success(`Customer ${c.name} created.`);
               selectCustomer(c.id);
             }}
           />

@@ -62,8 +62,9 @@ export async function quickCreateCustomer(formData: FormData): Promise<ActionRes
     const supabase = await createClient();
     const { data, error } = await supabase.from("customers").insert(parsed.data).select("id, name, customer_number").single();
     if (error) return fail(dbErrorMessage(error));
+    let contactFailed = false;
     if (contact.data.contact_name) {
-      await supabase.from("customer_contacts").insert({
+      const { error: cErr } = await supabase.from("customer_contacts").insert({
         customer_id: data.id,
         name: contact.data.contact_name,
         email: contact.data.contact_email,
@@ -71,9 +72,10 @@ export async function quickCreateCustomer(formData: FormData): Promise<ActionRes
         is_primary: true,
         is_billing: true,
       });
+      contactFailed = Boolean(cErr);
     }
     revalidatePath("/customers");
-    return ok(data);
+    return ok(data, contactFailed ? "Customer created, but the contact could not be saved. Add it on the customer page." : undefined);
   });
 }
 
