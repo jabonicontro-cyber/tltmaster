@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { CheckCircle2, Copy, Download, Mail, Pencil, Printer, Send, XCircle } from "lucide-react";
+import { CheckCircle2, ClipboardList, Copy, Download, Mail, Pencil, Printer, Send, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Textarea } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
 import { allowedTransitions, canEditDraft, canRevise, canSend, QUOTE_STATUS_LABELS, transitionNeedsReason, type QuoteStatus } from "@/lib/quotes/status";
+import { convertQuoteToOrder } from "@/app/(app)/orders/actions";
 import { defaultEmailContent, markQuoteSent, reviseQuote, sendQuoteEmail, setQuoteStatus, type SendQuoteResult } from "@/app/(app)/quotes/actions";
 
 interface Props {
@@ -19,7 +20,9 @@ interface Props {
   versionId: string;
   versionLocked: boolean;
   editSeq: number;
-  permissions: { edit: boolean; send: boolean; status: boolean };
+  permissions: { edit: boolean; send: boolean; status: boolean; convert: boolean };
+  /** Order created from this quote, when one exists and the user can see orders. */
+  order: { id: string; order_number: string } | null;
 }
 
 const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
@@ -29,7 +32,7 @@ const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
   canceled: "Cancel quote",
 };
 
-export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions }: Props) {
+export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order }: Props) {
   const router = useRouter();
   const [emailOpen, setEmailOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
@@ -38,7 +41,9 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
   const [note, setNote] = useState("");
   const [reason, setReason] = useState("");
 
-  const transitions = permissions.status ? allowedTransitions(status) : [];
+  const [convertOpen, setConvertOpen] = useState(false);
+  // A converted quote's status is fixed (enforced by the database).
+  const transitions = permissions.status && !order ? allowedTransitions(status) : [];
 
   return (
     <div className="flex flex-wrap gap-2">
@@ -68,6 +73,16 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
           Revise
         </Button>
       )}
+      {order && (
+        <Link href={`/orders/${order.id}`} className={buttonClasses("primary")}>
+          <ClipboardList className="size-4" aria-hidden /> Order {order.order_number}
+        </Link>
+      )}
+      {!order && status === "accepted" && permissions.convert && (
+        <Button icon={<ClipboardList className="size-4" />} onClick={() => setConvertOpen(true)}>
+          Convert to order
+        </Button>
+      )}
       {transitions.map((t) => (
         <Button
           key={t}
@@ -78,6 +93,21 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
           {STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
         </Button>
       ))}
+
+      <ConfirmDialog
+        open={convertOpen}
+        onOpenChange={setConvertOpen}
+        title={`Convert ${quoteNumber} to an order`}
+        description="Creates an order from the accepted revision with the same customer, job site, lines, prices, discounts and totals. The quote and its revisions are kept unchanged, and its status can no longer change."
+        confirmLabel="Create order"
+        onConfirm={async () => {
+          const r = await convertQuoteToOrder(quoteId);
+          if (!r.ok) return r.error;
+          if (r.data.created) toast.success(r.message ?? "Order created");
+          else toast.info(r.message ?? "Opening existing order");
+          router.push(`/orders/${r.data.orderId}`);
+        }}
+      />
 
       {emailOpen && <EmailDialog quoteId={quoteId} editSeq={versionLocked ? null : editSeq} onClose={() => setEmailOpen(false)} />}
 
@@ -123,7 +153,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
         title={statusTarget ? `${STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} — ${quoteNumber}` : ""}
         description={
           statusTarget === "accepted"
-            ? "Records that the customer accepted the current revision. Converting it to an order will be available in the Orders module."
+            ? "Records that the customer accepted the current revision. You can then convert it to an order."
             : statusTarget === "canceled"
               ? "Canceled quotes cannot be reopened. History is kept."
               : undefined

@@ -291,3 +291,84 @@ export interface CompanySettings {
   quote_footer_note: string;
   updated_at: string;
 }
+
+export type OrderStatus =
+  | "draft"
+  | "confirmed"
+  | "scheduled"
+  | "dispatched"
+  | "in_progress"
+  | "partially_completed"
+  | "completed"
+  | "on_hold"
+  | "canceled";
+
+export interface OrderListRow {
+  id: string;
+  order_number: string;
+  status: OrderStatus;
+  customer_id: string;
+  customer_name: string;
+  customer_number: string;
+  source_quote_id: string | null;
+  source_quote_number: string | null;
+  project_name: string;
+  site_label: string;
+  site_line1: string;
+  site_city: string;
+  customer_po: string;
+  total_cents: number;
+  is_sample: boolean;
+  created_at: string;
+}
+
+export interface OrderRow {
+  id: string;
+  order_number: string;
+  customer_id: string;
+  status: OrderStatus;
+  source_quote_id: string | null;
+  source_quote_version_id: string | null;
+  bill_to_snapshot: BillToSnapshot | null;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  site_id: string | null;
+  site_label: string;
+  site_line1: string;
+  site_line2: string;
+  site_city: string;
+  site_state: string;
+  site_postal_code: string;
+  project_name: string;
+  customer_po: string;
+  job_instructions: string;
+  terms: string;
+  internal_notes: string;
+  tax_rate_bp: number;
+  subtotal_cents: number;
+  discount_cents: number;
+  taxable_cents: number;
+  tax_cents: number;
+  total_cents: number;
+  status_note: string;
+  is_sample: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export type OrderLineRow = Omit<QuoteLineRow, "quote_version_id"> & {
+  order_id: string;
+  source_quote_line_id: string | null;
+};
+
+export interface OrderStatusEventRow {
+  id: string;
+  order_id: string;
+  from_status: OrderStatus | null;
+  to_status: OrderStatus;
+  note: string;
+  actor_id: string | null;
+  occurred_at: string;
+}

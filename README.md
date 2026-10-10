@@ -1,7 +1,7 @@
 # Top Line Trucking Manager
 
 Operations software for Top Line Trucking — customers, materials and pricing,
-quotes with PDF and email, and (in later phases) orders, dispatch, delivery
+quotes with PDF and email, orders from accepted quotes, and (in later phases) dispatch, delivery
 tickets, route planning and QuickBooks export.
 
 Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
@@ -19,7 +19,8 @@ Built with Next.js (App Router, TypeScript), Tailwind CSS and Supabase
 | Quote print preview and PDF | ✅ |
 | Quote email | ✅ code complete — **preview mode until an email provider is configured** |
 | Settings: company, numbering, users, permissions, sample data, audit log | ✅ |
-| Orders, Dispatch, Route Planner, Tickets, Fleet, Reports | Planned — pages say so; nothing fake |
+| Orders: convert accepted quotes (one order per quote), order list and detail | ✅ — scheduling, editing and direct orders next |
+| Dispatch, Route Planner, Tickets, Fleet, Reports | Planned — pages say so; nothing fake |
 
 ## Quick start (local)
 
@@ -62,7 +63,7 @@ npm run dev                  # http://localhost:3000
 | `npm run dev` / `build` / `start` | Next.js |
 | `npm run lint` · `npm run typecheck` | ESLint · TypeScript |
 | `npm test` | Unit tests (money, quote calculation, status rules, PDF, email) |
-| `npm run test:db` | Database tests: RLS, permissions, quote workflow, numbering (needs a migrated DB) |
+| `npm run test:db` | Database tests: RLS, permissions, quote workflow, quote-to-order conversion, numbering (needs a migrated DB) |
 | `npm run test:e2e` | Browser tests against a running app + local backend |
 | `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker |
 

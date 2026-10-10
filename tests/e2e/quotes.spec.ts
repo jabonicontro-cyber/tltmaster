@@ -87,4 +87,38 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await page.getByRole("dialog").getByRole("button", { name: "Mark accepted" }).click();
   await expectToast(page, "Quote marked accepted.");
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
+
+  // Convert to order
+  await page.getByRole("button", { name: "Convert to order" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create order" }).click();
+  await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
+  const orderUrl = page.url();
+  const orderNumber = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
+  expect(orderNumber).toMatch(/^O-\d{4}-\d{4}$/);
+  await expect(page.getByText("Confirmed", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("PO-E2E-1")).toBeVisible();
+  // Revision 2: 30 t × $9.00 = $270.00 (+7% tax $18.90) + 20 t hauling × $5.00 = $100.00 → $388.90
+  await expect(page.getByText("$388.90").first()).toBeVisible();
+  await expect(page.getByRole("link", { name: "2", exact: true })).toBeVisible(); // source revision link
+
+  // The quote now links to its order instead of offering conversion again.
+  await page.goto(quoteUrl);
+  await expect(page.getByRole("button", { name: "Convert to order" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Cancel quote" })).toHaveCount(0);
+  await page.getByRole("link", { name: `Order ${orderNumber}` }).first().click();
+  await expect(page).toHaveURL(orderUrl);
+
+  await page.goto(`/orders?q=${orderNumber}`);
+  await expect(page.getByRole("link", { name: orderNumber })).toBeVisible();
+});
+
+test("dispatchers can view orders but cannot convert quotes", async ({ page }) => {
+  await signIn(page, "dispatcher");
+  await page.goto("/orders");
+  const first = page.locator("tbody a[href^='/orders/']").first();
+  await expect(first).toBeVisible();
+  await page.goto("/quotes?status=accepted");
+  await page.locator("tbody a[href^='/quotes/']").first().click();
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Convert to order" })).toHaveCount(0);
 });

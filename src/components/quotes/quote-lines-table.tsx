@@ -11,7 +11,8 @@ const SOURCE_LABEL: Record<QuoteLineRow["price_source"], string> = {
   override: "Override",
 };
 
-export function QuoteLinesTable({ lines }: { lines: QuoteLineRow[] }) {
+/** Line items with pricing snapshots — used for quote revisions and orders. */
+export function QuoteLinesTable({ lines }: { lines: Array<Omit<QuoteLineRow, "quote_version_id">> }) {
   return (
     <TableWrap>
       <Table>

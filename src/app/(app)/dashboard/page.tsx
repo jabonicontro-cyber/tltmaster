@@ -61,7 +61,7 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 }
 
 const PLANNED = [
-  { label: "Orders scheduled today", phase: "Orders (Phase 3)" },
+  { label: "Orders scheduled today", phase: "order scheduling (Phase 3)" },
   { label: "Orders needing a truck or driver", phase: "Dispatch (Phase 3–4)" },
   { label: "Deliveries in progress", phase: "Dispatch (Phase 4)" },
   { label: "Completed deliveries awaiting ticket review", phase: "Tickets (Phase 3)" },
@@ -127,7 +127,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <QuoteMiniList rows={[...quotes.pastExpiration, ...quotes.followUp]} empty="Nothing needs follow-up right now." today={today} />
             </Card>
             <Card>
-              <CardHeader title="Recently accepted" description="Ready to become orders once the Orders module is available." />
+              <CardHeader title="Recently accepted" description="Open a quote and choose “Convert to order” to create its order." />
               <QuoteMiniList rows={quotes.recentAccepted} empty="No quotes accepted in this period." today={today} />
             </Card>
             <Card>

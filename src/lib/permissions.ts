@@ -12,6 +12,8 @@ export const PERMISSIONS = [
   "quotes.edit",
   "quotes.send",
   "quotes.status",
+  "orders.view",
+  "orders.edit",
   "settings.manage",
   "users.manage",
   "audit.view",

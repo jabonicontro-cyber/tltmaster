@@ -18,7 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers.view" },
   { href: "/quotes", label: "Quotes", icon: FileText, permission: "quotes.view" },
-  { href: "/orders", label: "Orders", icon: ClipboardList, planned: true },
+  { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.view" },
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, planned: true },
   { href: "/route-planner", label: "Route Planner", icon: Map, planned: true },
   { href: "/tickets", label: "Delivery Tickets", icon: Ticket, planned: true },

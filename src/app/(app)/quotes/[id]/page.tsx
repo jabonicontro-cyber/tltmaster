@@ -16,6 +16,7 @@ import { can } from "@/lib/permissions";
 import { isPastExpiration, QUOTE_STATUS_LABELS } from "@/lib/quotes/status";
 import { requirePagePermission } from "@/server/auth";
 import { getQuoteDetail } from "@/server/data/quotes";
+import { getOrderForQuote } from "@/server/data/orders";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Quote" };
@@ -33,7 +34,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const detail = await getQuoteDetail(id);
   if (!detail) notFound();
   const { quote, customer, versions, current, lines, events, deliveries, names } = detail;
-  const { today, timezone } = await businessToday();
+  const [{ today, timezone }, order] = await Promise.all([businessToday(), can(access, "orders.view") ? getOrderForQuote(quote.id) : Promise.resolve(null)]);
   const pastExpiration = isPastExpiration(quote.status, current.valid_until, today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const site = [current.site_label, current.site_line1, current.site_line2, [current.site_city, current.site_state, current.site_postal_code].filter(Boolean).join(" ")]
@@ -72,7 +73,8 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           versionId={current.id}
           versionLocked={Boolean(current.locked_at)}
           editSeq={current.edit_seq}
-          permissions={{ edit: can(access, "quotes.edit"), send: can(access, "quotes.send"), status: can(access, "quotes.status") }}
+          permissions={{ edit: can(access, "quotes.edit"), send: can(access, "quotes.send"), status: can(access, "quotes.status"), convert: can(access, "orders.edit") }}
+          order={order}
         />
       </div>
 
@@ -88,9 +90,20 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           </Notice>
         )}
         {quote.status === "accepted" && (
-          <Notice title="Accepted">
+          <Notice title={order ? `Accepted — converted to order ${order.order_number}` : "Accepted"}>
             Accepted {quote.accepted_at ? formatDateTime(quote.accepted_at, timezone) : ""}
-            {quote.status_note ? ` — ${quote.status_note}` : ""}. Converting accepted quotes into orders arrives with the Orders module (Phase 3).
+            {quote.status_note ? ` — ${quote.status_note}` : ""}.{" "}
+            {order ? (
+              <>
+                The order was created from revision{" "}
+                {versions.find((v) => v.id === quote.accepted_version_id)?.version_no ?? current.version_no}.{" "}
+                <Link href={`/orders/${order.id}`} className="font-semibold underline">Open order {order.order_number}</Link>
+              </>
+            ) : can(access, "orders.edit") ? (
+              "Use “Convert to order” to create the order."
+            ) : (
+              "An office user or owner can convert it to an order."
+            )}
           </Notice>
         )}
         {(quote.status === "declined" || quote.status === "canceled" || quote.status === "expired") && quote.status_note && (

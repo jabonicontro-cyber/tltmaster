@@ -126,8 +126,23 @@ Phase 2 — Quotes (initial portion)
 - Overdue quotes are flagged, not expired automatically (by design; a nightly job can be added).
 - No quote duplication ("copy to new quote") yet.
 
-## Next (Phase 3) — Orders and tickets
-1. `orders` + `order_lines` tables; `convert_quote_to_order(quote_id)` — idempotent (unique `orders.quote_id`), copies the accepted revision's line snapshots.
+## Phase 3 — Orders and tickets
+
+Done — quote → order conversion (migration `20261010000600_orders.sql`):
+- [x] `orders`, `order_lines`, `order_status_events`, `order_list` view; permissions `orders.view` (owner, office, dispatcher) and `orders.edit` (owner, office)
+- [x] `convert_quote_to_order()` — accepted quotes only, permission-checked, idempotent (row lock + unique `source_quote_id`), copies the accepted revision (bill-to snapshot, contact, site, PO, instructions, terms, tax, totals, every line with its pricing snapshot incl. owner overrides and discounts); initial status **Confirmed**; history + audit
+- [x] Quote page: “Convert to order” for accepted quotes; afterwards a link to the order; converted quotes' status is frozen (DB trigger)
+- [x] Orders list (search, status filter) and order detail with link to the source quote revision
+- [x] Tests: permissions (office / owner / dispatcher / pending / anon / revoked), successful conversion with field-by-field preservation, quote left untouched, invalid statuses, repeat calls, concurrent conversion, read-only order tables, sample-data removal; browser test of the full flow
+
+Decisions:
+- Initial order status is **Confirmed** (the customer accepted; nothing is scheduled yet).
+- An order is created from the revision recorded as accepted (`quotes.accepted_version_id`), not the latest draft.
+- Once a quote has an order its status cannot change; order cancellation will be handled on the order.
+- Orders are not editable yet; when editing arrives, rate changes must go through the same `pricing.override` check as quotes.
+
+Next:
+1. Order status transitions (confirm, hold, cancel) with history.
 2. Direct order entry reusing the quote line editor.
-3. Trucks and drivers (minimal) so assignments can reference them.
-4. Dispatch assignments (several per order) and printable delivery tickets with planned vs actual quantities.
+3. Operational details on orders: requested delivery dates, loads.
+4. Trucks and drivers (minimal), dispatch assignments (several per order), printable delivery tickets with planned vs actual quantities.

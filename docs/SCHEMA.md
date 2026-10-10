@@ -61,7 +61,7 @@ list entry → no configured price (rate entered manually).
 | `mark_quote_sent(quote, edit_seq, note)` | Issue + record a manual delivery in one transaction. |
 | `revise_quote(quote, reason)` | New draft revision copied from the issued one. |
 | `set_quote_status(quote, status, note)` | Accepted/declined/expired/canceled with transition rules. |
-| `remove_sample_data()` | Owner-only cleanup of fictional records. |
+| `remove_sample_data()` | Owner-only cleanup of fictional records (including orders created from sample quotes). |
 
 ### Totals
 
@@ -76,8 +76,28 @@ tax             = round(taxable × tax rate)
 total           = subtotal − discounts + tax
 ```
 
+## Orders
+
+| Table | Purpose |
+| --- | --- |
+| `orders` | Order number (`O-2026-0001`), customer, status (`draft`, `confirmed`, `scheduled`, `dispatched`, `in_progress`, `partially_completed`, `completed`, `on_hold`, `canceled`), **`source_quote_id` (unique) + `source_quote_version_id`** — the permanent link to the quote and the exact revision accepted — and copies of that revision's bill-to snapshot, contact, job site, project, PO, instructions, terms, internal notes, tax rate and totals. |
+| `order_lines` | Copies of the accepted revision's lines with their pricing snapshots (rate, configured rate at the time, price source incl. overrides, discounts), plus `source_quote_line_id`. |
+| `order_status_events` | Append-only order status history. |
+| `order_list` (view) | Order + customer + source quote number for lists (security-invoker). |
+
+`convert_quote_to_order(quote_id)` (`SECURITY DEFINER`, requires `orders.edit`):
+locks the quote row, returns the existing order (`created: false`) if the quote
+was already converted, otherwise requires status `accepted` and an issued
+accepted revision, allocates an order number, copies header and lines, sets the
+order to **Confirmed**, and writes order history and audit events on both the
+order and the quote. The unique `source_quote_id` is the final guard against
+duplicates. Once converted, the quote's status can no longer change
+(`quotes_guard_converted` trigger). Clients have read-only access to order
+tables, so prices on an order cannot be changed around the owner-only override
+rules. Orders created from sample quotes are removed with the sample data.
+
 ## Planned tables (later phases)
 
-Orders and order lines, trucks, drivers, dispatch assignments, route plans and
+Order scheduling (delivery dates, loads), trucks, drivers, dispatch assignments, route plans and
 stops, delivery tickets and ticket lines, planning runs, integration records
 (QuickBooks IDs, sync status, errors).

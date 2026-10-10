@@ -157,3 +157,14 @@ describe("audit noise", () => {
     });
   });
 });
+
+describe("permission catalog", () => {
+  it("the application's permission list matches the database", async () => {
+    const { PERMISSIONS } = await import("@/lib/permissions");
+    await withSession(async (s) => {
+      await s.asAdmin();
+      const rows = await s.query<{ code: string }>("select code from public.permissions order by code");
+      expect(rows.rows.map((r) => r.code)).toEqual([...PERMISSIONS].sort());
+    });
+  });
+});

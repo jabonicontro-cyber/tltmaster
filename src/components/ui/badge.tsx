@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { QUOTE_STATUS_LABELS, type QuoteStatus } from "@/lib/quotes/status";
+import { ORDER_STATUS_LABELS } from "@/lib/orders/status";
+import type { OrderStatus } from "@/server/data/types";
 
 type Tone = "gray" | "blue" | "green" | "amber" | "red" | "dark" | "brand";
 
@@ -50,4 +52,24 @@ export function SampleBadge({ show = true }: { show?: boolean }) {
 
 export function ActiveBadge({ active }: { active: boolean }) {
   return active ? <Badge tone="green">Active</Badge> : <Badge tone="gray">Archived</Badge>;
+}
+
+const orderTones: Record<OrderStatus, Tone> = {
+  draft: "gray",
+  confirmed: "blue",
+  scheduled: "blue",
+  dispatched: "amber",
+  in_progress: "amber",
+  partially_completed: "amber",
+  completed: "green",
+  on_hold: "red",
+  canceled: "gray",
+};
+
+export function OrderStatusBadge({ status }: { status: OrderStatus }) {
+  return (
+    <Badge tone={orderTones[status]} className={status === "canceled" ? "line-through" : undefined}>
+      {ORDER_STATUS_LABELS[status]}
+    </Badge>
+  );
 }

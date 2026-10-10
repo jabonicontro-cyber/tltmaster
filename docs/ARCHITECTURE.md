@@ -53,6 +53,8 @@ no direct writes at all.
 | Status transitions | `private.quote_transition_allowed` (DB) mirrored by `src/lib/quotes/status.ts`. |
 | Email honesty | `sendQuoteEmail` marks a quote sent only after the provider accepts; all attempts recorded in `email_deliveries`. |
 | Audit trail | Row triggers on customers, catalog, prices, settings, users, permissions; explicit events in quote functions. `audit_events` is append-only. |
+| One order per accepted quote | `public.convert_quote_to_order` locks the quote, returns the existing order on repeat calls; unique `orders.source_quote_id`. Tested with two concurrent transactions. |
+| Orders keep the accepted prices | Order lines are copied from the accepted revision's snapshots; no client write access to order tables. |
 | No hard deletes of business records | Customers, contacts, sites, materials, charges, price lists are archived/deactivated. Only mistaken rate entries can be deleted. |
 
 ## Security model
@@ -73,6 +75,6 @@ the quote editor).
 
 ## Extension points for later phases
 
-- **Orders**: will reference `quotes.accepted_version_id` and copy line snapshots; conversion must be idempotent (unique `orders.quote_id`).
+- **Orders**: conversion is done (`convert_quote_to_order`). Next: direct orders, operational edits (delivery dates, loads) through permission-checked functions that keep pricing changes subject to `pricing.override`, and status transitions with history.
 - **Routing**: implement a `RoutingProvider` interface (geocode, matrix, route) with a "not configured" implementation; no fabricated results.
 - **QuickBooks**: export approved billing records first; store external IDs and sync status per record to prevent duplicates.

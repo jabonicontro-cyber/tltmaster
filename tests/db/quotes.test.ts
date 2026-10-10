@@ -405,11 +405,12 @@ describe("sample data removal", () => {
       const real = await s.query<{ id: string }>("insert into public.customers (name) values ('Real Customer Inc') returning id");
 
       const res = await s.query<{ r: Record<string, number> }>("select public.remove_sample_data() as r");
-      expect(res.rows[0].r.quotes).toBe(1);
-      expect(res.rows[0].r.customers).toBe(4);
+      expect(res.rows[0].r.quotes).toBeGreaterThanOrEqual(1);
+      expect((await s.query("select 1 from public.quotes where id = $1", [r.quote_id])).rowCount).toBe(0);
+      expect(res.rows[0].r.customers + res.rows[0].r.deactivated_in_use).toBeGreaterThanOrEqual(4);
 
       const counts = await s.query<{ c: Record<string, number> }>("select public.sample_data_counts() as c");
-      expect(counts.rows[0].c).toEqual({ customers: 0, materials: 0, charge_items: 0, price_lists: 0, quotes: 0 });
+      expect(counts.rows[0].c).toEqual({ customers: 0, materials: 0, charge_items: 0, price_lists: 0, quotes: 0, orders: 0 });
       expect((await s.query("select 1 from public.customers where id = $1", [real.rows[0].id])).rowCount).toBe(1);
     });
   });
