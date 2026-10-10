@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ClipboardCheck, FilePlus2 } from "lucide-react";
+import { Camera, ClipboardCheck, FilePlus2 } from "lucide-react";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -16,7 +16,7 @@ import { can } from "@/lib/permissions";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
-import { listLoadsAwaitingTickets, listTickets, ticketCounts, TICKET_VIEWS, type TicketView } from "@/server/data/tickets";
+import { listLoadsAwaitingTickets, listTickets, photoCounts, ticketCounts, TICKET_VIEWS, type TicketView } from "@/server/data/tickets";
 
 export const metadata = { title: "Delivery Tickets" };
 
@@ -33,6 +33,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
     view === "awaiting" ? Promise.resolve([]) : listTickets(view, sp.q),
     businessToday(),
   ]);
+  const photos = await photoCounts(tickets.map((t) => t.ticket_number));
   const tabCount: Partial<Record<TicketView, number>> = { awaiting: awaiting.rows.length, review: counts.review, submitted: counts.submitted };
 
   return (
@@ -128,6 +129,11 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                       <Td>
                         <Link href={`/tickets/${t.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">{t.ticket_number}</Link>
                         {t.revision > 1 && <span className="ml-1 text-xs text-muted">rev {t.revision}</span>}
+                        {photos.get(t.ticket_number) ? (
+                          <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted" title="Paper ticket photo attached">
+                            <Camera className="size-3.5" aria-hidden /><span className="sr-only">Photo attached</span>{photos.get(t.ticket_number)! > 1 ? photos.get(t.ticket_number) : ""}
+                          </span>
+                        ) : null}
                         {t.external_reference && <div className="text-sm text-muted">Paper # {t.external_reference}</div>}
                         <div className="text-sm text-muted sm:hidden">{t.snapshot.order_number} · load {t.snapshot.load_number}</div>
                       </Td>

@@ -66,6 +66,7 @@ no direct writes at all.
 | Assignment history | Reassignment cancels and inserts; rows are immutable except cancellation and never deleted; every change is audited on the order. |
 | Delivery records are never overwritten | Tickets are revisions: a correction inserts revision n+1 and supersedes the old row; voids keep the row with a reason; a trigger blocks any other change or delete. Snapshots keep truck/driver/material identity when dispatch changes later. |
 | No unit conversions | Ticket quantities keep the unit entered; a unit different from the order line is flagged for review, never converted. Whole-number units mirrored in `src/lib/tickets/rules.ts` (parity-tested). |
+| Photos cannot leak across companies | Storage policies + attachment records decide every upload and read; tests try invented paths, other companies' folders, other drivers, anonymous calls, wrong types, oversized files, expired and altered signed links, and mechanics/drivers/other companies reading. |
 | Drivers see and touch only their own work | Drivers have no table grants; every portal function resolves the driver from the session (`auth.uid()` + current company → linked, active driver record) and accepts an assignment id only if it is that driver's active assignment. Driver, truck and trailer of a ticket come from the assignment. Tests try other drivers' assignments, another company, stolen submission keys and office functions. |
 | One ticket path | Office and driver tickets share `private.create_ticket` (numbering, validation, duplicate confirmation, idempotency, review flags, events, audit); drivers never accept, correct or void. |
 | Command center never hides a problem | Exceptions are derived on every load from the module records (no stored status, no dismissal); an item disappears only when its record changes. Assignments only name a person, end when replaced, and stop showing once the exception is gone. Each kind is gated by the permission of its source module inside the definer function, which resolves the company itself. |
@@ -92,10 +93,10 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   (select private.has_permission('…'))`. The `(select …)` form evaluates each
   helper once per statement. `has_permission` reads the caller's role in the
   current company and that company's `role_permissions`.
-- **Elevated functions**: all 80 `SECURITY DEFINER` functions were reviewed (35 with
+- **Elevated functions**: all 86 `SECURITY DEFINER` functions were reviewed (35 with
   company separation, 7 with order management, 4 with the fleet registry, 10 with
   dispatch, 4 with delivery tickets, 5 with billing readiness, 7 with the command
-  center, 8 with the driver portal). Each
+  center, 8 with the driver portal, 6 with ticket photos). Each
   public one resolves the company itself (`private.require_company()`), looks up
   every referenced row with `and company_id = v_company`, and writes the verified
   company id. None accepts a company id from the caller. Internal helpers
@@ -113,10 +114,16 @@ Trucking is company #1 (`00000000-0000-4000-8000-000000000001`).
   Supabase client, so RLS applies everywhere. The service-role key is used only
   to send an invitation email; the membership is then created by
   `add_company_member()` running as the inviting owner.
-- **Storage / background jobs**: none exist yet (driver ticket photos are deferred
-  for this reason). When added, buckets must be private, object paths must start
-  with `company_id`, policies must use the same membership check, downloads must
-  use short-lived signed URLs, and jobs must run per company.
+- **Storage**: Supabase Storage, private bucket `ticket-photos`. Object paths start
+  with `company_id` and are chosen by the database; storage RLS calls SECURITY DEFINER
+  helpers that check the caller's company, permission and the attachment record, so a
+  changed path or record id is refused by the storage server itself. Uploads pass
+  through the app server first (size, magic bytes vs declared type, same-origin) and
+  are confirmed against `storage.objects`; downloads use 60-second signed URLs created
+  with the viewer's token. No public URLs, no update/delete for app users. Verified
+  against the real storage server (`tests/storage`).
+- **Background jobs**: none run inside the app. The abandoned-upload cleanup is an
+  operator script with the service role (`scripts/cleanup-ticket-photos.mjs`).
 - **Creating a company** (operator only): `select private.create_company('Name', 'slug');`
   then `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no self-serve
   sign-up or billing.

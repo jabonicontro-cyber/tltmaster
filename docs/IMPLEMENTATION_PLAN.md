@@ -56,7 +56,7 @@ Legend: ✅ complete and tested · 🟡 partial · 🧱 placeholder UI only · �
 | Reports and management dashboard | 🟡 / 🧱 | `src/app/(app)/dashboard`, `src/app/(app)/command-center`, `src/app/(app)/reports` | Dashboard: real quote figures, orders scheduled today, fleet readiness and a Command Center summary; one "Deliveries in progress" placeholder remains. The Command Center (N7, §5f) is the operational overview. Reports is a placeholder. |
 | Route planner / map | 🧱 | `src/app/(app)/route-planner/page.tsx` | No provider has been selected. `customer_sites` has latitude/longitude columns that are never filled. |
 | Fleet maintenance | ❌ | — | — |
-| Employee / driver portal, qualifications, PTO, announcements, incidents | 🟡 driver portal (N8, see §5g) | `src/app/(app)/driver`, `src/components/driver`, `src/app/(app)/field-reports`, migration `20261018000100_driver_portal.sql` | Drivers see their own assignments, enter tickets and send field reports; qualification reminders. **No photos** (no private file storage yet), no offline queue, no PTO, announcements or incident records. |
+| Employee / driver portal, qualifications, PTO, announcements, incidents | 🟡 driver portal (N8, see §5g) | `src/app/(app)/driver`, `src/components/driver`, `src/app/(app)/field-reports`, migration `20261018000100_driver_portal.sql` | Drivers see their own assignments, enter tickets with paper-ticket photos (N8.1, §5h) and send field reports; qualification reminders. No offline queue, no PTO, announcements or incident records. |
 | Supplier price imports and price history | ❌ | — | — |
 | Operational exceptions queue | ✅ first version (N7, see §5f) | `src/app/(app)/command-center`, `src/lib/command-center`, migration `20261017000100_command_center.sql` | Six kinds (missing tickets, loads today without a truck, tickets to review, billing blocks, equipment out of service, assignment problems), derived live, prioritized, assignable to a person. No maintenance (no data), no supplier-cost or quote kinds yet, no notifications. |
 | AI assistant / smart dispatch | ❌ | — | — |
@@ -884,17 +884,138 @@ are only accepted if they belong to that driver's own active assignments.
 - No push notifications to the driver or the office; the office sees reports
   in the Command Center and on Driver Reports.
 
+## 5h. Secure file storage and ticket photos (N8.1)
+
+### Plan (written before building)
+
+**Inspected first.** Hosting is Supabase (Auth, PostgREST, Postgres) + a Next.js
+host. No storage exists anywhere: the local no-Docker stack runs Postgres,
+GoTrue, PostgREST and a gateway only; no hosted bucket has been created. The
+Supabase Storage server (open source, `supabase/storage`) can be built from
+source here (v1.45.0 — the newest release that runs on Node 22) and run with a
+local file backend against the dev database, so storage authorization can be
+tested against the real server rather than mocks. Driver tickets go through
+`driver_submit_ticket` → `private.create_ticket`.
+
+**Storage architecture.**
+
+- Supabase Storage, one **private** bucket `ticket-photos` (`public = false`,
+  5 MB limit, `image/jpeg`, `image/png`, `image/webp`). Object paths:
+  `<company_id>/ticket-photos/<attachment_id>.<ext>`, chosen by the database,
+  never by the browser.
+- A `ticket_attachments` table is the record of every photo: company, the
+  driver's assignment and load, status (`pending` → `uploaded` → `attached`, or
+  `discarded`), path, detected MIME type, size, SHA-256, upload key
+  (idempotency), uploader, times, and the ticket number and revision once
+  attached.
+- Storage RLS on `storage.objects` for the bucket: **insert** only when a
+  `pending` attachment row with exactly that path exists for the caller in the
+  caller's company (so a changed path or record id is refused); **read** only
+  for attached photos of the caller's company with `tickets.view`; no update or
+  delete for app users. Checks run in SECURITY DEFINER helpers, so the policy
+  does not depend on table grants.
+- Upload goes through the app server (`POST /driver/photos`): the server
+  checks the session, size and the file's **magic bytes** against the declared
+  type, computes the hash, asks the database for the path
+  (`driver_begin_ticket_photo`: own active assignment, limits), uploads with
+  the user's own token (storage RLS applies), then `driver_confirm_ticket_photo`
+  checks the object exists in `storage.objects` with the same size and type.
+  Same-origin check against cross-site posts. The phone re-encodes the photo to
+  JPEG (max 2000 px), which also strips EXIF/GPS data.
+- The ticket submission carries the uploaded photo ids; `driver_submit_ticket`
+  attaches them in the same transaction (own, same assignment, `uploaded`,
+  at most 3 per ticket). Duplicate protection is unchanged (a retry with the
+  same key returns the same ticket; photos were attached by the first).
+- Viewing: `/tickets/photos/[id]` checks access through RLS and redirects to a
+  60-second signed URL created with the viewer's token; pages always link to
+  this route, so an expired link is never reused. Missing objects return a
+  clear "file missing" response.
+- Lifecycle: photos belong to the ticket number — kept when the ticket is
+  corrected (shown on every revision with the revision they were attached to),
+  voided or superseded; never deleted with the ticket. Unattached uploads
+  older than 24 hours are abandoned: `scripts/cleanup-ticket-photos.mjs`
+  (service role) lists them and storage orphans, removes the objects through
+  the Storage API, then marks the rows `discarded` only after the database
+  confirms the objects are gone.
+- Audit: upload and attach on the order history; discards in the audit log.
+  Nothing about photos appears in the Command Center.
+
+**Infrastructure / environment.** Hosted: Supabase Storage is part of the
+project; the migration creates the bucket and policies when the `storage`
+schema exists (otherwise run `select private.setup_ticket_photo_storage();`
+once storage is enabled). No new app secrets: uploads and signed URLs use the
+signed-in user's token; only the cleanup script uses
+`SUPABASE_SERVICE_ROLE_KEY`. Local: `DEV_STORAGE=1 scripts/dev-stack/stack.sh up`
+builds and starts the storage server (file backend) behind the gateway.
+
+**Testing.** Database tests for the attachment functions and the storage RLS
+policies (inserting into `storage.objects` as real roles); integration tests
+against the running storage server with real user tokens (authorized upload,
+other company, tampered path, other driver, read permissions, expired signed
+URL, no public access); unit tests for file validation; browser test of the
+phone upload with progress, retry and office viewing.
+
+**Staging rollout.** Apply the migration with `supabase db push`; confirm the
+bucket is private in the dashboard; run the storage integration tests against
+staging with test users; schedule the cleanup script (daily); then enable for
+drivers.
+
+### What was built (N8.1)
+
+- Migration `20261019000100_ticket_photos.sql`: `ticket_attachments` (+ guard, RLS),
+  `private.can_upload_ticket_photo` / `can_read_ticket_photo` (storage policy
+  helpers), `private.setup_ticket_photo_storage()` (bucket + policies, run by the
+  migration when storage exists), `driver_begin_ticket_photo`,
+  `driver_confirm_ticket_photo`, `driver_submit_ticket` with `photo_ids`,
+  `abandoned_ticket_photos` and `mark_ticket_photos_discarded` (service role).
+- Upload route `POST /driver/photos` (same-origin, session, size, magic bytes,
+  SHA-256, reserve → upload with the user's token → confirm); view route
+  `/tickets/photos/[id]` (RLS check, 60-second signed URL, 404 for a missing file).
+- Phone UI: "Take a photo" (camera), re-encode to JPEG ≤ 2000 px (drops EXIF/GPS),
+  per-photo progress bar, "Uploaded" only after the server confirms, "Not uploaded"
+  + Retry (same upload key) and Remove; the ticket cannot be sent while a photo is
+  uploading or failed; up to 3 photos.
+- Office: "Paper ticket photos (n)" on the ticket page (all revisions, revision
+  shown), a camera mark in the ticket list. Nothing in the Command Center.
+- Dev stack: `DEV_STORAGE=1` builds and runs Supabase Storage v1.45.0 (file
+  backend) behind the gateway; `scripts/cleanup-ticket-photos.mjs`.
+- Limits: 5 MB per file, JPEG / PNG / WebP (content-checked), 3 photos per
+  ticket, 3 waiting uploads per assignment, unattached uploads removed after 24 h,
+  signed links valid 60 s.
+- Tests: `tests/db/ticket-photos.test.ts` (5, storage policies exercised in the
+  database as real roles), `tests/storage/ticket-photos.storage.test.ts` (4,
+  against the real storage server with real user tokens: private bucket,
+  tampered paths, other drivers and companies, anonymous, wrong type, oversize,
+  no overwrite or delete, office-only reads, expired and altered links, cleanup
+  script), `tests/unit/images.test.ts` (2), `tests/e2e/ticket-photos.spec.ts`
+  (phone upload with progress, an offline failure and retry, direct attacks on the
+  upload route, office viewing, driver and mechanic refused); tenancy guards
+  updated (37 business tables, 86 reviewed definer functions).
+
+### Remaining limits (N8.1)
+
+- Verified against the open-source storage server locally (file backend); the
+  hosted bucket has **not** been created or tested yet — that is a staging step.
+- Storage files are not in database backups; a storage backup has to be set up.
+- HEIC photos are converted on the phone when the browser can decode them (Safari
+  does); otherwise the driver is asked to use the camera button.
+- Office users cannot add photos, and drivers cannot add photos to a ticket after
+  sending it (a correction by the office keeps the existing photos).
+- No virus scanning: only image types are accepted, content-checked, re-encoded
+  on the phone, stored privately and never executed or served inline from the
+  app's own origin.
+
 ## Recommended next task
 
-**B3 — staging deployment** (hosted Supabase, all 15 migrations via
+**B3 — staging deployment** (hosted Supabase, all 16 migrations via
 `supabase db push`, auth email/SMTP, deploy, backup/restore drill). Then decide
 QuickBooks Desktop vs Online and verify an import or API mapping against a test
 company before adding any QuickBooks-specific export; and consider an explicit
 per-company quantity tolerance for billing exceptions. For the command center,
 the next useful kinds are expiring driver qualifications (data exists) and,
-once maintenance is built, service due dates. For the driver portal, the next
-step is ticket photos once a private Supabase Storage bucket is configured and
-tested on staging (see §5g limits).
+once maintenance is built, service due dates. On staging, verify the
+`ticket-photos` bucket is private, run the storage tests against it with test
+users, schedule the photo cleanup and set up a storage backup (§5h).
 
 ---
 

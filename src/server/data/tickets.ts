@@ -67,6 +67,38 @@ export interface TicketEventRow {
   occurred_at: string;
 }
 
+export interface TicketPhotoRow {
+  id: string;
+  ticket_id: string;
+  ticket_number: string;
+  mime_type: string;
+  size_bytes: number;
+  created_at: string;
+  attached_at: string;
+  created_by: string | null;
+}
+
+/** Attached paper-ticket photos of a ticket number (all revisions). RLS: tickets.view, same company. */
+export async function ticketPhotos(ticketNumber: string) {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("ticket_attachments")
+    .select("id, ticket_id, ticket_number, mime_type, size_bytes, created_at, attached_at, created_by")
+    .eq("ticket_number", ticketNumber)
+    .order("attached_at");
+  return (data ?? []) as TicketPhotoRow[];
+}
+
+/** Photo counts for a set of ticket numbers (list badges). */
+export async function photoCounts(ticketNumbers: string[]) {
+  if (!ticketNumbers.length) return new Map<string, number>();
+  const supabase = await createClient();
+  const { data } = await supabase.from("ticket_attachments").select("ticket_number").in("ticket_number", ticketNumbers);
+  const m = new Map<string, number>();
+  for (const r of (data ?? []) as Array<{ ticket_number: string }>) m.set(r.ticket_number, (m.get(r.ticket_number) ?? 0) + 1);
+  return m;
+}
+
 export const TICKET_VIEWS = {
   awaiting: "Loads awaiting a ticket",
   review: "Needs review",
@@ -163,14 +195,16 @@ export async function getTicket(id: string) {
   if (error) throw new Error(`Could not load ticket: ${error.message}`);
   if (!data) return null;
   const t = data as TicketRow;
-  const [revisions, events, units, names, people] = await Promise.all([
+  const [revisions, events, units, names, people, photos] = await Promise.all([
     supabase.from("delivery_tickets").select("*").eq("ticket_number", t.ticket_number).order("revision", { ascending: false }),
     supabase.from("delivery_ticket_events").select("*").eq("ticket_number", t.ticket_number).order("occurred_at", { ascending: false }),
     supabase.from("units_of_measure").select("*").order("sort_order"),
     resourceNames(),
     getUserNames(),
+    ticketPhotos(t.ticket_number),
   ]);
   return {
+    photos,
     ticket: t,
     revisions: (revisions.data ?? []) as TicketRow[],
     events: (events.data ?? []) as TicketEventRow[],

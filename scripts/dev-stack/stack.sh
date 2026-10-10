@@ -10,6 +10,11 @@
 #   scripts/dev-stack/stack.sh env       # print values for .env.local
 #   scripts/dev-stack/stack.sh down
 #
+# Optional Supabase Storage (private ticket photos), built from source with a
+# local file backend — needs git, Node 22 and npm:
+#   DEV_STORAGE=1 scripts/dev-stack/stack.sh up
+#   STORAGE_API_DIR=/path/to/built/supabase-storage  (reuse an existing build)
+#
 # Environment:
 #   DEV_PG_URL   superuser connection (default postgres://postgres@127.0.0.1:54322/postgres)
 #
@@ -26,6 +31,10 @@ AUTH_PORT=9999
 REST_PORT=54330
 POSTGREST_VERSION=v12.2.12
 AUTH_VERSION=v2.180.0
+STORAGE_PORT=5000
+# Newest supabase/storage release that runs on Node 22.
+STORAGE_VERSION=v1.45.0
+STORAGE_API_DIR="${STORAGE_API_DIR:-$STATE/storage-api}"
 
 mkdir -p "$STATE" "$BIN"
 
@@ -118,6 +127,38 @@ apply_migrations() {
   psql_admin -c "grant all on all tables in schema public to service_role; grant all on all sequences in schema public to service_role;"
 }
 
+ensure_storage() {
+  if [[ ! -f "$STORAGE_API_DIR/dist/start/server.js" ]]; then
+    echo "Building Supabase Storage $STORAGE_VERSION in $STORAGE_API_DIR (one time)…"
+    rm -rf "$STORAGE_API_DIR"
+    git clone -q --depth 1 --branch "$STORAGE_VERSION" https://github.com/supabase/storage "$STORAGE_API_DIR"
+    (cd "$STORAGE_API_DIR" && npm ci --no-audit --no-fund --loglevel=error && npm run build >/dev/null)
+  fi
+}
+
+start_storage() {
+  ensure_storage
+  mkdir -p "$STATE/storage-data"
+  # The storage server creates its own `storage` schema on first start. Local
+  # superuser connection; file backend under .dev-stack/storage-data.
+  start_bg storage env -C "$STORAGE_API_DIR" \
+    SERVER_HOST=127.0.0.1 SERVER_PORT=$STORAGE_PORT SERVER_ADMIN_PORT=$((STORAGE_PORT + 1)) \
+    AUTH_JWT_SECRET="$DEV_JWT_SECRET" AUTH_JWT_ALGORITHM=HS256 \
+    ANON_KEY="$DEV_ANON_KEY" SERVICE_KEY="$DEV_SERVICE_ROLE_KEY" \
+    DATABASE_URL="$PG_URL" DB_INSTALL_ROLES=true \
+    STORAGE_BACKEND=file STORAGE_FILE_BACKEND_PATH="$STATE/storage-data" \
+    TENANT_ID=stub REGION=local STORAGE_S3_BUCKET=stub PG_QUEUE_ENABLE=false \
+    IMAGE_TRANSFORMATION_ENABLED=false UPLOAD_FILE_SIZE_LIMIT=52428800 LOG_LEVEL=warn NODE_ENV=production \
+    node dist/start/server.js
+  for _ in $(seq 1 30); do
+    curl -sf "http://127.0.0.1:$STORAGE_PORT/status" >/dev/null && break
+    sleep 1
+  done
+  # Bucket and policies (no-op if already present).
+  psql_admin -c "select private.setup_ticket_photo_storage();" >/dev/null 2>&1 || \
+    echo "storage running; apply the migrations, then run: select private.setup_ticket_photo_storage();"
+}
+
 cmd_up() {
   ensure_binaries
   ensure_keys
@@ -128,7 +169,10 @@ cmd_up() {
   auth_env
   start_bg auth bash -c "cd '$BIN' && exec ./auth serve"
   start_bg postgrest "$BIN/postgrest" "$STATE/postgrest.conf"
-  GATEWAY_PORT=$GATEWAY_PORT AUTH_PORT=$AUTH_PORT REST_PORT=$REST_PORT \
+  if [[ "${DEV_STORAGE:-}" == "1" || -f "$STATE/storage.pid" ]]; then
+    start_storage
+  fi
+  GATEWAY_PORT=$GATEWAY_PORT AUTH_PORT=$AUTH_PORT REST_PORT=$REST_PORT STORAGE_PORT=$STORAGE_PORT \
     start_bg gateway node "$ROOT/scripts/dev-stack/gateway.mjs"
   echo "Supabase-compatible API at http://127.0.0.1:$GATEWAY_PORT"
 }
@@ -171,6 +215,7 @@ EOF
 }
 
 cmd_down() {
+  stop_bg storage
   stop_bg gateway
   stop_bg postgrest
   stop_bg auth

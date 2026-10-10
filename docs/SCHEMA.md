@@ -308,6 +308,35 @@ truck/trailer (equipment). Reports never change equipment status or
 assignments. Open and acknowledged reports appear in the command center as
 `delay_report` / `equipment_report`.
 
+## Ticket photos and file storage
+
+Supabase Storage, one **private** bucket `ticket-photos` (`public = false`, 5 MB,
+`image/jpeg`, `image/png`, `image/webp`). Object paths are chosen by the database:
+`<company_id>/ticket-photos/<attachment_id>.<jpg|png|webp>`.
+
+| Table | Purpose |
+| --- | --- |
+| `ticket_attachments` | One row per photo: company, `status` (`pending` → `uploaded` → `attached`, or `discarded`), `object_path` (unique; first folder = company), detected `mime_type`, `size_bytes`, `sha256`, `upload_key` (unique per company: retries reuse the row), the driver's `assignment_id` / `load_id` / `order_id`, `ticket_id` + `ticket_number` once attached, uploader and times, discard reason. Guard: forward-only status, identity fields never change, never deleted (except with a sample order). Read (attached rows only): `tickets.view`, same company. |
+
+Storage policies on `storage.objects` (bucket `ticket-photos`): **insert** when
+`private.can_upload_ticket_photo(name)` — a `pending` row with exactly that path,
+created by the caller, in the caller's company; **select** (read, sign a URL) when
+`private.can_read_ticket_photo(name)` — an `attached` row of the caller's company and
+`tickets.view`. No update or delete policies (app users can never replace or remove a
+photo). Created by `private.setup_ticket_photo_storage()` (idempotent).
+
+| Function | Who | Does |
+| --- | --- | --- |
+| `driver_begin_ticket_photo(assignment, upload_key, mime, size, sha256)` | driver portal | Own active assignment, load from two days ago to today; JPEG/PNG/WebP, ≤ 5 MB; at most 3 waiting photos per assignment; returns the reserved path. Same key → same row; another user's key → refused. |
+| `driver_confirm_ticket_photo(attachment)` | driver portal | The object must exist in `storage.objects` with the declared size and type → `uploaded`; audited on the order. |
+| `driver_submit_ticket(payload)` | driver portal | As before, plus `photo_ids` (≤ 3, own, same assignment, `uploaded`) attached in the same transaction; a retry returns the ticket and its photo count. |
+| `abandoned_ticket_photos(hours)` / `mark_ticket_photos_discarded(ids)` | service role | Unattached uploads older than `hours` and objects without a record; marking only after the object is gone. Used by `scripts/cleanup-ticket-photos.mjs`. |
+
+Photos belong to the ticket number: kept and shown through corrections (with the
+revision they were attached to), voids and supersession. Viewing goes through
+`/tickets/photos/[id]`, which checks access with the viewer's token and redirects to a
+60-second signed URL.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

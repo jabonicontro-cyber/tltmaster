@@ -36,7 +36,7 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const detail = await getTicket(id);
   if (!detail) notFound();
-  const { ticket: t, revisions, events, units, people } = detail;
+  const { ticket: t, revisions, events, units, people, photos } = detail;
   const { timezone } = await businessToday();
   const who = (uid: string | null) => (uid ? people[uid] ?? "Former user" : "System");
   const unitLabel = (code: string | null) => units.find((u) => u.code === code)?.label.toLowerCase() ?? code ?? "";
@@ -111,6 +111,33 @@ export default async function TicketPage({ params }: { params: Promise<{ id: str
                 ]}
               />
             </CardBody>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title={`Paper ticket photos (${photos.length})`}
+              description={photos.length ? "Sent by the driver with the ticket. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute." : "No photo was attached. Check the paper ticket."}
+            />
+            {photos.length > 0 && (
+              <CardBody>
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Paper ticket photos">
+                  {photos.map((p, i) => {
+                    const rev = revisions.find((r) => r.id === p.ticket_id)?.revision;
+                    return (
+                      <li key={p.id}>
+                        <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-line hover:border-charcoal">
+                          {/* eslint-disable-next-line @next/next/no-img-element -- served through an authorized, short-lived link */}
+                          <img src={`/tickets/photos/${p.id}`} alt={`Paper ticket photo ${i + 1}`} loading="lazy" className="aspect-[3/4] w-full bg-surface object-cover" />
+                        </a>
+                        <p className="mt-1 text-xs text-muted">
+                          {formatDateTime(p.attached_at, timezone)} · {Math.ceil(p.size_bytes / 1024)} KB{rev && revisions.length > 1 ? ` · revision ${rev}` : ""}
+                        </p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </CardBody>
+            )}
           </Card>
 
           {revisions.length > 1 && (

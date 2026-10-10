@@ -27,6 +27,17 @@ export default defineConfig({
           hookTimeout: 30000,
         },
       },
+      {
+        extends: true,
+        test: {
+          // Real Supabase Storage + PostgREST over HTTP (skipped when not running).
+          name: "storage",
+          include: ["tests/storage/**/*.test.ts"],
+          fileParallelism: false,
+          testTimeout: 30000,
+          hookTimeout: 60000,
+        },
+      },
     ],
   },
 });

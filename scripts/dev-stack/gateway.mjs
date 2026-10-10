@@ -1,15 +1,18 @@
 // Minimal stand-in for the Supabase API gateway: routes /auth/v1 to Supabase
-// Auth (GoTrue) and /rest/v1 to PostgREST, the way supabase-js expects.
+// Auth (GoTrue), /rest/v1 to PostgREST and (when started) /storage/v1 to
+// Supabase Storage, the way supabase-js expects.
 // Development / CI only.
 import http from "node:http";
 
 const port = Number(process.env.GATEWAY_PORT ?? 54321);
 const authPort = Number(process.env.AUTH_PORT ?? 9999);
 const restPort = Number(process.env.REST_PORT ?? 54330);
+const storagePort = Number(process.env.STORAGE_PORT ?? 5000);
 
 const routes = [
   { prefix: "/auth/v1", port: authPort },
   { prefix: "/rest/v1", port: restPort },
+  { prefix: "/storage/v1", port: storagePort },
 ];
 
 http

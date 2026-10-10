@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { quantityError } from "@/lib/tickets/rules";
 import { submitDriverTicket } from "@/app/(app)/driver/actions";
 import { Choice } from "./choice";
+import { PhotoAttachments, type PhotoState } from "./photo-attachments";
 
 interface Props {
   assignmentId: string;
@@ -37,6 +38,8 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   const [confirmed, setConfirmed] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [state, setState] = useState<State>({ kind: "idle" });
+  const [photos, setPhotos] = useState<PhotoState>({ ids: [], busy: false, failed: false });
+  const onPhotos = useCallback((p: PhotoState) => setPhotos(p), []);
   const line = lines.find((l) => l.id === lineId);
   // The order line's unit first (marked), never preselected.
   const orderedUnits = line ? [...units].sort((a, b) => (a.code === line.unit_code ? -1 : b.code === line.unit_code ? 1 : 0)) : units;
@@ -48,13 +51,15 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
     const q = quantity.trim() ? quantityError(quantity, unit || "ton") : "Enter the quantity.";
     if (q) e.quantity = q;
     if (!time) e.time = "Enter the delivery time.";
+    if (photos.busy) e.photos = "Wait until the photo has uploaded.";
+    else if (photos.failed) e.photos = "A photo did not upload. Tap Retry, or remove it.";
     setErrors(e);
     if (Object.keys(e).length) return;
     setState({ kind: "sending" });
     try {
       const r = await submitDriverTicket({
         assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
-        externalReference: reference, notes, submissionKey, confirmDuplicate: confirmed,
+        externalReference: reference, notes, submissionKey, confirmDuplicate: confirmed, photoIds: photos.ids,
       });
       if (r.ok) {
         // Only now, after the server confirmed it.
@@ -120,7 +125,11 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       <div>
         <label htmlFor="d-ref" className="mb-2 block text-base font-bold">Paper / scale ticket number</label>
         <input id="d-ref" autoComplete="off" maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} className={field} />
-        <p className="mt-1 text-sm text-muted">Keep the paper ticket for the office. Photos are not supported yet.</p>
+      </div>
+
+      <div>
+        <PhotoAttachments assignmentId={assignmentId} onChange={onPhotos} disabled={sending} />
+        {errors.photos && <p className="mt-1 font-semibold text-red-700">{errors.photos}</p>}
       </div>
 
       <div>
@@ -143,7 +152,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
 
       <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-white/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
-        <button type="submit" disabled={sending || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
+        <button type="submit" disabled={sending || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
           {sending ? <><Loader2 className="size-5 animate-spin" aria-hidden /> Sending…</> : <><Send className="size-5" aria-hidden /> {state.kind === "failed" ? "Send again" : "Send ticket"}</>}
         </button>
       </div>

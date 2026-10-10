@@ -51,6 +51,31 @@ dashboard (production). Never commit real values.
    docs/ARCHITECTURE.md → Companies).
 8. Sign in, open **Settings → Company** and enter the company address, phone and email that
    should appear on quotes. Confirm the default sales-tax rate with your accountant.
+9. **Storage (ticket photos).** Supabase Storage is part of every hosted project. The
+   migration `20261019000100_ticket_photos.sql` creates the private bucket
+   `ticket-photos` (5 MB, JPEG/PNG/WebP) and its policies when the `storage` schema exists.
+   Verify after `db push`:
+   ```sql
+   select id, public, file_size_limit, allowed_mime_types from storage.buckets where id = 'ticket-photos';
+   select policyname, cmd from pg_policies where schemaname = 'storage' and policyname like 'ticket_photos%';
+   ```
+   Expect `public = false` and two policies (INSERT, SELECT). If storage was enabled after the
+   migration ran, run `select private.setup_ticket_photo_storage();` as `postgres`.
+   **Never** make the bucket public in the dashboard. No new app environment variables are
+   needed: uploads and signed links use the signed-in user's own token.
+10. **Abandoned uploads.** Schedule (daily) from a trusted machine or job:
+   ```bash
+   node --env-file=.env.local scripts/cleanup-ticket-photos.mjs --hours=24
+   ```
+   It uses `SUPABASE_SERVICE_ROLE_KEY` (keep it out of the app host's public env and out of
+   git), removes photos never attached to a ticket within 24 hours and objects without a
+   record, then marks the records discarded. `--dry-run` only counts.
+11. **Retention and backups.** Attached photos are kept as long as their ticket (they are
+   evidence, also after corrections and voids); there is no automatic deletion of attached
+   photos. Supabase database backups (and `pg_dump`) **do not include storage files** — the
+   records survive a restore but the images would not. Before go-live, decide on a storage
+   backup (for example a periodic copy of the bucket with the Storage API or S3-compatible
+   access to another private location) and test a restore.
 
 ## 3. Email for quotes (Resend)
 
@@ -89,7 +114,8 @@ records and only apply migrations added since your last update (for example
 `20261012000100_order_management.sql`, `20261013000100_fleet_registry.sql`,
 `20261014000100_dispatch_assignments.sql`, `20261015000100_delivery_tickets.sql` and
 `20261016000100_billing_readiness.sql`, `20261017000100_command_center.sql` and
-`20261018000100_driver_portal.sql`):
+`20261018000100_driver_portal.sql` and
+`20261019000100_ticket_photos.sql`):
 
 ```bash
 npx supabase migration up      # Supabase CLI
@@ -98,7 +124,8 @@ psql "postgres://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 
   -f supabase/migrations/20261012000100_order_management.sql
 # then the same for 20261013000100_fleet_registry.sql, 20261014000100_dispatch_assignments.sql
 # 20261015000100_delivery_tickets.sql, 20261016000100_billing_readiness.sql,
-# 20261017000100_command_center.sql and 20261018000100_driver_portal.sql, in that order
+# 20261017000100_command_center.sql, 20261018000100_driver_portal.sql and
+# 20261019000100_ticket_photos.sql, in that order
 ```
 
 The order-management migration only adds columns, rules and functions; existing
@@ -115,13 +142,14 @@ table and functions, and replaces the `audit_read_orders` policy with a narrower
 one (billing entries in order history need `billing.view`); no rows change. The
 driver-portal migration adds permissions, the `field_reports` table and
 functions, moves the ticket insert into a shared helper (same behavior) and
-replaces some command center functions; no rows change.
+replaces some command center functions; no rows change. The ticket-photos migration
+adds the `ticket_attachments` table and functions, replaces `driver_submit_ticket` (photos),
+and creates the storage bucket and policies if storage is installed; no rows change.
 
 **Driver accounts.** Invite the person with the *Driver* role (Settings → Users),
 then link the account on their driver record (Fleet → Drivers → Edit → *Linked
-user account*). Until it is linked, *My Day* says so and shows nothing. **Ticket photos
-are not available**: they need a private Supabase Storage bucket with
-company-scoped policies, which has not been set up or tested yet.
+user account*). Until it is linked, *My Day* says so and shows nothing. Ticket photos
+need the storage bucket (step 9 of the hosted setup, or `DEV_STORAGE=1` locally).
 
 ## 4. Deploying (Vercel or any Node host)
 
@@ -148,6 +176,16 @@ npm run test:e2e              # creates e2e users with known passwords in the lo
 ```
 
 ## 6. Local backend without Docker
+
+**With file storage (ticket photos):** `DEV_STORAGE=1 scripts/dev-stack/stack.sh up` also
+builds the open-source Supabase Storage server (v1.45.0, the newest release that runs on
+Node 22; needs `git` and `npm`; one-time build into `.dev-stack/storage-api`, or point
+`STORAGE_API_DIR` at an existing build) and runs it with a local file backend
+(`.dev-stack/storage-data`) behind the gateway at `/storage/v1`. On first start it creates
+the `storage` schema; the stack then runs `private.setup_ticket_photo_storage()`. The
+storage tests (`npx vitest run --project storage`) talk to this real server with real user
+tokens and are skipped, with a message, when it is not running; the database photo tests
+need the `storage` schema.
 
 `scripts/dev-stack/stack.sh` runs Supabase Auth and PostgREST (downloaded from their GitHub
 releases) against a PostgreSQL you provide on `127.0.0.1:54322`, with a small gateway on

@@ -23,6 +23,8 @@ const ticketInput = z
     /** Made when the form opens and kept for retries: a repeated send returns the same ticket. */
     submissionKey: z.uuid(),
     confirmDuplicate: z.boolean().default(false),
+    /** Photos already uploaded and confirmed (attached in the same transaction as the ticket). */
+    photoIds: z.array(z.uuid()).max(3, "At most 3 photos per ticket.").default([]),
   })
   .superRefine((t, ctx) => {
     const q = quantityError(t.quantity, t.unitCode);
@@ -52,6 +54,7 @@ export async function submitDriverTicket(input: z.input<typeof ticketInput>): Pr
         notes: t.notes,
         submission_key: t.submissionKey,
         confirm_duplicate: t.confirmDuplicate,
+        photo_ids: t.photoIds,
       },
     });
     if (error) {
