@@ -17,8 +17,14 @@ type Row = Record<string, unknown>;
 type Item = { exception_key: string; kind: string; priority: number; reasons: string[]; details: Row; order_id: string | null; hidden_until: string | null };
 type Page = { total: number; hidden: number; items: Item[] };
 
-const queue = async (s: Session, opts: { kind?: string; hidden?: boolean } = {}) =>
-  (await s.query<{ r: Page }>("select public.command_center_exceptions($1, false, 100, 0, $2) as r", [opts.kind ?? null, opts.hidden ?? false])).rows[0].r;
+/** Every page of the queue (a well-used database can hold more than 100 open items). */
+const queue = async (s: Session, opts: { kind?: string; hidden?: boolean } = {}): Promise<Page> => {
+  const at = async (offset: number) => (await s.query<{ r: Page }>("select public.command_center_exceptions($1, false, 100, $3, $2) as r", [opts.kind ?? null, opts.hidden ?? false, offset])).rows[0].r;
+  const first = await at(0);
+  const items = [...first.items];
+  while (items.length < first.total) items.push(...(await at(items.length)).items);
+  return { ...first, items };
+};
 const summary = async (s: Session) => (await s.query<{ r: Row & { exceptions: Record<string, number>; by_kind: Record<string, number> } }>("select public.command_center_summary() as r")).rows[0].r;
 const flag = async (s: Session, orderId: string, reason: string, neededBy: string | null = null) =>
   (await s.query<{ r: { urgency_id: string; created: boolean; changed: boolean } }>("select public.flag_order_urgent($1, $2, $3) as r", [orderId, reason, neededBy])).rows[0].r;

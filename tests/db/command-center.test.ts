@@ -27,8 +27,16 @@ type Item = {
 };
 type Page = { total: number; limit: number; offset: number; items: Item[] };
 
-const queue = async (s: Session, opts: { kind?: string | null; mine?: boolean; limit?: number; offset?: number } = {}) =>
+const page = async (s: Session, opts: { kind?: string | null; mine?: boolean; limit?: number; offset?: number }) =>
   (await s.query<{ r: Page }>("select public.command_center_exceptions($1, $2, $3, $4) as r", [opts.kind ?? null, opts.mine ?? false, opts.limit ?? 100, opts.offset ?? 0])).rows[0].r;
+/** One page when limit/offset are given; otherwise every page (a well-used database can hold more than 100 open items). */
+const queue = async (s: Session, opts: { kind?: string | null; mine?: boolean; limit?: number; offset?: number } = {}): Promise<Page> => {
+  if (opts.limit !== undefined || opts.offset !== undefined) return page(s, opts);
+  const first = await page(s, { ...opts, offset: 0 });
+  const items = [...first.items];
+  while (items.length < first.total) items.push(...(await page(s, { ...opts, offset: items.length })).items);
+  return { ...first, items };
+};
 const summary = async (s: Session) => (await s.query<{ r: Record<string, unknown> & { by_kind: Record<string, number>; exceptions: Record<string, number> } }>("select public.command_center_summary() as r")).rows[0].r;
 const mineOnly = (p: Page, ids: string[]) => p.items.filter((i) => ids.some((id) => i.exception_key.includes(id)));
 const submit = async (s: Session, payload: Record<string, unknown>) =>
