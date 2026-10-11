@@ -10,13 +10,14 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | Path | What it holds |
 | --- | --- |
 | `docs/SESSION_HANDOFF.md` | Current state, deployment status, outstanding owner actions. Read it first. |
-| `docs/TAVIRON_MASTER_PLAN.md` | Product direction, confirmed decisions vs proposals, open questions. |
-| `docs/IMPLEMENTATION_PLAN.md` | What was built per milestone (§5–§5n), the roadmap (§8). |
+| `docs/TAVIRON_MASTER_PLAN.md` | **The one authoritative plan:** status by area, confirmed decisions vs proposals, pricing proposal, Outstanding Fixes and Operational Risks (§8), open decisions (§9), roadmap order (§11). Update it; never start a competing plan. |
+| `docs/IMPLEMENTATION_PLAN.md` | What was built per milestone (§5–§5o). |
 | `docs/DEPLOYMENT.md` | Vercel + Supabase staging, migrations (§2a), platform access (§3a). |
 | `docs/SETUP.md` | Environment variables, the local stack without Docker, tests. |
 | `docs/ARCHITECTURE.md` | Request flow and the security model. |
 | `docs/SCHEMA.md` | Database tables and rules. |
 | `docs/RELEASE_CHECKLIST.md` | What to check before a release is called done. |
+| `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
 
 ## Rules that always apply
 
@@ -38,6 +39,14 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Suggestions never act on their own:**
   - Smart Dispatch (`src/lib/dispatch/smart.ts`) only proposes; assignments go through `assign_load` after a dispatcher approves.
   - Invoice drafts are computed previews; nothing is issued or exported.
+- **Working with the founder:**
+  - Audit before rebuilding; verify earlier reports instead of trusting them.
+  - During requirements discovery ask one concise question at a time; never re-ask what the master plan answers.
+  - Keep code written / tested / committed / pushed / deployed / verified as separate statuses.
+- **Pricing and offers:** the tier prices are a proposal (master plan §5.1); founding-customer discounts are
+  private and never shown publicly; no checkout, billing or payment code without explicit authorization.
+- **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts.
+  Company workspaces use the company's own branding (`src/lib/branding.ts`).
 - **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run
   `docs/RELEASE_CHECKLIST.md` before calling a release done.
 - **Honest data:**

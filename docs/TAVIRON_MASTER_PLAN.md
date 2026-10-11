@@ -1,91 +1,327 @@
 # Taviron master plan
 
-Last updated: 2026-10-11 (after N14). This file holds product direction and decisions. Build details are in
-`docs/IMPLEMENTATION_PLAN.md`; current state and next steps are in `docs/SESSION_HANDOFF.md`.
+Last updated: 2026-10-11 (after N15, consolidated from the founder's master context). This is the one
+authoritative plan: product direction, decisions, proposals, open questions, outstanding fixes and the
+roadmap order. Build details per milestone are in `docs/IMPLEMENTATION_PLAN.md`; current deployment state
+and owner actions are in `docs/SESSION_HANDOFF.md`.
+
+**How to read the labels**
+- **Confirmed** — decided by the founder; binding.
+- **Proposal** — a working figure or design; not to be published or built as final without approval.
+- **Open** — no decision yet; never invent an answer (§9).
+- Status words for code: *working* (built and tested locally), *partial*, *placeholder*, *absent*. Nothing
+  here is "verified on staging" unless it says so — the staging database has not been checked from a session.
+
+---
 
 ## 1. What Taviron is for
 
-One authoritative record per job, carried through every stage:
+An integrated operating system for hauling companies, material suppliers and dispatch operations — not a set
+of disconnected screens. One record per job, carried through every stage:
 
-> customer request → quote or approved pricing → order → dispatch → delivery ticket → billing readiness →
-> invoice preparation → payroll readiness
+> customer request → quote or approved pricing → order → dispatch → delivery ticket → fulfillment →
+> billing → invoice → accounting handoff → payroll inputs
 
-Employees should never re-enter the same job in another module. Every stage reads the record the previous stage created.
+Employees never re-enter a job in another module. Operational correctness, safety, data integrity and reliable
+workflows come before feature count.
 
-## 2. Workflow status, verified 2026-10-11
+**Product areas:** customers, quotes, contracts, orders · dispatch, Smart Dispatch · Route & Conditions
+Intelligence · fleet maintenance, mechanics, compliance · material calculator and distance pricing · delivery
+tickets, fulfillment, billing, invoices, accounting · payroll inputs and reporting · customer portal · driver
+mobile · company administration, integrations, audit history, data quality.
 
-| Stage | Status | Notes |
+## 2. Architecture rules (confirmed, in force)
+
+- **Tenant isolation is server-side:** every business table has `company_id` and RLS; APIs, server functions,
+  storage, reports, exports, notifications, search and audit history all respect it. Hiding a button is never
+  authorization.
+- **Three separate areas:** public marketing pages · each company's authenticated workspace · the restricted
+  Taviron platform area (`/admin`, platform role granted only by `scripts/platform-admin.mjs`).
+- Least privilege, server-side validation, uniqueness constraints, idempotency, audit history and honest error
+  handling on every consequential action.
+- **Recommendations never act on their own.** Smart Dispatch, invoice drafts and any future AI extraction only
+  propose; an authorized person approves.
+- **Honest data:** never invent prices, quantities, dates, customer terms, material properties, truck
+  capacities, pay rules, testimonials or metrics. Missing data is shown as missing; estimates are labelled.
+- No deploy to production, public launch, indexing, removal of the early-access gate, publication of legal
+  terms, paid services or destructive data operations without the founder's explicit approval.
+
+## 3. Verified implementation status (2026-10-11, local tests; staging unverified)
+
+| Area | Status | Notes |
 | --- | --- | --- |
-| Customers, materials, price lists | Working | Customer-specific rates with effective dates. |
-| Quote → order | Working (automatic since N15) | Accepting a quote creates its one Confirmed order, with the accepted terms and prices, in the same transaction. Repeats return the same order. |
-| Direct orders | Working | Lines may be material, hauling, service, surcharge, discount or other. |
-| Order → dispatch | Working (N14 closed a gap) | Confirmed orders without a date wait in "Needs scheduling" (Dispatch and Command Center). They used to be invisible. |
-| Smart Dispatch | Proposals only (N15) | Suggests a truck and driver per open load, up to 7 days ahead, with reasons, warnings and alternatives. Nothing is assigned until a dispatcher approves; the approval is re-checked. No travel distance (no truck locations). |
-| Dispatch → driver → ticket | Working | Eligibility rules are enforced; drivers submit tickets with photos; office enters paper tickets. Duplicates are prevented and corrections are revisions. |
-| Ticket → billing readiness | Working (N15: fulfillment) | Derived from loads, tickets, review and acknowledged differences. A fully delivered order becomes ready without being marked Completed; a partly delivered one stays out. |
-| Invoice preparation | Draft only (N14) | Computed from accepted tickets × approved order prices. Not stored, not issued. |
-| Handoff to accounting | Working (CSV) | Batches with audit and safe reversal. The CSV is not a QuickBooks import format. |
-| Invoice issue, payment | Not in Taviron | Happens in the accounting system; not tracked. |
-| Payroll readiness | Inputs only | `verified_delivery_inputs` (accepted tickets per driver and truck). No earnings: pay rules unknown. |
-| Reports | Measured basics (N14) | Verified delivered value, rework, billing turnaround, truck utilization and downtime. No profitability (no cost data). |
+| Customers, materials, price lists | Working | Customer-specific rates with effective dates. No material density field. |
+| Quotes | Working | Versioned, PDF; email is preview-only until a provider is configured. |
+| Quote → order | Working (N15) | Acceptance creates exactly one Confirmed order in the same transaction; idempotent; no assignment, scheduling or invoicing. |
+| Orders | Working | Delivery location required to **schedule** (N15). Not yet: per-order-type required fields at **confirmation**, order types, change review that protects existing plans. |
+| Needs-scheduling queue | Working (N14) | Confirmed orders without a date, in Dispatch and the Command Center. |
+| Dispatch board | Working | Eligibility, conflicts (exclusion constraint), audit. |
+| Smart Dispatch | Stage 1 working (N15) | Proposals with reasons, warnings, alternatives, exclusions; approval re-checked; rejections audited; 1–7 day horizon. No travel time, driver availability, trailer choice, load-breakdown planning or multi-day schedule proposals (Stage 2). |
+| Route Planner / Route & Conditions | Placeholder / absent | Page labelled "Planned". No data sources chosen. |
+| Driver portal | Working | Assignments, tickets with photos, delay/breakdown reports (web, not a native app). |
+| Delivery tickets | Working | Review queue, revisions, office scans, bulk accept, duplicate guard. |
+| Fulfillment and billing readiness | Working (N15) | Fully delivered → billable; partial stays out; recalculated on read. |
+| Invoice drafts | Preview only (N14) | Computed; not stored, approved, numbered, issued or exported. |
+| Billing handoff | Working (CSV) | Batches with audit and reversal; not a QuickBooks format. |
+| QuickBooks / accounting | Absent | No credentials, configuration or export. |
+| Payroll | Inputs only | `verified_delivery_inputs`; no formulas. |
+| Reports | Measured basics (N14) | Delivered value, rework, billing turnaround, utilization, downtime. No profitability or ROI. |
+| Command Center | Working | Prioritized exceptions, assignment, personal layout. No yellow/red severity model per §6.6 yet. |
+| Fleet | Partial | Trucks/trailers with capacity and service status, driver qualifications. No maintenance, work orders, parts, preventive schedules, compliance documents or OCR. |
+| Material calculator | Absent | |
+| Distance pricing / dispatch bases | Absent | No dispatch-base entity exists. |
+| Customer portal | Absent | |
+| Tenant branding | Working (N15) | Logo and colors per company; "Powered by Taviron". |
+| Public website | Working, gated | 9 pages, lead form, capability registry. See §5 for the gaps against the founder's requirements. |
+| Demo leads | Partial | Stored, rate-limited, platform-only, audited; no emails, reminders, truck/base counts; statuses differ from §5.4. |
+| Subscription billing, payments, agreements | Absent | Nothing charges money; none may be built without authorization. |
+| Imports | CSV only | Team-led, reviewable, reversible; no XLSX. |
 
-**States kept separate:**
-- Order: confirmed → scheduled → dispatched / in progress → completed. On hold and canceled sit outside this sequence.
-- Load assignment: assigned or not.
-- Ticket: submitted → needs review → accepted, voided or superseded.
-- Billing: fulfilled (derived) → ready → handed off.
-- Invoice: drafted (computed), then issued and paid outside Taviron.
+## 4. Branding (confirmed direction)
 
-## 3. Decisions
+**Taviron palette:** midnight navy `#0C1A2B` · electric blue `#168BFF` · titanium silver `#C7D1DE` · clean white
+`#F7F9FC` · safety red `#E5484D`, reserved for genuine critical alerts and safety issues.
 
-**Confirmed (in code and in force):**
-- Multi-tenant, with each company's numbering, pricing, permissions and settings its own. No company's habits become defaults.
-- Recommendations never act on their own. Dispatch changes, ticket acceptance, billing handoffs and invoices need an authorized person.
-- Estimates stay separate from actuals. Missing data is never shown as "no problems".
-- The platform-owner role is separate from company roles and is granted only by an operator.
-- The public website stays behind the early-access gate unless `PUBLIC_SITE=on`.
-- The public website describes only what `src/lib/site/capabilities.ts` lists as available; planned work is labelled "Not yet".
-- Each company may brand its own workspace (logo, colors); the public website keeps Taviron's charcoal/red identity.
-- An accepted quote always becomes exactly one order (N15).
+**Logo:** geometric T symbol and a clean TAVIRON wordmark; blue is an accent inside the symbol; no blue element
+beneath the A; no ® until registration is confirmed. Current artwork is conceptual. The production brand package
+(vector SVG/PDF masters, transparent PNG, wordmark and symbol, app icon and favicon, monochrome, light/dark,
+clear-space and minimum-size rules) is still to be produced.
 
-**Implemented in N15 but needing the business's confirmation:**
-- Unresolved breakdown and inspection reports block dispatch of that truck; an open equipment-issue report only warns.
-- A load above a truck's recorded capacity is refused; unknown capacity is allowed with a warning.
-- An order needs a delivery location (job-site address, or a site name such as a yard pickup) before it can be scheduled.
-- Fulfillment means every planned load ran with an accepted ticket and each ticketed line has at least its ordered quantity; deliveries above the order still show as exceptions to acknowledge.
+**Where it applies:** public pages and the Taviron platform area use Taviron branding. Each company workspace
+uses the company's own logo and palette (N15), with "Powered by Taviron" in shared places, through central
+tenant-aware theme tokens — never per-page hacks — with contrast and safety colors preserved.
 
-**Proposed, not confirmed:**
-- Pricing: from $499 per month per company. Founding offer for the first 10 companies: 20% off ($399.20), onboarding fee waived in beta, billing from go-live. All subject to a written agreement.
-- QuickBooks Online as the first accounting target, to be verified with a test company first.
-- Privacy and Terms are drafts awaiting legal review.
+> **Mismatch (not yet fixed):** the code still uses the earlier charcoal `#1C1E21` / red `#ED1C24` identity,
+> and red is the primary action color. That conflicts with the palette above and with red being reserved for
+> critical alerts. See §8, item W2.
 
-## 4. Open business questions (need answers from the business)
+## 5. Public website and demo requests (immediate priority)
 
-1. **Driver pay:** formulas per load, ton or hour; minimums, special rates, pay periods, approval chain, export format.
-2. **Order types:**
-   - Customer pickup at the yard (no delivery).
-   - Hauling-only jobs with customer or third-party material: who owns the material, and what goes on the ticket.
-   - Whether stone and sand sales need their own order type.
-   - Today an order's lines express material and hauling charges, but there is no "fulfillment type" or "material source" field. N14 does not invent one.
-3. **Invoicing:**
-   - Which lines without their own tickets (e.g. hauling per ton) should bill at delivered vs ordered quantity.
-   - Invoice numbering.
-   - Whether Taviron or the accounting system issues invoices.
-4. **Cost data for profitability:** fuel, wages, maintenance, material purchase cost, equipment ownership.
-5. **Escalation rules for urgent orders** beyond a single time limit.
-6. **Maintenance policy:** which defects block dispatch (N15 assumes breakdown and inspection reports do), and who returns equipment to service.
-7. **Smart Dispatch preferences:** driver availability and hours rules, driver–truck pairings, customer priorities, fairness rules, and whether truck locations will be recorded (needed for distance).
+**Required experience:** Home · Platform · Solutions · Pricing · Book a Demo · Contact · legal pages · Sign In.
+One responsive site; clear boundary from the workspace and platform area; claims only from
+`src/lib/site/capabilities.ts`; early-access gate stays on until the founder approves launch.
 
-## 5. Direction (ordered by dependency)
+**Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
+Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
-1. **Staging verified end to end:**
-   - Migrations pushed (N13, N14 and N15).
-   - Platform role granted.
-   - Phone sign-in confirmed.
-   - Auth email set up.
-2. **First real team-led onboarding**, with parallel running.
-3. **Order types**, once the business confirms pickup, hauling-only and material-source rules.
-4. **Invoice workflow.** Approval and issue states, and numbering, once it is decided whether Taviron issues invoices.
-5. **Payroll readiness → earnings → approval → export**, once pay rules are written.
-6. **Maintenance and defects**, feeding dispatch eligibility and the Command Center.
-7. **Profitability**, once cost data exists. Separate measured figures from estimates, and account for volume and seasonality.
+### 5.1 Pricing page (proposal — not approved for publication)
+
+Five tiers, standard monthly prices, annual-commitment monthly equivalents and one-time onboarding fees. CTAs:
+"Book a Demo" for standard tiers, "Contact Us" for Custom; no self-service checkout. Prices before applicable
+taxes (tax wording after tax/legal review). **Founding-customer discounts are private and never advertised.**
+
+| Tier | Standard monthly | Annual commitment (−10%) | Hauling trucks | Dispatch bases | Onboarding (one-time) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Essential | $499 | $449.10 | up to 25 | 1 | $199 |
+| Growth | $749 | $674.10 | up to 50 | up to 2 | $299 |
+| Professional | $999 | $899.10 | up to 75 | up to 3 | $399 |
+| Enterprise | from $1,499 | from $1,349.10 | up to 100 | up to 5 | $599 |
+| Custom | Contact for quote | — | more than 100 or complex | multiple | from $599, by scope |
+
+The lowest tier satisfying **both** the truck and the base limit applies. Private founding prices (20% off,
+first 10 customers): $399.20 · $599.20 · $799.20 · $1,199.20.
+
+### 5.2 Demo-request workflow (confirmed requirements)
+
+- The demo is free; there is **no free trial**.
+- **Required fields:** full name, work email, company name, number of hauling trucks, number of dispatch bases.
+  **Optional:** phone, "What would you most like Taviron to improve?"
+- **On success:** save the lead in Taviron (the source of truth), email the prospect a confirmation (receipt and
+  that Taviron will follow up — no promised response time), email Taviron the lead details. Internal target:
+  contact within one business day.
+- **Statuses:** New · Contacted · Demo Scheduled · Demo Completed · Converted · Not Proceeding, with status
+  history, internal notes, contact details, counts, needs and submission time.
+- **Access:** platform administrators only (founder is the sole admin; one shared queue, no assignment workflow),
+  enforced server-side and audited.
+- **Reminders:** email the founder if a lead is not contacted within one business day; another reminder three
+  business days after first outreach without a response; the lead stays open until Converted or Not Proceeding.
+
+**Gap against the current code** (`/api/leads`, `private.leads`, `/admin/leads`): no truck or base counts (a
+fleet-size range instead), extra role field, statuses `qualified/onboarding/won/lost/spam` instead of the list
+above, no emails of any kind, no reminders (no scheduler exists), a separate "contact" form kind. Reuse and extend
+this system — do not build a second one.
+
+## 6. Smart Dispatch, Route & Conditions, fleet (direction)
+
+### 6.1 Smart Dispatch (confirmed requirements)
+- Balances deadlines and commitments, truck utilization, travel efficiency and empty miles, driver workload and
+  fairness, feasibility. Safety, legal limits, qualifications, physical capacity and equipment suitability are
+  hard constraints.
+- Recommendation-only; inside the Dispatch board; approved recommendations appear on the board.
+- Revalidate before approval; block stale recommendations; deterministic and explainable; audit approvals; never
+  silently create, erase or replace assignments.
+- Plans as far ahead as confirmed orders require; near-term first; distant plans provisional; invalidated plans
+  flagged.
+- Distinguish: incomplete order data · confirmed orders needing scheduling · orders awaiting a truck/driver ·
+  existing plans that became infeasible.
+- Capacity only from the tenant's fleet records; missing/outdated capacity is flagged, never assumed.
+- Multi-load and multi-truck orders track planned vs actual quantities; one delivery never marks an order
+  fulfilled. **Stage 1** assignment recommendations (built), **Stage 2** proposed multi-day schedules (not built);
+  both need dispatcher approval.
+- Outside-capacity suggestions (another yard, outside hauler) off by default, tenant opt-in, never booked
+  automatically.
+- Alerts: critical ones prominent in the Command Center; yellow warnings, red only for genuine critical alerts;
+  severity updates as conditions change; no duplicate notifications.
+
+### 6.2 Route & Conditions Intelligence (direction)
+Official closures and restrictions, truck routing limits, frost laws and seasonal weight limits, severe weather
+and alerts — evaluated against the actual route, truck, load and delivery. Each alert carries source, time and
+freshness, severity, affected assignment, implication and next action. Missing or stale data is disclosed; "no
+alert" never means "clear". Provider choice needs an audit of free/official sources first; no paid services
+without approval.
+
+### 6.3 Fleet, maintenance, compliance (direction)
+Requests and triage, diagnosis, work orders, labor, parts, inspections and authorized clearance; costs,
+warranties, downtime, vendors, purchase orders, inventory; preventive maintenance by time/mileage/engine hours;
+delivery and non-delivery vehicles. **A safety-critical defect immediately blocks dispatch; an ordinary
+dispatcher cannot override it; repair alone does not restore eligibility when inspection and clearance are
+required.** Proposed UI: a dashboard overview plus an interactive shop board (to confirm). Compliance documents:
+upload from phone or computer, OCR into a draft, human review, original preserved, duplicate VIN/plate detection,
+expiry warnings up to 90 days, verified-expired documents block use and feed Smart Dispatch. No claim of complete
+DOT coverage until the scope is defined.
+
+## 7. Quotes, orders, fulfillment, billing (direction)
+
+- **Order types:** material sold and delivered · hauling-only (customer or third-party material) · Stone & Sand
+  pickup / company delivery. Required fields differ by type and are enforced in the UI and on the server;
+  confirmation is blocked when they are missing.
+- **Order changes:** authorized dispatchers may edit confirmed orders; harmless changes save; changes affecting
+  assignments, feasibility or commitments are reviewed before plans change. Never silent reassignment.
+- **States kept separate:** fulfillment complete → billing eligible → invoice draft → invoice reviewed and
+  approved → invoice issued → exported/handed off. (Today: the first three exist; approval, issue and export do
+  not.)
+- **Invoice drafts:** accepted tickets × approved prices only; lines without tickets are flagged for explicit
+  review.
+- **Material calculator** in quote and order entry: length × width × depth, selected material, tenant-configured
+  density, optional overage; live volume and estimated tons; the user reviews before transferring; never
+  overwrite a quantity silently; the calculation is preserved through acceptance. Illustration only:
+  10 ft × 500 ft × 2 ft = 10,000 ft³ ≈ 370.37 yd³; at 1.5 t/yd³ ≈ 555.6 t.
+- **Distance pricing (urgent):** tenant per-mile rates; default route dispatch base → ship-to → base;
+  contract overrides; show origin, destination, miles, rate and charge; routing where available; audited manual
+  corrections; preserved through acceptance; no double-charging where hauling already includes travel.
+- **Unified intake** (calls, texts, email, walk-ins, manual): AI may draft, never invent terms; human review.
+- **Driver mobile app** (future): assignments, acknowledgments, photos, digital tickets, documents, exceptions,
+  PTO, inspections, announcements, messaging; paper tickets stay supported.
+- **Payroll and accounting:** configurable formulas with approval; unresolved exceptions excluded; QuickBooks
+  expected at launch (to be built and verified); duplicate-export prevention.
+- **Customer portal** (future): quotes, order status, invoices; requests reviewed by the office; no customer
+  ticket submission until decided.
+- **Reports:** revenue captured, admin time saved, utilization and downtime, billing turnaround and cash flow,
+  errors and rework, customer/material performance, Taviron's cost vs benefits — measured vs estimated vs
+  projected, with baselines and seasonality; no causal claims without evidence.
+- **Reliability:** global search, duplicate detection, data-quality workflows, configurable workflows, reliable
+  integrations, backups, recovery, data portability.
+
+## 8. Outstanding Fixes and Operational Risks
+
+Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks launch or a core workflow) ·
+**Medium** · **Low**. "Approval" = needs the founder's approval before the change.
+
+| # | Finding (evidence) | State | Severity / impact | Smallest safe fix | Tests / dependencies | Approval |
+| --- | --- | --- | --- | --- | --- | --- |
+| S1 | Staging database migrations N13–N15 (`20261024000100` … `20261027000200`) not known to be applied; staging is unreachable from sessions. | Unverified | High — the live app lacks platform area, Smart Dispatch, branding, auto order. | Owner backs up and runs `db push` (DEPLOYMENT §2a). | `migration list`, smoke checks listed there. | Owner action |
+| S2 | `SITE_ACCESS_SECRET` appeared in a screenshot earlier; rotation not confirmed. | Unverified | High — gate bypass if leaked. | Rotate in Vercel, redeploy. | `scripts/check-deployment.mjs`. | Owner action |
+| S3 | Hosting: Vercel Hobby is non-commercial; Supabase Free has no backups. | Confirmed | High before paying customers. | Decide plans; schedule backups and a restore drill. | `docs/BACKUP_RESTORE.md`. | Yes (cost) |
+| S4 | Auth email (SMTP, templates, URLs) and the `ticket-photos` bucket on staging not confirmed. | Unverified | Medium — invitations and resets may not arrive. | Configure per DEPLOYMENT §1. | Invitation with a real inbox. | Owner action |
+| S5 | 5 high `npm audit` advisories reported on the owner's Mac, unreviewed. | Unverified | Medium | Review each; upgrade selectively; never `--force`. | Full suite after upgrades. | No |
+| W1 | Pricing page advertises the founding-customer discount ($399.20, "first 10 companies") and a single $499 price; the confirmed plan keeps founding discounts private and shows five tiers. (`src/app/(site)/pricing/page.tsx`, `src/lib/site/pricing.ts`.) | Confirmed | High — wrong public offer if the gate opens. | Replace with the five-tier proposal table (§5.1), no founding mention, labelled "proposed" until approved. | Unit test on tier math; gate e2e. | Yes — publication of prices |
+| W2 | Brand colors in code are charcoal/red; red is the primary action color. Confirmed palette is navy/blue/silver with red reserved for critical alerts. (`src/app/globals.css`.) | Confirmed | Medium — brand and alert semantics. | Central token change: brand → electric blue, charcoal → midnight navy; keep a separate `--color-danger` `#E5484D`. Contrast (measured): white on `#168BFF` is 3.4:1 and white on `#E5484D` 3.9:1 — both below the 4.5:1 minimum for normal text; `#168BFF` on navy is 5.2:1. Needs a darker action shade for white-text buttons and links on white (e.g. `#0F6FD6`, 4.9:1 — a proposal), large/bold text only for red labels. | Visual review, contrast checks, screenshots. | No (direction confirmed) |
+| W3 | Demo form lacks required truck count and dispatch-base count; uses a fleet-size range and a role field. | Confirmed | High for the demo flow. | Add the two numeric fields (DB columns + validation), keep the range for old leads. | DB + e2e lead tests. | No |
+| W4 | No lead emails (prospect confirmation, founder notification). Email provider exists (Resend) but is not configured for leads; demo company must never send. | Confirmed | High — leads can go unnoticed. | Send through the existing provider after saving; record each send attempt on the lead; failures never lose the lead. | Unit/e2e with a test provider; staging with `EMAIL_TEST_RECIPIENT`. | Yes — real emails (needs provider + domain) |
+| W5 | Lead statuses differ from the confirmed list. | Confirmed | Medium | Migration mapping `won→converted`, `lost→not_proceeding`, add `demo_completed`; decide where `qualified/onboarding/spam` go (spam can stay internal). | DB tests. | No |
+| W6 | No follow-up reminders; no scheduler exists in the project. | Confirmed | Medium | A daily Vercel Cron route (free on Hobby, once a day) protected by a secret, computing business days; idempotent reminder log. | Unit tests for business-day math; route auth test. | Yes — new env secret and cron |
+| W7 | Legal pages are drafts; tax wording absent. | Confirmed | High before launch. | Legal review. | — | Yes |
+| W8 | Design skills (`emilkowalski/skills`) were not installed. | Fixed (installed in `.claude/skills/`, 2026-10-11) | — | — | Available to sessions that start in this repo. | — |
+| O1 | Required fields are checked at scheduling (delivery location), not at confirmation; no order types. | Confirmed | Medium — incomplete confirmed orders reach Dispatch. | After order types are decided, enforce per-type fields at confirmation in UI and DB. | DB + e2e. | Needs §9 Q8 / order-type answer |
+| O2 | Editing a confirmed order does not flag existing assignments that become infeasible. | Suspected (no such check found) | Medium | On schedule/quantity/site change, mark affected loads "needs review" instead of changing assignments. | DB tests. | No |
+| O3 | Smart Dispatch: no travel time, driver availability, trailer choice or Stage 2 schedules. | Confirmed limitation | Medium | Needs data (locations, availability) first. | — | Data/decisions |
+| O4 | Command Center has no yellow/red severity model matching §6.1 alerts. | Confirmed | Low–Medium | Map priorities to warning/critical colors once W2 lands. | Visual + unit. | No |
+| O5 | Date entry: two-digit years and 6-digit years. | Fixed (N15) | — | — | Unit + e2e regression. | — |
+| O6 | Quote acceptance did not create the order automatically. | Fixed (N15) | — | — | DB tests. | — |
+| O7 | Partial deliveries vs billing readiness. | Fixed (N15) | — | — | DB tests. | — |
+| O8 | Local e2e tests that assumed near-empty shared queues failed as test data accumulated. | Fixed (scoped to own records) | Low | — | — | — |
+| O9 | Imports are CSV only; XLSX unsupported. | Confirmed | Low | Add XLSX when onboarding needs it (library choice needs approval). | Import tests. | Yes (dependency) |
+| O10 | Old demo companies accumulate on each reset (kept, deactivated). | Confirmed | Low | Platform cleanup tool. | — | No |
+
+## 9. Open decisions (do not invent answers)
+
+1. Do company administrators invite employees by email and assign roles, or does Taviron create all accounts during onboarding?
+2. Can dispatchers edit Smart Dispatch's proposed load breakdown before approval?
+3. Should irregular material areas be multiple rectangular sections?
+4. How do driver- or dispatcher-reported vehicle issues become maintenance requests and get triaged?
+5. Which dispatch base does distance pricing use when a company has several yards?
+6. Per-mile rates, distance bands, or both?
+7. Does distance pricing apply automatically to quotes, with authorized overrides and contract rules?
+8. Which order types support internal orders and transfers?
+9. Final billing-quantity rule when tickets are missing or only partly accepted (ordered vs delivered).
+10. Invoice numbering, issuance, partial billing and accounting-export rules (and whether Taviron issues invoices).
+11. Customer data export formats and workflow.
+12. Which compliance documents and obligations are in the initial scope.
+13. Recurring billing on the go-live anniversary or the first of the month.
+14. Features and limits per tier beyond trucks and bases.
+15. Final legal terms, tax requirements, payment-processor configuration and the public-pricing approval process.
+16. Driver pay formulas, periods, approvals and export format.
+17. Cost data for profitability (fuel, wages, maintenance, material cost, equipment).
+18. Urgent-order escalation beyond one time limit.
+19. N15 rules awaiting confirmation: breakdown/inspection reports block a truck and equipment issues only warn;
+    capacity overruns are refused; a delivery location is needed to schedule; the definition of "fully delivered".
+20. Smart Dispatch preferences: driver availability and hours, driver–truck pairings, customer priorities,
+    fairness, whether truck locations will be recorded.
+21. Lead statuses `qualified`, `onboarding`, `spam` — keep as internal extras or fold into the confirmed list?
+
+## 10. Subscription model (proposal / confirmed policies)
+
+Prices in §5.1 are proposals. The policies below are the founder's stated rules; **none is implemented** and no
+billing code may be written without explicit authorization.
+
+- **Counting:** active company-managed hauling trucks tracked in Taviron, including temporarily inactive ones
+  (maintenance, storage, reserve); excluding pickups and maintenance vehicles; a truck stops counting when
+  removed, sold or retired. A dispatch base is a distinct operational dispatch location (several yards under one
+  base count once; customer sites never count; planned bases count once operational; closed bases stop counting).
+- **Discounts:** founding 20% for the first 10 customers, private, follows upgrades while continuous, lost on
+  cancel-and-return; annual commitment (12 months, paid monthly) 10%; discounts do not stack.
+- **Overage:** crossing either limit starts a 30-day grace period with notices at crossing, before the end and
+  before a scheduled tier change; then the lowest tier satisfying both limits from the next billing date, no
+  prorated upgrade charge. Downgrade only after 30 consecutive days within the lower limits, from the next billing
+  date. Annual discount kept on upgrade. Every tier or price change is emailed with reason, tier, price,
+  effective date and discount. No plan change takes effect silently.
+- **Price increases:** 60 days' notice; annual subscribers keep their price through the current term; founding
+  stays 20% off the current standard price.
+- **Billing dates:** anniversary vs first-of-month is open (§9 Q13); if first-of-month, prorate from go-live. No
+  subscription charges before go-live.
+- **Taxes and payments:** prices before tax; tax by billing location, shown separately (validate before launch);
+  cards at launch, ACH later; a payment processor holds card data — never stored in Taviron.
+- **Failed payments:** prompt notice, processor retries, 7-day grace, reminders, then restrict paid features;
+  never delete data for non-payment.
+- **Self-service (confirmed):** billing history, email receipts, PDF invoices/receipts, update and choose the
+  default payment method, see plan, price, counts, limits, grace status and next tier; request upgrades,
+  downgrades (30-day rule) and Custom changes in-app with confirmation emails; billing history available during
+  the 90-day post-cancellation window.
+- **Refunds (confirmed):** no refunds of unused monthly or annual periods; annual renewal can be turned off but the
+  commitment stands; onboarding fees nonrefundable unless Taviron cannot deliver onboarding; verified duplicate or
+  incorrect charges corrected or refunded.
+- **Annual renewal (confirmed):** auto-renews for 12 months unless turned off; reminders 30, 7 and 1 day before
+  with term, tier, price and discount.
+- **Onboarding (confirmed):** demo → choose plan → e-sign the service agreement → pay the onboarding fee → setup,
+  configuration, testing, one live training session (extra sessions $49 per ≤60 min) → subscription billing from
+  go-live. Extensive cleanup or unusual migrations quoted separately. Go-live is agreed jointly, can move earlier
+  but not later; if Taviron is late, billing waits and the delay and reason are audited.
+- **Support (confirmed):** email only, Mon–Fri 9–5 Central, excluding U.S. federal holidays, target first response
+  within one business day; not a resolution guarantee or 24/7 service.
+- **Cancellation and retention (confirmed):** monthly cancels any time, access to the end of the paid period;
+  data kept 90 days after access ends for export, then deleted or anonymized under the final policy; export at no
+  charge (customers, quotes, orders, tickets, invoices, fleet, maintenance, audit history; formats open).
+- **Top Line Trucking** stays on its existing free beta arrangement.
+- All customer-facing pricing, tax, refund and legal policies need legal review before launch.
+
+## 11. Roadmap order (dependencies first)
+
+1. **Website and demo readiness** — W1 pricing page, W3–W6 demo flow, W2 palette, W7 legal review; design pass
+   with the installed design skills. Gate stays on until the founder approves launch.
+2. **Staging verified end to end** — S1–S4 (owner actions).
+3. **Order types and confirmation rules** (O1) → **distance pricing** with dispatch bases → **material calculator**.
+4. **Maintenance and safety defects** feeding dispatch eligibility; compliance documents.
+5. **Smart Dispatch Stage 2** and change-impact flags (O2), then Route & Conditions sources.
+6. **Invoice approval/issue and accounting export** (after §9 Q9–Q10), QuickBooks verified with a test company.
+7. **Payroll** (after pay rules), **customer portal**, **driver mobile**, **subscription billing** (after legal,
+   tax and processor decisions).

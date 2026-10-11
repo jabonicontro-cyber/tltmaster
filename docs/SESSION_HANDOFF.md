@@ -124,6 +124,12 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
+**2026-10-11 consolidation:** `docs/TAVIRON_MASTER_PLAN.md` now holds the founder's full master context (status by
+area, branding palette, pricing proposal, demo-lead requirements, Outstanding Fixes and Operational Risks §8,
+open decisions §9, roadmap order §11). Design skills from `emilkowalski/skills` are installed in `.claude/skills/`.
+The first item on the roadmap is website and demo readiness (master plan §11.1).
+
+
 Finish B3 staging, which now includes N13, N14 and N15 (section 5 above), then answer the open questions in TAVIRON_MASTER_PLAN §4. After that:
 1. The first real team-led onboarding.
 2. Payroll readiness, once pay rules are written down.
