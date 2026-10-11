@@ -1,16 +1,17 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-11, after N14. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-11, after N15. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
-- `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14, including the module audit), "Recommended next task", and roadmap §8 A–H.
+- `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
+- `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
 ## 1. Repository state (verified)
 
 - **Branch:** `claude/top-line-trucking-manager-vmw04i`. This is the only development branch, and Vercel
   deploys the staging site from it. Run `git log --oneline -5` to see the current head.
-- **Migrations:** 23 in `supabase/migrations/`, the latest being `20261026000100_operations_report.sql` (N14).
+- **Migrations:** 25 in `supabase/migrations/`, the latest being `20261027000200_branding_settings_grant.sql` (N15).
   Never edit an applied migration; add new ones.
 - **Lint, typecheck and build:** clean at handoff.
 
@@ -24,6 +25,7 @@ project credentials. Read it together with:
 | N12 | Early Access page and server-enforced gate, operator script, deployment checker, `docs/DEPLOYMENT.md`. | §5l |
 | N13 | See the breakdown below this table. | §5m |
 | N14 | "Needs scheduling" queue (Dispatch and Command Center) for confirmed orders without a date; invoice draft from verified deliveries; measured Reports page. | §5n |
+| N15 | Smart Dispatch (proposals with reasons and alternatives; approval re-checked; rejections audited); safety-report and capacity blocks in assignments; quote acceptance creates the order; delivery location required to schedule; fulfillment-based billing readiness; date-entry fix; company branding; website capability registry and release checklist. | §5o |
 
 N13 delivered:
 - **Public website:** 9 pages, proposed pricing, a 3D hero built from real screens, and lead forms.
@@ -32,19 +34,22 @@ N13 delivered:
 - **Live demo company:** role previews, with nothing sent outside Taviron.
 - **Team-led CSV onboarding:** review, approval and reversal.
 
-## 3. Test results (run in this session's sandbox, N14)
+## 3. Test results (run in this session's sandbox, N15)
 
 | Check | Result |
 | --- | --- |
-| vitest: unit, DB and storage | 320/320 |
-| Browser suite, dev server | 49 passed, 5 skipped. The skipped tests are the gate spec, which runs separately below. |
+| vitest: unit, DB and storage | 350/350 (45 files) |
+| Browser suite, dev server | 55 passed, 5 skipped. The skipped tests are the gate spec, which runs separately below. |
 | Gate spec against a production build with the gate on | 5/5 |
 | Outside-in checker against that build | All checks passed |
 | Lint, typecheck, production build | Clean |
 
-**Migrations:** the two N14 migrations were applied to a second database that already held the 21 earlier ones.
+**Migrations:** the two N15 migrations were applied to a second database that already held the 23 earlier ones.
 - Its schema is identical to dev.
-- DB tests there: 158 passed, 7 skipped (the skipped tests need the storage server).
+- DB tests there: 167 passed, 7 skipped (the skipped tests need the storage server).
+
+**Test fixes made along the way** (not product changes): three older browser tests assumed shared queues were nearly
+empty or used loose locators that also matched the new Smart Dispatch panel; they now scope to their own records.
 
 **None of this ran against the live site.** The sandbox's network policy blocks `*.vercel.app`.
 
@@ -66,7 +71,7 @@ any custom domain added to the project later (none is known).
 
 | Item | Status |
 | --- | --- |
-| **Migrations `20261024000100` (N13), `20261025000100` and `20261026000100` (N14)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a. |
+| **Migrations `20261024000100` (N13), `20261025000100`, `20261026000100` (N14), `20261027000100`, `20261027000200` (N15)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a (which also says what the app does until they are applied). |
 | What staging does until the migration is applied | The app keeps working. The demo/contact form says it cannot save. `/admin` answers 404. This comes from reading the code; it was not observed live. |
 | `PUBLIC_SITE` | Not set as far as known, so the website is behind the gate. Devices admitted with a site code, and signed-in users, still see every page; this was verified locally on a production build of `a652bbb`. |
 | `SITE_INDEXING` | Not set as far as known, so nothing is indexed. |
@@ -76,7 +81,7 @@ any custom domain added to the project later (none is known).
 
 ## 5. Outstanding manual actions (owner)
 
-1. **Back up the staging database, then apply the new migrations (N13 and N14).** Follow DEPLOYMENT §2a step by step: confirm the linked project, back up,
+1. **Back up the staging database, then apply the new migrations (N13, N14 and N15).** Follow DEPLOYMENT §2a step by step: confirm the linked project, back up,
    run `db push --dry-run`, run `db push`, then confirm with `migration list`.
 2. **Rotate `SITE_ACCESS_SECRET`** in Vercel, then redeploy.
 3. **Run the outside-in check.** Expect every check to pass:
@@ -94,6 +99,16 @@ any custom domain added to the project later (none is known).
 
 ## 6. Known issues and decisions pending
 
+- **N15 rules implemented but awaiting the business's confirmation** (TAVIRON_MASTER_PLAN §3): breakdown/inspection reports block a
+  truck, equipment issues only warn; capacity overruns are refused; scheduling needs a delivery location; the fulfillment definition.
+- **Smart Dispatch limits:** no truck locations (no distance or drive time), no driver availability or hours data, no trailer
+  selection. It proposes only; it never assigns on its own.
+- **Unticketed lines** (e.g. hauling with no ticket of its own): the invoice draft still uses the ordered quantity and flags it
+  "confirm". Whether to bill ordered or delivered quantity is the business's decision.
+- **Branding:** dialogs and toasts keep the default red; quote PDFs and the public website do not use company branding.
+- **Local test database growth:** earlier e2e runs leave records (nothing is deleted). Tests that read shared queues now search or
+  page for their own records.
+
 - **Pricing ($499; founding offer $399.20)** is a proposal labelled "subject to confirmation". No billing code exists, and none may be added
   without explicit authorization.
 - **Privacy and Terms** are drafts, marked on the page.
@@ -109,7 +124,7 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
-Finish B3 staging, which now includes N13 (section 5 above). After that:
+Finish B3 staging, which now includes N13, N14 and N15 (section 5 above), then answer the open questions in TAVIRON_MASTER_PLAN §4. After that:
 1. The first real team-led onboarding.
 2. Payroll readiness, once pay rules are written down.
 3. Company billing requirements.
@@ -124,7 +139,7 @@ See IMPLEMENTATION_PLAN "Recommended next task".
    - `docs/IMPLEMENTATION_PLAN.md` (§5i–§5m, "Recommended next task", §8).
    - `docs/DEPLOYMENT.md`, `docs/ARCHITECTURE.md` and `AGENTS.md`.
    - The Next.js docs in `node_modules/next/dist/docs/`, before writing any Next.js code.
-2. **Check the repository:** run `git status` and `git log --oneline -5`, and confirm the branch matches `origin`. Do not redo milestones N9–N13.
+2. **Check the repository:** run `git status` and `git log --oneline -5`, and confirm the branch matches `origin`. Do not redo milestones N9–N15.
 3. **Rules that stay in force:**
    - Never reset or delete data, edit applied migrations, deploy to production, buy services or change DNS without approval.
    - Never print or commit secrets, and never ask the owner to paste keys or codes.

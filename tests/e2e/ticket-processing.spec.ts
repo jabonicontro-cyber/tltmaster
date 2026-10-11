@@ -140,7 +140,8 @@ test("clean received tickets are accepted together after confirmation; flagged o
   const f = await fixture({ withRef: [true, true, false] });
   try {
     await signIn(page, "office");
-    await page.goto(`/tickets?view=submitted`);
+    // Search for this test's order: the bulk list follows the search, and a database with earlier runs holds many other clean tickets.
+    await page.goto(`/tickets?view=submitted&q=${encodeURIComponent(f.orderNumber)}`);
     await page.getByRole("button", { name: /Accept clean tickets/ }).click();
     const d = page.getByRole("dialog");
     const list = d.getByRole("group", { name: "Tickets to accept" });

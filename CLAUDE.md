@@ -16,6 +16,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/SETUP.md` | Environment variables, the local stack without Docker, tests. |
 | `docs/ARCHITECTURE.md` | Request flow and the security model. |
 | `docs/SCHEMA.md` | Database tables and rules. |
+| `docs/RELEASE_CHECKLIST.md` | What to check before a release is called done. |
 
 ## Rules that always apply
 
@@ -34,6 +35,11 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **No silent side effects:**
   - No real emails, invoices, accounting exports or payments without explicit authorization.
   - The demo company never sends anything.
+- **Suggestions never act on their own:**
+  - Smart Dispatch (`src/lib/dispatch/smart.ts`) only proposes; assignments go through `assign_load` after a dispatcher approves.
+  - Invoice drafts are computed previews; nothing is issued or exported.
+- **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run
+  `docs/RELEASE_CHECKLIST.md` before calling a release done.
 - **Honest data:**
   - Never invent business rules (pay formulas, pricing), contacts, customers, testimonials or metrics.
   - Missing data is shown as missing; estimates are labelled.
@@ -46,6 +52,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Branch:** `claude/top-line-trucking-manager-vmw04i`. Every push deploys to the Vercel project's
   Production environment (`tltmaster.vercel.app`, which serves as staging).
 - **Commits** end with the session's co-author trailer. Don't open a PR unless asked.
+- **Dates:** use `DateInput` (`src/components/ui/date-input.tsx`) for every date field and
+  `isOperationalDate` on the server.
 - **Checks before a push:**
   - `npm run lint`, `npx tsc --noEmit`
   - `npx vitest run` (unit, DB and storage tests; needs the local stack)

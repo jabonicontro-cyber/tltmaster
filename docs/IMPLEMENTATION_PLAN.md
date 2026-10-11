@@ -1624,10 +1624,121 @@ The local database held 23 such orders, left by earlier test runs, all invisible
 - QuickBooks.
 - Profitability.
 
+## 5o. Smart Dispatch, workflow reliability and company branding (N15)
+
+### Audit before building (2026-10-11)
+
+| Area | Found | Done in N15 |
+| --- | --- | --- |
+| Dispatch recommendations | None. `assign_load` was the only path and is authoritative. | Smart Dispatch built on top of it; nothing assigns without approval. |
+| Quote → order | Worked, but by hand ("Convert to order"). | Accepting a quote creates exactly one Confirmed order in the same transaction. |
+| Order requirements | Per-line unit rules already enforced by a DB check. | Scheduling needs a delivery location (address or site name). |
+| Date entry | Defect reproduced: typing 10/15/26 saved year 0026; extra digits gave 6-digit years. | Fixed in the field and on the server; regression tests. |
+| Billing readiness | Needed the order marked Completed. | Fully delivered orders become ready; partial deliveries stay out. |
+| Invoice drafts, Reports | Working (N14); tests pass. | Unchanged. Unticketed-line rule still open (see §4 of the master plan). |
+| Branding | None. | Per-company logo and colors in the app. |
+
+### Smart Dispatch (`src/lib/dispatch/smart.ts`, panel on `/dispatch`)
+
+A pure, deterministic function: the same input always gives the same proposals, whatever
+the input order. It reads only the company's own records (RLS) and calls no outside service.
+
+**Inputs:** planned, unassigned loads of dispatchable orders (Scheduled, Dispatched, In
+progress, Partly completed) in the chosen horizon (today, 3 or 7 days); active trucks with
+type, service status, capacities; active drivers with qualifications; open/acknowledged
+truck reports; open urgencies; active assignments; rejected pairs.
+
+**Order of work:** urgent orders first; then loads past or at the customer's requested date
+or due today; then due tomorrow; then the rest — earliest date and start time first. A
+proposal reserves its truck and driver for that time slot, so less urgent overlapping loads
+get other resources (and are told which load took them).
+
+**Hard blocks (the pair is never proposed; plain-language reason shown):**
+- truck inactive, out of service (with the expected return date), or with an unresolved
+  breakdown or inspection report;
+- tractor (needs a trailer; Smart Dispatch does not choose trailers);
+- planned quantity above the truck's recorded capacity (tons or cubic yards; pounds converted);
+- driver inactive, CDL or medical card missing, unverified, expired, or CDL class too low;
+- truck or driver already booked, or reserved for a more urgent load, at an overlapping time;
+- the pair was rejected by a dispatcher for this load.
+
+**Warnings (proposed, but shown):** capacity not recorded or not verified; an open equipment
+issue report; qualifications expiring soon.
+
+**Scoring (higher is better), then labels and ids for ties:** truck already on that order
+that day +30, at that site +20, capacity fit up to +20 (share of capacity used), unknown
+capacity −5, unverified −3, equipment issue −10; driver on that order that day +20, −8 per
+load that day, −2 per load in the horizon, −3 per warning. The best four trucks and four
+drivers are paired; up to three alternatives are offered, varied by truck and driver.
+
+**No feasible pair:** the panel says why (no trucks, no drivers, every pair rejected, …) and
+lists options that need a decision — a truck's expected return date, a resource free at
+another time, a qualification to verify, or a later day within three days (flagged when later
+than the customer's requested date). None is applied.
+
+**Approval:** "Approve and assign" (needs `dispatch.edit`) rebuilds the input for that date
+and re-checks the pair; a stale proposal is refused with the reason and the panel refreshes.
+Then `assign_load` runs with the note "Approved Smart Dispatch proposal", re-checking
+eligibility, capacity, safety reports, conflicts (exclusion constraint) and stale state in
+the database. Rejections are stored in `dispatch_recommendation_rejections` and audited;
+"Reconsider them" clears them.
+
+**Limitations:** no truck locations, so no travel distance or drive time; no driver
+availability, hours-of-service or time-off data; no trailer selection; no customer or
+material priorities beyond urgency and dates; no driver preferences or fairness rules beyond
+spreading the day's load count. These need data and business rules first.
+
+### Order-to-billing
+
+- **Fulfillment** (view `order_fulfillment`): every planned load has run and has an accepted
+  ticket, no ticket waits for review, and each ticketed per-unit line has at least its
+  ordered quantity accepted in its own unit. `billing_order_status` now reports `fulfilled`
+  and `fulfillment_gap`; a fulfilled order can be ready without being marked Completed.
+- Recalculated on every read, so a new load, a correction or a voided ticket changes it at once.
+- Kept separate: fulfillment complete → billing ready → invoice draft (computed preview) →
+  handoff. Approval and issuing of invoices do not exist yet.
+
+### Company branding
+
+- `company_settings.brand_logo` (PNG/JPEG/WebP checked by content, ≤250 KB, stored as a data
+  URL), `brand_color`, `brand_sidebar_color` (hex). Settings → Company → Branding, with a
+  live preview; needs `settings.manage`.
+- Colors must keep white text readable (4.5:1 accent, 7:1 navigation) — refused otherwise.
+- The app shell sets CSS variables; the logo is served by `/brand/logo` for the signed-in
+  user's own company only. Branded companies see "Powered by Taviron" at the foot of the menu.
+- Dialogs and toasts rendered outside the shell keep the default red. Quotes (PDF) and the
+  public website do not use company branding.
+
+### Date entry
+
+`DateInput` replaces every date field: limits the year to four digits and turns a typed
+two-digit year into 20YY when the field loses focus. Server schemas accept only 2000–2099
+for operational dates.
+
+### Public website
+
+`src/lib/site/capabilities.ts` lists what the site may describe (with the app pages that show
+it) and what is planned; `docs/RELEASE_CHECKLIST.md` is the check before a release.
+
+### Migrations
+
+`20261027000100_smart_dispatch_workflow_branding.sql`, `20261027000200_branding_settings_grant.sql`.
+Applied locally (after a backup) and to an empty database; not applied to staging (DEPLOYMENT §2a).
+
+### Tests
+
+| Test | Covers |
+| --- | --- |
+| `tests/unit/smart-dispatch.test.ts` (12) | Scenarios 1–10, 12–14 at engine level, determinism. |
+| `tests/db/smart-dispatch.test.ts` (9) | Safety report block vs warning, capacity, conflicts and stale approval, permissions, rejections and audit, isolation, delivery location, fulfillment and readiness, branding RLS and checks. |
+| `tests/unit/dates-and-branding.test.ts` (7), `tests/unit/site-capabilities.test.ts` (2) | Dates, schemas, contrast, sniffing; website claims. |
+| `tests/e2e/smart-dispatch.spec.ts` (5), `tests/e2e/branding.spec.ts` (1) | Approve, reject/reconsider, stale refusal, no approval without permission, date typing; branding isolation. |
+| Updated | Quote and order tests for automatic conversion; fixtures give orders a delivery location. |
+
 ## Recommended next task
 
-**Finish B3 — staging deployment, now including N13 and N14** (state in docs/SESSION_HANDOFF.md):
-push the new migrations (`npx supabase db push`: N13's `20261024000100` and N14's `20261025000100`, `20261026000100`), grant yourself the platform role
+**Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
+push the new migrations (`npx supabase db push`: N13's `20261024000100`, N14's `20261025000100`, `20261026000100` and N15's `20261027000100`, `20261027000200`), grant yourself the platform role
 (`scripts/platform-admin.mjs grant`), rotate `SITE_ACCESS_SECRET`, re-run
 `scripts/check-deployment.mjs` against the live URL (it now also checks that the public
 website is open), create your site-access code, sign in from a phone, start the live demo,

@@ -17,11 +17,12 @@ Employees should never re-enter the same job in another module. Every stage read
 | Stage | Status | Notes |
 | --- | --- | --- |
 | Customers, materials, price lists | Working | Customer-specific rates with effective dates. |
-| Quote → order | Working | Accepted quote becomes one order with the accepted terms and prices. Repeats return the same order. |
+| Quote → order | Working (automatic since N15) | Accepting a quote creates its one Confirmed order, with the accepted terms and prices, in the same transaction. Repeats return the same order. |
 | Direct orders | Working | Lines may be material, hauling, service, surcharge, discount or other. |
 | Order → dispatch | Working (N14 closed a gap) | Confirmed orders without a date wait in "Needs scheduling" (Dispatch and Command Center). They used to be invisible. |
+| Smart Dispatch | Proposals only (N15) | Suggests a truck and driver per open load, up to 7 days ahead, with reasons, warnings and alternatives. Nothing is assigned until a dispatcher approves; the approval is re-checked. No travel distance (no truck locations). |
 | Dispatch → driver → ticket | Working | Eligibility rules are enforced; drivers submit tickets with photos; office enters paper tickets. Duplicates are prevented and corrections are revisions. |
-| Ticket → billing readiness | Working | Derived from loads, tickets, review and acknowledged differences. |
+| Ticket → billing readiness | Working (N15: fulfillment) | Derived from loads, tickets, review and acknowledged differences. A fully delivered order becomes ready without being marked Completed; a partly delivered one stays out. |
 | Invoice preparation | Draft only (N14) | Computed from accepted tickets × approved order prices. Not stored, not issued. |
 | Handoff to accounting | Working (CSV) | Batches with audit and safe reversal. The CSV is not a QuickBooks import format. |
 | Invoice issue, payment | Not in Taviron | Happens in the accounting system; not tracked. |
@@ -32,7 +33,7 @@ Employees should never re-enter the same job in another module. Every stage read
 - Order: confirmed → scheduled → dispatched / in progress → completed. On hold and canceled sit outside this sequence.
 - Load assignment: assigned or not.
 - Ticket: submitted → needs review → accepted, voided or superseded.
-- Billing: readiness → handed off.
+- Billing: fulfilled (derived) → ready → handed off.
 - Invoice: drafted (computed), then issued and paid outside Taviron.
 
 ## 3. Decisions
@@ -43,6 +44,15 @@ Employees should never re-enter the same job in another module. Every stage read
 - Estimates stay separate from actuals. Missing data is never shown as "no problems".
 - The platform-owner role is separate from company roles and is granted only by an operator.
 - The public website stays behind the early-access gate unless `PUBLIC_SITE=on`.
+- The public website describes only what `src/lib/site/capabilities.ts` lists as available; planned work is labelled "Not yet".
+- Each company may brand its own workspace (logo, colors); the public website keeps Taviron's charcoal/red identity.
+- An accepted quote always becomes exactly one order (N15).
+
+**Implemented in N15 but needing the business's confirmation:**
+- Unresolved breakdown and inspection reports block dispatch of that truck; an open equipment-issue report only warns.
+- A load above a truck's recorded capacity is refused; unknown capacity is allowed with a warning.
+- An order needs a delivery location (job-site address, or a site name such as a yard pickup) before it can be scheduled.
+- Fulfillment means every planned load ran with an accepted ticket and each ticketed line has at least its ordered quantity; deliveries above the order still show as exceptions to acknowledge.
 
 **Proposed, not confirmed:**
 - Pricing: from $499 per month per company. Founding offer for the first 10 companies: 20% off ($399.20), onboarding fee waived in beta, billing from go-live. All subject to a written agreement.
@@ -63,12 +73,13 @@ Employees should never re-enter the same job in another module. Every stage read
    - Whether Taviron or the accounting system issues invoices.
 4. **Cost data for profitability:** fuel, wages, maintenance, material purchase cost, equipment ownership.
 5. **Escalation rules for urgent orders** beyond a single time limit.
-6. **Maintenance policy:** which defects block dispatch, and who returns equipment to service.
+6. **Maintenance policy:** which defects block dispatch (N15 assumes breakdown and inspection reports do), and who returns equipment to service.
+7. **Smart Dispatch preferences:** driver availability and hours rules, driver–truck pairings, customer priorities, fairness rules, and whether truck locations will be recorded (needed for distance).
 
 ## 5. Direction (ordered by dependency)
 
 1. **Staging verified end to end:**
-   - Migrations pushed (N13 and N14).
+   - Migrations pushed (N13, N14 and N15).
    - Platform role granted.
    - Phone sign-in confirmed.
    - Auth email set up.

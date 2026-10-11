@@ -20,7 +20,7 @@ Companies). Relations between business tables are composite foreign keys
 | `permissions` | Global catalog of permission codes (`quotes.edit`, `pricing.override`, …). |
 | `role_permission_defaults` | Global default grants copied to each new company. |
 | `role_permissions` | Per company: which role has which permission. Owner always has all. |
-| `company_settings` | One row per company: name/address/contact, timezone, default tax rate, quote validity and follow-up days, default terms, footer. |
+| `company_settings` | One row per company: name/address/contact, timezone, default tax rate, quote validity and follow-up days, default terms, footer; branding (N15): `brand_logo` (PNG/JPEG/WebP data URL ≤400 000 chars), `brand_color`, `brand_sidebar_color` (hex or empty). |
 | `document_sequences` | Per company: prefix, year handling, padding and next value for customer, quote, order and ticket numbers. |
 | `audit_events` | Append-only log per company: who, when, action, entity, summary, JSON details of changed fields. |
 
@@ -211,6 +211,7 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 | --- | --- |
 | `order_loads` | Planned trips of an order: `load_number` (per order), `load_date`, `start_time`, `end_time` (local business time) and the derived `starts_at` / `ends_at` (timestamptz in the company's timezone), optional `planned_quantity` + `unit_code` (company units, both or neither), notes, `status` (`planned` / `canceled`, with reason). Must fall within the order's scheduled dates; the order must be Scheduled, Dispatched, In progress or Partially completed. |
 | `dispatch_assignments` | Truck, optional trailer and driver for a load, with the load's interval copied in; `status` (`active` / `canceled` with reason), note, accepted eligibility `warnings`, `replaces_assignment_id`. One active assignment per load. Immutable except cancellation; never deleted. |
+| `dispatch_recommendation_rejections` (N15) | A dispatcher's rejection of one Smart Dispatch truck–driver pair for a load, with an optional reason; `cleared_at`/`cleared_by` when reconsidered. One active row per pair. Written only by `reject_dispatch_recommendation` / `reconsider_dispatch_recommendations` (`dispatch.edit`); read with `dispatch.view`. |
 
 ### Dispatch rules
 
@@ -271,7 +272,8 @@ from the records on every read (the caller's RLS applies).
 | `billing_load_status` | planned load of an order that is Scheduled / Dispatched / In progress / Partially completed / Completed | `is_due` (planned end passed, or order Completed), live / accepted / pending ticket counts, `delivered_quantity` (live tickets in the load's planned unit), `other_unit_count`, voided ticket numbers, `documentation_state` (`missing`, `not_due`, `needs_review`, `documented`), `quantity_check` (`no_tickets`, `not_planned`, `units_differ`, `match`, `over`, `under`) and `quantity_difference`. Canceled loads are not listed. |
 | `billing_line_status` | per-unit, non-discount order line of such an order | Ordered vs delivered (live tickets for the line in the line's unit); `quantity_check` evaluated once the order is Completed (`in_progress` before); `pricing_check` (`ok`, `zero_rate`). Prices are shown, never recalculated. |
 | `billing_exceptions` | exception | `load_quantity`, `load_units_differ`, `line_quantity`, `line_units_differ`, `line_no_tickets`, `line_zero_rate`, `po_missing` (customer requires a PO, order has none), with expected / actual quantity, unit and difference, and a `key` holding the compared values. |
-| `billing_order_status` | order in scope | Counts, service dates (first/last load, else scheduled dates), `exceptions_fingerprint` (md5 of the exception keys), `documents_fingerprint` (md5 of current ticket ids and statuses), the current acknowledgment, the active handoff, `changed_since_handoff`, and `readiness`. |
+| `billing_order_status` | order in scope | Counts, service dates (first/last load, else scheduled dates), `exceptions_fingerprint` (md5 of the exception keys), `documents_fingerprint` (md5 of current ticket ids and statuses), the current acknowledgment, the active handoff, `changed_since_handoff`, `readiness`, and (N15) `fulfilled` / `fulfillment_gap` from `order_fulfillment`. |
+| `order_fulfillment` (N15) | every order | Planned loads, loads still to run, delivered loads without an accepted ticket, pending and accepted tickets, short and other-unit lines; `fulfilled` and the first `gap`. A fulfilled order can be billing-ready without being marked Completed. |
 
 **Readiness precedence** (first that applies): `handed_off` › `missing_documentation`
 (a due load without a live ticket, or a Completed order with no ticket) ›

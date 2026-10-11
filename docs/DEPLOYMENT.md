@@ -123,6 +123,18 @@ npx supabase migration list       # the new row now shows a Remote version too
 Migrations are additive and never delete data. If `db push` reports an error, stop, keep
 the output, and do not retry or edit anything until it has been looked at.
 
+N15 adds `20261027000100_smart_dispatch_workflow_branding.sql` and
+`20261027000200_branding_settings_grant.sql` (Smart Dispatch rejections, safety-report and
+capacity checks in assignments, automatic order on quote acceptance, the delivery-location
+rule for scheduling, fulfillment-based billing readiness, and company branding). They must be
+applied after the N13 and N14 files above; whether any of those four earlier files is on
+staging has **not** been verified from here — `npx supabase migration list` shows it. Until
+the N15 files are pushed: the Smart Dispatch panel shows "could not be produced", Settings →
+Branding cannot save, quote acceptance does not create the order (convert it by hand as
+before), and order billing steps may show as unavailable; the rest keeps working.
+After pushing, check in the app: accept a test quote (an order appears), open Dispatch (the
+Smart Dispatch panel lists open loads), and save and then clear a brand color in Settings.
+
 N14 adds `20261025000100_order_scheduling_queue.sql` and `20261026000100_operations_report.sql`
 (the Command Center's "needs a delivery date" items and the Reports page). Until they are
 pushed: the Dispatch "Needs scheduling" queue still works (it reads existing columns), the

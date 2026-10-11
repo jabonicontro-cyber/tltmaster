@@ -83,17 +83,17 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await dialog.getByLabel("Unit").selectOption({ label: "Tons" });
   await dialog.getByRole("button", { name: "Add load" }).click();
   await expectToast(page, "Load 1 added.");
-  const load1 = page.getByRole("listitem", { name: "Load 1" }).filter({ hasText: "22 ton" });
+  const load1 = page.getByRole("listitem", { name: "Load 1", exact: true }).filter({ hasText: "22 ton" });
   await expect(load1.getByText("Needs a truck and driver")).toBeVisible();
 
   // Assign the dump truck and driver A.
-  await load1.getByRole("button", { name: "Assign" }).click();
+  await load1.getByRole("button", { name: "Assign", exact: true }).click();
   dialog = page.getByRole("dialog");
   await choose(dialog.getByLabel("Truck"), f.dump);
   await choose(dialog.getByLabel("Driver"), f.driverA);
   await expect(dialog.getByText("This combination can be assigned.")).toBeVisible();
   await expect(dialog.getByText("Note: Truck capacity is not recorded.")).toBeVisible();
-  await dialog.getByRole("button", { name: "Assign" }).click();
+  await dialog.getByRole("button", { name: "Assign", exact: true }).click();
   await expectToast(page, "Load assigned.");
   await expect(load1.getByText(f.dump)).toBeVisible();
 
@@ -104,8 +104,8 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await dialog.getByLabel("End").fill("10:00");
   await dialog.getByRole("button", { name: "Add load" }).click();
   await expectToast(page, "Load 2 added.");
-  const load2 = page.getByRole("listitem", { name: "Load 2" }).last();
-  await load2.getByRole("button", { name: "Assign" }).click();
+  const load2 = page.getByRole("listitem", { name: "Load 2", exact: true });
+  await load2.getByRole("button", { name: "Assign", exact: true }).click();
   dialog = page.getByRole("dialog");
 
   // Already assigned (busy) is distinguished from unavailable.
@@ -116,14 +116,14 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await choose(truckSelect, f.dump);
   await choose(dialog.getByLabel("Driver"), f.driverB);
   await expect(dialog.getByText(/Already assigned: the truck is booked 7:00 AM – 9:00 AM/)).toBeVisible();
-  await expect(dialog.getByRole("button", { name: "Assign" })).toBeDisabled();
+  await expect(dialog.getByRole("button", { name: "Assign", exact: true })).toBeDisabled();
   await choose(truckSelect, f.down);
   await expect(dialog.getByText("Unavailable: Truck is out of service.")).toBeVisible();
   await choose(truckSelect, f.tractor);
   await expect(dialog.getByText("Unavailable: A tractor needs a trailer for this load.")).toBeVisible();
   await choose(dialog.getByLabel("Trailer"), f.trailer);
   await expect(dialog.getByText("This combination can be assigned.")).toBeVisible();
-  await dialog.getByRole("button", { name: "Assign" }).click();
+  await dialog.getByRole("button", { name: "Assign", exact: true }).click();
   await expectToast(page, "Load assigned.");
   await expect(load2.getByText(f.tractor)).toBeVisible();
 

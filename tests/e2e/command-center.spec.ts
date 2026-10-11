@@ -72,13 +72,20 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   await expect(page).toHaveURL(/kind=missing_ticket/);
   const missingTitle = `${f.orderNumber} · load 1 has no delivery ticket`;
   const missing = page.getByRole("listitem", { name: missingTitle });
+  // Oldest first: on a database with earlier runs the new item may be on a later page.
+  let queue = "/command-center?kind=missing_ticket";
+  for (let p = 1; p <= 20 && !(await missing.count()); p++) {
+    queue = `/command-center?kind=missing_ticket${p > 1 ? `&page=${p}` : ""}`;
+    await page.goto(queue);
+    await page.getByRole("list", { name: "Attention items" }).waitFor();
+  }
   await expect(missing).toContainText("The load has ended and no delivery ticket was entered.");
   // The link opens the exact workflow step and remembers this queue view.
-  await expect(missing.getByRole("link", { name: "Enter the ticket" })).toHaveAttribute("href", `/tickets/new?load=${f.pastLoad}&back=${encodeURIComponent("/command-center?kind=missing_ticket#attention")}`);
+  await expect(missing.getByRole("link", { name: "Enter the ticket" })).toHaveAttribute("href", `/tickets/new?load=${f.pastLoad}&back=${encodeURIComponent(`${queue}#attention`)}`);
   await missing.getByRole("link", { name: "Enter the ticket" }).click();
   await expect(page).toHaveURL(new RegExp(`/tickets/new\\?load=${f.pastLoad}`));
   await page.getByRole("link", { name: "Back to the Command Center" }).click();
-  await expect(page).toHaveURL(/\/command-center\?kind=missing_ticket#attention$/);
+  await expect(page).toHaveURL((u) => u.pathname + u.search + u.hash === `${queue}#attention`);
   await expect(missing).toBeVisible();
 
   // Today's load without a truck is urgent and opens dispatch on that load.
@@ -90,7 +97,7 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   await expect(page.locator(`#load-${f.lateLoad}`)).toHaveAttribute("aria-current", "true");
 
   // Assign the missing ticket to the dispatcher; the item stays open.
-  await page.goto("/command-center?kind=missing_ticket");
+  await page.goto(queue);
   await missing.getByRole("button", { name: "Assign" }).click();
   const dialog = page.getByRole("dialog");
   await expect(dialog.getByLabel("Person").locator("option", { hasText: USERS.mechanic.name })).toHaveCount(0);
