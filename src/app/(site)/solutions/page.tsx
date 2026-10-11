@@ -27,8 +27,8 @@ const COMPANIES = [
 
 const ROLES = [
   { icon: Gauge, title: "Owner", items: ["Everything that needs attention in one Command Center", "Who handles which exception, and what changed", "Company settings, users and role permissions"] },
-  { icon: Route, title: "Dispatcher", items: ["Today's loads and urgent orders first", "Assignments checked before they are made", "Driver delay and breakdown reports as they happen"] },
-  { icon: Receipt, title: "Office and billing", items: ["Quotes, customers and orders", "Ticket review beside the order; office scans of paper tickets", "Billing handoff only from verified deliveries"] },
+  { icon: Route, title: "Dispatcher", items: ["Today's loads and urgent orders first", "Smart Dispatch suggestions you approve or reject — never automatic", "Driver delay and breakdown reports as they happen"] },
+  { icon: Receipt, title: "Office and billing", items: ["Quotes, customers and orders", "Ticket review beside the order; office scans of paper tickets", "Invoice drafts and billing handoff only from verified deliveries"] },
   { icon: Truck, title: "Driver", items: ["Assignments and job instructions on the phone", "Tickets with photos", "Delay, equipment and breakdown reports"] },
   { icon: Wrench, title: "Mechanic", items: ["Out-of-service and return-to-service with history", "Equipment reports from drivers", "Dispatch sees what is down immediately"] },
 ];

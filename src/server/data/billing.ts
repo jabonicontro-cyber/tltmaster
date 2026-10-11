@@ -1,7 +1,7 @@
 import "server-only";
 import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/billing/invoice-draft";
 import { uuid } from "@/lib/schemas/common";
-import type { ExceptionKind, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
+import type { ExceptionKind, FulfillmentGap, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
 import type { TicketStatus } from "@/lib/tickets/rules";
 import { createClient } from "@/server/supabase/server";
 import { getUserNames } from "./quotes";
@@ -46,6 +46,8 @@ export interface BillingOrderRow {
   handed_off_at: string | null;
   handed_off_by: string | null;
   changed_since_handoff: boolean;
+  fulfilled: boolean;
+  fulfillment_gap: FulfillmentGap | null;
   readiness: Readiness;
 }
 
@@ -350,7 +352,7 @@ export async function getOrderReadiness(orderId: string) {
   const supabase = await createClient();
   const { data } = await supabase
     .from("billing_order_status")
-    .select("readiness, status, loads_missing, loads_not_due, tickets_live, tickets_pending, exceptions_count")
+    .select("readiness, status, loads_missing, loads_not_due, tickets_live, tickets_pending, exceptions_count, fulfilled, fulfillment_gap")
     .eq("order_id", orderId)
     .maybeSingle();
   return (data ?? null) as (ReadinessCounts & { readiness: Readiness }) | null;

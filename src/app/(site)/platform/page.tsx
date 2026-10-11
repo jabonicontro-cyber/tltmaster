@@ -1,59 +1,15 @@
 import type { Metadata } from "next";
 import { Check, Clock } from "lucide-react";
 import { Container, FinalCta, PageIntro, Screenshot, SectionHeading } from "@/components/site/ui";
+import { AVAILABLE, PLANNED } from "@/lib/site/capabilities";
 
 export const metadata: Metadata = {
   title: "Platform",
-  description: "What Taviron does today: Command Center, quotes and pricing, orders, dispatch, driver portal, delivery tickets, billing readiness, fleet and security.",
+  description: "What Taviron does today: Command Center, quotes and pricing, orders, dispatch with Smart Dispatch suggestions, driver portal, delivery tickets, billing readiness, reports, fleet and security.",
 };
 
-const MODULES = [
-  {
-    title: "Command Center",
-    points: ["One page for owners, dispatch and the office, arranged by role", "Live exceptions: urgent orders, unassigned loads, assignment problems, missing or questionable tickets, billing blocks, equipment out of service", "Assign an exception to a person; hide what is not yours to handle; personal layout"],
-  },
-  {
-    title: "Customers, materials and pricing",
-    points: ["Customers with contacts, job sites, billing details and PO rules", "Materials, charge items and units per company", "Standard and customer-specific price lists with effective dates"],
-  },
-  {
-    title: "Quotes",
-    points: ["Versioned quotes with locked issued versions", "PDF quotes; email sending once an email provider is configured", "Accepted quotes convert to orders"],
-  },
-  {
-    title: "Orders",
-    points: ["Order lines, schedules and status history", "Urgent orders: flag, acknowledge, escalate after a time limit set by the company", "Delivered-so-far progress from accepted tickets"],
-  },
-  {
-    title: "Dispatch",
-    points: ["Loads planned per order and day", "Assignments checked for service status, driver qualifications and expirations, and time conflicts", "Reasons shown when an assignment is refused"],
-  },
-  {
-    title: "Driver portal",
-    points: ["Today's and recent assignments with job instructions, on the phone", "Delivery tickets with photos", "Delay, equipment and breakdown reports"],
-  },
-  {
-    title: "Delivery tickets",
-    points: ["Review queue with the order beside each ticket", "Corrections as new revisions — nothing overwritten", "Office scans of paper tickets; bulk accept of clean tickets"],
-  },
-  {
-    title: "Billing readiness",
-    points: ["Orders become billing-ready only from verified deliveries", "Billing handoff batches with an audit trail and safe reversal", "Verified delivery inputs prepared for payroll (no pay calculations)"],
-  },
-  {
-    title: "Fleet and people",
-    points: ["Trucks and trailers with capacities and service status history", "Drivers with qualifications and expirations", "Users by role; each company controls its own role permissions"],
-  },
-];
-
-const NOT_YET = [
-  "Driver pay calculations — waiting on each company's written pay rules",
-  "Accounting or payroll integrations (QuickBooks Online is the first target, to be verified with a test company)",
-  "Maintenance work orders, preventive schedules and parts",
-  "GPS tracking, offline mode and route or weather intelligence",
-  "Automatic reading (OCR) of paper tickets",
-  "Online payments and self-service subscriptions",
-];
+const MODULES = AVAILABLE;
+const NOT_YET = PLANNED;
 
 export default function PlatformPage() {
   return (

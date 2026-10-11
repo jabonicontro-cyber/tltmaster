@@ -153,7 +153,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
         title={statusTarget ? `${STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} — ${quoteNumber}` : ""}
         description={
           statusTarget === "accepted"
-            ? "Records that the customer accepted the current revision. You can then convert it to an order."
+            ? "Records that the customer accepted the current revision and creates its order (status Confirmed) with the accepted prices. Scheduling the order stays a separate step."
             : statusTarget === "canceled"
               ? "Canceled quotes cannot be reopened. History is kept."
               : undefined

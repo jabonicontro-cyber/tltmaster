@@ -23,13 +23,17 @@ export function DateInput({ min = "2000-01-01", max = "2099-12-31", onBlur, ...p
       max={max}
       {...props}
       onBlur={(e: FocusEvent<HTMLInputElement>) => {
-        const fixed = normalizeTypedDate(e.currentTarget.value);
-        if (fixed !== e.currentTarget.value) {
+        const el = e.currentTarget;
+        // The browser commits a half-typed year after the blur event, so fix it on the next tick.
+        setTimeout(() => {
+          const fixed = normalizeTypedDate(el.value);
+          if (fixed === el.value) return;
           // Set it the way a user would, so controlled and uncontrolled forms both see the change.
           const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set;
-          setter?.call(e.currentTarget, fixed);
-          e.currentTarget.dispatchEvent(new Event("input", { bubbles: true }));
-        }
+          setter?.call(el, fixed);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        }, 0);
         onBlur?.(e);
       }}
     />

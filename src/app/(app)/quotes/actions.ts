@@ -251,6 +251,12 @@ export async function setQuoteStatus(quoteId: string, status: string, note: stri
     const { error } = await supabase.rpc("set_quote_status", { p_quote_id: quoteId, p_status: status, p_note: note.slice(0, 500) });
     if (error) return fail(dbErrorMessage(error));
     revalidateQuote(quoteId);
+    if (status === "accepted") {
+      // Acceptance creates the Confirmed order in the same database transaction (N15).
+      revalidatePath("/orders");
+      const { data: order } = await supabase.from("orders").select("order_number").eq("source_quote_id", quoteId).maybeSingle();
+      return ok(undefined, order ? `Quote marked accepted. Order ${order.order_number} was created as Confirmed.` : "Quote marked accepted.");
+    }
     return ok(undefined, `Quote marked ${status}.`);
   });
 }

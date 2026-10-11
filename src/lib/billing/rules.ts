@@ -17,8 +17,30 @@ export const READINESS_LABELS: Record<Readiness, string> = {
   handed_off: "Handed off",
 };
 
+/**
+ * Why an order is not fulfilled yet (view order_fulfillment). An order is
+ * fulfilled when every planned load has run and has an accepted ticket, no
+ * ticket waits for review, and every ticketed line has at least its ordered
+ * quantity accepted. A fulfilled order can be billed without marking it
+ * Completed; a partly delivered one cannot.
+ */
+export const FULFILLMENT_GAPS = ["no_loads", "loads_upcoming", "tickets_pending", "loads_without_accepted_ticket", "tickets_other_unit", "quantity_short", "no_accepted_tickets"] as const;
+export type FulfillmentGap = (typeof FULFILLMENT_GAPS)[number];
+
+export const FULFILLMENT_GAP_LABELS: Record<FulfillmentGap, string> = {
+  no_loads: "No loads are planned",
+  loads_upcoming: "Loads are still to run",
+  tickets_pending: "Tickets are waiting for review",
+  loads_without_accepted_ticket: "A delivered load has no accepted ticket",
+  tickets_other_unit: "A ticket is in a different unit than its order line",
+  quantity_short: "Delivered less than ordered (partial delivery)",
+  no_accepted_tickets: "No accepted tickets yet",
+};
+
 export interface ReadinessCounts {
   status: string;
+  fulfilled?: boolean;
+  fulfillment_gap?: FulfillmentGap | null;
   loads_missing: number;
   loads_not_due: number;
   tickets_live: number;
@@ -41,11 +63,18 @@ export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): 
       return { why: `${plural(o.exceptions_count, "exception")} not acknowledged.`, action: "Check the differences below and acknowledge them with a reason, or correct the tickets." };
     case "in_progress":
       return {
-        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}.`,
-        action: "Mark the order Completed when all work is done.",
+        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}${o.fulfillment_gap ? ` — not fully delivered: ${FULFILLMENT_GAP_LABELS[o.fulfillment_gap].toLowerCase()}` : ""}.`,
+        action: o.fulfillment_gap === "quantity_short"
+          ? "Partly delivered orders stay out of billing. Plan the remaining loads, or mark the order Completed if the rest will not be delivered."
+          : "It becomes billable once every load has run with an accepted ticket and the ordered quantities are delivered — or mark the order Completed when all work is done.",
       };
     case "ready":
-      return { why: "All loads have accepted tickets and every exception is resolved.", action: "Hand it off for billing." };
+      return {
+        why: o.status === "completed"
+          ? "All loads have accepted tickets and every exception is resolved."
+          : "Fully delivered: every planned load has an accepted ticket, the ordered quantities are delivered, and every exception is resolved.",
+        action: "Hand it off for billing.",
+      };
     case "handed_off":
       return { why: "Handed off for billing.", action: "Enter the invoice in your accounting system. Undo the handoff only if it was a mistake." };
   }

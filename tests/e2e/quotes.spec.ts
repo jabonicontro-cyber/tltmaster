@@ -85,12 +85,11 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await expectToast(page, "Quote marked as sent.");
   await page.getByRole("button", { name: "Mark accepted" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Mark accepted" }).click();
-  await expectToast(page, "Quote marked accepted.");
+  // Acceptance creates exactly one Confirmed order (N15); there is nothing left to convert.
+  await expectToast(page, /Quote marked accepted\. Order O-\d{4}-\d{4} was created as Confirmed\./);
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
-
-  // Convert to order
-  await page.getByRole("button", { name: "Convert to order" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Create order" }).click();
+  await expect(page.getByRole("button", { name: "Convert to order" })).toHaveCount(0);
+  await page.getByRole("link", { name: /^Order O-/ }).first().click();
   await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
   const orderUrl = page.url();
   const orderNumber = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
