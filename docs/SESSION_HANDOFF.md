@@ -28,6 +28,14 @@ project credentials. Read it together with:
   `20261030000100_profile_self_service.sql` on staging before it works there** (back up first,
   DEPLOYMENT §2a; rollback script in `supabase/rollbacks/`). Without it the app works and `/profile`
   says editing is not available yet (tested). No PTO exists, so none is shown.
+- **Email settings fail safe (b51a5d4):** only the Supabase URL and anon key are required to start. A
+  malformed optional setting is ignored and named (never its value) in the server log; any malformed
+  email setting (including `EMAIL_TEST_RECIPIENT`, `LEAD_NOTIFY_EMAIL`, `APP_BASE_URL`) turns sending
+  off entirely. In test mode, invitations (Supabase Auth) are refused except to the test inbox; password
+  resets and sign-up confirmations are self-initiated and still go to the requester's own address.
+- **Phone fields** format US numbers as typed; `+` numbers and extensions kept; profile requires a
+  complete number. **Navigation:** breadcrumbs return to the remembered list view; phones show one
+  back link; forms marked `data-guard-unsaved` warn before leaving with edits.
 - **Known flaky locally:** `tests/db/command-center.test.ts` first test runs ~19 s against the large
   local test database and can hit the 20 s timeout in a full run; passes alone.
 
