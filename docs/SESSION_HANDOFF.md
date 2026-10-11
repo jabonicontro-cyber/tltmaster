@@ -134,6 +134,13 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Smart Load Build increment 2 — travel-time approach decided (2026-10-11):** dispatcher-entered times first, no
+routing service (SMART_LOAD_BUILD.md §10). Proposed tables `sources`, `route_times`, `site_unload_times` in
+`docs/proposals/route_times.sql` — NOT in `supabase/migrations/` (so the pending `db push` for the Early Access fix
+cannot apply it); tested on a scratch copy only. Next decision: is the loading source chosen per order, per material
+or per load (§9.7-2)? Open item: the founder mentioned "six synchronized Smart Dispatch views" — no definition exists in
+the docs or code yet; ask the founder for the list before recording it.
+
 **Smart Load Build increment 2 — prepared (2026-10-11):** audit, data model proposal, staged plan and decisions in
 docs/SMART_LOAD_BUILD.md §9. Implemented only pure trip/cycle-time logic (`src/lib/dispatch/trip-plan.ts`, 10 unit
 tests), not wired to any page — no behaviour change, no migration, not deployed. Next decision: where trip times come

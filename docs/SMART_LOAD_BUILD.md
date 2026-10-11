@@ -186,3 +186,43 @@ the founder's approval of the cost before any account is created. Results would 
 3. Firm vs flexible: default firm? Who may change a firm date?
 4. Driver limits: a company shift length, federal hours-of-service, or both?
 5. Routing service budget, if any.
+
+## 10. Travel-time approach — decided (founder, 2026-10-11)
+
+**Decision:** trip times start as **dispatcher-entered** values. No paid routing service for now (§9.5 stays a later
+option, with cost and geocoding reviewed first). Ticket timestamps may later supply **measured** values. Every
+duration is labelled `dispatcher`, `measured` or `estimate`; estimated or missing values are always shown to the
+dispatcher, and a plan that needs a missing value says so instead of assuming one. This answers §9.7 question 1.
+
+**Data model (proposed, tested on a scratch copy only):** `docs/proposals/route_times.sql` — deliberately outside
+`supabase/migrations/` so `supabase db push` (pending for the Early Access fix) cannot pick it up.
+- `sources` (quarry / plant / yard / other) with optional `load_minutes` + `load_basis` (both or neither);
+- `route_times` per source × customer site: `outbound_minutes`/`back_minutes`, each with its basis, `sample_count`
+  for measured values;
+- `site_unload_times` per customer site: `unload_minutes` + basis.
+- Tenancy: `company_id` from the session, unchangeable (`forbid_company_change`), every reference a
+  `(company_id, id)` foreign key; RLS read `dispatch.view`, insert/update `dispatch.edit`; no delete or truncate
+  (deactivate sources; correct times by updating, which is audited). Checked on a scratch copy: dispatcher write
+  works; another company sees nothing; a mechanic is refused; a time without its basis is refused; a route to another
+  company's site is refused; `company_id` cannot be moved; no delete/anon privileges.
+- Becomes a versioned migration + rollback + DB tests only after approval of this model and of decision §9.7-2
+  (is the source chosen per order, per material or per load?), then applied by the owner (DEPLOYMENT §2a).
+
+**Screens and permissions (proposed):**
+- *Settings → Quarries & sources* (`dispatch.edit` to edit, `dispatch.view` to read): list, add, deactivate;
+  loading minutes with basis.
+- *Source detail → Route times*: one row per customer site served — outbound and return minutes with basis, last
+  changed by/at; missing rows listed as "not entered".
+- *Customer site → Unloading time* (same permissions).
+- *Build loads*: shows the cycle (load + out + unload + back) with each value's basis, lists any missing value
+  with a link to enter it, and only then computes trips per truck and staggered times.
+
+**How planning uses the values (no silent assignment):** `planTrips` (§9.2) receives the four durations with their
+basis, the order's delivery window and the day's existing bookings, and returns proposed start/end times per load
+plus loads that do not fit. The dispatcher reviews; approval creates planned loads with those times (stale-draft
+check and rollback as in increment 1). Quantities stay exact, payload/safety filters and existing bookings are
+respected, firm dates are never moved, and trucks/drivers are still assigned only through Smart Dispatch with the
+dispatcher's approval.
+
+**Still separate, staged capabilities (not implemented):** alternative quarries (H), multi-order trips (I), cost
+optimisation (B/F), driver-hour rules (§9.7-4), firm vs flexible dates (§9.7-3).
