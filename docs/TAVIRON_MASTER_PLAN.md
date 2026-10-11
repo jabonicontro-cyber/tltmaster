@@ -111,6 +111,11 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Domains (2026-10-11, owner to confirm):** production/public `https://mytaviron.com`; testing `https://tltmaster.vercel.app`.
+The sign-in logo links to `https://mytaviron.com`. Not verified from Claude's sandbox (network policy). Every push deploys to
+the Vercel project's Production environment; if `mytaviron.com` is attached to the same project there is no preview/production
+split yet (both addresses share one build, one set of variables and one database). Decision for the founder before launch.
+
 **Early Access gate (2026-10-11):** the gate page is a branded Taviron page that takes one shared password
 (`EARLY_ACCESS_PASSWORD`, server environment only; DEPLOYMENT §3b) as well as personal site codes. Either one
 admits *this browser* to sign-in through its own revocable grant — it never signs anyone in or grants any

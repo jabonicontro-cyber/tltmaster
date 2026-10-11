@@ -96,6 +96,9 @@ any custom domain added to the project later (none is known).
 6. **When ready to show the public website:** get the Privacy and Terms drafts reviewed (pricing is in place). Then set
    `PUBLIC_SITE=on` in Vercel and redeploy. Set `SITE_INDEXING=on` only for the real launch domain.
 7. **Supabase Auth setup:** URL configuration, email templates and SMTP (DEPLOYMENT §1).
+9. **Domains:** in Vercel → Project → Settings → Domains, confirm where `mytaviron.com` is attached. If it is on this
+   project, decide whether it should serve the current (gated) build now; a separate project or a Preview-branch setup
+   is needed for a real preview/production split. Add the domain to Supabase → Authentication → URL Configuration.
 8. **Shared Early Access password (DEPLOYMENT §3b):** back up staging, apply migration
    `20261029000100_shared_early_access_password.sql` (§2a), then add `EARLY_ACCESS_PASSWORD` (Sensitive) in Vercel and
    redeploy. Until both are done the shared password does not work — "not valid" without the variable, "temporarily
@@ -130,6 +133,21 @@ any custom domain added to the project later (none is known).
 
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
+
+**Domains, sign-in logo and redirects (2026-10-11):**
+- **Sign-in logo:** on the sign-in pages (login, sign-up, password reset) the Taviron logo now links to
+  `https://mytaviron.com` in the same tab (`src/lib/site/urls.ts`); tested by mouse and keyboard. Other logos unchanged.
+- **Open-redirect fix:** `safeNextPath` now refuses control characters; before, `?next=/%09/evil.example` sent a user to
+  another site after sign-in (confirmed by a test against the old code). Fixed and tested.
+- **Domains — not verified:** this session's network policy blocks `mytaviron.com`, `tltmaster.vercel.app`, public DNS and
+  the Vercel/Supabase APIs, so DNS, HTTPS and domain assignment are unconfirmed. GitHub's deployment records show every
+  push deploying to Vercel's **Production** environment (the one `tltmaster.vercel.app` serves). If `mytaviron.com` is
+  attached to this same project, it serves the same build, variables and Supabase project — there is no separate
+  preview today. The gate keeps both private. No canonical URLs, sitemap or hardcoded preview address exist; absolute
+  links come only from `APP_BASE_URL` (per Vercel environment).
+- **Shared password:** the owner has chosen it (not recorded anywhere in the repository). It works only after the
+  staging migration `20261029000100` is applied and `EARLY_ACCESS_PASSWORD` is set in the Vercel environment that
+  serves the address in use, then redeployed. Not verified live.
 
 **Shared Early Access password (2026-10-11):** the Early Access page is now a branded Taviron page
 (`src/app/early-access/`) that accepts one shared password from the server environment as well as personal site

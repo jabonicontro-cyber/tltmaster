@@ -1,6 +1,10 @@
-/** Only allow same-site relative paths as post-login destinations. */
+/**
+ * Only allow same-site relative paths as post-login destinations. Control
+ * characters are refused too: browsers drop tabs and line breaks from URLs, so
+ * "/<tab>/evil.example" would otherwise become "//evil.example" — another site.
+ */
 export function safeNextPath(next: string | null | undefined, fallback = "/command-center"): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\")) return fallback;
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.startsWith("/\\") || /[\u0000-\u001f\u007f]/.test(next)) return fallback;
   return next;
 }
 
