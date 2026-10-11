@@ -212,6 +212,13 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
  * employees migration (20261031000100); on a database without it the rest of
  * the demo still works and this step is skipped.
  */
+/** Which illustrated avatar (public/avatars) each demo person uses — matched to their job. */
+const AVATARS: Record<string, string> = {
+  "Daniel Mitchell": "avatar-08", "Avery Lindqvist": "avatar-01", "Marco Delgado": "avatar-12", "Priya Raman": "avatar-03",
+  "Theo Brandt": "avatar-19", "Nia Okafor": "avatar-15", "Rachel Ortiz": "avatar-07", "Sam Kowalski": "avatar-04",
+  "Jordan Feld": "avatar-13", "Lena Park": "avatar-09", "Owen Brooks": "avatar-10",
+};
+
 async function seedPeople(db: Db, p: { userId: string; today: string; drivers: Array<{ id: string; name: string }>; truck: Record<string, string>; primary: Record<string, string> }) {
   const probe = await db.from("employees").select("id").limit(1);
   if (probe.error) return; // not migrated yet
@@ -220,7 +227,10 @@ async function seedPeople(db: Db, p: { userId: string; today: string; drivers: A
     ? { full_name: d.name, job_title: DEMO_PERSONA.title, department: "management", employment_type: "full_time", status: "active", hire_date: addDays(p.today, -2600), driver_id: d.id, user_id: p.userId, work_email: "daniel.mitchell@northfield.demo.example", work_phone: "(555) 010-0299" }
     : { full_name: d.name, job_title: titles[d.name] ?? "Driver", department: "operations", employment_type: "full_time", status: i === 4 ? "on_leave" : "active", hire_date: addDays(p.today, -400 - i * 90), driver_id: d.id, user_id: null, work_email: "", work_phone: `(555) 010-020${i}` });
   const staff = STAFF.map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: s.type ?? "full_time", status: "active", hire_date: addDays(p.today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" }));
-  const people = (await must("employees", db.from("employees").insert([...rows, ...staff]).select("id, full_name"))) as Array<{ id: string; full_name: string }>;
+  // Avatars need migration 20261031000300; without it the people are added without one.
+  const withAvatars = !(await db.from("employees").select("avatar_key").limit(1)).error;
+  const all = [...rows, ...staff].map((r) => (withAvatars ? { ...r, avatar_key: AVATARS[r.full_name] ?? "" } : r));
+  const people = (await must("employees", db.from("employees").insert(all).select("id, full_name"))) as Array<{ id: string; full_name: string }>;
   for (const [driverId, unit] of Object.entries(p.primary)) {
     await must("primary truck", db.rpc("set_driver_primary_truck", { p_driver_id: driverId, p_truck_id: p.truck[unit] }));
   }

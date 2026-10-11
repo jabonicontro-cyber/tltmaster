@@ -19,6 +19,7 @@ export interface EmployeeRow {
   emergency_contact_name: string;
   emergency_contact_phone: string;
   notes: string;
+  avatar_key: string;
   updated_at: string;
 }
 
@@ -35,7 +36,7 @@ export async function listEmployees(f: EmployeeFilters) {
   const supabase = await createClient();
   let query = supabase
     .from("employees")
-    .select("id, user_id, driver_id, full_name, job_title, department, employment_type, status, hire_date, work_email, work_phone, updated_at", { count: "exact" })
+    .select("id, user_id, driver_id, full_name, job_title, department, employment_type, status, hire_date, work_email, work_phone, avatar_key, updated_at", { count: "exact" })
     .order("full_name");
   const pattern = ilikePattern(f.q);
   if (pattern) query = query.or(`full_name.ilike.${pattern},job_title.ilike.${pattern},work_email.ilike.${pattern},work_phone.ilike.${pattern}`);
@@ -49,7 +50,7 @@ export async function listEmployees(f: EmployeeFilters) {
   const from = (f.page - 1) * PAGE_SIZE;
   const { data, error, count } = await query.range(from, from + PAGE_SIZE - 1);
   if (error) throw new Error(`Could not load employees: ${error.message}`);
-  const rows = (data ?? []) as Array<Pick<EmployeeRow, "id" | "user_id" | "driver_id" | "full_name" | "job_title" | "department" | "employment_type" | "status" | "hire_date" | "work_email" | "work_phone" | "updated_at">>;
+  const rows = (data ?? []) as Array<Pick<EmployeeRow, "id" | "user_id" | "driver_id" | "full_name" | "job_title" | "department" | "employment_type" | "status" | "hire_date" | "work_email" | "work_phone" | "avatar_key" | "updated_at">>;
 
   // Primary trucks for the drivers on this page (visible with fleet.view; otherwise left out).
   const driverIds = rows.map((r) => r.driver_id).filter((v): v is string => Boolean(v));

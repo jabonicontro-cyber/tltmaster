@@ -12,6 +12,7 @@ import { formatDate } from "@/lib/dates";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES, formatPay } from "@/lib/employees";
 import { QUALIFICATION_SHORT } from "@/lib/fleet/labels";
 import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
+import { avatarUrl } from "@/lib/people/avatars";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { getEmployee } from "@/server/data/employees";
@@ -50,7 +51,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         <div className="space-y-5 lg:col-span-2">
           <Card>
             <div className="flex items-center gap-4 p-4 sm:p-5">
-              <Avatar name={e.full_name} src={e.user_id ? `/people/photo/${e.user_id}` : ""} size={64} />
+              <Avatar name={e.full_name} src={e.user_id ? `/people/photo/${e.user_id}` : ""} fallbackSrc={avatarUrl(e.avatar_key)} size={64} />
               <div className="min-w-0">
                 <p className="text-lg font-semibold">{e.job_title || "No job title"}</p>
                 <p className="text-sm text-muted">{DEPARTMENTS[e.department]} · {EMPLOYMENT_TYPES[e.employment_type]}</p>

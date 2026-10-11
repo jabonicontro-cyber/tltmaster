@@ -8,8 +8,14 @@ import { initialsOf } from "@/lib/people/photo";
  * A person's photo, or their initials when there is none (or it fails to
  * load). Decorative next to a visible name; pass `label` when it stands alone.
  */
-export function Avatar({ name, src, size = 32, label, className }: { name: string; src?: string; size?: number; label?: string; className?: string }) {
+export function Avatar({ name, src, fallbackSrc, size = 32, label, className }: { name: string; src?: string; /** Shown when `src` is missing or fails (e.g. a chosen illustrated avatar). */ fallbackSrc?: string; size?: number; label?: string; className?: string }) {
   const [failed, setFailed] = useState(false);
+  if ((!src || failed) && fallbackSrc) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- a small static illustration
+      <img src={fallbackSrc} alt={label ?? ""} aria-hidden={label ? undefined : true} width={size} height={size} style={{ width: size, height: size }} className={cn("shrink-0 rounded-full bg-surface object-cover ring-1 ring-line", className)} />
+    );
+  }
   const style = { width: size, height: size, fontSize: Math.max(11, Math.round(size * 0.38)) };
   const a11y = label ? { role: "img" as const, "aria-label": label } : { "aria-hidden": true };
   if (src && !failed) {

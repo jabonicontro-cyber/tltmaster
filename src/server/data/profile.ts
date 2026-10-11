@@ -34,13 +34,16 @@ export const photoUrl = (userId: string, version: string | null) => (version ? `
  * never by their real account name, which stays untouched. null outside a demo
  * or when the demo has no such record.
  */
-export const getDemoPersonaName = cache(async (isDemo: boolean, userId: string): Promise<string | null> => {
+export const getDemoPersona = cache(async (isDemo: boolean, userId: string): Promise<{ name: string; avatarKey: string } | null> => {
   if (!isDemo) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("employees").select("full_name").eq("user_id", userId).maybeSingle();
+  const { data, error } = await supabase.from("employees").select("*").eq("user_id", userId).maybeSingle();
   if (error || !data) return null;
-  return (data as { full_name: string }).full_name || null;
+  const row = data as { full_name: string; avatar_key?: string };
+  return row.full_name ? { name: row.full_name, avatarKey: row.avatar_key ?? "" } : null;
 });
+
+export const getDemoPersonaName = async (isDemo: boolean, userId: string) => (await getDemoPersona(isDemo, userId))?.name ?? null;
 
 /** The name to greet and show the signed-in person by: demo persona, own display name, then profile name. */
 export async function shownName(access: { isDemo?: boolean; userId: string; fullName: string }): Promise<string> {

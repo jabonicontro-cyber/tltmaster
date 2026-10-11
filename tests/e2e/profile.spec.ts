@@ -69,6 +69,17 @@ test("a driver adds, replaces and removes their photo, sets a display name, and 
   await expect(page.locator("header img[src^='/people/photo/']")).toHaveCount(0);
 });
 
+test("instead of a photo, a person can choose an illustrated avatar", async ({ page }) => {
+  await signIn(page, "office");
+  await page.goto("/profile");
+  await page.getByRole("button", { name: "Use avatar 4" }).click();
+  await expectToast(page, "Photo saved.");
+  const stored = await asUser(USERS.office.email, async (q) => (await q("select mime_type from public.profile_photo((public.my_profile()->>'user_id')::uuid)")).rows[0]);
+  expect(stored.mime_type).toBe("image/png"); // the avatar went through the normal photo checks
+  await page.reload();
+  await expect(page.locator("header img[src^='/people/photo/']")).toBeVisible();
+});
+
 test("a wrong file type is refused with a reason", async ({ page }) => {
   await signIn(page, "office");
   await page.goto("/profile");

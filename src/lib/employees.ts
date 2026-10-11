@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { optionalEmail, optionalPhone } from "@/lib/schemas/common";
+import { isAvatarKey } from "@/lib/people/avatars";
 
 export const DEPARTMENTS = { operations: "Operations", dispatch: "Dispatch", office: "Office", shop: "Shop / maintenance", sales: "Sales", management: "Management", other: "Other" } as const;
 export const EMPLOYMENT_TYPES = { full_time: "Full-time", part_time: "Part-time", seasonal: "Seasonal", contractor: "Contractor" } as const;
@@ -28,6 +29,7 @@ export const employeeSchema = z
     emergency_contact_name: z.string().trim().max(120, "Use at most 120 characters."),
     emergency_contact_phone: optionalPhone,
     notes: z.string().trim().max(4000, "Use at most 4000 characters."),
+    avatar_key: z.string().trim().default("").refine((v) => v === "" || isAvatarKey(v), "Choose one of the avatars."),
   })
   .superRefine((v, ctx) => {
     if (v.status === "terminated" && !v.end_date) ctx.addIssue({ code: "custom", path: ["end_date"], message: "Enter the last day of employment." });

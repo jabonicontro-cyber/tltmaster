@@ -19,6 +19,8 @@ test("office adds an employee, finds them by search and filter, and edits the re
   await page.getByLabel("Department").selectOption("shop");
   await page.getByLabel("Work phone").fill("3125550142");
   await expect(page.getByLabel("Work phone")).toHaveValue("(312) 555-0142");
+  await page.locator("label", { has: page.getByLabel("Avatar 10") }).click(); // people click the picture
+  await expect(page.getByLabel("Avatar 10")).toBeChecked();
   await page.getByLabel("Status").selectOption("terminated");
   await page.getByRole("button", { name: "Add employee" }).click();
   await expect(page.getByText("Enter the last day of employment.")).toBeVisible(); // kept input, explained
@@ -28,6 +30,7 @@ test("office adds an employee, finds them by search and filter, and edits the re
   await expectToast(page, "Employee added.");
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
   await expect(page.getByText("Pay (confidential)")).toHaveCount(0); // office has no pay permission
+  await expect(page.locator("main img[src='/avatars/avatar-10.png']")).toBeVisible(); // no login, so the chosen avatar
 
   await page.goto(`/employees?q=${encodeURIComponent(name)}&department=shop`);
   await expect(page.getByRole("link", { name })).toBeVisible();

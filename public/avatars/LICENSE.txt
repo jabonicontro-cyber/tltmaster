@@ -1,0 +1,6 @@
+Illustrated avatars avatar-01 … avatar-20 (.svg source and .png)
+
+Original artwork for Taviron: trucking and aggregate-hauling professionals drawn
+as plain SVG by scripts/generate-avatars.mjs (no third-party art). They are
+illustrations, not photographs of real people. Regenerate with:
+  PW_CHROMIUM_PATH=/opt/pw-browsers/chromium node scripts/generate-avatars.mjs

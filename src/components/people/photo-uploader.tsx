@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { MAX_ORIGINAL_BYTES, MAX_PHOTO_BYTES, PHOTO_SIZE, squareCrop } from "@/lib/people/photo";
+import { AVATAR_KEYS, avatarUrl } from "@/lib/people/avatars";
 import { removeMyPhoto, uploadMyPhoto } from "@/app/(app)/profile/actions";
 
 /** Scale and crop a picked image to a PHOTO_SIZE square JPEG in the browser (also drops camera metadata such as location). */
@@ -47,7 +48,7 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
     start(async () => {
       setError(null);
       const fd = new FormData();
-      fd.set("photo", new File([blob], "photo.jpg", { type: "image/jpeg" }));
+      fd.set("photo", new File([blob], blob.type === "image/png" ? "photo.png" : "photo.jpg", { type: blob.type || "image/jpeg" }));
       try {
         const r = await uploadMyPhoto(fd);
         if (r.ok) {
@@ -89,6 +90,21 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
     });
   };
 
+  /** An illustrated avatar is saved exactly like a photo (same checks), so nothing else needs to know the difference. */
+  const chooseAvatar = (key: string) =>
+    start(async () => {
+      setError(null);
+      try {
+        const res = await fetch(avatarUrl(key));
+        if (!res.ok) throw new Error();
+        const blob = await res.blob();
+        setPreview(avatarUrl(key));
+        send(blob);
+      } catch {
+        setError("That avatar could not be loaded. Check your connection and try again.");
+      }
+    });
+
   const shown = preview ?? src;
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -109,6 +125,25 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
         <p id="photo-help" className="text-sm text-muted">Shown to people in your company. It is cropped to a square and made small before it is sent.</p>
         {pending && <p role="status" className="text-sm text-muted">Uploading…</p>}
         {error && <p role="alert" className="text-sm font-medium text-critical">{error}</p>}
+        <fieldset className="pt-2">
+          <legend className="mb-2 text-sm font-semibold text-ink">Or choose an avatar</legend>
+          <div className="grid grid-cols-5 gap-2 sm:grid-cols-10">
+            {AVATAR_KEYS.map((key, i) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => chooseAvatar(key)}
+                disabled={pending}
+                aria-label={`Use avatar ${i + 1}`}
+                aria-pressed={preview === avatarUrl(key)}
+                className="rounded-full ring-offset-2 ring-offset-card hover:ring-2 hover:ring-line focus-visible:ring-2 focus-visible:ring-strong aria-pressed:ring-2 aria-pressed:ring-strong disabled:opacity-60"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- static illustration */}
+                <img src={avatarUrl(key)} alt="" width={44} height={44} className="size-11 rounded-full" />
+              </button>
+            ))}
+          </div>
+        </fieldset>
       </div>
     </div>
   );

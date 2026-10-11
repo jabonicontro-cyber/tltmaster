@@ -50,6 +50,13 @@ project credentials. Read it together with:
   trucks, 5 staff, confidential pay, two weeks of delivery history. Migration
   `20261031000200_driver_home_own_tickets.sql`: My Day lists tickets for the driver's own loads only.
   Reset = start a fresh demo (the previous one is deactivated, never deleted).
+- **Avatars:** 20 original illustrated trucking/aggregate professionals (`public/avatars`, made by
+  `scripts/generate-avatars.mjs`). People can choose one on `/profile` instead of uploading a photo
+  (saved through the normal photo checks); employee records get one via migration
+  `20261031000300_employee_avatars.sql` (for people without a login). Demo people each have one.
+  Real photos / AI portraits: the session's network blocks stock-photo hosts.
+- **Hosted migrations still to apply, in order:** `20261030000100`, `20261031000100`, `20261031000200`,
+  `20261031000300` (back up first; DEPLOYMENT §2a).
 - **Known flaky locally:** `tests/db/command-center.test.ts` first test runs ~19 s against the large
   local test database and can hit the 20 s timeout in a full run; passes alone.
 

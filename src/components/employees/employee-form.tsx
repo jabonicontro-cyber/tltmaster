@@ -9,6 +9,7 @@ import { PhoneInput } from "@/components/ui/phone-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES } from "@/lib/employees";
+import { AVATAR_KEYS, avatarUrl } from "@/lib/people/avatars";
 
 export interface EmployeeFormValues {
   full_name: string;
@@ -23,11 +24,12 @@ export interface EmployeeFormValues {
   emergency_contact_name: string;
   emergency_contact_phone: string;
   notes: string;
+  avatar_key: string;
 }
 
 export const EMPTY_EMPLOYEE: EmployeeFormValues = {
   full_name: "", job_title: "", department: "operations", employment_type: "full_time", status: "active",
-  hire_date: "", end_date: "", work_email: "", work_phone: "", emergency_contact_name: "", emergency_contact_phone: "", notes: "",
+  hire_date: "", end_date: "", work_email: "", work_phone: "", emergency_contact_name: "", emergency_contact_phone: "", notes: "", avatar_key: "",
 };
 
 /** Employment details only. Roles and sign-in access are managed in Settings → Users. */
@@ -87,6 +89,22 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel }: { ini
         <Field label="Notes" htmlFor="notes" error={fieldError("notes")} className="sm:col-span-6">
           <Textarea {...f("notes")} defaultValue={initial.notes} rows={3} maxLength={4000} />
         </Field>
+      </fieldset>
+      <fieldset>
+        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase">Avatar</legend>
+        <p className="mb-2 text-sm text-muted">Shown in the directory when the person has no photo of their own. People with a login can also choose one on their profile.</p>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Avatar">
+          <label className="flex size-12 cursor-pointer items-center justify-center rounded-full border border-line text-xs text-muted has-[:checked]:ring-2 has-[:checked]:ring-strong">
+            <input type="radio" name="avatar_key" value="" defaultChecked={!initial.avatar_key} className="sr-only" />None
+          </label>
+          {AVATAR_KEYS.map((key, i) => (
+            <label key={key} className="cursor-pointer rounded-full has-[:checked]:ring-2 has-[:checked]:ring-strong has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-strong">
+              <input type="radio" name="avatar_key" value={key} defaultChecked={initial.avatar_key === key} className="sr-only" aria-label={`Avatar ${i + 1}`} />
+              {/* eslint-disable-next-line @next/next/no-img-element -- static illustration */}
+              <img src={avatarUrl(key)} alt="" width={48} height={48} className="size-12 rounded-full" />
+            </label>
+          ))}
+        </div>
       </fieldset>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" loading={pending} disabled={pending}>{submitLabel}</Button>

@@ -24,7 +24,7 @@ export default async function EditEmployeePage({ params }: { params: Promise<{ i
           initial={{
             full_name: e.full_name, job_title: e.job_title, department: e.department, employment_type: e.employment_type, status: e.status,
             hire_date: e.hire_date ?? "", end_date: e.end_date ?? "", work_email: e.work_email, work_phone: e.work_phone,
-            emergency_contact_name: e.emergency_contact_name, emergency_contact_phone: e.emergency_contact_phone, notes: e.notes,
+            emergency_contact_name: e.emergency_contact_name, emergency_contact_phone: e.emergency_contact_phone, notes: e.notes, avatar_key: e.avatar_key ?? "",
           }}
           action={saveEmployee.bind(null, id)}
           cancelHref={`/employees/${id}`}

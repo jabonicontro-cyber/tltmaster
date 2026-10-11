@@ -169,6 +169,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   // A fictional persona and the company's own branding — the presenter's real account is untouched.
   await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
   await expect(page.getByRole("banner")).toContainText("Daniel Mitchell");
+  await expect(page.locator("header img[src='/avatars/avatar-08.png']")).toBeVisible();
   await expect(page.getByRole("img", { name: /Northfield Aggregates/ }).first()).toBeVisible();
   const realName = await asUser(PLATFORM_USER.email, async (q) => (await q("select full_name from public.profiles where id = auth.uid()")).rows[0].full_name);
   expect(realName).toBe(PLATFORM_USER.name);
@@ -176,6 +177,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.goto("/employees?status=all");
   await expect(page.getByRole("link", { name: "Sam Kowalski" })).toBeVisible();
   await expect(page.getByRole("row", { name: /Avery Lindqvist/ })).toContainText("Truck 101");
+  await expect(page.getByRole("row", { name: /Avery Lindqvist/ }).locator("img[src='/avatars/avatar-01.png']")).toBeVisible();
   await page.getByRole("link", { name: "Lena Park" }).click();
   await expect(page.getByText("Pay (confidential)")).toBeVisible();
   await page.goto("/orders");
