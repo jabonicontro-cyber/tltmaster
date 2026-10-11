@@ -2,6 +2,7 @@ import { z } from "zod";
 import { isIsoDate } from "@/lib/dates";
 import { CDL_CLASSES, QUALIFICATION_KINDS, TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { checkbox, optionalPhone, optionalText } from "./common";
+import { DOCUMENT_KINDS, OWNERSHIP, type DocumentKind } from "@/lib/fleet/availability";
 
 const emptyToNull = (v: unknown) => (v === "" || v === undefined ? null : v);
 
@@ -152,3 +153,25 @@ export function toQualificationRow(q: z.output<typeof qualificationSchema>) {
     verified_at: verified ? new Date().toISOString() : null,
   };
 }
+
+// Vehicle documents (metadata) and ownership ---------------------------------------
+
+export const vehicleDocumentSchema = z
+  .object({
+    kind: z.enum(Object.keys(DOCUMENT_KINDS) as [DocumentKind, ...DocumentKind[]], "Choose the kind of document."),
+    title: optionalText(120),
+    reference_number: optionalText(80),
+    issuing_authority: optionalText(120),
+    issued_on: optionalDate,
+    expires_on: optionalDate,
+    notes: optionalText(2000),
+    submission_key: z.uuid().optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (d.kind === "other" && !d.title) ctx.addIssue({ code: "custom", message: "Name the document.", path: ["title"] });
+    if (d.issued_on && d.expires_on && d.expires_on < d.issued_on) ctx.addIssue({ code: "custom", message: "Must be on or after the issue date.", path: ["expires_on"] });
+  });
+
+export const ownershipSchema = z.object({
+  ownership: z.enum(["", ...Object.keys(OWNERSHIP)] as [string, ...string[]]).transform((v) => (v === "" ? null : v)),
+});

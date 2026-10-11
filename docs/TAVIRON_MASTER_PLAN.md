@@ -67,7 +67,7 @@ mobile · company administration, integrations, audit history, data quality.
 | Payroll | Inputs only | `verified_delivery_inputs`; no formulas. |
 | Reports | Measured basics (N14) | Delivered value, rework, billing turnaround, utilization, downtime. No profitability or ROI. |
 | Command Center | Working | Prioritized exceptions, assignment, personal layout. No yellow/red severity model per §6.6 yet. |
-| Fleet | Partial | Trucks/trailers with capacity and service status, driver qualifications. **Maintenance first increment (2026-10-11, Preview; needs migration 20261101000100 on each database):** truck work orders with lifecycle, history, findings, labor hours and cost lines; preventive schedules by days/miles/engine hours; readings; safety-critical defects restrict the truck until an authorized inspection clears it; clearance queue; driver notice on My Day. Not yet: trailers, parts inventory, purchase orders, vendor records, warranties, shop capacity, compliance documents or OCR. |
+| Fleet | Partial | Trucks/trailers with capacity and service status, driver qualifications. **Maintenance first increment (2026-10-11, Preview; needs migration 20261101000100 on each database):** truck work orders with lifecycle, history, findings, labor hours and cost lines; preventive schedules by days/miles/engine hours; readings; safety-critical defects restrict the truck until an authorized inspection clears it; clearance queue; driver notice on My Day. Not yet: trailers, parts inventory, purchase orders, vendor records, warranties, shop capacity, compliance documents or OCR. **Fleet management first increment (2026-10-11, Preview only; needs migration 20261102000100):** vehicle documents (metadata, expiry warnings, no upload), ownership, driver assignment with history and atomic reassign, derived availability with maintenance restrictions, readings, recorded costs and downtime on profiles. |
 | Material calculator | Absent | |
 | Distance pricing / dispatch bases | Absent | No dispatch-base entity exists. |
 | Customer portal | Absent | |
@@ -338,6 +338,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
     fairness, whether truck locations will be recorded.
 21. ~~Lead statuses `qualified`, `onboarding`, `spam`~~ — decided 2026-10-11: folded into the six statuses (see §8 W5).
 22. Maintenance defaults to confirm: who may clear a truck for service (default: owner only; grantable to mechanics), whether a mechanic may clear their own repair, warning windows (default 14 days / 500 mi / 25 h), and whether due preventive work orders should be generated automatically each day (needs a scheduler).
+23. Fleet: which vehicle documents are required per vehicle type (registration, insurance, annual inspection, IFTA/IRP permits…), how far ahead to warn (default 30 days), and whether document files should be uploaded and stored in Taviron (needs a private storage bucket).
 
 ## 10. Subscription model (proposal / confirmed policies)
 

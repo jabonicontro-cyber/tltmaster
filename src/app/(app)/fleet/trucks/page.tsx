@@ -6,16 +6,17 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TRUCK_TYPE_LABELS, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { listTrucks } from "@/server/data/fleet";
+import { buildDirectory, fleetContext, listTrucks } from "@/server/data/fleet";
 
 export const metadata = { title: "Trucks" };
 
-type Search = { q?: string; status?: string; type?: string };
+type Search = { q?: string; status?: string; type?: string; driver?: string; maintenance?: string; documents?: string; ownership?: string; sort?: string };
 
 export default async function TrucksPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("fleet.view");
   const sp = await searchParams;
-  const rows = await listTrucks(sp);
+  const [all, ctx] = await Promise.all([listTrucks(sp), fleetContext({ maintenance: can(access, "maintenance.view") })]);
+  const { rows, extras } = buildDirectory("truck", all, ctx, sp);
   const canEdit = can(access, "fleet.edit");
   return (
     <>
@@ -25,7 +26,7 @@ export default async function TrucksPage({ searchParams }: { searchParams: Promi
         actions={canEdit && <ButtonLink href="/fleet/trucks/new" icon={<Plus className="size-4" />}>Add truck</ButtonLink>}
       />
       <FleetNav active="Trucks" />
-      <EquipmentList kind="truck" rows={rows} filters={sp} canEdit={canEdit} typeOptions={TRUCK_TYPES.map((t) => ({ value: t, label: TRUCK_TYPE_LABELS[t] }))} />
+      <EquipmentList kind="truck" rows={rows} filters={sp} canEdit={canEdit} extras={extras} sources={{ maintenance: ctx.maintenance.available, documents: ctx.documents.available }} typeOptions={TRUCK_TYPES.map((t) => ({ value: t, label: TRUCK_TYPE_LABELS[t] }))} />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { expectToast, signIn, unique } from "./helpers";
 import { asUser } from "./db";
 import { USERS } from "./users";
+import { driverUserId } from "./driver-fixture";
 
 // Mechanics & Maintenance: work orders, the safety clearance gate, preventive
 // schedules, cost visibility and the driver's in-app notice. Fictional data only.
@@ -139,10 +140,13 @@ test("costs are visible only to people with cost access", async ({ page, browser
 test("the driver of the truck sees scheduled and canceled shop visits on My Day", async ({ page }) => {
   const tag = unique();
   const truckId = await newTruck(tag);
-  // The driver's own account id (no profile lookup across accounts), then their driver record.
-  const userId = await asUser(USERS.driver.email, async (q) => (await q("select public.my_profile()->>'user_id' as id")).rows[0].id as string);
-  const driverId = await asUser(USERS.owner.email, async (q) =>
-    (await q("select id from public.drivers where user_id = $1", [userId])).rows[0].id as string);
+  // The e2e driver account linked to an active driver record. Other specs (driver portal) unlink it and keep
+  // the old record, so link a fresh one when none is linked.
+  const userId = await driverUserId();
+  const driverId = await asUser(USERS.owner.email, async (q) => {
+    const linked = (await q("select id from public.drivers where user_id = $1 and active", [userId])).rows[0]?.id as string | undefined;
+    return linked ?? ((await q("insert into public.drivers (user_id) values ($1) returning id", [userId])).rows[0].id as string);
+  });
   const previous = await asUser(USERS.owner.email, async (q) =>
     (await q("select primary_truck_id from public.drivers where id = $1", [driverId])).rows[0].primary_truck_id as string | null);
   try {

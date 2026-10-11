@@ -14,6 +14,8 @@ import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDriver } from "@/server/data/fleet";
 import { businessToday } from "@/server/data/settings";
+import { createClient } from "@/server/supabase/server";
+import Link from "next/link";
 
 export const metadata = { title: "Driver" };
 
@@ -34,6 +36,10 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const { timezone } = await businessToday();
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const canEdit = can(access, "fleet.edit");
+  const supabase = await createClient();
+  const { data: own } = await supabase.from("drivers").select("primary_truck_id").eq("id", d.id).maybeSingle();
+  const truckId = (own as { primary_truck_id?: string | null } | null)?.primary_truck_id ?? null;
+  const { data: truck } = truckId ? await supabase.from("trucks").select("id, unit_number").eq("id", truckId).maybeSingle() : { data: null };
 
   return (
     <>
@@ -53,6 +59,12 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
+          <Card>
+            <CardHeader title="Primary truck" description="The truck this driver normally uses. Change it from the truck's page (Fleet → Trucks) or the employee record." />
+            <CardBody>
+              {truck ? <Link href={`/fleet/trucks/${(truck as { id: string }).id}`} className="font-semibold hover:underline">Truck {(truck as { unit_number: string }).unit_number}</Link> : <p className="text-sm text-muted">No primary truck.</p>}
+            </CardBody>
+          </Card>
           <Card>
             <CardHeader title={`Eligibility today (${formatDate(today)})`} description="Without a specific truck: class B CDL or higher and a medical card. A trailer requires class A." />
             <CardBody>

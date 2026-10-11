@@ -11,7 +11,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TRAILER_TYPE_LABELS } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getTrailer } from "@/server/data/fleet";
+import { getTrailer, vehicleRecords } from "@/server/data/fleet";
+import { downtimeDays, vehicleAvailability } from "@/lib/fleet/availability";
+import { AvailabilityCard, DocumentsCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Trailer" };
@@ -24,6 +26,8 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
   if (!detail) notFound();
   const { trailer: t, events, audit, defaultTruck, names } = detail;
   const { timezone, today } = await businessToday();
+  const records = await vehicleRecords("trailer", t.id, { maintenance: false, costs: false });
+  const availability = vehicleAvailability(t, [], today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
 
   return (
@@ -56,7 +60,10 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
       />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
+          <AvailabilityCard a={availability} timezone={timezone} />
           <ServiceCard e={t} timezone={timezone} />
+          <DocumentsCard vehicle={{ kind: "trailer", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} />
+          <p className="text-sm text-muted">Out of service for {downtimeDays(events, t, new Date(), 90)} days in the last 90 (recorded status changes). Work orders cover trucks only for now.</p>
           <CapacityCard e={t} timezone={timezone} who={who} />
           <EquipmentDetails
             e={t}
@@ -78,6 +85,7 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
               { label: "Compatibility notes", value: t.compatibility_notes, wide: true },
             ]}
           />
+          <OwnershipCard vehicle={{ kind: "trailer", id: t.id }} value={t.ownership} canEdit={can(access, "fleet.edit")} />
         </div>
         <EquipmentHistory events={events} audit={audit} timezone={timezone} who={who} />
       </div>

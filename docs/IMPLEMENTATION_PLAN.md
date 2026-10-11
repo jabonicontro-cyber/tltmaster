@@ -1960,6 +1960,52 @@ readings, duplicate generation, driver notices, lifecycle parity), `tests/unit/m
 `tests/e2e/maintenance.spec.ts` (safety flow through the UI with two roles, PM and generation, costs visibility,
 My Day notice, read-only and no-access), tenancy lists updated.
 
+## 5x. Fleet Management — first increment (2026-10-11)
+
+**Audit first:** Fleet already had an overview (in-service counts, out-of-service list, drivers needing
+attention, eligibility checker), truck/trailer/driver directories with search, profiles, create/edit, service
+status changes with history (`set_equipment_service_status`) and audit. Missing: maintenance and assignment
+information, documents, ownership, readings, costs and downtime. No document storage for vehicles existed (ticket
+photos use a private bucket of their own); no notification framework exists.
+
+**Migration `20261102000100_fleet_management.sql`** (additive; rollback `supabase/rollbacks/20261102000100_fleet_management.down.sql`; tested locally apply → rollback → re-apply):
+- `vehicle_documents` (registration, insurance, inspection certificate, permit, lease, title, other; number,
+  issuer, issue/expiry dates, notes). Read `fleet.view`; add/edit/archive `fleet.edit`; never deleted (archive is
+  one-way); a document cannot move to another vehicle; submission key against double submits. Metadata only.
+- `trucks.ownership` / `trailers.ownership` (owned, financed, leased, rented; NULL = not recorded).
+- `truck_assignment_events` (append-only, written by a trigger on `drivers.primary_truck_id` whatever the path).
+- `assign_truck_driver(truck, driver)` (`fleet.assign`): assign, reassign (previous holder unassigned, new
+  driver's previous truck released) or remove, in one transaction; same company only.
+- Also sets `work_order_events.created_at` to default to `clock_timestamp()` so two maintenance events in one transaction keep their order (it made a driver-notice test order-dependent).
+- No new status system: availability is derived (`vehicleAvailability`, `src/lib/fleet/availability.ts`) from the
+  service status and open work orders — Safety restricted / Awaiting clearance / Out of service / In service with
+  shop work open / Available — plus upcoming shop dates. The Fleet page hides "Return to service" for a truck with an
+  open safety-critical work order and links to Maintenance; the database trigger from 20261101000100 refuses it
+  anyway.
+
+**App:** Fleet overview gains Safety restricted, Preventive overdue, Shop visits (7 days) and Documents expiring
+cards and a renewal list. The truck and trailer directories show driver, availability, upcoming shop date, maintenance
+and document flags, masked VIN (last 6), ownership; filters for driver, maintenance condition, documents and
+ownership; sorting by unit, type, year, availability. Truck profile: availability, driver assignment with history,
+maintenance (work orders, preventive schedules, readings; maintenance.view), documents, costs and utilization
+(recorded downtime in 90 days, recorded miles, recorded maintenance costs and cost per mile only from recorded
+data; costs with maintenance.costs), ownership. Trailer profile: availability, documents, downtime, ownership.
+Driver profile shows the primary truck. Every new section reads its tables optionally: without the migration
+the pages work and say the section is not available yet (verified locally by rolling the migration back).
+
+**Not built (honest limits):** file upload for documents (needs a private bucket and storage policies — next step);
+expiry reminders (no scheduler/notification framework; the overview list is the reminder); which documents are
+required per vehicle (master plan §9 Q12 — registration and insurance are only shown as "not recorded"); fuel,
+insurance-premium and lease costs; utilization from dispatch hours; trailer work orders; Smart Dispatch still does
+not read future shop dates or documents (integration point: `vehicleAvailability().upcoming` and
+`vehicle_documents.expires_on`).
+
+**Tests:** `tests/db/fleet-management.test.ts` (documents permissions, invalid data, cross-company, archive, double
+submit; ownership; atomic reassign with exact history; fleet.assign only; other companies refused; assignment never
+lifts a safety restriction), `tests/unit/fleet-availability.test.ts`, `tests/e2e/fleet-management.spec.ts`
+(expired document flagged on profile, directory and overview; assign/reassign/remove with history; restricted
+truck has no return-to-service; driver and other company refused); tenancy lists updated.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

@@ -447,6 +447,8 @@ interface EquipmentBase {
   out_of_service_reason: string;
   out_of_service_since: string | null;
   expected_return_date: string | null;
+  /** NULL = not recorded (and absent until migration 20261102000100 is applied) */
+  ownership?: "owned" | "financed" | "leased" | "rented" | null;
   notes: string;
   created_by: string | null;
   created_at: string;

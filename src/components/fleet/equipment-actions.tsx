@@ -19,9 +19,11 @@ interface Props {
   status: ServiceStatus;
   today: string;
   permissions: { edit: boolean; service: boolean };
+  /** Set when maintenance restricts the vehicle: returning it to service happens only through clearance. */
+  clearanceRequired?: string;
 }
 
-export function EquipmentActions({ kind, id, unitNumber, active, status, today, permissions }: Props) {
+export function EquipmentActions({ kind, id, unitNumber, active, status, today, permissions, clearanceRequired }: Props) {
   const router = useRouter();
   const [serviceOpen, setServiceOpen] = useState(false);
   const [activeOpen, setActiveOpen] = useState(false);
@@ -38,7 +40,7 @@ export function EquipmentActions({ kind, id, unitNumber, active, status, today, 
           Edit
         </ButtonLink>
       )}
-      {permissions.service && (
+      {permissions.service && !(clearanceRequired && !goingOut) && (
         <Button
           variant={goingOut ? "danger" : "primary"}
           icon={goingOut ? <Wrench className="size-4" /> : <CheckCircle2 className="size-4" />}
@@ -51,6 +53,9 @@ export function EquipmentActions({ kind, id, unitNumber, active, status, today, 
         >
           {goingOut ? "Take out of service" : "Return to service"}
         </Button>
+      )}
+      {permissions.service && clearanceRequired && !goingOut && (
+        <ButtonLink href={clearanceRequired} variant="secondary" icon={<Wrench className="size-4" />}>Clearance in Maintenance</ButtonLink>
       )}
       {permissions.edit && (
         <Button variant="secondary" onClick={() => setActiveOpen(true)}>

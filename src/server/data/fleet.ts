@@ -1,5 +1,7 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
+import { documentAttention, vehicleAvailability, type DocumentKind, type OpenWorkOrder } from "@/lib/fleet/availability";
+import type { EquipmentRowExtra } from "@/components/fleet/equipment-views";
 import { driverReadiness, EXPIRY_WARNING_DAYS } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { uuid } from "@/lib/schemas/common";
@@ -219,4 +221,181 @@ export async function fleetOverview() {
     },
     expiring,
   };
+}
+
+// -----------------------------------------------------------------------------
+// Fleet management context: assignments, maintenance, documents.
+// Each source is optional: when its tables are not installed yet (migration not
+// applied) or the user may not read it, the page says so instead of failing.
+// -----------------------------------------------------------------------------
+
+export interface VehicleDocumentRow {
+  id: string;
+  truck_id: string | null;
+  trailer_id: string | null;
+  kind: DocumentKind;
+  title: string;
+  reference_number: string;
+  issuing_authority: string;
+  issued_on: string | null;
+  expires_on: string | null;
+  notes: string;
+  archived_at: string | null;
+  archived_by: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+type Optional<T> = { available: boolean; rows: T[] };
+
+async function optionalRows<T>(run: () => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>): Promise<Optional<T>> {
+  try {
+    const { data, error } = await run();
+    if (error) return { available: false, rows: [] };
+    return { available: true, rows: (data ?? []) as T[] };
+  } catch {
+    return { available: false, rows: [] };
+  }
+}
+
+export interface FleetContext {
+  today: string;
+  /** primary truck id → driver */
+  driverByTruck: Map<string, { id: string; name: string }>;
+  maintenance: { available: boolean; openByTruck: Map<string, OpenWorkOrder[]>; pmByTruck: Map<string, { overdue: number; dueSoon: number; unknown: number }> };
+  documents: { available: boolean; byVehicle: Map<string, VehicleDocumentRow[]> };
+}
+
+export async function fleetContext(opts: { maintenance: boolean }): Promise<FleetContext> {
+  const supabase = await createClient();
+  const [{ today }, drivers, open, pm, docs] = await Promise.all([
+    businessToday(),
+    optionalRows<{ id: string; name: string; primary_truck_id: string | null }>(() =>
+      supabase.from("drivers").select("id, name, primary_truck_id").eq("active", true).not("primary_truck_id", "is", null)),
+    opts.maintenance
+      ? optionalRows<OpenWorkOrder & { truck_id: string }>(() =>
+          supabase.from("work_orders").select("id, number, title, status, safety_critical, scheduled_for, clearance_status, truck_id")
+            .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(1000))
+      : Promise.resolve({ available: false, rows: [] }),
+    opts.maintenance
+      ? optionalRows<{ truck_id: string; state: string; readings_stale: boolean }>(() => supabase.rpc("maintenance_pm_status"))
+      : Promise.resolve({ available: false, rows: [] }),
+    optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").is("archived_at", null).order("expires_on", { ascending: true, nullsFirst: false }).limit(2000)),
+  ]);
+  const driverByTruck = new Map(drivers.rows.map((d) => [d.primary_truck_id!, { id: d.id, name: d.name }]));
+  const openByTruck = new Map<string, OpenWorkOrder[]>();
+  for (const w of open.rows) openByTruck.set(w.truck_id, [...(openByTruck.get(w.truck_id) ?? []), w]);
+  const pmByTruck = new Map<string, { overdue: number; dueSoon: number; unknown: number }>();
+  for (const p of pm.rows) {
+    const cur = pmByTruck.get(p.truck_id) ?? { overdue: 0, dueSoon: 0, unknown: 0 };
+    if (p.state === "overdue") cur.overdue += 1;
+    else if (p.state === "due_soon") cur.dueSoon += 1;
+    else if (p.state === "unknown" || p.readings_stale) cur.unknown += 1;
+    pmByTruck.set(p.truck_id, cur);
+  }
+  const byVehicle = new Map<string, VehicleDocumentRow[]>();
+  for (const d of docs.rows) {
+    const key = (d.truck_id ?? d.trailer_id)!;
+    byVehicle.set(key, [...(byVehicle.get(key) ?? []), d]);
+  }
+  return {
+    today,
+    driverByTruck,
+    maintenance: { available: open.available && pm.available, openByTruck, pmByTruck },
+    documents: { available: docs.available, byVehicle },
+  };
+}
+
+export interface VehicleRecords {
+  documents: Optional<VehicleDocumentRow>;
+  assignments: Optional<{ id: string; driver_id: string; action: "assigned" | "unassigned"; actor_id: string | null; created_at: string }>;
+  workOrders: Optional<{ id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; clearance_status: string | null; created_at: string; completed_at: string | null; cleared_at: string | null }>;
+  schedules: Optional<{ schedule_id: string; truck_id: string; name: string; state: string; next_due_on: string | null; next_due_miles: number | null; next_due_hours: number | null; readings_stale: boolean }>;
+  readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null }>;
+  costs: Optional<{ work_order_id: string; quantity: number; unit_cost_cents: number }>;
+  driverNames: Map<string, string>;
+}
+
+/** Everything the vehicle profile shows beyond the vehicle row itself. */
+export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts: { maintenance: boolean; costs: boolean }): Promise<VehicleRecords> {
+  const supabase = await createClient();
+  const column = kind === "truck" ? "truck_id" : "trailer_id";
+  const isTruck = kind === "truck";
+  const none = Promise.resolve({ available: false, rows: [] as never[] });
+  const [documents, assignments, workOrders, schedules, readings] = await Promise.all([
+    optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").eq(column, id).order("archived_at", { ascending: false, nullsFirst: true }).order("expires_on", { ascending: true, nullsFirst: false })),
+    isTruck ? optionalRows<VehicleRecords["assignments"]["rows"][number]>(() => supabase.from("truck_assignment_events").select("id, driver_id, action, actor_id, created_at").eq("truck_id", id).order("created_at", { ascending: false }).limit(50)) : none,
+    isTruck && opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => supabase.from("work_orders").select("id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at").eq("truck_id", id).order("created_at", { ascending: false }).limit(100)) : none,
+    isTruck && opts.maintenance ? optionalRows<VehicleRecords["schedules"]["rows"][number]>(() => supabase.rpc("maintenance_pm_status")) : none,
+    isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("id, odometer_miles, engine_hours, read_at, recorded_by").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
+  ]);
+  const woIds = workOrders.rows.map((w) => w.id);
+  const costs = isTruck && opts.costs && woIds.length
+    ? await optionalRows<VehicleRecords["costs"]["rows"][number]>(() => supabase.from("work_order_costs").select("work_order_id, quantity, unit_cost_cents").in("work_order_id", woIds))
+    : { available: isTruck && opts.costs && workOrders.available, rows: [] };
+  const driverIds = [...new Set(assignments.rows.map((a) => a.driver_id))];
+  const names = driverIds.length ? await supabase.from("drivers").select("id, name").in("id", driverIds) : { data: [] };
+  return {
+    documents,
+    assignments,
+    workOrders,
+    schedules: { available: schedules.available, rows: schedules.rows.filter((r) => r.truck_id === id) },
+    readings: { available: readings.available, rows: readings.rows.map((r) => ({ ...r, odometer_miles: r.odometer_miles === null ? null : Number(r.odometer_miles), engine_hours: r.engine_hours === null ? null : Number(r.engine_hours) })) },
+    costs: { available: costs.available, rows: costs.rows.map((c) => ({ ...c, quantity: Number(c.quantity), unit_cost_cents: Number(c.unit_cost_cents) })) },
+    driverNames: new Map(((names.data ?? []) as Array<{ id: string; name: string }>).map((d) => [d.id, d.name])),
+  };
+}
+
+/** Directory rows with assignment, availability, maintenance and document flags; filtered and sorted. */
+export function buildDirectory<T extends TruckRow | TrailerRow>(
+  kind: "truck" | "trailer",
+  rows: T[],
+  ctx: FleetContext,
+  f: { driver?: string; maintenance?: string; documents?: string; ownership?: string; sort?: string },
+) {
+  const extras: Record<string, EquipmentRowExtra> = {};
+  const facts = new Map<string, { restricted: boolean; open: number; overdue: number; dueSoon: number; expired: number; expiring: number; missing: number; driver: boolean; rank: number }>();
+  for (const e of rows) {
+    const open = kind === "truck" ? ctx.maintenance.openByTruck.get(e.id) ?? [] : [];
+    const pm = kind === "truck" ? ctx.maintenance.pmByTruck.get(e.id) : undefined;
+    const availability = vehicleAvailability(e, open, ctx.today);
+    const docs = ctx.documents.byVehicle.get(e.id) ?? [];
+    const att = documentAttention(docs, ctx.today);
+    const driver = kind === "truck" ? ctx.driverByTruck.get(e.id)?.name ?? null : null;
+    const restricted = availability.state === "restricted" || availability.state === "awaiting_clearance";
+    const maintenanceText = !ctx.maintenance.available || kind === "trailer" ? null
+      : pm?.overdue ? { text: `${pm.overdue} preventive service${pm.overdue === 1 ? "" : "s"} overdue`, tone: "red" as const }
+      : open.length ? { text: `${open.length} open work order${open.length === 1 ? "" : "s"}`, tone: "amber" as const }
+      : pm?.dueSoon ? { text: `${pm.dueSoon} preventive due soon`, tone: "amber" as const }
+      : pm?.unknown ? { text: "Preventive data missing", tone: "gray" as const }
+      : null;
+    extras[e.id] = {
+      driver,
+      availability,
+      maintenance: maintenanceText,
+      documents: ctx.documents.available ? { expired: att.expired.length, expiring: att.expiring.length, notRecorded: att.notRecorded.map(att.label) } : null,
+    };
+    const rank = { restricted: 0, awaiting_clearance: 0, out_of_service: 1, in_shop: 2, available: 3, inactive: 4 }[availability.state];
+    facts.set(e.id, { restricted, open: open.length, overdue: pm?.overdue ?? 0, dueSoon: pm?.dueSoon ?? 0, expired: att.expired.length, expiring: att.expiring.length, missing: att.notRecorded.length, driver: Boolean(driver), rank });
+  }
+  let out = rows.filter((e) => {
+    const x = facts.get(e.id)!;
+    if (f.driver === "assigned" && !x.driver) return false;
+    if (f.driver === "unassigned" && x.driver) return false;
+    if (f.maintenance === "restricted" && !x.restricted) return false;
+    if (f.maintenance === "open" && !x.open) return false;
+    if (f.maintenance === "overdue" && !x.overdue) return false;
+    if (f.maintenance === "due_soon" && !x.dueSoon) return false;
+    if (f.documents === "attention" && !(x.expired || x.expiring)) return false;
+    if (f.documents === "expired" && !x.expired) return false;
+    if (f.documents === "missing" && !x.missing) return false;
+    if (f.ownership === "unknown" && e.ownership) return false;
+    if (f.ownership && f.ownership !== "unknown" && e.ownership !== f.ownership) return false;
+    return true;
+  });
+  const typeOf = (e: T) => ("truck_type" in e ? e.truck_type : (e as TrailerRow).trailer_type);
+  if (f.sort === "type") out = [...out].sort((a, b) => typeOf(a).localeCompare(typeOf(b)) || a.unit_number.localeCompare(b.unit_number));
+  else if (f.sort === "year") out = [...out].sort((a, b) => (b.model_year ?? 0) - (a.model_year ?? 0) || a.unit_number.localeCompare(b.unit_number));
+  else if (f.sort === "status") out = [...out].sort((a, b) => facts.get(a.id)!.rank - facts.get(b.id)!.rank || a.unit_number.localeCompare(b.unit_number));
+  return { rows: out, extras };
 }

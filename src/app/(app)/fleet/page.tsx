@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { AlertTriangle, Container, Truck, UserRound, Wrench } from "lucide-react";
+import { AlertTriangle, CalendarClock, Container, FileWarning, ShieldAlert, Truck, UserRound, Wrench } from "lucide-react";
 import { EligibilityChecker } from "@/components/fleet/eligibility-checker";
 import { QualificationBadge } from "@/components/fleet/fleet-badges";
 import { FleetNav } from "@/components/fleet/fleet-nav";
@@ -11,7 +11,9 @@ import { addDays, formatDate } from "@/lib/dates";
 import { EXPIRY_WARNING_DAYS, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { qualificationName, TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS } from "@/lib/fleet/labels";
 import { requirePagePermission } from "@/server/auth";
-import { driverOptions, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
+import { driverOptions, fleetContext, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
+import { documentAttention } from "@/lib/fleet/availability";
+import { can } from "@/lib/permissions";
 
 export const metadata = { title: "Fleet" };
 
@@ -33,8 +35,17 @@ function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label:
 }
 
 export default async function FleetPage() {
-  await requirePagePermission("fleet.view");
-  const [o, trucks, trailers, drivers] = await Promise.all([fleetOverview(), truckOptions(), trailerOptions(), driverOptions()]);
+  const access = await requirePagePermission("fleet.view");
+  const [o, trucks, trailers, drivers, ctx] = await Promise.all([fleetOverview(), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") })]);
+  const activeTrucks = trucks.filter((t) => t.active);
+  const restricted = activeTrucks.filter((t) => (ctx.maintenance.openByTruck.get(t.id) ?? []).some((w) => w.safety_critical));
+  const pmOverdue = activeTrucks.filter((t) => (ctx.maintenance.pmByTruck.get(t.id)?.overdue ?? 0) > 0);
+  const scheduled = activeTrucks.flatMap((t) => (ctx.maintenance.openByTruck.get(t.id) ?? [])
+    .filter((w) => w.scheduled_for && w.scheduled_for >= o.today && w.scheduled_for <= addDays(o.today, 7) && w.status === "scheduled")
+    .map((w) => ({ truck: t, wo: w })));
+  const docAttention = [...activeTrucks.map((t) => ({ kind: "truck" as const, v: t })), ...trailers.filter((t) => t.active).map((t) => ({ kind: "trailer" as const, v: t }))]
+    .map((x) => ({ ...x, att: documentAttention(ctx.documents.byVehicle.get(x.v.id) ?? [], o.today) }))
+    .filter((x) => x.att.expired.length || x.att.expiring.length);
   const soon = addDays(o.today, EXPIRY_WARNING_DAYS);
   const down = [
     ...o.trucks.outOfService.map((e) => ({ ...e, kind: "truck" as const })),
@@ -69,6 +80,30 @@ export default async function FleetPage() {
         <Stat icon={<UserRound className="size-5" />} label="Drivers eligible today" value={`${o.drivers.ready} / ${o.drivers.active}`} sub="Verified CDL and medical card" href="/fleet/drivers?status=ready" warn={o.drivers.notReady.length > 0} />
         <Stat icon={<Wrench className="size-5" />} label="Out of service" value={down.length} sub={`${plural(o.trucks.outOfService.length, "truck")} · ${plural(o.trailers.outOfService.length, "trailer")}`} href={o.trucks.outOfService.length === 0 && o.trailers.outOfService.length > 0 ? "/fleet/trailers?status=out_of_service" : "/fleet/trucks?status=out_of_service"} warn={down.length > 0} />
       </div>
+
+      {(ctx.maintenance.available || ctx.documents.available) && (
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {ctx.maintenance.available && <Stat icon={<ShieldAlert className="size-5" />} label="Safety restricted" value={restricted.length} sub="Trucks waiting for repair or clearance" href="/fleet/trucks?maintenance=restricted" warn={restricted.length > 0} />}
+          {ctx.maintenance.available && <Stat icon={<Wrench className="size-5" />} label="Preventive overdue" value={pmOverdue.length} sub="Trucks with an overdue service" href="/fleet/trucks?maintenance=overdue" warn={pmOverdue.length > 0} />}
+          {ctx.maintenance.available && <Stat icon={<CalendarClock className="size-5" />} label="Shop visits, next 7 days" value={scheduled.length} sub="Scheduled work orders" href="/maintenance/work-orders?status=scheduled" />}
+          {ctx.documents.available && <Stat icon={<FileWarning className="size-5" />} label="Documents expiring" value={docAttention.length} sub="Vehicles with an expired document or one due within 30 days" href="/fleet/trucks?documents=attention" warn={docAttention.some((x) => x.att.expired.length > 0)} />}
+        </div>
+      )}
+
+      {docAttention.length > 0 && (
+        <Card className="mt-5">
+          <CardHeader title="Vehicle documents needing renewal" description="Expired, or expiring within 30 days. No reminders are sent — this list is the reminder." />
+          <ul className="divide-y divide-line">
+            {docAttention.map(({ kind, v, att }) => (
+              <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
+                <Link href={`/fleet/${kind}s/${v.id}`} className="font-semibold hover:underline">{kind === "truck" ? "Truck" : "Trailer"} {v.unit_number}</Link>
+                {att.expired.map((d) => <span key={d.id} className="font-medium text-critical">{att.label(d.kind)} expired {formatDate(d.expires_on)}</span>)}
+                {att.expiring.map((d) => <span key={d.id} className="text-amber-800 dark:text-amber-300">{att.label(d.kind)} expires {formatDate(d.expires_on)}</span>)}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>

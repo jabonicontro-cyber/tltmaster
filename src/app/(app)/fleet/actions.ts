@@ -8,6 +8,8 @@ import { isIsoDate } from "@/lib/dates";
 import { uuid } from "@/lib/schemas/common";
 import {
   driverSchema,
+  ownershipSchema,
+  vehicleDocumentSchema,
   qualificationSchema,
   serviceStatusSchema,
   toEquipmentRow,
@@ -213,5 +215,84 @@ export async function checkEligibility(input: z.input<typeof eligibilityInput>):
     const { data, error } = await supabase.rpc("check_assignment_eligibility", { p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_on: on });
     if (error) return fail(dbErrorMessage(error));
     return ok(data as EligibilityCheck);
+  });
+}
+
+// Assignments, documents, ownership (20261102000100) ------------------------------
+
+/** Make a driver the one whose primary truck this is (null removes them). Atomic reassign; needs fleet.assign. */
+export async function assignTruckDriver(truckId: string, driverId: string | null): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("fleet.assign");
+    if (!uuid.safeParse(truckId).success || (driverId !== null && !uuid.safeParse(driverId).success)) return fail("Invalid selection.");
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("assign_truck_driver", { p_truck_id: truckId, p_driver_id: driverId });
+    if (error) return fail(dbErrorMessage(error));
+    revalidateFleet(`/fleet/trucks/${truckId}`);
+    revalidatePath("/employees", "layout");
+    const r = data as { changed: boolean };
+    if (!r.changed) return ok(undefined, "No change.");
+    return ok(undefined, driverId ? "Driver assigned." : "Driver removed from this truck.");
+  });
+}
+
+const vehicleRef = z.object({ kind: z.enum(["truck", "trailer"]), id: uuid });
+
+/** Add or edit a document's details (fleet.edit). A repeated submit with the same key adds nothing. */
+export async function saveVehicleDocument(vehicle: z.input<typeof vehicleRef>, documentId: string | null, formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("fleet.edit");
+    const v = vehicleRef.safeParse(vehicle);
+    if (!v.success || (documentId && !uuid.safeParse(documentId).success)) return fail("Invalid vehicle or document.");
+    const parsed = vehicleDocumentSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const { submission_key, ...fields } = parsed.data;
+    const supabase = await createClient();
+    const column = v.data.kind === "truck" ? "truck_id" : "trailer_id";
+    const res = documentId
+      ? await supabase.from("vehicle_documents").update(fields).eq("id", documentId).eq(column, v.data.id).is("archived_at", null).select("id")
+      : await supabase.from("vehicle_documents").insert({ ...fields, [column]: v.data.id, submission_key }).select("id");
+    if (res.error) {
+      if (res.error.code === "23505") return ok(undefined, "Document already added.");
+      if (res.error.code === "23503") return fail("The vehicle was not found in your company.");
+      return fail(dbErrorMessage(res.error));
+    }
+    if (!res.data?.length) return fail("The document was not found, is archived, or you may not edit it.");
+    revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
+    return ok(undefined, documentId ? "Document saved." : "Document added.");
+  });
+}
+
+/** Archive a document that was replaced or no longer applies (kept in history; not deleted). */
+export async function archiveVehicleDocument(vehicle: z.input<typeof vehicleRef>, documentId: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("fleet.edit");
+    const v = vehicleRef.safeParse(vehicle);
+    if (!v.success || !uuid.safeParse(documentId).success) return fail("Invalid document.");
+    const supabase = await createClient();
+    const column = v.data.kind === "truck" ? "truck_id" : "trailer_id";
+    const { data, error } = await supabase.from("vehicle_documents").update({ archived_at: new Date().toISOString() })
+      .eq("id", documentId).eq(column, v.data.id).is("archived_at", null).select("id");
+    if (error) return fail(dbErrorMessage(error));
+    if (!data?.length) return fail("The document was not found or is already archived.");
+    revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
+    return ok(undefined, "Document archived.");
+  });
+}
+
+/** Record how the company holds the vehicle (fleet.edit). Empty clears it to "not recorded". */
+export async function setOwnership(vehicle: z.input<typeof vehicleRef>, formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("fleet.edit");
+    const v = vehicleRef.safeParse(vehicle);
+    if (!v.success) return fail("Invalid vehicle.");
+    const parsed = ownershipSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.from(v.data.kind === "truck" ? "trucks" : "trailers").update({ ownership: parsed.data.ownership }).eq("id", v.data.id).select("id");
+    if (error) return fail(error.code === "42703" || error.code === "PGRST204" ? "Ownership cannot be recorded until the latest database update is installed." : dbErrorMessage(error));
+    if (!data?.length) return fail("Vehicle not found or you may not edit it.");
+    revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
+    return ok(undefined, "Ownership saved.");
   });
 }

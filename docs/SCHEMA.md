@@ -438,6 +438,16 @@ Rules: a trigger on `trucks` refuses a return to service while an open safety-cr
 open work order per schedule (unique partial index); work order numbers come from the `work_order` document
 sequence. Functions: see IMPLEMENTATION_PLAN §5w.
 
+## Fleet management (20261102000100)
+
+| Table / column | Purpose | Access |
+| --- | --- | --- |
+| `vehicle_documents` | Registration, insurance, inspection, permit, lease, title and other documents per truck or trailer: number, issuer, issued/expires dates, notes, `archived_at`. Metadata only. | Read `fleet.view`; insert/update `fleet.edit`; no delete. |
+| `truck_assignment_events` | History of drivers' primary trucks (assigned / unassigned, who, when), written by a trigger on `drivers`. | Read `fleet.view`. |
+| `trucks.ownership`, `trailers.ownership` | owned / financed / leased / rented; NULL = not recorded. | Update `fleet.edit`. |
+
+Function: `assign_truck_driver(p_truck_id, p_driver_id)` — `fleet.assign`; atomic assign/reassign/remove.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

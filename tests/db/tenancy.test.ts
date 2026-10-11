@@ -9,6 +9,7 @@ afterAll(() => pool.end());
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
   "employees", "employee_compensation",
+  "vehicle_documents", "truck_assignment_events",
   "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
   "price_lists", "customers", "customer_contacts", "customer_sites", "materials", "charge_items",
@@ -24,6 +25,9 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Fleet management (20261102000100): assignment history trigger (internal, not executable by app users);
+  // assign_truck_driver needs fleet.assign and checks truck and driver against require_company().
+  "private.record_truck_assignment", "public.assign_truck_driver",
   // Maintenance (20261101000100): every public function uses require_company() and a maintenance.* permission;
   // truck restriction/release helpers are internal (not executable by app users); driver notices read only the
   // caller's own driver record; the sequence trigger only inserts the new company's own row.
