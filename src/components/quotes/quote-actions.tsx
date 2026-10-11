@@ -267,7 +267,7 @@ function EmailDialog({ quoteId, editSeq, onClose }: { quoteId: string; editSeq: 
             <div><dt className="inline font-semibold">Subject: </dt><dd className="inline">{preview.subject}</dd></div>
             <div><dt className="inline font-semibold">Attachment: </dt><dd className="inline">{preview.filename}</dd></div>
           </dl>
-          <pre className="max-h-64 overflow-auto rounded-md border border-line bg-white p-3 font-sans text-sm whitespace-pre-wrap">{preview.message}</pre>
+          <pre className="max-h-64 overflow-auto rounded-md border border-line bg-card p-3 font-sans text-sm whitespace-pre-wrap">{preview.message}</pre>
           <p className="text-sm text-muted">
             If you emailed the quote yourself from another program, close this and use <strong>Mark as sent</strong>.
           </p>

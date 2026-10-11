@@ -71,7 +71,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
   return (
     <div className="space-y-5">
       {/* Date navigation and summary */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-white px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card px-4 py-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
           <Link href={`/dispatch?date=${shiftDate(day.date, -1)}`} className={buttonClasses("secondary", "sm")} aria-label="Previous day">
             <ChevronLeft className="size-4" aria-hidden /> Prev
@@ -250,7 +250,7 @@ function OrderCard({
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand hover:underline">{o.order_number}</Link>
+            <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
             <OrderStatusBadge status={o.status} />
             <SampleBadge show={o.is_sample} />
             {outsideSchedule && <Badge tone="amber">Outside the order&apos;s scheduled dates</Badge>}
@@ -695,7 +695,7 @@ function LoadTickets({ tickets, canEnter, loadId }: { tickets: DispatchDay["tick
         </Link>
       ))}
       {!tickets.length && canEnter && (
-        <Link href={`/tickets/new?load=${loadId}`} className="font-semibold text-brand underline">
+        <Link href={`/tickets/new?load=${loadId}`} className="font-semibold text-brand-fg underline">
           Enter delivery ticket
         </Link>
       )}

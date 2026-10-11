@@ -5,7 +5,7 @@ import { buttonClasses } from "@/components/ui/button";
 export default function AuthErrorPage() {
   return (
     <main id="main" className="flex min-h-dvh items-center justify-center bg-charcoal px-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 text-center shadow-xl">
+      <div className="w-full max-w-sm rounded-lg bg-card p-6 text-center shadow-xl">
         <div className="mb-4 flex justify-center">
           <BrandMark tone="dark" />
         </div>

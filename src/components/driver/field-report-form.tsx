@@ -62,12 +62,12 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
       )}
       <div>
         <label htmlFor="r-desc" className="mb-2 block text-base font-bold">What happened?</label>
-        <textarea id="r-desc" rows={4} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-lg border-2 border-line bg-white px-4 py-3 text-lg focus:border-charcoal focus:outline-none" />
+        <textarea id="r-desc" rows={4} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-lg border-2 border-line bg-card px-4 py-3 text-lg focus:border-strong focus:outline-none" />
       </div>
       {(error || state.kind === "failed") && (
         <p role="alert" className="rounded-md bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{error ?? (state.kind === "failed" ? state.message : "")}</p>
       )}
-      <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
         <button type="submit" disabled={sending} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
           {sending ? <><Loader2 className="size-5 animate-spin" aria-hidden /> Sending…</> : <><Send className="size-5" aria-hidden /> {state.kind === "failed" ? "Send again" : "Send report"}</>}

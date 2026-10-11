@@ -127,6 +127,10 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Pricing and light/dark mode (2026-10-11):** `/pricing` shows the founder's five tiers (founding discount stays
+private; IMPLEMENTATION_PLAN §5t). The app has an Appearance choice in the user menu — Light, Dark, Match my device —
+stored per browser (§5u). Both are behind the Early Access gate like the rest of the site.
+
 **App overhaul Phase 1 (2026-10-11):** shell + Command Center restyled, urgency colour fixed, presentation mode
 for clean screenshots (IMPLEMENTATION_PLAN §5r, `docs/SCREENSHOTS.md`). The public-page redesign is paused until
 the app modules are done; next app module per the founder's review.

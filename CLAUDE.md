@@ -52,6 +52,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   buttons with white text use `bg-action`, never `bg-electric`.
 - **Urgency colour:** urgent, critical and safety states use `critical` (fixed red), never `brand` — `brand`
   follows each company's own colour.
+- **Light and dark mode (app):** use the theme tokens — `bg-card` (never `bg-white`), `bg-surface`, `text-ink`,
+  `text-muted`, `border-line`, `text-brand-fg` for brand-coloured text, `bg-strong`/`border-strong` for selected
+  states (`charcoal` is the navigation only). Printable documents carry `force-light`. See `src/lib/theme.ts`.
 - **Screenshots of the app:** follow `docs/SCREENSHOTS.md` (demo company, presentation mode, production build).
   Company workspaces use the company's own branding (`src/lib/branding.ts`).
 - **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run

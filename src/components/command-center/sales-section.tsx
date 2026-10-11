@@ -17,8 +17,8 @@ type Quotes = Awaited<ReturnType<typeof loadQuoteDashboard>>;
 
 function Stat({ label, value, sub, href, tone = "default", icon }: { label: string; value: ReactNode; sub?: ReactNode; href?: string; tone?: "default" | "warn" | "good"; icon: ReactNode }) {
   const body = (
-    <div className={cn("flex h-full items-start gap-3 rounded-lg border bg-white p-4 shadow-xs transition-colors", href && "hover:border-charcoal/40", tone === "warn" ? "border-amber-300" : "border-line")}>
-      <div className={cn("rounded-md p-2", tone === "warn" ? "bg-amber-50 text-amber-800" : tone === "good" ? "bg-green-50 text-green-800" : "bg-surface text-charcoal")}>{icon}</div>
+    <div className={cn("flex h-full items-start gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors", href && "hover:border-strong/40", tone === "warn" ? "border-amber-300" : "border-line")}>
+      <div className={cn("rounded-md p-2", tone === "warn" ? "bg-amber-50 text-amber-800" : tone === "good" ? "bg-green-50 text-green-800" : "bg-surface text-ink")}>{icon}</div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-muted">{label}</p>
         <p className="text-2xl font-black text-ink tabular">{value}</p>
@@ -36,7 +36,7 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
       {rows.slice(0, 8).map((q) => (
         <li key={q.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
           <div className="min-w-0">
-            <Link href={`/quotes/${q.id}`} className="font-semibold tabular hover:text-brand hover:underline">{q.quote_number}</Link>
+            <Link href={`/quotes/${q.id}`} className="font-semibold tabular hover:text-brand-fg hover:underline">{q.quote_number}</Link>
             <span className="ml-2 text-sm">{q.customer_name}</span>
             <div className="text-xs text-muted">
               {q.status === "sent" && q.last_sent_at ? `Sent ${formatDate(q.last_sent_at.slice(0, 10))} · ` : ""}
@@ -60,7 +60,7 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
 }) {
   return (
     <div className="space-y-4">
-      <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-white px-4 py-3" aria-label="Sales period">
+      <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card px-4 py-3" aria-label="Sales period">
         <div>
           <label htmlFor="from" className="mb-1 block text-xs font-semibold text-muted uppercase">Decisions from</label>
           <DateInput id="from" name="from" defaultValue={from} className="w-40" />

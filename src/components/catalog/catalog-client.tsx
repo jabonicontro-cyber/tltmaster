@@ -373,7 +373,7 @@ export function PriceListsTable({ rows, usage, canEdit }: { rows: PriceListRow[]
             {rows.map((r) => (
               <Tr key={r.id}>
                 <Td>
-                  <Link href={`/materials/price-lists/${r.id}`} className="font-semibold hover:text-brand hover:underline">
+                  <Link href={`/materials/price-lists/${r.id}`} className="font-semibold hover:text-brand-fg hover:underline">
                     {r.name}
                   </Link>
                   <div className="mt-0.5 flex flex-wrap gap-1.5">

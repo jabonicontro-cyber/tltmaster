@@ -742,7 +742,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                         <label className="inline-flex items-center gap-2">
                           <span className="text-muted">Calculated</span>
                           <select
-                            className="h-8 rounded border border-line bg-white px-2"
+                            className="h-8 rounded border border-line bg-card px-2"
                             value={l.calcMethod}
                             onChange={(e) =>
                               updateLine(l.key, {
@@ -833,7 +833,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
               </div>
               {fieldErrors.taxRate && <p className="text-sm text-red-700">{fieldErrors.taxRate}</p>}
               <div className="flex justify-between"><dt className="text-muted">Tax (on {formatCents(totals.taxableCents)} taxable)</dt><dd className="tabular">{formatCents(totals.taxCents)}</dd></div>
-              <div className="flex justify-between border-t-2 border-charcoal pt-2 text-xl font-black"><dt>Total</dt><dd className="tabular">{formatCents(totals.totalCents)}</dd></div>
+              <div className="flex justify-between border-t-2 border-strong pt-2 text-xl font-black"><dt>Total</dt><dd className="tabular">{formatCents(totals.totalCents)}</dd></div>
             </dl>
             {defaultTaxRateBp === 0 && !selectedCustomer?.tax_exempt && (
               <p className="mt-3 flex gap-1.5 text-sm text-muted">
@@ -853,7 +853,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       )}
 
       {/* Sticky action bar */}
-      <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-white/95 px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] backdrop-blur lg:left-68">
+      <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] backdrop-blur lg:left-68">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted">
             {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : `New ${docLabel} — not saved yet`}

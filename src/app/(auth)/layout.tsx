@@ -11,7 +11,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
           <div className="mb-8 flex justify-center">
             <BrandMark className="scale-125" />
           </div>
-          <div className="rounded-lg bg-white p-6 shadow-xl">{children}</div>
+          <div className="rounded-lg bg-card p-6 shadow-xl">{children}</div>
           <p className="mt-6 text-center text-xs text-white/50">{PRODUCT_NAME} · Authorized users only</p>
         </div>
       </main>

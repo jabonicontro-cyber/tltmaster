@@ -44,7 +44,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       <Link
         key={label}
         href={`/orders?${new URLSearchParams(params)}`}
-        className={`rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-inset ${active ? "bg-charcoal text-white ring-charcoal" : "bg-white text-ink ring-line hover:bg-surface"}`}
+        className={`rounded-full px-3 py-1 text-sm font-semibold ring-1 ring-inset ${active ? "bg-strong text-white ring-strong" : "bg-card text-ink ring-line hover:bg-surface"}`}
         aria-current={active ? "true" : undefined}
       >
         {label}
@@ -122,7 +122,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     return (
                       <Tr key={o.id}>
                         <Td>
-                          <Link href={`/orders/${o.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">
+                          <Link href={`/orders/${o.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand-fg hover:underline">
                             {o.order_number}
                           </Link>
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted">

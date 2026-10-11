@@ -146,7 +146,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                   {shown.map((t) => (
                     <Tr key={t.id}>
                       <Td>
-                        <Link href={t.status === "needs_review" || t.status === "submitted" ? withReturn(`/tickets/${t.id}?queue=review`, listHref) : withReturn(`/tickets/${t.id}`, listHref)} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">{t.ticket_number}</Link>
+                        <Link href={t.status === "needs_review" || t.status === "submitted" ? withReturn(`/tickets/${t.id}?queue=review`, listHref) : withReturn(`/tickets/${t.id}`, listHref)} className="font-semibold whitespace-nowrap tabular hover:text-brand-fg hover:underline">{t.ticket_number}</Link>
                         {t.revision > 1 && <span className="ml-1 text-xs text-muted">rev {t.revision}</span>}
                         {photos.get(t.ticket_number) ? (
                           <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted" title="Paper ticket photo attached">

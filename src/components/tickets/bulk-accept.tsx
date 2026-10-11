@@ -62,7 +62,7 @@ export function BulkAccept({ tickets }: { tickets: CleanTicket[] }) {
                 />
                 <span>
                   <strong className="tabular">{t.number}</strong> {t.summary}
-                  {res && <span className={res.outcome === "accepted" ? " text-green-800" : " text-brand"}> — {res.message}</span>}
+                  {res && <span className={res.outcome === "accepted" ? " text-green-800" : " text-brand-fg"}> — {res.message}</span>}
                 </span>
               </label>
             );

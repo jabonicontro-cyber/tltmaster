@@ -154,16 +154,16 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
 export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back }: { plans: LoadPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string }) {
   const feasible = plans.filter((p) => p.proposal).length;
   return (
-    <details open className="mb-4 rounded-lg border border-line bg-white" aria-label="Smart Dispatch">
+    <details open className="mb-4 rounded-lg border border-line bg-card" aria-label="Smart Dispatch">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 border-b border-line px-4 py-2">
-        <Lightbulb className="size-5 text-brand" aria-hidden />
+        <Lightbulb className="size-5 text-brand-fg" aria-hidden />
         <span className="font-bold">Smart Dispatch</span>
         <span className="text-sm text-muted">
           {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal · ${plans.length - feasible} need attention`} · {formatDate(from)}–{formatDate(to)}
         </span>
         <span className="ml-auto flex gap-1 text-xs">
           {[1, 3, 7].map((d) => (
-            <Link key={d} href={`/dispatch?horizon=${d}`} className={`rounded border px-2 py-0.5 ${d === horizon ? "border-charcoal bg-charcoal text-white" : "border-line"}`}>
+            <Link key={d} href={`/dispatch?horizon=${d}`} className={`rounded border px-2 py-0.5 ${d === horizon ? "border-strong bg-strong text-white" : "border-line"}`}>
               {d === 1 ? "Today" : `${d} days`}
             </Link>
           ))}

@@ -3,7 +3,7 @@ import type { QuoteDocument } from "@/lib/quotes/document";
 /** Print-friendly HTML rendering of a quote. Mirrors src/server/pdf/quote-pdf.tsx. */
 export function QuoteDocumentView({ doc }: { doc: QuoteDocument }) {
   return (
-    <article className="print-area relative mx-auto max-w-[8.5in] bg-white px-8 py-8 text-[13px] leading-snug text-ink shadow-sm ring-1 ring-line sm:px-12">
+    <article className="force-light print-area relative mx-auto max-w-[8.5in] bg-white px-8 py-8 text-[13px] leading-snug text-ink shadow-sm ring-1 ring-line sm:px-12">
       {doc.isDraft && (
         <div className="mb-4 rounded border-2 border-dashed border-amber-400 bg-amber-50 px-3 py-2 text-center text-sm font-bold tracking-wide text-amber-900 uppercase">
           Draft — not yet sent to the customer

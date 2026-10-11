@@ -57,7 +57,8 @@ export function brandingStyle(b: Branding): Record<string, string> {
   if (b.color && HEX.test(b.color)) {
     style["--color-brand"] = b.color;
     style["--color-brand-dark"] = mix(b.color, 0, 0.15);
-    style["--color-brand-light"] = mix(b.color, 255, 0.9);
+    // brand-light, brand-fg and strong are derived in CSS on .app-root, so they
+    // follow both the company's colors and light or dark mode (globals.css).
   }
   if (b.sidebarColor && HEX.test(b.sidebarColor)) {
     style["--color-charcoal"] = b.sidebarColor;

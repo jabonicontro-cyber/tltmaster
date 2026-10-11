@@ -11,7 +11,7 @@ export function DemoBar({ preview, platformAdmin }: { preview: string | null; pl
   const pathname = usePathname();
   const form = useRef<HTMLFormElement>(null);
   return (
-    <div className="no-print flex flex-wrap items-center justify-between gap-2 bg-amber-300 px-3 py-1.5 text-sm text-gray-950 lg:px-6" role="region" aria-label="Demo company">
+    <div className="force-light no-print flex flex-wrap items-center justify-between gap-2 bg-amber-300 px-3 py-1.5 text-sm text-gray-950 lg:px-6" role="region" aria-label="Demo company">
       <p>
         <strong>Demo company</strong> · fictional data · nothing is sent outside Taviron
         {preview ? <> · previewing as <strong>{PREVIEW_LABELS[preview as keyof typeof PREVIEW_LABELS] ?? preview}</strong> (presentation only)</> : null}

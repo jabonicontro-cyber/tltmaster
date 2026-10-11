@@ -73,7 +73,7 @@ export function EquipmentList({
               {rows.map((e) => (
                 <Tr key={e.id}>
                   <Td>
-                    <Link href={`${base}/${e.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand hover:underline">
+                    <Link href={`${base}/${e.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand-fg hover:underline">
                       {e.unit_number}
                     </Link>
                     {e.license_plate && <div className="text-sm text-muted">{[e.plate_state, e.license_plate].filter(Boolean).join(" ")}</div>}
@@ -227,7 +227,7 @@ export function EquipmentHistory({ events, audit, timezone, who }: { events: Equ
         <ol className="px-4 py-3 sm:px-5" aria-label="Equipment history">
           {items.map((e) => (
             <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
-              <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.status ? "bg-charcoal" : "bg-line"}`} aria-hidden />
+              <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.status ? "bg-strong" : "bg-line"}`} aria-hidden />
               <p className="text-sm font-semibold">{e.title}</p>
               {e.detail && <p className="text-sm">{e.detail}</p>}
               <p className="text-xs text-muted">

@@ -307,7 +307,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                           <td className="py-1.5 text-right tabular">{p.ordered} {ln.unit_code}</td>
                           <td className="py-1.5 text-right tabular">{p.verifiedOthers}</td>
                           <td className="hidden py-1.5 text-right tabular sm:table-cell">{p.pendingOthers}</td>
-                          <td className={p.over ? "py-1.5 text-right font-semibold text-brand tabular" : "py-1.5 text-right tabular"}>{p.over ? `${p.remainingAfterThis.replace("-", "")} over` : p.remainingAfterThis}{p.otherUnitTickets ? ` (+${p.otherUnitTickets} in another unit)` : ""}</td>
+                          <td className={p.over ? "py-1.5 text-right font-semibold text-brand-fg tabular" : "py-1.5 text-right tabular"}>{p.over ? `${p.remainingAfterThis.replace("-", "")} over` : p.remainingAfterThis}{p.otherUnitTickets ? ` (+${p.otherUnitTickets} in another unit)` : ""}</td>
                         </tr>
                       );
                     })}
@@ -323,7 +323,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(order.discount_cents)}</dd></div>
                 )}
                 <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(order.tax_rate_bp)})</dt><dd className="tabular">{formatCents(order.tax_cents)}</dd></div>
-                <div className="flex justify-between border-t-2 border-charcoal pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(order.total_cents)}</dd></div>
+                <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(order.total_cents)}</dd></div>
               </dl>
             </div>
           </Card>
@@ -334,7 +334,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           <ol className="px-4 py-3 sm:px-5" aria-label="Order history">
             {timeline.map((e) => (
               <li key={`${e.kind}-${e.id}`} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
-                <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.kind === "status" ? "bg-charcoal" : "bg-line"}`} aria-hidden />
+                <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.kind === "status" ? "bg-strong" : "bg-line"}`} aria-hidden />
                 {e.kind === "status" ? (
                   <>
                     <p className="text-sm font-semibold">

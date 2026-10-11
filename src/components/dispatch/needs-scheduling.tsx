@@ -41,7 +41,7 @@ export function NeedsScheduling({ items, canSchedule, today, back }: { items: Un
   }
 
   return (
-    <section id="needs-scheduling" aria-label="Needs scheduling" className="mb-4 rounded-lg border border-amber-300 bg-white">
+    <section id="needs-scheduling" aria-label="Needs scheduling" className="mb-4 rounded-lg border border-amber-300 bg-card">
       <h2 className="flex items-center gap-2 border-b border-line px-4 py-2 font-bold text-ink">
         <CalendarClock className="size-5 text-amber-600" aria-hidden /> Needs scheduling ({items.length})
         <span className="text-sm font-normal text-muted">— confirmed orders without a delivery date are not on any day of the board</span>

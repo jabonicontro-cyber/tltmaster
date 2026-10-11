@@ -30,7 +30,7 @@ const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` :
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded-lg border border-line bg-white p-4">
+    <div className="rounded-lg border border-line bg-card p-4">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-1 text-2xl font-bold tabular">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted">{sub}</p> : null}
@@ -92,13 +92,13 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       />
       <form className="mb-5 flex flex-wrap items-end gap-2" aria-label="Period">
         {PERIODS.map((p) => (
-          <Link key={p} href={`/reports?days=${p}`} className={`rounded-md border px-3 py-2 text-sm font-semibold ${!custom && days === p ? "border-charcoal bg-charcoal text-white" : "border-line bg-white hover:bg-surface"}`}>
+          <Link key={p} href={`/reports?days=${p}`} className={`rounded-md border px-3 py-2 text-sm font-semibold ${!custom && days === p ? "border-strong bg-strong text-white" : "border-line bg-card hover:bg-surface"}`}>
             Last {p} days
           </Link>
         ))}
         <label className="text-sm font-semibold">From <DateInput name="from" defaultValue={from} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
         <label className="text-sm font-semibold">To <DateInput name="to" defaultValue={to} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
-        <button className="h-9 rounded-md bg-charcoal px-3 text-sm font-semibold text-white">Show</button>
+        <button className="h-9 rounded-md bg-strong px-3 text-sm font-semibold text-white">Show</button>
       </form>
 
       {error || !r ? (

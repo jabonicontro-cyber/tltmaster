@@ -3,8 +3,8 @@ import { AlertCircle } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 const control =
-  "block w-full rounded-md border border-line bg-white px-3 text-[15px] text-ink shadow-xs " +
-  "placeholder:text-muted/70 focus:border-charcoal focus:outline-none focus:ring-2 focus:ring-charcoal/15 " +
+  "block w-full rounded-md border border-line bg-card px-3 text-[15px] text-ink shadow-xs " +
+  "placeholder:text-muted/70 focus:border-strong focus:outline-none focus:ring-2 focus:ring-strong/15 " +
   "disabled:bg-surface disabled:text-muted aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/15";
 
 interface FieldProps {
@@ -22,7 +22,7 @@ export function Field({ label, htmlFor, error, hint, required, className, childr
     <div className={cn("space-y-1", className)}>
       <label htmlFor={htmlFor} className="block text-sm font-semibold text-ink">
         {label}
-        {required && <span className="ml-0.5 text-brand" aria-hidden>*</span>}
+        {required && <span className="ml-0.5 text-brand-fg" aria-hidden>*</span>}
       </label>
       {children}
       {error ? (

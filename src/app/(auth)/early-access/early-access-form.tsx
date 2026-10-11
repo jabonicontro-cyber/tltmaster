@@ -12,7 +12,7 @@ export function EarlyAccessForm({ next }: { next?: string }) {
   return (
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <div className="space-y-1.5">
-        <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-bold tracking-wide text-brand-dark uppercase">
+        <p className="inline-flex items-center gap-1.5 rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-bold tracking-wide text-brand-fg uppercase">
           <KeyRound className="size-3.5" aria-hidden /> By invitation
         </p>
         <h1 className="text-2xl font-black text-ink">Early Access</h1>

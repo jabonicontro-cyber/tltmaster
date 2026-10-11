@@ -141,7 +141,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                 <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(current.subtotal_cents)}</dd></div>
                 {current.discount_cents > 0 && <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(current.discount_cents)}</dd></div>}
                 <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(current.tax_rate_bp)})</dt><dd className="tabular">{formatCents(current.tax_cents)}</dd></div>
-                <div className="flex justify-between border-t-2 border-charcoal pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(current.total_cents)}</dd></div>
+                <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(current.total_cents)}</dd></div>
               </dl>
             </div>
           </Card>
@@ -196,7 +196,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               {versions.map((v) => (
                 <li key={v.id} className="px-4 py-3 sm:px-5">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/quotes/${quote.id}/versions/${v.id}`} className="font-semibold hover:text-brand hover:underline">
+                    <Link href={`/quotes/${quote.id}/versions/${v.id}`} className="font-semibold hover:text-brand-fg hover:underline">
                       Revision {v.version_no}
                     </Link>
                     <span className="font-semibold tabular">{formatCents(v.total_cents)}</span>
@@ -221,7 +221,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             <ol className="space-y-0 px-4 py-3 sm:px-5">
               {events.map((e) => (
                 <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
-                  <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-charcoal" aria-hidden />
+                  <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />
                   <p className="text-sm font-semibold">
                     {e.from_status ? `${QUOTE_STATUS_LABELS[e.from_status]} → ` : ""}
                     {QUOTE_STATUS_LABELS[e.to_status]}

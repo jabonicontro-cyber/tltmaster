@@ -24,7 +24,7 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
         <D.Overlay className="fixed inset-0 z-40 bg-black/50" />
         <D.Content
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg bg-white shadow-xl focus:outline-none",
+            "fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg bg-card shadow-xl focus:outline-none",
             size === "sm" && "max-w-md",
             size === "md" && "max-w-xl",
             size === "lg" && "max-w-3xl",

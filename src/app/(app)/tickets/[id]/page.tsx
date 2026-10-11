@@ -67,7 +67,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       <ReturnLink back={returnTo ?? undefined} />
       {queue && <QueueKeys nextHref={queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null} prevHref={queue.prevId ? queueHref(queue.prevId) : null} />}
       {queue && (
-        <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-white px-3 py-2 text-sm">
+        <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-card px-3 py-2 text-sm">
           <span className="font-semibold">
             {queue.position ? `Review queue: ${queue.position} of ${queue.total}` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
           </span>
@@ -178,7 +178,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                   <div><dt className="text-muted">This ticket</dt><dd className="font-semibold tabular">{progress.thisTicket ?? `other unit (${unitLabel(t.unit_code)})`}</dd></div>
                   <div>
                     <dt className="text-muted">Remaining after this</dt>
-                    <dd className={cn("font-semibold tabular", progress.over && "text-brand")}>{progress.over ? `${progress.remainingAfterThis.replace("-", "")} over the order` : progress.remainingAfterThis}</dd>
+                    <dd className={cn("font-semibold tabular", progress.over && "text-brand-fg")}>{progress.over ? `${progress.remainingAfterThis.replace("-", "")} over the order` : progress.remainingAfterThis}</dd>
                   </div>
                   {progress.pendingOthers !== "0" && <div className="col-span-2 sm:col-span-4 text-muted">Also waiting for review on this line: {progress.pendingOthers} {unitLabel(progress.unit)}.</div>}
                   {progress.otherUnitTickets > 0 && <div className="col-span-2 sm:col-span-4 text-muted">{progress.otherUnitTickets} ticket(s) on this line are in another unit and are not added.</div>}
@@ -193,7 +193,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 <div>
                   <dt className="inline text-muted">Dispatch assignment: </dt>
                   <dd className="inline">
-                    {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : "matches this ticket"}
+                    {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand-fg">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : "matches this ticket"}
                     {a?.status === "canceled" ? " (assignment since removed)" : ""}
                   </dd>
                 </div>
@@ -224,7 +224,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                     const rev = revisions.find((r) => r.id === p.ticket_id)?.revision;
                     return (
                       <li key={p.id}>
-                        <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-line hover:border-charcoal">
+                        <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-line hover:border-strong">
                           {/* eslint-disable-next-line @next/next/no-img-element -- served through an authorized, short-lived link */}
                           <img src={`/tickets/photos/${p.id}`} alt={`Paper ticket photo ${i + 1}`} loading="lazy" className="aspect-[3/4] w-full bg-surface object-cover" />
                         </a>
@@ -278,7 +278,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           <ol className="px-4 py-3 sm:px-5" aria-label="Ticket history">
             {events.map((e) => (
               <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
-                <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-charcoal" aria-hidden />
+                <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />
                 <p className="text-sm font-semibold">
                   {ACTION_LABELS[e.action]}
                   {e.action === "corrected" && e.details.revision ? ` → revision ${e.details.revision}` : ""}

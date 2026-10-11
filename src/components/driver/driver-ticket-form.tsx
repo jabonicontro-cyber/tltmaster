@@ -23,7 +23,7 @@ interface Props {
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string };
 
-const field = "min-h-12 w-full rounded-lg border-2 border-line bg-white px-4 text-lg focus:border-charcoal focus:outline-none";
+const field = "min-h-12 w-full rounded-lg border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
 
 export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing }: Props) {
   const router = useRouter();
@@ -151,7 +151,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         <p role="alert" className="rounded-md bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{state.message}</p>
       )}
 
-      <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-white/95 px-4 py-3 backdrop-blur">
+      <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
         <button type="submit" disabled={sending || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
           {sending ? <><Loader2 className="size-5 animate-spin" aria-hidden /> Sending…</> : <><Send className="size-5" aria-hidden /> {state.kind === "failed" ? "Send again" : "Send ticket"}</>}

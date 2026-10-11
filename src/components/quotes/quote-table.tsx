@@ -26,7 +26,7 @@ export function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteLi
             return (
               <Tr key={q.id}>
                 <Td>
-                  <Link href={`/quotes/${q.id}`} className="font-semibold text-ink tabular hover:text-brand hover:underline">
+                  <Link href={`/quotes/${q.id}`} className="font-semibold text-ink tabular hover:text-brand-fg hover:underline">
                     {q.quote_number}
                   </Link>
                   <div className="mt-0.5 flex items-center gap-1.5 text-sm text-muted">

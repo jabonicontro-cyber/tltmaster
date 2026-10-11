@@ -53,7 +53,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
                 {...ctl("brand_logo", fe("brand_logo"))}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-line file:bg-white file:px-3 file:py-1.5 file:font-semibold"
+                className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:font-semibold"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   setRemoveLogo(false);
@@ -79,7 +79,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
               </div>
             </Field>
           </fieldset>
-          <div aria-label="Branding preview" className="overflow-hidden rounded-lg border border-line" style={brandingStyle({ logo: "", color: /^#[0-9a-f]{6}$/i.test(color) ? color : "", sidebarColor: /^#[0-9a-f]{6}$/i.test(sidebarColor) ? sidebarColor : "" })}>
+          <div aria-label="Branding preview" className="app-root overflow-hidden rounded-lg border border-line" style={brandingStyle({ logo: "", color: /^#[0-9a-f]{6}$/i.test(color) ? color : "", sidebarColor: /^#[0-9a-f]{6}$/i.test(sidebarColor) ? sidebarColor : "" })}>
             <div className="flex h-14 items-center gap-3 bg-charcoal px-4">
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local preview of the chosen file
@@ -89,9 +89,9 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
               )}
               <span className="ml-auto text-xs text-white/60">Preview</span>
             </div>
-            <div className="flex items-center gap-3 bg-white p-4">
+            <div className="flex items-center gap-3 bg-card p-4">
               <span className="inline-flex h-9 items-center rounded-md bg-brand px-3 text-sm font-semibold text-white">Primary button</span>
-              <span className="text-sm font-semibold text-brand">A link</span>
+              <span className="text-sm font-semibold text-brand-fg">A link</span>
             </div>
           </div>
           {canEdit ? (

@@ -51,6 +51,8 @@ describe("company branding", () => {
     expect(s["--color-brand"]).toBe("#1f6feb");
     expect(s["--color-brand-dark"]).toMatch(/^#[0-9a-f]{6}$/);
     expect(s["--color-charcoal"]).toBeUndefined();
+    // Derived in CSS so they follow light and dark mode.
+    expect(s["--color-brand-light"]).toBeUndefined();
     expect(brandingStyle({ logo: "", color: "javascript:alert(1)", sidebarColor: "#zzzzzz" })).toEqual({});
   });
 

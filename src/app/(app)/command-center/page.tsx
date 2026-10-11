@@ -156,7 +156,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     <li key={a.assignment_id} className="px-4 py-3 text-sm sm:px-5">
                       <p className="font-semibold">{formatTime(a.load.start_time)} – {formatTime(a.load.end_time)} · {a.order.number} load {a.load.number}</p>
                       <p className="text-muted">{a.order.customer_name} · {a.site.label || a.site.line1} · Truck {a.truck ?? "—"}{a.trailer ? ` + ${a.trailer}` : ""}</p>
-                      {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand hover:underline">Send the ticket</Link>}
+                      {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand-fg hover:underline">Send the ticket</Link>}
                     </li>
                   ))}
                 </ul>
@@ -314,7 +314,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {/* Pinned status strip: not movable, not collapsible, urgent counts always visible. */}
       {ops &&
         (s ? (
-          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-white px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
+          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
             <p className="text-base font-semibold text-ink">
               {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
             </p>
@@ -324,7 +324,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             {(s.urgent_orders ?? 0) > 0 && (
               <Link href={href({ kind: "urgent_order" })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{s.urgent_orders} urgent order{s.urgent_orders === 1 ? "" : "s"}</Link>
             )}
-            {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold text-brand-dark underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link>}
+            {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link>}
             {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
             <p className="ml-auto text-xs text-muted">As of {formatDateTime(s.as_of, timezone)}</p>
           </section>
@@ -348,7 +348,7 @@ function Chip({ href, active, label, count }: { href: string; active: boolean; l
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", active ? "border-charcoal bg-charcoal text-white" : "border-line bg-white text-ink hover:border-charcoal/30")}
+      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", active ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:border-strong/30")}
     >
       {label}
       {count !== undefined && <Badge tone={active ? "dark" : count > 0 ? "amber" : "gray"}>{count}</Badge>}

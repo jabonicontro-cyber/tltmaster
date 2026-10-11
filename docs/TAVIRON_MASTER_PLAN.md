@@ -91,6 +91,11 @@ clear-space and minimum-size rules) is still to be produced.
 uses the company's own logo and palette (N15), with "Powered by Taviron" in shared places, through central
 tenant-aware theme tokens — never per-page hacks — with contrast and safety colors preserved.
 
+> **Light and dark mode (2026-10-11):** the internal app (company workspace, platform area, sign-in) has a
+> per-person Appearance choice in the user menu — Light, Dark or Match my device — kept in that browser. Dark
+> mode re-maps the shared tokens; company colors still apply; `critical` red, the public website, quote
+> documents and print stay as they are (IMPLEMENTATION_PLAN §5u).
+
 > **Status (2026-10-11):** the public website uses the palette (tokens `navy`, `navy-2`, `navy-3`, `electric`,
 > `action`, `action-hover`, `silver`, `cloud`, `safety` in `src/app/globals.css`; inside `.site`, `brand`
 > utilities resolve to electric blue) and an interim geometric-T logo (`src/components/site/logo.tsx`). The

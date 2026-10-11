@@ -13,7 +13,7 @@ import { AssignControl, type Person } from "./assign-control";
 const priorityTone: Record<number, string> = {
   1: "bg-critical text-white",
   2: "bg-amber-100 text-amber-950 ring-1 ring-amber-300",
-  3: "bg-surface text-charcoal ring-1 ring-line",
+  3: "bg-surface text-ink ring-1 ring-line",
 };
 
 export function ExceptionCard({ item, can, people, timezone, now, back }: { item: ExceptionItem & { hidden_until?: string | null }; can: { ticketsEdit: boolean; dispatch: boolean; assign: boolean }; people: Person[]; timezone: string; now: Date; back: string }) {

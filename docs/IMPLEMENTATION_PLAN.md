@@ -1856,6 +1856,28 @@ no new motion), `mobile-native` (larger tap targets, light header that does not 
 - **Tests:** unit (tier table, annual math, tier fit, no founding data); platform e2e checks prices, CTAs,
   the tax note and that no founding text appears. Still behind the Early Access gate.
 
+## 5u. Light and dark mode in the app (2026-10-11)
+
+- **Choice:** user menu → Appearance → Light, Dark or Match my device. A display preference per person and
+  browser (localStorage `taviron-theme`); nothing is stored on the server and nothing changes for other users.
+  An inline script in the root layout (`THEME_SCRIPT`, `src/lib/theme.ts`) sets `data-theme` on `<html>`
+  before the page paints, so there is no light flash; "Match my device" follows the device setting live
+  (`src/components/ui/theme-sync.tsx`). The toaster follows the theme.
+- **Tokens** (`src/app/globals.css`): new `card` (panels, inputs, menus), `strong` (selected chips and emphasis
+  borders; follows the company's navigation color in light mode) and `brand-fg` (brand-colored text). App code
+  now uses these instead of `bg-white`, `charcoal` outside the navigation, and `text-brand`. In dark mode the
+  values are set on `<body>`: surface, card, ink, muted, line, and the red/amber/green/blue/gray status tints
+  (backgrounds become dark tints, status text becomes light). Contrast is checked in `tests/unit/theme.test.ts`
+  (text 4.5:1, selected chips 3:1 against panels).
+- **Kept as they were:** the `critical` red (urgency and safety); company colors (brand-light and brand-fg are
+  derived in CSS on `.app-root` from the company's accent, so `brandingStyle` no longer sets brand-light); the
+  navigation stays the company's navigation color; the public website (`.site`), quote documents and the demo
+  bar (`.force-light`) and print stay light.
+- **Tests:** `tests/e2e/theme.spec.ts` (choice, reload, device setting, brand and urgent red in dark, site and
+  documents stay light); unit contrast test.
+- **Not done:** the Taviron platform area has no user menu, so its theme follows the choice made in the app;
+  quote PDFs are generated separately and are unaffected.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

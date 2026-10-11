@@ -30,8 +30,8 @@ export default async function LaunchpadPage() {
       <PageHeader title="Launchpad" description="The Taviron team's tools. Everything here is checked against the platform role on the server and in the database." />
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {tiles.map((t) => (
-          <Link key={t.href} href={t.href} className="group rounded-lg border border-line bg-white p-5 shadow-xs hover:border-charcoal/40 hover:shadow-sm">
-            <t.icon className="size-6 text-brand" aria-hidden />
+          <Link key={t.href} href={t.href} className="group rounded-lg border border-line bg-card p-5 shadow-xs hover:border-strong/40 hover:shadow-sm">
+            <t.icon className="size-6 text-brand-fg" aria-hidden />
             <h2 className="mt-3 text-lg font-bold group-hover:underline">{t.title}</h2>
             <p className="mt-1 text-sm text-muted">{t.text}</p>
             {t.stat ? <p className="mt-3 text-sm font-semibold text-ink">{t.stat}</p> : null}

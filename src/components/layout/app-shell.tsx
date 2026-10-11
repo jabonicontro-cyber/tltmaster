@@ -26,7 +26,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
   const style = branding ? brandingStyle({ logo: "", color: branding.color, sidebarColor: branding.sidebarColor }) : {};
   const logoUrl = branding?.logoUrl ?? "";
   return (
-    <div className="min-h-dvh lg:pl-64" style={style}>
+    <div className="app-root min-h-dvh lg:pl-64" style={style}>
       <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-64 flex-col bg-charcoal lg:flex">
         <Link href="/command-center" className="flex h-16 shrink-0 items-center border-b border-white/10 px-4" aria-label={`${access.companyName ?? "Company"} — home`}>
           <CompanyIdentity name={access.companyName} logoUrl={logoUrl} />
@@ -40,7 +40,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
       </aside>
 
       {access.isDemo && !presentation ? <DemoBar preview={access.preview ?? null} platformAdmin={platformAdmin} /> : null}
-      <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-white/95 px-3 backdrop-blur lg:px-6">
+      <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-card/95 px-3 backdrop-blur lg:px-6">
         <div className="flex min-w-0 items-center gap-1">
           <MobileNav permissions={access.permissions} companyName={access.companyName} logoUrl={logoUrl} />
           <Link href="/command-center" className="min-w-0 lg:hidden" aria-label={`${access.companyName ?? "Company"} — home`}>

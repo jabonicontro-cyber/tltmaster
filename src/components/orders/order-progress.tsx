@@ -32,7 +32,7 @@ export function OrderProgress({ steps }: { steps: ProgressStep[] }) {
               <p className="text-sm">{s.summary}</p>
               {s.owner && <p className="text-xs text-muted">Next: {s.owner}</p>}
               {s.next && (
-                <Link href={s.next.href} className="mt-auto inline-flex items-center gap-1 text-sm font-semibold text-brand hover:underline">
+                <Link href={s.next.href} className="mt-auto inline-flex items-center gap-1 text-sm font-semibold text-brand-fg hover:underline">
                   {s.next.label} <ArrowRight className="size-3.5" aria-hidden />
                 </Link>
               )}

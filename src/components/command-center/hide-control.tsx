@@ -33,7 +33,7 @@ export function HideControl({ itemKey, hiddenUntil }: { itemKey: string; hiddenU
         Hide for me
       </Button>
       {open && (
-        <div role="group" aria-label="Hide for how long" className="absolute right-0 z-10 mt-1 w-56 rounded-md border border-line bg-white p-2 text-sm shadow-lg">
+        <div role="group" aria-label="Hide for how long" className="absolute right-0 z-10 mt-1 w-56 rounded-md border border-line bg-card p-2 text-sm shadow-lg">
           <p className="px-1 pb-1 text-xs text-muted">Only from your view. The problem stays open and counted.</p>
           {([[4, "For 4 hours"], [24, "For 1 day"], [72, "For 3 days"]] as const).map(([h, label]) => (
             <button key={h} type="button" disabled={busy} className="block w-full rounded px-2 py-1.5 text-left hover:bg-surface" onClick={() => run(() => hideException({ key: itemKey, hours: h }))}>

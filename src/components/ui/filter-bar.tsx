@@ -39,7 +39,7 @@ export function FilterSelect({ name, label, value, options }: { name: string; la
         id={`f-${name}`}
         name={name}
         defaultValue={value ?? ""}
-        className="h-10 rounded-md border border-line bg-white px-3 text-[15px] focus:border-charcoal focus:outline-none"
+        className="h-10 rounded-md border border-line bg-card px-3 text-[15px] focus:border-strong focus:outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

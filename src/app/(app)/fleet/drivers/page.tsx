@@ -71,7 +71,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                 {rows.map((d) => (
                   <Tr key={d.id}>
                     <Td>
-                      <Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:text-brand hover:underline">{d.display_name}</Link>
+                      <Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:text-brand-fg hover:underline">{d.display_name}</Link>
                       <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
                         {d.employee_number && <span>#{d.employee_number}</span>}
                         {d.phone && <span>{d.phone}</span>}

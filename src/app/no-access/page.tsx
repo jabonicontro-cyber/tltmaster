@@ -20,7 +20,7 @@ export default async function NoAccessPage({ searchParams }: { searchParams: Pro
 
   return (
     <main id="main" className="flex min-h-dvh items-center justify-center bg-surface px-4">
-      <div className="w-full max-w-md rounded-lg border border-line bg-white p-6 text-center shadow-sm">
+      <div className="w-full max-w-md rounded-lg border border-line bg-card p-6 text-center shadow-sm">
         <div className="mb-4 flex justify-center">
           <BrandMark tone="dark" />
         </div>

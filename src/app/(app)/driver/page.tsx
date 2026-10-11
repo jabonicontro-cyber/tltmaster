@@ -22,7 +22,7 @@ function AssignmentCard({ a, today, past }: { a: DriverAssignment; today: string
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   return (
-    <li className={cn("rounded-lg border bg-white shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
+    <li className={cn("rounded-lg border bg-card shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
         <p className="text-2xl font-black tabular">
           {formatTime(a.load.start_time)}<span className="text-base font-semibold text-muted"> – {formatTime(a.load.end_time)}</span>
@@ -124,7 +124,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
 
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
-          <h2 className="mb-2 text-lg font-bold text-brand">Tickets still needed</h2>
+          <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
           <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} past />)}</ul>
         </section>
       )}
