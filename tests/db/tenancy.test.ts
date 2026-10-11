@@ -9,6 +9,7 @@ afterAll(() => pool.end());
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
   "employees", "employee_compensation",
+  "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
   "price_lists", "customers", "customer_contacts", "customer_sites", "materials", "charge_items",
   "price_list_entries", "quotes", "quote_versions", "quote_lines", "quote_status_events", "documents",
@@ -23,6 +24,14 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Maintenance (20261101000100): every public function uses require_company() and a maintenance.* permission;
+  // truck restriction/release helpers are internal (not executable by app users); driver notices read only the
+  // caller's own driver record; the sequence trigger only inserts the new company's own row.
+  "private.add_work_order_sequence", "private.wo_restrict_truck", "private.wo_release_truck",
+  "public.record_truck_reading", "public.maintenance_save_schedule", "public.maintenance_create_work_order",
+  "public.maintenance_update_work_order", "public.maintenance_set_status", "public.maintenance_start_inspection",
+  "public.maintenance_record_clearance", "public.maintenance_generate_due", "public.driver_maintenance_notices",
+  "public.maintenance_pm_status", "public.maintenance_assignee_options",
   // Profile self-service (20261030000100): own row only; photos only within the caller's current company.
   "public.my_profile", "public.update_my_profile", "public.set_my_photo", "public.profile_photo",
   // Employees (20261031000100): compensation audit without amounts; primary truck needs fleet.assign, same company.

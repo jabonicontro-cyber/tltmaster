@@ -57,3 +57,27 @@ export async function loadAssignmentForm(assignmentId: string): Promise<DriverRe
   if (error || !data) return failure(error);
   return { ok: true, data: data as DriverForm };
 }
+
+export interface MaintenanceNotice {
+  number: string;
+  unit_number: string;
+  title: string;
+  status: string;
+  scheduled_for: string | null;
+  safety_critical: boolean;
+  notice: "scheduled" | "rescheduled" | "canceled";
+  notice_at: string;
+  previous_date: string | null;
+}
+
+/**
+ * Shop appointments for the driver's primary truck (or naming the driver):
+ * scheduled, rescheduled or canceled. In-app only — nothing is sent. Empty when
+ * the maintenance tables are not installed yet.
+ */
+export async function loadMaintenanceNotices(): Promise<MaintenanceNotice[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("driver_maintenance_notices");
+  if (error || !Array.isArray(data)) return [];
+  return data as MaintenanceNotice[];
+}

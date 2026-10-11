@@ -1903,6 +1903,63 @@ no new motion), `mobile-native` (larger tap targets, light header that does not 
   server actions still need sign-in, roles still apply, tampered cookie, replay after leaving, rate limit, nothing
   secret in the page or its scripts, codes still work and revocation still locks out).
 
+## 5w. Mechanics & Maintenance workspace — first increment (2026-10-11)
+
+**Audit first:** no work-order, maintenance, parts or reading tables existed. Trucks already had
+`service_status` (changed only through `set_equipment_service_status`, `fleet.service`), status history and
+dispatch eligibility that refuses out-of-service trucks; drivers send breakdown/equipment field reports; the
+mechanic role existed with `fleet.view` + `fleet.service`. No in-app notification system exists; My Day is the
+driver's in-app surface.
+
+**Migration `20261101000100_maintenance.sql`** (additive; rollback `supabase/rollbacks/20261101000100_maintenance.down.sql`, tested locally apply → rollback → re-apply):
+- Permissions `maintenance.view` / `.manage` / `.costs` / `.clear`. Defaults: owner all four; mechanic view +
+  manage; office view + costs; dispatcher view. Clearance is owner-only by default — owners can grant it to the
+  mechanic role in Settings → Permissions (master plan §9 Q22).
+- Tables (all with `company_id`, RLS, company-change guard, audit): `work_orders` (number `WO-YYYY-NNNN` from a
+  per-company sequence), `work_order_events` (append-only history: who, when, from/to, note), `work_order_costs`
+  (parts/labor/vendor lines; read and write only with `maintenance.costs`), `maintenance_schedules`,
+  `truck_readings`.
+- Work orders are read-only to clients; every change goes through a checked function: `maintenance_create_work_order`
+  (idempotent on a submission key), `maintenance_update_work_order` (optimistic `edit_seq`), `maintenance_set_status`
+  (state machine `private.wo_transition_ok`, mirrored by `NEXT_STATUSES` and parity-tested),
+  `maintenance_start_inspection` / `maintenance_record_clearance` (`maintenance.clear`), `maintenance_save_schedule`,
+  `record_truck_reading` (refuses a value lower than the latest), `maintenance_generate_due`,
+  `maintenance_pm_status`, `maintenance_assignee_options`, `driver_maintenance_notices`.
+- **Safety:** a safety-critical work order takes the truck out of service (status event recorded). It cannot be
+  completed directly — only awaiting inspection → passed (by `maintenance.clear`) completes it; failed sends it
+  back to in progress. A trigger on `trucks` refuses `in_service` while any open safety-critical work order exists,
+  whatever the path, so dispatch eligibility (which already blocks out-of-service trucks) cannot be restored by
+  closing, canceling (needs `maintenance.clear`) or the Fleet page. Clearance returns the truck only if this work
+  order restricted it and no other open safety-critical order remains.
+- **Preventive:** days, miles and/or engine hours, whichever first, with warning windows. State per trigger:
+  overdue / due soon / OK / unknown (no last-service record or no reading); readings older than 30 days are
+  flagged. Generating due work orders runs under an advisory lock and a unique partial index allows one open work
+  order per schedule, so running it twice creates nothing. Completing a preventive work order restarts its schedule.
+- **Driver notice:** `driver_maintenance_notices` shows the driver of the truck (primary truck or named driver) when
+  maintenance is scheduled, rescheduled or canceled, on My Day. In-app only; nothing is sent.
+
+**App:** `/maintenance` (Operations → Maintenance): overview cards linking to filtered records (immediate/safety,
+overdue PM, due soon, open, out of service, awaiting clearance), a rule-based suggested shop order with reasons
+(`rankWorkOrders`, labelled as rules, "No AI service is connected"), technician workload, downtime, possible
+replacement trucks (hint only), next 7 days. `/maintenance/work-orders` (search number/title/truck, filters,
+pagination), `/new` (also from a driver report: "Create a work order"), `/[id]` (lifecycle buttons, clearance,
+costs, history), `/[id]/edit`, `/maintenance/clearance` (awaiting, in progress, failed, cleared), `/maintenance/preventive`
+(status table, readings, schedules, "Create work orders for due services").
+
+**Not built (honest limits):** trailers in work orders; shop capacity (bays/hours) — shown as not configured;
+parts inventory and purchase orders; vendors as records (free-text vendor name per cost line); attachments;
+warranties; compliance documents; automatic scheduled generation (manual button; no scheduler exists);
+Smart Dispatch does not yet look at future scheduled shop dates — integration point: `work_orders` with
+`status = 'scheduled'` and `scheduled_for = <date>` for the truck (add as a warning in `src/lib/dispatch/smart.ts`
+and `private.assignment_eligibility` when decided); PTO and hours of service are separate and not modelled; no
+AI diagnosis. The Northfield demo has no maintenance data yet.
+
+**Tests:** `tests/db/maintenance.test.ts` (roles, cross-company, double submit, transitions, stale edits,
+safety restriction and clearance, a second open defect keeps the truck restricted, cost visibility, PM states and
+readings, duplicate generation, driver notices, lifecycle parity), `tests/unit/maintenance-rules.test.ts`,
+`tests/e2e/maintenance.spec.ts` (safety flow through the UI with two roles, PM and generation, costs visibility,
+My Day notice, read-only and no-access), tenancy lists updated.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

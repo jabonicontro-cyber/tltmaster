@@ -28,6 +28,8 @@ export function dbErrorMessage(error: DbError | null | undefined): string {
       return "This record is linked to other records and cannot be changed that way.";
     case "23514":
       return "One of the values is not allowed. Check the form and try again.";
+    case "P0002": // "not found" raised by our functions with a user-facing message
+    case "22023": // invalid value (for example a reading lower than the last one)
     case "P0001":
       // Raised deliberately by our database functions with a user-facing message.
       return error.message ?? "The request was rejected.";

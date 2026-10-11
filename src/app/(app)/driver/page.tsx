@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck, Wrench } from "lucide-react";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
-import { loadDriverHome, type DriverAssignment } from "@/server/data/driver";
+import { loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
 
 export const metadata = { title: "My Day" };
 
@@ -108,6 +108,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
+  const shop = await loadMaintenanceNotices();
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -124,6 +125,27 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         <section aria-label="Reminders" className="space-y-2">
           {reminders.map((r) => (
             <p key={r.text} className={cn("rounded-md px-4 py-3 text-sm font-semibold ring-1", r.tone === "bad" ? "bg-red-50 text-red-900 ring-red-200" : "bg-amber-50 text-amber-950 ring-amber-200")}>{r.text}</p>
+          ))}
+        </section>
+      )}
+
+      {shop.length > 0 && (
+        <section aria-label="Truck maintenance" className="space-y-2">
+          <h2 className="text-lg font-bold">Truck maintenance</h2>
+          {shop.map((n) => (
+            <p key={n.number} className={cn("flex gap-3 rounded-md px-4 py-3 text-sm ring-1", n.notice === "canceled" ? "bg-surface text-ink ring-line" : "bg-amber-50 text-amber-950 ring-amber-200")}>
+              <Wrench className="mt-0.5 size-4 shrink-0" aria-hidden />
+              <span>
+                <strong>Truck {n.unit_number}: {n.title}</strong>
+                {" — "}
+                {n.notice === "canceled"
+                  ? `the shop appointment${n.scheduled_for ? ` on ${formatDate(n.scheduled_for)}` : ""} was canceled.`
+                  : n.notice === "rescheduled"
+                    ? `moved to ${formatDate(n.scheduled_for)}${n.previous_date ? ` (was ${formatDate(n.previous_date)})` : ""}.`
+                    : `in the shop on ${formatDate(n.scheduled_for)}.`}
+                {n.safety_critical && n.notice !== "canceled" ? " The truck is out of service until it is cleared." : ""}
+              </span>
+            </p>
           ))}
         </section>
       )}

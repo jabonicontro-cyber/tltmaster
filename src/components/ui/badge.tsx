@@ -4,7 +4,7 @@ import { QUOTE_STATUS_LABELS, type QuoteStatus } from "@/lib/quotes/status";
 import { ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import type { OrderStatus } from "@/server/data/types";
 
-type Tone = "gray" | "blue" | "green" | "amber" | "red" | "dark" | "brand";
+type Tone = "gray" | "blue" | "green" | "amber" | "red" | "dark" | "brand" | "critical" | "critical-soft";
 
 const tones: Record<Tone, string> = {
   gray: "bg-gray-100 text-gray-700 ring-gray-300",
@@ -14,6 +14,9 @@ const tones: Record<Tone, string> = {
   red: "bg-red-50 text-red-800 ring-red-200",
   dark: "bg-strong text-white ring-strong",
   brand: "bg-brand-light text-brand-fg ring-brand/25",
+  // Urgent and safety states: fixed red, never the company's brand colour.
+  critical: "bg-critical text-white ring-critical",
+  "critical-soft": "bg-red-50 text-critical ring-red-200",
 };
 
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

@@ -424,6 +424,20 @@ direct access for app users); everything goes through the functions below.
 | `platform_import_approve(batch)` | platform admin | Creates the rows marked `import`, all or nothing (`tlt.platform_write` lets the customer-number trigger accept the target company inside this function only). |
 | `platform_import_revert(batch, reason)` | platform admin | Removes records the batch created while untouched (no update in the audit trail) and unused; keeps and deactivates the rest; touches nothing else. |
 
+## Maintenance (20261101000100)
+
+| Table | Purpose | Access |
+| --- | --- | --- |
+| `work_orders` | Repair, inspection or preventive job on a truck; lifecycle reported → triaged → scheduled → in_progress ⇄ awaiting_parts → awaiting_inspection → completed → closed (or canceled); safety flag, clearance fields, `edit_seq`, `submission_key`. | Read `maintenance.view`; writes only through functions. |
+| `work_order_events` | Append-only history (status, schedule, assignment, inspection, clearance, truck restricted/returned). | Read `maintenance.view`. |
+| `work_order_costs` | Part, labor, vendor and other cost lines (quantity × unit cost in cents). Locked when the work order is closed or canceled. | Read/insert/delete `maintenance.costs` only. |
+| `maintenance_schedules` | Preventive service per truck: interval days/miles/hours, warning windows, last done. | Read `maintenance.view`; write through `maintenance_save_schedule`. |
+| `truck_readings` | Odometer / engine-hour readings; never lower than the latest. | Read `maintenance.view`; write through `record_truck_reading`. |
+
+Rules: a trigger on `trucks` refuses a return to service while an open safety-critical work order exists; one
+open work order per schedule (unique partial index); work order numbers come from the `work_order` document
+sequence. Functions: see IMPLEMENTATION_PLAN §5w.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

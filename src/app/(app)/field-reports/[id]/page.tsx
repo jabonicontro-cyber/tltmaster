@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { ReturnLink } from "@/components/ui/return-link";
-import { CalendarRange, ClipboardList, Truck } from "lucide-react";
+import { CalendarRange, ClipboardList, Truck, Wrench } from "lucide-react";
 import { ReportActions } from "@/components/field-reports/report-actions";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -58,6 +58,7 @@ export default async function FieldReportPage({ params, searchParams }: { params
             {can(access, "dispatch.view") && <ButtonLink href={`/dispatch?date=${r.snapshot.load_date}&load=${r.load_id}`} variant="secondary" icon={<CalendarRange className="size-4" />}>Open the load on dispatch</ButtonLink>}
             {can(access, "orders.view") && <ButtonLink href={`/orders/${r.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open the order</ButtonLink>}
             {can(access, "fleet.view") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/fleet/trucks/${r.truck_id}`} variant="secondary" icon={<Truck className="size-4" />}>Truck record and service status</ButtonLink>}
+            {can(access, "maintenance.manage") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/maintenance/work-orders/new?truck=${r.truck_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
             {can(access, "fleet.view") && r.trailer_id && r.equipment !== "truck" && <ButtonLink href={`/fleet/trailers/${r.trailer_id}`} variant="secondary" icon={<Truck className="size-4" />}>Trailer record and service status</ButtonLink>}
           </CardBody>
         </Card>

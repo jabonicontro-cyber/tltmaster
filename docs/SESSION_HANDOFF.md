@@ -9,6 +9,11 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-11 evening) — read first
 
+- **Mechanics & Maintenance (Preview only, not Production):** `/maintenance` with work orders, clearance queue,
+  preventive schedules, readings, cost lines and a driver notice on My Day (IMPLEMENTATION_PLAN §5w). **Needs
+  migration `20261101000100_maintenance.sql` on each hosted database** (owner action after a backup, DEPLOYMENT
+  §2a; rollback script in `supabase/rollbacks/`). Until then the Maintenance entry is hidden (no permission) and
+  My Day shows no maintenance notices. Open defaults to confirm: master plan §9 Q22.
 - **Branches:** work and pushes on `claude/ui-and-signin-checkpoint` (Preview). Production
   (`claude/top-line-trucking-manager-vmw04i`, mytaviron.com) is still at `16fc188`; Release 1
   (`3b33dfc`: new layout, Load Build, sign-in fixes; no migration) awaits the owner's go-ahead.

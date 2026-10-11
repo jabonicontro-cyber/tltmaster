@@ -142,7 +142,7 @@ describe("creating a company", () => {
                 (select count(*)::int from public.audit_events where company_id = $1 and action = 'company.created') as audited`,
         [r.company_id],
       )).rows[0];
-      expect(counts).toMatchObject({ settings: 1, sequences: 5, units: 7, price_lists: 1, members: 1, audited: 1 });
+      expect(counts).toMatchObject({ settings: 1, sequences: 6, units: 7, price_lists: 1, members: 1, audited: 1 });
       expect(counts.perms).toBe(counts.default_perms);
       // Its own numbering starts at 1 and does not touch Top Line's.
       await s.as(u);
