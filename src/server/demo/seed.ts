@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
+import { NORTHFIELD_LOGO_PNG_BASE64 } from "./northfield-logo";
 
 /**
  * Fills a freshly started demo company with fictional data, through the same
@@ -35,6 +36,21 @@ const CUSTOMERS = [
   { name: "Brightwater Landscapes (demo)", city: "Linden Grove", site: "Brightwater office park", line1: "45 Sample Ave" },
   { name: "Ironbridge Utilities (demo)", city: "Maple Falls", site: "Water main replacement, 4th St", line1: "400 Fictional Blvd" },
   { name: "Harlow Homes (demo)", city: "Ashford", site: "Harlow Meadows model homes", line1: "12 Placeholder Ln" },
+  { name: "Lakeview Township Public Works (demo)", city: "Lakeview", site: "Township salt dome pad", line1: "7 Civic Example Dr" },
+  { name: "Summit Ready-Mix (demo)", city: "Linden Grove", site: "Summit batch plant stockpile", line1: "88 Sample Quarry Rd" },
+  { name: "Oakmont School District (demo)", city: "Maple Falls", site: "Oakmont Elementary parking lot", line1: "310 Fictional School Way" },
+];
+
+/** The person the platform team member is shown as inside the demo (never their real account name). */
+export const DEMO_PERSONA = { name: "Daniel Mitchell", title: "Operations Manager (also drives relief)" };
+
+/** Office, dispatch and shop staff without Taviron logins — directory entries only. */
+const STAFF = [
+  { full_name: "Rachel Ortiz", job_title: "Dispatcher", department: "dispatch", hire: -1400, pay: { pay_type: "hourly", rate_cents: 3150 } },
+  { full_name: "Sam Kowalski", job_title: "Lead mechanic", department: "shop", hire: -2100, pay: { pay_type: "hourly", rate_cents: 3600 } },
+  { full_name: "Jordan Feld", job_title: "Mechanic", department: "shop", hire: -500, pay: { pay_type: "hourly", rate_cents: 2900 } },
+  { full_name: "Lena Park", job_title: "Office & billing manager", department: "office", hire: -1800, pay: { pay_type: "salary", rate_cents: 6400000 } },
+  { full_name: "Owen Brooks", job_title: "Seasonal yard hand", department: "operations", hire: -120, pay: { pay_type: "hourly", rate_cents: 2100 }, type: "seasonal" },
 ];
 
 const TRUCKS = [
@@ -54,6 +70,13 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   const yesterday = addDays(today, -1);
   const tomorrow = addDays(today, 1);
   const lastWeek = addDays(today, -6);
+
+  // Company identity and branding (fictional; 555-01xx numbers are reserved for fiction).
+  await must("company settings", db.from("company_settings").update({
+    company_name: "Northfield Aggregates", address_line1: "2200 Quarry Line Rd", city: "Maple Falls", state: "", postal_code: "",
+    phone: "(555) 010-0140", email: "dispatch@northfield.demo.example", website: "",
+    brand_logo: `data:image/png;base64,${NORTHFIELD_LOGO_PNG_BASE64}`, brand_color: "#2E6B4E", brand_sidebar_color: "#14231C",
+  }).not("company_id", "is", null).select("company_id"));
 
   // Catalog and rates.
   const materials = await must("materials", db.from("materials").insert(MATERIALS.filter((m) => m.unit !== "hour").map((m) => ({ code: m.code, name: m.name, default_unit_code: m.unit, description: "Demo item (fictional)." }))).select("id, code"));
@@ -77,7 +100,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   const drivers = await must("drivers", db.from("drivers").insert([
     // Every row has the same keys: a bulk insert fills missing keys with null.
     ...DRIVERS.map((name, i) => ({ name, employee_number: `D-${201 + i}`, phone: `555-020${i}`, hire_date: addDays(today, -400 - i * 90), user_id: null, notes: "" })),
-    { name: "You (driver preview)", employee_number: "D-299", phone: "", hire_date: null, user_id: userId, notes: "Linked to the platform team member running the demo." },
+    { name: DEMO_PERSONA.name, employee_number: "D-299", phone: "(555) 010-0299", hire_date: addDays(today, -2600), user_id: userId, notes: "Demo persona of the person presenting the demo; drives relief shifts." },
   ]).select("id, name"));
   const drv = drivers as Array<{ id: string; name: string }>;
   const verified = new Date().toISOString();
@@ -86,8 +109,8 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     // One medical card expires soon, so the reminder shows.
     { driver_id: d.id, kind: "medical_card", expires_on: addDays(today, i === 2 ? 12 : 300 + i * 20), verified_at: verified },
   ])));
-  const me = drv.find((d) => d.name.startsWith("You"))!.id;
-  const [avery, marco, priya, theo] = drv.map((d) => d.id);
+  const me = drv.find((d) => d.name === DEMO_PERSONA.name)!.id;
+  const [avery, marco, priya, theo, nia] = drv.map((d) => d.id);
   await must("out of service", db.rpc("set_equipment_service_status", { p_kind: "truck", p_id: truck["106"], p_status: "out_of_service", p_reason: "Brake inspection (demo)", p_expected_return: tomorrow }));
 
   // Orders.
@@ -113,6 +136,29 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   const ticket = async (loadId: string, lineId: string, date: string, time: string, qty: string, ref: string) =>
     ((await must("ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: date, delivered_time: time, quantity: qty, unit_code: "ton", external_reference: ref } }))) as { ticket_id: string }).ticket_id;
   const review = (id: string, action: "accept" | "flag", note = "") => must("review", db.rpc("review_delivery_ticket", { p_ticket_id: id, p_action: action, p_note: note }));
+
+  // 0. The past two weeks of deliveries (each driver on their usual truck), so My Day, Reports and
+  // billing have history. Mostly accepted tickets; a few flagged or still waiting for review.
+  const crews: Array<[string, string]> = [["101", avery], ["102", marco], ["103", me], ["104", theo], ["105", priya], ["107", nia]];
+  for (let back = 14, n = 0; back >= 7; back--) {
+    const day = addDays(today, -back);
+    const dow = new Date(`${day}T12:00:00Z`).getUTCDay();
+    if (dow === 0 || dow === 6) continue; // weekdays only
+    const c = 5 + (n % 3);
+    const product = ["LS-53", "ST-8", "SND-F", "RR-3"][n % 4];
+    const o = await order(c, day, `${CUSTOMERS[c].site} — ${MATERIALS.find((m) => m.code === product)!.name}`, [line(product, "60")], "Check in at the scale house on arrival.", [day, day]);
+    for (let k = 0; k < 3; k++) {
+      const [unit, driver] = crews[(n + k) % crews.length];
+      const cap = unit === "107" ? 8 : unit === "103" || unit === "104" ? 15 : 20;
+      const l = await load(o.order_id, day, `${String(7 + k * 2).padStart(2, "0")}:00`, `${String(8 + k * 2).padStart(2, "0")}:15`, String(cap));
+      await assign(l, truck[unit], driver);
+      const qty = (cap - 0.4 + ((n + k) % 3) * 0.2).toFixed(2);
+      const t = await ticket(l, o.lineId, day, `${String(8 + k * 2).padStart(2, "0")}:05`, qty, `NF-${day.replaceAll("-", "").slice(2)}-${k + 1}`);
+      if ((n + k) % 7 === 3) await review(t, "flag", "Scale weight and ticket copy differ — check the scale ticket (demo).");
+      else if (back > 8 || k < 2) await review(t, "accept");
+    }
+    n++;
+  }
 
   // 1. Last week: delivered and verified — ready for billing.
   const o1 = await order(1, lastWeek, "County Rd 9 widening — base course", [line("LS-53", "88")], "Spread on the east shoulder; flagger at the north end.", [lastWeek, lastWeek]);
@@ -157,4 +203,30 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     customer_id: cust[4].id, quote_date: today, valid_until: addDays(today, 30), tax_rate_bp: 0, site_label: CUSTOMERS[4].site, site_line1: CUSTOMERS[4].line1, site_city: CUSTOMERS[4].city,
     lines: [line("LS-53", "220"), line("TS-SC", "80")],
   } }));
+
+  await seedPeople(db, { userId, today, drivers: drv, truck, primary: { [avery]: "101", [marco]: "102", [me]: "103", [theo]: "104", [priya]: "105", [nia]: "107" } });
+}
+
+/**
+ * Employees, primary trucks and (confidential) pay for the demo. Needs the
+ * employees migration (20261031000100); on a database without it the rest of
+ * the demo still works and this step is skipped.
+ */
+async function seedPeople(db: Db, p: { userId: string; today: string; drivers: Array<{ id: string; name: string }>; truck: Record<string, string>; primary: Record<string, string> }) {
+  const probe = await db.from("employees").select("id").limit(1);
+  if (probe.error) return; // not migrated yet
+  const titles: Record<string, string> = { "Avery Lindqvist": "Driver — tri-axle", "Marco Delgado": "Driver — tri-axle", "Priya Raman": "Driver — quad-axle", "Theo Brandt": "Driver — tandem", "Nia Okafor": "Driver — single-axle" };
+  const rows = p.drivers.map((d, i) => d.name === DEMO_PERSONA.name
+    ? { full_name: d.name, job_title: DEMO_PERSONA.title, department: "management", employment_type: "full_time", status: "active", hire_date: addDays(p.today, -2600), driver_id: d.id, user_id: p.userId, work_email: "daniel.mitchell@northfield.demo.example", work_phone: "(555) 010-0299" }
+    : { full_name: d.name, job_title: titles[d.name] ?? "Driver", department: "operations", employment_type: "full_time", status: i === 4 ? "on_leave" : "active", hire_date: addDays(p.today, -400 - i * 90), driver_id: d.id, user_id: null, work_email: "", work_phone: `(555) 010-020${i}` });
+  const staff = STAFF.map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: s.type ?? "full_time", status: "active", hire_date: addDays(p.today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" }));
+  const people = (await must("employees", db.from("employees").insert([...rows, ...staff]).select("id, full_name"))) as Array<{ id: string; full_name: string }>;
+  for (const [driverId, unit] of Object.entries(p.primary)) {
+    await must("primary truck", db.rpc("set_driver_primary_truck", { p_driver_id: driverId, p_truck_id: p.truck[unit] }));
+  }
+  const byName = new Map(people.map((x) => [x.full_name, x.id]));
+  await must("pay", db.from("employee_compensation").insert([
+    ...STAFF.map((s) => ({ employee_id: byName.get(s.full_name)!, pay_type: s.pay.pay_type, rate_cents: s.pay.rate_cents, effective_date: addDays(p.today, -90) })),
+    ...["Avery Lindqvist", "Marco Delgado", "Priya Raman", "Theo Brandt"].map((n, i) => ({ employee_id: byName.get(n)!, pay_type: "per_load", rate_cents: 7800 + i * 250, effective_date: addDays(p.today, -90) })),
+  ]));
 }

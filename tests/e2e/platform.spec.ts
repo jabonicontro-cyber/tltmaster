@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { signIn, unique } from "./helpers";
+import { asUser } from "./db";
 import { PASSWORD, PLATFORM_USER } from "./users";
 
 // N13: the public website, the platform team's private area (leads, live demo
@@ -165,6 +166,18 @@ test("live demo: a separate company with fictional data; role previews only narr
   const bar = page.getByRole("region", { name: "Demo company" });
   await expect(bar).toContainText("fictional data");
   await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
+  // A fictional persona and the company's own branding — the presenter's real account is untouched.
+  await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
+  await expect(page.getByRole("banner")).toContainText("Daniel Mitchell");
+  await expect(page.getByRole("img", { name: /Northfield Aggregates/ }).first()).toBeVisible();
+  const realName = await asUser(PLATFORM_USER.email, async (q) => (await q("select full_name from public.profiles where id = auth.uid()")).rows[0].full_name);
+  expect(realName).toBe(PLATFORM_USER.name);
+  // People: drivers and staff in the directory, pay visible to the owner, primary trucks set.
+  await page.goto("/employees?status=all");
+  await expect(page.getByRole("link", { name: "Sam Kowalski" })).toBeVisible();
+  await expect(page.getByRole("row", { name: /Avery Lindqvist/ })).toContainText("Truck 101");
+  await page.getByRole("link", { name: "Lena Park" }).click();
+  await expect(page.getByText("Pay (confidential)")).toBeVisible();
   await page.goto("/orders");
   await expect(page.getByText("Brightwater office park — topsoil")).toBeVisible();
   await expect(page.getByText(/Prairie View|Top Line/)).toHaveCount(0); // nothing from any other company
@@ -185,6 +198,21 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.getByRole("region", { name: "Demo company" }).getByLabel("View as").selectOption("driver");
   await expect(page).toHaveURL(/\/driver/);
   await expect(page.getByText("4th St water main — bedding stone").first()).toBeVisible();
+  await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
+  // Ticket history from earlier days, with different customers and statuses.
+  await expect(page.getByText(/^Daniel Mitchell · /)).toBeVisible();
+  const history = page.getByRole("list", { name: "My recent tickets" });
+  expect(await history.getByRole("listitem").count()).toBeGreaterThanOrEqual(3);
+  // Only his own loads (truck 103, a 15 t tandem) — not every ticket the demo seeded.
+  const quantities = await history.getByRole("listitem").locator("span.tabular").filter({ hasText: /ton$/ }).allTextContents();
+  expect(quantities.length).toBeGreaterThanOrEqual(3);
+  for (const q of quantities) {
+    expect(Number(q.replace(/[^\d.]/g, "")), q).toBeLessThanOrEqual(15);
+  }
+  // On a phone the demo bar wraps instead of pushing the page sideways.
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  await page.setViewportSize({ width: 1366, height: 900 });
 
   // Back to myself.
   await page.getByRole("region", { name: "Demo company" }).getByLabel("View as").selectOption("");
@@ -199,7 +227,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await expect(page.getByRole("region", { name: "Attention summary" })).toContainText(attention); // alerts unchanged
   await page.reload();
   await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
-  await page.getByRole("button", { name: new RegExp(PLATFORM_USER.name) }).click();
+  await page.getByRole("button", { name: /Daniel Mitchell/ }).click();
   await page.getByRole("menuitem", { name: "Show the demo bar" }).click();
   await expect(page.getByRole("region", { name: "Demo company" })).toBeVisible();
   await page.goto("/billing");

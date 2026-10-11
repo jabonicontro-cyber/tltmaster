@@ -43,6 +43,13 @@ project credentials. Read it together with:
   profiles, add/edit, confidential pay (`employees.compensation`), drivers' primary trucks
   (`fleet.assign`). **Needs migration `20261031000100_employees.sql` on staging** (after
   `20261030000100`); without it `/employees` errors, so do not release it before the migration.
+- **Northfield demo (Preview):** "Start the demo" (`/admin/demo`) seeds through the real app
+  functions: Northfield Aggregates branding and logo (`src/server/demo/northfield-logo.svg` → PNG),
+  presenter shown as the fictional **Daniel Mitchell** inside demo companies only (their real account
+  name is never changed), 8 customers, 7 trucks (106 out of service), 6 drivers on their primary
+  trucks, 5 staff, confidential pay, two weeks of delivery history. Migration
+  `20261031000200_driver_home_own_tickets.sql`: My Day lists tickets for the driver's own loads only.
+  Reset = start a fresh demo (the previous one is deactivated, never deleted).
 - **Known flaky locally:** `tests/db/command-center.test.ts` first test runs ~19 s against the large
   local test database and can hit the 20 s timeout in a full run; passes alone.
 

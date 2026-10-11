@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { greeting } from "@/lib/people/greeting";
-import { getMyProfile } from "@/server/data/profile";
+import { shownName } from "@/server/data/profile";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { DRIVER_TICKET_STATUS, REPORT_KIND_LABELS, REPORT_STATUS_LABELS, qualificationReminders, siteAddress } from "@/lib/driver/rules";
 import { trimNumber } from "@/lib/fleet/labels";
@@ -84,7 +84,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const access = await requirePagePermission("driver.portal");
   const sp = await searchParams;
   const home = await loadDriverHome();
-  const hello = greeting((await getMyProfile())?.displayName || access.fullName || (home.ok ? home.data.driver.name : ""));
+  const shown = await shownName(access);
+  const hello = greeting(shown || (home.ok ? home.data.driver.name : ""));
 
   if (!home.ok) {
     return (
@@ -113,7 +114,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       <div>
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="text-2xl font-black">My Day</h1>
-        <p className="text-muted">{h.driver.name} · {formatDate(h.today)}</p>
+        <p className="text-muted">{access.isDemo && shown ? shown : h.driver.name} · {formatDate(h.today)}</p>
       </div>
       {sp.sent && (
         <p role="status" className="rounded-md bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>

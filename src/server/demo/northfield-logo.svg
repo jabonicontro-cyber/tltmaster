@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="160" viewBox="0 0 480 160">
+  <rect x="0" y="0" width="480" height="160" rx="18" fill="#ffffff"/>
+  <g transform="translate(22,22)">
+    <rect width="116" height="116" rx="20" fill="#1f3b2d"/>
+    <path d="M14 92 L46 46 L62 66 L78 40 L104 92 Z" fill="#d9a441"/>
+    <path d="M46 46 L56 60 L50 60 L44 54 Z M78 40 L88 56 L82 56 L76 50 Z" fill="#f4e3b5"/>
+    <circle cx="28" cy="98" r="5" fill="#8fa89a"/><circle cx="42" cy="100" r="4" fill="#8fa89a"/><circle cx="90" cy="99" r="5" fill="#8fa89a"/><circle cx="76" cy="101" r="3.5" fill="#8fa89a"/>
+    <text x="58" y="26" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="15" fill="#f4e3b5" letter-spacing="2">N·A</text>
+  </g>
+  <text x="160" y="80" font-family="Arial, Helvetica, sans-serif" font-weight="800" font-size="46" fill="#1f3b2d" letter-spacing="1">NORTHFIELD</text>
+  <text x="162" y="116" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="22" fill="#9a7428" letter-spacing="7">AGGREGATE</text>
+</svg></body></html>

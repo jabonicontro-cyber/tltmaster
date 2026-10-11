@@ -11,7 +11,7 @@ import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { greeting } from "@/lib/people/greeting";
-import { getMyProfile } from "@/server/data/profile";
+import { shownName } from "@/server/data/profile";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { EXCEPTION_KINDS, KIND_LABELS, PRIORITY_RULES, metricCards, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
@@ -294,7 +294,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 
   return (
     <>
-      <p className="mb-1 text-xl font-semibold text-ink" data-testid="greeting">{greeting((await getMyProfile())?.displayName || access.fullName)}</p>
+      <p className="mb-1 text-xl font-semibold text-ink" data-testid="greeting">{greeting(await shownName(access))}</p>
       <PageHeader
         title="Command Center"
         description={`Today is ${formatDate(today)}. What needs attention, what is yours, and where to fix it — read live from the records.`}

@@ -27,3 +27,24 @@ export const getMyProfile = cache(async (): Promise<MyProfile | null> => {
 
 /** Where a person's photo is served; the version busts the browser cache after a change. */
 export const photoUrl = (userId: string, version: string | null) => (version ? `/people/photo/${userId}?v=${encodeURIComponent(version)}` : "");
+
+/**
+ * Inside a demo company, the person presenting is shown as the demo's own
+ * fictional employee record linked to their login (e.g. "Daniel Mitchell"),
+ * never by their real account name, which stays untouched. null outside a demo
+ * or when the demo has no such record.
+ */
+export const getDemoPersonaName = cache(async (isDemo: boolean, userId: string): Promise<string | null> => {
+  if (!isDemo) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("employees").select("full_name").eq("user_id", userId).maybeSingle();
+  if (error || !data) return null;
+  return (data as { full_name: string }).full_name || null;
+});
+
+/** The name to greet and show the signed-in person by: demo persona, own display name, then profile name. */
+export async function shownName(access: { isDemo?: boolean; userId: string; fullName: string }): Promise<string> {
+  const persona = await getDemoPersonaName(Boolean(access.isDemo), access.userId);
+  if (persona) return persona;
+  return (await getMyProfile())?.displayName || access.fullName;
+}

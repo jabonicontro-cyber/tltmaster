@@ -10,6 +10,8 @@ import { createClient } from "@/server/supabase/server";
 import { enterDemo, startDemo } from "../actions";
 
 export const metadata = { title: "Live demo" };
+// Starting a demo seeds a few hundred records through the normal app functions.
+export const maxDuration = 60;
 
 export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const sp = await searchParams;
