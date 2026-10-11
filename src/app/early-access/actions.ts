@@ -69,6 +69,9 @@ export async function enterEarlyAccess(formData: FormData): Promise<ActionResult
       p_max_devices: shared.maxDevices,
     });
   } else {
+    // Says only whether the setting exists on this deployment (never a value): a variable added in the
+    // hosting dashboard reaches only deployments built after it, which otherwise looks like a wrong password.
+    if (!shared.password && !looksLikeAccessCode(value)) console.warn("Early access: EARLY_ACCESS_PASSWORD is not set on this deployment (or is shorter than 12 characters).");
     // A personal site code, or a wrong value: either way the attempt is recorded and rate limited.
     const codeHash = looksLikeAccessCode(value) ? accessCodeHash(value) : "0".repeat(64);
     result = await admin.rpc("site_access_redeem", { p_code_hash: codeHash, p_ip_hash: ip, p_days: gate.days });

@@ -195,9 +195,16 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               description="Planned trips and the truck, trailer and driver assigned to each."
               actions={
                 canDispatch && order.scheduled_start ? (
-                  <Link href={`/dispatch?date=${dispatch.loads.find((l) => l.status === "planned" && l.load_date >= today)?.load_date ?? order.scheduled_start}`} className="text-sm font-semibold underline">
-                    Open dispatch board
-                  </Link>
+                  <span className="flex flex-wrap items-center gap-3">
+                    {can(access, "dispatch.edit") && ["scheduled", "dispatched", "in_progress", "partially_completed"].includes(order.status) && (
+                      <Link href={`/orders/${order.id}/load-build`} className="text-sm font-semibold text-brand-fg underline">
+                        Build loads
+                      </Link>
+                    )}
+                    <Link href={`/dispatch?date=${dispatch.loads.find((l) => l.status === "planned" && l.load_date >= today)?.load_date ?? order.scheduled_start}`} className="text-sm font-semibold underline">
+                      Open dispatch board
+                    </Link>
+                  </span>
                 ) : undefined
               }
             />

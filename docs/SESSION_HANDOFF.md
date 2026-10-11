@@ -134,6 +134,21 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Shared Early Access password refused on mytaviron.com (2026-10-11) — diagnosis:** Production still runs the single
+build of `16fc188` from 2026-10-11 16:07 UTC (GitHub deployment records). The owner set `EARLY_ACCESS_PASSWORD` in
+Vercel after that; Vercel applies variable changes only to deployments built afterwards, so the running deployment has
+no shared password and treats the entry as a personal code → "That password isn't valid" (reproduced earlier by the
+gate test without the variable). Other possibilities (less likely): the value differs from what is typed (exact,
+case-sensitive), or it is under 12 characters. Owner actions (Production — need explicit approval): (1) check that
+migration `20261029000100` is applied on the Supabase project Production uses (`npx supabase migration list`), and
+apply it after a backup if not — otherwise a correct password shows "temporarily unavailable"; (2) Vercel →
+Deployments → the current Production deployment → ⋯ → **Redeploy** (same commit, picks up the variable). The Preview
+branch now logs "EARLY_ACCESS_PASSWORD is not set on this deployment" when that is the case (never the value).
+
+**Smart Load Build increment 1 (2026-10-11):** `/orders/[id]/load-build` — see docs/SMART_LOAD_BUILD.md. Engine
+`src/lib/dispatch/load-build.ts`, loader `src/server/data/load-build.ts`, approval action next to the page. No
+migration. Tested locally (unit + browser); on the Preview branch.
+
 **Checkpoint backup and Preview path (2026-10-11):** with the owner's approval, commits `e692c05`, `428fd4f`,
 `8e49dab`, `7586464` were pushed to the new branch `claude/ui-and-signin-checkpoint` (the production branch
 `claude/top-line-trucking-manager-vmw04i` stays at `16fc188`). Vercel recorded it as **Preview** (success,

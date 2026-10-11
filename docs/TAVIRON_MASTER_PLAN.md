@@ -111,6 +111,11 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Smart Load Build (2026-10-11):** canonical spec in [`docs/SMART_LOAD_BUILD.md`](SMART_LOAD_BUILD.md) (accepted
+requirements A–J, gap analysis, rules, open questions, milestones). Increment 1 implemented: draft loads from an
+order's single material line (exact totals, payload limited to usable truck capacity, even spread over scheduled
+days, nothing moved), dispatcher approval creates planned loads only. Next: cycle-time data (decision needed).
+
 **Deployment policy and Preview path (2026-10-11):** non-production branches are verified to deploy to Preview
 (`claude/ui-and-signin-checkpoint`). Claude never pushes the production branch without approval; docs-only changes ride
 with the next code checkpoint (CLAUDE.md → Workflow). Open: `main` as production branch, domains, Preview variables, the
