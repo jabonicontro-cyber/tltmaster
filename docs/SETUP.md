@@ -19,6 +19,8 @@ dashboard (production). Never commit real values.
 | `EARLY_ACCESS_GATE` | no (default: on in production builds, off in `npm run dev`) | `on` / `off`. See docs/DEPLOYMENT.md |
 | `SITE_ACCESS_SECRET` | **yes when the gate is on** | ≥ 32 random characters (`openssl rand -base64 32`). Server only. Without it the app answers 503 to everything (fails closed). Changing it signs every device out of early access |
 | `EARLY_ACCESS_DAYS` | no (30) | How long a device stays admitted (1–90 days, never beyond the code's expiry) |
+| `EARLY_ACCESS_PASSWORD` | no | The shared Early Access password (12–128 characters, server only; DEPLOYMENT §3b). Empty: only personal site codes open the gate |
+| `EARLY_ACCESS_PASSWORD_MAX_DEVICES` | no (500) | Devices admitted with the shared password at the same time (1–1000) |
 | `EARLY_ACCESS_RECHECK_SECONDS` | no (300) | How often an admitted device is re-checked against the database (revocation delay) |
 | `PUBLIC_SITE` | no (closed) | `on` opens the public website (home, pricing, demo request…) to everyone while the early-access gate is on. Empty: behind the gate like the rest. (With the gate off, as in `npm run dev`, it is open anyway) |
 | `SITE_INDEXING` | no (off) | `on` lets search engines index the nine public pages only (read at build time) |
@@ -241,9 +243,10 @@ runs with the gate off):
 
 ```bash
 npm run build
+PW="$(openssl rand -base64 18)"   # a throwaway shared password for the test server
 EARLY_ACCESS_GATE=on SITE_ACCESS_SECRET="$(openssl rand -base64 32)" EARLY_ACCESS_RECHECK_SECONDS=0 \
-  npx next start -p 3001 &
-E2E_BASE_URL=http://localhost:3001 E2E_GATE=on npx playwright test tests/e2e/gate.spec.ts
+  EARLY_ACCESS_PASSWORD="$PW" npx next start -p 3001 &
+E2E_BASE_URL=http://localhost:3001 E2E_GATE=on E2E_EARLY_ACCESS_PASSWORD="$PW" npx playwright test tests/e2e/gate.spec.ts
 node scripts/check-deployment.mjs http://localhost:3001
 # Again with the public website open: start the server with PUBLIC_SITE=on as well, and
 # run the spec with E2E_PUBLIC_SITE=on.

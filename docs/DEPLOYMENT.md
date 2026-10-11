@@ -68,6 +68,8 @@ repeats the same steps with new projects — never point staging at production d
    | `EARLY_ACCESS_GATE` | `on` |
    | `SITE_ACCESS_SECRET` | 32+ random characters — generate with `openssl rand -base64 32` (**Sensitive**) |
    | `EARLY_ACCESS_DAYS` | `30` (optional) |
+   | `EARLY_ACCESS_PASSWORD` | the shared Early Access password you give to prospects: 12–128 characters, e.g. four random words (**Sensitive**). Empty: only personal site codes work (§3b) |
+   | `EARLY_ACCESS_PASSWORD_MAX_DEVICES` | `500` (optional): devices admitted with the password at the same time, 1–1000 |
    | `EMAIL_PROVIDER` | `preview` (quote emails are shown, not sent, until Resend is set up) |
    | `PUBLIC_SITE` | `on` when you decide the public website (home, pricing, demo request…) should be open to everyone. Empty (default): it stays behind the Early Access page like the rest |
    | `SITE_INDEXING` | leave empty on staging (search engines are told not to index anything). `on` lets them index the nine public pages only — decide before launch |
@@ -243,6 +245,42 @@ node --env-file=.env.staging scripts/early-access.mjs revoke-devices <code-id> -
 `SITE_ACCESS_SECRET` in Vercel (and redeploying) signs every device out of early access
 at once.
 
+### 3b. The shared Early Access password
+
+Instead of a personal code per person, you can give selected prospects one password. It is
+set only in the server environment and checked on the server; it is never stored in the
+database, logged or sent to the browser (the database keeps a keyed fingerprint).
+
+**Set it up (staging):**
+1. Apply migration `20261029000100_shared_early_access_password.sql` first (§2a). Until it
+   is applied, the password is refused with "temporarily unavailable"; codes keep working.
+2. Vercel → Project → Settings → Environment Variables → add `EARLY_ACCESS_PASSWORD`
+   (mark **Sensitive**, Production environment — the one `tltmaster.vercel.app` uses). Pick
+   12–128 characters you can read out loud, e.g. four random words; never reuse
+   `SITE_ACCESS_SECRET` or any other secret. Optionally `EARLY_ACCESS_PASSWORD_MAX_DEVICES`.
+3. Redeploy (Deployments → ⋯ → Redeploy) — environment changes apply only to new deployments.
+4. In a private window: open the site → Early Access page → wrong password refused → the
+   password → sign-in page. Then sign in as usual.
+
+**What the password does — and does not:** it admits *this browser* to the sign-in page,
+exactly like a personal code: the device gets its own grant and signed cookie, re-checked
+every 5 minutes. It never signs anyone in and never grants an account, company, membership
+or permission — those still need an invitation or an approved sign-up, and roles still
+apply. Personal codes keep working on the same page.
+
+**Rotate it** (e.g. a prospect passed it on): change `EARLY_ACCESS_PASSWORD` in Vercel and
+redeploy. The first entry with the new password retires the old one and signs out every
+device admitted with it (within 5 minutes). To sign them out immediately — or to stop the
+password altogether without a deploy — revoke its record:
+```bash
+node --env-file=.env.staging scripts/early-access.mjs list            # the row marked "shared"
+node --env-file=.env.staging scripts/early-access.mjs revoke-devices <id> --reason "Rotated"   # devices out, password still works
+node --env-file=.env.staging scripts/early-access.mjs revoke <id> --reason "Paused"            # devices out and this password refused until it is changed
+```
+Wrong entries (password or code) count together: 10 per network address per 15 minutes.
+A visitor can remove early access from their own browser from the sign-in page
+("Remove early access from this browser"); that ends the device's grant.
+
 ## 4. Custom domain (later)
 
 1. Vercel → Project → **Settings → Domains** → add `app.yourdomain.com`.
@@ -275,10 +313,12 @@ No domain is configured by this repository; buying one is your decision.
   else returns 401 — including a server action posted to a public page. Exceptions: the
   Early Access page and Supabase Auth email links (`/auth/confirm`), which carry their own
   one-time tokens.
-- A valid code gives this browser a signed, HttpOnly, Secure, SameSite=Lax cookie
+- A valid code — or the shared Early Access password (§3b) — gives this browser a signed, HttpOnly, Secure, SameSite=Lax cookie
   (`__Host-taviron-access`) tied to a database grant; it is re-checked every 5 minutes, so a
   revoked code or device loses access within 5 minutes. Wrong codes are limited to 10 per
   network address per 15 minutes.
 - **Signed-in users pass the gate**: an account already means someone invited or approved
   them. Passing the gate never creates an account, a company, a membership or a permission.
 - Codes are never stored (only SHA-256 hashes), never logged and never sent to the browser.
+  The shared password lives only in the server environment (the database keeps an HMAC
+  fingerprint keyed with `SITE_ACCESS_SECRET`); it is compared in constant time.

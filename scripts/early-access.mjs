@@ -16,6 +16,11 @@
 //
 // Rotating a site code: create a new one, send it, then revoke the old one
 // (its devices lose access within minutes).
+//
+// The shared Early Access password (EARLY_ACCESS_PASSWORD in the server
+// environment, docs/DEPLOYMENT.md §3b) appears in `list` as "shared". Its
+// devices can be signed out with revoke-devices; revoke stops that password
+// until it is changed. It cannot be created here: it is set in the environment.
 import { createHash, randomInt } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
@@ -84,7 +89,9 @@ if (cmd === "create") {
   }
   for (const c of data) {
     const state = c.revoked_at ? `revoked (${c.revoke_reason})` : new Date(c.expires_at) < new Date() ? "expired" : c.used >= c.max_uses ? "used up" : "active";
-    const kind = c.purpose === "site_access" ? `site    ${String(c.active_grants).padStart(3)} active device(s)` : "company";
+    const kind = c.purpose === "site_access" || c.purpose === "site_shared"
+      ? `${c.purpose === "site_shared" ? "shared" : "site  "}  ${String(c.active_grants).padStart(3)} active device(s)`
+      : "company";
     console.log(`${c.id}  ${state.padEnd(10)}  ${kind.padEnd(30)}  ${c.used}/${c.max_uses} used  expires ${c.expires_at.slice(0, 10)}  ${c.label}`);
   }
   if (!data.length) console.log("No codes.");

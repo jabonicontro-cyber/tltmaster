@@ -59,6 +59,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.begin_ticket_scan", "public.attach_ticket_scan",
   // N12: early-access site gate (service role only).
   "public.site_access_revoke_grants", "public.site_access_redeem", "public.site_access_validate",
+  // Shared early-access password (service role only).
+  "public.site_access_enter_shared", "public.site_access_revoke_grant",
   // N13: platform owner (every function checks private.require_platform_admin, or is service-role only), leads, demo, imports.
   "private.is_platform_admin", "private.require_platform_admin", "private.platform_log",
   "public.platform_whoami", "public.platform_admin_grant", "public.platform_admin_revoke", "public.platform_admin_list",

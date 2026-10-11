@@ -27,6 +27,7 @@ async function siteCode(uses = 10) {
   const [{ id }] = await sql<{ id: string }>("select public.early_access_create_code($1, 'Gate e2e (test)', $2, now() + interval '1 day', 'site_access') as id", [createHash("sha256").update(normalizeAccessCode(code)).digest("hex"), uses]);
   return { code, id };
 }
+const NOT_VALID = "That password isn't valid. Check it and try again, or ask the person who invited you.";
 const resetAttempts = () => sql("delete from private.access_attempts where scope = 'site'");
 
 test.beforeAll(resetAttempts);
@@ -76,21 +77,21 @@ test("without early access nothing is reachable except the public website, the g
   expect(forged.status()).toBe(307);
 });
 
-test("the Early Access page works on a phone: wrong code refused, right code opens sign-in; sign-in and sign-out still work", async ({ browser }) => {
+test("personal site codes still work on the Early Access page (phone): wrong code refused, right code opens sign-in; sign-in and sign-out still work", async ({ browser }) => {
   const { code } = await siteCode();
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   await page.goto("/command-center");
   await expect(page).toHaveURL(/\/early-access\?next=%2Fcommand-center/);
-  await expect(page.getByRole("heading", { name: "Early Access" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Taviron is open by invitation." })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
 
-  await page.getByLabel("Access code").fill("TLT-AAAAA-BBBBB-CCCCC-DDDDD");
+  await page.getByLabel("Early Access password").fill("TLT-AAAAA-BBBBB-CCCCC-DDDDD");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByText("This access code is not valid. Check it and try again.").first()).toBeVisible();
-  await expect(page.getByLabel("Access code")).toHaveValue("TLT-AAAAA-BBBBB-CCCCC-DDDDD"); // kept for correction
+  await expect(page.getByRole("alert")).toHaveText(NOT_VALID);
+  await expect(page.getByLabel("Early Access password")).toHaveValue("TLT-AAAAA-BBBBB-CCCCC-DDDDD"); // kept for correction
 
-  await page.getByLabel("Access code").fill(code.toLowerCase().replace(/-/g, " ")); // forgiving about case and separators
+  await page.getByLabel("Early Access password").fill(code.toLowerCase().replace(/-/g, " ")); // forgiving about case and separators
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/login\?next=%2Fcommand-center/); // on to the normal sign-in, not into the app
   const cookie = (await ctx.cookies()).find((c) => c.name === "taviron-access");
@@ -127,7 +128,7 @@ test("a signed-in user keeps working without the gate cookie; revoking the code 
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto("/early-access");
-  await page.getByLabel("Access code").fill(code);
+  await page.getByLabel("Early Access password").fill(code);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page).toHaveURL(/\/login/);
 
@@ -144,15 +145,15 @@ test("a signed-in user keeps working without the gate cookie; revoking the code 
   const other = await browser.newContext();
   const op = await other.newPage();
   await op.goto("/early-access");
-  await op.getByLabel("Access code").fill(code);
+  await op.getByLabel("Early Access password").fill(code);
   await op.getByRole("button", { name: "Continue" }).click();
   await expect(op).toHaveURL(/\/login/);
   await sql("select public.early_access_revoke_code($1, 'e2e rotation')", [id]);
   await op.goto("/login");
   await expect(op).toHaveURL(/\/early-access/);
-  await op.getByLabel("Access code").fill(code);
+  await op.getByLabel("Early Access password").fill(code);
   await op.getByRole("button", { name: "Continue" }).click();
-  await expect(op.getByText("This access code is no longer active.").first()).toBeVisible();
+  await expect(op.getByRole("alert")).toHaveText(NOT_VALID); // revoked: the same message as a wrong password
   await other.close();
   await ctx.close();
 });
@@ -175,13 +176,124 @@ test("repeated wrong codes are rate limited, even before the right one", async (
   const { code } = await siteCode();
   await page.goto("/early-access");
   for (let i = 0; i < 10; i++) {
-    await page.getByLabel("Access code").fill(newCode());
+    await page.getByLabel("Early Access password").fill(newCode());
     await page.getByRole("button", { name: "Continue" }).click();
     await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
   }
-  await page.getByLabel("Access code").fill(code);
+  await page.getByLabel("Early Access password").fill(code);
   await page.getByRole("button", { name: "Continue" }).click();
   await expect(page.getByText("Too many attempts from this network. Wait 15 minutes and try again.")).toBeVisible();
   await expect(page).toHaveURL(/\/early-access/);
   await resetAttempts();
+});
+
+// The shared Early Access password (EARLY_ACCESS_PASSWORD on the test server, given to the
+// spec as E2E_EARLY_ACCESS_PASSWORD). It admits a browser to sign-in only, like a code.
+const SHARED = process.env.E2E_EARLY_ACCESS_PASSWORD ?? "";
+
+test.describe("shared Early Access password", () => {
+  test.skip(!SHARED, "Needs E2E_EARLY_ACCESS_PASSWORD (the server's EARLY_ACCESS_PASSWORD).");
+  test.beforeEach(resetAttempts);
+
+  test("on a phone: show/hide, keyboard only, wrong password refused, right one opens sign-in — never the app", async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto("/orders");
+    await expect(page).toHaveURL(/\/early-access\?next=%2Forders/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+
+    const field = page.getByLabel("Early Access password");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveAttribute("type", "password");
+    await page.keyboard.type(`${SHARED}x`);
+    // Show/hide is a real button, reachable by keyboard.
+    await page.keyboard.press("Tab");
+    const toggle = page.getByRole("button", { name: "Show password" });
+    await expect(toggle).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(field).toHaveAttribute("type", "text");
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await page.keyboard.press("Enter");
+    await expect(field).toHaveAttribute("type", "password");
+    await field.press("Enter");
+    await expect(page.getByRole("alert")).toHaveText(NOT_VALID);
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    expect((await ctx.cookies()).find((c) => c.name === "taviron-access")).toBeUndefined();
+
+    await field.fill(SHARED);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/login\?next=%2Forders/);
+    const cookie = (await ctx.cookies()).find((c) => c.name === "taviron-access");
+    expect(cookie).toMatchObject({ httpOnly: true, sameSite: "Lax", path: "/" });
+    expect(cookie!.value).not.toContain(SHARED);
+    expect(page.url()).not.toContain(encodeURIComponent(SHARED));
+
+    // Past the gate, but not signed in: the app, its pages and its endpoints still refuse.
+    for (const path of ["/command-center", "/orders", "/admin", "/settings"]) {
+      await page.goto(path);
+      await expect(page, path).toHaveURL(/\/login/);
+    }
+    const api = await page.request.fetch(`/tickets/${randomUUID()}/scans`, { method: "POST", headers: { accept: "*/*", "next-action": "x" }, maxRedirects: 0 });
+    expect(api.status()).toBe(307);
+    expect(api.headers().location).toMatch(/\/login/);
+
+    // Sign-in still decides who gets in, and roles still apply.
+    await page.goto("/login");
+    await page.getByLabel("Email").fill(USERS.office.email);
+    await page.getByLabel("Password").fill(PASSWORD);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/command-center/);
+    await page.goto("/settings?tab=users");
+    await expect(page.getByRole("button", { name: "Invite user" })).toHaveCount(0);
+    await ctx.close();
+  });
+
+  test("a tampered cookie is refused; leaving early access ends this device's grant, so a copied cookie stops working too", async ({ browser }) => {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto("/early-access");
+    await page.getByLabel("Early Access password").fill(SHARED);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/login/);
+    const cookie = (await ctx.cookies()).find((c) => c.name === "taviron-access")!;
+
+    // Tampering: change the expiry inside the signed token.
+    const [v, body, sig] = cookie.value.split(".");
+    const claims = JSON.parse(Buffer.from(body, "base64url").toString());
+    const forged = `${v}.${Buffer.from(JSON.stringify({ ...claims, x: claims.x + 86400 * 365 })).toString("base64url")}.${sig}`;
+    const r = await page.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${forged}` }, maxRedirects: 0 });
+    expect(r.status()).toBe(307);
+    expect(r.headers().location).toMatch(/\/early-access/);
+
+    // Leave from the sign-in page.
+    await page.getByRole("button", { name: "Remove early access from this browser" }).click();
+    await expect(page).toHaveURL(/\/early-access\?left=1/);
+    await expect(page.getByRole("status")).toHaveText("Early access was removed from this browser.");
+    // Replaying the old (genuinely signed) cookie no longer works: its grant is revoked.
+    const replay = await page.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${cookie.value}` }, maxRedirects: 0 });
+    expect(replay.status()).toBe(307);
+    expect(replay.headers().location).toMatch(/\/early-access/);
+    await ctx.close();
+  });
+
+  test("the password is rate limited like codes, and never reaches the browser", async ({ page, request }) => {
+    await page.goto("/early-access");
+    for (let i = 0; i < 10; i++) {
+      await page.getByLabel("Early Access password").fill(`not-the-password-${i}`);
+      await page.getByRole("button", { name: "Continue" }).click();
+      await expect(page.getByRole("button", { name: "Continue" })).toBeEnabled();
+    }
+    await page.getByLabel("Early Access password").fill(SHARED);
+    await page.getByRole("button", { name: "Continue" }).click();
+    await expect(page.getByRole("alert")).toHaveText("Too many attempts from this network. Wait 15 minutes and try again.");
+    await expect(page).toHaveURL(/\/early-access/);
+    await resetAttempts();
+
+    const html = await (await request.get("/early-access")).text();
+    const scripts = [...html.matchAll(/src="(\/_next\/static\/[^"]+\.js)"/g)].map((m) => m[1]);
+    for (const body of [html, ...(await Promise.all(scripts.map(async (s) => (await request.get(s)).text())))]) {
+      expect(body).not.toContain(SHARED);
+      expect(body).not.toMatch(/EARLY_ACCESS_PASSWORD/);
+    }
+  });
 });
