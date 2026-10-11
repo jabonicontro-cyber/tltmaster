@@ -111,6 +111,11 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Deployment policy and Preview path (2026-10-11):** non-production branches are verified to deploy to Preview
+(`claude/ui-and-signin-checkpoint`). Claude never pushes the production branch without approval; docs-only changes ride
+with the next code checkpoint (CLAUDE.md → Workflow). Open: `main` as production branch, domains, Preview variables, the
+mytaviron.com sign-in difference (SESSION_HANDOFF).
+
 **Roadmap after the UI checkpoints (not started):** further polish of the remaining screens (Orders, Fleet, Reports,
 Customers, Tickets); refresh public screenshots from the real UI with consistent fictional data (no development overlays,
 legitimate alerts kept); a restrained 3D trucking showcase (trucks, aggregate, road) with real screens central; an

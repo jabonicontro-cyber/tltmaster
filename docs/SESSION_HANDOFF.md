@@ -134,6 +134,30 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Checkpoint backup and Preview path (2026-10-11):** with the owner's approval, commits `e692c05`, `428fd4f`,
+`8e49dab`, `7586464` were pushed to the new branch `claude/ui-and-signin-checkpoint` (the production branch
+`claude/top-line-trucking-manager-vmw04i` stays at `16fc188`). Vercel recorded it as **Preview** (success,
+`tltmaster-ck789m9xh-taviron.vercel.app`); Production untouched. Further work goes on that branch (CLAUDE.md policy).
+Preview's environment variables are unknown — the preview may answer 503 until they are set (DEPLOYMENT §2b step 4).
+
+**Sign-in fails on mytaviron.com but works on tltmaster.vercel.app (owner report, 2026-10-11) — not yet resolved:**
+- Both run code where "Email or password is incorrect." means Supabase answered 400 (wrong password, unconfirmed
+  email, or no such user in the project asked). A password sign-in is a server-to-Supabase call; it does not depend
+  on the website's domain. So if both domains used the same Vercel deployment and variables, the same credentials
+  would behave the same way. Something differs; the candidates, most likely first:
+  1. **A different password is sent** — browsers keep saved passwords per site, so `mytaviron.com` may autofill an
+     old or different one (e.g. the Early Access password). Check: type the password by hand there.
+  2. **`mytaviron.com` uses another Supabase project** — it is attached to a different Vercel project or environment
+     whose `NEXT_PUBLIC_SUPABASE_URL` differs (the account would not exist there). Check: Vercel → Project
+     `tltmaster` → Settings → Domains (is it listed, on which environment/branch?), and compare
+     `NEXT_PUBLIC_SUPABASE_URL` per environment (a public value).
+  3. **Auth logs:** Supabase (taviron-staging) → Logs → Auth, at the time of the failed attempt: an
+     `invalid_credentials` / `email_not_confirmed` entry means the right project with a wrong password / unconfirmed
+     email; no entry means the request went to another project.
+- Claude could not check any of this: the sandbox's network policy blocks both domains and the Vercel/Supabase APIs.
+- Code side: `8e49dab` names unconfirmed emails; the backup branch also logs the error code (never the email or
+  password) on every refused sign-in, so once that code serves a domain, Vercel's runtime logs show which case it is.
+
 **Sign-in and platform access (2026-10-11, local only, not pushed):** two defects fixed and tested locally. (1) With the
 right password on an account whose email was never confirmed, Supabase answers `email_not_confirmed` (it checks the
 password first), but the page said "Email or password is incorrect." It now says the email is unconfirmed; wrong passwords

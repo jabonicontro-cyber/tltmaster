@@ -26,6 +26,9 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     password: parsed.data.password,
   });
   if (error) {
+    // Codes only (never the email or password): lets the owner tell a wrong password, an
+    // unconfirmed email and an unknown account apart in the hosting logs.
+    console.warn("Sign-in refused", { status: error.status, code: error.code });
     if (error.status === 429) return { ok: false, error: "Too many attempts. Wait a minute and try again." };
     // Supabase reports an unconfirmed email only after the password has matched,
     // so saying so reveals nothing to someone who does not know the password.

@@ -68,8 +68,23 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 
 ## Workflow
 
-- **Branch:** `claude/top-line-trucking-manager-vmw04i`. Every push deploys to the Vercel project's
-  Production environment (`tltmaster.vercel.app`, which serves as staging).
+- **Branches and environments (verified 2026-10-11 from GitHub's deployment records):**
+  - `claude/top-line-trucking-manager-vmw04i` is still Vercel's **Production Branch**: a push to it deploys to
+    Production (`tltmaster.vercel.app`, and any domain on that environment). **Never push to it** unless the owner
+    explicitly approves that specific production release.
+  - Any other branch deploys to **Preview** only (first proven by `claude/ui-and-signin-checkpoint`, recorded as
+    Preview). Work and push on `claude/ui-and-signin-checkpoint` (or another non-production branch) until the owner
+    finishes the split in docs/DEPLOYMENT.md §2b (`main` → Production on `mytaviron.com`).
+  - Before any push, re-check which branch Production tracks (GitHub deployment records); if unsure, don't push.
+- **Deployment policy:**
+  - Docs, plans, handoffs and test reports don't justify a deployment: commit them, and push them only together
+    with the next real code checkpoint.
+  - Code, styles, assets, routes, auth or server changes: run the focused and checkpoint tests, group related
+    changes, push the checkpoint to the Preview branch, then verify the deployed URL in a browser. A local build
+    does not prove the deployed site works; say "not verified live" when it couldn't be checked.
+  - Explicit owner approval, each time, for: production deployments or merges into the production branch,
+    environment variables or secrets, domains, remote migrations or database changes, account/role changes,
+    anything destructive. Approval for one operation never covers another.
 - **Commits** end with the session's co-author trailer. Don't open a PR unless asked.
 - **Dates:** use `DateInput` (`src/components/ui/date-input.tsx`) for every date field and
   `isOperationalDate` on the server.

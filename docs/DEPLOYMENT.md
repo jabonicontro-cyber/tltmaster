@@ -96,6 +96,12 @@ push goes straight to whatever domains the project's Production environment serv
 `tltmaster.vercel.app`, and `mytaviron.com` too if it is attached to this project (not verifiable from
 Claude's sandbox).
 
+**Update (verified 2026-10-11):** a push of the new branch `claude/ui-and-signin-checkpoint` (commit `7586464`)
+was recorded by Vercel as a **Preview** deployment (build succeeded; Production stayed on `16fc188`). So any branch
+other than the production branch already deploys to Preview; what is still missing is `main` as the production
+branch, the domain assignments and the Preview variables below. Until then Claude pushes only to non-production
+branches (CLAUDE.md → Workflow).
+
 **Target:** `mytaviron.com` = Production, built only from `main`; `tltmaster.vercel.app` = Preview of the
 working branch. No new project, no paid service, no code change (the app behaves the same in both; the
 gate is on for every Vercel build).
