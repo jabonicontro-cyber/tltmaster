@@ -36,6 +36,13 @@ project credentials. Read it together with:
 - **Phone fields** format US numbers as typed; `+` numbers and extensions kept; profile requires a
   complete number. **Navigation:** breadcrumbs return to the remembered list view; phones show one
   back link; forms marked `data-guard-unsaved` warn before leaving with edits.
+- **Production released 2026-10-11 20:45 UTC: `96d3ee8`** (Vercel deployment success; live check
+  not possible from the session — network policy). Migration `20261030000100` still unapplied on
+  staging (app degrades gracefully).
+- **Employees (Preview):** `/employees` directory (search, status/department/driver filters),
+  profiles, add/edit, confidential pay (`employees.compensation`), drivers' primary trucks
+  (`fleet.assign`). **Needs migration `20261031000100_employees.sql` on staging** (after
+  `20261030000100`); without it `/employees` errors, so do not release it before the migration.
 - **Known flaky locally:** `tests/db/command-center.test.ts` first test runs ~19 s against the large
   local test database and can hit the 20 s timeout in a full run; passes alone.
 

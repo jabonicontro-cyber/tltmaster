@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users,
+  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -35,5 +35,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view", group: "Operations" },
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance" },
   { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance" },
+  { href: "/employees", label: "Employees", icon: IdCard, permission: "employees.view", group: "Company" },
   { href: "/settings", label: "Settings", icon: Settings, group: "Company" },
 ];

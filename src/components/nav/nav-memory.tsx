@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowLeft, ChevronRight } from "lucide-react";
@@ -18,12 +18,10 @@ export function ListViewRecorder() {
 }
 
 /** A link to a list page that returns to the last view of it in this tab (filters kept), or the plain list. */
+const noSubscribe = () => () => {};
 function useRemembered(href: string): string {
-  const [resolved, setResolved] = useState(href);
-  useEffect(() => {
-    if (!href.includes("?")) setResolved(rememberedListView(href));
-  }, [href]);
-  return resolved;
+  // Server render and first paint use the plain link; the browser then reads this tab's remembered view.
+  return useSyncExternalStore(noSubscribe, () => (!href || href.includes("?") ? href : rememberedListView(href)), () => href);
 }
 
 function CrumbLink({ crumb }: { crumb: Crumb & { href: string } }) {

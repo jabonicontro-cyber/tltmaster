@@ -18,6 +18,7 @@ test("the rail expands on hover and focus, collapses again, and a pin survives a
   // Every destination is still there, with its accessible name, while collapsed.
   await expect(sidebar.getByRole("link", { name: "Dispatch" })).toBeVisible();
   await expect(sidebar.getByRole("link", { name: "Dispatch" })).toHaveAttribute("href", "/dispatch");
+  await expect(sidebar.getByRole("link", { name: "Dispatch" })).toHaveAttribute("title", "Dispatch"); // tooltip while collapsed
 
   await sidebar.hover();
   await expect(sidebar).toHaveAttribute("data-expanded", "true");

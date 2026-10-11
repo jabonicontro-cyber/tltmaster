@@ -34,6 +34,8 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
+            // Tooltip on the collapsed rail (the accessible name is the visible label either way).
+            title={collapsed ? item.label + (item.planned ? " (planned)" : "") : undefined}
             className={cn(
               "group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
               active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/[0.06] hover:text-white",

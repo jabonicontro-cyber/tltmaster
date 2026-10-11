@@ -18,6 +18,7 @@ export const PERMISSIONS = [
   "fleet.view",
   "fleet.edit",
   "fleet.service",
+  "fleet.assign",
   "dispatch.view",
   "dispatch.edit",
   "tickets.view",
@@ -31,6 +32,9 @@ export const PERMISSIONS = [
   "field_reports.manage",
   "settings.manage",
   "users.manage",
+  "employees.view",
+  "employees.edit",
+  "employees.compensation",
   "audit.view",
 ] as const;
 

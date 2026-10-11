@@ -81,6 +81,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
           type="button"
           onClick={togglePin}
           aria-pressed={pinned}
+          title={!expanded ? "Keep sidebar open" : undefined}
           className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-white/70 hover:bg-white/[0.06] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
         >
           {pinned ? <PinOff className="size-[18px] shrink-0" aria-hidden /> : <Pin className="size-[18px] shrink-0" aria-hidden />}

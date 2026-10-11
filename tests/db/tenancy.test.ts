@@ -8,6 +8,7 @@ afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
+  "employees", "employee_compensation",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
   "price_lists", "customers", "customer_contacts", "customer_sites", "materials", "charge_items",
   "price_list_entries", "quotes", "quote_versions", "quote_lines", "quote_status_events", "documents",
@@ -24,6 +25,8 @@ const TENANT_TABLES = [
 const REVIEWED_DEFINER_FUNCTIONS = [
   // Profile self-service (20261030000100): own row only; photos only within the caller's current company.
   "public.my_profile", "public.update_my_profile", "public.set_my_photo", "public.profile_photo",
+  // Employees (20261031000100): compensation audit without amounts; primary truck needs fleet.assign, same company.
+  "private.audit_compensation_change", "public.set_driver_primary_truck",
   "private.assign_customer_number", "private.audit_row_change", "private.business_timezone", "private.business_today",
   "private.create_company", "private.current_app_role", "private.current_company_id", "private.handle_new_auth_user",
   "private.has_permission", "private.is_company_member", "private.issue_current_version", "private.log_event",
