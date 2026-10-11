@@ -1,142 +1,187 @@
 import type { Metadata } from "next";
-import { ArrowRight, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, Wrench } from "lucide-react";
-import { HeroScene } from "@/components/site/hero-scene";
+import Link from "next/link";
+import { ArrowRight, Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { Container, CtaLink, Eyebrow, FinalCta, Screenshot, SectionHeading } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: { absolute: "Taviron — hauling operations software" },
-  description: "Orders, dispatch, drivers, delivery tickets and billing readiness for aggregate and material hauling companies, in one place.",
+  description: "Quotes, orders, dispatch, drivers, delivery tickets and billing readiness for aggregate and material hauling companies, in one place.",
 };
 
+// Every statement on this page matches a capability listed as available in
+// src/lib/site/capabilities.ts. Screens are the real app with fictional demo data.
+
 const FLOW = [
-  { icon: FileText, title: "Quote", text: "Customer-specific rates, versions and PDF quotes." },
-  { icon: ClipboardCheck, title: "Order", text: "Accepted quotes become orders with lines and schedules." },
-  { icon: Route, title: "Dispatch", text: "Plan loads and assign trucks and qualified drivers." },
-  { icon: Smartphone, title: "Deliver", text: "Drivers see their work and submit tickets from the phone." },
-  { icon: ClipboardCheck, title: "Review", text: "The office checks every ticket against the order." },
-  { icon: Receipt, title: "Billing-ready", text: "Verified quantities hand off to billing with an audit trail." },
+  { icon: FileText, title: "Quote", text: "Customer-specific rates, versioned PDF quotes." },
+  { icon: ClipboardCheck, title: "Order", text: "An accepted quote becomes its order, once." },
+  { icon: Route, title: "Dispatch", text: "Loads assigned to eligible trucks and drivers." },
+  { icon: Smartphone, title: "Deliver", text: "Drivers submit tickets with photos from the phone." },
+  { icon: UserCheck, title: "Review", text: "The office checks each ticket against its order." },
+  { icon: Receipt, title: "Bill", text: "Fully delivered orders hand off with an audit trail." },
 ];
 
 const ROLES = [
-  { icon: Gauge, title: "Owners", text: "One Command Center for what needs attention today, across every part of the operation." },
-  { icon: Route, title: "Dispatchers", text: "A board of today's loads, conflicts flagged before they happen, urgent orders up front." },
-  { icon: Receipt, title: "Office and billing", text: "Ticket review with the order beside it, and a clean handoff of verified deliveries." },
-  { icon: Truck, title: "Drivers", text: "Assignments, job instructions, ticket photos and delay or breakdown reports on the phone." },
-  { icon: Wrench, title: "Mechanics", text: "Out-of-service status with history, so dispatch never assigns a truck that is down." },
+  { icon: Gauge, title: "Owners", text: "One Command Center for what needs attention today, across the whole operation." },
+  { icon: Route, title: "Dispatchers", text: "Today's loads, conflicts caught before assignment, urgent orders first." },
+  { icon: Receipt, title: "Office and billing", text: "Ticket review beside the order, and billing only from verified deliveries." },
+  { icon: Truck, title: "Drivers", text: "Assignments, job instructions, ticket photos and delay or breakdown reports." },
+  { icon: Wrench, title: "Mechanics", text: "Service status with history, so dispatch never assigns a truck that is down." },
 ];
+
+const TRUST = [
+  { title: "Separated by company", text: "Every company's records are isolated in the database, not just hidden on screen." },
+  { title: "A full audit trail", text: "Changes to key records — assignments, tickets, billing handoffs — are kept with who made them." },
+  { title: "People decide", text: "Suggestions never act on their own. Assignments, ticket acceptance and handoffs need an authorized person." },
+];
+
+function Points({ items }: { items: string[] }) {
+  return (
+    <ul className="mt-6 space-y-3">
+      {items.map((t) => (
+        <li key={t} className="flex gap-3 text-[15px] leading-relaxed text-silver">
+          <Check className="mt-1 size-4 shrink-0 text-electric" aria-hidden />
+          <span>{t}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 export default function HomePage() {
   return (
     <>
-      <section className="site-grid-bg relative overflow-hidden">
-        <div className="pointer-events-none absolute -top-48 right-[-10%] h-[36rem] w-[36rem] rounded-full bg-brand/20 blur-3xl" aria-hidden />
-        <Container className="relative grid items-center gap-10 py-16 sm:py-24 lg:grid-cols-[1.05fr_1fr]">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-semibold text-white/80">
-              <span className="size-1.5 rounded-full bg-brand" aria-hidden /> Now in early access
-            </p>
-            <h1 className="mt-5 text-4xl leading-[1.05] font-black tracking-tight text-white sm:text-6xl">
-              Run the hauling day from <span className="text-brand">one screen</span>.
+      {/* Hero */}
+      <section className="relative overflow-hidden">
+        <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgb(22_139_255/0.14),transparent)]" aria-hidden />
+        <Container className="relative pt-16 pb-14 sm:pt-24 sm:pb-20">
+          <div className="max-w-3xl">
+            <Eyebrow>For aggregate and material haulers</Eyebrow>
+            <h1 className="mt-5 text-[2.5rem] leading-[1.08] font-bold tracking-tight text-balance text-cloud sm:text-6xl">
+              Every load, from quote to billing, in one record.
             </h1>
-            <p className="mt-5 max-w-xl text-lg text-white/70">
-              Taviron connects quotes, orders, dispatch, drivers, delivery tickets and billing readiness for aggregate and material hauling companies — so the office,
-              dispatch and the trucks work from the same records.
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-silver sm:text-xl">
+              Taviron connects quotes, orders, dispatch, drivers, delivery tickets and billing readiness — so the office, dispatch and the trucks work from the same
+              information instead of whiteboards, group texts and re-keyed spreadsheets.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <CtaLink href="/demo">Request a demo</CtaLink>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <CtaLink href="/demo">
+                Request a demo <ArrowRight className="size-4" aria-hidden />
+              </CtaLink>
               <CtaLink href="/platform" variant="ghost">
-                Explore the platform
+                See what it does today
               </CtaLink>
             </div>
+            <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
           </div>
-          <HeroScene />
+          <Screenshot
+            className="mt-14 sm:mt-16"
+            src="/site/command-center.png"
+            alt="The Taviron Command Center for a demo company: today's orders, loads needing attention and urgent orders"
+            width={1440}
+            height={900}
+            caption="Command Center — the live demo company, fictional data."
+            priority
+          />
         </Container>
       </section>
 
-      <section className="border-y border-white/10 bg-[#0f1012]">
-        <Container className="py-14">
-          <Eyebrow>From quote to billing-ready</Eyebrow>
-          <ol className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
+      {/* Workflow */}
+      <section aria-labelledby="flow-title" className="border-y border-silver/10 bg-navy-2">
+        <Container className="py-14 sm:py-16">
+          <h2 id="flow-title" className="text-sm font-semibold text-silver">
+            One record carries every job through the day
+          </h2>
+          <ol className="mt-6 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-6">
             {FLOW.map((f, i) => (
-              <li key={f.title} className="relative rounded-lg border border-white/10 bg-white/[0.03] p-4">
-                <div className="flex items-center gap-2">
-                  <f.icon className="size-5 text-brand" aria-hidden />
-                  <span className="text-xs font-bold text-white/40">{String(i + 1).padStart(2, "0")}</span>
+              <li key={f.title} className="bg-navy-2 p-5">
+                <div className="flex items-center justify-between">
+                  <f.icon className="size-5 text-electric" aria-hidden />
+                  <span className="font-mono text-xs text-silver/60">{String(i + 1).padStart(2, "0")}</span>
                 </div>
-                <h3 className="mt-3 font-bold text-white">{f.title}</h3>
-                <p className="mt-1 text-sm text-white/60">{f.text}</p>
-                {i < FLOW.length - 1 ? <ArrowRight className="absolute top-1/2 -right-3 hidden size-4 -translate-y-1/2 text-white/25 lg:block" aria-hidden /> : null}
+                <h3 className="mt-4 font-semibold text-cloud">{f.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-silver/90">{f.text}</p>
               </li>
             ))}
           </ol>
         </Container>
       </section>
 
+      {/* Dispatch */}
       <section>
-        <Container className="grid items-center gap-12 py-20 lg:grid-cols-2">
-          <SectionHeading eyebrow="Command Center" title="What needs attention, before it becomes a phone call.">
-            <p>
-              Urgent orders, unassigned loads, assignment problems, missing or questionable tickets, billing blocks and equipment out of service — derived live from the
-              same records everyone works in, sorted by what matters first, and shown to the people whose job it is.
-            </p>
-          </SectionHeading>
-          <Screenshot src="/site/command-center.png" alt="The Taviron Command Center showing today's orders, loads needing attention and urgent orders for a demo company" width={1440} height={900} caption="Command Center — demo company, fictional data." />
+        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <SectionHeading eyebrow="Dispatch" title="Assign with the rules already checked.">
+              <p>Loads are planned against each order and checked before a truck or driver is committed — and when something does not fit, Taviron says why.</p>
+            </SectionHeading>
+            <Points
+              items={[
+                "Service status, open safety reports, recorded capacity, driver qualifications and time conflicts are checked on every assignment.",
+                "Smart Dispatch suggests a truck and driver for each open load, with its reasons and alternatives. Nothing is assigned until a dispatcher approves.",
+                "Confirmed orders without a delivery date wait in a queue instead of disappearing.",
+              ]}
+            />
+          </div>
+          <Screenshot src="/site/dispatch.png" alt="The Taviron dispatch board with loads assigned to trucks and drivers" width={1440} height={900} caption="Dispatch board — demo company, fictional data." />
         </Container>
       </section>
 
-      <section className="border-t border-white/10 bg-[#0f1012]">
-        <Container className="grid items-center gap-12 py-20 lg:grid-cols-2">
-          <Screenshot className="lg:order-first" src="/site/dispatch.png" alt="The Taviron dispatch board with loads assigned to trucks and drivers" width={1440} height={900} caption="Dispatch board — demo company, fictional data." />
-          <SectionHeading eyebrow="Dispatch" title="Assign with the rules already checked.">
-            <p>
-              Loads are planned against each order. Assigning a truck and driver checks service status, driver qualifications and expirations, and time conflicts —
-              and says why when something does not fit, instead of letting it through.
-            </p>
-          </SectionHeading>
-        </Container>
-      </section>
-
-      <section>
-        <Container className="grid items-center gap-12 py-20 lg:grid-cols-[1fr_auto]">
-          <SectionHeading eyebrow="Drivers and tickets" title="The ticket starts in the truck, not in a shoebox.">
-            <p>
-              Drivers see their assignments with job instructions, submit delivery tickets with photos, and report delays or breakdowns from their phone. The office
-              reviews each ticket beside its order, corrects with a full revision history, and accepts clean tickets in bulk.
-            </p>
-          </SectionHeading>
-          <div className="mx-auto w-[260px] overflow-hidden rounded-[28px] border-4 border-white/15 bg-black shadow-2xl shadow-black/60">
-            <Screenshot src="/site/driver.png" alt="The Taviron driver portal on a phone, showing today's assignment" width={390} height={844} className="rounded-none border-0" />
+      {/* Tickets and drivers */}
+      <section className="border-t border-silver/10 bg-navy-2">
+        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
+          <Screenshot className="lg:order-first" src="/site/tickets.png" alt="The Taviron delivery ticket review queue beside the order details" width={1440} height={900} caption="Ticket review — demo company, fictional data." />
+          <div>
+            <SectionHeading eyebrow="Tickets to billing" title="Quantities you can stand behind.">
+              <p>The ticket starts in the truck, not in a shoebox — and an order reaches billing only when its deliveries are verified.</p>
+            </SectionHeading>
+            <Points
+              items={[
+                "Drivers see their assignments on the phone and submit tickets with photos; the office enters paper tickets and scans.",
+                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason — nothing is overwritten.",
+                "Partly delivered orders stay out of billing; invoice drafts are prepared for review, not sent.",
+              ]}
+            />
           </div>
         </Container>
       </section>
 
-      <section className="border-t border-white/10 bg-[#0f1012]">
-        <Container className="py-20">
+      {/* Roles */}
+      <section>
+        <Container className="py-20 sm:py-24">
           <SectionHeading eyebrow="Every role" title="Built around the people who move the material.">
-            <p>Each person sees what their role allows. Permissions are enforced on the server and in the database, not just hidden in the screen.</p>
+            <p>Each person sees what their role allows. Permissions are enforced on the server and in the database.</p>
           </SectionHeading>
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
             {ROLES.map((r) => (
-              <div key={r.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                <r.icon className="size-6 text-brand" aria-hidden />
-                <h3 className="mt-3 font-bold text-white">{r.title}</h3>
-                <p className="mt-1 text-sm text-white/60">{r.text}</p>
+              <li key={r.title} className="border-t border-silver/15 pt-5">
+                <r.icon className="size-5 text-electric" aria-hidden />
+                <h3 className="mt-4 font-semibold text-cloud">{r.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-silver/90">{r.text}</p>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </section>
+
+      {/* Trust */}
+      <section className="border-t border-silver/10 bg-navy-2">
+        <Container className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[0.8fr_1.2fr]">
+          <div>
+            <ShieldCheck className="size-8 text-electric" aria-hidden />
+            <h2 className="mt-5 text-3xl font-bold tracking-tight text-balance text-cloud">Your company&apos;s data stays your company&apos;s.</h2>
+            <p className="mt-4 text-[17px] leading-relaxed text-silver">Taviron recommends; people decide.</p>
+            <Link href="/platform" className="mt-6 inline-flex items-center gap-1.5 rounded text-[15px] font-semibold text-electric hover:underline">
+              What is available today, and what is planned <ArrowRight className="size-4" aria-hidden />
+            </Link>
+          </div>
+          <dl className="grid gap-8 sm:grid-cols-3 lg:gap-6">
+            {TRUST.map((t) => (
+              <div key={t.title} className="border-t border-silver/15 pt-5">
+                <dt className="font-semibold text-cloud">{t.title}</dt>
+                <dd className="mt-1.5 text-sm leading-relaxed text-silver/90">{t.text}</dd>
               </div>
             ))}
-          </div>
-        </Container>
-      </section>
-
-      <section>
-        <Container className="grid gap-8 py-20 md:grid-cols-[auto_1fr] md:items-start">
-          <ShieldCheck className="size-10 text-brand" aria-hidden />
-          <div>
-            <h2 className="text-2xl font-black text-white">Your company&apos;s data stays your company&apos;s.</h2>
-            <p className="mt-3 max-w-3xl text-white/65">
-              Every company is separated at the database level, changes to key records are kept in an audit trail, and nothing — a dispatch change, a ticket acceptance, a billing
-              handoff — happens without an authorized person doing it. Taviron recommends; people decide.
-            </p>
-          </div>
+          </dl>
         </Container>
       </section>
 

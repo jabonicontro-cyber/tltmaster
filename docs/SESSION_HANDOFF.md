@@ -124,6 +124,10 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
+**Website redesign Phase 1 (2026-10-11):** the homepage is redesigned on the Taviron palette (IMPLEMENTATION_PLAN
+§5q). Phase 2 = the other public pages (Platform, Solutions, Pricing — pricing content waits for the founder's
+approval —, About, Demo, Contact, legal).
+
 **Staging update, 2026-10-11 (owner, on their Mac):** backup made with the Supabase CLI (schema 563 KB, data
 298 KB, in the owner's Documents folder — the first `pg_dump` attempt produced a 0-byte file and was discarded);
 `npx supabase db push` applied the five pending migrations (`20261025000100` … `20261028000100`) to the linked

@@ -6,7 +6,7 @@ import { CheckCircle2 } from "lucide-react";
 type Kind = "demo" | "contact";
 
 const input =
-  "mt-1.5 block w-full rounded-md border border-white/15 bg-white/[0.04] px-3 py-2.5 text-white placeholder:text-white/35 focus:border-brand focus:outline-none aria-[invalid=true]:border-brand";
+  "mt-1.5 block w-full rounded-md border border-silver/20 bg-white/[0.04] px-3 py-2.5 text-base text-white placeholder:text-white/35 focus:border-electric focus:ring-2 focus:ring-electric/35 focus:outline-none aria-[invalid=true]:border-red-300";
 
 /**
  * Demo request / contact form. Posts JSON to /api/leads; without JavaScript
@@ -79,7 +79,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
         </label>
       </div>
       {error ? (
-        <p role="alert" className="rounded-md border border-brand/40 bg-brand/10 px-4 py-3 text-sm text-white">
+        <p role="alert" className="rounded-md border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-white">
           {error}
         </p>
       ) : null}
@@ -139,7 +139,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
           </a>
           .
         </p>
-        <button type="submit" disabled={pending} className="rounded-md bg-brand px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-brand/20 hover:bg-brand-dark disabled:opacity-60">
+        <button type="submit" disabled={pending} className="site-press rounded-md bg-action px-6 py-3 text-sm font-semibold text-white hover:bg-action-hover disabled:opacity-60">
           {pending ? "Sending…" : kind === "demo" ? "Request a demo" : "Send message"}
         </button>
       </div>

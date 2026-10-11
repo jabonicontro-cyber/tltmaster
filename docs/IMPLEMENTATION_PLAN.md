@@ -1776,6 +1776,31 @@ functions, and the migration re-applied cleanly from the backup. Applied to dev 
 onboarding, email records and permissions), `tests/unit/platform.test.ts` (form schema, email wording),
 `tests/e2e/platform.spec.ts` (form validation, counts, recorded-not-sent emails, status list, spam flow).
 
+## 5q. Public website redesign — Phase 1: homepage (2026-10-11)
+
+Design skills read and applied: `emil-design-eng` (restraint, press feedback, custom ease-out, no constant
+motion), `mobile-native` (16px inputs, no tap flash, hover only on pointer devices, large tap targets).
+
+- **Tokens** (`src/app/globals.css`): `navy` `#0C1A2B`, `navy-2`, `navy-3`, `electric` `#168BFF` (text/icons on
+  navy, 5.2:1), `action` `#0F6FD6` (filled buttons, white text 4.9:1), `action-hover`, `silver` `#C7D1DE`
+  (body text on navy, 11.4:1), `cloud` `#F7F9FC`, `safety` `#E5484D` (critical alerts only). The site layout has
+  class `site`, which points the `brand` utilities at electric blue for every public page; the app's tokens and
+  tenant branding are untouched.
+- **Logo** (`src/components/site/logo.tsx`): interim geometric T emblem (blue only as an accent inside the
+  symbol) and TAVIRON wordmark; no ®. Used in the public header and footer only.
+- **Homepage** (`src/app/(site)/page.tsx`): headline and value statement, one primary and one secondary call to
+  action, a full-width real Command Center screen in place of the tilted 3D stack (removed, with its constant
+  animations), a six-step workflow strip, dispatch and tickets-to-billing sections with real screens and
+  capability points taken from `src/lib/site/capabilities.ts`, roles, trust facts, and a link to what is
+  available vs planned. No logos, testimonials or metrics.
+- **Shared site components** (`ui.tsx`, header, footer): navy surfaces, silver body text, semibold headings,
+  44px buttons with press feedback, visible focus. The demo form keeps its fields and behaviour; inputs are
+  16px with a focus ring, errors stay red.
+- **Known:** the product screenshots still show the app's earlier red styling (they are real screens); the other
+  public pages still contain a few hard-coded near-black section backgrounds — Phase 2.
+- **Tests:** `tests/e2e/platform.spec.ts` gains a homepage test (one h1, demo links → `/demo`, image alt text,
+  visible keyboard focus).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

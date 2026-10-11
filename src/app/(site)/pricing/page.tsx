@@ -69,7 +69,7 @@ export default function PricingPage() {
           </div>
 
           <div className="relative flex flex-col overflow-hidden rounded-2xl border border-brand/50 bg-gradient-to-b from-brand/15 to-white/[0.02] p-8">
-            <p className="w-fit rounded-full bg-brand px-3 py-1 text-xs font-bold tracking-wide text-white">Founding customers</p>
+            <p className="w-fit rounded-full bg-action px-3 py-1 text-xs font-bold tracking-wide text-white">Founding customers</p>
             <h2 className="mt-4 text-2xl font-black text-white">First {PRICING.foundingCustomerLimit} companies</h2>
             <p className="mt-4 flex items-baseline gap-2">
               <span className="text-5xl font-black tracking-tight text-white">{founding}</span>

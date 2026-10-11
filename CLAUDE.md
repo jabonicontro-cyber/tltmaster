@@ -46,7 +46,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Keep code written / tested / committed / pushed / deployed / verified as separate statuses.
 - **Pricing and offers:** the tier prices are a proposal (master plan §5.1); founding-customer discounts are
   private and never shown publicly; no checkout, billing or payment code without explicit authorization.
-- **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts.
+- **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts. Public
+  pages use the tokens in `src/app/globals.css` (`navy`, `electric`, `action`, `silver`, `cloud`); filled
+  buttons with white text use `bg-action`, never `bg-electric`.
   Company workspaces use the company's own branding (`src/lib/branding.ts`).
 - **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run
   `docs/RELEASE_CHECKLIST.md` before calling a release done.

@@ -46,6 +46,24 @@ test("the public website is open to everyone, works on a phone, and states prici
   await ctx.close();
 });
 
+test("the homepage: one heading, demo calls to action lead to the form, and keyboard focus is visible", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.locator("h1")).toHaveCount(1);
+  await expect(page.locator("h1")).toHaveText("Every load, from quote to billing, in one record.");
+  const demoLinks = page.getByRole("link", { name: /Request a demo/ });
+  expect(await demoLinks.count()).toBeGreaterThanOrEqual(2);
+  for (const href of await demoLinks.evaluateAll((els) => els.map((e) => e.getAttribute("href")))) expect(href).toBe("/demo");
+  // Every product image has a description.
+  for (const alt of await page.locator("main img").evaluateAll((els) => els.map((e) => e.getAttribute("alt") ?? ""))) expect(alt.length).toBeGreaterThan(10);
+  // Tab to the logo link: the focus outline is drawn.
+  await page.keyboard.press("Tab"); // skip link
+  await page.keyboard.press("Tab");
+  const outline = await page.evaluate(() => getComputedStyle(document.activeElement as Element).outlineStyle);
+  expect(outline).toBe("solid");
+  await page.getByRole("link", { name: /Request a demo/ }).first().click();
+  await expect(page).toHaveURL(/\/demo$/);
+});
+
 test("a demo request reaches the lead workspace, where the team works it with a full history", async ({ page, browser }) => {
   const id = unique();
   const email = `pat.${id}@example.com`;
