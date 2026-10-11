@@ -206,7 +206,8 @@ describe("review, correction and void", () => {
       expect((await pgError(s.query("select public.review_delivery_ticket($1, 'accept', '')", [rev3.ticket_id]))).message).toMatch(/voided/);
 
       await s.asAdmin();
-      const revs = (await s.query("select revision, status, quantity::text as q, correction_reason from public.delivery_tickets where ticket_number = $1 order by revision", [r.ticket_number])).rows;
+      // Ticket numbers are per company: scope to this ticket's company.
+      const revs = (await s.query("select revision, status, quantity::text as q, correction_reason from public.delivery_tickets where ticket_number = $1 and company_id = (select company_id from public.delivery_tickets where id = $2) order by revision", [r.ticket_number, r.ticket_id])).rows;
       expect(revs).toEqual([
         { revision: 1, status: "superseded", q: "21.470", correction_reason: "" },
         { revision: 2, status: "superseded", q: "21.740", correction_reason: "Typo in tons" },
