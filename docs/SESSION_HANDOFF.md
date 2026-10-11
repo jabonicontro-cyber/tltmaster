@@ -52,8 +52,7 @@ N13 delivered:
 
 **Verified from GitHub's deployment records** (the public GitHub API; Vercel reports each deploy there):
 - Every push to this branch is deployed by Vercel to the project's **Production** environment.
-- Commit `a652bbb` deployed with state `success` at 2026-10-11 03:49 UTC.
-- Its deployment URL is `https://tltmaster-e3uuc9jkf-taviron.vercel.app`.
+- Commit `867db9e` (N14) deployed with state `success` (2026-10-11), deployment URL `https://tltmaster-feu4o4jpb-taviron.vercel.app`. Earlier: `a652bbb` (N13) and `5d06ca1` (docs).
 - Vercel team `taviron`, project `tltmaster`.
 - There are no Preview deployments.
 
