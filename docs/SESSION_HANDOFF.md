@@ -124,6 +124,14 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
+**Staging check, 2026-10-11 (demo-request workflow):** the code (`6177920`) is deployed — GitHub's deployment
+record for that commit says `success` (Vercel Production, aliased to `tltmaster.vercel.app`). Nothing was verified
+*on* staging: this session's network policy refuses `*.vercel.app`, `api.supabase.com` and `api.vercel.com`, there
+are no Supabase/Vercel credentials, and no staging backup exists here. The owner applies the migrations
+(DEPLOYMENT §2a, with `scripts/staging-check.sql` before and after) and runs the five-step demo check there; or
+adds `tltmaster.vercel.app` to the environment's allowed domains so a session can check the website side.
+
+
 **2026-10-11 consolidation:** `docs/TAVIRON_MASTER_PLAN.md` now holds the founder's full master context (status by
 area, branding palette, pricing proposal, demo-lead requirements, Outstanding Fixes and Operational Risks §8,
 open decisions §9, roadmap order §11). Design skills from `emilkowalski/skills` are installed in `.claude/skills/`.

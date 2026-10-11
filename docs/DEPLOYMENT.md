@@ -112,7 +112,12 @@ password when asked; never paste it into chat or a file in the repository):
 pg_dump "<session pooler connection string>" -Fc -f staging-$(date +%F).dump
 ```
 
-Check the backup file exists and is not empty (`ls -lh staging-*`). Then:
+Check the backup file exists and is not empty (`ls -lh staging-*`).
+
+**See what staging already has (read-only):** open Supabase → **SQL Editor** for the staging project,
+paste `scripts/staging-check.sql` and run it. The first table shows, per recent migration, whether its
+objects exist (`true`/`false`); the second lists what the CLI recorded as applied. Every `false` row
+should appear in the dry run below — if the two disagree, stop and ask before pushing. Then:
 
 ```bash
 npx supabase db push --dry-run    # lists what WOULD be applied; expect only the new migration(s)
@@ -122,6 +127,19 @@ npx supabase migration list       # the new row now shows a Remote version too
 
 Migrations are additive and never delete data. If `db push` reports an error, stop, keep
 the output, and do not retry or edit anything until it has been looked at.
+
+**Checking the demo-request flow on staging after the push** (creates one test lead; nothing is
+emailed while `EMAIL_PROVIDER` is preview):
+1. Run `scripts/staging-check.sql` again — every row `true`.
+2. Open `/demo` (with your site-access code). Press **Request a demo** with the form empty: name,
+   email, company, trucks and bases are flagged. Enter bases `0`: refused. Trucks `0` and bases `1`
+   with a name like "Staging check (test)": accepted.
+3. Sign in, open `/admin/leads`: the lead shows "0 trucks · 1 base". Open it: the **Emails** card lists
+   two attempts marked **Not sent**; the Status list shows exactly New, Contacted, Demo Scheduled,
+   Demo Completed, Converted, Not Proceeding.
+4. Set Contacted, add a note: both appear in History. Tick **Spam** while Contacted: refused. Set
+   Not Proceeding + Spam: the lead leaves the default list and appears under "Flagged as spam".
+5. Signed in as a company user (not the platform role), `/admin/leads` answers "not found".
 
 The demo-request update adds `20261028000100_demo_lead_workflow.sql` (apply after N15). It folds
 the earlier lead statuses into the six agreed ones — qualified → Contacted, onboarding → Converted
