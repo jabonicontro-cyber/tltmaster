@@ -71,7 +71,7 @@ any custom domain added to the project later (none is known).
 
 | Item | Status |
 | --- | --- |
-| **Migrations `20261024000100` (N13), `20261025000100`, `20261026000100` (N14), `20261027000100`, `20261027000200` (N15), `20261028000100` (demo leads)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a (which also says what the app does until they are applied). |
+| **Migrations through `20261028000100`** | **Applied to staging 2026-10-11 by the owner** (`migration list`: local = remote). Earlier note follows. No credentials here; it is the owner's action, in DEPLOYMENT §2a (which also says what the app does until they are applied). |
 | What staging does until the migration is applied | The app keeps working. The demo/contact form says it cannot save. `/admin` answers 404. This comes from reading the code; it was not observed live. |
 | `PUBLIC_SITE` | Not set as far as known, so the website is behind the gate. Devices admitted with a site code, and signed-in users, still see every page; this was verified locally on a production build of `a652bbb`. |
 | `SITE_INDEXING` | Not set as far as known, so nothing is indexed. |
@@ -124,7 +124,14 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
-**Staging check, 2026-10-11 (demo-request workflow):** the code (`6177920`) is deployed — GitHub's deployment
+**Staging update, 2026-10-11 (owner, on their Mac):** backup made with the Supabase CLI (schema 563 KB, data
+298 KB, in the owner's Documents folder — the first `pg_dump` attempt produced a 0-byte file and was discarded);
+`npx supabase db push` applied the five pending migrations (`20261025000100` … `20261028000100`) to the linked
+project taviron-staging with no errors; `migration list` shows all migrations local = remote. The owner then ran
+the read-only SQL check and the five-step demo check (DEPLOYMENT §2a) on `tltmaster.vercel.app` and reported all
+of it working. These results were observed by the owner, not by a Claude session.
+
+**Earlier the same day (session view):** the code (`6177920`) is deployed — GitHub's deployment
 record for that commit says `success` (Vercel Production, aliased to `tltmaster.vercel.app`). Nothing was verified
 *on* staging: this session's network policy refuses `*.vercel.app`, `api.supabase.com` and `api.vercel.com`, there
 are no Supabase/Vercel credentials, and no staging backup exists here. The owner applies the migrations

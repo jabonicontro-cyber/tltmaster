@@ -112,7 +112,8 @@ password when asked; never paste it into chat or a file in the repository):
 pg_dump "<session pooler connection string>" -Fc -f staging-$(date +%F).dump
 ```
 
-Check the backup file exists and is not empty (`ls -lh staging-*`).
+Check the backup file exists and is not empty (`ls -lh staging-*`). A 0-byte file means the backup failed —
+delete it and use the Supabase CLI dump instead (Docker Desktop running).
 
 **See what staging already has (read-only):** open Supabase → **SQL Editor** for the staging project,
 paste `scripts/staging-check.sql` and run it. The first table shows, per recent migration, whether its

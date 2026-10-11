@@ -1,6 +1,6 @@
 -- Read-only staging check (DEPLOYMENT §2a). Paste into Supabase → SQL Editor for the
 -- STAGING project and run. It changes nothing: it reports which recent migrations the
--- database already has, and lead counts by status (no personal data).
+-- database already has (no personal data).
 
 -- 1. One row per recent migration: true = its objects are present.
 select m.version, m.name, m.present
