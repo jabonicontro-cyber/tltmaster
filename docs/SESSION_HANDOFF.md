@@ -134,6 +134,19 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Sign-in and platform access (2026-10-11, local only, not pushed):** two defects fixed and tested locally. (1) With the
+right password on an account whose email was never confirmed, Supabase answers `email_not_confirmed` (it checks the
+password first), but the page said "Email or password is incorrect." It now says the email is unconfirmed; wrong passwords
+keep the generic message. Likely cause for an owner whose sign-up confirmation email never arrived (no SMTP yet). (2) A
+platform owner working inside a company had no in-app way to `/admin` (only the demo bar linked there); the user menu now
+shows "Platform administration" when the server confirms the role, and `/admin` still checks it. Not verified on staging:
+whether the owner's account exists, is confirmed and holds the platform role is visible only in Supabase (owner action).
+
+**Internal UI checkpoint 2 (local only, not pushed):** Dispatch — "Needs scheduling" is a bounded, scrollable panel with
+tighter rows, so the board and Smart Dispatch are on the first screen (every order still listed). Billing — the "Why · what
+to do" column is now "Reason" plus a short "Next step" link to the order (the full explanation stays on the order's page),
+and the reason no longer repeats "still to run". Checked at 1440 and 390 px, light and dark.
+
 **Internal UI checkpoint 1 (local only, not pushed):** shared shell and Command Center refinements — sidebar grouped
 under Sales / Operations / Finance / Company headings (same links and permissions), page descriptions capped at a
 readable width so page actions sit beside the title, a quiet outlined SAMPLE badge, a secondary-weight Apply in filter

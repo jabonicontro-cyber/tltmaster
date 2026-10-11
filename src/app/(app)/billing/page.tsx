@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { DateInput } from "@/components/ui/date-input";
-import { CalendarRange, CheckCircle2, Download, FilePlus2 } from "lucide-react";
+import { CalendarRange, CheckCircle2, ChevronRight, Download, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
 import { ExceptionTable } from "@/components/billing/exception-table";
 import { HandOffForm } from "@/components/billing/hand-off-form";
@@ -118,7 +118,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                     <Th>Order</Th>
                     <Th className="hidden sm:table-cell">Service dates</Th>
                     <Th>Status</Th>
-                    <Th className="hidden md:table-cell">Why · what to do</Th>
+                    <Th className="hidden md:table-cell">Reason</Th>
+                    <Th className="hidden lg:table-cell">Next step</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -135,9 +136,14 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                           <ReadinessBadge readiness={o.readiness} />
                           <div className="mt-1 text-xs text-muted md:hidden">{e.why}</div>
                         </Td>
-                        <Td className="hidden md:table-cell">
-                          <div className="text-sm">{e.why}</div>
-                          <div className="text-sm text-muted">{e.action}</div>
+                        <Td className="hidden max-w-md text-sm text-pretty md:table-cell">
+                          {e.why}
+                          <div className="mt-0.5 text-muted lg:hidden">Next: {e.next}</div>
+                        </Td>
+                        <Td className="hidden text-sm whitespace-nowrap text-muted lg:table-cell">
+                          <Link href={`/billing/orders/${o.order_id}`} className="inline-flex items-center gap-1 font-medium text-brand-fg hover:underline" title={e.action}>
+                            {e.next} <ChevronRight className="size-3.5" aria-hidden />
+                          </Link>
                         </Td>
                       </Tr>
                     );

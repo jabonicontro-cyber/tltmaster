@@ -42,16 +42,17 @@ export function NeedsScheduling({ items, canSchedule, today, back }: { items: Un
 
   return (
     <section id="needs-scheduling" aria-label="Needs scheduling" className="mb-4 rounded-lg border border-amber-300 bg-card">
-      <h2 className="flex items-center gap-2 border-b border-line px-4 py-2 font-bold text-ink">
+      <h2 className="flex flex-wrap items-center gap-x-2 gap-y-0.5 border-b border-line px-4 py-2.5 text-[15px] font-semibold text-ink">
         <CalendarClock className="size-5 text-amber-600" aria-hidden /> Needs scheduling ({items.length})
-        <span className="text-sm font-normal text-muted">— confirmed orders without a delivery date are not on any day of the board</span>
+        <span className="text-sm font-normal text-muted">Confirmed orders without a delivery date — not on any day of the board yet.</span>
       </h2>
-      <ul className="divide-y divide-line">
+      {/* Bounded so the board stays on the first screen; every order is still here (scroll inside the panel). */}
+      <ul className="max-h-[19rem] divide-y divide-line overflow-y-auto overscroll-contain" tabIndex={items.length > 3 ? 0 : undefined} aria-label="Orders that need a delivery date">
         {items.map((o) => {
           const late = o.requested_date !== null && o.requested_date < today;
           const soon = o.requested_date !== null && !late && o.requested_date <= today;
           return (
-            <li key={o.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+            <li key={o.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
               <div className="min-w-0 space-y-1">
                 <p className="flex flex-wrap items-center gap-2">
                   <Link href={withReturn(`/orders/${o.id}`, back)} className="font-bold tabular hover:underline">{o.order_number}</Link>

@@ -96,6 +96,8 @@ describe("explanations", () => {
       const e = readinessExplanation(r, { status: "in_progress", loads_missing: 1, loads_not_due: 2, tickets_live: 1, tickets_pending: 1, exceptions_count: 2 });
       expect(e.why, r).toBeTruthy();
       expect(e.action, r).toBeTruthy();
+      // The list shows a short next step; the full action stays on the order's page.
+      expect(e.next.length, r).toBeLessThanOrEqual(40);
     }
     expect(readinessExplanation("missing_documentation", { status: "completed", loads_missing: 0, loads_not_due: 0, tickets_live: 0, tickets_pending: 0, exceptions_count: 0 }).why).toMatch(/no delivery tickets/);
   });
@@ -113,5 +115,14 @@ describe("explanations", () => {
     expect(formatDifference(0)).toBe("0");
     expect(formatDifference("0.000")).toBe("0");
     expect(formatDifference(null)).toBe("—");
+  });
+});
+
+describe("readiness wording", () => {
+  it("does not repeat 'still to run' when the count of loads is already given", () => {
+    const base = { status: "scheduled", loads_missing: 0, tickets_live: 0, tickets_pending: 0, exceptions_count: 0 };
+    expect(readinessExplanation("in_progress", { ...base, loads_not_due: 2, fulfillment_gap: "loads_upcoming" }).why).toBe("Order is scheduled; 2 loads still to run.");
+    expect(readinessExplanation("in_progress", { ...base, loads_not_due: 0, fulfillment_gap: "loads_upcoming" }).why).toMatch(/not fully delivered: loads are still to run/);
+    expect(readinessExplanation("in_progress", { ...base, loads_not_due: 1, fulfillment_gap: "quantity_short" }).why).toMatch(/partial delivery/);
   });
 });

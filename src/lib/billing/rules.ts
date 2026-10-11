@@ -51,7 +51,21 @@ export interface ReadinessCounts {
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /** Why an order has its readiness, and what resolves it. */
-export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): { why: string; action: string } {
+/** Short next step for lists; the full explanation (`action`) is on the order's billing page. */
+const NEXT_STEP: Record<Readiness, (o: ReadinessCounts) => string> = {
+  missing_documentation: (o) => (o.loads_missing > 0 ? "Enter the missing tickets" : "Enter the tickets"),
+  needs_review: () => "Review the tickets",
+  blocked: () => "Resolve the exceptions",
+  in_progress: (o) => (o.fulfillment_gap === "quantity_short" ? "Plan the rest, or complete the order" : "Finish the loads, or complete the order"),
+  ready: () => "Hand off for billing",
+  handed_off: () => "Enter the invoice in accounting",
+};
+
+export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): { why: string; action: string; next: string } {
+  return { ...explain(readiness, o), next: NEXT_STEP[readiness](o) };
+}
+
+function explain(readiness: Readiness, o: ReadinessCounts): { why: string; action: string } {
   switch (readiness) {
     case "missing_documentation":
       return o.loads_missing > 0
@@ -63,7 +77,8 @@ export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): 
       return { why: `${plural(o.exceptions_count, "exception")} not acknowledged.`, action: "Check the differences below and acknowledge them with a reason, or correct the tickets." };
     case "in_progress":
       return {
-        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}${o.fulfillment_gap ? ` — not fully delivered: ${FULFILLMENT_GAP_LABELS[o.fulfillment_gap].toLowerCase()}` : ""}.`,
+        // "Loads are still to run" would repeat the count just given, so it is left out when the count is shown.
+        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}${o.fulfillment_gap && !(o.fulfillment_gap === "loads_upcoming" && o.loads_not_due) ? ` — not fully delivered: ${FULFILLMENT_GAP_LABELS[o.fulfillment_gap].toLowerCase()}` : ""}.`,
         action: o.fulfillment_gap === "quantity_short"
           ? "Partly delivered orders stay out of billing. Plan the remaining loads, or mark the order Completed if the rest will not be delivered."
           : "It becomes billable once every load has run with an accepted ticket and the ordered quantities are delivered — or mark the order Completed when all work is done.",

@@ -111,7 +111,16 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
-**Internal UI polish (2026-10-11):** checkpoint 1 (shell, page headers, filter bars, buttons, Command Center
+**Roadmap after the UI checkpoints (not started):** further polish of the remaining screens (Orders, Fleet, Reports,
+Customers, Tickets); refresh public screenshots from the real UI with consistent fictional data (no development overlays,
+legitimate alerts kept); a restrained 3D trucking showcase (trucks, aggregate, road) with real screens central; an
+end-to-end readiness review of the public site, demo requests, sign-in, permissions and core workflows. No invented features.
+
+**Sign-in (2026-10-11):** unconfirmed emails are now named as such after a correct password, and platform owners get a
+"Platform administration" menu link (local; not pushed).
+
+**Internal UI polish (2026-10-11):** checkpoint 2 (Dispatch "Needs scheduling" panel, Billing reason / next step) done
+locally. checkpoint 1 (shell, page headers, filter bars, buttons, Command Center
 hierarchy) is done and tested locally; it is not pushed until the preview/production split is verified. Then screen by
 screen: Billing, Dispatch, Orders, Fleet, Reports — through shared components first.
 
