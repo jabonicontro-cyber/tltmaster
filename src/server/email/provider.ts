@@ -13,6 +13,8 @@ export interface OutgoingEmail {
   replyTo?: string;
   subject: string;
   text: string;
+  /** Optional branded HTML version (src/lib/email/html.ts); the text is always sent too. */
+  html?: string;
   attachments: EmailAttachment[];
 }
 
@@ -65,6 +67,7 @@ export class ResendProvider implements EmailProvider {
           reply_to: email.replyTo || undefined,
           subject: email.subject,
           text: email.text,
+          html: email.html || undefined,
           attachments: email.attachments.map((a) => ({
             filename: a.filename,
             content: a.content.toString("base64"),

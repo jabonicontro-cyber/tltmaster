@@ -27,7 +27,7 @@ export async function notifyLead(
     if (error) console.error("Lead email attempt could not be recorded", { leadId: lead.id, kind, error: error.message });
   };
 
-  const jobs: Array<{ kind: Kind; to: string | undefined; subject: string; text: string; replyTo?: string; missing: string }> = [];
+  const jobs: Array<{ kind: Kind; to: string | undefined; subject: string; text: string; html: string; replyTo?: string; missing: string }> = [];
   if (opts.confirm) {
     const m = confirmationEmail(lead);
     jobs.push({ kind: "confirmation", to: lead.email, ...m, replyTo: e.EMAIL_REPLY_TO, missing: "" });
@@ -46,7 +46,7 @@ export async function notifyLead(
     }
     const to = mode.mode === "test" ? mode.testRecipient : job.to;
     const result = await mode.provider.send(
-      { to: [to], cc: [], replyTo: job.replyTo, subject: mode.mode === "test" ? `[TEST] ${job.subject}` : job.subject, text: job.text, attachments: [] },
+      { to: [to], cc: [], replyTo: job.replyTo, subject: mode.mode === "test" ? `[TEST] ${job.subject}` : job.subject, text: job.text, html: job.html, attachments: [] },
       { idempotencyKey: `lead-${lead.id}-${job.kind}-${Date.now()}` },
     );
     if (result.ok) await record(job.kind, to, "sent", result.providerMessageId, mode.mode === "test" ? `Test mode: sent to the test inbox instead of ${job.to}.` : "");
