@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Checks a deployed Taviron URL from the outside, the way a stranger would see
-// it: HTTPS, the early-access gate in front of every page, API and file route,
-// no indexing, and no secrets in the page or its JavaScript. Needs no
-// credentials and changes nothing.
+// it: HTTPS, the public website open, the early-access gate in front of every
+// app page, API and file route, no indexing (unless SITE_INDEXING=on), and no
+// secrets in the pages or their JavaScript. Needs no credentials and changes
+// nothing (the form endpoint is only sent an unreadable submission).
 //
 //   node scripts/check-deployment.mjs https://your-app.vercel.app
 import { randomUUID } from "node:crypto";
@@ -21,7 +22,19 @@ const get = (path, init = {}) => fetch(base + path, { redirect: "manual", ...ini
 
 check(base.startsWith("https://") || /localhost|127\.0\.0\.1/.test(base), "served over HTTPS", base);
 
-for (const path of ["/", "/login", "/signup", "/command-center", "/orders", "/settings", "/driver"]) {
+// The public website (PUBLIC_SITE=off closes it too; pass --gated-site to check that instead).
+const gatedSite = process.argv.includes("--gated-site");
+for (const path of ["/", "/pricing", "/demo"]) {
+  const r = await get(path, { headers: { accept: "text/html" } });
+  if (gatedSite) check(r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/early-access"), `public page ${path} is behind the gate (PUBLIC_SITE=off)`, String(r.status));
+  else check(r.status === 200, `public page ${path} is open`, String(r.status));
+}
+if (!gatedSite) {
+  const r = await get("/api/leads", { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: "not json" });
+  check(r.status === 400, "the demo/contact form endpoint answers (an unreadable submission is rejected, nothing saved)", String(r.status));
+}
+
+for (const path of ["/login", "/signup", "/command-center", "/orders", "/settings", "/driver", "/admin"]) {
   const r = await get(path, { headers: { accept: "text/html" } });
   const loc = r.headers.get("location") ?? "";
   check(r.status >= 300 && r.status < 400 && loc.includes("/early-access"), `page ${path} sends visitors to the Early Access page`, `${r.status} ${loc}`);
@@ -32,6 +45,7 @@ for (const [method, path, headers] of [
   ["GET", `/quotes/${randomUUID()}/versions/${randomUUID()}/pdf`, { accept: "application/pdf,*/*" }],
   ["POST", `/tickets/${randomUUID()}/scans`, { accept: "*/*" }],
   ["POST", "/login", { accept: "text/x-component", "next-action": "check" }],
+  ["POST", "/", { accept: "text/x-component", "next-action": "check" }],
 ]) {
   const r = await get(path, { method, headers });
   const type = r.headers.get("content-type") ?? "";

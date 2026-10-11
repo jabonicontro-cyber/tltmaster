@@ -57,6 +57,10 @@ export interface Access {
   role: AppRole | null;
   active: boolean;
   permissions: Permission[];
+  /** The current company is a demo company (fictional data, no external side effects). */
+  isDemo?: boolean;
+  /** A role preview shown in the demo company (presentation only; see src/lib/platform/preview.ts). */
+  preview?: string | null;
 }
 
 export function can(access: Pick<Access, "permissions"> | null | undefined, permission: Permission): boolean {

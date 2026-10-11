@@ -16,3 +16,6 @@ export const USERS = {
 } as const;
 
 export type UserKey = keyof typeof USERS;
+
+/** A member of the Taviron platform team: no company of their own; platform role granted by the operator function. */
+export const PLATFORM_USER = { email: "e2e-platform@tavirontest.example", name: "Pia Platform" } as const;

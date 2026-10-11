@@ -36,20 +36,29 @@ test.afterAll(async () => {
 
 /** Every way in without early access: pages redirect to the gate; everything else is refused. */
 async function expectLocked(request: APIRequestContext) {
-  for (const path of ["/", "/login", "/signup", "/forgot-password", "/command-center", "/orders", "/settings", "/driver"]) {
+  for (const path of ["/login", "/signup", "/forgot-password", "/command-center", "/orders", "/settings", "/driver", "/admin", "/admin/leads", "/pricing/x"]) {
     const r = await request.get(path, { headers: { accept: "text/html" }, maxRedirects: 0 });
     expect(r.status(), path).toBe(307);
     expect(r.headers().location, path).toMatch(/\/early-access/);
   }
-  for (const [method, path] of [["GET", `/tickets/photos/${randomUUID()}`], ["GET", `/quotes/${randomUUID()}/versions/${randomUUID()}/pdf`], ["POST", `/tickets/${randomUUID()}/scans`], ["POST", "/driver/photos"], ["POST", "/login"]] as const) {
+  // A server action is a POST to a page: refused even on a public page.
+  for (const [method, path] of [["GET", `/tickets/photos/${randomUUID()}`], ["GET", `/quotes/${randomUUID()}/versions/${randomUUID()}/pdf`], ["POST", `/tickets/${randomUUID()}/scans`], ["POST", "/driver/photos"], ["POST", "/login"], ["POST", "/"], ["POST", "/contact"]] as const) {
     const r = await request.fetch(path, { method, headers: { accept: "*/*", "next-action": "x" }, maxRedirects: 0 });
     expect(r.status(), `${method} ${path}`).toBe(401);
     expect(await r.text(), path).not.toMatch(/Command Center|Delivery Tickets|<form/);
   }
 }
 
-test("without early access nothing is reachable except the gate and Auth email links", async ({ request }) => {
+test("without early access nothing is reachable except the public website, the gate and Auth email links", async ({ request }) => {
   await expectLocked(request);
+  // The public website is open (pages by GET only), and so is its form endpoint.
+  for (const path of ["/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms"]) {
+    const r = await request.get(path, { headers: { accept: "text/html" }, maxRedirects: 0 });
+    expect(r.status(), path).toBe(200);
+    expect(await r.text(), path).not.toMatch(/Command Center|Delivery Tickets/);
+  }
+  const lead = await request.post("/api/leads", { headers: { "content-type": "application/json" }, data: "not json", maxRedirects: 0 });
+  expect(lead.status()).toBe(400); // reached the endpoint (unreadable form), not the gate (401)
   // The gate page itself, and Supabase Auth email links (one-time tokens), are reachable.
   expect((await request.get("/early-access")).status()).toBe(200);
   const confirm = await request.get("/auth/confirm?token_hash=invalid&type=email", { maxRedirects: 0 });

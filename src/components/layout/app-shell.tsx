@@ -5,10 +5,11 @@ import { BrandMark } from "./brand";
 import { MobileNav } from "./mobile-nav";
 import { SidebarNav } from "./sidebar-nav";
 import { UserMenu } from "./user-menu";
+import { DemoBar } from "./demo-bar";
 import { ROLE_LABELS, type Access } from "@/lib/permissions";
 import type { MyCompany } from "@/server/data/companies";
 
-export function AppShell({ access, companies = [], children }: { access: Access; companies?: MyCompany[]; children: ReactNode }) {
+export function AppShell({ access, companies = [], platformAdmin = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; children: ReactNode }) {
   return (
     <div className="min-h-dvh lg:pl-68">
       <aside className="no-print fixed inset-y-0 left-0 z-30 hidden w-68 flex-col bg-charcoal py-4 lg:flex">
@@ -21,6 +22,7 @@ export function AppShell({ access, companies = [], children }: { access: Access;
         <p className="truncate px-5 pt-4 text-xs text-white/40" title={access.companyName ?? undefined}>{PRODUCT_NAME}{access.companyName ? ` · ${access.companyName}` : ""}</p>
       </aside>
 
+      {access.isDemo ? <DemoBar preview={access.preview ?? null} platformAdmin={platformAdmin} /> : null}
       <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 bg-charcoal px-3 shadow-sm lg:bg-charcoal-2 lg:px-6">
         <div className="flex items-center gap-2">
           <MobileNav permissions={access.permissions} />

@@ -1,8 +1,11 @@
 import "server-only";
 import { cache } from "react";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
 import { can, type Access, type AppRole, type Permission } from "@/lib/permissions";
+import { PREVIEW_COOKIE, applyPreview, parsePreviewRole } from "@/lib/platform/preview";
+import { isPlatformAdmin } from "@/server/platform";
 
 /** The signed-in user's access, loaded once per request from the database. */
 export const getAccess = cache(async (): Promise<Access | null> => {
@@ -23,7 +26,7 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     company_id: string | null;
     company_name: string | null;
   };
-  return {
+  const access: Access = {
     userId: row.user_id,
     companyId: row.company_id,
     companyName: row.company_name,
@@ -32,14 +35,32 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     role: row.role,
     active: row.active,
     permissions: row.permissions ?? [],
+    isDemo: false,
+    preview: null,
   };
+  if (!row.company_id) return access;
+
+  // Demo company? (A missing column — database not yet migrated — means no.)
+  const { data: company } = await supabase.from("companies").select("is_demo").eq("id", row.company_id).maybeSingle();
+  access.isDemo = Boolean((company as { is_demo?: boolean } | null)?.is_demo);
+  if (!access.isDemo) return access;
+
+  // Role preview: only in a demo company, and only ever narrowing.
+  const preview = parsePreviewRole((await cookies()).get(PREVIEW_COOKIE)?.value);
+  if (!preview) return access;
+  const { data: perms } = await supabase.from("role_permissions").select("role, permission");
+  return applyPreview(access, preview, (perms as Array<{ role: string; permission: string }> | null) ?? []);
 });
 
 /** For pages: redirect to sign-in when signed out, to the no-access page when the account has no role. */
 export async function requireAccess(): Promise<Access> {
   const access = await getAccess();
   if (!access) redirect("/login");
-  if (!access.active || !access.role || !access.companyId) redirect("/no-access");
+  if (!access.active || !access.role || !access.companyId) {
+    // A platform team member without a company of their own starts at the launchpad.
+    if (await isPlatformAdmin()) redirect("/admin");
+    redirect("/no-access");
+  }
   return access;
 }
 

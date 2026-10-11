@@ -69,3 +69,63 @@
     text-decoration: none !important;
   }
 }
+
+/* Public website: 3D "operations stack" (hero) ------------------------------ */
+.site-scene {
+  perspective: 1800px;
+  perspective-origin: 50% 30%;
+}
+.site-stack {
+  position: relative;
+  transform-style: preserve-3d;
+  transform: rotateX(54deg) rotateZ(-34deg);
+}
+.site-layer {
+  position: absolute;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  background: #0f1012;
+  box-shadow: 0 40px 80px -20px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(0 0 0 / 0.4);
+  transform-style: preserve-3d;
+}
+.site-layer img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.site-layer-1 { transform: translateZ(0); }
+.site-layer-2 { transform: translateZ(70px); }
+.site-layer-3 { transform: translateZ(140px); }
+.site-route {
+  position: absolute;
+  inset: 0;
+  transform: translateZ(150px);
+  pointer-events: none;
+}
+.site-route path {
+  stroke-dasharray: 10 14;
+  animation: site-dash 2.4s linear infinite;
+}
+.site-float {
+  animation: site-float 9s ease-in-out infinite alternate;
+}
+@keyframes site-float {
+  from { transform: rotateX(54deg) rotateZ(-34deg) translateZ(0); }
+  to   { transform: rotateX(50deg) rotateZ(-30deg) translateZ(24px); }
+}
+@keyframes site-dash {
+  to { stroke-dashoffset: -48; }
+}
+.site-grid-bg {
+  background-image:
+    linear-gradient(rgb(255 255 255 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(255 255 255 / 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-float,
+  .site-route path {
+    animation: none;
+  }
+}

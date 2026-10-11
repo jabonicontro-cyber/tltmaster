@@ -232,7 +232,8 @@ create table private.lead_events (
 );
 create index lead_events_lead on private.lead_events (lead_id, occurred_at);
 
--- One row per submission attempt, keyed by a hash of the address (never the address).
+-- One row per submission attempt, keyed by a hash of the address (never the
+-- address), deleted after two days.
 create table private.lead_attempts (
   id         bigint generated always as identity primary key,
   ip_hash    text not null,
@@ -263,6 +264,8 @@ begin
   if coalesce(p_ip_hash, '') = '' then
     return jsonb_build_object('ok', false, 'reason', 'invalid');
   end if;
+  -- Address fingerprints are kept only as long as the limits need them.
+  delete from private.lead_attempts where created_at < now() - interval '2 days';
   select count(*) filter (where created_at > now() - interval '15 minutes'), count(*)
     into v_recent, v_day
   from private.lead_attempts where ip_hash = p_ip_hash and created_at > now() - interval '1 day';

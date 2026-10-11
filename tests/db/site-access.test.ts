@@ -72,7 +72,7 @@ describe("early-access site gate", () => {
       const site = code();
       const id = await create(s, site, "site_access", 10);
       const g1 = (await redeem(s, site)).grant_id!;
-      const g2 = (await redeem(s, site)).grant_id!;
+      await redeem(s, site); // a second device
       expect((await s.query<{ n: number }>("select public.site_access_revoke_grants($1, 'Shared too widely') as n", [id])).rows[0].n).toBe(2);
       expect(await validate(s, g1)).toEqual({ valid: false, reason: "revoked" });
       const g3 = (await redeem(s, site)).grant_id!; // the code itself still admits new devices

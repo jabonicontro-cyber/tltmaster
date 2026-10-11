@@ -61,6 +61,7 @@ export async function updateUserAccess(userId: string, formData: FormData): Prom
 export async function inviteUser(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     const access = await assertPermission("users.manage");
+    if (access.isDemo) return fail("Invitations are turned off in the demo company: it never sends email to anyone.");
     const parsed = inviteSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     if (parsed.data.role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.");

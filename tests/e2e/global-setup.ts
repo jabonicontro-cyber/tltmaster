@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
-import { OTHER_COMPANY, PASSWORD, USERS } from "./users";
+import { OTHER_COMPANY, PASSWORD, PLATFORM_USER, USERS } from "./users";
 
 /**
  * Ensure the e2e users exist with known passwords, roles and companies
@@ -48,4 +48,15 @@ export default async function globalSetup() {
       .upsert({ company_id: company.id, user_id: id, role: u.role, active: true }, { onConflict: "company_id,user_id" });
     if (error) throw new Error(`membership ${u.email}: ${error.message}`);
   }
+
+  // The platform team member: a login with no company, granted the platform role the operator's way.
+  const { data: existing } = await admin.from("profiles").select("id").eq("email", PLATFORM_USER.email).maybeSingle();
+  if (!existing) {
+    const { error } = await admin.auth.admin.createUser({ email: PLATFORM_USER.email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: PLATFORM_USER.name } });
+    if (error) throw new Error(`createUser ${PLATFORM_USER.email}: ${error.message}`);
+  } else {
+    await admin.auth.admin.updateUserById(existing.id, { password: PASSWORD });
+  }
+  const { data: granted, error: gErr } = await admin.rpc("platform_admin_grant", { p_email: PLATFORM_USER.email, p_note: "e2e" });
+  if (gErr || !(granted as { ok: boolean }).ok) throw new Error(`platform_admin_grant: ${gErr?.message ?? JSON.stringify(granted)}`);
 }

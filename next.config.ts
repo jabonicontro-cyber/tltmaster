@@ -9,6 +9,13 @@ const securityHeaders = [
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
 ];
 
+// The public website may be indexed only when SITE_INDEXING=on (read at build
+// time). The later rule wins for the same header key.
+const SITE_PAGES = ["/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms"];
+const siteIndexHeaders = process.env.SITE_INDEXING?.trim().toLowerCase() === "on"
+  ? SITE_PAGES.map((source) => ({ source, headers: [{ key: "X-Robots-Tag", value: "index, follow" }] }))
+  : [];
+
 const nextConfig: NextConfig = {
   // Every page in this app is private and per-user; we render on each request.
   poweredByHeader: false,
@@ -22,7 +29,7 @@ const nextConfig: NextConfig = {
     },
   },
   async headers() {
-    return [{ source: "/:path*", headers: securityHeaders }];
+    return [{ source: "/:path*", headers: securityHeaders }, ...siteIndexHeaders];
   },
 };
 

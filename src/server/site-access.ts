@@ -36,6 +36,14 @@ export function accessCookieName(secure: boolean): string {
   return secure ? "__Host-taviron-access" : "taviron-access";
 }
 
+/**
+ * The public website (marketing pages and the demo/contact form) is open to
+ * everyone unless PUBLIC_SITE=off, which keeps it behind the gate too.
+ */
+export function publicSiteEnabled(): boolean {
+  return (process.env.PUBLIC_SITE ?? "").trim().toLowerCase() !== "off";
+}
+
 /** Paths reachable without early access: the gate itself and Supabase Auth email links (one-time tokens). */
 const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error"];
 export function isGateExempt(path: string): boolean {

@@ -9,11 +9,11 @@ import { uuid } from "@/lib/schemas/common";
 import { QUOTE_STATUSES } from "@/lib/quotes/status";
 import { formatCents } from "@/lib/money";
 import { formatDateLong } from "@/lib/dates";
-import { assertPermission } from "@/server/auth";
+import { assertPermission, getAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { getCustomerQuoteContext } from "@/server/data/customers";
-import { getEmailMode } from "@/server/email/provider";
+import { getEmailMode, type EmailMode } from "@/server/email/provider";
 import { env } from "@/server/env";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
 import { renderQuotePdf } from "@/server/pdf/quote-pdf";
@@ -75,12 +75,13 @@ export type SendQuoteResult =
  */
 export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise<ActionResult<SendQuoteResult>> {
   return guard(async () => {
-    await assertPermission("quotes.send");
+    const access = await assertPermission("quotes.send");
     const parsed = emailInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const { quoteId, expectedEditSeq, to, cc, subject, message } = parsed.data;
     const supabase = await createClient();
-    const mode = getEmailMode();
+    // The demo company never sends email: it always records a preview.
+    const mode: EmailMode = access.isDemo ? { mode: "preview", reason: "Demo company: emails are shown, never sent." } : getEmailMode();
 
     const { data: quote, error: qErr } = await supabase.from("quotes").select("id, current_version_id, status").eq("id", quoteId).maybeSingle();
     if (qErr || !quote) return fail("Quote not found.");
@@ -212,7 +213,7 @@ export async function defaultEmailContent(quoteId: string) {
       to,
       subject: `Quote ${doc.quoteNumber}${version.version_no > 1 ? ` (rev. ${version.version_no})` : ""} from ${doc.company.name}`,
       message,
-      emailMode: getEmailMode().mode,
+      emailMode: (await getAccess())?.isDemo ? "preview" : getEmailMode().mode,
     });
   });
 }

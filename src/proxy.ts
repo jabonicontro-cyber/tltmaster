@@ -1,7 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { signSiteAccess, verifySiteAccess } from "@/lib/site-access-token";
-import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, revalidateGrant, revalidateSeconds, siteGate } from "@/server/site-access";
+import { isPublicSiteRequest } from "@/lib/site/paths";
+import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnabled, revalidateGrant, revalidateSeconds, siteGate } from "@/server/site-access";
 
 const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access"];
 
@@ -11,6 +12,9 @@ const isHttps = (request: NextRequest) =>
 /**
  * Runs before every route (pages, server actions, route handlers, files):
  *
+ * 0. The public website (exact marketing pages, GET/HEAD only, and POST to the
+ *    demo/contact endpoint) is open to everyone; see src/lib/site/paths.ts.
+ *    PUBLIC_SITE=off closes it behind the gate too.
  * 1. Early-access gate (when enabled): a visitor who is not signed in needs a
  *    valid early-access grant — a signed HttpOnly cookie issued after a valid
  *    code, re-checked with the database every few minutes so revocation takes
@@ -56,9 +60,10 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(data?.claims?.sub);
 
   const path = request.nextUrl.pathname;
+  const publicSite = isPublicSiteRequest(path, request.method, publicSiteEnabled());
 
   // 1. Early-access gate.
-  if (gate.enabled && gate.secret && !signedIn && !isGateExempt(path)) {
+  if (gate.enabled && gate.secret && !signedIn && !publicSite && !isGateExempt(path)) {
     const secure = isHttps(request);
     const name = accessCookieName(secure);
     const now = Math.floor(Date.now() / 1000);
@@ -93,7 +98,7 @@ export async function proxy(request: NextRequest) {
 
   // 2. Sign-in.
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
-  if (!signedIn && !isPublic) {
+  if (!signedIn && !isPublic && !publicSite) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`;
