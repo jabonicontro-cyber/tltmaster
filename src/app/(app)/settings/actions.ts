@@ -11,6 +11,7 @@ import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
+import { getEmailMode } from "@/server/email/provider";
 
 export async function saveCompanySettings(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
@@ -87,6 +88,12 @@ export async function inviteUser(formData: FormData): Promise<ActionResult> {
       );
     }
 
+    // Invitations are emailed by Supabase Auth, not by Resend, so EMAIL_TEST_RECIPIENT cannot
+    // redirect them. While test mode is on they may only go to the test inbox itself.
+    const mode = getEmailMode();
+    if (mode.mode === "test" && parsed.data.email.toLowerCase() !== mode.testRecipient.toLowerCase()) {
+      return fail(`Email test mode is on: invitations can only be sent to the test inbox (${mode.testRecipient}) until EMAIL_TEST_RECIPIENT is removed.`);
+    }
     if (!adminAvailable()) {
       return fail("Inviting users needs SUPABASE_SERVICE_ROLE_KEY on the server. Until then, add users in the Supabase dashboard (Authentication → Users) and assign their role here.");
     }

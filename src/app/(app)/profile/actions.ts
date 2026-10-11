@@ -5,13 +5,19 @@ import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { sniffImage } from "@/lib/branding";
 import { MAX_PHOTO_BYTES } from "@/lib/people/photo";
+import { isCompletePhone } from "@/lib/phone";
 import { requireAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
 const profileSchema = z.object({
   display_name: z.string().trim().max(60, "Use at most 60 characters."),
-  phone: z.string().trim().max(25, "Use at most 25 characters.").regex(/^[0-9+()./ -]*$/, "Use digits, spaces and + ( ) - . only."),
+  phone: z
+    .string()
+    .trim()
+    .max(25, "Use at most 25 characters.")
+    .regex(/^[0-9+()./ -]*$/, "Use digits, spaces and + ( ) - . only.")
+    .refine(isCompletePhone, "Enter the whole number, e.g. (312) 555-0142, or leave it empty."),
 });
 
 /** The signed-in person's own display name and phone. Nothing else can be changed here. */

@@ -99,6 +99,13 @@ export class ResendProvider implements EmailProvider {
 /** Decide how emails are handled from configuration. Never pretends to send. */
 export function getEmailMode(): EmailMode {
   const e = env();
+  // Fail safe: a malformed setting (above all a malformed EMAIL_TEST_RECIPIENT, which
+  // would otherwise turn test mode into live mode) means nothing is sent at all.
+  const emailSettings = ["EMAIL_PROVIDER", "RESEND_API_KEY", "EMAIL_FROM", "EMAIL_REPLY_TO", "EMAIL_TEST_RECIPIENT", "LEAD_NOTIFY_EMAIL", "APP_BASE_URL"];
+  const badEmail = e.invalidSettings.filter((k) => emailSettings.includes(k));
+  if (badEmail.length) {
+    return { mode: "preview", reason: `Email sending is off: ${badEmail.join(", ")} ${badEmail.length === 1 ? "is" : "are"} malformed. Nothing will be sent until fixed.` };
+  }
   if (e.EMAIL_PROVIDER !== "resend") {
     return { mode: "preview", reason: "Email sending is not configured (EMAIL_PROVIDER=preview). Nothing will be sent." };
   }

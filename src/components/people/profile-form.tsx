@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input } from "@/components/ui/form";
@@ -16,7 +17,7 @@ export function ProfileForm({ displayName, phone, fullName }: { displayName: str
         <Input id="display_name" name="display_name" defaultValue={displayName} maxLength={60} autoComplete="nickname" aria-invalid={Boolean(fieldError("display_name"))} />
       </Field>
       <Field label="Phone" htmlFor="phone" error={fieldError("phone")} hint="Optional. Visible to you and your company administrators.">
-        <Input id="phone" name="phone" type="tel" inputMode="tel" defaultValue={phone} maxLength={25} autoComplete="tel" aria-invalid={Boolean(fieldError("phone"))} />
+        <PhoneInput id="phone" name="phone" defaultValue={phone} maxLength={25} aria-invalid={Boolean(fieldError("phone"))} />
       </Field>
       <Button type="submit" loading={pending} disabled={pending} className="min-h-11">Save</Button>
     </form>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useState } from "react";
 import { DateInput } from "@/components/ui/date-input";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -54,7 +55,7 @@ export function DriverForm({ initial, users, action, cancelHref, submitLabel }: 
           <Input {...f("employee_number")} defaultValue={initial.employee_number} maxLength={20} />
         </Field>
         <Field label="Phone" htmlFor="phone" error={fieldError("phone")} className="sm:col-span-2">
-          <Input {...f("phone")} type="tel" defaultValue={initial.phone} maxLength={40} />
+          <PhoneInput {...f("phone")} defaultValue={initial.phone} maxLength={40} />
         </Field>
         <Field label="Hire date" htmlFor="hire_date" error={fieldError("hire_date")} className="sm:col-span-2">
           <DateInput min="1900-01-01" {...f("hire_date")} defaultValue={initial.hire_date ?? ""} />

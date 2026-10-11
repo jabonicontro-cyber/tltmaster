@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import Link from "next/link";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
@@ -142,7 +143,7 @@ export function OrderDetailsForm({ order, customer, contacts, sites, canEditCust
             <Input id="contactEmail" type="email" value={state.contactEmail} onChange={(e) => update({ contactEmail: e.target.value })} />
           </Field>
           <Field label="Contact phone" htmlFor="contactPhone" error={fieldErrors.contactPhone} className="md:col-span-1">
-            <Input id="contactPhone" value={state.contactPhone} onChange={(e) => update({ contactPhone: e.target.value })} />
+            <PhoneInput id="contactPhone" value={state.contactPhone} onValueChange={(v) => update({ contactPhone: v })} />
           </Field>
 
           <Field label="Job site / delivery address" htmlFor="siteId" className="md:col-span-3">

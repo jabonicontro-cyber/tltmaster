@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useRef, useState, type FormEvent } from "react";
 import { CheckCircle2 } from "lucide-react";
 
@@ -101,7 +102,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
         </label>
         <label className="block text-sm font-medium text-white/85">
           Phone <span className="text-white/45">(optional)</span>
-          <input name="phone" type="tel" maxLength={40} autoComplete="tel" className={input} {...aria("phone")} />
+          <PhoneInput bare name="phone" maxLength={40} className={input} {...aria("phone")} />
           {err("phone")}
         </label>
         {kind === "demo" ? (

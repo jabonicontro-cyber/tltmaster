@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -125,7 +126,7 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
               <Input {...ctl("company_name", fe("company_name"))} defaultValue={settings.company_name} />
             </Field>
             <Field label="Phone" htmlFor="phone" error={fe("phone")} className="sm:col-span-3">
-              <Input {...ctl("phone", fe("phone"))} defaultValue={settings.phone} />
+              <PhoneInput {...ctl("phone", fe("phone"))} defaultValue={settings.phone} />
             </Field>
             <Field label="Street address" htmlFor="address_line1" error={fe("address_line1")} className="sm:col-span-4">
               <Input {...ctl("address_line1", fe("address_line1"))} defaultValue={settings.address_line1} />

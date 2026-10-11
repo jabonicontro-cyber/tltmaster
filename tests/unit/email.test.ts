@@ -91,4 +91,33 @@ describe("email mode", () => {
     const m = await modeWith({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", EMAIL_FROM: "a@example.com", EMAIL_TEST_RECIPIENT: "" });
     expect(m.mode).toBe("live");
   });
+
+  it("turns sending off — never live — when the test recipient is malformed", async () => {
+    const m = await modeWith({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", EMAIL_FROM: "a@example.com", EMAIL_TEST_RECIPIENT: "inbox at example" });
+    expect(m.mode).toBe("preview");
+    expect(m.mode === "preview" && m.reason).toMatch(/EMAIL_TEST_RECIPIENT is malformed/);
+  });
+  it("turns sending off for any malformed email setting, naming it but never echoing its value", async () => {
+    for (const [k, v] of [["EMAIL_FROM", "Taviron <nope>"], ["LEAD_NOTIFY_EMAIL", "team@"], ["APP_BASE_URL", "mytaviron.com"], ["RESEND_API_KEY", "secret-without-prefix"]]) {
+      const m = await modeWith({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", EMAIL_FROM: "a@example.com", [k]: v });
+      expect(m.mode, k).toBe("preview");
+      expect(JSON.stringify(m), k).not.toContain(v);
+    }
+  });
+});
+
+describe("environment parsing", () => {
+  const base = { NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:54321", NEXT_PUBLIC_SUPABASE_ANON_KEY: "x".repeat(40) };
+  it("keeps the site running when optional settings are malformed, and lists them by name", async () => {
+    const { parseEnv } = await import("@/server/env");
+    const e = parseEnv({ ...base, LEAD_NOTIFY_EMAIL: "not-an-email", APP_BASE_URL: "mytaviron.com", EMAIL_FROM: "Taviron <no-reply@mytaviron.com>" });
+    expect(e.invalidSettings.sort()).toEqual(["APP_BASE_URL", "LEAD_NOTIFY_EMAIL"]);
+    expect(e.LEAD_NOTIFY_EMAIL).toBeUndefined();
+    expect(e.EMAIL_FROM).toBe("Taviron <no-reply@mytaviron.com>");
+    expect(e.APP_BASE_URL).toBe("http://localhost:3000");
+  });
+  it("still refuses to start without the required Supabase settings", async () => {
+    const { parseEnv } = await import("@/server/env");
+    expect(() => parseEnv({ NEXT_PUBLIC_SUPABASE_URL: "nope" })).toThrow(/NEXT_PUBLIC_SUPABASE_URL/);
+  });
 });

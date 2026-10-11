@@ -39,9 +39,10 @@ test("a driver adds, replaces and removes their photo, sets a display name, and 
 
   // Phone validation: the error is explained and the typed values stay.
   await page.getByLabel("Name to show").fill("Danny D");
-  await page.getByLabel("Phone").fill("call me");
+  await page.getByLabel("Phone").fill("3125");
   await page.getByRole("button", { name: "Save" }).click();
-  await expect(page.getByText("Use digits, spaces and + ( ) - . only.")).toBeVisible();
+  await expect(page.getByText("Enter the whole number, e.g. (312) 555-0142, or leave it empty.")).toBeVisible();
+  await expect(page.getByLabel("Phone")).toHaveValue("(312) 5");
   await expect(page.getByLabel("Name to show")).toHaveValue("Danny D");
   await page.getByLabel("Phone").fill("+1 (555) 010-2000");
   await page.getByRole("button", { name: "Save" }).click();

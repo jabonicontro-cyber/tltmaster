@@ -1,5 +1,6 @@
 "use client";
 
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Checkbox, Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
@@ -78,7 +79,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
           <Input {...f("email")} type="email" defaultValue={initial.email} autoComplete="off" />
         </Field>
         <Field label="Main phone" htmlFor="phone" error={fieldError("phone")} className="sm:col-span-3">
-          <Input {...f("phone")} type="tel" defaultValue={initial.phone} autoComplete="off" />
+          <PhoneInput {...f("phone")} defaultValue={initial.phone} autoComplete="off" />
         </Field>
       </fieldset>
 
@@ -92,7 +93,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
             <Input {...f("contact_email")} type="email" />
           </Field>
           <Field label="Contact phone" htmlFor="contact_phone" error={fieldError("contact_phone")} className="sm:col-span-2">
-            <Input {...f("contact_phone")} type="tel" />
+            <PhoneInput {...f("contact_phone")} />
           </Field>
         </fieldset>
       )}
