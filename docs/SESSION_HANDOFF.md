@@ -134,6 +134,12 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Preview vs production (2026-10-11):** verified from GitHub — one branch (the default), and all 19 Vercel deployments
+are Production; there is no preview today, so every push reaches every domain on this project (`tltmaster.vercel.app`, and
+`mytaviron.com` if attached here — unverified, Claude's network policy blocks both hosts and the Vercel/Supabase APIs). No code
+change is needed for a split. Proposed setup and promotion workflow: DEPLOYMENT §2b (owner approval needed; nothing changed yet).
+Until the split is made, treat every push as a production deployment.
+
 **Domains, sign-in logo and redirects (2026-10-11):**
 - **Sign-in logo:** on the sign-in pages (login, sign-up, password reset) the Taviron logo now links to
   `https://mytaviron.com` in the same tab (`src/lib/site/urls.ts`); tested by mouse and keyboard. Other logos unchanged.

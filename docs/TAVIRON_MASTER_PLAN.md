@@ -111,6 +111,11 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Deployment split (2026-10-11):** verified that every push so far deployed to Vercel Production (19 of 19; one branch,
+which is also the default). Proposed: `main` → Production (`mytaviron.com`), working branch → Preview
+(`tltmaster.vercel.app`), separate variables per environment, a production Supabase project before real customers, and
+promotion only by merging into `main` (DEPLOYMENT §2b). Awaiting the founder's approval; no configuration changed.
+
 **Domains (2026-10-11, owner to confirm):** production/public `https://mytaviron.com`; testing `https://tltmaster.vercel.app`.
 The sign-in logo links to `https://mytaviron.com`. Not verified from Claude's sandbox (network policy). Every push deploys to
 the Vercel project's Production environment; if `mytaviron.com` is attached to the same project there is no preview/production

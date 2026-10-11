@@ -87,6 +87,49 @@ repeats the same steps with new projects — never point staging at production d
    open, it checks the form endpoint answers (one unreadable submission; nothing is saved).
    Either way everything else must be behind the gate.
 
+## 2b. Preview and production (proposed — owner approval needed)
+
+**Today (verified from GitHub's deployment records, 2026-10-11):** the repository has one branch,
+`claude/top-line-trucking-manager-vmw04i`, which is also its default branch. All 19 Vercel deployments
+so far are **Production** deployments of that branch; there has never been a Preview deployment. So every
+push goes straight to whatever domains the project's Production environment serves —
+`tltmaster.vercel.app`, and `mytaviron.com` too if it is attached to this project (not verifiable from
+Claude's sandbox).
+
+**Target:** `mytaviron.com` = Production, built only from `main`; `tltmaster.vercel.app` = Preview of the
+working branch. No new project, no paid service, no code change (the app behaves the same in both; the
+gate is on for every Vercel build).
+
+Owner steps, in this order (each is reversible):
+1. **Create `main`** at the commit that should be live (GitHub → branch selector → type `main` → "Create
+   branch from claude/top-line-trucking-manager-vmw04i"), or ask Claude to push it. Optionally make it the
+   repository's default branch (Settings → General → Default branch).
+2. **Production Branch → `main`:** Vercel → Project → Settings → Environments → Production → Branch
+   Tracking (older dashboards: Settings → Git → Production Branch). From now on only `main` deploys to
+   Production; pushes to the working branch create **Preview** deployments.
+3. **Domains:** Settings → Domains → `mytaviron.com` (and `www`) → environment **Production**.
+   `tltmaster.vercel.app` → Edit → **Preview** with Git branch `claude/top-line-trucking-manager-vmw04i`,
+   so it always shows the latest preview of the working branch.
+4. **Environment variables are per environment** — copy every variable in §2 to **Preview** too (they are
+   not shared automatically), with `APP_BASE_URL` = `https://tltmaster.vercel.app` for Preview and
+   `https://mytaviron.com` for Production. `EARLY_ACCESS_GATE=on` in both. Use a different
+   `SITE_ACCESS_SECRET` per environment. `EARLY_ACCESS_PASSWORD` in each environment where the shared
+   password should work (it can differ). Leave `PUBLIC_SITE` and `SITE_INDEXING` off in Preview.
+5. **Database:** until a production Supabase project exists, both environments can point at
+   `taviron-staging` (no real customers yet) — but then preview tests and the official site share one
+   database. Before real customers: a second Supabase project for Production (free plan allows two), its
+   own keys in the Production variables, all migrations applied there (§2a), and its Auth URL
+   configuration set to `https://mytaviron.com`. Whichever project each environment uses, add that
+   environment's address under Supabase → Authentication → URL Configuration → Redirect URLs.
+6. **Redeploy** each environment after changing its variables.
+
+**Promotion (after the split):** work happens on the working branch → Vercel builds a Preview →
+check it on `tltmaster.vercel.app` → when approved, merge the working branch into `main` (a pull request or
+a fast-forward). That merge is the only thing that changes `mytaviron.com`. Claude pushes only to the working
+branch and never to `main` without the owner's explicit approval. Database migrations stay a separate
+owner step per Supabase project (apply to staging, verify on preview, then to production before merging code
+that needs them). Rollback: Vercel → Deployments → previous Production deployment → Instant Rollback.
+
 ## 2a. Updating the database after a new release
 
 Each release that adds a file to `supabase/migrations/` needs it applied to the staging
