@@ -88,20 +88,58 @@ repeats the same steps with new projects — never point staging at production d
 ## 2a. Updating the database after a new release
 
 Each release that adds a file to `supabase/migrations/` needs it applied to the staging
-database **before or right after** the new app version deploys. From the project folder on
-your computer (already linked in step 1.3):
+database **before or right after** the new app version deploys. Run these from the project
+folder on your computer (linked in step 1.3), one at a time, reading each result:
 
 ```bash
 git pull
-pg_dump "<connection string from Supabase → Database>" -Fc -f before-$(date +%F).dump   # backup first (free plan has none)
-npx supabase db push            # applies only the new migrations; says "up to date" if none
+npx supabase projects list        # the linked project is marked ●; it must be the STAGING project
+npx supabase migration list       # Local vs Remote: every row but the new one(s) should show both
 ```
+
+Back up first — the free plan has no backups. Either:
+
+```bash
+npx supabase db dump -f staging-schema-$(date +%F).sql               # needs Docker Desktop running
+npx supabase db dump --data-only -f staging-data-$(date +%F).sql
+```
+
+or, without Docker, with PostgreSQL's own tool (`brew install postgresql@17`), using the
+**Session pooler** connection string from Supabase → **Connect** (type the database
+password when asked; never paste it into chat or a file in the repository):
+
+```bash
+pg_dump "<session pooler connection string>" -Fc -f staging-$(date +%F).dump
+```
+
+Check the backup file exists and is not empty (`ls -lh staging-*`). Then:
+
+```bash
+npx supabase db push --dry-run    # lists what WOULD be applied; expect only the new migration(s)
+npx supabase db push              # applies them; answer Y to the prompt
+npx supabase migration list       # the new row now shows a Remote version too
+```
+
+Migrations are additive and never delete data. If `db push` reports an error, stop, keep
+the output, and do not retry or edit anything until it has been looked at.
 
 N13 (public website, platform area) adds `20261024000100_platform_owner.sql`. Until it is
 pushed, the demo/contact form answers "could not be saved" and the platform area is
 unavailable; the rest of the app keeps working. The public website stays behind the gate
 until you set `PUBLIC_SITE=on` in Vercel (and redeploy) — do that once the pricing and the
 draft legal pages are confirmed.
+
+**Seeing the website without making it public:** a device admitted with a site-access code
+(step 3), or a signed-in user, sees every public page while `PUBLIC_SITE` is off. That is
+the way to review it before opening it to everyone.
+
+**Which Vercel environment is this?** In Vercel's terms the staging site is the project's
+**Production** environment: every push to the production branch deploys there and is
+aliased to `tltmaster.vercel.app` (GitHub records each one as a "Production" deployment).
+So a variable set for *Production* in this project affects `tltmaster.vercel.app` — and any
+custom domain you add to the project later. Before setting `PUBLIC_SITE=on`, check
+**Settings → Domains**: if only `tltmaster.vercel.app` is listed, the change affects this
+staging address only. A real launch should use its own project and database.
 
 ## 3. Let yourself (and testers) in
 

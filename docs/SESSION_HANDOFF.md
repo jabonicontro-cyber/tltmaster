@@ -55,29 +55,35 @@ N13 delivered:
 
 ## 4. Deployment and Supabase status
 
-The facts below come from the owner's earlier screenshots and messages. The sandbox cannot reach `tltmaster.vercel.app`:
-its network policy blocks the host.
+**Verified from GitHub's deployment records** (the public GitHub API; Vercel reports each deploy there):
+- Every push to this branch is deployed by Vercel to the project's **Production** environment.
+- Commit `a652bbb` deployed with state `success` at 2026-10-11 03:49 UTC.
+- Its deployment URL is `https://tltmaster-e3uuc9jkf-taviron.vercel.app`.
+- Vercel team `taviron`, project `tltmaster`.
+- There are no Preview deployments.
+
+`tltmaster.vercel.app` is that project's Production alias. A Production variable such as `PUBLIC_SITE` affects it, and would also affect
+any custom domain added to the project later (none is known).
+
+**What this sandbox cannot do:**
+- Reach `*.vercel.app`: the network policy refuses the connection.
+- Read Vercel settings, environment variables or domains.
+- Reach the staging Supabase project: no credentials are present, by design.
 
 | Item | Status |
 | --- | --- |
-| Staging site | `https://tltmaster.vercel.app` on the Vercel Hobby plan. Vercel deploys every push to this branch. |
-| Supabase | Created through the Vercel integration. All 20 N12-era migrations were pushed. |
-| **N13 migration `20261024000100_platform_owner.sql`** | **Not pushed to staging.** It is the owner's action, in DEPLOYMENT §2a. |
-| What staging does until the migration is pushed | The app keeps working. The demo/contact form says it cannot save. The platform area answers 404. |
-| `PUBLIC_SITE` | Not set, so the public website stays behind the gate. Opening it is the owner's decision: confirm the pricing and the legal drafts first. |
-| `SITE_INDEXING` | Not set, so nothing is indexed. |
-| `SITE_ACCESS_SECRET` | **Must be rotated.** An earlier value appeared in a screenshot, and it is unknown whether it was rotated. |
+| **N13 migration `20261024000100_platform_owner.sql`** | **Not applied to staging.** It is the owner's action, in DEPLOYMENT §2a. |
+| What staging does until the migration is applied | The app keeps working. The demo/contact form says it cannot save. `/admin` answers 404. This comes from reading the code; it was not observed live. |
+| `PUBLIC_SITE` | Not set as far as known, so the website is behind the gate. Devices admitted with a site code, and signed-in users, still see every page; this was verified locally on a production build of `a652bbb`. |
+| `SITE_INDEXING` | Not set as far as known, so nothing is indexed. |
+| `SITE_ACCESS_SECRET` | **Must be rotated.** An earlier value appeared in a screenshot. |
 | Site code, company, owner login, phone sign-in, platform role | Not yet confirmed. |
 | Auth URLs, templates, SMTP, `ticket-photos` bucket, backups | Not confirmed. See DEPLOYMENT §1. |
 
 ## 5. Outstanding manual actions (owner)
 
-1. **Back up the staging database, then push the new migration.** On your Mac, from the project folder:
-   ```bash
-   git pull
-   npx supabase db push
-   ```
-   Take the backup first, as shown in DEPLOYMENT §2a.
+1. **Back up the staging database, then apply the new migration.** Follow DEPLOYMENT §2a step by step: confirm the linked project, back up,
+   run `db push --dry-run`, run `db push`, then confirm with `migration list`.
 2. **Rotate `SITE_ACCESS_SECRET`** in Vercel, then redeploy.
 3. **Run the outside-in check.** Expect every check to pass:
    ```bash
