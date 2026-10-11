@@ -139,8 +139,10 @@ test("costs are visible only to people with cost access", async ({ page, browser
 test("the driver of the truck sees scheduled and canceled shop visits on My Day", async ({ page }) => {
   const tag = unique();
   const truckId = await newTruck(tag);
+  // The driver's own account id (no profile lookup across accounts), then their driver record.
+  const userId = await asUser(USERS.driver.email, async (q) => (await q("select public.my_profile()->>'user_id' as id")).rows[0].id as string);
   const driverId = await asUser(USERS.owner.email, async (q) =>
-    (await q("select d.id from public.drivers d join public.profiles p on p.id = d.user_id where p.email = $1", [USERS.driver.email])).rows[0].id as string);
+    (await q("select id from public.drivers where user_id = $1", [userId])).rows[0].id as string);
   const previous = await asUser(USERS.owner.email, async (q) =>
     (await q("select primary_truck_id from public.drivers where id = $1", [driverId])).rows[0].primary_truck_id as string | null);
   try {
