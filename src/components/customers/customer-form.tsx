@@ -61,7 +61,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
   const f = (name: keyof CustomerFormValues | string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
       <FormError message={formError} />
 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">

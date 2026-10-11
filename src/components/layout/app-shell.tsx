@@ -1,7 +1,9 @@
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { CompanyIdentity } from "./company-identity";
 import { DesktopSidebar } from "./desktop-sidebar";
+import { ListViewRecorder } from "@/components/nav/nav-memory";
+import { UnsavedChangesGuard } from "@/components/nav/unsaved-guard";
 import { MobileNav } from "./mobile-nav";
 import { UserMenu } from "./user-menu";
 import { DemoBar } from "./demo-bar";
@@ -26,6 +28,8 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
   const logoUrl = branding?.logoUrl ?? "";
   return (
     <div className="app-root min-h-dvh lg:pl-[4.5rem] lg:data-[sidebar=pinned]:pl-64" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
+      <Suspense fallback={null}><ListViewRecorder /></Suspense>
+      <UnsavedChangesGuard />
       <DesktopSidebar permissions={access.permissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
 
       {access.isDemo && !presentation ? <DemoBar preview={access.preview ?? null} platformAdmin={platformAdmin} /> : null}

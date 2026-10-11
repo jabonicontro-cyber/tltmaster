@@ -109,7 +109,7 @@ export function OrderDetailsForm({ order, customer, contacts, sites, canEditCust
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-guard-unsaved>
       <Notice title={state.fromQuote ? "Prices are as accepted on the quote" : "Prices are locked"}>
         You can update the contact, job site, PO, requested delivery date, instructions and notes. Lines, prices, terms and the customer cannot be changed
         {state.fromQuote ? " on an order created from a quote." : " after the order is confirmed."} Every change is recorded in the order history.

@@ -38,7 +38,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
   };
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
       <FormError message={formError} />
 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">

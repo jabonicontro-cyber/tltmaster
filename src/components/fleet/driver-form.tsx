@@ -24,7 +24,7 @@ export function DriverForm({ initial, users, action, cancelHref, submitLabel }: 
   const [userId, setUserId] = useState(initial.user_id ?? "");
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6" noValidate>
+    <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
       <FormError message={formError} />
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
         <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Driver</legend>

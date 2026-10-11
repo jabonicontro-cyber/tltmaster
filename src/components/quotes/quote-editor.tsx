@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Info, Plus, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { markSaved } from "@/components/nav/unsaved-guard";
 import { CustomerForm, EMPTY_CUSTOMER } from "@/components/customers/customer-form";
 import { Badge, SampleBadge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -412,6 +413,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
         return;
       }
       setDirty(false);
+      markSaved();
       toast.success(r.message ?? "Saved");
       const saved = r.data;
       if (andView) {
@@ -433,7 +435,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
   const hasCustomer = Boolean(state.customerId && context);
 
   return (
-    <div className="space-y-5 pb-28">
+    <div className="space-y-5 pb-28" data-guard-unsaved>
       {revisionReason && (
         <Notice title={`Revision ${state.versionNo}`}>
           Reason: {revisionReason}. The previously sent version stays unchanged and can be viewed from the quote page.

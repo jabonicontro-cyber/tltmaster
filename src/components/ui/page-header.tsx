@@ -1,6 +1,5 @@
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronRight } from "lucide-react";
+import { Crumbs } from "@/components/nav/nav-memory";
 
 export interface Crumb {
   label: string;
@@ -10,22 +9,7 @@ export interface Crumb {
 export function PageHeader({ title, description, actions, crumbs, badges }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; crumbs?: Crumb[]; badges?: ReactNode }) {
   return (
     <div className="mb-5 space-y-2">
-      {crumbs && crumbs.length > 0 && (
-        <nav aria-label="Breadcrumb" className="flex flex-wrap items-center gap-1 text-sm text-muted">
-          {crumbs.map((c, i) => (
-            <span key={i} className="inline-flex items-center gap-1">
-              {i > 0 && <ChevronRight className="size-3.5" aria-hidden />}
-              {c.href ? (
-                <Link href={c.href} className="hover:text-ink hover:underline">
-                  {c.label}
-                </Link>
-              ) : (
-                <span>{c.label}</span>
-              )}
-            </span>
-          ))}
-        </nav>
-      )}
+      {crumbs && crumbs.length > 0 && <Crumbs crumbs={crumbs} />}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
