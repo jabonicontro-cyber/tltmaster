@@ -50,12 +50,7 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
   const byId = new Map(sections.map((s) => [s.id, s]));
 
   return (
-    <div className="space-y-5">
-      <div className="flex justify-end">
-        <Button size="sm" variant={customizing ? "dark" : "ghost"} icon={<SlidersHorizontal className="size-4" />} aria-pressed={customizing} onClick={() => setCustomizing((c) => !c)}>
-          {customizing ? "Done arranging" : "Arrange sections"}
-        </Button>
-      </div>
+    <div className="space-y-7">
       {order.map((id, index) => {
         const s = byId.get(id);
         if (!s) return null;
@@ -70,16 +65,24 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
                 aria-controls={`section-body-${id}`}
                 className="flex min-w-0 items-center gap-1.5 text-left"
               >
-                {isCollapsed ? <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden /> : <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />}
-                <h2 id={`section-${id}`} className="text-base font-semibold text-ink">{s.title}</h2>
+                {isCollapsed ? <ChevronRight className="size-3.5 shrink-0 text-muted" aria-hidden /> : <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />}
+                <h2 id={`section-${id}`} className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">{s.title}</h2>
               </button>
               {isCollapsed && s.collapsedSummary && <span className="truncate text-sm text-muted">{s.collapsedSummary}</span>}
-              {customizing && (
-                <span className="ml-auto flex gap-1">
-                  <Button size="sm" variant="secondary" aria-label={`Move ${s.title} up`} disabled={index === 0} onClick={() => move(id, -1)} icon={<ArrowUp className="size-4" />}>Up</Button>
-                  <Button size="sm" variant="secondary" aria-label={`Move ${s.title} down`} disabled={index === order.length - 1} onClick={() => move(id, 1)} icon={<ArrowDown className="size-4" />}>Down</Button>
-                </span>
-              )}
+              <span className="ml-auto flex items-center gap-1">
+                {customizing && (
+                  <>
+                    <Button size="sm" variant="secondary" aria-label={`Move ${s.title} up`} disabled={index === 0} onClick={() => move(id, -1)} icon={<ArrowUp className="size-4" />}>Up</Button>
+                    <Button size="sm" variant="secondary" aria-label={`Move ${s.title} down`} disabled={index === order.length - 1} onClick={() => move(id, 1)} icon={<ArrowDown className="size-4" />}>Down</Button>
+                  </>
+                )}
+                {/* Arranging lives on the first section's line instead of a row of its own. */}
+                {index === 0 && (
+                  <Button size="sm" variant={customizing ? "dark" : "ghost"} icon={<SlidersHorizontal className="size-4" />} aria-pressed={customizing} onClick={() => setCustomizing((c) => !c)}>
+                    {customizing ? "Done arranging" : "Arrange sections"}
+                  </Button>
+                )}
+              </span>
             </div>
             <div id={`section-body-${id}`} className={cn(isCollapsed && "hidden")}>{s.content}</div>
           </section>

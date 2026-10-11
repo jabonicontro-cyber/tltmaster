@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
@@ -11,12 +12,19 @@ export function SidebarNav({ permissions, onNavigate }: { permissions: Permissio
   const items = NAV_ITEMS.filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))));
   return (
     <nav aria-label="Main" className="flex flex-col gap-0.5 px-3">
-      {items.map((item) => {
+      {items.map((item, i) => {
+        // A quiet heading where a new group starts, so a long menu scans in sections.
+        const heading = item.group && item.group !== items[i - 1]?.group ? item.group : null;
         const active = pathname === item.href || pathname.startsWith(item.href + "/");
         const Icon = item.icon;
         return (
+          <Fragment key={item.href}>
+          {heading && (
+            <p className="mt-4 mb-1 px-3 text-[11px] font-semibold tracking-[0.08em] text-white/40 uppercase">
+              {heading}
+            </p>
+          )}
           <Link
-            key={item.href}
             href={item.href}
             onClick={onNavigate}
             aria-current={active ? "page" : undefined}
@@ -34,6 +42,7 @@ export function SidebarNav({ permissions, onNavigate }: { permissions: Permissio
               </span>
             )}
           </Link>
+          </Fragment>
         );
       })}
     </nav>

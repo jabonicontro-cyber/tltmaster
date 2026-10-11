@@ -134,6 +134,14 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Internal UI checkpoint 1 (local only, not pushed):** shared shell and Command Center refinements — sidebar grouped
+under Sales / Operations / Finance / Company headings (same links and permissions), page descriptions capped at a
+readable width so page actions sit beside the title, a quiet outlined SAMPLE badge, a secondary-weight Apply in filter
+bars, press feedback on buttons (none with reduced motion), and Command Center section labels as small group headings
+above the cards, with "Arrange sections" on the first section's line. No data, logic, permissions or routes changed.
+Next candidates: Billing's long "why" column, table density, Dispatch board header. Held back from pushing until the
+preview/production split is verified (DEPLOYMENT §2b): today every push still deploys to Production.
+
 **Preview vs production (2026-10-11):** verified from GitHub — one branch (the default), and all 19 Vercel deployments
 are Production; there is no preview today, so every push reaches every domain on this project (`tltmaster.vercel.app`, and
 `mytaviron.com` if attached here — unverified, Claude's network policy blocks both hosts and the Vercel/Supabase APIs). No code

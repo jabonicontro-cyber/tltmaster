@@ -111,6 +111,10 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Internal UI polish (2026-10-11):** checkpoint 1 (shell, page headers, filter bars, buttons, Command Center
+hierarchy) is done and tested locally; it is not pushed until the preview/production split is verified. Then screen by
+screen: Billing, Dispatch, Orders, Fleet, Reports — through shared components first.
+
 **Deployment split (2026-10-11):** verified that every push so far deployed to Vercel Production (19 of 19; one branch,
 which is also the default). Proposed: `main` → Production (`mytaviron.com`), working branch → Preview
 (`tltmaster.vercel.app`), separate variables per environment, a production Supabase project before real customers, and

@@ -19,7 +19,7 @@ export function FilterBar({ action, query, placeholder = "Search…", children, 
         <Input id="q" name="q" type="search" defaultValue={query} placeholder={placeholder} className="pl-9" />
       </div>
       {children}
-      <button type="submit" className={buttonClasses("dark", "md")}>
+      <button type="submit" className={buttonClasses("secondary", "md")}>
         Apply
       </button>
       <Link href={clearHref} className={buttonClasses("ghost", "md")}>
