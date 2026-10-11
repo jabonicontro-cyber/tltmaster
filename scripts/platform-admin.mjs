@@ -9,6 +9,7 @@
 //   node --env-file=.env.staging scripts/platform-admin.mjs grant you@example.com --note "Founder"
 //   node --env-file=.env.staging scripts/platform-admin.mjs revoke someone@example.com --note "Left the team"
 //   node --env-file=.env.staging scripts/platform-admin.mjs list
+//   node --env-file=.env.staging scripts/platform-admin.mjs setup-link you@example.com --base-url https://mytaviron.com
 import { createClient } from "@supabase/supabase-js";
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -51,7 +52,45 @@ if (cmd === "grant" || cmd === "revoke") {
   }
   if (!data.length) console.log("No platform admins.");
   for (const a of data) console.log(`${a.revoked_at ? "revoked" : "active "}  ${a.email}  ${a.full_name ?? ""}  granted ${a.granted_at.slice(0, 10)}${a.note ? `  (${a.note})` : ""}`);
+} else if (cmd === "setup-link") {
+  // A one-time link with which the person chooses their own password. Creates the
+  // login when none exists for the email (no company, no role, no platform access);
+  // for an existing login it changes nothing until the link is used. The link is a
+  // credential: it is printed here only, never stored or logged — hand it over
+  // privately. It expires (Supabase Auth → Email OTP expiration, 1 hour by default).
+  const email = positional[0];
+  const base = String(opts["base-url"] ?? process.env.APP_BASE_URL ?? "").replace(/\/$/, "");
+  if (!email || !email.includes("@") || !base) {
+    console.error('Usage: platform-admin.mjs setup-link <email> --base-url https://mytaviron.com');
+    process.exit(1);
+  }
+  let origin;
+  try {
+    origin = new URL(base);
+  } catch {
+    console.error(`Not a valid address: ${base}`);
+    process.exit(1);
+  }
+  if (origin.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(origin.hostname)) {
+    console.error("The site address must use https:// (http only for localhost).");
+    process.exit(1);
+  }
+  let type = "invite";
+  let result = await db.auth.admin.generateLink({ type, email });
+  if (result.error && /already|registered|exists/i.test(result.error.message)) {
+    type = "recovery";
+    result = await db.auth.admin.generateLink({ type, email });
+  }
+  const hashed = result.data?.properties?.hashed_token;
+  if (result.error || !hashed) {
+    console.error(`Failed: ${result.error?.message ?? "no link was returned"}`);
+    process.exit(1);
+  }
+  const link = `${origin.origin}/auth/confirm?token_hash=${encodeURIComponent(hashed)}&type=${type}&next=/update-password`;
+  console.log(type === "invite" ? `Created a login for ${email} (no company, role or platform access yet).` : `${email} already has a login; its password is unchanged until the link is used.`);
+  console.log("One-time setup link (single use, expires; share it privately):");
+  console.log(link);
 } else {
-  console.error("Commands: grant <email> --note, revoke <email> --note, list");
+  console.error("Commands: grant <email> --note, revoke <email> --note, list, setup-link <email> --base-url <https://site>");
   process.exit(1);
 }
