@@ -1,119 +1,155 @@
 import type { Metadata } from "next";
 import { Check, Info } from "lucide-react";
 import { Container, CtaLink, FinalCta, PageIntro } from "@/components/site/ui";
-import { PRICING, foundingMonthlyCents, usd } from "@/lib/site/pricing";
+import { ANNUAL_DISCOUNT_PERCENT, CUSTOM, EXTRA_TRAINING_CENTS, TIERS, annualMonthlyCents, usd } from "@/lib/site/pricing";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Proposed Taviron pricing: from $499 per month per company, with a founding-customer offer for the first ten companies. Subject to confirmation.",
+  description: "Taviron pricing by fleet size and dispatch bases: Essential, Growth, Professional, Enterprise and Custom, with annual-commitment pricing and a one-time onboarding fee.",
 };
 
+// Every tier includes the same software; tiers differ by how many hauling trucks and
+// dispatch bases they cover. Only capabilities that exist today are listed.
 const INCLUDED = [
-  "Command Center, quotes, orders and dispatch",
+  "Command Center, customers, quotes and orders",
+  "Dispatch board with Smart Dispatch suggestions you approve",
   "Driver portal on the phone, with ticket photos",
   "Delivery ticket review and billing readiness",
   "Fleet, drivers, qualifications and equipment status",
-  "Users by role with company-controlled permissions",
-  "Team-led setup and import of your existing records",
+  "Users by role, with your company's own permissions and branding",
+];
+
+const ONBOARDING = [
+  "Company setup",
+  "Fleet and employee setup, including import of your existing records",
+  "Basic workflow configuration",
+  `One live training session (more: ${usd(EXTRA_TRAINING_CENTS)} per session of up to 60 minutes)`,
 ];
 
 const FAQ = [
   {
-    q: "Is this the final price?",
-    a: "No. These figures are a proposal. Pricing, what is included, and any limits are confirmed in a written agreement before anything is billed.",
+    q: "Which tier fits my company?",
+    a: "The lowest tier that covers both your number of hauling trucks and your number of dispatch bases. Trucks are the active, company-managed hauling trucks you track in Taviron — including ones temporarily in the shop, in seasonal storage or in reserve. Pickups and maintenance vehicles don't count. A dispatch base is a location you dispatch from; several yards run as one base count once.",
   },
   {
     q: "When does billing start?",
-    a: "For founding customers, at go-live — when your company starts running real work in Taviron — not at sign-up or during setup.",
+    a: "The one-time onboarding fee is paid when you sign up. The monthly subscription starts at go-live — the date you and the Taviron team agree on — not during setup, configuration, testing or training.",
+  },
+  {
+    q: "How does the annual commitment work?",
+    a: `It is a 12-month commitment, paid monthly, at ${ANNUAL_DISCOUNT_PERCENT}% off the standard monthly price. It renews for another 12 months unless you turn renewal off, and you are reminded before it renews.`,
+  },
+  {
+    q: "What happens if we grow past our tier?",
+    a: "Going over a tier's truck or dispatch-base limit starts a 30-day grace period, and we email you. If you are still over it after 30 days, your subscription moves to the lowest tier that fits from the next billing date. No plan change happens without notice.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "There is a free demo: a walkthrough of the live demo company with fictional data, led by the Taviron team. There is no free trial.",
   },
   {
     q: "Can I pay on this website?",
-    a: "No. Nothing is charged through this website, and there is no automatic subscription. Billing is arranged directly with the Taviron team.",
-  },
-  {
-    q: "What does the founding-customer offer require?",
-    a: "It is offered to the first ten companies that go live. Its exact terms, including how long the discount lasts, are part of the written agreement.",
+    a: "No. Nothing is charged through this website. Your tier, prices and terms are set out in a written service agreement before anything is billed.",
   },
 ];
 
 export default function PricingPage() {
-  const base = usd(PRICING.baseMonthlyCents);
-  const founding = usd(foundingMonthlyCents());
   return (
     <>
-      <PageIntro eyebrow="Pricing" title="Simple, per-company pricing.">
-        <p>One monthly price for your company. Proposed figures below — every one of them is subject to confirmation.</p>
+      <PageIntro eyebrow="Pricing" title="Priced by the size of your operation.">
+        <p>
+          One monthly price per company, set by your number of hauling trucks and dispatch bases. Every tier includes the whole platform. Prices are in US dollars, before
+          applicable taxes.
+        </p>
       </PageIntro>
 
+      <section aria-labelledby="tiers-title">
+        <h2 id="tiers-title" className="sr-only">Tiers</h2>
+        <Container className="pt-14">
+          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {TIERS.map((t) => (
+              <li key={t.key} aria-label={t.name} className="flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
+                <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
+                <p className="mt-1 text-sm text-silver/85">
+                  Up to {t.trucks} hauling trucks · {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
+                </p>
+                <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5">
+                  {t.from ? <span className="w-full text-sm text-silver">From</span> : null}
+                  <span className="text-4xl font-semibold tracking-tight text-cloud tabular-nums">{usd(t.monthlyCents)}</span>
+                  <span className="text-sm whitespace-nowrap text-silver">/ month</span>
+                </p>
+                <p className="mt-1.5 text-sm text-silver/85">
+                  {t.from ? "From " : ""}
+                  <span className="font-semibold text-cloud tabular-nums">{usd(annualMonthlyCents(t.monthlyCents))}</span> / month with a 12-month commitment
+                </p>
+                <p className="mt-5 border-t border-silver/10 pt-4 text-sm text-silver">
+                  One-time onboarding: <span className="font-semibold text-cloud tabular-nums">{usd(t.onboardingCents)}</span>
+                </p>
+                <div className="mt-auto pt-6">
+                  <CtaLink href="/demo" className="w-full">Book a Demo</CtaLink>
+                </div>
+              </li>
+            ))}
+          </ul>
+
+          <div className="mt-4 flex flex-col gap-5 rounded-xl border border-silver/15 bg-navy-2 p-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-cloud">Custom</h3>
+              <p className="mt-1 text-sm text-silver">
+                More than {CUSTOM.aboveTrucks} hauling trucks, several dispatch bases, or needs that go beyond a standard setup. Priced by quote; onboarding from{" "}
+                <span className="font-semibold text-cloud tabular-nums">{usd(CUSTOM.onboardingFromCents)}</span>, quoted by scope.
+              </p>
+            </div>
+            <CtaLink href="/contact" variant="ghost" className="shrink-0">Contact Us</CtaLink>
+          </div>
+        </Container>
+      </section>
+
       <section>
-        <Container className="grid gap-6 py-16 lg:grid-cols-2">
-          <div className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.03] p-8">
-            <h2 className="text-sm font-bold tracking-[0.2em] text-white/55 uppercase">Taviron</h2>
-            <p className="mt-4 flex items-baseline gap-2">
-              <span className="text-sm text-white/60">From</span>
-              <span className="text-5xl font-black tracking-tight text-white">{base}</span>
-              <span className="text-white/60">/ month</span>
-            </p>
-            <p className="mt-1 text-sm text-white/50">Proposed price per company · subject to confirmation</p>
-            <ul className="mt-8 space-y-3">
+        <Container className="grid gap-10 py-16 md:grid-cols-2">
+          <div>
+            <h2 className="text-xl font-semibold text-cloud">Every tier includes</h2>
+            <ul className="mt-5 space-y-3">
               {INCLUDED.map((i) => (
-                <li key={i} className="flex gap-2 text-sm text-white/75">
-                  <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
+                <li key={i} className="flex gap-3 text-[15px] text-silver">
+                  <Check className="mt-1 size-4 shrink-0 text-electric" aria-hidden />
                   {i}
                 </li>
               ))}
             </ul>
-            <div className="mt-auto pt-8">
-              <CtaLink href="/demo">Request a demo</CtaLink>
-            </div>
           </div>
-
-          <div className="relative flex flex-col overflow-hidden rounded-2xl border border-brand/50 bg-gradient-to-b from-brand/15 to-white/[0.02] p-8">
-            <p className="w-fit rounded-full bg-action px-3 py-1 text-xs font-bold tracking-wide text-white">Founding customers</p>
-            <h2 className="mt-4 text-2xl font-black text-white">First {PRICING.foundingCustomerLimit} companies</h2>
-            <p className="mt-4 flex items-baseline gap-2">
-              <span className="text-5xl font-black tracking-tight text-white">{founding}</span>
-              <span className="text-white/60">/ month</span>
-            </p>
-            <p className="mt-1 text-sm text-white/60">
-              {PRICING.foundingDiscountPercent}% off the proposed {base} · subject to confirmation
-            </p>
-            <ul className="mt-8 space-y-3">
-              <li className="flex gap-2 text-sm text-white/80">
-                <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-                {PRICING.foundingDiscountPercent}% off the monthly price
-              </li>
-              <li className="flex gap-2 text-sm text-white/80">
-                <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-                Onboarding fee waived during the beta
-              </li>
-              <li className="flex gap-2 text-sm text-white/80">
-                <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-                Billing starts at go-live, not at sign-up
-              </li>
+          <div>
+            <h2 className="text-xl font-semibold text-cloud">Onboarding includes</h2>
+            <ul className="mt-5 space-y-3">
+              {ONBOARDING.map((i) => (
+                <li key={i} className="flex gap-3 text-[15px] text-silver">
+                  <Check className="mt-1 size-4 shrink-0 text-electric" aria-hidden />
+                  {i}
+                </li>
+              ))}
             </ul>
-            <div className="mt-auto pt-8">
-              <CtaLink href="/demo">Ask about a founding spot</CtaLink>
-            </div>
+            <p className="mt-5 text-sm text-silver/80">
+              Support: email, Monday to Friday, 9 a.m.–5 p.m. Central, excluding U.S. federal holidays, with a first response targeted within one business day.
+            </p>
           </div>
         </Container>
         <Container>
-          <p className="flex gap-2 rounded-lg border border-white/10 bg-white/[0.03] p-4 text-sm text-white/65">
-            <Info className="mt-0.5 size-4 shrink-0 text-white/50" aria-hidden />
-            All pricing on this page is proposed and subject to confirmation in a written agreement. It is not an offer, and nothing is charged through this website.
-            Taxes, if any, are not included.
+          <p className="flex gap-2 rounded-lg border border-silver/15 bg-white/[0.03] p-4 text-sm text-silver">
+            <Info className="mt-0.5 size-4 shrink-0 text-silver/70" aria-hidden />
+            Prices are per company, in US dollars, before applicable taxes. Your tier, prices and terms are confirmed in a written service agreement; nothing is charged
+            through this website.
           </p>
         </Container>
       </section>
 
       <section>
         <Container className="py-16">
-          <h2 className="text-2xl font-black text-white">Questions</h2>
+          <h2 className="text-2xl font-semibold text-cloud">Questions</h2>
           <dl className="mt-6 grid gap-4 md:grid-cols-2">
             {FAQ.map((f) => (
-              <div key={f.q} className="rounded-lg border border-white/10 bg-white/[0.03] p-5">
-                <dt className="font-bold text-white">{f.q}</dt>
-                <dd className="mt-2 text-sm text-white/65">{f.a}</dd>
+              <div key={f.q} className="rounded-lg border border-silver/15 bg-navy-2 p-5">
+                <dt className="font-semibold text-cloud">{f.q}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-silver">{f.a}</dd>
               </div>
             ))}
           </dl>

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { leadSchema, looksAutomated } from "@/lib/site/lead";
 import { confirmationEmail, notificationEmail } from "@/lib/site/lead-emails";
 import { isPublicSiteRequest, SITE_PAGES } from "@/lib/site/paths";
-import { foundingMonthlyCents, PRICING, usd } from "@/lib/site/pricing";
+import { TIERS, annualMonthlyCents, tierFor, usd } from "@/lib/site/pricing";
 import { guessMapping, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
 import { applyPreview, parsePreviewRole } from "@/lib/platform/preview";
 import { publicSiteEnabled } from "@/server/site-access";
@@ -85,12 +85,23 @@ describe("lead emails", () => {
   });
 });
 
-describe("proposed pricing", () => {
-  it("is $499 with 20% off for founding customers, $399.20", () => {
-    expect(usd(PRICING.baseMonthlyCents)).toBe("$499");
-    expect(foundingMonthlyCents()).toBe(39_920);
-    expect(usd(foundingMonthlyCents())).toBe("$399.20");
-    expect(PRICING.foundingCustomerLimit).toBe(10);
+describe("pricing", () => {
+  it("has the five tiers with annual-commitment prices 10% off and no founding discount in the public data", async () => {
+    expect(TIERS.map((t) => [t.name, usd(t.monthlyCents), usd(annualMonthlyCents(t.monthlyCents)), t.trucks, t.bases, usd(t.onboardingCents)])).toEqual([
+      ["Essential", "$499", "$449.10", 25, 1, "$199"],
+      ["Growth", "$749", "$674.10", 50, 2, "$299"],
+      ["Professional", "$999", "$899.10", 75, 3, "$399"],
+      ["Enterprise", "$1,499", "$1,349.10", 100, 5, "$599"],
+    ]);
+    expect(JSON.stringify(await import("@/lib/site/pricing"))).not.toMatch(/found/i);
+  });
+  it("picks the lowest tier that covers both trucks and dispatch bases", () => {
+    expect(tierFor(25, 1)?.name).toBe("Essential");
+    expect(tierFor(10, 2)?.name).toBe("Growth"); // few trucks, but two bases
+    expect(tierFor(60, 1)?.name).toBe("Professional");
+    expect(tierFor(100, 5)?.name).toBe("Enterprise");
+    expect(tierFor(101, 1)).toBeNull(); // Custom
+    expect(tierFor(40, 6)).toBeNull();
   });
 });
 

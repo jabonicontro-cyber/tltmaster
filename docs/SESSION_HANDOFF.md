@@ -28,7 +28,7 @@ project credentials. Read it together with:
 | N15 | Smart Dispatch (proposals with reasons and alternatives; approval re-checked; rejections audited); safety-report and capacity blocks in assignments; quote acceptance creates the order; delivery location required to schedule; fulfillment-based billing readiness; date-entry fix; company branding; website capability registry and release checklist. | §5o |
 
 N13 delivered:
-- **Public website:** 9 pages, proposed pricing, a 3D hero built from real screens, and lead forms.
+- **Public website:** 9 pages, five-tier pricing, a 3D hero built from real screens, and lead forms.
 - **Platform owner role:** granted by an operator only, and audited.
 - **`/admin` launchpad and lead workspace.**
 - **Live demo company:** role previews, with nothing sent outside Taviron.
@@ -93,7 +93,7 @@ any custom domain added to the project later (none is known).
    ```bash
    node --env-file=.env.staging scripts/platform-admin.mjs grant <your email> --note "Founder"
    ```
-6. **When ready to show the public website:** confirm the pricing and get the Privacy and Terms drafts reviewed. Then set
+6. **When ready to show the public website:** get the Privacy and Terms drafts reviewed (pricing is in place). Then set
    `PUBLIC_SITE=on` in Vercel and redeploy. Set `SITE_INDEXING=on` only for the real launch domain.
 7. **Supabase Auth setup:** URL configuration, email templates and SMTP (DEPLOYMENT §1).
 
@@ -109,8 +109,8 @@ any custom domain added to the project later (none is known).
 - **Local test database growth:** earlier e2e runs leave records (nothing is deleted). Tests that read shared queues now search or
   page for their own records.
 
-- **Pricing ($499; founding offer $399.20)** is a proposal labelled "subject to confirmation". No billing code exists, and none may be added
-  without explicit authorization.
+- **Pricing:** the founder's five tiers are on `/pricing` (behind the gate). Founding-customer discounts are private and not shown.
+  No billing or checkout code exists, and none may be added without explicit authorization.
 - **Privacy and Terms** are drafts, marked on the page.
 - **Imports are CSV only.** XLSX is not supported, and the uploader tells you to save as CSV.
 - **No lead email notifications:** check `/admin/leads`.

@@ -1841,6 +1841,21 @@ no new motion), `mobile-native` (larger tap targets, light header that does not 
   coming out from behind on a lit road. No 3D library and no ongoing motion (so nothing to reduce for
   reduced-motion users); below 768px it is the flat screenshot only.
 
+## 5t. Pricing page with the founder's tiers (2026-10-11)
+
+- **Data** (`src/lib/site/pricing.ts`): Essential $499 (25 trucks, 1 base, $199 onboarding), Growth $749
+  (50, 2, $299), Professional $999 (75, 3, $399), Enterprise from $1,499 (100, 5, $599), Custom by quote
+  (onboarding from $599). Annual commitment = 10% off, computed (`annualMonthlyCents`); `tierFor(trucks, bases)`
+  returns the lowest tier that fits both limits. The founding-customer discount is not in site code at all.
+- **Page** (`src/app/(site)/pricing/page.tsx`): four tier cards with "Book a Demo" (to `/demo`), a Custom card
+  with "Contact Us" (to `/contact`), what every tier includes (only built capabilities), what onboarding
+  includes (extra training $49 per session of up to 60 minutes), email support hours, "before applicable
+  taxes" and "nothing is charged through this website", and an FAQ (tier fit and truck counting, billing at
+  go-live, annual commitment, 30-day grace period, free demo / no free trial). "Dispatch-base configuration"
+  is left out of the onboarding list because the app has no dispatch-base setting yet.
+- **Tests:** unit (tier table, annual math, tier fit, no founding data); platform e2e checks prices, CTAs,
+  the tax note and that no founding text appears. Still behind the Early Access gate.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
@@ -1850,7 +1865,7 @@ push the new migrations (`npx supabase db push`: N13's `20261024000100`, N14's `
 website is open), create your site-access code, sign in from a phone, start the live demo,
 then Supabase Auth URL configuration, email templates and SMTP, the `ticket-photos` bucket
 check, a backup/restore drill and the invitation flow with a real inbox. Before customers
-see the public site: confirm the pricing and have the Privacy and Terms drafts reviewed.
+see the public site: have the Privacy and Terms drafts reviewed.
 
 Then, in order of value and readiness:
 1. **First team-led onboarding** of a real company with its own spreadsheets (§5m), with

@@ -45,8 +45,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Audit before rebuilding; verify earlier reports instead of trusting them.
   - During requirements discovery ask one concise question at a time; never re-ask what the master plan answers.
   - Keep code written / tested / committed / pushed / deployed / verified as separate statuses.
-- **Pricing and offers:** the tier prices are a proposal (master plan §5.1); founding-customer discounts are
-  private and never shown publicly; no checkout, billing or payment code without explicit authorization.
+- **Pricing and offers:** the founder's tier prices (master plan §5.1) are on the gated pricing page, from
+  `src/lib/site/pricing.ts` only; founding-customer discounts are private and never shown publicly or put in site code; no checkout, billing or payment code without explicit authorization.
 - **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts. Public
   pages use the tokens in `src/app/globals.css` (`navy`, `electric`, `action`, `silver`, `cloud`); filled
   buttons with white text use `bg-action`, never `bg-electric`.

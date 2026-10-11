@@ -106,11 +106,14 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
-### 5.1 Pricing page (proposal — not approved for publication)
+### 5.1 Pricing page (founder-provided; on the gated pricing page since 2026-10-11)
 
 Five tiers, standard monthly prices, annual-commitment monthly equivalents and one-time onboarding fees. CTAs:
 "Book a Demo" for standard tiers, "Contact Us" for Custom; no self-service checkout. Prices before applicable
 taxes (tax wording after tax/legal review). **Founding-customer discounts are private and never advertised.**
+
+**Status:** implemented on `/pricing` (`src/lib/site/pricing.ts`, IMPLEMENTATION_PLAN §5t). The site stays behind
+the Early Access gate; publishing it publicly is still the founder's decision.
 
 | Tier | Standard monthly | Annual commitment (−10%) | Hauling trucks | Dispatch bases | Onboarding (one-time) |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -226,7 +229,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 | S3 | Hosting: Vercel Hobby is non-commercial; Supabase Free has no backups. | Confirmed | High before paying customers. | Decide plans; schedule backups and a restore drill. | `docs/BACKUP_RESTORE.md`. | Yes (cost) |
 | S4 | Auth email (SMTP, templates, URLs) and the `ticket-photos` bucket on staging not confirmed. | Unverified | Medium — invitations and resets may not arrive. | Configure per DEPLOYMENT §1. | Invitation with a real inbox. | Owner action |
 | S5 | 5 high `npm audit` advisories reported on the owner's Mac, unreviewed. | Unverified | Medium | Review each; upgrade selectively; never `--force`. | Full suite after upgrades. | No |
-| W1 | Pricing page advertises the founding-customer discount ($399.20, "first 10 companies") and a single $499 price; the confirmed plan keeps founding discounts private and shows five tiers. (`src/app/(site)/pricing/page.tsx`, `src/lib/site/pricing.ts`.) | Confirmed | High — wrong public offer if the gate opens. | Replace with the five-tier proposal table (§5.1), no founding mention, labelled "proposed" until approved. | Unit test on tier math; gate e2e. | Yes — publication of prices |
+| W1 | ~~Pricing page advertised the founding-customer discount and a single $499 price.~~ **Done 2026-10-11:** five tiers, annual-commitment prices, onboarding fees, "Book a Demo" / "Contact Us", no founding mention, no checkout. (`src/app/(site)/pricing/page.tsx`, `src/lib/site/pricing.ts`.) | Done | — | — | Unit test on tier table, tier fit and no founding data; platform e2e checks the page. | Public launch still needs approval |
 | W2 | Brand colors in code were charcoal/red; red is the primary action color. **Public website done 2026-10-11; app shell, Command Center and platform-area header done the same day (Phase 1 of the app overhaul). Other app modules inherit the tokens but are not yet reviewed screen by screen. Website screenshots recaptured from the new UI the same day.** Confirmed palette is navy/blue/silver with red reserved for critical alerts. (`src/app/globals.css`.) | Confirmed | Medium — brand and alert semantics. | Central token change: brand → electric blue, charcoal → midnight navy; keep a separate `--color-danger` `#E5484D`. Contrast (measured): white on `#168BFF` is 3.4:1 and white on `#E5484D` 3.9:1 — both below the 4.5:1 minimum for normal text; `#168BFF` on navy is 5.2:1. Needs a darker action shade for white-text buttons and links on white (e.g. `#0F6FD6`, 4.9:1 — a proposal), large/bold text only for red labels. | Visual review, contrast checks, screenshots. | No (direction confirmed) |
 | W3 | Demo form lacked required truck and dispatch-base counts; used a fleet-size range and a role field. | Fixed; verified on staging by the owner 2026-10-11 | High for the demo flow. | Add the two numeric fields (DB columns + validation), keep the range for old leads. | DB + e2e lead tests. | No |
 | W4 | No lead emails (prospect confirmation, founder notification). | Built; on staging both attempts are recorded as "Not sent" (owner-verified 2026-10-11); **sending off** until a provider is approved (preview mode records every attempt as "not sent"; `LEAD_NOTIFY_EMAIL` sets the team inbox) | High — leads can go unnoticed. | Send through the existing provider after saving; record each send attempt on the lead; failures never lose the lead. | Unit/e2e with a test provider; staging with `EMAIL_TEST_RECIPIENT`. | Yes — real emails (needs provider + domain) |
@@ -274,7 +277,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 
 ## 10. Subscription model (proposal / confirmed policies)
 
-Prices in §5.1 are proposals. The policies below are the founder's stated rules; **none is implemented** and no
+Prices in §5.1 are the founder's and shown on the gated pricing page. The policies below are the founder's stated rules; **none is implemented** and no
 billing code may be written without explicit authorization.
 
 - **Counting:** active company-managed hauling trucks tracked in Taviron, including temporarily inactive ones
@@ -319,7 +322,7 @@ billing code may be written without explicit authorization.
 
 ## 11. Roadmap order (dependencies first)
 
-1. **Website and demo readiness** — W1 pricing page, W3–W6 demo flow, W2 palette, W7 legal review; design pass
+1. **Website and demo readiness** — ~~W1 pricing page~~ (done), W3–W6 demo flow, W2 palette, W7 legal review; design pass
    with the installed design skills. Gate stays on until the founder approves launch.
 2. **Staging verified end to end** — S1–S4 (owner actions).
 3. **Order types and confirmation rules** (O1) → **distance pricing** with dispatch bases → **material calculator**.

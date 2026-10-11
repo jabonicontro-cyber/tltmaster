@@ -20,7 +20,7 @@ async function signInPlatform(page: Page) {
 
 const SITE = ["/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms"];
 
-test("the public website is open to everyone, works on a phone, and states pricing as a proposal", async ({ browser }) => {
+test("the public website is open to everyone, works on a phone, and shows the pricing tiers", async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
   for (const path of SITE) {
@@ -31,11 +31,16 @@ test("the public website is open to everyone, works on a phone, and states prici
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth), `${path} scrolls sideways`).toBeLessThanOrEqual(0);
   }
   await page.goto("/pricing");
-  await expect(page.getByText("$499", { exact: true })).toBeVisible();
-  await expect(page.getByText("$399.20", { exact: true })).toBeVisible();
-  await expect(page.getByText(/subject to confirmation/).first()).toBeVisible();
-  await expect(page.getByText("Onboarding fee waived during the beta")).toBeVisible();
-  await expect(page.getByText("Billing starts at go-live, not at sign-up")).toBeVisible();
+  const essential = page.getByRole("listitem", { name: "Essential" });
+  await expect(essential.getByText("$499", { exact: true })).toBeVisible();
+  await expect(essential.getByText("$449.10", { exact: true })).toBeVisible();
+  await expect(essential.getByRole("link", { name: "Book a Demo" })).toHaveAttribute("href", "/demo");
+  await expect(page.getByRole("listitem", { name: "Enterprise" }).getByText("$1,499", { exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Contact Us" })).toHaveAttribute("href", "/contact");
+  await expect(page.getByText(/before applicable taxes/).first()).toBeVisible();
+  // Founding-customer pricing is private and never shown.
+  await expect(page.getByText(/found/i)).toHaveCount(0);
+  await expect(page.getByText("$399.20")).toHaveCount(0);
   // The mobile menu works.
   await page.getByLabel("Menu").click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Platform" }).click();
