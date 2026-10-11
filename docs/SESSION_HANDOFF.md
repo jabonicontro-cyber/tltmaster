@@ -9,13 +9,13 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-11 evening) — read first
 
-- **Fleet Management (Preview only, not Production):** vehicle documents with expiry warnings (metadata, no
+- **Fleet Management (code released to Production with this checkpoint under the standing release rule in CLAUDE.md; hosted migrations still pending):** vehicle documents with expiry warnings (metadata, no
   upload), ownership, driver assignment with history and atomic reassign, availability derived from service status
   and maintenance, maintenance/readings/costs/downtime on truck profiles, new overview cards and directory filters
   (IMPLEMENTATION_PLAN §5x). **Needs migration `20261102000100_fleet_management.sql`** after
   `20261101000100_maintenance.sql` (owner action, DEPLOYMENT §2a). Without it Fleet works as before and the new
   sections say they are not available yet. Open decisions: master plan §9 Q23.
-- **Mechanics & Maintenance (code on Preview and Production at `528098c`, released with the owner's approval 2026-10-11):** `/maintenance` with work orders, clearance queue,
+- **Mechanics & Maintenance (code on Preview and Production since `528098c`; hosted migration pending):** `/maintenance` with work orders, clearance queue,
   preventive schedules, readings, cost lines and a driver notice on My Day (IMPLEMENTATION_PLAN §5w). **Needs
   migration `20261101000100_maintenance.sql` on each hosted database** (owner action after a backup, DEPLOYMENT
   §2a; rollback script in `supabase/rollbacks/`). Until then the Maintenance entry is hidden (no permission) and

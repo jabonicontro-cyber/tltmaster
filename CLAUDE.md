@@ -70,8 +70,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 
 - **Branches and environments (verified 2026-10-11 from GitHub's deployment records):**
   - `claude/top-line-trucking-manager-vmw04i` is still Vercel's **Production Branch**: a push to it deploys to
-    Production (`tltmaster.vercel.app`, and any domain on that environment). **Never push to it** unless the owner
-    explicitly approves that specific production release.
+    Production (`tltmaster.vercel.app`, and any domain on that environment). Push to it only through the release
+    rule below (standing owner authorization, 2026-10-11): fast-forward only, never force.
   - Any other branch deploys to **Preview** only (first proven by `claude/ui-and-signin-checkpoint`, recorded as
     Preview). Work and push on `claude/ui-and-signin-checkpoint` (or another non-production branch) until the owner
     finishes the split in docs/DEPLOYMENT.md §2b (`main` → Production on `mytaviron.com`).
@@ -82,9 +82,16 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Code, styles, assets, routes, auth or server changes: run the focused and checkpoint tests, group related
     changes, push the checkpoint to the Preview branch, then verify the deployed URL in a browser. A local build
     does not prove the deployed site works; say "not verified live" when it couldn't be checked.
-  - Explicit owner approval, each time, for: production deployments or merges into the production branch,
-    environment variables or secrets, domains, remote migrations or database changes, account/role changes,
-    anything destructive. Approval for one operation never covers another.
+  - **Release rule (owner, 2026-10-11):** Preview is a checkpoint, not the destination. When a feature is complete
+    and its release checks pass (lint, typecheck, unit/DB tests, the full browser suite, production build, gate spec
+    and deployment check; security, tenant isolation and data integrity reviewed; no unresolved new regression),
+    fast-forward the Production branch to the verified Preview commit without asking again, then verify the
+    Production deployment record and report it. Stop and report instead when a check fails or a blocker remains.
+  - Code that depends on an unapplied migration ships only if it works safely without it; document the limitation
+    and never call the feature operational until the migration is applied and verified.
+  - Still explicit owner approval, each time, for: remote migrations or database changes (never applied just
+    because code is ready), environment variables or secrets, domains, account/role changes, anything
+    destructive, force-pushes or history rewrites. Approval for one operation never covers another.
 - **Commits** end with the session's co-author trailer. Don't open a PR unless asked.
 - **Dates:** use `DateInput` (`src/components/ui/date-input.tsx`) for every date field and
   `isOperationalDate` on the server.
