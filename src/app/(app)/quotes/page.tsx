@@ -1,9 +1,10 @@
 import { Plus } from "lucide-react";
+import { DateInput } from "@/components/ui/date-input";
 import { QuoteTable } from "@/components/quotes/quote-table";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
-import { Input } from "@/components/ui/form";
+
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/states";
@@ -52,11 +53,11 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           />
           <div>
             <label htmlFor="from" className="mb-1 block text-xs font-semibold text-muted uppercase">From</label>
-            <Input id="from" name="from" type="date" defaultValue={sp.from} className="w-40" />
+            <DateInput id="from" name="from" defaultValue={sp.from} className="w-40" />
           </div>
           <div>
             <label htmlFor="to" className="mb-1 block text-xs font-semibold text-muted uppercase">To</label>
-            <Input id="to" name="to" type="date" defaultValue={sp.to} className="w-40" />
+            <DateInput id="to" name="to" defaultValue={sp.to} className="w-40" />
           </div>
         </FilterBar>
         {rows.length === 0 ? (

@@ -92,7 +92,7 @@ async function setup() {
       w.trucks.push(await ins("trucks", { unit_number: `ST${n}-${randomUUID().slice(0, 5)}`, truck_type: "tri_axle_dump" }));
     }
     const ids = (await c.query("select (select id from public.customers where company_id = $1 and is_sample order by name limit 1) as c, (select id from public.materials where company_id = $1 and code = 'GRV-53') as m", [TOP_LINE])).rows[0];
-    const o = (await c.query("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({ customer_id: ids.c, order_date: w.yesterday, lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.m, description: "Gravel", unit_code: "ton", quantity: "40", unit_rate_cents: 1000 }] })])).rows[0].r;
+    const o = (await c.query("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({ site_line1: "100 Test Site Rd (test)", customer_id: ids.c, order_date: w.yesterday, lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.m, description: "Gravel", unit_code: "ton", quantity: "40", unit_rate_cents: 1000 }] })])).rows[0].r;
     w.orderId = o.order_id;
     await c.query("select public.set_order_status($1, 'confirmed', '')", [w.orderId]);
     await c.query("select public.update_order_schedule($1, null, $2::jsonb)", [w.orderId, JSON.stringify({ scheduled_start: w.yesterday, scheduled_end: today })]);

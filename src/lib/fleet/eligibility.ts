@@ -139,6 +139,10 @@ export function driverChecks(driver: EligibilityDriver, withTrailer: boolean, on
 export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   truck_inactive: "Truck is deactivated.",
   truck_out_of_service: "Truck is out of service.",
+  truck_safety_report_open: "A driver reported a breakdown or inspection problem on this truck that is not resolved yet.",
+  trailer_safety_report_open: "A driver reported a breakdown or inspection problem on this trailer that is not resolved yet.",
+  truck_equipment_report_open: "A driver reported an equipment issue on this truck that is not resolved yet.",
+  trailer_equipment_report_open: "A driver reported an equipment issue on this trailer that is not resolved yet.",
   truck_capacity_unknown: "Truck capacity is not recorded.",
   truck_capacity_unverified: "Truck capacity is recorded but not verified.",
   trailer_inactive: "Trailer is deactivated.",

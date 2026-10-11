@@ -3,10 +3,12 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { isIsoDate } from "@/lib/dates";
+import { OPERATIONAL_DATE_MESSAGE, isIsoDate, isOperationalDate } from "@/lib/dates";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { checkPair } from "@/lib/dispatch/smart";
+import { getSmartDispatchInput } from "@/server/data/smart-dispatch";
 
 const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable());
 const time = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d)?$/, "Enter a valid time.");
@@ -21,7 +23,7 @@ const loadInput = z
   .object({
     loadId: optionalUuid,
     orderId: z.uuid("Invalid order."),
-    loadDate: z.string().refine(isIsoDate, "Enter a valid date."),
+    loadDate: z.string().refine(isOperationalDate, OPERATIONAL_DATE_MESSAGE),
     startTime: time,
     endTime: time,
     plannedQuantity: z
@@ -128,8 +130,8 @@ const scheduleInput = z
   .object({
     orderId: z.uuid("Invalid order."),
     expectedEditSeq: z.number().int().nonnegative(),
-    start: z.string().refine(isIsoDate, "Enter the delivery date."),
-    end: z.string().default("").refine((v) => v === "" || isIsoDate(v), "Enter a valid date."),
+    start: z.string().refine(isOperationalDate, OPERATIONAL_DATE_MESSAGE),
+    end: z.string().default("").refine((v) => v === "" || isOperationalDate(v), OPERATIONAL_DATE_MESSAGE),
   })
   .superRefine((s, ctx) => {
     if (s.end && s.end < s.start) ctx.addIssue({ code: "custom", message: "Must be on or after the delivery date.", path: ["end"] });
@@ -160,5 +162,64 @@ export async function scheduleOrderFromQueue(input: z.input<typeof scheduleInput
     revalidatePath("/orders");
     if (sErr) return fail(`The dates were saved, but the order could not be marked Scheduled: ${dbErrorMessage(sErr)}`);
     return ok({ date: start }, "Scheduled. It is now on the board for that day.");
+  });
+}
+
+const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), loadDate: z.string().refine(isIsoDate) });
+
+/**
+ * Approve a Smart Dispatch proposal. Re-checks the pair against current data,
+ * then assigns through public.assign_load — the same function, permission and
+ * database checks as a manual assignment (eligibility, capacity, conflicts,
+ * and a refusal if someone else assigned the load meanwhile). Recorded in the
+ * order's history as an approved proposal.
+ */
+export async function approveRecommendation(input: z.input<typeof pairInput>): Promise<ActionResult<{ warnings: string[] }>> {
+  return guard(async () => {
+    await assertPermission("dispatch.edit");
+    const parsed = pairInput.safeParse(input);
+    if (!parsed.success) return fail("Invalid proposal.");
+    const { loadId, truckId, driverId, loadDate } = parsed.data;
+    const check = checkPair(await getSmartDispatchInput(loadDate, loadDate), loadId, truckId, driverId);
+    if (!check.ok) {
+      revalidateBoard();
+      return fail(`This proposal is no longer valid — ${check.reasons.join(" ")} The proposals have been refreshed; review them again.`);
+    }
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("assign_load", {
+      p_load_id: loadId, p_truck_id: truckId, p_trailer_id: null, p_driver_id: driverId, p_note: "Approved Smart Dispatch proposal", p_replace_assignment_id: null,
+    });
+    revalidateBoard();
+    if (error) return fail(`Not assigned: ${dbErrorMessage(error)} Review the refreshed proposals.`);
+    return ok({ warnings: ((data as { warnings: string[] }).warnings ?? []) }, "Assigned.");
+  });
+}
+
+const rejectInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), reason: z.string().trim().max(300).default("") });
+
+/** Reject one proposed pair for a load; the next feasible pair is proposed instead. Nothing is assigned or removed. */
+export async function rejectRecommendation(input: z.input<typeof rejectInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("dispatch.edit");
+    const parsed = rejectInput.safeParse(input);
+    if (!parsed.success) return fail("Invalid proposal.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("reject_dispatch_recommendation", { p_load_id: parsed.data.loadId, p_truck_id: parsed.data.truckId, p_driver_id: parsed.data.driverId, p_reason: parsed.data.reason });
+    revalidateBoard();
+    if (error) return fail(dbErrorMessage(error));
+    return ok(undefined, "Rejected. The next option is proposed.");
+  });
+}
+
+/** Consider a load's rejected pairs again. */
+export async function reconsiderRecommendations(loadId: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("dispatch.edit");
+    if (!z.uuid().safeParse(loadId).success) return fail("Invalid load.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("reconsider_dispatch_recommendations", { p_load_id: loadId });
+    revalidateBoard();
+    if (error) return fail(dbErrorMessage(error));
+    return ok(undefined, "Rejected options will be proposed again.");
   });
 }

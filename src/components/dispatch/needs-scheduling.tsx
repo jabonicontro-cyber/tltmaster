@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CalendarClock } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/form";
+
 import { scheduleOrderFromQueue } from "@/app/(app)/dispatch/actions";
 import { formatDate } from "@/lib/dates";
 import { withReturn } from "@/lib/safe-redirect";
@@ -73,11 +74,11 @@ export function NeedsScheduling({ items, canSchedule, today, back }: { items: Un
                 >
                   <label className="text-xs font-semibold">
                     Delivery date
-                    <Input type="date" name="start" required defaultValue={o.requested_date && o.requested_date >= today ? o.requested_date : ""} className="mt-0.5 h-9" aria-label={`Delivery date for ${o.order_number}`} />
+                    <DateInput name="start" required defaultValue={o.requested_date && o.requested_date >= today ? o.requested_date : ""} className="mt-0.5 h-9" aria-label={`Delivery date for ${o.order_number}`} />
                   </label>
                   <label className="text-xs font-semibold">
                     Through <span className="font-normal text-muted">(optional)</span>
-                    <Input type="date" name="end" className="mt-0.5 h-9" aria-label={`Last delivery date for ${o.order_number}`} />
+                    <DateInput name="end" className="mt-0.5 h-9" aria-label={`Last delivery date for ${o.order_number}`} />
                   </label>
                   <Button type="submit" size="sm" loading={busy === o.id}>Schedule</Button>
                   {errors[o.id] ? <p role="alert" className="w-full text-sm text-red-700">{errors[o.id]}</p> : null}

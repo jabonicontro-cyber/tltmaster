@@ -72,7 +72,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   // Fleet and drivers. The platform admin is linked to one driver record so the
   // driver preview shows a real portal.
-  const trucks = await must("trucks", db.from("trucks").insert(TRUCKS.map((t) => ({ unit_number: t.unit, truck_type: t.type, make: t.make, model: t.model, weight_capacity: t.type === "single_axle_dump" ? 8 : t.type === "tandem_axle_dump" ? 15 : 22, weight_unit: "ton" }))).select("id, unit_number"));
+  const trucks = await must("trucks", db.from("trucks").insert(TRUCKS.map((t) => ({ unit_number: t.unit, truck_type: t.type, make: t.make, model: t.model, weight_capacity: t.type === "single_axle_dump" ? 8 : t.type === "tandem_axle_dump" ? 15 : 22, weight_unit: "ton", capacity_verified_at: new Date().toISOString() }))).select("id, unit_number"));
   const truck = Object.fromEntries((trucks as Array<{ id: string; unit_number: string }>).map((t) => [t.unit_number, t.id]));
   const drivers = await must("drivers", db.from("drivers").insert([
     // Every row has the same keys: a bulk insert fills missing keys with null.
@@ -96,7 +96,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     return { kind: "material", calc_method: "per_unit", material_id: mat[code], description: m.name, unit_code: m.unit, quantity, unit_rate_cents: m.rate, taxable: true };
   };
   async function order(customer: number, date: string, project: string, lines: unknown[], instructions: string, schedule: [string, string] | null) {
-    const o = (await must("order", db.rpc("save_order_draft", { p_payload: { customer_id: cust[customer].id, order_date: date, project_name: project, job_instructions: instructions, lines } }))) as { order_id: string; order_number: string };
+    const o = (await must("order", db.rpc("save_order_draft", { p_payload: { customer_id: cust[customer].id, order_date: date, project_name: project, job_instructions: instructions, site_label: CUSTOMERS[customer].site, site_line1: CUSTOMERS[customer].line1, site_city: CUSTOMERS[customer].city, lines } }))) as { order_id: string; order_number: string };
     if (schedule) {
       await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
       await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: schedule[0], scheduled_end: schedule[1] } }));
@@ -116,7 +116,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   // 1. Last week: delivered and verified — ready for billing.
   const o1 = await order(1, lastWeek, "County Rd 9 widening — base course", [line("LS-53", "88")], "Spread on the east shoulder; flagger at the north end.", [lastWeek, lastWeek]);
-  for (const [i, t] of [["101", avery], ["102", marco], ["103", priya], ["104", theo]].entries()) {
+  for (const [i, t] of [["101", avery], ["102", marco], ["105", priya], ["101", theo]].entries()) {
     const l = await load(o1.order_id, lastWeek, `0${7 + i}:00`, `0${7 + i}:45`, "22");
     await assign(l, truck[t[0]], t[1]);
     await review(await ticket(l, o1.lineId, lastWeek, `0${7 + i}:35`, (21.6 + i * 0.2).toFixed(2), `KP-4410${i}`), "accept");
@@ -135,9 +135,10 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   // 3. Today: in progress, one load for the driver preview.
   const o3 = await order(3, today, "4th St water main — bedding stone", [line("ST-8", "44")], "Call the site foreman 30 minutes out. No trucks on 4th St before 7:00.", [today, today]);
-  const l3a = await load(o3.order_id, today, "07:30", "08:30", "22");
+  // Tandems carry 15 t (assigning more than a truck's recorded capacity is refused).
+  const l3a = await load(o3.order_id, today, "07:30", "08:30", "15");
   const a3 = await assign(l3a, truck["103"], me);
-  const l3b = await load(o3.order_id, today, "09:00", "10:00", "22");
+  const l3b = await load(o3.order_id, today, "09:00", "10:00", "15");
   await assign(l3b, truck["104"], theo);
   await must("delay report", db.rpc("driver_submit_field_report", { p_payload: { assignment_id: a3, kind: "delay", description: "Waiting about 25 minutes at the quarry scale (demo).", submission_key: randomUUID() } }));
 

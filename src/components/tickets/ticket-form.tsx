@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AlertTriangle } from "lucide-react";
@@ -151,7 +152,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
             </div>
           )}
           <Field label="Delivery date" htmlFor="t-date" required error={fieldErrors.deliveredDate} className="sm:col-span-2">
-            <Input id="t-date" type="date" value={v.deliveredDate} onChange={set("deliveredDate")} />
+            <DateInput id="t-date" value={v.deliveredDate} onChange={set("deliveredDate")} />
           </Field>
           <Field label="Delivery time" htmlFor="t-time" required error={fieldErrors.deliveredTime} className="sm:col-span-2">
             <Input id="t-time" type="time" value={v.deliveredTime} onChange={set("deliveredTime")} />

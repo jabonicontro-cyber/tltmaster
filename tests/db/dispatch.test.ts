@@ -29,7 +29,7 @@ async function scheduledOrder(s: Session, user: string, date: string, end: strin
   await s.as(user);
   const r = await s.query<{ r: { order_id: string; order_number: string } }>("select public.save_order_draft($1::jsonb) as r", [
     JSON.stringify({
-      customer_id: ids.customerId,
+      site_line1: "100 Test Site Rd (test)", customer_id: ids.customerId,
       lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel", unit_code: "ton", quantity: "40", unit_rate_cents: 1000 }],
     }),
   ]);
@@ -301,7 +301,7 @@ describe("permissions and isolation", () => {
       // Give B an order the quick way (as B's owner through the order functions).
       await s.as(bOwner);
       const bo = await s.query<{ r: { order_id: string } }>("select public.save_order_draft($1::jsonb) as r", [
-        JSON.stringify({ customer_id: bCustomer, lines: [{ kind: "other", calc_method: "per_unit", description: "Hauling", unit_code: "each", quantity: "1", unit_rate_cents: 10000 }] }),
+        JSON.stringify({ site_line1: "100 Test Site Rd (test)", customer_id: bCustomer, lines: [{ kind: "other", calc_method: "per_unit", description: "Hauling", unit_code: "each", quantity: "1", unit_rate_cents: 10000 }] }),
       ]);
       const bOrder = bo.rows[0].r.order_id;
       await s.query("select public.set_order_status($1, 'confirmed', '')", [bOrder]);

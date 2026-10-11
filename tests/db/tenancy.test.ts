@@ -17,6 +17,7 @@ const TENANT_TABLES = [
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
+  "dispatch_recommendation_rejections",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -66,6 +67,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.platform_demo_enter", "public.platform_companies", "public.platform_create_company", "public.platform_import_stage",
   "public.platform_import_batches", "public.platform_import_batch", "public.platform_import_decide", "public.platform_import_discard",
   "public.platform_import_approve", "public.platform_import_revert",
+  // N15: capacity check in assign_load, quote acceptance creates its order, Smart Dispatch rejections.
+  "private.load_capacity_problem", "private.create_order_from_quote", "private.quote_accepted_create_order",
+  "public.reject_dispatch_recommendation", "public.reconsider_dispatch_recommendations",
 ];
 
 /**
@@ -324,7 +328,8 @@ describe("elevated-privilege functions refuse other companies' records", () => {
       await s.asAdmin();
       const tl = await s.query("select status, current_version_id from public.quotes where id = $1", [q]);
       expect(tl.rows[0].status).toBe("draft");
-      expect((await s.query("select 1 from public.orders where source_quote_id = $1", [w.tlAcceptedQuote])).rowCount).toBe(0);
+      // Only the order its own acceptance created (N15); the other company's attempt added nothing.
+      expect((await s.query("select 1 from public.orders where source_quote_id = $1", [w.tlAcceptedQuote])).rowCount).toBe(1);
       expect((await s.query("select 1 from public.email_deliveries where quote_id = $1", [q])).rowCount).toBe(0);
     });
   });

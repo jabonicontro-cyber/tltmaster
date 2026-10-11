@@ -1,6 +1,8 @@
 import { DispatchBoard } from "@/components/dispatch/dispatch-board";
 import { UrgentOrders } from "@/components/dispatch/urgent-orders";
 import { NeedsScheduling } from "@/components/dispatch/needs-scheduling";
+import { SmartDispatch } from "@/components/dispatch/smart-dispatch";
+import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { PageHeader } from "@/components/ui/page-header";
@@ -12,12 +14,18 @@ import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Dispatch" };
 
-export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string; load?: string; back?: string }> }) {
+export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string; load?: string; back?: string; horizon?: string }> }) {
   const access = await requirePagePermission("dispatch.view");
-  const { date: param, load, back } = await searchParams;
+  const { date: param, load, back, horizon: h } = await searchParams;
   const { today, timezone } = await businessToday();
   const date = param && isIsoDate(param) ? param : today;
-  const [day, urgent, unscheduled] = await Promise.all([getDispatchDay(date), listOpenUrgencies(), listUnscheduledOrders()]);
+  const horizon = [1, 3, 7].includes(Number(h)) ? Number(h) : 3;
+  const [day, urgent, unscheduled, smart] = await Promise.all([
+    getDispatchDay(date),
+    listOpenUrgencies(),
+    listUnscheduledOrders(),
+    getSmartDispatchPlan(today, horizon).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "Smart Dispatch is unavailable." })),
+  ]);
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 
   return (
@@ -36,6 +44,11 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
       ) : (
         <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} />
+      )}
+      {"error" in smart ? (
+        <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
+      ) : (
+        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} />
       )}
       <DispatchBoard day={day} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
     </>

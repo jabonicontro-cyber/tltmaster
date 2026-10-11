@@ -16,9 +16,94 @@ import { bpToInput } from "@/lib/money";
 import { ROLE_LABELS, ROLES, type AppRole } from "@/lib/permissions";
 import { TIMEZONE_OPTIONS } from "@/lib/schemas/settings";
 import type { CompanySettings } from "@/server/data/types";
-import { inviteUser, removeSampleData, saveCompanySettings, saveSequence, setRolePermission, updateUserAccess } from "@/app/(app)/settings/actions";
+import { brandingProblems, brandingStyle } from "@/lib/branding";
+import { inviteUser, removeSampleData, saveBranding, saveCompanySettings, saveSequence, setRolePermission, updateUserAccess } from "@/app/(app)/settings/actions";
 
 const ctl = (id: string, err?: string) => ({ id, name: id, ...describedBy(id, err) });
+
+/**
+ * The company's own logo and colors in the app (N15). Only this company sees
+ * them; colors too light for white text are refused so the app stays readable.
+ */
+export function BrandingForm({ settings, canEdit, companyId }: { settings: CompanySettings; canEdit: boolean; companyId: string }) {
+  const router = useRouter();
+  const [color, setColor] = useState(settings.brand_color);
+  const [sidebarColor, setSidebarColor] = useState(settings.brand_sidebar_color);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const { pending, onSubmit, fieldError: fe, formError } = useFormAction(saveBranding, {
+    onSuccess: (r) => {
+      toast.success(r.message ?? "Saved");
+      setPreview(null);
+      setRemoveLogo(false);
+      router.refresh();
+    },
+  });
+  const live = brandingProblems({ color, sidebarColor });
+  const logo = removeLogo ? "" : preview ?? (settings.has_logo ? `/brand/logo?c=${companyId}&v=${encodeURIComponent(settings.updated_at)}` : "");
+  return (
+    <>
+      <CardHeader title="Branding" description="Your logo and colors in the app, for everyone in your company. Other companies never see them. Quotes and the public website are not changed." />
+      <CardBody>
+        <form onSubmit={onSubmit} className="space-y-4" noValidate>
+          <FormError message={formError} />
+          <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+            <Field label="Logo" htmlFor="brand_logo" error={fe("brand_logo")} className="sm:col-span-6" hint="PNG, JPEG or WebP, at most 250 KB. A wide logo on a light or transparent background works best.">
+              <input
+                {...ctl("brand_logo", fe("brand_logo"))}
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-line file:bg-white file:px-3 file:py-1.5 file:font-semibold"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  setRemoveLogo(false);
+                  setPreview(f ? URL.createObjectURL(f) : null);
+                }}
+              />
+            </Field>
+            {settings.has_logo ? (
+              <div className="sm:col-span-6">
+                <Checkbox id="remove_logo" name="remove_logo" label="Remove the logo (show the Taviron mark instead)" checked={removeLogo} onChange={(e) => setRemoveLogo(e.currentTarget.checked)} />
+              </div>
+            ) : null}
+            <Field label="Accent color" htmlFor="brand_color" error={fe("brand_color") ?? live.brand_color} className="sm:col-span-3" hint="Buttons, links and highlights. Leave empty for the default red.">
+              <div className="flex gap-2">
+                <input type="color" aria-label="Pick the accent color" value={color || "#ed1c24"} onChange={(e) => setColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#ed1c24" maxLength={7} />
+              </div>
+            </Field>
+            <Field label="Navigation color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="The menu and top bar. Leave empty for the default charcoal.">
+              <div className="flex gap-2">
+                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#1c1e21"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#1c1e21" maxLength={7} />
+              </div>
+            </Field>
+          </fieldset>
+          <div aria-label="Branding preview" className="overflow-hidden rounded-lg border border-line" style={brandingStyle({ logo: "", color: /^#[0-9a-f]{6}$/i.test(color) ? color : "", sidebarColor: /^#[0-9a-f]{6}$/i.test(sidebarColor) ? sidebarColor : "" })}>
+            <div className="flex h-14 items-center gap-3 bg-charcoal px-4">
+              {logo ? (
+                // eslint-disable-next-line @next/next/no-img-element -- local preview of the chosen file
+                <img src={logo} alt="Logo preview" className="h-9 max-w-44 rounded-sm bg-white object-contain p-0.5" />
+              ) : (
+                <span className="text-sm font-bold text-white">{settings.company_name || "Your company"}</span>
+              )}
+              <span className="ml-auto text-xs text-white/60">Preview</span>
+            </div>
+            <div className="flex items-center gap-3 bg-white p-4">
+              <span className="inline-flex h-9 items-center rounded-md bg-brand px-3 text-sm font-semibold text-white">Primary button</span>
+              <span className="text-sm font-semibold text-brand">A link</span>
+            </div>
+          </div>
+          {canEdit ? (
+            <Button type="submit" loading={pending} disabled={Object.keys(live).length > 0}>Save branding</Button>
+          ) : (
+            <p className="text-sm text-muted">Changing branding needs the settings.manage permission.</p>
+          )}
+        </form>
+      </CardBody>
+    </>
+  );
+}
 
 export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySettings; canEdit: boolean }) {
   const router = useRouter();

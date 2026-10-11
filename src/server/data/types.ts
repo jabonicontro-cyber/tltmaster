@@ -291,6 +291,10 @@ export interface CompanySettings {
   quote_footer_note: string;
   urgent_ack_minutes: number | null;
   ticket_reference_required: boolean;
+  brand_color: string;
+  brand_sidebar_color: string;
+  /** Whether a logo is stored; the image itself is served by /brand/logo, never sent with the settings. */
+  has_logo: boolean;
   updated_at: string;
 }
 

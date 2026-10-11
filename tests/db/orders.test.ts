@@ -64,8 +64,9 @@ describe("converting accepted quotes into orders", () => {
 
       const office = await s.createUser("office");
       await s.as(office);
+      // Accepting the quote already created the order (N15); converting returns it.
       const r = await convert(s, q.quote_id);
-      expect(r.created).toBe(true);
+      expect(r.created).toBe(false);
       expect(r.order_number).toMatch(/^O-\d{4}-\d{4}$/);
 
       const order = (await s.query("select * from public.orders where id = $1", [r.order_id])).rows[0];
@@ -89,7 +90,7 @@ describe("converting accepted quotes into orders", () => {
         tax_cents: version.tax_cents,
         total_cents: version.total_cents,
         is_sample: true,
-        created_by: office,
+        created_by: q.owner, // whoever accepted the quote (N15: acceptance creates the order)
       });
       expect(order.bill_to_snapshot).toEqual(version.bill_to_snapshot);
       expect(Number(order.discount_cents)).toBeGreaterThan(0);
@@ -207,9 +208,10 @@ describe("converting accepted quotes into orders", () => {
       await s.as(office);
       expect((await pgError(convert(s, q.quote_id))).code).toBe("42501");
 
+      // The order itself was created when the quote was accepted (N15): exactly one.
       await s.asAdmin();
       const n = await s.query("select count(*)::int as n from public.orders where source_quote_id = $1", [q.quote_id]);
-      expect(n.rows[0].n).toBe(0);
+      expect(n.rows[0].n).toBe(1);
     });
   });
 
@@ -300,8 +302,9 @@ describe("converting accepted quotes into orders", () => {
       await a.query("commit");
       const rb = await pb;
       await b.query("commit");
-      expect(ra.rows[0].r.created).toBe(true);
-      expect(rb.rows[0].r).toEqual({ ...ra.rows[0].r, created: false });
+      // The order already exists from acceptance; both calls return it and nothing is duplicated.
+      expect(ra.rows[0].r.created).toBe(false);
+      expect(rb.rows[0].r).toEqual(ra.rows[0].r);
       const n = await a.query("select count(*)::int as n from public.orders where source_quote_id = $1", [quoteId]);
       expect(n.rows[0].n).toBe(1);
     } finally {

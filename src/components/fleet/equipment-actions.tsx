@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { CheckCircle2, Pencil, Wrench } from "lucide-react";
 import { toast } from "sonner";
@@ -85,7 +86,7 @@ export function EquipmentActions({ kind, id, unitNumber, active, status, today, 
               <Textarea id="oos-reason" rows={2} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} />
             </Field>
             <Field label="Expected back (optional)" htmlFor="oos-expected" error={errors.expected_return_date}>
-              <Input id="oos-expected" type="date" min={today} value={expected} onChange={(e) => setExpected(e.target.value)} className="max-w-48" />
+              <DateInput id="oos-expected" min={today} value={expected} onChange={(e) => setExpected(e.target.value)} className="max-w-48" />
             </Field>
           </div>
         ) : (

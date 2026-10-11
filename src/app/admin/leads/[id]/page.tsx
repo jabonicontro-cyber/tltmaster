@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import { AdminFlash } from "@/components/admin/flash";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -138,7 +139,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                   </Select>
                 </Field>
                 <Field label="Follow up on" htmlFor="follow_up_on">
-                  <Input id="follow_up_on" name="follow_up_on" type="date" defaultValue={lead.follow_up_on ?? ""} />
+                  <DateInput id="follow_up_on" name="follow_up_on" defaultValue={lead.follow_up_on ?? ""} />
                 </Field>
                 <SubmitButton pendingLabel="Saving…">Save</SubmitButton>
               </form>

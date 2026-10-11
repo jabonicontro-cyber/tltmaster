@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { CalendarDays, CheckCircle2, PauseCircle, Pencil, Play, Truck, XCircle } from "lucide-react";
@@ -271,10 +272,10 @@ function ScheduleDialog({
     >
       <div className="grid grid-cols-2 gap-3">
         <Field label="Delivery date" htmlFor="sched-start" required={mustHaveDate} error={errors.scheduledStart}>
-          <Input id="sched-start" type="date" min={orderDate} value={start} onChange={(e) => setStart(e.target.value)} />
+          <DateInput id="sched-start" min={orderDate} value={start} onChange={(e) => setStart(e.target.value)} />
         </Field>
         <Field label="Through (multi-day)" htmlFor="sched-end" error={errors.scheduledEnd} hint="Optional">
-          <Input id="sched-end" type="date" min={start || orderDate} value={end} disabled={!start} onChange={(e) => setEnd(e.target.value)} />
+          <DateInput id="sched-end" min={start || orderDate} value={end} disabled={!start} onChange={(e) => setEnd(e.target.value)} />
         </Field>
         <Field label="Window from" htmlFor="sched-wstart" error={errors.windowStart} hint="Optional">
           <Input id="sched-wstart" type="time" value={windowStart} onChange={(e) => setWindowStart(e.target.value)} />

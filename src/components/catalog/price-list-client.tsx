@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import { useMemo, useState } from "react";
 import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -214,10 +215,10 @@ function EntryDialog({ priceListId, entry, materials, charges, units, today, onC
             </Field>
           )}
           <Field label="Effective from" htmlFor="effective_from" required error={fieldError("effective_from")} className="sm:col-span-3">
-            <Input {...ctl("effective_from")} type="date" defaultValue={entry?.effective_from ?? today} />
+            <DateInput {...ctl("effective_from")} defaultValue={entry?.effective_from ?? today} />
           </Field>
           <Field label="Effective until" htmlFor="effective_to" error={fieldError("effective_to")} className="sm:col-span-3" hint="Leave blank for no end date.">
-            <Input {...ctl("effective_to")} type="date" defaultValue={entry?.effective_to ?? ""} />
+            <DateInput {...ctl("effective_to")} defaultValue={entry?.effective_to ?? ""} />
           </Field>
           <Field label="Notes" htmlFor="notes" error={fieldError("notes")} className="sm:col-span-6">
             <Input {...ctl("notes")} defaultValue={entry?.notes} />
@@ -257,7 +258,7 @@ function ChangeRateDialog({ priceListId, entry, itemName, today, onClose }: { pr
           <Input id="value" name="value" inputMode="decimal" autoFocus {...describedBy("value", fieldError("value"))} />
         </Field>
         <Field label="New rate starts" htmlFor="effective_from" required error={fieldError("effective_from")}>
-          <Input id="effective_from" name="effective_from" type="date" defaultValue={suggested} {...describedBy("effective_from", fieldError("effective_from"))} />
+          <DateInput id="effective_from" name="effective_from" defaultValue={suggested} {...describedBy("effective_from", fieldError("effective_from"))} />
         </Field>
         <Field label="Notes" htmlFor="notes">
           <Input id="notes" name="notes" />

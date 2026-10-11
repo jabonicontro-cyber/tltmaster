@@ -7,10 +7,29 @@ export const DEFAULT_TIMEZONE = "America/Chicago";
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/** A real calendar date "YYYY-MM-DD" with a year from 1900 to 2100 (birth or hire dates may be old). */
 export function isIsoDate(value: string): boolean {
   if (!ISO_DATE.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  if (year < 1900 || year > 2100) return false;
   const d = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === value;
+}
+
+/**
+ * A date for operational work — quotes, orders, schedules, loads, tickets —
+ * with a four-digit year from 2000 to 2099. Catches "26" typed as a year
+ * (stored as 0026) and similar slips.
+ */
+export function isOperationalDate(value: string): boolean {
+  return isIsoDate(value) && value >= "2000-01-01" && value <= "2099-12-31";
+}
+export const OPERATIONAL_DATE_MESSAGE = "Enter a full date with a 4-digit year (2000–2099).";
+
+/** "0026-10-15" (a two-digit year typed into a date field) → "2026-10-15"; anything else unchanged. */
+export function normalizeTypedDate(value: string): string {
+  const m = /^00(\d{2})-(\d{2})-(\d{2})$/.exec(value);
+  return m ? `20${m[1]}-${m[2]}-${m[3]}` : value;
 }
 
 /** "2026-10-01" → "Oct 1, 2026" (no timezone shift). */

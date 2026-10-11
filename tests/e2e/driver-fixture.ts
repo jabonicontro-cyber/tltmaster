@@ -57,7 +57,7 @@ export async function driverFixture() {
     const mats = await q("select id from public.materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
     const r = await q("select public.save_order_draft($1::jsonb) as r", [
       JSON.stringify({
-        customer_id: cust.rows[0].id, order_date: yesterday, project_name: `Driver e2e ${id}`, job_instructions: "Dump at the north pad, back in from Elm St.",
+        site_line1: "100 Test Site Rd (test)", customer_id: cust.rows[0].id, order_date: yesterday, project_name: `Driver e2e ${id}`, job_instructions: "Dump at the north pad, back in from Elm St.",
         internal_notes: "OFFICE-ONLY-NOTE e2e",
         lines: [{ kind: "material", calc_method: "per_unit", material_id: mats.rows[0].id, description: "Gravel #53 limestone", unit_code: "ton", quantity: "44", unit_rate_cents: 1000 }],
       }),

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -157,7 +158,7 @@ export function OrderDetailsForm({ order, customer, contacts, sites, canEditCust
             </Select>
           </Field>
           <Field label="Requested delivery" htmlFor="requestedDate" error={fieldErrors.requestedDate} className="md:col-span-1" hint="Optional">
-            <Input id="requestedDate" type="date" min={state.orderDate} value={state.requestedDate} onChange={(e) => update({ requestedDate: e.target.value })} />
+            <DateInput id="requestedDate" min={state.orderDate} value={state.requestedDate} onChange={(e) => update({ requestedDate: e.target.value })} />
           </Field>
           <Field label="Project / job name" htmlFor="projectName" error={fieldErrors.projectName} className="md:col-span-1">
             <Input id="projectName" value={state.projectName} onChange={(e) => update({ projectName: e.target.value })} />

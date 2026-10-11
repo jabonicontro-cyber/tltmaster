@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { Loader2, Send } from "lucide-react";
@@ -113,7 +114,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="d-date" className="mb-2 block text-base font-bold">Date</label>
-          <input id="d-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
+          <DateInput id="d-date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
         </div>
         <div>
           <label htmlFor="d-time" className="mb-2 block text-base font-bold">Delivery time</label>

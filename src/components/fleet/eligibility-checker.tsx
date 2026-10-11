@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { DateInput } from "@/components/ui/date-input";
 import { AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { Field, FormError, Input, Select } from "@/components/ui/form";
+import {Field, FormError, Select} from "@/components/ui/form";
 import { formatDate } from "@/lib/dates";
 import { eligibilityMessage } from "@/lib/fleet/eligibility";
 import { checkEligibility, type EligibilityCheck } from "@/app/(app)/fleet/actions";
@@ -49,7 +50,7 @@ export function EligibilityChecker({ trucks, trailers, drivers, today }: { truck
           {select("Trailer", "elig-trailer", trailerId, setTrailerId, trailers)}
           {select("Driver", "elig-driver", driverId, setDriverId, drivers)}
           <Field label="Date" htmlFor="elig-on">
-            <Input id="elig-on" type="date" value={on} onChange={(e) => { setOn(e.target.value); reset(); }} />
+            <DateInput id="elig-on" value={on} onChange={(e) => { setOn(e.target.value); reset(); }} />
           </Field>
         </div>
         <div className="flex items-center gap-3">

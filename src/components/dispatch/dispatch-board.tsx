@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Truck, UserRound, XCircle } from "lucide-react";
@@ -83,7 +84,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
           </Link>
           <form action="/dispatch" method="get" className="flex items-center gap-2">
             <label htmlFor="board-date" className="sr-only">Go to date</label>
-            <Input id="board-date" name="date" type="date" defaultValue={day.date} className="h-9 w-40" />
+            <DateInput id="board-date" name="date" defaultValue={day.date} className="h-9 w-40" />
             <button type="submit" className={buttonClasses("ghost", "sm")}>Go</button>
           </form>
         </nav>
@@ -513,7 +514,7 @@ function LoadDialog({ order, load, date, units, onClose, onSaved }: { order: Ord
         <FormError message={error} />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Field label="Date" htmlFor="load-date" required error={fieldErrors.loadDate}>
-            <Input id="load-date" type="date" value={values.loadDate} min={order.scheduled_start ?? undefined} max={order.scheduled_end ?? order.scheduled_start ?? undefined} onChange={set("loadDate")} />
+            <DateInput id="load-date" value={values.loadDate} min={order.scheduled_start ?? undefined} max={order.scheduled_end ?? order.scheduled_start ?? undefined} onChange={set("loadDate")} />
           </Field>
           <Field label="Start" htmlFor="load-start" required error={fieldErrors.startTime}>
             <Input id="load-start" type="time" value={values.startTime} onChange={set("startTime")} />

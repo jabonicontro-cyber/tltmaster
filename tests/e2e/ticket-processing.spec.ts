@@ -37,7 +37,7 @@ async function fixture(opts: { withRef: boolean[] }) {
     const cust = await q("select id from public.customers where name = 'Prairie View Landscaping' and company_id = '00000000-0000-4000-8000-000000000001'");
     const mats = await q("select id from public.materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
     const r = await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
-      customer_id: cust.rows[0].id, order_date: yesterday, project_name: `Ticket processing e2e ${id}`,
+      site_line1: "100 Test Site Rd (test)", customer_id: cust.rows[0].id, order_date: yesterday, project_name: `Ticket processing e2e ${id}`,
       lines: [{ kind: "material", calc_method: "per_unit", material_id: mats.rows[0].id, description: "Gravel #53 limestone", unit_code: "ton", quantity: "44", unit_rate_cents: 1000 }],
     })]);
     const order = r.rows[0].r as { order_id: string; order_number: string };

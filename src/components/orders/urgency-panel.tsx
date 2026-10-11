@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { Siren } from "lucide-react";
 import { toast } from "sonner";
@@ -125,7 +126,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Needed by (date)" htmlFor="urgent-date" hint={open?.needed_by ? `Now ${formatDateTime(open.needed_by, timezone)}; empty removes it.` : "Optional."}>
-              <Input id="urgent-date" type="date" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
+              <DateInput id="urgent-date" min={today} value={date} onChange={(e) => setDate(e.target.value)} />
             </Field>
             <Field label="Time" htmlFor="urgent-time" hint="Business time.">
               <Input id="urgent-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} />

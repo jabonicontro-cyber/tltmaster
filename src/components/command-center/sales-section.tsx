@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import type { ReactNode } from "react";
 import { AlertTriangle, CheckCircle2, FileClock, FileText } from "lucide-react";
 import { QuoteStatusBadge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { FilterSelect } from "@/components/ui/filter-bar";
-import { Input } from "@/components/ui/form";
+
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -62,11 +63,11 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
       <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-white px-4 py-3" aria-label="Sales period">
         <div>
           <label htmlFor="from" className="mb-1 block text-xs font-semibold text-muted uppercase">Decisions from</label>
-          <Input id="from" name="from" type="date" defaultValue={from} className="w-40" />
+          <DateInput id="from" name="from" defaultValue={from} className="w-40" />
         </div>
         <div>
           <label htmlFor="to" className="mb-1 block text-xs font-semibold text-muted uppercase">To</label>
-          <Input id="to" name="to" type="date" defaultValue={to} className="w-40" />
+          <DateInput id="to" name="to" defaultValue={to} className="w-40" />
         </div>
         <FilterSelect name="customer" label="Customer" value={customer} options={[{ value: "", label: "All customers" }, ...customers.map((c) => ({ value: c.id, label: c.name }))]} />
         <button type="submit" className={buttonClasses("dark")}>Apply</button>

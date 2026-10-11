@@ -302,7 +302,7 @@ describe("permissions and isolation", () => {
       await insert(s, "driver_qualifications", { driver_id: bDriver, kind: "medical_card", expires_on: addDays(w.today, 400), verified_at: new Date().toISOString() });
       const bCustomer = await insert(s, "customers", { name: "Riverbend Builders (test)" });
       const bo = await s.query<{ r: { order_id: string } }>("select public.save_order_draft($1::jsonb) as r", [
-        JSON.stringify({ customer_id: bCustomer, order_date: w.yesterday, lines: [{ kind: "other", calc_method: "per_unit", description: "Hauling", unit_code: "ton", quantity: "10", unit_rate_cents: 1000 }] }),
+        JSON.stringify({ site_line1: "100 Test Site Rd (test)", customer_id: bCustomer, order_date: w.yesterday, lines: [{ kind: "other", calc_method: "per_unit", description: "Hauling", unit_code: "ton", quantity: "10", unit_rate_cents: 1000 }] }),
       ]);
       const bOrder = bo.rows[0].r.order_id;
       await s.query("select public.set_order_status($1, 'confirmed', '')", [bOrder]);

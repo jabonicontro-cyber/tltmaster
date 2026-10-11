@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
@@ -95,8 +96,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             Last {p} days
           </Link>
         ))}
-        <label className="text-sm font-semibold">From <input type="date" name="from" defaultValue={from} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
-        <label className="text-sm font-semibold">To <input type="date" name="to" defaultValue={to} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
+        <label className="text-sm font-semibold">From <DateInput name="from" defaultValue={from} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
+        <label className="text-sm font-semibold">To <DateInput name="to" defaultValue={to} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
         <button className="h-9 rounded-md bg-charcoal px-3 text-sm font-semibold text-white">Show</button>
       </form>
 

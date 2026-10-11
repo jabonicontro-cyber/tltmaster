@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { ArrowDown, ArrowUp, Info, Plus, Trash2, UserPlus } from "lucide-react";
@@ -493,18 +494,18 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
           {isOrder ? (
             <>
               <Field label="Order date" htmlFor="quoteDate" required error={fieldErrors.orderDate} className="md:col-span-1" hint="Prices as of this date">
-                <Input id="quoteDate" type="date" value={state.quoteDate} onChange={(e) => update({ quoteDate: e.target.value })} />
+                <DateInput id="quoteDate" value={state.quoteDate} onChange={(e) => update({ quoteDate: e.target.value })} />
               </Field>
               <Field label="Requested delivery" htmlFor="requestedDate" error={fieldErrors.requestedDate} className="md:col-span-1" hint="Optional">
-                <Input id="requestedDate" type="date" value={state.requestedDate ?? ""} min={state.quoteDate} onChange={(e) => update({ requestedDate: e.target.value })} />
+                <DateInput id="requestedDate" value={state.requestedDate ?? ""} min={state.quoteDate} onChange={(e) => update({ requestedDate: e.target.value })} />
               </Field>
             </>
           ) : (
             <>
               <Field label="Quote date" htmlFor="quoteDate" required error={fieldErrors.quoteDate} className="md:col-span-1">
-                <Input
+                <DateInput
                   id="quoteDate"
-                  type="date"
+                 
                   value={state.quoteDate}
                   onChange={(e) => {
                     const quoteDate = e.target.value;
@@ -513,7 +514,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                 />
               </Field>
               <Field label="Valid until" htmlFor="validUntil" required error={fieldErrors.validUntil} className="md:col-span-1">
-                <Input id="validUntil" type="date" value={state.validUntil} min={state.quoteDate} onChange={(e) => update({ validUntil: e.target.value })} />
+                <DateInput id="validUntil" value={state.validUntil} min={state.quoteDate} onChange={(e) => update({ validUntil: e.target.value })} />
               </Field>
             </>
           )}

@@ -32,7 +32,7 @@ async function fixture() {
     const mats = await q("select id from public.materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
     const r = await q("select public.save_order_draft($1::jsonb) as r", [
       JSON.stringify({
-        customer_id: cust.rows[0].id,
+        site_line1: "100 Test Site Rd (test)", customer_id: cust.rows[0].id,
         order_date: yesterday,
         project_name: `Tickets e2e ${id}`,
         lines: [

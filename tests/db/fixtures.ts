@@ -28,7 +28,7 @@ export async function scheduledOrder(s: Session, user: string, start: string, en
   await s.as(user);
   const r = await s.query<{ r: { order_id: string; order_number: string } }>("select public.save_order_draft($1::jsonb) as r", [
     JSON.stringify({
-      customer_id: ids.customerId,
+      site_line1: "100 Test Site Rd (test)", customer_id: ids.customerId,
       order_date: orderDate ?? start,
       lines: [
         { kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel #53", unit_code: "ton", quantity: "40", unit_rate_cents: 1000 },

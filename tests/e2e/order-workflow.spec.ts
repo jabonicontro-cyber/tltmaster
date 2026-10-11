@@ -16,7 +16,7 @@ async function confirmedOrderWithoutDate(project: string) {
     const today = (await q("select (now() at time zone coalesce((select timezone from public.company_settings limit 1), 'America/Chicago'))::date::text as d")).rows[0].d;
     const r = await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       // Requested for today: it is urgent, so it sorts to the top of the queue.
-      customer_id: cust.rows[0].id, order_date: today, requested_date: today, project_name: project,
+      site_line1: "100 Test Site Rd (test)", customer_id: cust.rows[0].id, order_date: today, requested_date: today, project_name: project,
       lines: [{ kind: "material", calc_method: "per_unit", material_id: mat.rows[0].id, description: "Gravel #53 limestone", unit_code: "ton", quantity: "44", unit_rate_cents: 1000 }],
     })]);
     const o = r.rows[0].r as { order_id: string; order_number: string };

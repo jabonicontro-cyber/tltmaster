@@ -356,8 +356,9 @@ describe("quote versions, sending and status", () => {
       expect(q.rows[0].accepted_version_id).toBe(r.version_id);
 
       expect((await pgError(s.query("select public.revise_quote($1, 'x')", [r.quote_id]))).message).toMatch(/only sent, declined or expired/i);
-      await s.query("select public.set_quote_status($1, 'canceled', 'Job canceled by customer')", [r.quote_id]);
-      expect((await pgError(s.query("select public.set_quote_status($1, 'accepted', '')", [r.quote_id]))).message).toMatch(/canceled quote cannot/);
+      // Accepting created the order (N15), so the quote's status is now fixed; cancel the order instead.
+      expect((await s.query("select 1 from public.orders where source_quote_id = $1 and status = 'confirmed'", [r.quote_id])).rowCount).toBe(1);
+      expect((await pgError(s.query("select public.set_quote_status($1, 'canceled', 'Job canceled by customer')", [r.quote_id]))).message).toMatch(/converted to an order/);
 
       await s.asAdmin();
       const audit = await s.query("select action from public.audit_events where entity_id = $1 order by occurred_at", [r.quote_id]);

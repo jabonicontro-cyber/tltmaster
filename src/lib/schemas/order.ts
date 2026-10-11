@@ -1,12 +1,12 @@
 import { z } from "zod";
-import { isIsoDate } from "@/lib/dates";
+import { OPERATIONAL_DATE_MESSAGE, isOperationalDate } from "@/lib/dates";
 import { parsePercentToBp } from "@/lib/money";
 import { ORDER_STATUSES } from "@/lib/orders/status";
 import { isoDate, jobDetailFields, optionalUuid, quoteLineInput, text, toJobDetailPayload, toLinePayload } from "./quote";
 
 const optionalDate = z.preprocess(
   (v) => (v === undefined || v === null ? "" : v),
-  z.string().refine((v) => v === "" || isIsoDate(v), "Enter a valid date."),
+  z.string().refine((v) => v === "" || isOperationalDate(v), OPERATIONAL_DATE_MESSAGE),
 );
 const optionalTime = z.preprocess(
   (v) => (v === undefined || v === null ? "" : v),

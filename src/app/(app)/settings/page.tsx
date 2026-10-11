@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  BrandingForm,
   CompanySettingsForm,
   PermissionsMatrix,
   SampleDataPanel,
@@ -67,7 +68,15 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </>
     );
   } else if (tab === "company") {
-    content = <CompanySettingsForm settings={await getSettings()} canEdit={can(access, "settings.manage")} />;
+    const settings = await getSettings();
+    content = (
+      <>
+        <CompanySettingsForm settings={settings} canEdit={can(access, "settings.manage")} />
+        <div className="border-t border-line">
+          <BrandingForm settings={settings} canEdit={can(access, "settings.manage")} companyId={access.companyId!} />
+        </div>
+      </>
+    );
   } else if (tab === "numbering") {
     const { data } = await supabase.from("document_sequences").select("*").order("key");
     content = <SequencesPanel rows={(data ?? []) as SequenceRow[]} year={Number(today.slice(0, 4))} />;

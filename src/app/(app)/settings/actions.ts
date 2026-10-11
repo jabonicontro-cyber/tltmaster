@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { MAX_LOGO_BYTES, brandingProblems, sniffImage } from "@/lib/branding";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { companySettingsSchema, inviteSchema, sequenceSchema, userAccessSchema } from "@/lib/schemas/settings";
 import { uuid } from "@/lib/schemas/common";
@@ -137,5 +138,36 @@ export async function removeSampleData(): Promise<ActionResult> {
       `Removed ${r.quotes} quotes (with their orders), ${r.direct_orders} direct orders, ${r.customers} customers, ${r.materials} materials, ${r.charge_items} charges and ${r.price_lists} price lists.` +
         (r.deactivated_in_use ? ` ${r.deactivated_in_use} sample records used by real quotes were deactivated instead.` : ""),
     );
+  });
+}
+
+/**
+ * Company branding: logo and colors for this company only (company_settings,
+ * row-level security). The logo's type is checked from its bytes (PNG, JPEG
+ * or WebP), at most 250 KB; colors must keep white text readable.
+ */
+export async function saveBranding(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    const color = String(formData.get("brand_color") ?? "").trim();
+    const sidebarColor = String(formData.get("brand_sidebar_color") ?? "").trim();
+    const problems = brandingProblems({ color, sidebarColor });
+    if (Object.keys(problems).length) return fail("Check the colors.", problems);
+    const update: Record<string, string> = { brand_color: color, brand_sidebar_color: sidebarColor };
+    const file = formData.get("brand_logo");
+    if (formData.get("remove_logo") === "on") update.brand_logo = "";
+    else if (file instanceof File && file.size > 0) {
+      if (file.size > MAX_LOGO_BYTES) return fail("The logo is too large.", { brand_logo: "Use an image of at most 250 KB." });
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const kind = sniffImage(bytes);
+      if (!kind) return fail("The logo must be a PNG, JPEG or WebP image.", { brand_logo: "Use a PNG, JPEG or WebP image." });
+      update.brand_logo = `data:image/${kind};base64,${Buffer.from(bytes).toString("base64")}`;
+    }
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("company_settings").update({ ...update, updated_by: access.userId }).eq("company_id", access.companyId!).select("company_id");
+    if (error) return fail(dbErrorMessage(error));
+    if (!data?.length) return fail("Branding could not be saved.");
+    revalidatePath("/", "layout");
+    return ok(undefined, "Branding saved. Everyone in your company sees it on their next page.");
   });
 }

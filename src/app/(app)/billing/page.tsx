@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DateInput } from "@/components/ui/date-input";
 import { CalendarRange, CheckCircle2, Download, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
 import { ExceptionTable } from "@/components/billing/exception-table";
@@ -9,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
-import { Input } from "@/components/ui/form";
+
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
@@ -85,11 +86,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <input type="hidden" name="view" value={view} />
           <div>
             <label htmlFor="f-from" className="mb-1 block text-xs font-semibold text-muted uppercase">Service from</label>
-            <Input id="f-from" name="from" type="date" defaultValue={filters.from} className="w-40" />
+            <DateInput id="f-from" name="from" defaultValue={filters.from} className="w-40" />
           </div>
           <div>
             <label htmlFor="f-to" className="mb-1 block text-xs font-semibold text-muted uppercase">to</label>
-            <Input id="f-to" name="to" type="date" defaultValue={filters.to} className="w-40" />
+            <DateInput id="f-to" name="to" defaultValue={filters.to} className="w-40" />
           </div>
           <FilterSelect name="customer" label="Customer" value={filters.customer} options={[{ value: "", label: "All customers" }, ...board.customers.map((c) => ({ value: c.id, label: c.name }))]} />
           {view === "orders" && (

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { DateInput } from "@/components/ui/date-input";
 import { useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -190,10 +191,10 @@ function QualificationDialog({ driverId, qualification, onClose, onSaved }: { dr
             <Input {...f("issuing_state")} defaultValue={qualification?.issuing_state ?? "IN"} maxLength={2} className="uppercase" onChange={changed} />
           </Field>
           <Field label="Issued" htmlFor="q-issued_on" error={fieldError("issued_on")} className="sm:col-span-2">
-            <Input {...f("issued_on")} type="date" defaultValue={qualification?.issued_on ?? ""} onChange={changed} />
+            <DateInput min="1900-01-01" {...f("issued_on")} defaultValue={qualification?.issued_on ?? ""} onChange={changed} />
           </Field>
           <Field label="Expires" htmlFor="q-expires_on" error={fieldError("expires_on")} className="sm:col-span-2" hint="Leave blank only if unknown — it will not count as valid.">
-            <Input {...f("expires_on")} type="date" defaultValue={qualification?.expires_on ?? ""} onChange={changed} />
+            <DateInput min="1900-01-01" {...f("expires_on")} defaultValue={qualification?.expires_on ?? ""} onChange={changed} />
           </Field>
           <Field label="Notes" htmlFor="q-notes" error={fieldError("notes")} className="sm:col-span-4">
             <Input {...f("notes")} defaultValue={qualification?.notes ?? ""} maxLength={1000} />

@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { isIsoDate } from "@/lib/dates";
+import { OPERATIONAL_DATE_MESSAGE, isOperationalDate } from "@/lib/dates";
 import { parseMoneyToCents, parsePercentToBp, parseQuantityToMilli } from "@/lib/money";
 
 export const text = (max: number) => z.string().trim().max(max, `Maximum ${max} characters.`).default("");
-export const isoDate = z.string().refine(isIsoDate, "Enter a valid date.");
+export const isoDate = z.string().refine(isOperationalDate, OPERATIONAL_DATE_MESSAGE);
 export const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable());
 
 export const quoteLineInput = z

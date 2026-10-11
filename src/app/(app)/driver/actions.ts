@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { isIsoDate } from "@/lib/dates";
+import { OPERATIONAL_DATE_MESSAGE, isOperationalDate } from "@/lib/dates";
 import { REPORT_KINDS } from "@/lib/driver/rules";
 import { quantityError } from "@/lib/tickets/rules";
 import { assertPermission } from "@/server/auth";
@@ -14,7 +14,7 @@ const ticketInput = z
   .object({
     assignmentId: z.uuid("This load is no longer available. Go back to My Day."),
     orderLineId: z.uuid("Choose what you delivered."),
-    deliveredDate: z.string().refine(isIsoDate, "Enter the delivery date."),
+    deliveredDate: z.string().refine(isOperationalDate, OPERATIONAL_DATE_MESSAGE),
     deliveredTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter the delivery time."),
     quantity: z.string().trim(),
     unitCode: z.string().min(1, "Tap the unit on the paper ticket."),

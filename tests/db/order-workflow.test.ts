@@ -14,7 +14,7 @@ const today = async (s: Session) => (await s.query<{ d: string }>("select privat
 
 async function confirmedOrder(s: Session, ids: Awaited<ReturnType<typeof sampleIds>>, requested: string | null) {
   const r = (await s.query<{ r: { order_id: string } }>("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
-    customer_id: ids.customerId, order_date: "2026-10-01", requested_date: requested, project_name: "Unscheduled test",
+    site_line1: "100 Test Site Rd (test)", customer_id: ids.customerId, order_date: "2026-10-01", requested_date: requested, project_name: "Unscheduled test",
     lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel", unit_code: "ton", quantity: "22", unit_rate_cents: 1000 }],
   })])).rows[0].r;
   await s.query("select public.set_order_status($1, 'confirmed', '')", [r.order_id]);
@@ -35,7 +35,7 @@ describe("confirmed orders without a delivery date", () => {
       const nextWeek = await confirmedOrder(s, ids, await plus(5));
       const someday = await confirmedOrder(s, ids, null);
       const draft = (await s.query<{ r: { order_id: string } }>("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
-        customer_id: ids.customerId, order_date: "2026-10-01", lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel", unit_code: "ton", quantity: "1", unit_rate_cents: 1000 }],
+        site_line1: "100 Test Site Rd (test)", customer_id: ids.customerId, order_date: "2026-10-01", lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel", unit_code: "ton", quantity: "1", unit_rate_cents: 1000 }],
       })])).rows[0].r.order_id;
 
       for (const who of [office, dispatcher]) {
