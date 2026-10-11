@@ -6,9 +6,10 @@ import { Button } from "@/components/ui/button";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { requestPasswordReset, signIn, updatePassword } from "./actions";
 
-export function LoginForm({ next }: { next?: string }) {
+export function LoginForm({ next, gate = false }: { next?: string; gate?: boolean }) {
   const { pending, onSubmit, result: state } = useFormAction(signIn);
   return (
+    <>
     <form onSubmit={onSubmit} className="space-y-4">
       <h1 className="text-xl font-bold text-ink">Sign in</h1>
       {state && !state.ok && <FormError message={state.error} />}
@@ -31,6 +32,15 @@ export function LoginForm({ next }: { next?: string }) {
         Have an access code? <Link href="/signup" className="font-semibold text-ink hover:underline">Create a company account</Link>
       </p>
     </form>
+    {gate ? (
+      // A plain POST: ends this browser's early-access grant (src/app/early-access/leave/route.ts).
+      <form action="/early-access/leave" method="post" className="mt-3 text-center">
+        <button type="submit" className="text-xs text-muted hover:text-ink hover:underline">
+          Remove early access from this browser
+        </button>
+      </form>
+    ) : null}
+    </>
   );
 }
 

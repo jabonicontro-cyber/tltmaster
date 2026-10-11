@@ -23,4 +23,4 @@ export async function hasSiteAccess(): Promise<boolean> {
   return verifySiteAccess(jar.get(accessCookieName(secure))?.value, gate.secret) !== null;
 }
 
-export const EARLY_ACCESS_REQUIRED = "Early access is required. Open the early-access page and enter your access code.";
+export const EARLY_ACCESS_REQUIRED = "Early access is required. Open the early-access page and enter the Early Access password.";

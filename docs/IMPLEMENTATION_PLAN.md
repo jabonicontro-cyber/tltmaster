@@ -1878,6 +1878,31 @@ no new motion), `mobile-native` (larger tap targets, light header that does not 
 - **Not done:** the Taviron platform area has no user menu, so its theme follows the choice made in the app;
   quote PDFs are generated separately and are unaffected.
 
+## 5v. Shared Early Access password (2026-10-11)
+
+- **Visitor flow:** any page → `/early-access` (now outside the auth layout: navy page, Taviron logo, "Taviron is
+  open by invitation.", password field with a show/hide button, Continue with a loading state, one generic error)
+  → correct password → this browser gets its own grant and the signed HttpOnly cookie → the normal sign-in page.
+  Sign-in, company membership, roles and RLS decide everything after that, exactly as before.
+- **Server** (`src/app/early-access/actions.ts`): `EARLY_ACCESS_PASSWORD` (12–128 characters) compared in constant
+  time (`src/lib/shared-password.ts`); the database receives only an HMAC fingerprint keyed with
+  `SITE_ACCESS_SECRET` (`site_access_enter_shared`, migration `20261029000100`). Anything else goes through the
+  unchanged code path (`site_access_redeem`), so personal codes keep working and wrong entries of both kinds share
+  one rate limit (10 per address per 15 minutes; checked before a correct password too). Unset or short password:
+  the shared path is off and every password is refused. Refusals show one message; the server logs only the reason
+  when a correct password hits the device cap or a revoked record.
+- **Separation from device authorization:** the password never creates an account, membership or permission; each
+  device gets its own grant, re-checked every 5 minutes, revocable alone (`site_access_revoke_grant`), with all
+  devices of the password (`revoke-devices`), or by revoking the password's record (kill switch). A new password
+  retires the old one and its devices at its first use. Existing code grants are untouched.
+- **Leaving:** "Remove early access from this browser" on the sign-in page (`POST /early-access/leave`) revokes this
+  device's grant and deletes the cookie, so a copied cookie stops working too.
+- **Tests:** unit (`shared-password`), DB (`shared-early-access`: per-device grants, no other records, code path
+  isolation, rate limit first, rotation, kill switch, device cap, service role only), gate e2e on a gated production
+  build with and without the password (phone layout, keyboard and show/hide, wrong/right password, routes and
+  server actions still need sign-in, roles still apply, tampered cookie, replay after leaving, rate limit, nothing
+  secret in the page or its scripts, codes still work and revocation still locks out).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
+import { parseMaxDevices, parseSharedPassword } from "@/lib/shared-password";
 
 /**
  * Early-access gate configuration (server only).
@@ -18,6 +19,20 @@ export function siteGate(): { enabled: boolean; secret: string | null; days: num
   const raw = (process.env.SITE_ACCESS_SECRET ?? "").trim();
   const days = Math.min(Math.max(Number.parseInt(process.env.EARLY_ACCESS_DAYS ?? "30", 10) || 30, 1), 90);
   return { enabled, secret: raw.length >= 32 ? raw : null, days };
+}
+
+/**
+ * The shared Early Access password (docs/DEPLOYMENT.md §3b).
+ *
+ * EARLY_ACCESS_PASSWORD               12–128 characters; unset or shorter = off
+ *                                     (personal site codes still work).
+ * EARLY_ACCESS_PASSWORD_MAX_DEVICES   devices admitted with it at the same time (1–1000, default 500).
+ *
+ * Deliberately separate from SITE_ACCESS_SECRET, which signs cookies and keys
+ * the password's fingerprint; the password itself never leaves the server.
+ */
+export function sharedPasswordConfig(): { password: string | null; maxDevices: number } {
+  return { password: parseSharedPassword(process.env.EARLY_ACCESS_PASSWORD), maxDevices: parseMaxDevices(process.env.EARLY_ACCESS_PASSWORD_MAX_DEVICES) };
 }
 
 /**

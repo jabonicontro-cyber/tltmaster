@@ -253,6 +253,7 @@
    bg-action. Company workspaces keep their own tokens and tenant branding. */
 .site {
   --color-brand: var(--color-electric);
+  --color-brand-fg: var(--color-electric);
   --color-brand-dark: var(--color-action-hover);
   -webkit-tap-highlight-color: transparent;
 }

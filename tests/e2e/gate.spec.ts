@@ -88,7 +88,7 @@ test("personal site codes still work on the Early Access page (phone): wrong cod
 
   await page.getByLabel("Early Access password").fill("TLT-AAAAA-BBBBB-CCCCC-DDDDD");
   await page.getByRole("button", { name: "Continue" }).click();
-  await expect(page.getByRole("alert")).toHaveText(NOT_VALID);
+  await expect(page.locator("#password-error")).toHaveText(NOT_VALID);
   await expect(page.getByLabel("Early Access password")).toHaveValue("TLT-AAAAA-BBBBB-CCCCC-DDDDD"); // kept for correction
 
   await page.getByLabel("Early Access password").fill(code.toLowerCase().replace(/-/g, " ")); // forgiving about case and separators
@@ -153,7 +153,7 @@ test("a signed-in user keeps working without the gate cookie; revoking the code 
   await expect(op).toHaveURL(/\/early-access/);
   await op.getByLabel("Early Access password").fill(code);
   await op.getByRole("button", { name: "Continue" }).click();
-  await expect(op.getByRole("alert")).toHaveText(NOT_VALID); // revoked: the same message as a wrong password
+  await expect(op.locator("#password-error")).toHaveText(NOT_VALID); // revoked: the same message as a wrong password
   await other.close();
   await ctx.close();
 });
@@ -216,7 +216,7 @@ test.describe("shared Early Access password", () => {
     await page.keyboard.press("Enter");
     await expect(field).toHaveAttribute("type", "password");
     await field.press("Enter");
-    await expect(page.getByRole("alert")).toHaveText(NOT_VALID);
+    await expect(page.locator("#password-error")).toHaveText(NOT_VALID);
     await expect(field).toHaveAttribute("aria-invalid", "true");
     expect((await ctx.cookies()).find((c) => c.name === "taviron-access")).toBeUndefined();
 
@@ -261,7 +261,9 @@ test.describe("shared Early Access password", () => {
     const [v, body, sig] = cookie.value.split(".");
     const claims = JSON.parse(Buffer.from(body, "base64url").toString());
     const forged = `${v}.${Buffer.from(JSON.stringify({ ...claims, x: claims.x + 86400 * 365 })).toString("base64url")}.${sig}`;
-    const r = await page.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${forged}` }, maxRedirects: 0 });
+    // Probes use their own context: a refused cookie is deleted in the jar that sent it.
+    const probe = await browser.newContext();
+    const r = await probe.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${forged}` }, maxRedirects: 0 });
     expect(r.status()).toBe(307);
     expect(r.headers().location).toMatch(/\/early-access/);
 
@@ -270,9 +272,10 @@ test.describe("shared Early Access password", () => {
     await expect(page).toHaveURL(/\/early-access\?left=1/);
     await expect(page.getByRole("status")).toHaveText("Early access was removed from this browser.");
     // Replaying the old (genuinely signed) cookie no longer works: its grant is revoked.
-    const replay = await page.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${cookie.value}` }, maxRedirects: 0 });
+    const replay = await probe.request.get("/login", { headers: { accept: "text/html", cookie: `taviron-access=${cookie.value}` }, maxRedirects: 0 });
     expect(replay.status()).toBe(307);
     expect(replay.headers().location).toMatch(/\/early-access/);
+    await probe.close();
     await ctx.close();
   });
 
@@ -285,7 +288,7 @@ test.describe("shared Early Access password", () => {
     }
     await page.getByLabel("Early Access password").fill(SHARED);
     await page.getByRole("button", { name: "Continue" }).click();
-    await expect(page.getByRole("alert")).toHaveText("Too many attempts from this network. Wait 15 minutes and try again.");
+    await expect(page.locator("#password-error")).toHaveText("Too many attempts from this network. Wait 15 minutes and try again.");
     await expect(page).toHaveURL(/\/early-access/);
     await resetAttempts();
 
@@ -296,4 +299,17 @@ test.describe("shared Early Access password", () => {
       expect(body).not.toMatch(/EARLY_ACCESS_PASSWORD/);
     }
   });
+});
+
+test("without a shared password configured on the server, a password is refused and grants nothing", async ({ page, context }) => {
+  test.skip(Boolean(SHARED), "Run against a server without EARLY_ACCESS_PASSWORD (E2E_EARLY_ACCESS_PASSWORD unset).");
+  await resetAttempts();
+  await page.goto("/early-access");
+  await page.getByLabel("Early Access password").fill("Any-Password-At-All-2026");
+  await page.getByRole("button", { name: "Continue" }).click();
+  await expect(page.locator("#password-error")).toHaveText(NOT_VALID);
+  expect((await context.cookies()).find((c) => c.name === "taviron-access")).toBeUndefined();
+  await page.goto("/command-center");
+  await expect(page).toHaveURL(/\/early-access/);
+  await resetAttempts();
 });

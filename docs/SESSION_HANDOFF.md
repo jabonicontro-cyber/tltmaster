@@ -96,6 +96,10 @@ any custom domain added to the project later (none is known).
 6. **When ready to show the public website:** get the Privacy and Terms drafts reviewed (pricing is in place). Then set
    `PUBLIC_SITE=on` in Vercel and redeploy. Set `SITE_INDEXING=on` only for the real launch domain.
 7. **Supabase Auth setup:** URL configuration, email templates and SMTP (DEPLOYMENT §1).
+8. **Shared Early Access password (DEPLOYMENT §3b):** back up staging, apply migration
+   `20261029000100_shared_early_access_password.sql` (§2a), then add `EARLY_ACCESS_PASSWORD` (Sensitive) in Vercel and
+   redeploy. Until both are done the shared password does not work — "not valid" without the variable, "temporarily
+   unavailable" without the migration — and no access is granted; personal codes keep working. If a custom domain is attached, add it to Supabase → Authentication → URL Configuration → Redirect URLs.
 
 ## 6. Known issues and decisions pending
 
@@ -126,6 +130,12 @@ any custom domain added to the project later (none is known).
 
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
+
+**Shared Early Access password (2026-10-11):** the Early Access page is now a branded Taviron page
+(`src/app/early-access/`) that accepts one shared password from the server environment as well as personal site
+codes; each entry still gets its own revocable device grant, and sign-in, roles and RLS are unchanged
+(IMPLEMENTATION_PLAN §5v). Tested locally against a gated production build. Staging needs the owner's migration and
+environment variable (§5 item 8); the live flow has not been verified.
 
 **Pricing and light/dark mode (2026-10-11):** `/pricing` shows the founder's five tiers (founding discount stays
 private; IMPLEMENTATION_PLAN §5t). The app has an Appearance choice in the user menu — Light, Dark, Match my device —

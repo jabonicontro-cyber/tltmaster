@@ -111,6 +111,11 @@ One responsive site; clear boundary from the workspace and platform area; claims
 **Exists today (gated):** all of the above pages, a 3D hero built from real screens, a demo and a contact form,
 Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/RELEASE_CHECKLIST.md`.
 
+**Early Access gate (2026-10-11):** the gate page is a branded Taviron page that takes one shared password
+(`EARLY_ACCESS_PASSWORD`, server environment only; DEPLOYMENT §3b) as well as personal site codes. Either one
+admits *this browser* to sign-in through its own revocable grant — it never signs anyone in or grants any
+permission. Code pushed; on staging it needs migration `20261029000100` applied and the variable set (owner).
+
 ### 5.1 Pricing page (founder-provided; on the gated pricing page since 2026-10-11)
 
 Five tiers, standard monthly prices, annual-commitment monthly equivalents and one-time onboarding fees. CTAs:

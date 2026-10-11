@@ -169,8 +169,10 @@ name, empty address, their chosen time zone and no records.
 
 Four separate questions, answered by four separate mechanisms:
 
-1. **May this browser reach the app at all?** — the early-access gate: a site-access code
-   (`private.early_access_codes`, purpose `site_access`) redeemed on the server for a device
+1. **May this browser reach the app at all?** — the early-access gate: the shared Early Access
+   password (`EARLY_ACCESS_PASSWORD`, checked on the server; the database keeps an HMAC
+   fingerprint as an `early_access_codes` row of purpose `site_shared`) or a personal site
+   code (purpose `site_access`), either redeemed on the server for a per-device
    grant (`private.site_access_grants`), carried in a signed HttpOnly cookie and re-checked
    with the database every 5 minutes. Enforced in `src/proxy.ts` for every route; sign-in,
    reset and sign-up actions re-check it. Signed-in users pass (they already have an
