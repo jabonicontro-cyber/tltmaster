@@ -88,9 +88,9 @@ test("a new customer signs up with an access code, verifies the email, creates a
   await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("This access code has already been used.").first()).toBeVisible();
 
-  // Unverified accounts cannot sign in.
+  // Unverified accounts cannot sign in; with the right password they are told why.
   await signInAs(page, email, password);
-  await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
+  await expect(page.getByText("This email address has not been confirmed yet.", { exact: false })).toBeVisible();
 
   // The verification email (sent by Supabase Auth to the dev mailbox) signs the person in and opens onboarding.
   const mail = await latestMail(email, started);
