@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { leadSchema, looksAutomated } from "@/lib/site/lead";
+import { confirmationEmail, notificationEmail } from "@/lib/site/lead-emails";
 import { isPublicSiteRequest, SITE_PAGES } from "@/lib/site/paths";
 import { foundingMonthlyCents, PRICING, usd } from "@/lib/site/pricing";
 import { guessMapping, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
@@ -40,16 +41,20 @@ describe("public website paths", () => {
 });
 
 describe("lead form", () => {
-  const base = { kind: "demo", name: "Pat", email: " Pat@Example.COM ", company_name: "Example Haul", phone: "", role_title: "", fleet_size: "", message: "", source_path: "/demo" };
-  it("normalizes and validates; a demo needs a company and a message needs some words", () => {
+  const base = { kind: "demo", name: "Pat", email: " Pat@Example.COM ", company_name: "Example Haul", phone: "", truck_count: "18", base_count: "2", message: "", source_path: "/demo" };
+  it("normalizes and validates; a demo needs a company, trucks and bases, and a message needs some words", () => {
     const ok = leadSchema.parse(base);
-    expect(ok.email).toBe("pat@example.com");
-    expect(leadSchema.safeParse({ ...base, company_name: "" }).success).toBe(false);
-    expect(leadSchema.safeParse({ ...base, kind: "contact", company_name: "", message: "short" }).success).toBe(false);
-    expect(leadSchema.safeParse({ ...base, kind: "contact", company_name: "", message: "A question about pricing." }).success).toBe(true);
+    expect(ok).toMatchObject({ email: "pat@example.com", truck_count: 18, base_count: 2 });
+    expect(leadSchema.parse({ ...base, truck_count: "0" }).truck_count).toBe(0); // a supplier without its own trucks
+    for (const bad of [{ company_name: "" }, { truck_count: "" }, { base_count: "" }, { base_count: "0" }, { truck_count: "-1" }, { truck_count: "2.5" }, { truck_count: "lots" }]) {
+      expect(leadSchema.safeParse({ ...base, ...bad }).success, JSON.stringify(bad)).toBe(false);
+    }
+    const missing = leadSchema.safeParse({ ...base, truck_count: "", base_count: "" });
+    expect(missing.error?.issues.map((i) => i.message)).toEqual(["Enter the number of hauling trucks (0 if none).", "Enter the number of dispatch bases."]);
+    expect(leadSchema.safeParse({ ...base, kind: "contact", company_name: "", truck_count: "", base_count: "", message: "short" }).success).toBe(false);
+    expect(leadSchema.safeParse({ ...base, kind: "contact", company_name: "", truck_count: "", base_count: "", message: "A question about pricing." }).success).toBe(true);
     expect(leadSchema.safeParse({ ...base, email: "nope" }).success).toBe(false);
     expect(leadSchema.safeParse({ ...base, phone: "call me maybe" }).success).toBe(false);
-    expect(leadSchema.safeParse({ ...base, fleet_size: "a million" }).success).toBe(false);
     expect(leadSchema.safeParse({ ...base, kind: "admin" }).success).toBe(false);
     expect(leadSchema.parse({ ...base, source_path: "https://evil.example" }).source_path).toBe("/");
   });
@@ -60,6 +65,23 @@ describe("lead form", () => {
     expect(looksAutomated({ elapsed_ms: "abc" })).toBe(true);
     expect(looksAutomated({ elapsed_ms: undefined, message: "Hello" })).toBe(false); // plain form post: hidden field only
     expect(looksAutomated({ elapsed_ms: 9000, message: "http://a http://b http://c http://d" })).toBe(true);
+  });
+});
+
+describe("lead emails", () => {
+  const lead = { kind: "demo" as const, name: "Pat Example", email: "pat@example.com", company_name: "Example Haul (test)", phone: "", truck_count: 18, base_count: 2, message: "Ticket review." };
+  it("confirm receipt to the prospect without promising a response time, a price or an offer", () => {
+    const m = confirmationEmail(lead);
+    expect(m.subject).toBe("We received your Taviron demo request");
+    expect(m.text).toMatch(/^Hello Pat,/);
+    expect(m.text).toMatch(/We will follow up by email/);
+    expect(m.text).not.toMatch(/\bwithin\b|\bhours?\b|business day|\$|discount|price/i);
+  });
+  it("give the team every detail and a link to the lead", () => {
+    const m = notificationEmail(lead, { leadUrl: "https://example.test/admin/leads/1", created: true });
+    expect(m.subject).toBe("Demo request: Example Haul (test)");
+    for (const line of ["Email: pat@example.com", "Hauling trucks: 18", "Dispatch bases: 2", "Ticket review.", "Open the lead: https://example.test/admin/leads/1"]) expect(m.text).toContain(line);
+    expect(notificationEmail({ ...lead, kind: "contact", truck_count: null, base_count: null }, { leadUrl: "u", created: false }).subject).toBe("Contact message: Example Haul (test) (sent again)");
   });
 });
 

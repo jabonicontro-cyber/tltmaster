@@ -1735,6 +1735,47 @@ Applied locally (after a backup) and to an empty database; not applied to stagin
 | `tests/e2e/smart-dispatch.spec.ts` (5), `tests/e2e/branding.spec.ts` (1) | Approve, reject/reconsider, stale refusal, no approval without permission, date typing; branding isolation. |
 | Updated | Quote and order tests for automatic conversion; fixtures give orders a delivery location. |
 
+## 5p. Demo-request workflow (2026-10-11)
+
+Scope: the demo-request flow from the founder's master context (TAVIRON_MASTER_PLAN §5.2); reminders and the
+pricing page come next, separately.
+
+**Audit first:** `private.leads` + `private.lead_events` (status history, notes), `lead_submit` (service role,
+rate limits, merges repeats), the `/admin/leads` workspace (search, status filter, "due" filter, spam hidden by
+default). No emails were sent for leads; no scheduler exists.
+
+**Migration `20261028000100_demo_lead_workflow.sql`:**
+- Six statuses. Earlier ones folded with a `status_consolidated` history entry each (no row or entry removed):
+  qualified → Contacted (qualification kept in history), onboarding → Converted + `onboarding_stage = in_progress`,
+  won → Converted, lost → Not Proceeding, spam → Not Proceeding + `disposition = spam` (hidden from the default
+  queue; a new submission from that address opens a fresh lead). `legacy_status` keeps the old value.
+- `truck_count` (0–100,000) and `base_count` (1–1,000): required for new demo requests, empty for older leads.
+- `lead_emails`: every confirmation/notification attempt with mode and outcome.
+- `platform_lead_update` gains the spam flag (only with Not Proceeding) and onboarding progress (only with
+  Converted). Creating a company from a lead converts it with onboarding in progress.
+- Reversal: `supabase/rollbacks/20261028000100_demo_lead_workflow.down.sql` (keeps all data and the added
+  columns; re-applying afterwards needs the pre-migration backup).
+
+**Verified:** on a copy of the dev database with one seeded lead per earlier status — the up migration folded
+each as above (15 leads kept, 5 history entries added), the rollback restored every earlier status and the old
+functions, and the migration re-applied cleanly from the backup. Applied to dev after `pg_dump -Fc`.
+
+**App:**
+- Form: full name, work email, company, number of hauling trucks, number of dispatch bases (required); phone and
+  "What would you most like Taviron to improve?" (optional). Validated in the browser, in `/api/leads` and in
+  the database. The role and fleet-range fields are gone from the form (older leads still show them).
+- Emails (`src/lib/site/lead-emails.ts`, `src/server/leads/notify.ts`): after the lead is saved and the answer
+  sent (`after()`), the prospect's confirmation (at most one a day per lead; no promised response time) and the
+  team notification (to `LEAD_NOTIFY_EMAIL`, with a link to the lead). Uses the existing email provider: preview
+  by default (nothing sent, recorded as "not sent"), test mode sends only to `EMAIL_TEST_RECIPIENT`, live only
+  when configured. A failed send never loses the lead.
+- Admin: the six statuses, a spam checkbox, onboarding progress, the counts, an "Emails" card with every attempt,
+  history wording for the new events, and a "Flagged as spam" filter.
+
+**Tests:** `tests/db/platform.test.ts` (4 lead tests: validation and counts, merge, rate limit, statuses, spam,
+onboarding, email records and permissions), `tests/unit/platform.test.ts` (form schema, email wording),
+`tests/e2e/platform.spec.ts` (form validation, counts, recorded-not-sent emails, status list, spam flow).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

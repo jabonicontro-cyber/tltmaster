@@ -401,7 +401,8 @@ direct access for app users); everything goes through the functions below.
 | --- | --- |
 | `private.platform_admins` | The Taviron team: user, note, granted / revoked. Not a company role. |
 | `private.platform_audit` | Append-only log of sensitive platform actions (grants, revocations, demo, company creation, import steps). |
-| `private.leads` | Website demo requests and contact messages: kind, status (`new`, `contacted`, `demo_scheduled`, `qualified`, `onboarding`, `won`, `lost`, `spam`), contact details, owner (platform admin), follow-up date, submission count. |
+| `private.leads` | Website demo requests and contact messages: kind, status (`new`, `contacted`, `demo_scheduled`, `demo_completed`, `converted`, `not_proceeding` — since 20261028000100), contact details, `truck_count` and `base_count` (required for new demo requests), `disposition` (`spam` flag, only on Not Proceeding; hidden from the queue), `onboarding_stage` (`in_progress`/`live`, only on Converted), `legacy_status` (the status before the consolidation, kept for reversal), owner, follow-up date, submission count. Older rows keep `role_title` and `fleet_size`. |
+| `private.lead_emails` | Every confirmation/notification attempt for a lead: kind, recipient, mode (`preview`/`test`/`live`), status (`sent`/`failed`/`not_sent`), provider id, detail. Written only by `lead_record_email` (service role). |
 | `private.lead_events` | Lead history: submitted, resubmitted, status / owner / follow-up changed, note added, company created. |
 | `private.lead_attempts` | Keyed hash of the sender's address per submission (rate limiting); deleted after two days. |
 | `private.import_batches` | One uploaded spreadsheet: company, entity (`customers`, `materials`, `trucks`, `drivers`), status (`review`, `approved`, `reverted`, `discarded`), column mapping, who/when, result. |
@@ -413,7 +414,8 @@ direct access for app users); everything goes through the functions below.
 | `platform_admin_grant / _revoke(email, note)`, `platform_admin_list()` | service role (operator script) | The only way to change the platform team. Audited. |
 | `lead_submit(lead, ip_hash)` | service role (`/api/leads`) | Validates, rate limits (5 / 15 min, 20 / day per address), merges a repeat from the same email into the open lead. |
 | `platform_whoami()` | any signed-in user | Am I a platform admin? |
-| `platform_leads(search, status, due_only)`, `platform_lead(id)`, `platform_lead_update(id, status, owner, follow_up)`, `platform_lead_note(id, note)` | platform admin | Lead workspace; every change is a history event; the owner must be on the platform team. |
+| `platform_leads(search, status, due_only)` (status `''` = all but spam, `'spam'` = spam only), `platform_lead(id)` (with history and email attempts), `platform_lead_update(id, status, owner, follow_up, spam, onboarding)`, `platform_lead_note(id, note)` | platform admin | Lead workspace; every change is a history event; the owner must be on the platform team. |
+| `lead_record_email(lead, kind, recipient, mode, status, provider_id, detail)` | service role | Records one email attempt. `lead_submit` returns the lead id, whether it was new and whether a confirmation is due (at most one a day) — to the server only. |
 | `platform_overview()`, `platform_team()`, `platform_audit_recent(limit)` | platform admin | Launchpad counts, team, audit log. |
 | `platform_demo_start(timezone)`, `platform_demo_enter()` | platform admin | New demo company (earlier demos deactivated, never deleted), caller becomes its owner and switches to it. |
 | `platform_companies()`, `platform_create_company(name, timezone, lead)` | platform admin | Customer companies (demos excluded) with counts; create one without users, optionally from a lead. |

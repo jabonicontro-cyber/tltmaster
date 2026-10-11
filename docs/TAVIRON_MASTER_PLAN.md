@@ -136,10 +136,10 @@ first 10 customers): $399.20 · $599.20 · $799.20 · $1,199.20.
 - **Reminders:** email the founder if a lead is not contacted within one business day; another reminder three
   business days after first outreach without a response; the lead stays open until Converted or Not Proceeding.
 
-**Gap against the current code** (`/api/leads`, `private.leads`, `/admin/leads`): no truck or base counts (a
-fleet-size range instead), extra role field, statuses `qualified/onboarding/won/lost/spam` instead of the list
-above, no emails of any kind, no reminders (no scheduler exists), a separate "contact" form kind. Reuse and extend
-this system — do not build a second one.
+**Status (2026-10-11, local; not on staging):** counts, the six statuses, the spam flag, onboarding progress and
+both emails are built on the existing lead system (migration `20261028000100`). Emails are recorded but not sent
+until an email provider and domain are approved. Still open: reminders (no scheduler yet, §8 W6). The contact
+form remains a second, lighter form kind.
 
 ## 6. Smart Dispatch, Route & Conditions, fleet (direction)
 
@@ -226,9 +226,9 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 | S5 | 5 high `npm audit` advisories reported on the owner's Mac, unreviewed. | Unverified | Medium | Review each; upgrade selectively; never `--force`. | Full suite after upgrades. | No |
 | W1 | Pricing page advertises the founding-customer discount ($399.20, "first 10 companies") and a single $499 price; the confirmed plan keeps founding discounts private and shows five tiers. (`src/app/(site)/pricing/page.tsx`, `src/lib/site/pricing.ts`.) | Confirmed | High — wrong public offer if the gate opens. | Replace with the five-tier proposal table (§5.1), no founding mention, labelled "proposed" until approved. | Unit test on tier math; gate e2e. | Yes — publication of prices |
 | W2 | Brand colors in code are charcoal/red; red is the primary action color. Confirmed palette is navy/blue/silver with red reserved for critical alerts. (`src/app/globals.css`.) | Confirmed | Medium — brand and alert semantics. | Central token change: brand → electric blue, charcoal → midnight navy; keep a separate `--color-danger` `#E5484D`. Contrast (measured): white on `#168BFF` is 3.4:1 and white on `#E5484D` 3.9:1 — both below the 4.5:1 minimum for normal text; `#168BFF` on navy is 5.2:1. Needs a darker action shade for white-text buttons and links on white (e.g. `#0F6FD6`, 4.9:1 — a proposal), large/bold text only for red labels. | Visual review, contrast checks, screenshots. | No (direction confirmed) |
-| W3 | Demo form lacks required truck count and dispatch-base count; uses a fleet-size range and a role field. | Confirmed | High for the demo flow. | Add the two numeric fields (DB columns + validation), keep the range for old leads. | DB + e2e lead tests. | No |
-| W4 | No lead emails (prospect confirmation, founder notification). Email provider exists (Resend) but is not configured for leads; demo company must never send. | Confirmed | High — leads can go unnoticed. | Send through the existing provider after saving; record each send attempt on the lead; failures never lose the lead. | Unit/e2e with a test provider; staging with `EMAIL_TEST_RECIPIENT`. | Yes — real emails (needs provider + domain) |
-| W5 | Lead statuses differ from the confirmed list. | Confirmed | Medium | Migration mapping `won→converted`, `lost→not_proceeding`, add `demo_completed`; decide where `qualified/onboarding/spam` go (spam can stay internal). | DB tests. | No |
+| W3 | Demo form lacked required truck and dispatch-base counts; used a fleet-size range and a role field. | Fixed locally (20261028000100; not on staging) | High for the demo flow. | Add the two numeric fields (DB columns + validation), keep the range for old leads. | DB + e2e lead tests. | No |
+| W4 | No lead emails (prospect confirmation, founder notification). | Built locally; **sending off** until a provider is approved (preview mode records every attempt as "not sent"; `LEAD_NOTIFY_EMAIL` sets the team inbox) | High — leads can go unnoticed. | Send through the existing provider after saving; record each send attempt on the lead; failures never lose the lead. | Unit/e2e with a test provider; staging with `EMAIL_TEST_RECIPIENT`. | Yes — real emails (needs provider + domain) |
+| W5 | Lead statuses differed from the confirmed list. | Fixed locally (20261028000100): qualified → Contacted, onboarding → Converted + onboarding in progress, won → Converted, lost → Not Proceeding, spam → Not Proceeding + spam flag; history kept; rollback script tested | Medium | — | DB, unit, e2e tests. | — |
 | W6 | No follow-up reminders; no scheduler exists in the project. | Confirmed | Medium | A daily Vercel Cron route (free on Hobby, once a day) protected by a secret, computing business days; idempotent reminder log. | Unit tests for business-day math; route auth test. | Yes — new env secret and cron |
 | W7 | Legal pages are drafts; tax wording absent. | Confirmed | High before launch. | Legal review. | — | Yes |
 | W8 | Design skills (`emilkowalski/skills`) were not installed. | Fixed (installed in `.claude/skills/`, 2026-10-11) | — | — | Available to sessions that start in this repo. | — |
@@ -242,6 +242,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 | O8 | Local e2e tests that assumed near-empty shared queues failed as test data accumulated. | Fixed (scoped to own records) | Low | — | — | — |
 | O9 | Imports are CSV only; XLSX unsupported. | Confirmed | Low | Add XLSX when onboarding needs it (library choice needs approval). | Import tests. | Yes (dependency) |
 | O10 | Old demo companies accumulate on each reset (kept, deactivated). | Confirmed | Low | Platform cleanup tool. | — | No |
+| O11 | `tests/e2e/dispatch.spec.ts` ("dispatcher plans loads…") failed once in a full parallel run (order history missing "load 1 assigned") and passed in four other runs; artifacts lost. | Intermittent, cause unknown (possibly a stale cached order page) | Low | Investigate with a trace on the next failure. | — | No |
 
 ## 9. Open decisions (do not invent answers)
 
@@ -267,7 +268,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
     capacity overruns are refused; a delivery location is needed to schedule; the definition of "fully delivered".
 20. Smart Dispatch preferences: driver availability and hours, driver–truck pairings, customer priorities,
     fairness, whether truck locations will be recorded.
-21. Lead statuses `qualified`, `onboarding`, `spam` — keep as internal extras or fold into the confirmed list?
+21. ~~Lead statuses `qualified`, `onboarding`, `spam`~~ — decided 2026-10-11: folded into the six statuses (see §8 W5).
 
 ## 10. Subscription model (proposal / confirmed policies)
 

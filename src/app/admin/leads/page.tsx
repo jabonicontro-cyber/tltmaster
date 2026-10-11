@@ -19,6 +19,9 @@ interface LeadRow {
   email: string;
   company_name: string;
   fleet_size: string;
+  truck_count: number | null;
+  base_count: number | null;
+  disposition: "" | "spam";
   owner_name: string | null;
   follow_up_on: string | null;
   submission_count: number;
@@ -28,7 +31,7 @@ interface LeadRow {
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<{ q?: string; status?: string; due?: string }> }) {
   const sp = await searchParams;
   const q = (sp.q ?? "").slice(0, 100);
-  const status = isLeadStatus(sp.status) ? sp.status : "";
+  const status = isLeadStatus(sp.status) || sp.status === "spam" ? sp.status : "";
   const due = sp.due === "1";
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("platform_leads", { p_search: q, p_status: status, p_due_only: due });
@@ -36,7 +39,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const today = new Date().toISOString().slice(0, 10);
   return (
     <>
-      <PageHeader title="Leads" description="Demo requests and contact messages from the public website. Spam is hidden unless you filter for it." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Leads" }]} />
+      <PageHeader title="Leads" description="Demo requests and contact messages from the public website. Leads flagged as spam are hidden unless you filter for them." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Leads" }]} />
       <form className="mb-4 flex flex-wrap items-end gap-2" role="search">
         <label className="min-w-56 flex-1 text-sm font-semibold">
           Search
@@ -45,12 +48,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
         <label className="text-sm font-semibold">
           Status
           <Select name="status" defaultValue={status} className="mt-1">
-            <option value="">All open and closed (not spam)</option>
+            <option value="">All statuses (not spam)</option>
             {LEAD_STATUSES.map((s) => (
               <option key={s} value={s}>
                 {LEAD_STATUS_LABELS[s]}
               </option>
             ))}
+            <option value="spam">Flagged as spam</option>
           </Select>
         </label>
         <label className="flex h-10 items-center gap-2 text-sm font-semibold">
@@ -86,11 +90,18 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                   </Td>
                   <Td>
                     {l.company_name || <span className="text-muted">—</span>}
-                    {l.fleet_size ? <div className="text-xs text-muted">{l.fleet_size}</div> : null}
+                    {l.truck_count !== null || l.base_count !== null ? (
+                      <div className="text-xs text-muted">
+                        {l.truck_count ?? "—"} truck{l.truck_count === 1 ? "" : "s"} · {l.base_count ?? "—"} base{l.base_count === 1 ? "" : "s"}
+                      </div>
+                    ) : l.fleet_size ? (
+                      <div className="text-xs text-muted">{l.fleet_size}</div>
+                    ) : null}
                   </Td>
                   <Td>{l.kind === "demo" ? "Demo request" : "Contact"}{l.submission_count > 1 ? <span className="text-xs text-muted"> · {l.submission_count}×</span> : null}</Td>
                   <Td>
                     <Badge tone={LEAD_STATUS_TONES[l.status]}>{LEAD_STATUS_LABELS[l.status]}</Badge>
+                    {l.disposition === "spam" ? <Badge tone="gray">Spam</Badge> : null}
                   </Td>
                   <Td>{l.owner_name ?? <span className="text-muted">Unassigned</span>}</Td>
                   <Td className={l.follow_up_on && l.follow_up_on <= today ? "font-semibold text-red-700" : undefined}>{l.follow_up_on ? formatDate(l.follow_up_on) : "—"}</Td>

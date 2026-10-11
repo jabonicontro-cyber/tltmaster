@@ -71,46 +71,111 @@ describe("platform owner role", () => {
   });
 });
 
+type SubmitResult = { ok: boolean; reason?: string; lead_id?: string; created?: boolean; confirm?: boolean };
+const demo = (email: string, extra: Record<string, unknown> = {}) => ({
+  kind: "demo", name: "Pat Example", email, company_name: "Example Hauling (test)", truck_count: "18", base_count: "2", message: "Interested in dispatch.", ...extra,
+});
+const LEAD_STATUSES = ["new", "contacted", "demo_scheduled", "demo_completed", "converted", "not_proceeding"];
+
 describe("website leads", () => {
-  it("are validated, merged by email, rate limited per address, and worked with a full history", async () => {
+  it("are validated (demo requests need trucks and bases), merged by email, rate limited per address, and worked with a full history", async () => {
     await withSession(async (s) => {
       const admin = await platformAdmin(s);
       await service(s);
       const email = `lead-${randomUUID().slice(0, 8)}@example.com`;
       const ip = `ip-${randomUUID()}`;
-      expect(await submit(s, { kind: "demo", name: "Pat Example", email, company_name: "Example Hauling (test)", fleet_size: "6-15", message: "Interested in dispatch." }, ip)).toEqual({ ok: true });
-      expect(await submit(s, { kind: "contact", name: "Pat Example", email: email.toUpperCase(), message: "Following up." }, ip)).toEqual({ ok: true }); // merged
-      expect(await submit(s, { kind: "contact", name: "", email }, ip)).toEqual({ ok: false, reason: "invalid" });
+      const first = (await submit(s, demo(email), ip)) as SubmitResult;
+      expect(first).toMatchObject({ ok: true, created: true, confirm: true });
+      expect(await submit(s, { kind: "contact", name: "Pat Example", email: email.toUpperCase(), message: "Following up." }, ip)).toMatchObject({ ok: true, lead_id: first.lead_id, created: false }); // merged
+      expect(await submit(s, demo(`a-${email}`, { truck_count: "" }), ip)).toEqual({ ok: false, reason: "invalid" }); // trucks required
+      expect(await submit(s, demo(`b-${email}`, { base_count: "0" }), ip)).toEqual({ ok: false, reason: "invalid" }); // at least one base
       expect(await submit(s, { kind: "contact", name: "X", email: "not-an-email" }, ip)).toEqual({ ok: false, reason: "invalid" });
-      expect(await submit(s, { kind: "other", name: "X", email }, ip)).toEqual({ ok: false, reason: "invalid" });
+      expect(await submit(s, demo(`c-${email}`, { truck_count: "many" }), `ip-${randomUUID()}`)).toEqual({ ok: false, reason: "invalid" });
+      expect(await submit(s, { kind: "other", name: "X", email }, `ip-${randomUUID()}`)).toEqual({ ok: false, reason: "invalid" });
       expect(await submit(s, { kind: "contact", name: "X", email: `x${email}` }, ip)).toEqual({ ok: false, reason: "rate_limited" }); // 5 per 15 minutes
       expect((await submit(s, { kind: "contact", name: "Other", email: `someone-${randomUUID().slice(0, 8)}@example.org` })).ok).toBe(true); // another address is unaffected
 
       await s.as(admin.id);
-      const list = await s.query<{ id: string; submission_count: number; kind: string; status: string }>("select * from public.platform_leads($1, null, false)", [email]);
+      const list = await s.query("select * from public.platform_leads($1, null, false)", [email]);
       expect(list.rows).toHaveLength(1);
-      expect(list.rows[0]).toMatchObject({ submission_count: 2, kind: "demo", status: "new" });
-      const id = list.rows[0].id;
+      expect(list.rows[0]).toMatchObject({ submission_count: 2, kind: "demo", status: "new", truck_count: 18, base_count: 2, disposition: "" });
+      const id = list.rows[0].id as string;
       expect((await s.query("select * from public.platform_leads('Example Hauling', null, false)")).rowCount).toBeGreaterThanOrEqual(1);
 
-      await s.query("select public.platform_lead_update($1, 'contacted', $2, current_date)", [id, admin.id]);
+      await s.query("select public.platform_lead_update($1, 'contacted', $2, current_date, false, '')", [id, admin.id]);
       await s.query("select public.platform_lead_note($1, 'Called; wants a demo next week.')", [id]);
-      expect((await pgError(s.query("select public.platform_lead_update($1, 'bogus', null, null)", [id]))).code).toBe("22023");
+      for (const old of ["bogus", "qualified", "onboarding", "won", "lost", "spam"]) {
+        expect((await pgError(s.query("select public.platform_lead_update($1, $2, null, null, false, '')", [id, old]))).code).toBe("22023");
+      }
       const other = await s.createUser("owner"); // not on the platform team
-      expect((await pgError(s.query("select public.platform_lead_update($1, 'contacted', $2, null)", [id, other]))).code).toBe("22023");
-      const lead = (await s.query<{ r: { status: string; owner_id: string; events: Array<{ action: string; note: string }> } }>("select public.platform_lead($1) as r", [id])).rows[0].r;
-      expect(lead.status).toBe("contacted");
-      expect(lead.owner_id).toBe(admin.id);
+      expect((await pgError(s.query("select public.platform_lead_update($1, 'contacted', $2, null, false, '')", [id, other]))).code).toBe("22023");
+      const lead = (await s.query<{ r: { status: string; owner_id: string; truck_count: number; events: Array<{ action: string }> } }>("select public.platform_lead($1) as r", [id])).rows[0].r;
+      expect(lead).toMatchObject({ status: "contacted", owner_id: admin.id, truck_count: 18 });
       expect(lead.events.map((e) => e.action)).toEqual(["submitted", "resubmitted", "status_changed", "owner_changed", "follow_up_changed", "note_added"]);
       expect((await s.query("select * from public.platform_leads(null, null, true) where id = $1", [id])).rowCount).toBe(1); // due today
-      // Spam is hidden from the default list.
-      await s.query("select public.platform_lead_update($1, 'spam', null, null)", [id]);
-      expect((await s.query("select * from public.platform_leads($1, null, false)", [email])).rowCount).toBe(0);
-      expect((await s.query("select * from public.platform_leads($1, 'spam', false)", [email])).rowCount).toBe(1);
       // Nobody else can read leads directly.
       const owner = await s.createUser("owner");
       await s.as(owner);
       expect((await pgError(s.query("select * from private.leads"))).code).toBe("42501");
+      expect((await pgError(s.query("select * from public.platform_leads(null, null, false)"))).code).toBe("42501");
+    });
+  });
+
+  it("move through the six statuses; spam is a flag on Not Proceeding that hides the lead from the active queue", async () => {
+    await withSession(async (s) => {
+      const admin = await platformAdmin(s);
+      await service(s);
+      const email = `flow-${randomUUID().slice(0, 8)}@example.com`;
+      const { lead_id: id } = (await submit(s, demo(email))) as SubmitResult;
+      await s.as(admin.id);
+      for (const st of LEAD_STATUSES) await s.query("select public.platform_lead_update($1, $2, null, null, false, '')", [id, st]);
+      // Spam only on Not Proceeding; then hidden by default and shown by the spam filter.
+      await s.query("select public.platform_lead_update($1, 'contacted', null, null, false, '')", [id]);
+      expect((await pgError(s.query("select public.platform_lead_update($1, 'contacted', null, null, true, '')", [id]))).message).toMatch(/Not Proceeding can be flagged as spam/);
+      await s.query("select public.platform_lead_update($1, 'not_proceeding', null, null, true, '')", [id]);
+      expect((await s.query("select * from public.platform_leads($1, null, false)", [email])).rowCount).toBe(0);
+      expect((await s.query("select * from public.platform_leads($1, 'not_proceeding', false)", [email])).rowCount).toBe(0);
+      expect((await s.query("select * from public.platform_leads($1, 'spam', false)", [email])).rows[0]).toMatchObject({ status: "not_proceeding", disposition: "spam" });
+      // A spam lead never merges a new submission: the next one opens a fresh lead.
+      await service(s);
+      expect(await submit(s, demo(email))).toMatchObject({ ok: true, created: true });
+      await s.as(admin.id);
+      const ev = (await s.query<{ r: { events: Array<{ action: string; detail: Record<string, string> }> } }>("select public.platform_lead($1) as r", [id])).rows[0].r.events;
+      expect(ev.map((e) => e.action)).toEqual(["submitted", "status_changed", "status_changed", "status_changed", "status_changed", "status_changed", "status_changed", "status_changed", "disposition_changed"]);
+      expect(ev.at(-1)?.detail).toEqual({ from: "", to: "spam" });
+    });
+  });
+
+  it("creating the company converts the lead with onboarding in progress; onboarding progress only on Converted leads", async () => {
+    await withSession(async (s) => {
+      const admin = await platformAdmin(s);
+      await service(s);
+      const { lead_id: id } = (await submit(s, demo(`conv-${randomUUID().slice(0, 8)}@example.com`))) as SubmitResult;
+      await s.as(admin.id);
+      expect((await pgError(s.query("select public.platform_lead_update($1, 'contacted', null, null, false, 'in_progress')", [id]))).message).toMatch(/Converted leads only/);
+      await s.query("select public.platform_create_company('Converted Hauling (test)', 'America/Chicago', $1)", [id]);
+      const lead = (await s.query<{ r: { status: string; onboarding_stage: string; events: Array<{ action: string }> } }>("select public.platform_lead($1) as r", [id])).rows[0].r;
+      expect(lead).toMatchObject({ status: "converted", onboarding_stage: "in_progress" });
+      expect(lead.events.map((e) => e.action)).toEqual(["submitted", "status_changed", "onboarding_changed", "company_created"]);
+      await s.query("select public.platform_lead_update($1, 'converted', null, null, false, 'live')", [id]);
+      expect((await s.query<{ r: { onboarding_stage: string } }>("select public.platform_lead($1) as r", [id])).rows[0].r.onboarding_stage).toBe("live");
+    });
+  });
+
+  it("record every email attempt on the lead (server only) and ask for at most one confirmation a day", async () => {
+    await withSession(async (s) => {
+      const admin = await platformAdmin(s);
+      await service(s);
+      const email = `mail-${randomUUID().slice(0, 8)}@example.com`;
+      const { lead_id: id } = (await submit(s, demo(email))) as SubmitResult;
+      await s.query("select public.lead_record_email($1, 'confirmation', $2, 'preview', 'not_sent', '', 'Email sending is not configured')", [id, email]);
+      await s.query("select public.lead_record_email($1, 'notification', '', 'preview', 'not_sent', '', 'No team inbox is configured')", [id]);
+      expect(await submit(s, demo(email))).toMatchObject({ ok: true, lead_id: id, created: false, confirm: false }); // already confirmed today
+      expect((await pgError(s.query("select public.lead_record_email($1, 'bogus', '', 'preview', 'not_sent', '', '')", [id]))).code).toBe("23514");
+      await s.as(admin.id);
+      expect((await pgError(s.query("select public.lead_record_email($1, 'notification', '', 'preview', 'not_sent', '', '')", [id]))).code).toBe("42501");
+      const emails = (await s.query<{ r: { emails: Array<{ kind: string; status: string; mode: string }> } }>("select public.platform_lead($1) as r", [id])).rows[0].r.emails;
+      expect(emails.map((m) => [m.kind, m.status, m.mode])).toEqual([["confirmation", "not_sent", "preview"], ["notification", "not_sent", "preview"]]);
     });
   });
 });

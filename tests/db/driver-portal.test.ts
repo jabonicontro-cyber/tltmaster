@@ -181,9 +181,11 @@ describe("field reports", () => {
 
       // Office sees both in the command center.
       await s.as(w.office);
-      const q = (await s.query<{ r: { items: Array<Row & { exception_key: string }> } }>("select public.command_center_exceptions(null, false, 100, 0) as r")).rows[0].r.items;
-      expect(q.find((i) => i.exception_key === `field_report:${breakdown.report_id}`)).toMatchObject({ kind: "equipment_report", priority: 1, unit_number: expect.any(String) });
-      expect(q.find((i) => i.exception_key === `field_report:${delay.report_id}`)).toMatchObject({ kind: "delay_report", priority: 2 });
+      // Each kind on its own: a database with earlier test runs holds many other items.
+      const items = async (kind: string) =>
+        (await s.query<{ r: { items: Array<Row & { exception_key: string }> } }>("select public.command_center_exceptions($1, false, 500, 0) as r", [kind])).rows[0].r.items;
+      expect((await items("equipment_report")).find((i) => i.exception_key === `field_report:${breakdown.report_id}`)).toMatchObject({ kind: "equipment_report", priority: 1, unit_number: expect.any(String) });
+      expect((await items("delay_report")).find((i) => i.exception_key === `field_report:${delay.report_id}`)).toMatchObject({ kind: "delay_report", priority: 2 });
 
       // Mechanics see and resolve equipment reports only (and cannot be assigned delays).
       const mechanic = await s.createUser("mechanic");

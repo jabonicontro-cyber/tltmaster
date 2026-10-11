@@ -62,7 +62,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // N13: platform owner (every function checks private.require_platform_admin, or is service-role only), leads, demo, imports.
   "private.is_platform_admin", "private.require_platform_admin", "private.platform_log",
   "public.platform_whoami", "public.platform_admin_grant", "public.platform_admin_revoke", "public.platform_admin_list",
-  "public.platform_team", "public.platform_audit_recent", "public.lead_submit", "public.platform_leads", "public.platform_lead",
+  "public.platform_team", "public.platform_audit_recent", "public.lead_submit", "public.lead_record_email", "public.platform_leads", "public.platform_lead",
   "public.platform_lead_update", "public.platform_lead_note", "public.platform_overview", "public.platform_demo_start",
   "public.platform_demo_enter", "public.platform_companies", "public.platform_create_company", "public.platform_import_stage",
   "public.platform_import_batches", "public.platform_import_batch", "public.platform_import_decide", "public.platform_import_discard",

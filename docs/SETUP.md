@@ -15,6 +15,7 @@ dashboard (production). Never commit real values.
 | `RESEND_API_KEY`, `EMAIL_FROM` | for real email | `EMAIL_FROM` must be on a domain verified in Resend |
 | `EMAIL_REPLY_TO` | optional | Replies from customers go here |
 | `EMAIL_TEST_RECIPIENT` | optional | Test mode: every email goes here, subject gets `[TEST]`, quotes are **not** marked sent |
+| `LEAD_NOTIFY_EMAIL` | optional | The Taviron team's inbox for new website leads. Lead emails use the same provider; in preview mode (the default) nothing is sent and each attempt is recorded as "not sent" on the lead |
 | `EARLY_ACCESS_GATE` | no (default: on in production builds, off in `npm run dev`) | `on` / `off`. See docs/DEPLOYMENT.md |
 | `SITE_ACCESS_SECRET` | **yes when the gate is on** | ≥ 32 random characters (`openssl rand -base64 32`). Server only. Without it the app answers 503 to everything (fails closed). Changing it signs every device out of early access |
 | `EARLY_ACCESS_DAYS` | no (30) | How long a device stays admitted (1–90 days, never beyond the code's expiry) |

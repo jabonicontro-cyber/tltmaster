@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
-import { isLeadStatus } from "@/lib/platform/leads";
+import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
@@ -29,12 +29,17 @@ export async function updateLead(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   const owner = String(formData.get("owner") ?? "");
   const followUp = String(formData.get("follow_up_on") ?? "");
+  const spam = formData.get("spam") === "on";
+  const onboarding = String(formData.get("onboarding_stage") ?? "");
   const path = `/admin/leads/${id}`;
   if (!isLeadStatus(status)) back(path, "Choose a status.");
+  if (!isOnboardingStage(onboarding)) back(path, "Choose the onboarding progress.");
   if (owner && !uuid.safeParse(owner).success) back(path, "Choose an owner.");
   if (followUp && !/^\d{4}-\d{2}-\d{2}$/.test(followUp)) back(path, "Enter the follow-up date as YYYY-MM-DD.");
   const supabase = await db();
-  const { error } = await supabase.rpc("platform_lead_update", { p_id: id, p_status: status, p_owner: owner || null, p_follow_up: followUp || null });
+  const { error } = await supabase.rpc("platform_lead_update", {
+    p_id: id, p_status: status, p_owner: owner || null, p_follow_up: followUp || null, p_spam: spam, p_onboarding: onboarding,
+  });
   if (error) back(path, dbErrorMessage(error));
   revalidatePath("/admin/leads");
   revalidatePath(path);

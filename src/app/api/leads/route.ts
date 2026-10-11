@@ -1,4 +1,6 @@
+import { after } from "next/server";
 import { fieldErrors, leadSchema, looksAutomated } from "@/lib/site/lead";
+import { notifyLead } from "@/server/leads/notify";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { rateKey } from "@/server/early-access";
 
@@ -72,8 +74,8 @@ export async function POST(request: Request): Promise<Response> {
     email: body.data.email ?? "",
     company_name: body.data.company_name ?? "",
     phone: body.data.phone ?? "",
-    role_title: body.data.role_title ?? "",
-    fleet_size: body.data.fleet_size ?? "",
+    truck_count: body.data.truck_count,
+    base_count: body.data.base_count,
     message: body.data.message ?? "",
     source_path: body.data.source_path ?? back,
   });
@@ -88,8 +90,15 @@ export async function POST(request: Request): Promise<Response> {
   try {
     const { data, error } = await createAdminClient().rpc("lead_submit", { p_lead: parsed.data, p_ip_hash: rateKey(clientIp(request)) });
     if (error) throw error;
-    const r = data as { ok: boolean; reason?: string };
-    if (r.ok) return respond(body.json, { ok: true, message: SAVED }, 200, back);
+    const r = data as { ok: boolean; reason?: string; lead_id?: string; created?: boolean; confirm?: boolean };
+    if (r.ok) {
+      // The lead is saved; emails go out after the answer is sent and every attempt is recorded on the lead.
+      if (r.lead_id) {
+        const lead = { id: r.lead_id, ...parsed.data };
+        after(() => notifyLead(lead, { created: Boolean(r.created), confirm: Boolean(r.confirm) }).catch((e) => console.error("Lead emails failed", e instanceof Error ? e.message : e)));
+      }
+      return respond(body.json, { ok: true, message: SAVED }, 200, back);
+    }
     if (r.reason === "rate_limited") {
       return respond(body.json, { ok: false, error: "Too many messages from this network. Please wait 15 minutes and try again." }, 429, back);
     }

@@ -1,24 +1,39 @@
 import { z } from "zod";
 
-export const FLEET_SIZES = ["1–5 trucks", "6–15 trucks", "16–40 trucks", "41–100 trucks", "More than 100 trucks"] as const;
-
 const text = (max: number, label: string) => z.string().trim().max(max, `${label} must be ${max} characters or fewer.`);
 
-/** The demo request and contact forms. Checked again by the database. */
+/** A whole number typed into a form field, or null when left empty. */
+const count = (min: number, max: number, label: string) =>
+  z.preprocess(
+    (v) => (v === undefined || v === null || (typeof v === "string" && v.trim() === "") ? null : typeof v === "string" ? v.trim() : v),
+    z.union([
+      z.null(),
+      z.coerce.number({ error: `Enter the number of ${label}.` }).int(`Enter a whole number of ${label}.`).min(min, `Enter at least ${min}.`).max(max, `Enter at most ${max.toLocaleString("en-US")}.`),
+    ]),
+  );
+
+/**
+ * The demo request and contact forms. Checked again by the database. A demo
+ * request needs the company, the number of hauling trucks and of dispatch bases.
+ */
 export const leadSchema = z
   .object({
     kind: z.enum(["demo", "contact"]),
-    name: text(120, "Name").min(1, "Enter your name."),
+    name: text(120, "Name").min(1, "Enter your full name."),
     email: z.string().trim().toLowerCase().max(254, "Email is too long.").pipe(z.email("Enter a valid email address.")),
     company_name: text(160, "Company"),
     phone: text(40, "Phone").regex(/^[0-9+().\-\s]*$/, "Use digits, spaces and + ( ) - only."),
-    role_title: text(120, "Role"),
-    fleet_size: z.union([z.enum(FLEET_SIZES), z.literal("")]),
+    truck_count: count(0, 100_000, "hauling trucks"),
+    base_count: count(1, 1_000, "dispatch bases"),
     message: text(4000, "Message"),
     source_path: z.string().max(200).regex(/^\/[a-z-]*$/).catch("/"),
   })
   .superRefine((v, ctx) => {
-    if (v.kind === "demo" && !v.company_name) ctx.addIssue({ code: "custom", path: ["company_name"], message: "Enter your company name." });
+    if (v.kind === "demo") {
+      if (!v.company_name) ctx.addIssue({ code: "custom", path: ["company_name"], message: "Enter your company name." });
+      if (v.truck_count === null) ctx.addIssue({ code: "custom", path: ["truck_count"], message: "Enter the number of hauling trucks (0 if none)." });
+      if (v.base_count === null) ctx.addIssue({ code: "custom", path: ["base_count"], message: "Enter the number of dispatch bases." });
+    }
     if (v.kind === "contact" && v.message.length < 10) ctx.addIssue({ code: "custom", path: ["message"], message: "Tell us a little more (at least 10 characters)." });
   });
 export type LeadInput = z.infer<typeof leadSchema>;

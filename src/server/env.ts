@@ -11,6 +11,8 @@ const schema = z.object({
   EMAIL_FROM: z.string().optional(),
   EMAIL_REPLY_TO: z.string().optional(),
   EMAIL_TEST_RECIPIENT: z.email().optional(),
+  /** Where new website leads are announced (the Taviron team's inbox). */
+  LEAD_NOTIFY_EMAIL: z.email().optional(),
 });
 
 export type ServerEnv = z.infer<typeof schema>;
@@ -33,6 +35,7 @@ export function env(): ServerEnv {
     EMAIL_FROM: blankToUndefined(process.env.EMAIL_FROM),
     EMAIL_REPLY_TO: blankToUndefined(process.env.EMAIL_REPLY_TO),
     EMAIL_TEST_RECIPIENT: blankToUndefined(process.env.EMAIL_TEST_RECIPIENT),
+    LEAD_NOTIFY_EMAIL: blankToUndefined(process.env.LEAD_NOTIFY_EMAIL),
   });
   if (!parsed.success) {
     const fields = parsed.error.issues.map((i) => i.path.join(".")).join(", ");

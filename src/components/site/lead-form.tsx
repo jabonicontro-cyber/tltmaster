@@ -2,7 +2,6 @@
 
 import { useRef, useState, type FormEvent } from "react";
 import { CheckCircle2 } from "lucide-react";
-import { FLEET_SIZES } from "@/lib/site/lead";
 
 type Kind = "demo" | "contact";
 
@@ -55,7 +54,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
       <div role="status" className="rounded-xl border border-white/10 bg-white/[0.03] p-8">
         <CheckCircle2 className="size-8 text-brand" aria-hidden />
         <h2 className="mt-4 text-xl font-bold text-white">Thank you — your message reached the Taviron team.</h2>
-        <p className="mt-2 text-white/65">{kind === "demo" ? "We will be in touch by email to find a time for the walkthrough." : "We will reply by email."}</p>
+        <p className="mt-2 text-white/65">{kind === "demo" ? "We will follow up by email to arrange the walkthrough." : "We will reply by email."}</p>
       </div>
     );
   }
@@ -86,7 +85,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
       ) : null}
       <div className="grid gap-5 sm:grid-cols-2">
         <label className="block text-sm font-medium text-white/85">
-          Name
+          Full name
           <input name="name" required maxLength={120} autoComplete="name" className={input} {...aria("name")} />
           {err("name")}
         </label>
@@ -108,23 +107,15 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
         {kind === "demo" ? (
           <>
             <label className="block text-sm font-medium text-white/85">
-              Your role <span className="text-white/45">(optional)</span>
-              <input name="role_title" maxLength={120} placeholder="Owner, dispatcher, office manager…" className={input} {...aria("role_title")} />
-              {err("role_title")}
+              Number of hauling trucks
+              <input name="truck_count" type="number" inputMode="numeric" required min={0} max={100000} step={1} className={input} {...aria("truck_count")} />
+              {err("truck_count")}
             </label>
             <label className="block text-sm font-medium text-white/85">
-              Fleet size <span className="text-white/45">(optional)</span>
-              <select name="fleet_size" defaultValue="" className={input} {...aria("fleet_size")}>
-                <option value="" className="bg-[#17181b]">
-                  Choose…
-                </option>
-                {FLEET_SIZES.map((f) => (
-                  <option key={f} value={f} className="bg-[#17181b]">
-                    {f}
-                  </option>
-                ))}
-              </select>
-              {err("fleet_size")}
+              Number of dispatch bases
+              <input name="base_count" type="number" inputMode="numeric" required min={1} max={1000} step={1} className={input} {...aria("base_count")} />
+              {err("base_count")}
+              <span className="mt-1 block text-xs text-white/45">Locations your trucks are dispatched from.</span>
             </label>
           </>
         ) : null}
@@ -132,7 +123,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
       <label className="block text-sm font-medium text-white/85">
         {kind === "demo" ? (
           <>
-            What would you like to see? <span className="text-white/45">(optional)</span>
+            What would you most like Taviron to improve? <span className="text-white/45">(optional)</span>
           </>
         ) : (
           "Message"

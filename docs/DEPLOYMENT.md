@@ -123,6 +123,17 @@ npx supabase migration list       # the new row now shows a Remote version too
 Migrations are additive and never delete data. If `db push` reports an error, stop, keep
 the output, and do not retry or edit anything until it has been looked at.
 
+The demo-request update adds `20261028000100_demo_lead_workflow.sql` (apply after N15). It folds
+the earlier lead statuses into the six agreed ones — qualified → Contacted, onboarding → Converted
+(onboarding in progress), won → Converted, lost → Not Proceeding, spam → Not Proceeding flagged as
+spam — and records each change in the lead's history; no lead or history entry is removed. Until it
+is applied, the website form still saves leads but the truck and base counts are dropped, no email
+attempt is recorded, and changing a lead's status in `/admin/leads` fails.
+Reversal, only if needed and after a backup: run `supabase/rollbacks/20261028000100_demo_lead_workflow.down.sql`
+in the SQL editor (it restores the earlier statuses and functions and keeps all data). Lead emails
+stay off until you choose an email provider: with `EMAIL_PROVIDER=preview` every attempt is
+recorded on the lead as "not sent".
+
 N15 adds `20261027000100_smart_dispatch_workflow_branding.sql` and
 `20261027000200_branding_settings_grant.sql` (Smart Dispatch rejections, safety-report and
 capacity checks in assignments, automatic order on quote acceptance, the delivery-location

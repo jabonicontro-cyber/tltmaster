@@ -11,7 +11,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | --- | --- |
 | `docs/SESSION_HANDOFF.md` | Current state, deployment status, outstanding owner actions. Read it first. |
 | `docs/TAVIRON_MASTER_PLAN.md` | **The one authoritative plan:** status by area, confirmed decisions vs proposals, pricing proposal, Outstanding Fixes and Operational Risks (§8), open decisions (§9), roadmap order (§11). Update it; never start a competing plan. |
-| `docs/IMPLEMENTATION_PLAN.md` | What was built per milestone (§5–§5o). |
+| `docs/IMPLEMENTATION_PLAN.md` | What was built per milestone (§5–§5p). |
 | `docs/DEPLOYMENT.md` | Vercel + Supabase staging, migrations (§2a), platform access (§3a). |
 | `docs/SETUP.md` | Environment variables, the local stack without Docker, tests. |
 | `docs/ARCHITECTURE.md` | Request flow and the security model. |
@@ -33,6 +33,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Never edit an applied migration; add a new versioned file in `supabase/migrations/`.
   - Back up the dev database before applying one: `pg_dump -Fc` into `/var/lib/tlt-backups/`.
   - Staging and production migrations are the owner's action (DEPLOYMENT §2a).
+  - A reversible change gets a tested rollback script in `supabase/rollbacks/` (not a migration).
 - **No silent side effects:**
   - No real emails, invoices, accounting exports or payments without explicit authorization.
   - The demo company never sends anything.

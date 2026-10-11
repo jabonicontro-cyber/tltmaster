@@ -50,19 +50,24 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   const id = unique();
   const email = `pat.${id}@example.com`;
   await page.goto("/demo");
-  await page.getByLabel("Name").fill(`Pat Example ${id}`);
+  await page.getByLabel("Full name").fill(`Pat Example ${id}`);
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel(/^Company/).fill(`Example Hauling ${id} (test)`);
-  await page.getByLabel(/Fleet size/).selectOption("6–15 trucks");
-  await page.getByLabel(/What would you like to see/).fill("Dispatch board and ticket review.");
+  await page.getByLabel(/What would you most like Taviron to improve/).fill("Dispatch board and ticket review.");
   await page.waitForTimeout(2600); // a person takes a moment; instant submissions are treated as automated
+  // The truck and dispatch-base counts are required.
+  await page.getByRole("button", { name: "Request a demo" }).click();
+  await expect(page.locator("#truck_count-error")).toHaveText("Enter the number of hauling trucks (0 if none).");
+  await expect(page.locator("#base_count-error")).toHaveText("Enter the number of dispatch bases.");
+  await page.getByLabel("Number of hauling trucks").fill("18");
+  await page.getByLabel("Number of dispatch bases").fill("2");
   await page.getByRole("button", { name: "Request a demo" }).click();
   await expect(page.getByText("Thank you — your message reached the Taviron team.")).toBeVisible();
 
   // Validation is shown in the form (and checked again on the server).
   const other = await browser.newPage();
   await other.goto("/contact");
-  await other.getByLabel("Name").fill("Sam");
+  await other.getByLabel("Full name").fill("Sam");
   await other.getByLabel("Work email").fill("not-an-email");
   await other.getByLabel("Message").fill("Hello there, a question about pricing.");
   await other.waitForTimeout(2600);
@@ -77,6 +82,15 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByRole("link", { name: `Pat Example ${id}` }).click();
   await expect(page.getByText(`Example Hauling ${id} (test)`).first()).toBeVisible();
   await expect(page.getByText("Dispatch board and ticket review.")).toBeVisible();
+  await expect(page.getByText("Hauling trucks").locator("..")).toContainText("18");
+  await expect(page.getByText("Dispatch bases").locator("..")).toContainText("2");
+  // Both emails were recorded, and nothing was sent (preview mode).
+  const emails = page.getByRole("list", { name: "Email attempts" });
+  await expect(emails.getByRole("listitem")).toHaveCount(2);
+  await expect(emails).toContainText("Confirmation to the prospect");
+  await expect(emails).toContainText("Notification to Taviron");
+  await expect(emails.getByText("Not sent")).toHaveCount(2);
+  await expect(page.getByLabel("Status").locator("option")).toHaveText(["New", "Contacted", "Demo Scheduled", "Demo Completed", "Converted", "Not Proceeding"]);
   await page.getByLabel("Status").selectOption("contacted");
   await page.getByLabel("Owner").selectOption({ label: PLATFORM_USER.name });
   await page.getByLabel("Follow up on").fill("2030-01-15");
@@ -89,6 +103,20 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await expect(history.getByText("New → Contacted")).toBeVisible();
   await expect(history.getByText("Changed the owner")).toBeVisible();
   await expect(history.getByText(`Called ${id}; demo next week.`)).toBeVisible();
+
+  // Spam needs Not Proceeding; flagged leads leave the default queue.
+  await page.getByLabel("Spam").check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Only a lead marked Not Proceeding can be flagged as spam.")).toBeVisible();
+  await page.getByLabel("Status").selectOption("not_proceeding");
+  await page.getByLabel("Spam").check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByText("Saved.")).toBeVisible();
+  await expect(history.getByText("Flagged as spam")).toBeVisible();
+  await page.goto(`/admin/leads?q=${id}`);
+  await expect(page.getByRole("link", { name: `Pat Example ${id}` })).toHaveCount(0);
+  await page.goto(`/admin/leads?q=${id}&status=spam`);
+  await expect(page.getByRole("link", { name: `Pat Example ${id}` })).toBeVisible();
 });
 
 test("the platform area is not reachable without the platform role", async ({ page, request }) => {

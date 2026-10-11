@@ -11,7 +11,7 @@ project credentials. Read it together with:
 
 - **Branch:** `claude/top-line-trucking-manager-vmw04i`. This is the only development branch, and Vercel
   deploys the staging site from it. Run `git log --oneline -5` to see the current head.
-- **Migrations:** 25 in `supabase/migrations/`, the latest being `20261027000200_branding_settings_grant.sql` (N15).
+- **Migrations:** 26 in `supabase/migrations/`, the latest being `20261028000100_demo_lead_workflow.sql` (demo-request workflow).
   Never edit an applied migration; add new ones.
 - **Lint, typecheck and build:** clean at handoff.
 
@@ -71,7 +71,7 @@ any custom domain added to the project later (none is known).
 
 | Item | Status |
 | --- | --- |
-| **Migrations `20261024000100` (N13), `20261025000100`, `20261026000100` (N14), `20261027000100`, `20261027000200` (N15)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a (which also says what the app does until they are applied). |
+| **Migrations `20261024000100` (N13), `20261025000100`, `20261026000100` (N14), `20261027000100`, `20261027000200` (N15), `20261028000100` (demo leads)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a (which also says what the app does until they are applied). |
 | What staging does until the migration is applied | The app keeps working. The demo/contact form says it cannot save. `/admin` answers 404. This comes from reading the code; it was not observed live. |
 | `PUBLIC_SITE` | Not set as far as known, so the website is behind the gate. Devices admitted with a site code, and signed-in users, still see every page; this was verified locally on a production build of `a652bbb`. |
 | `SITE_INDEXING` | Not set as far as known, so nothing is indexed. |
@@ -127,7 +127,9 @@ any custom domain added to the project later (none is known).
 **2026-10-11 consolidation:** `docs/TAVIRON_MASTER_PLAN.md` now holds the founder's full master context (status by
 area, branding palette, pricing proposal, demo-lead requirements, Outstanding Fixes and Operational Risks §8,
 open decisions §9, roadmap order §11). Design skills from `emilkowalski/skills` are installed in `.claude/skills/`.
-The first item on the roadmap is website and demo readiness (master plan §11.1).
+The first item on the roadmap is website and demo readiness (master plan §11.1). The demo-request flow is done
+locally (IMPLEMENTATION_PLAN §5p); next come the reminders (§8 W6) and the pricing page (§8 W1), each after the
+founder reviews the previous step.
 
 
 Finish B3 staging, which now includes N13, N14 and N15 (section 5 above), then answer the open questions in TAVIRON_MASTER_PLAN §4. After that:
