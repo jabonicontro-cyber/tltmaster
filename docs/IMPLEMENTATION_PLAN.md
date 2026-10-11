@@ -1416,7 +1416,7 @@ drivers.
 | --- | --- |
 | Early Access page, server-enforced gate, revocation, rate limiting, audit | Implemented and verified (local production build) |
 | Separation: gate ≠ account ≠ company membership ≠ role | Implemented and verified |
-| Hosted deployment (HTTPS address) | **Blocked on your accounts** — Vercel and Supabase projects must be created by you (docs/DEPLOYMENT.md); not deployed by this work |
+| Hosted deployment (HTTPS address) | **Partial** — staging live at `https://tltmaster.vercel.app` (Vercel Hobby, Supabase via the Vercel integration, all 20 migrations pushed); the owner's outside-in check passed 15/17, the 2 failures being a checker defect fixed in `89ddf32` (re-run pending). Code, company and owner login not yet created; sign-in on a phone not yet confirmed. See docs/SESSION_HANDOFF.md |
 | Custom domain / DNS | Planned — no domain available; steps documented |
 | Admin screen for codes | Planned — codes are managed with the operator script (service-role key) |
 | Per-tester invitations tied to an email | Planned — today: one code per tester group, device-limited and revocable |
@@ -1432,11 +1432,12 @@ drivers.
 
 ## Recommended next task
 
-**B3 — staging deployment**, now prepared step by step in docs/DEPLOYMENT.md (Supabase +
-Vercel, all 20 migrations via `supabase db push`, gate secret, auth email settings, then
-`scripts/check-deployment.mjs` against the live URL, a backup/restore drill, the sign-up →
-onboarding → invitation flow with a real inbox and the `ticket-photos` bucket checks). It
-needs your accounts and is the dependency for every external verification below.
+**Finish B3 — staging deployment** (in progress; state in docs/SESSION_HANDOFF.md): rotate
+`SITE_ACCESS_SECRET`, re-run `scripts/check-deployment.mjs` against the live URL, create the
+owner's site-access code, company and owner login, sign in from a phone, then Supabase Auth
+URL configuration, email templates and SMTP, the `ticket-photos` bucket check, a
+backup/restore drill and the invitation flow with a real inbox. It is the dependency for
+every external verification below.
 
 Then, in order of value and readiness:
 1. **Payroll readiness (§8 A)** — only after the pay rules of the participating companies are
