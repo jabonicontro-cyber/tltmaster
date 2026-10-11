@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PRODUCT_NAME } from "@/lib/product";
@@ -18,15 +19,14 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     // data-theme is set before paint by THEME_SCRIPT, so the server and client markup differ on <html> only.
     <html lang="en" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
-      </head>
       <body>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-card focus:px-3 focus:py-2">
           Skip to content
         </a>
         {children}
         <Toaster />
+        {/* Applies the saved light/dark choice early. next/script, not a raw <script>: a raw one in the layout stops router.refresh from updating the page. */}
+        <Script id="taviron-theme" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </body>
     </html>
   );
