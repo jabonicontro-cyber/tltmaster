@@ -85,7 +85,7 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
           <QuoteMiniList rows={[...quotes.pastExpiration, ...quotes.followUp]} empty="Nothing needs follow-up right now." today={today} />
         </Card>
         <Card>
-          <CardHeader title="Recently accepted" description="Open a quote and choose “Convert to order” to create its order." />
+          <CardHeader title="Recently accepted" description="Accepted quotes become orders automatically; open one to see its order." />
           <QuoteMiniList rows={quotes.recentAccepted} empty="No quotes accepted in this period." today={today} />
         </Card>
         <Card>

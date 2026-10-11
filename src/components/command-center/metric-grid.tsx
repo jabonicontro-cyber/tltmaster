@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 const toneClasses: Record<MetricCard["tone"], string> = {
   default: "border-line",
   warn: "border-amber-300",
-  bad: "border-brand",
+  bad: "border-critical",
   good: "border-green-300",
 };
 
@@ -16,11 +16,11 @@ export function MetricGrid({ cards }: { cards: MetricCard[] }) {
       {cards.map((c) => {
         const body = (
           <div className={cn("flex h-full flex-col rounded-lg border border-l-4 bg-white p-3 sm:p-4 shadow-xs transition-colors", toneClasses[c.tone], c.href && "hover:bg-surface/60")}>
-            <p className="text-sm font-semibold text-muted">{c.label}</p>
+            <p className="text-[13px] font-medium text-muted">{c.label}</p>
             {c.value === null ? (
-              <p className="mt-1 text-lg font-bold text-muted">Not available</p>
+              <p className="mt-1 text-lg font-semibold text-muted">Not available</p>
             ) : (
-              <p className={cn("text-2xl font-black tabular sm:text-3xl", c.tone === "bad" ? "text-brand" : "text-ink")}>{c.value}</p>
+              <p className={cn("mt-1 text-2xl font-semibold tracking-tight tabular sm:text-[1.75rem]", c.tone === "bad" ? "text-critical" : "text-ink")}>{c.value}</p>
             )}
             <p className="mt-auto pt-1 text-sm text-muted">{c.sub}</p>
           </div>

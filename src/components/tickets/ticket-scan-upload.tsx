@@ -79,7 +79,7 @@ export function TicketScanUpload({ ticketId }: { ticketId: string }) {
           </span>
         )}
         {state.kind === "failed" && (
-          <span role="alert" className="inline-flex flex-wrap items-center gap-2 text-sm text-brand">
+          <span role="alert" className="inline-flex flex-wrap items-center gap-2 text-sm text-critical">
             Not added: {state.error}
             <button type="button" className={buttonClasses("ghost", "sm")} onClick={() => send(state.blob, state.key)}>
               <RotateCcw className="size-4" aria-hidden /> Try again

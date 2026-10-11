@@ -124,6 +124,10 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
+**App overhaul Phase 1 (2026-10-11):** shell + Command Center restyled, urgency colour fixed, presentation mode
+for clean screenshots (IMPLEMENTATION_PLAN §5r, `docs/SCREENSHOTS.md`). The public-page redesign is paused until
+the app modules are done; next app module per the founder's review.
+
 **Website redesign Phase 1 (2026-10-11):** the homepage is redesigned on the Taviron palette (IMPLEMENTATION_PLAN
 §5q). Phase 2 = the other public pages (Platform, Solutions, Pricing — pricing content waits for the founder's
 approval —, About, Demo, Contact, legal).

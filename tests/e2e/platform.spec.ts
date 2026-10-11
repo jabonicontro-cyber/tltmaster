@@ -184,6 +184,19 @@ test("live demo: a separate company with fictional data; role previews only narr
   // Back to myself.
   await page.getByRole("region", { name: "Demo company" }).getByLabel("View as").selectOption("");
   await expect(page.getByRole("region", { name: "Demo company" })).not.toContainText("previewing");
+
+  // Presentation mode (for screenshots and live demos): the bar is tucked away — data, alerts and
+  // permissions unchanged — and comes back from the user menu.
+  await page.goto("/command-center");
+  const attention = (await page.getByRole("region", { name: "Attention summary" }).textContent())!.split("As of")[0].trim();
+  await page.getByRole("region", { name: "Demo company" }).getByRole("button", { name: "Presentation mode" }).click();
+  await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
+  await expect(page.getByRole("region", { name: "Attention summary" })).toContainText(attention); // alerts unchanged
+  await page.reload();
+  await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
+  await page.getByRole("button", { name: new RegExp(PLATFORM_USER.name) }).click();
+  await page.getByRole("menuitem", { name: "Show the demo bar" }).click();
+  await expect(page.getByRole("region", { name: "Demo company" })).toBeVisible();
   await page.goto("/billing");
   await expect(page).toHaveURL(/\/billing/);
   // No external side effects: invitations are refused in the demo company.

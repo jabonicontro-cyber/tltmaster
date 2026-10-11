@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+import { PRESENTATION_COOKIE } from "@/lib/platform/preview";
 import { AppShell, type ShellBranding } from "@/components/layout/app-shell";
 import { requireAccess } from "@/server/auth";
 import { myCompanies } from "@/server/data/companies";
@@ -16,5 +18,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       (): ShellBranding => ({ color: "", sidebarColor: "", logoUrl: "" }),
     ),
   ]);
-  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} branding={branding}>{children}</AppShell>;
+  // Presentation mode only ever applies inside a demo company.
+  const presentation = access.isDemo && (await cookies()).get(PRESENTATION_COOKIE)?.value === "1";
+  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} presentation={presentation} branding={branding}>{children}</AppShell>;
 }

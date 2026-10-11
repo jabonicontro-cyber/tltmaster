@@ -314,19 +314,19 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {/* Pinned status strip: not movable, not collapsible, urgent counts always visible. */}
       {ops &&
         (s ? (
-          <section aria-label="Attention summary" className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-charcoal px-4 py-3 text-white sm:px-5">
-            <p className="text-lg font-black">
+          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-white px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
+            <p className="text-base font-semibold text-ink">
               {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
             </p>
             {s.exceptions.urgent > 0 && (
-              <Link href={href({})} className="rounded bg-brand px-2 py-0.5 text-sm font-bold">{s.exceptions.urgent} urgent</Link>
+              <Link href={href({})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>
             )}
             {(s.urgent_orders ?? 0) > 0 && (
-              <Link href={href({ kind: "urgent_order" })} className="text-sm font-semibold underline">{s.urgent_orders} urgent order{s.urgent_orders === 1 ? "" : "s"}</Link>
+              <Link href={href({ kind: "urgent_order" })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{s.urgent_orders} urgent order{s.urgent_orders === 1 ? "" : "s"}</Link>
             )}
-            {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold underline">{s.exceptions.mine} assigned to you</Link>}
-            {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-white/80 underline">{s.exceptions.hidden} hidden by you</Link>}
-            <p className="ml-auto text-xs text-white/70">As of {formatDateTime(s.as_of, timezone)}</p>
+            {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold text-brand-dark underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link>}
+            {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
+            <p className="ml-auto text-xs text-muted">As of {formatDateTime(s.as_of, timezone)}</p>
           </section>
         ) : (
           <div className="mb-5">
@@ -348,7 +348,7 @@ function Chip({ href, active, label, count }: { href: string; active: boolean; l
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-semibold", active ? "border-charcoal bg-charcoal text-white" : "border-line bg-white text-ink hover:border-charcoal/40")}
+      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", active ? "border-charcoal bg-charcoal text-white" : "border-line bg-white text-ink hover:border-charcoal/30")}
     >
       {label}
       {count !== undefined && <Badge tone={active ? "dark" : count > 0 ? "amber" : "gray"}>{count}</Badge>}

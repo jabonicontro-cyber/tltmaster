@@ -70,8 +70,8 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
                 aria-controls={`section-body-${id}`}
                 className="flex min-w-0 items-center gap-1.5 text-left"
               >
-                {isCollapsed ? <ChevronRight className="size-4 shrink-0" aria-hidden /> : <ChevronDown className="size-4 shrink-0" aria-hidden />}
-                <h2 id={`section-${id}`} className="text-lg font-black text-ink">{s.title}</h2>
+                {isCollapsed ? <ChevronRight className="size-4 shrink-0 text-muted" aria-hidden /> : <ChevronDown className="size-4 shrink-0 text-muted" aria-hidden />}
+                <h2 id={`section-${id}`} className="text-base font-semibold text-ink">{s.title}</h2>
               </button>
               {isCollapsed && s.collapsedSummary && <span className="truncate text-sm text-muted">{s.collapsedSummary}</span>}
               {customizing && (

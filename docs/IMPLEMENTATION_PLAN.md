@@ -1801,6 +1801,31 @@ motion), `mobile-native` (16px inputs, no tap flash, hover only on pointer devic
 - **Tests:** `tests/e2e/platform.spec.ts` gains a homepage test (one h1, demo links → `/demo`, image alt text,
   visible keyboard focus).
 
+## 5r. App overhaul — Phase 1: shell and Command Center (2026-10-11)
+
+Design skills applied: `emil-design-eng` (restraint, hierarchy through weight and spacing rather than colour,
+no new motion), `mobile-native` (larger tap targets, light header that does not fight the content).
+
+- **Tokens:** the app's defaults are now Taviron's — `brand` action blue `#0F6FD6`, `charcoal` navy `#0C1A2B`
+  (+ `-2`, `-3`) — and a new `critical` `#B91C1C` for urgency. A company's colours still override `brand` and
+  `charcoal` (`src/lib/branding.ts`); `critical` cannot be overridden.
+- **Fix — urgency followed the company's colour:** priority-1 items, the "urgent" pill, "bad" metric cards,
+  the Dispatch urgent-orders panel and ticket-scan errors used `brand`, so a company with a purple brand saw
+  purple urgent alerts (and the default red buttons looked like alarms). They now use `critical`.
+- **Shell** (`app-shell.tsx`, `company-identity.tsx`, `sidebar-nav.tsx`, `mobile-nav.tsx`, `user-menu.tsx`):
+  the company's logo — or a monogram in its accent colour with its name — leads the sidebar and the mobile
+  header; "Powered by Taviron" with the small emblem sits at the foot of the menu; a light header bar with the
+  user menu; quieter navigation (14px, white active state, accent bar).
+- **First-party screens** (sign-in, onboarding, no-access, errors, platform area) use the shared Taviron emblem
+  and wordmark (`BrandMark` in `brand.tsx`, also used by the public site's logo).
+- **Command Center:** a white status strip with a left edge in the state's colour (red urgent / amber open /
+  green clear), semibold rather than black headings, lighter chips and metric labels, unchanged content and
+  logic. Copy fix: accepted quotes become orders automatically.
+- **Presentation mode** (demo company only): hides the demo bar for screenshots and live demos via a cookie;
+  restored from the user menu. No data, alert or permission changes. Procedure: `docs/SCREENSHOTS.md`.
+- **Tests:** `branding.spec` (default accent, company identity, urgent stays red), `platform.spec` (presentation
+  mode on/off with alerts unchanged).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

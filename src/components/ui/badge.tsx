@@ -13,7 +13,7 @@ const tones: Record<Tone, string> = {
   amber: "bg-amber-50 text-amber-900 ring-amber-200",
   red: "bg-red-50 text-red-800 ring-red-200",
   dark: "bg-charcoal text-white ring-charcoal",
-  brand: "bg-brand-light text-brand-dark ring-red-200",
+  brand: "bg-brand-light text-brand-dark ring-brand/25",
 };
 
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {

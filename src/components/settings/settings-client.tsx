@@ -66,16 +66,16 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
                 <Checkbox id="remove_logo" name="remove_logo" label="Remove the logo (show the Taviron mark instead)" checked={removeLogo} onChange={(e) => setRemoveLogo(e.currentTarget.checked)} />
               </div>
             ) : null}
-            <Field label="Accent color" htmlFor="brand_color" error={fe("brand_color") ?? live.brand_color} className="sm:col-span-3" hint="Buttons, links and highlights. Leave empty for the default red.">
+            <Field label="Accent color" htmlFor="brand_color" error={fe("brand_color") ?? live.brand_color} className="sm:col-span-3" hint="Buttons, links and highlights. Leave empty for the default blue.">
               <div className="flex gap-2">
-                <input type="color" aria-label="Pick the accent color" value={color || "#ed1c24"} onChange={(e) => setColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
-                <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#ed1c24" maxLength={7} />
+                <input type="color" aria-label="Pick the accent color" value={color || "#0f6fd6"} onChange={(e) => setColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#0f6fd6" maxLength={7} />
               </div>
             </Field>
-            <Field label="Navigation color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="The menu and top bar. Leave empty for the default charcoal.">
+            <Field label="Navigation color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="The menu and top bar. Leave empty for the default navy.">
               <div className="flex gap-2">
-                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#1c1e21"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
-                <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#1c1e21" maxLength={7} />
+                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#0c1a2b" maxLength={7} />
               </div>
             </Field>
           </fieldset>

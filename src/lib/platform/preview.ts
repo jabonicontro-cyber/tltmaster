@@ -28,6 +28,9 @@ export const PREVIEW_SOURCES: Record<PreviewRole, AppRole[]> = {
 
 export const PREVIEW_COOKIE = "taviron-preview";
 
+/** Presentation mode (demo company only): the demo bar is tucked into the user menu. */
+export const PRESENTATION_COOKIE = "taviron-presentation";
+
 export function parsePreviewRole(value: string | null | undefined): PreviewRole | null {
   return value && (PREVIEW_ROLES as readonly string[]).includes(value) ? (value as PreviewRole) : null;
 }

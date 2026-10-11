@@ -1,12 +1,16 @@
 @import "tailwindcss";
 
 @theme {
-  --color-brand: #ed1c24;
-  --color-brand-dark: #c1121a;
-  --color-brand-light: #fdeaea;
-  --color-charcoal: #1c1e21;
-  --color-charcoal-2: #2a2d31;
-  --color-charcoal-3: #3a3e44;
+  /* App defaults = Taviron (action blue, navy navigation). A company's own
+     colors override brand and charcoal inside its workspace (src/lib/branding.ts).
+     Never use brand for urgency: that is "critical", which tenants cannot change. */
+  --color-brand: #0f6fd6;
+  --color-brand-dark: #0b5db6;
+  --color-brand-light: #e8f1fc;
+  --color-charcoal: #0c1a2b;
+  --color-charcoal-2: #10233a;
+  --color-charcoal-3: #17304e;
+  --color-critical: #b91c1c; /* urgent / safety states: white text 6.5:1 */
   --color-ink: #1f2328;
   --color-muted: #5f6670;
   --color-line: #dfe2e6;

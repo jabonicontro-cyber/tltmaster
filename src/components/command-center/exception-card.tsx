@@ -11,7 +11,7 @@ import { formatDateTime } from "@/lib/dates";
 import { AssignControl, type Person } from "./assign-control";
 
 const priorityTone: Record<number, string> = {
-  1: "bg-brand text-white",
+  1: "bg-critical text-white",
   2: "bg-amber-100 text-amber-950 ring-1 ring-amber-300",
   3: "bg-surface text-charcoal ring-1 ring-line",
 };
@@ -22,10 +22,10 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
   const title = exceptionTitle(item);
   const age = ageLabel(item.since, now);
   return (
-    <li className={cn("grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:px-5", item.priority === 1 && "border-l-4 border-l-brand")} aria-label={title}>
+    <li className={cn("grid gap-3 px-4 py-4 sm:grid-cols-[1fr_auto] sm:px-5", item.priority === 1 && "border-l-4 border-l-critical")} aria-label={title}>
       <div className="min-w-0 space-y-1.5">
         <div className="flex flex-wrap items-center gap-2">
-          <span className={cn("rounded px-2 py-0.5 text-xs font-bold uppercase", priorityTone[item.priority] ?? priorityTone[3])}>{PRIORITY_LABELS[item.priority] ?? "Normal"}</span>
+          <span className={cn("rounded px-1.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase", priorityTone[item.priority] ?? priorityTone[3])}>{PRIORITY_LABELS[item.priority] ?? "Normal"}</span>
           <span className="text-xs font-semibold tracking-wide text-muted uppercase">{KIND_LABELS[item.kind]}</span>
           {age && (
             <span className="inline-flex items-center gap-1 text-xs text-muted" title={item.since ? formatDateTime(item.since, timezone) : undefined}>
@@ -33,7 +33,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
             </span>
           )}
         </div>
-        <p className="font-bold text-ink">{title}</p>
+        <p className="font-semibold text-ink">{title}</p>
         {item.customer_name && <p className="text-sm text-muted">{item.customer_name}</p>}
         <ul className="list-disc space-y-0.5 pl-5 text-sm">
           {exceptionReasons(item).map((r, i) => (

@@ -17,6 +17,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/ARCHITECTURE.md` | Request flow and the security model. |
 | `docs/SCHEMA.md` | Database tables and rules. |
 | `docs/RELEASE_CHECKLIST.md` | What to check before a release is called done. |
+| `docs/SCREENSHOTS.md` | How to capture product screenshots for the website. |
 | `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
 
 ## Rules that always apply
@@ -49,6 +50,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts. Public
   pages use the tokens in `src/app/globals.css` (`navy`, `electric`, `action`, `silver`, `cloud`); filled
   buttons with white text use `bg-action`, never `bg-electric`.
+- **Urgency colour:** urgent, critical and safety states use `critical` (fixed red), never `brand` — `brand`
+  follows each company's own colour.
+- **Screenshots of the app:** follow `docs/SCREENSHOTS.md` (demo company, presentation mode, production build).
   Company workspaces use the company's own branding (`src/lib/branding.ts`).
 - **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run
   `docs/RELEASE_CHECKLIST.md` before calling a release done.

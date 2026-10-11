@@ -29,7 +29,7 @@ export function PageHeader({ title, description, actions, crumbs, badges }: { ti
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-ink">{title}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight text-ink">{title}</h1>
             {badges}
           </div>
           {description && <p className="mt-1 text-[15px] text-muted">{description}</p>}
