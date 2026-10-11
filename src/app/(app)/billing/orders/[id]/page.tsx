@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { ClipboardList, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
 import { ExceptionTable } from "@/components/billing/exception-table";
+import { InvoiceDraftCard } from "@/components/billing/invoice-draft";
 import { ReadinessBadge } from "@/components/billing/readiness-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const { id } = await params;
   const data = await getOrderBilling(id);
   if (!data) notFound();
-  const { status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone } = data;
+  const { draft, status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone } = data;
   const e = readinessExplanation(o.readiness, o);
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
@@ -159,6 +160,8 @@ export default async function OrderBillingPage({ params, searchParams }: { param
             Order total <span className="font-semibold tabular">{formatCents(o.total_cents)}</span> (as accepted; includes any percentage charges, discounts and tax).
           </CardBody>
         </Card>
+
+        <InvoiceDraftCard draft={draft} />
 
         <Card>
           <CardHeader

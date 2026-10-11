@@ -10,6 +10,7 @@ import { URGENCY_LABELS, URGENCY_NEXT_OWNER, URGENCY_REASONS, type UrgencyState 
 
 export const EXCEPTION_KINDS = [
   "urgent_order",
+  "order_unscheduled",
   "unassigned_load",
   "assignment_problem",
   "missing_ticket",
@@ -23,6 +24,7 @@ export type ExceptionKind = (typeof EXCEPTION_KINDS)[number];
 
 export const KIND_LABELS: Record<ExceptionKind, string> = {
   urgent_order: "Urgent order",
+  order_unscheduled: "Needs a delivery date",
   unassigned_load: "Load without a truck",
   assignment_problem: "Assignment problem",
   missing_ticket: "Missing delivery ticket",
@@ -36,6 +38,7 @@ export const KIND_LABELS: Record<ExceptionKind, string> = {
 /** Who normally handles each kind (the permission that resolves it). */
 export const KIND_OWNERS: Record<ExceptionKind, string> = {
   urgent_order: "Dispatch",
+  order_unscheduled: "Dispatch or office (scheduling)",
   unassigned_load: "Dispatch",
   assignment_problem: "Dispatch",
   missing_ticket: "Office or dispatch",
@@ -50,9 +53,9 @@ export const PRIORITY_LABELS: Record<number, string> = { 1: "Urgent", 2: "High",
 
 /** How priority is decided (shown on the page; mirrors the SQL). */
 export const PRIORITY_RULES = [
-  "Urgent: an order flagged urgent that dispatch has not acknowledged yet (or past its needed-by time), a load today with no truck, an upcoming load (today or tomorrow) whose assignment the dispatch rules would now refuse, or a new driver report of a breakdown or a load that cannot be completed.",
-  "High: an urgent order being worked on (acknowledged, evaluating, waiting or blocked), a delivered load without a ticket, a ticket flagged for review, a later assignment problem, equipment out of service with loads booked on it, or another new driver report.",
-  "Normal: an urgent order with a truck assigned and not resolved yet, a ticket waiting for acceptance, an order blocked from billing by unacknowledged differences, equipment out of service with nothing booked, or a driver report already acknowledged.",
+  "Urgent: an order flagged urgent that dispatch has not acknowledged yet (or past its needed-by time), a confirmed order without a delivery date that the customer wants by tomorrow, a load today with no truck, an upcoming load (today or tomorrow) whose assignment the dispatch rules would now refuse, or a new driver report of a breakdown or a load that cannot be completed.",
+  "High: an urgent order being worked on (acknowledged, evaluating, waiting or blocked), an unscheduled order requested within a week or confirmed more than two days ago, a delivered load without a ticket, a ticket flagged for review, a later assignment problem, equipment out of service with loads booked on it, or another new driver report.",
+  "Normal: an urgent order with a truck assigned and not resolved yet, any other confirmed order without a delivery date, a ticket waiting for acceptance, an order blocked from billing by unacknowledged differences, equipment out of service with nothing booked, or a driver report already acknowledged.",
 ];
 
 export interface ExceptionItem {
@@ -98,6 +101,9 @@ const REASONS: Record<string, string> = {
   report_equipment_issue: "The driver reported an equipment problem.",
   report_inspection_issue: "The driver reported an inspection problem.",
   report_acknowledged: "Acknowledged by the office; not resolved yet.",
+  no_delivery_date: "Confirmed, but no delivery date is set, so it is not on the dispatch board.",
+  requested_date_passed: "The customer's requested date has passed.",
+  requested_date_soon: "The customer asked for delivery by tomorrow or today.",
 };
 
 export function reasonText(code: string): string {
@@ -124,6 +130,8 @@ export function exceptionTitle(e: ExceptionItem): string {
   switch (e.kind) {
     case "urgent_order":
       return `${e.order_number ?? "Order"} is urgent — ${URGENCY_LABELS[(e.details.state as UrgencyState) ?? "awaiting_acknowledgement"].toLowerCase()}`;
+    case "order_unscheduled":
+      return `${e.order_number ?? "Order"}${e.customer_name ? ` (${e.customer_name})` : ""} needs a delivery date`;
     case "missing_ticket":
       return `${loadRef(e)} has no delivery ticket`;
     case "unassigned_load":
@@ -152,6 +160,10 @@ export function exceptionReasons(e: ExceptionItem): string[] {
     const n = Number(e.details.active_assignments ?? 0);
     out.push(n > 0 ? `${n} load${n === 1 ? " has" : "s have"} a truck assigned.` : "No truck assigned yet.");
   }
+  if (e.kind === "order_unscheduled") {
+    if (e.details.requested_date) out.push(`Requested for ${formatDate(String(e.details.requested_date))}.`);
+    if (e.details.project_name) out.push(`Job: ${String(e.details.project_name)}`);
+  }
   if (e.kind === "billing_blocked" && typeof e.details.exceptions_count === "number") {
     out.push(`${e.details.exceptions_count} difference${e.details.exceptions_count === 1 ? "" : "s"} to acknowledge.`);
   }
@@ -179,6 +191,8 @@ export function exceptionAction(e: ExceptionItem, can: { ticketsEdit: boolean; d
       return { label: "Open the billing order", href: `/billing/orders/${e.order_id}` };
     case "unassigned_load":
       return { label: "Assign a truck", href: board(e.load_date, e.load_id) };
+    case "order_unscheduled":
+      return can.dispatch ? { label: "Schedule it", href: "/dispatch#needs-scheduling" } : { label: "Open the order", href: `/orders/${e.order_id}` };
     case "ticket_review":
       return { label: "Review the ticket", href: `/tickets/${e.ticket_id}?queue=review` };
     case "billing_blocked":
@@ -227,6 +241,8 @@ export interface CommandSummary {
   by_kind: Partial<Record<ExceptionKind, number>>;
   /** Orders whose scheduled dates include today (orders.view). */
   orders_today?: number | null;
+  /** Confirmed orders with no delivery date (dispatch.view or orders.view); absent before N14. */
+  orders_unscheduled?: number | null;
   /** Open urgent flags (dispatch.view or orders.view). */
   urgent_orders?: number | null;
   loads_today: number | null;
@@ -262,6 +278,9 @@ export function metricCards(s: CommandSummary): MetricCard[] {
   const warnIf = (n: number | null, tone: MetricCard["tone"] = "warn") => (n && n > 0 ? tone : "default");
   if (s.urgent_orders !== undefined && s.urgent_orders !== null) {
     cards.push({ key: "urgent_orders", label: "Urgent orders open", value: s.urgent_orders, sub: "Flagged by the office, until resolved", href: queue("urgent_order"), tone: warnIf(s.urgent_orders, "bad") });
+  }
+  if (s.orders_unscheduled !== undefined && s.orders_unscheduled !== null) {
+    cards.push({ key: "orders_unscheduled", label: "Orders needing a delivery date", value: s.orders_unscheduled, sub: "Confirmed, not on the dispatch board yet", href: queue("order_unscheduled"), tone: warnIf(s.orders_unscheduled) });
   }
   if (s.orders_today !== undefined && s.orders_today !== null) {
     cards.push({ key: "orders_today", label: "Orders scheduled today", value: s.orders_today, sub: "Open the list for times and sites", href: "/orders?when=today", tone: "default" });

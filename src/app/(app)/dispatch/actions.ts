@@ -123,3 +123,42 @@ export async function cancelAssignment(input: z.input<typeof reasonInput>): Prom
     return ok(undefined, "Assignment removed.");
   });
 }
+
+const scheduleInput = z
+  .object({
+    orderId: z.uuid("Invalid order."),
+    expectedEditSeq: z.number().int().nonnegative(),
+    start: z.string().refine(isIsoDate, "Enter the delivery date."),
+    end: z.string().default("").refine((v) => v === "" || isIsoDate(v), "Enter a valid date."),
+  })
+  .superRefine((s, ctx) => {
+    if (s.end && s.end < s.start) ctx.addIssue({ code: "custom", message: "Must be on or after the delivery date.", path: ["end"] });
+  });
+
+/**
+ * Give a confirmed order its delivery dates and mark it Scheduled, from the
+ * dispatch board's "Needs scheduling" queue. Uses the same database functions
+ * (and checks) as the order page: the schedule first (edit-sequence checked,
+ * so a stale screen cannot overwrite a newer change), then the status.
+ */
+export async function scheduleOrderFromQueue(input: z.input<typeof scheduleInput>): Promise<ActionResult<{ date: string }>> {
+  return guard(async () => {
+    await assertPermission("orders.schedule");
+    const parsed = scheduleInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const { orderId, expectedEditSeq, start, end } = parsed.data;
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("update_order_schedule", {
+      p_order_id: orderId,
+      p_expected_edit_seq: expectedEditSeq,
+      p_payload: { scheduled_start: start, scheduled_end: end || null },
+    });
+    if (error) return fail(dbErrorMessage(error));
+    const seq = (data as { edit_seq: number }).edit_seq;
+    const { error: sErr } = await supabase.rpc("set_order_status", { p_order_id: orderId, p_status: "scheduled", p_note: "Scheduled from the dispatch queue", p_expected_edit_seq: seq });
+    revalidateBoard(orderId);
+    revalidatePath("/orders");
+    if (sErr) return fail(`The dates were saved, but the order could not be marked Scheduled: ${dbErrorMessage(sErr)}`);
+    return ok({ date: start }, "Scheduled. It is now on the board for that day.");
+  });
+}

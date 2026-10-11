@@ -132,3 +132,33 @@ export async function getOrderDispatch(orderId: string) {
     driverNames: name(drivers.data as Array<{ id: string; display_name: string }> | null, "display_name"),
   };
 }
+
+export interface UnscheduledOrder {
+  id: string;
+  order_number: string;
+  project_name: string;
+  requested_date: string | null;
+  confirmed_at: string | null;
+  edit_seq: number;
+  site_label: string;
+  customers: { name: string } | null;
+}
+
+/**
+ * Confirmed orders with no delivery date: they are not on any day of the
+ * board until scheduled (same rule as the Command Center's
+ * `order_unscheduled`). Earliest requested date first. null = could not load.
+ */
+export async function listUnscheduledOrders(): Promise<UnscheduledOrder[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, order_number, project_name, requested_date, confirmed_at, edit_seq, site_label, customers(name)")
+    .eq("status", "confirmed")
+    .is("scheduled_start", null)
+    .order("requested_date", { ascending: true, nullsFirst: false })
+    .order("confirmed_at", { ascending: true })
+    .limit(200);
+  if (error) return null;
+  return (data ?? []) as unknown as UnscheduledOrder[];
+}

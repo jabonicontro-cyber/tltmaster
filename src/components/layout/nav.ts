@@ -30,6 +30,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view" },
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view" },
-  { href: "/reports", label: "Reports", icon: BarChart3, planned: true },
+  { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"] },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

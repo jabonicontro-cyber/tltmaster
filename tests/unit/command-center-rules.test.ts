@@ -115,7 +115,7 @@ describe("overview cards", () => {
     ]);
     expect(cards.find((c) => c.key === "unassigned_loads")?.tone).toBe("bad");
     expect(cards.find((c) => c.key === "assignment_problems")?.tone).toBe("default");
-    expect(EXCEPTION_KINDS).toHaveLength(9); // incl. urgent_order (N10)
+    expect(EXCEPTION_KINDS).toHaveLength(10); // incl. urgent_order (N10), order_unscheduled (N14)
     expect(metricCards(summary({ driver_reports: 2 })).map((c) => [c.key, c.href, c.tone])).toEqual([["driver_reports", "/field-reports", "bad"]]);
   });
 });

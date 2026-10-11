@@ -1,4 +1,5 @@
 import "server-only";
+import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/billing/invoice-draft";
 import { uuid } from "@/lib/schemas/common";
 import type { ExceptionKind, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
 import type { TicketStatus } from "@/lib/tickets/rules";
@@ -285,7 +286,7 @@ export async function getOrderBilling(orderId: string) {
   const supabase = await createClient();
   const { data: status } = await supabase.from("billing_order_status").select("*").eq("order_id", orderId).maybeSingle();
   if (!status) return null;
-  const [loads, lines, exceptions, reviews, handoffs, tickets, names, people, { timezone }] = await Promise.all([
+  const [loads, lines, exceptions, reviews, handoffs, tickets, names, people, { timezone }, orderLines, order] = await Promise.all([
     supabase.from("billing_load_status").select("*").eq("order_id", orderId).order("load_number"),
     supabase.from("billing_line_status").select("*").eq("order_id", orderId).order("line_no"),
     supabase.from("billing_exceptions").select("*").eq("order_id", orderId),
@@ -295,8 +296,19 @@ export async function getOrderBilling(orderId: string) {
     resourceNames(),
     getUserNames(),
     businessToday(),
+    // Every line (percentages and discounts too) and the order's tax rate, for the invoice draft.
+    supabase.from("order_lines").select("id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").eq("order_id", orderId).order("line_no"),
+    supabase.from("orders").select("tax_rate_bp, total_cents").eq("id", orderId).maybeSingle(),
   ]);
+  const draft = buildInvoiceDraft({
+    lines: (orderLines.data ?? []) as DraftOrderLine[],
+    tickets: (tickets.data ?? []) as DraftTicket[],
+    taxRateBp: (order.data as { tax_rate_bp: number } | null)?.tax_rate_bp ?? 0,
+    orderTotalCents: (order.data as { total_cents: number } | null)?.total_cents ?? (status as BillingOrderRow).total_cents,
+    readiness: (status as BillingOrderRow).readiness,
+  });
   return {
+    draft,
     status: status as BillingOrderRow,
     loads: (loads.data ?? []) as BillingLoadRow[],
     lines: (lines.data ?? []) as BillingLineRow[],

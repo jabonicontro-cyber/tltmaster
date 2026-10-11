@@ -1540,10 +1540,94 @@ drivers.
 - Legal pages are drafts; pricing is a proposal. Both must be confirmed before general
   availability.
 
+## 5n. Workflow continuity, invoice drafts and measured reports (N14)
+
+### Module audit (verified in code and tests, 2026-10-11)
+
+| Module | State | Notes |
+| --- | --- | --- |
+| My Day (driver portal) | Implemented | Own assignments, tickets with photos, delay/breakdown reports. |
+| Command Center | Implemented | Live exception queue; N14 adds "needs a delivery date". |
+| Customers | Implemented | Contacts, sites, billing details, PO rules. |
+| Quotes | Implemented | Email is a preview until a provider is configured. |
+| Orders | Implemented | No fulfillment type (pickup vs delivery) or material source; see TAVIRON_MASTER_PLAN §4. |
+| Dispatch | Implemented | N14 adds the "Needs scheduling" queue. |
+| Route Planner | Placeholder | Labelled as planned. |
+| Delivery Tickets | Implemented | Review queue, revisions, scans, bulk accept, duplicate guard. |
+| Driver Reports | Implemented | |
+| Billing | Implemented, partial | Readiness and handoff batches (CSV); N14 adds a computed invoice draft. No issuance or payments. |
+| Fleet | Implemented, partial | No maintenance, work orders or parts. |
+| Materials & Pricing | Implemented | |
+| Reports | Implemented (N14) | Was a placeholder. |
+| Settings | Implemented | |
+| Payroll | Inputs only | `verified_delivery_inputs`; earnings blocked on pay rules. |
+| QuickBooks | Not integrated | No credentials or configuration exist; nothing is exported. |
+
+### The broken link found and fixed
+
+A confirmed order with no delivery date appeared nowhere:
+- Dispatch lists orders by date.
+- The Command Center had no rule for it.
+
+The local database held 23 such orders, left by earlier test runs, all invisible. N14 adds:
+- **Exception kind `order_unscheduled`** (migration `20261025000100_order_scheduling_queue.sql`):
+  - Visible with `dispatch.view` or `orders.view`; resolved with `orders.schedule`.
+  - Urgent when the customer wants it by tomorrow; high within a week or after two days waiting; otherwise normal.
+  - Counted in the Command Center summary and given its own overview card.
+  - The functions were redefined from their current definitions with only these additions.
+- **"Needs scheduling" queue at the top of Dispatch:**
+  - Pick a delivery date (pre-filled with the requested date) and an optional end date, then Schedule.
+  - This uses the same database functions as the order page: the schedule (edit-sequence checked), then status Scheduled.
+  - The board opens on that day. Nothing is assigned automatically.
+
+### Invoice preparation (no new tables)
+
+`src/lib/billing/invoice-draft.ts` computes, for each order on its billing page:
+- **Quantities:**
+  - Accepted current ticket quantities per line, in the line's unit.
+  - Lines with no tickets of their own use the ordered quantity and are flagged "confirm".
+  - Discounts stay as ordered; percentage lines are recomputed on the draft subtotal.
+- **Prices:** the order's approved prices. Tax comes from the same engine as quotes and orders.
+- **Warnings:** pending or other-unit tickets, zero rates.
+- **Stage:**
+  - It is a *preview* until billing readiness is "ready".
+  - It is labelled "not an invoice". Nothing is stored, issued, sent or exported.
+
+### Measured reports (`/reports`)
+
+`public.report_operations(from, to)` (migration `20261026000100_operations_report.sql`) is `SECURITY INVOKER`, so RLS applies. Each section requires the permission behind its data:
+
+| Section | Requires | Contents |
+| --- | --- | --- |
+| Deliveries and rework | `tickets.view` or `billing.view` | Accepted, pending, voided and corrected tickets; median delivery-to-acceptance. |
+| Verified delivered value | `billing.view` | Accepted quantity × approved rate, by customer, line and truck. Tickets that can't be priced are counted, not guessed. |
+| Billing turnaround | `billing.view` | Last delivery to handoff; ready-not-handed-off; loads missing tickets. |
+| Truck utilization | `fleet.view` or `dispatch.view` | Loads, days with loads, days out of service from status history. |
+
+- Profitability is reported as unavailable, listing the missing cost data.
+- No savings or return on investment are claimed.
+
+### Tests
+
+| Test | Covers |
+| --- | --- |
+| `tests/db/order-workflow.test.ts` (2) | Queue rules and priorities, leaving the queue, isolation; report sections by permission, isolation, refusals. |
+| `tests/unit/invoice-draft.test.ts` (3) | Delivered vs ordered, percentages, tax, pending and other-unit tickets, discounts, zero rate. |
+| `tests/e2e/order-workflow.spec.ts` (3) | Command Center → Dispatch → schedule → board; the invoice draft on a billing order; reports for office vs dispatcher. |
+| `tests/unit/command-center-rules.test.ts` | Updated for the new kind. |
+
+### Not done in N14 (needs business answers; see TAVIRON_MASTER_PLAN §4)
+
+- Order fulfillment types: pickup, hauling-only, material source.
+- Invoice approval and issue states, and numbering.
+- Payroll earnings.
+- QuickBooks.
+- Profitability.
+
 ## Recommended next task
 
-**Finish B3 — staging deployment, now including N13** (state in docs/SESSION_HANDOFF.md):
-push the new migration (`npx supabase db push`), grant yourself the platform role
+**Finish B3 — staging deployment, now including N13 and N14** (state in docs/SESSION_HANDOFF.md):
+push the new migrations (`npx supabase db push`: N13's `20261024000100` and N14's `20261025000100`, `20261026000100`), grant yourself the platform role
 (`scripts/platform-admin.mjs grant`), rotate `SITE_ACCESS_SECRET`, re-run
 `scripts/check-deployment.mjs` against the live URL (it now also checks that the public
 website is open), create your site-access code, sign in from a phone, start the live demo,

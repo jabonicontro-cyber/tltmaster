@@ -1,15 +1,16 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-11, after N13. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-11, after N14. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
-- `docs/IMPLEMENTATION_PLAN.md`: §5m for N13, "Recommended next task", and roadmap §8 A–H.
+- `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
+- `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14, including the module audit), "Recommended next task", and roadmap §8 A–H.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
 ## 1. Repository state (verified)
 
 - **Branch:** `claude/top-line-trucking-manager-vmw04i`. This is the only development branch, and Vercel
   deploys the staging site from it. Run `git log --oneline -5` to see the current head.
-- **Migrations:** 21 in `supabase/migrations/`, the latest being `20261024000100_platform_owner.sql` (N13).
+- **Migrations:** 23 in `supabase/migrations/`, the latest being `20261026000100_operations_report.sql` (N14).
   Never edit an applied migration; add new ones.
 - **Lint, typecheck and build:** clean at handoff.
 
@@ -22,6 +23,7 @@ project credentials. Read it together with:
 | N11 | Office scans, review context, bulk accept, delivered-so-far, `verified_delivery_inputs`. | §5k |
 | N12 | Early Access page and server-enforced gate, operator script, deployment checker, `docs/DEPLOYMENT.md`. | §5l |
 | N13 | See the breakdown below this table. | §5m |
+| N14 | "Needs scheduling" queue (Dispatch and Command Center) for confirmed orders without a date; invoice draft from verified deliveries; measured Reports page. | §5n |
 
 N13 delivered:
 - **Public website:** 9 pages, proposed pricing, a 3D hero built from real screens, and lead forms.
@@ -30,28 +32,21 @@ N13 delivered:
 - **Live demo company:** role previews, with nothing sent outside Taviron.
 - **Team-led CSV onboarding:** review, approval and reversal.
 
-## 3. Test results (run in this session's sandbox, N13)
-
-**Overall:**
+## 3. Test results (run in this session's sandbox, N14)
 
 | Check | Result |
 | --- | --- |
-| vitest: unit, DB and storage | 315/315 |
-| Browser suite, dev server | 46 passed, 5 skipped. The skipped tests are the gate spec, which runs separately below. |
+| vitest: unit, DB and storage | 320/320 |
+| Browser suite, dev server | 49 passed, 5 skipped. The skipped tests are the gate spec, which runs separately below. |
+| Gate spec against a production build with the gate on | 5/5 |
+| Outside-in checker against that build | All checks passed |
 | Lint, typecheck, production build | Clean |
 
-**Gate spec against a production build with the gate on.** It ran twice, and the outside-in checker passed all checks in both runs:
+**Migrations:** the two N14 migrations were applied to a second database that already held the 21 earlier ones.
+- Its schema is identical to dev.
+- DB tests there: 158 passed, 7 skipped (the skipped tests need the storage server).
 
-| Run | Gate spec | What it confirmed |
-| --- | --- | --- |
-| Default, website behind the gate | 5/5 | The website and the form endpoint redirect or answer 401. |
-| `PUBLIC_SITE=on` | 5/5 | The website is open, the form endpoint answers, and everything else stays gated. |
-
-**Fresh database:** all 21 migrations plus seed applied to an empty cluster.
-- Schema is identical to dev.
-- DB tests: 156 passed, 7 skipped. The skipped tests need the storage server.
-
-**Screenshots:** those in `public/site/` were captured from the running app, using the demo company with fictional data.
+**None of this ran against the live site.** The sandbox's network policy blocks `*.vercel.app`.
 
 ## 4. Deployment and Supabase status
 
@@ -72,7 +67,7 @@ any custom domain added to the project later (none is known).
 
 | Item | Status |
 | --- | --- |
-| **N13 migration `20261024000100_platform_owner.sql`** | **Not applied to staging.** It is the owner's action, in DEPLOYMENT §2a. |
+| **Migrations `20261024000100` (N13), `20261025000100` and `20261026000100` (N14)** | **Not known to be applied to staging.** No credentials here; it is the owner's action, in DEPLOYMENT §2a. |
 | What staging does until the migration is applied | The app keeps working. The demo/contact form says it cannot save. `/admin` answers 404. This comes from reading the code; it was not observed live. |
 | `PUBLIC_SITE` | Not set as far as known, so the website is behind the gate. Devices admitted with a site code, and signed-in users, still see every page; this was verified locally on a production build of `a652bbb`. |
 | `SITE_INDEXING` | Not set as far as known, so nothing is indexed. |
@@ -82,7 +77,7 @@ any custom domain added to the project later (none is known).
 
 ## 5. Outstanding manual actions (owner)
 
-1. **Back up the staging database, then apply the new migration.** Follow DEPLOYMENT §2a step by step: confirm the linked project, back up,
+1. **Back up the staging database, then apply the new migrations (N13 and N14).** Follow DEPLOYMENT §2a step by step: confirm the linked project, back up,
    run `db push --dry-run`, run `db push`, then confirm with `migration list`.
 2. **Rotate `SITE_ACCESS_SECRET`** in Vercel, then redeploy.
 3. **Run the outside-in check.** Expect every check to pass:

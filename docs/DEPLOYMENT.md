@@ -123,6 +123,12 @@ npx supabase migration list       # the new row now shows a Remote version too
 Migrations are additive and never delete data. If `db push` reports an error, stop, keep
 the output, and do not retry or edit anything until it has been looked at.
 
+N14 adds `20261025000100_order_scheduling_queue.sql` and `20261026000100_operations_report.sql`
+(the Command Center's "needs a delivery date" items and the Reports page). Until they are
+pushed: the Dispatch "Needs scheduling" queue still works (it reads existing columns), the
+Command Center simply lacks the new item type, and Reports says the report could not be
+produced. A `--dry-run` should list every migration not yet applied, in order.
+
 N13 (public website, platform area) adds `20261024000100_platform_owner.sql`. Until it is
 pushed, the demo/contact form answers "could not be saved" and the platform area is
 unavailable; the rest of the app keeps working. The public website stays behind the gate
