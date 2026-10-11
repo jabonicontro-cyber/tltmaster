@@ -37,11 +37,12 @@ export function accessCookieName(secure: boolean): string {
 }
 
 /**
- * The public website (marketing pages and the demo/contact form) is open to
- * everyone unless PUBLIC_SITE=off, which keeps it behind the gate too.
+ * Whether the public website (marketing pages and the demo/contact form) is
+ * open to everyone while the gate is on. Off unless PUBLIC_SITE=on: making the
+ * site public is the owner's decision, not a side effect of a deploy.
  */
 export function publicSiteEnabled(): boolean {
-  return (process.env.PUBLIC_SITE ?? "").trim().toLowerCase() !== "off";
+  return (process.env.PUBLIC_SITE ?? "").trim().toLowerCase() === "on";
 }
 
 /** Paths reachable without early access: the gate itself and Supabase Auth email links (one-time tokens). */

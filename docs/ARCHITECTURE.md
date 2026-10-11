@@ -6,7 +6,8 @@
 Browser
   │  (session cookie set by Supabase Auth via @supabase/ssr)
   ▼
-src/proxy.ts ── refreshes the session; anonymous → /login
+src/proxy.ts ── public website? pass. Otherwise early-access gate, then
+  │             refreshes the session; anonymous → /login
   ▼
 Server Component page ──► requirePagePermission()  (src/server/auth.ts)
   │                         loads role + permissions via my_access() RPC
@@ -139,7 +140,32 @@ name, empty address, their chosen time zone and no records.
   `select private.create_company('Name', 'slug');` then
   `scripts/create-owner.mjs owner@x.com "Name" slug`. There is no subscription billing.
 
-## Early access gate (in front of everything)
+## Public website, platform owner, demo and onboarding (N13)
+
+- **Public website** — `src/app/(site)/` (static pages, own layout, dark theme) and one
+  public endpoint, `src/app/api/leads/route.ts`. Which requests skip the gate and sign-in is
+  decided in one place, `src/lib/site/paths.ts`: the nine exact marketing paths for GET/HEAD
+  and `POST /api/leads`. A POST to a public page (how server actions travel) is never public.
+- **Leads** — the endpoint validates (`src/lib/site/lead.ts`), drops automated submissions
+  silently, and calls `public.lead_submit` with the service role; the database validates
+  again, rate limits per hashed address and merges repeats.
+- **Platform owner** — a fifth question beside the four below: *is this person on the
+  Taviron team?* `private.platform_admins`, granted only by the operator
+  (`scripts/platform-admin.mjs`). `src/server/platform.ts` guards `/admin` (404 for anyone
+  else); every `platform_*` function re-checks with `private.require_platform_admin()`.
+  It grants **no** company data: platform functions return only what the platform screens
+  need (lead records, company counts, import batches), and writing into a company happens
+  only through the audited import approval.
+- **Demo company** — an ordinary company with `companies.is_demo`. `getAccess()` reports
+  `isDemo`; in a demo company quote emails are forced to preview and invitations are
+  refused. Role previews (`src/lib/platform/preview.ts`, cookie `taviron-preview`) replace
+  the shown permissions with the intersection of the real ones and the previewed role's —
+  presentation only; actions and RLS still use the real access.
+- **Imports** — parsing, mapping and validation in `src/lib/platform/imports.ts` (shared by
+  the browser preview and the server action); staging, duplicate checks, approval and
+  reversal in the database (`platform_import_*`), all-or-nothing and audited.
+
+## Early access gate (in front of everything except the public website)
 
 Four separate questions, answered by four separate mechanisms:
 

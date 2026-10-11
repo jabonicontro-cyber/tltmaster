@@ -390,6 +390,36 @@ revision they were attached to), voids and supersession. Viewing goes through
 `/tickets/photos/[id]`, which checks access with the viewer's token and redirects to a
 60-second signed URL.
 
+## Platform owner, leads, demo and onboarding imports (N13)
+
+Migration `20261024000100_platform_owner.sql`. All tables are in the `private` schema (no
+direct access for app users); everything goes through the functions below.
+
+| Table | Holds |
+| --- | --- |
+| `private.platform_admins` | The Taviron team: user, note, granted / revoked. Not a company role. |
+| `private.platform_audit` | Append-only log of sensitive platform actions (grants, revocations, demo, company creation, import steps). |
+| `private.leads` | Website demo requests and contact messages: kind, status (`new`, `contacted`, `demo_scheduled`, `qualified`, `onboarding`, `won`, `lost`, `spam`), contact details, owner (platform admin), follow-up date, submission count. |
+| `private.lead_events` | Lead history: submitted, resubmitted, status / owner / follow-up changed, note added, company created. |
+| `private.lead_attempts` | Keyed hash of the sender's address per submission (rate limiting); deleted after two days. |
+| `private.import_batches` | One uploaded spreadsheet: company, entity (`customers`, `materials`, `trucks`, `drivers`), status (`review`, `approved`, `reverted`, `discarded`), column mapping, who/when, result. |
+| `private.import_rows` | Each row: normalized data, status (`valid`, `error`, `duplicate`), messages, whether a duplicate may be overridden, decision (`import`/`skip`), created record id, outcome (`created`, `removed`, `kept_changed`, `kept_in_use`). |
+| `public.companies.is_demo` | The company is a demo company (fictional data; never an import target). |
+
+| Function | Who | Does |
+| --- | --- | --- |
+| `platform_admin_grant / _revoke(email, note)`, `platform_admin_list()` | service role (operator script) | The only way to change the platform team. Audited. |
+| `lead_submit(lead, ip_hash)` | service role (`/api/leads`) | Validates, rate limits (5 / 15 min, 20 / day per address), merges a repeat from the same email into the open lead. |
+| `platform_whoami()` | any signed-in user | Am I a platform admin? |
+| `platform_leads(search, status, due_only)`, `platform_lead(id)`, `platform_lead_update(id, status, owner, follow_up)`, `platform_lead_note(id, note)` | platform admin | Lead workspace; every change is a history event; the owner must be on the platform team. |
+| `platform_overview()`, `platform_team()`, `platform_audit_recent(limit)` | platform admin | Launchpad counts, team, audit log. |
+| `platform_demo_start(timezone)`, `platform_demo_enter()` | platform admin | New demo company (earlier demos deactivated, never deleted), caller becomes its owner and switches to it. |
+| `platform_companies()`, `platform_create_company(name, timezone, lead)` | platform admin | Customer companies (demos excluded) with counts; create one without users, optionally from a lead. |
+| `platform_import_stage(company, entity, file, mapping, rows)` | platform admin | Stores rows for review (≤ 2,000), re-checks required fields and allowed values, flags duplicates against the company's records and earlier rows. Creates nothing. |
+| `platform_import_decide(row, decision)`, `platform_import_discard(batch)` | platform admin | Reviewer's choice per row (errors never import; duplicates only where allowed); discard closes without creating. |
+| `platform_import_approve(batch)` | platform admin | Creates the rows marked `import`, all or nothing (`tlt.platform_write` lets the customer-number trigger accept the target company inside this function only). |
+| `platform_import_revert(batch, reason)` | platform admin | Removes records the batch created while untouched (no update in the audit trail) and unused; keeps and deactivates the rest; touches nothing else. |
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

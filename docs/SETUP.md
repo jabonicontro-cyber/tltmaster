@@ -19,6 +19,8 @@ dashboard (production). Never commit real values.
 | `SITE_ACCESS_SECRET` | **yes when the gate is on** | ≥ 32 random characters (`openssl rand -base64 32`). Server only. Without it the app answers 503 to everything (fails closed). Changing it signs every device out of early access |
 | `EARLY_ACCESS_DAYS` | no (30) | How long a device stays admitted (1–90 days, never beyond the code's expiry) |
 | `EARLY_ACCESS_RECHECK_SECONDS` | no (300) | How often an admitted device is re-checked against the database (revocation delay) |
+| `PUBLIC_SITE` | no (closed) | `on` opens the public website (home, pricing, demo request…) to everyone while the early-access gate is on. Empty: behind the gate like the rest. (With the gate off, as in `npm run dev`, it is open anyway) |
+| `SITE_INDEXING` | no (off) | `on` lets search engines index the nine public pages only (read at build time) |
 | `TEST_DATABASE_URL` | for `npm run test:db` | Superuser URL of a **local/disposable** database |
 
 ## 2. Supabase project (hosted)
@@ -228,6 +230,11 @@ npm run dev &                 # or npm run build && npm start
 npm run test:e2e              # creates e2e users with known passwords in the local DB
 ```
 
+The e2e setup also creates a platform-team login, `e2e-platform@tavirontest.example` (no
+company; platform role granted the operator's way). To use the platform area locally
+yourself: `node --env-file=.env.local scripts/platform-admin.mjs grant <your login email>`,
+then open `http://localhost:3000/admin`.
+
 **Early-access gate tests** run against a production build with the gate on (the dev server
 runs with the gate off):
 
@@ -237,6 +244,8 @@ EARLY_ACCESS_GATE=on SITE_ACCESS_SECRET="$(openssl rand -base64 32)" EARLY_ACCES
   npx next start -p 3001 &
 E2E_BASE_URL=http://localhost:3001 E2E_GATE=on npx playwright test tests/e2e/gate.spec.ts
 node scripts/check-deployment.mjs http://localhost:3001
+# Again with the public website open: start the server with PUBLIC_SITE=on as well, and
+# run the spec with E2E_PUBLIC_SITE=on.
 ```
 
 ## 6. Local backend without Docker

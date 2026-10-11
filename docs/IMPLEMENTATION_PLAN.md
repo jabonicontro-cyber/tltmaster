@@ -1430,21 +1430,135 @@ drivers.
 - The gate admits devices, not people: anyone holding a valid code can pass until it is
   revoked or used up; keep device limits small and codes per group.
 
+## 5m. Public website, platform owner, live demo and team-led onboarding (N13)
+
+### Found before changing anything
+
+- Start: `89ddf32` plus the committed handoff docs; local stack rebuilt (Postgres data kept).
+- `/` redirected to the app; the early-access gate covered every path except `/early-access`
+  and Auth email links, so no public page could exist. No platform-level role: the highest
+  role was a *company* owner. No lead storage, no demo company, no import tooling.
+- The customer-number trigger refused inserts into a company other than the caller's
+  current one, which also blocked a platform-side import (solved with a function-local
+  `tlt.platform_write` flag, the same pattern as `tlt.sample_purge`).
+
+### What was built (N13)
+
+- **Public website** (`src/app/(site)/`): Home, Platform, Solutions, Pricing, About,
+  Contact, Request a Demo, Privacy, Terms. Dark charcoal with red accents; a CSS-only 3D
+  "operations stack" of real app screens in the hero (still under `prefers-reduced-motion`);
+  phone-first (no sideways scroll, menu without JavaScript). Screenshots in `public/site/`
+  were captured from the running app with the demo company (fictional data). No invented
+  phone number, address, email, testimonial, customer or company history; Privacy and Terms
+  are marked as drafts pending legal review.
+- **Pricing presentation** (`src/lib/site/pricing.ts`, one place to change it): from $499 per
+  month per company; founding offer for the first 10 companies, 20% off ($399.20), onboarding
+  fee waived during the beta, billing starts at go-live. Every figure is labelled proposed and
+  subject to confirmation; nothing is charged, no subscription, no billing code.
+- **Gate redesign** (`src/lib/site/paths.ts`, `src/proxy.ts`): exactly the nine marketing
+  paths are public, for GET/HEAD only (a server action is a POST to a page, so none is ever
+  reachable through a public page), plus `POST /api/leads`. Everything else is unchanged.
+  They never need sign-in; they pass the early-access gate only with `PUBLIC_SITE=on`
+  (default off, so a deploy never publishes the site by itself — opening it is the owner's
+  decision). `SITE_INDEXING=on` (default off) lets search engines index only those nine pages.
+- **Leads** (`/api/leads`, `public.lead_submit`, service role only): validated twice (zod,
+  then the database); honeypot field, fill-time check and link-stuffing check drop bots
+  silently; Origin check; 5 submissions per network address per 15 minutes and 20 per day
+  (keyed hash of the address, deleted after two days); a repeat from the same email merges
+  into the open lead (history entry) and the answer never reveals it. Works without
+  JavaScript (303 back to the form).
+- **Platform owner role** (`private.platform_admins`): separate from every company role;
+  granted and revoked only by an operator with the service-role key
+  (`scripts/platform-admin.mjs`); no page or public route can grant it. Checked on the server
+  (`src/server/platform.ts`; anyone else gets 404) and again inside every `platform_*`
+  function. Append-only `private.platform_audit` records grants, revocations, demo starts and
+  entries, company creation and every import step.
+- **Private launchpad** (`/admin`): Leads, Live demo, Company onboarding, the app, Platform
+  administration (team and audit log). A platform admin without a company of their own
+  lands here after sign-in.
+- **Lead workspace** (`/admin/leads`): search (name, email, company, message), status filter
+  (new, contacted, demo scheduled, qualified, onboarding, won, lost, spam — spam hidden by
+  default), follow-up-due filter; detail with status, owner (platform team only), follow-up
+  date, notes and the full history; "Start onboarding" creates the company and links it.
+- **Live demo** (`/admin/demo`): `platform_demo_start` creates a new company flagged
+  `is_demo` ("Northfield Aggregates (Demo)"), makes the platform admin its owner and switches
+  to it; the server then fills it with fictional data **through the app's own functions and
+  RLS** (`src/server/demo/seed.ts`: materials and rates, customers and sites, trucks, drivers
+  with qualifications, one truck out of service, orders from last week (verified, billing
+  ready), yesterday (tickets to review, one flagged), today (in progress, a delay report,
+  an urgent order with an unassigned load), tomorrow (planned), a draft order and a draft
+  quote). "Reset" starts a fresh demo company and deactivates the old one — nothing is
+  deleted, no real company is touched. The demo is never an import target. **No external
+  side effects:** quote emails in a demo company are always previews; user invitations are
+  refused.
+- **Role previews** (`src/lib/platform/preview.ts`): inside a demo company a bar offers Owner,
+  Dispatcher, Dispatcher who also drives, Office, Driver, Mechanic. The previewed access is
+  the *intersection* of the person's real permissions and that role's permissions — it can
+  only hide things; the server and database keep enforcing the real access. Ignored outside
+  demo companies.
+- **Team-led onboarding imports** (`/admin/onboarding`): create a company (no users yet), then
+  import customers, materials, trucks or drivers from CSV (Excel/Sheets "Save as CSV"; tab and
+  semicolon pastes work). Columns are matched from header names and can be changed; values
+  are normalized (yes/no, dates, truck types, units); every row is checked in the browser,
+  again on the server, and again in the database. **Staging creates nothing**: rows are
+  marked ready, possible duplicate (against the company's records or earlier rows of the
+  file) or needs fixing. The reviewer may import a duplicate only where the company's records
+  allow two (customers; drivers without an employee number). **Approve** creates the chosen
+  rows all at once or not at all. **Revert** removes only records the batch created and only
+  while untouched (no update in their audit trail) and unused (no contacts, sites, rates,
+  quotes, orders, tickets, assignments, qualifications…); others are kept and deactivated.
+  Nothing else is ever touched.
+- Migration `20261024000100_platform_owner.sql` (additive; dev backed up first).
+- Tests: `tests/unit/platform.test.ts` (10), `tests/db/platform.test.ts` (5),
+  `tests/e2e/platform.spec.ts` (5), `tests/e2e/gate.spec.ts` updated (public pages open with
+  the gate on; POST to a public page refused). Tenancy guards: 141 reviewed definer
+  functions; the two platform functions that take a company id are reviewed explicitly.
+
+### Status
+
+| Capability | Status |
+| --- | --- |
+| Public website (9 pages), pricing presentation, 3D hero, phone layout | Implemented and verified (local; production build with the gate on) |
+| Demo/contact forms → leads (validation, rate limit, spam, duplicates) | Implemented and verified (local) |
+| Platform owner role, launchpad, audit | Implemented and verified (local) |
+| Lead workspace (statuses, owner, follow-up, notes, history, search) | Implemented and verified (local) |
+| Live demo company, reset, role previews, no external side effects | Implemented and verified (local) |
+| Team-led onboarding imports (CSV) with review, approval, reversal | Implemented and verified (local) |
+| XLSX upload | Not built — save as CSV (stated in the uploader) |
+| Notifying the team of a new lead (email) | Not built — leads are seen in the workspace |
+| Inviting the new company's owner from the onboarding page | Not built — `scripts/create-owner.mjs` or Settings → Users |
+| Hosted: migration pushed, platform admin granted | **Not done** — owner action (docs/DEPLOYMENT.md §3a) |
+
+### Remaining limits (N13)
+
+- Rate limiting relies on the host's `X-Forwarded-For`. A determined sender rotating
+  addresses can still submit; leads can be marked spam.
+- Demo seeding is several steps through the app's functions; if one fails the page says
+  where, and "Reset" starts clean.
+- Previews narrow the screens a role sees; they cannot reproduce data-level differences
+  that depend on *who* is signed in (e.g. "assigned to you").
+- Legal pages are drafts; pricing is a proposal. Both must be confirmed before general
+  availability.
+
 ## Recommended next task
 
-**Finish B3 — staging deployment** (in progress; state in docs/SESSION_HANDOFF.md): rotate
-`SITE_ACCESS_SECRET`, re-run `scripts/check-deployment.mjs` against the live URL, create the
-owner's site-access code, company and owner login, sign in from a phone, then Supabase Auth
-URL configuration, email templates and SMTP, the `ticket-photos` bucket check, a
-backup/restore drill and the invitation flow with a real inbox. It is the dependency for
-every external verification below.
+**Finish B3 — staging deployment, now including N13** (state in docs/SESSION_HANDOFF.md):
+push the new migration (`npx supabase db push`), grant yourself the platform role
+(`scripts/platform-admin.mjs grant`), rotate `SITE_ACCESS_SECRET`, re-run
+`scripts/check-deployment.mjs` against the live URL (it now also checks that the public
+website is open), create your site-access code, sign in from a phone, start the live demo,
+then Supabase Auth URL configuration, email templates and SMTP, the `ticket-photos` bucket
+check, a backup/restore drill and the invitation flow with a real inbox. Before customers
+see the public site: confirm the pricing and have the Privacy and Terms drafts reviewed.
 
 Then, in order of value and readiness:
-1. **Payroll readiness (§8 A)** — only after the pay rules of the participating companies are
+1. **First team-led onboarding** of a real company with its own spreadsheets (§5m), with
+   the owner's login created afterwards; parallel running per §8 G.
+2. **Payroll readiness (§8 A)** — only after the pay rules of the participating companies are
    written down and the export target (QuickBooks Online payroll or another system, file vs
    API) is confirmed with a test company.
-2. **Company billing requirements and order-list urgency** (§8 B, small).
-3. **Fleet maintenance and defects (§8 D)** — feeds dispatch eligibility and the Command
+3. **Company billing requirements and order-list urgency** (§8 B, small).
+4. **Fleet maintenance and defects (§8 D)** — feeds dispatch eligibility and the Command
    Center (data model first; safety-critical defects block dispatch per company policy).
 
 ---
@@ -1629,9 +1743,21 @@ shown as "no problems".
 | Predictive optimization | Deferred | Only when data quality justifies it. |
 | Onboarding, training, support, data export, offboarding | Partial | Onboarding done (N9/N10); export and offboarding planned. |
 | Backups and tested recovery; staging/production separation | Planned (B3) | |
-| Public website, subscription payments | Out of this work | Separate project; access stays server-enforced. |
+| Public website, demo/contact leads | Verified locally (N13) | §5m. Hosted once the migration is pushed. |
+| Subscription payments, online billing | Out of scope until authorized | Pricing is a proposal shown on the website; no payment processing or automatic subscriptions. |
 | Controlled beta: parallel testing, baseline metrics, acceptance criteria, readiness review | Planned | Existing procedures stay authoritative during parallel testing; no duplicate live dispatch or billing without a plan. |
 | Product name | Working name "Taviron", not cleared | One constant (`src/lib/product.ts`); no rebranding work until cleared. |
+
+### H. Platform owner, live demo and team-led onboarding
+
+| Requirement | Status | Dependencies / notes |
+| --- | --- | --- |
+| Platform-owner role separate from company roles; operator-granted only; audited | Verified locally (N13) | §5m. No public route grants it. |
+| Lead workspace (statuses, owner, follow-up, notes, history, search) | Verified locally (N13) | Lead email notifications planned. |
+| Isolated demo company with fictional data, reset, role previews (presentation only) | Verified locally (N13) | Previews never grant; demo sends nothing outside Taviron. |
+| Spreadsheet imports with mapping, validation, duplicates, review, approval, reversal | Verified locally (N13) | CSV only; XLSX planned. Customers, materials, trucks, drivers; contacts, sites, rates and qualifications planned. |
+| Inviting a new company's owner from the platform area | Planned | Today: `scripts/create-owner.mjs` or an invitation from Settings → Users. |
+| Billing for Taviron subscriptions | Not authorized | Requires an explicit decision; nothing is built. |
 
 ### Unresolved business rules and external dependencies
 
@@ -1644,6 +1770,8 @@ shown as "no problems".
 - Maintenance policies: which defects stop dispatch, who may return equipment to service.
 - Operating regions and official data sources for road and weather conditions.
 - Hosted environment (B3): SMTP, templates, URLs, storage bucket and backups.
+- Confirmed pricing and contract terms; legal review of the Privacy and Terms drafts;
+  whether the public website may be indexed (`SITE_INDEXING`).
 - Ticket formats and numbering conventions of participating companies (before any OCR or
   company-specific required fields).
 - Billing handoff target per company (QuickBooks Online or other): import vs API, required

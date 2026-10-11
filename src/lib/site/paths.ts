@@ -15,8 +15,8 @@ function normalize(path: string): string {
 }
 
 /**
- * Whether a request may skip the early-access gate and sign-in because it is
- * part of the public website. `enabled` is false when PUBLIC_SITE=off.
+ * Whether a request is part of the public website (never needs sign-in; skips
+ * the early-access gate only when the site is enabled, PUBLIC_SITE=on).
  */
 export function isPublicSiteRequest(path: string, method: string, enabled = true): boolean {
   if (!enabled) return false;

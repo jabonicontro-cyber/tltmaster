@@ -13,8 +13,8 @@ const isHttps = (request: NextRequest) =>
  * Runs before every route (pages, server actions, route handlers, files):
  *
  * 0. The public website (exact marketing pages, GET/HEAD only, and POST to the
- *    demo/contact endpoint) is open to everyone; see src/lib/site/paths.ts.
- *    PUBLIC_SITE=off closes it behind the gate too.
+ *    demo/contact endpoint; see src/lib/site/paths.ts) never needs sign-in, and
+ *    skips the gate when PUBLIC_SITE=on (the owner's decision; off by default).
  * 1. Early-access gate (when enabled): a visitor who is not signed in needs a
  *    valid early-access grant — a signed HttpOnly cookie issued after a valid
  *    code, re-checked with the database every few minutes so revocation takes
@@ -60,7 +60,9 @@ export async function proxy(request: NextRequest) {
   const signedIn = Boolean(data?.claims?.sub);
 
   const path = request.nextUrl.pathname;
-  const publicSite = isPublicSiteRequest(path, request.method, publicSiteEnabled());
+  // Marketing pages never need an account; past the gate only with PUBLIC_SITE=on.
+  const sitePage = isPublicSiteRequest(path, request.method);
+  const publicSite = sitePage && publicSiteEnabled();
 
   // 1. Early-access gate.
   if (gate.enabled && gate.secret && !signedIn && !publicSite && !isGateExempt(path)) {
@@ -98,7 +100,7 @@ export async function proxy(request: NextRequest) {
 
   // 2. Sign-in.
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
-  if (!signedIn && !isPublic && !publicSite) {
+  if (!signedIn && !isPublic && !sitePage) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`;

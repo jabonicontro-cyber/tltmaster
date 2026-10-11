@@ -22,16 +22,20 @@ const get = (path, init = {}) => fetch(base + path, { redirect: "manual", ...ini
 
 check(base.startsWith("https://") || /localhost|127\.0\.0\.1/.test(base), "served over HTTPS", base);
 
-// The public website (PUBLIC_SITE=off closes it too; pass --gated-site to check that instead).
-const gatedSite = process.argv.includes("--gated-site");
+// The public website: open with PUBLIC_SITE=on, otherwise behind the gate. Both are valid;
+// the page must be either fully open (200) or sent to the gate — never anything in between.
+const home = await get("/pricing", { headers: { accept: "text/html" } });
+const siteOpen = home.status === 200;
+console.log(`INFO  public website is ${siteOpen ? "open (PUBLIC_SITE=on)" : "behind the Early Access gate (PUBLIC_SITE not on)"}`);
 for (const path of ["/", "/pricing", "/demo"]) {
   const r = await get(path, { headers: { accept: "text/html" } });
-  if (gatedSite) check(r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/early-access"), `public page ${path} is behind the gate (PUBLIC_SITE=off)`, String(r.status));
-  else check(r.status === 200, `public page ${path} is open`, String(r.status));
+  if (siteOpen) check(r.status === 200, `public page ${path} is open`, String(r.status));
+  else check(r.status >= 300 && r.status < 400 && (r.headers.get("location") ?? "").includes("/early-access"), `public page ${path} is behind the gate`, `${r.status} ${r.headers.get("location") ?? ""}`);
 }
-if (!gatedSite) {
+{
   const r = await get("/api/leads", { method: "POST", headers: { "content-type": "application/json", accept: "application/json" }, body: "not json" });
-  check(r.status === 400, "the demo/contact form endpoint answers (an unreadable submission is rejected, nothing saved)", String(r.status));
+  if (siteOpen) check(r.status === 400, "the demo/contact form endpoint answers (an unreadable submission is rejected, nothing saved)", String(r.status));
+  else check(r.status === 401, "the demo/contact form endpoint is behind the gate", String(r.status));
 }
 
 for (const path of ["/login", "/signup", "/command-center", "/orders", "/settings", "/driver", "/admin"]) {

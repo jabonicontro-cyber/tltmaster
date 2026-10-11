@@ -36,6 +36,8 @@ final; it is set in `src/lib/product.ts`.
 | Driver portal (My Day): own assignments with site and instructions, ticket entry from the phone, delay / breakdown / inspection reports reviewed by the office; qualification reminders | ✅ — no offline queue |
 | Paper scale-ticket photos from the phone (up to 3 per ticket), private storage, office viewing through one-minute links | ✅ — needs the storage bucket (see SETUP); storage files need their own backup |
 | Early Access page and server-enforced gate in front of the whole app (device codes, revocation, rate limiting); deployment guide for Vercel + Supabase | ✅ locally on a production build — hosting needs your accounts (docs/DEPLOYMENT.md) |
+| Public website (home, platform, solutions, proposed pricing, about, contact, demo request, draft privacy and terms) with a 3D hero of real screens; demo/contact form saved as leads (validation, rate limit, spam and duplicate handling) | ✅ locally — pricing is a proposal; legal pages are drafts |
+| Platform area for the Taviron team (`/admin`, operator-granted role): lead workspace, live demo company with role previews (presentation only, nothing sent outside), team-led onboarding imports from CSV with review, approval and reversal, audit log | ✅ locally — XLSX not supported (save as CSV) |
 | Route Planner, Reports | Planned — pages say so; nothing fake |
 
 ## Quick start (local)
@@ -83,6 +85,7 @@ npm run dev                  # http://localhost:3000
 | `npm run test:e2e` | Browser tests against a running app + local backend (incl. sign-up → onboarding → invitations, and allowed/refused pages per role) |
 | `npm run stack -- up\|db-reset\|env\|down` | Lightweight local backend without Docker (with a local mail catcher) |
 | `node --env-file=.env.local scripts/early-access.mjs create\|list\|revoke` | Early-access codes (operators) |
+| `node --env-file=.env.local scripts/platform-admin.mjs grant\|revoke\|list` | The platform (Taviron team) role — the only way to grant it |
 | `node --env-file=.env.local scripts/create-test-company.mjs "Name (test)" key` | A local test company with one account per role (see SETUP → Two independent test companies) |
 
 ## Documentation
@@ -93,6 +96,7 @@ npm run dev                  # http://localhost:3000
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the code is organized and how security works
 - [docs/SCHEMA.md](docs/SCHEMA.md) — database tables and rules
 - [docs/BACKUP_RESTORE.md](docs/BACKUP_RESTORE.md) — backups and restoring them
+- [docs/SESSION_HANDOFF.md](docs/SESSION_HANDOFF.md) — current state, deployment status and next steps
 
 ## Sample data
 

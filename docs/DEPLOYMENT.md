@@ -69,6 +69,8 @@ repeats the same steps with new projects — never point staging at production d
    | `SITE_ACCESS_SECRET` | 32+ random characters — generate with `openssl rand -base64 32` (**Sensitive**) |
    | `EARLY_ACCESS_DAYS` | `30` (optional) |
    | `EMAIL_PROVIDER` | `preview` (quote emails are shown, not sent, until Resend is set up) |
+   | `PUBLIC_SITE` | `on` when you decide the public website (home, pricing, demo request…) should be open to everyone. Empty (default): it stays behind the Early Access page like the rest |
+   | `SITE_INDEXING` | leave empty on staging (search engines are told not to index anything). `on` lets them index the nine public pages only — decide before launch |
 
    Without `SITE_ACCESS_SECRET` the app deliberately answers **503** to everything.
 4. **Settings → Deployment Protection**: turn *Vercel Authentication* off for this project
@@ -79,6 +81,27 @@ repeats the same steps with new projects — never point staging at production d
    ```bash
    node scripts/check-deployment.mjs https://<your-project>.vercel.app
    ```
+   It notes whether the public website is open (`PUBLIC_SITE=on`) or behind the gate; when
+   open, it checks the form endpoint answers (one unreadable submission; nothing is saved).
+   Either way everything else must be behind the gate.
+
+## 2a. Updating the database after a new release
+
+Each release that adds a file to `supabase/migrations/` needs it applied to the staging
+database **before or right after** the new app version deploys. From the project folder on
+your computer (already linked in step 1.3):
+
+```bash
+git pull
+pg_dump "<connection string from Supabase → Database>" -Fc -f before-$(date +%F).dump   # backup first (free plan has none)
+npx supabase db push            # applies only the new migrations; says "up to date" if none
+```
+
+N13 (public website, platform area) adds `20261024000100_platform_owner.sql`. Until it is
+pushed, the demo/contact form answers "could not be saved" and the platform area is
+unavailable; the rest of the app keeps working. The public website stays behind the gate
+until you set `PUBLIC_SITE=on` in Vercel (and redeploy) — do that once the pricing and the
+draft legal pages are confirmed.
 
 ## 3. Let yourself (and testers) in
 
@@ -102,6 +125,25 @@ You also need an account and a company (the gate never creates them):
 - **Or** use self-serve sign-up: create a *company* code
   (`create --label "Your company" --uses 1`), open `/signup` after the gate, and confirm the
   email (needs working Auth email, step 1.8).
+
+### 3a. Your platform (Taviron team) access
+
+The platform area (`/admin`: leads, live demo, company onboarding, audit log) is only for
+people you grant the **platform role**. It is separate from being an owner of a company, and
+it can only be granted from your computer with the service-role key — never from the
+website:
+
+```bash
+# You need a normal Taviron login first (create-owner.mjs above, or an invitation).
+node --env-file=.env.staging scripts/platform-admin.mjs grant you@example.com --note "Founder"
+node --env-file=.env.staging scripts/platform-admin.mjs list
+node --env-file=.env.staging scripts/platform-admin.mjs revoke someone@example.com --note "Left the team"
+```
+
+Then sign in and open `https://<your-project>.vercel.app/admin`. To show the product, open
+**Live demo → Start the demo**: it creates a separate demo company with fictional data and
+switches you into it; the yellow bar at the top lets you view it as each role. Use the
+company switcher in the account menu to go back to your own company.
 
 **Testers:** give each group its own site code (`--purpose site --label "Pilot: Ridgeway"
 --uses 10`), then invite their users from Settings → Users (invitation links work without
@@ -138,10 +180,15 @@ No domain is configured by this repository; buying one is your decision.
 
 ## 6. What the gate does (and does not)
 
-- Every page, server action, API route and file route checks for early access **before**
-  anything else; without it pages redirect to `/early-access` and everything else returns
-  401. Exceptions: the Early Access page and Supabase Auth email links (`/auth/confirm`),
-  which carry their own one-time tokens.
+- **With `PUBLIC_SITE=on` the public website is open**: `/`, `/platform`, `/solutions`,
+  `/pricing`, `/about`, `/contact`, `/demo`, `/privacy`, `/terms` (exact paths, read-only)
+  and the form endpoint `POST /api/leads`. Nothing else is. Without it (the default) the
+  website is behind the gate like everything else.
+- Every other page, server action, API route and file route checks for early access
+  **before** anything else; without it pages redirect to `/early-access` and everything
+  else returns 401 — including a server action posted to a public page. Exceptions: the
+  Early Access page and Supabase Auth email links (`/auth/confirm`), which carry their own
+  one-time tokens.
 - A valid code gives this browser a signed, HttpOnly, Secure, SameSite=Lax cookie
   (`__Host-taviron-access`) tied to a database grant; it is re-checked every 5 minutes, so a
   revoked code or device loses access within 5 minutes. Wrong codes are limited to 10 per

@@ -403,7 +403,7 @@ describe("per-company numbering and uniqueness", () => {
 
       // Top Line can still have its own Q-…-0001 etc. without conflict.
       await s.asAdmin();
-      const dup = await s.query<{ n: number }>("select count(distinct company_id)::int as n from public.customers where customer_number = 'C-00001'");
+      const dup = await s.query<{ n: number }>("select count(distinct company_id)::int as n from public.customers where customer_number = 'C-00001' and company_id in ($1, $2)", [TOP_LINE, w.B]);
       expect(dup.rows[0].n).toBe(2);
     });
   });

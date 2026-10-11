@@ -4,6 +4,7 @@ import { isPublicSiteRequest, SITE_PAGES } from "@/lib/site/paths";
 import { foundingMonthlyCents, PRICING, usd } from "@/lib/site/pricing";
 import { guessMapping, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
 import { applyPreview, parsePreviewRole } from "@/lib/platform/preview";
+import { publicSiteEnabled } from "@/server/site-access";
 import type { Access } from "@/lib/permissions";
 
 describe("public website paths", () => {
@@ -20,7 +21,21 @@ describe("public website paths", () => {
     }
     expect(isPublicSiteRequest("/api/leads", "POST")).toBe(true);
     expect(isPublicSiteRequest("/api/leads", "GET")).toBe(false);
-    expect(isPublicSiteRequest("/", "GET", false)).toBe(false); // PUBLIC_SITE=off
+    expect(isPublicSiteRequest("/", "GET", false)).toBe(false); // site not enabled
+  });
+  it("is behind the early-access gate unless the owner sets PUBLIC_SITE=on", () => {
+    const before = process.env.PUBLIC_SITE;
+    try {
+      delete process.env.PUBLIC_SITE;
+      expect(publicSiteEnabled()).toBe(false);
+      process.env.PUBLIC_SITE = "off";
+      expect(publicSiteEnabled()).toBe(false);
+      process.env.PUBLIC_SITE = " ON ";
+      expect(publicSiteEnabled()).toBe(true);
+    } finally {
+      if (before === undefined) delete process.env.PUBLIC_SITE;
+      else process.env.PUBLIC_SITE = before;
+    }
   });
 });
 
