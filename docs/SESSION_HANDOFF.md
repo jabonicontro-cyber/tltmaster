@@ -134,6 +134,15 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Status check (2026-10-11, later session):** verified — Preview branch `claude/ui-and-signin-checkpoint` at `aadf07d`
+(clean, equal to origin; Vercel Preview success); production branch at `16fc188`, still the only Production build
+(16:07 UTC, no later Production record). Migration `20261029000100` on the Production Supabase project: **not
+checked** — this sandbox has no linked project, no remote credentials, and the Supabase API is blocked, so which project
+Production uses cannot be confirmed here. Early Access logs record only fixed text and error codes (never the
+password, its value or the visitor's input). Smart Load Build open decisions (trip/cycle-time data, firm vs flexible
+dates, driver-hour rules, mixed-material loads, alternative quarries, shared trips, cost) are in
+docs/SMART_LOAD_BUILD.md §3 and §8. Employee Management requirements are recorded in the master plan (not started).
+
 **Shared Early Access password refused on mytaviron.com (2026-10-11) — diagnosis:** Production still runs the single
 build of `16fc188` from 2026-10-11 16:07 UTC (GitHub deployment records). The owner set `EARLY_ACCESS_PASSWORD` in
 Vercel after that; Vercel applies variable changes only to deployments built afterwards, so the running deployment has

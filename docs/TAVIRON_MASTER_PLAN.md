@@ -121,6 +121,18 @@ days, nothing moved), dispatcher approval creates planned loads only. Next: cycl
 with the next code checkpoint (CLAUDE.md → Workflow). Open: `main` as production branch, domains, Preview variables, the
 mytaviron.com sign-in difference (SESSION_HANDOFF).
 
+**Employee Management (requirements being defined — NOT started):** a dedicated Employees tab with:
+- employee directory and profiles;
+- role assignments and permissions, including configurable roles and controls on sensitive actions;
+- full messaging inside each company, permission-controlled: direct messages, group conversations, role-based
+  channels, company announcements and targeted alerts;
+- time off: requests (editable and withdrawable while pending), approvals and denials, leave types, balances and
+  request history;
+- coverage checks, and approved absences feeding Smart Dispatch driver availability;
+- notifications and an audit history of administrative actions.
+Not a complete specification yet: open questions (e.g. who approves time off, accrual rules, message retention,
+announcement targeting, which actions count as sensitive) stay with the founder. Nothing is implemented.
+
 **Roadmap after the UI checkpoints (not started):** further polish of the remaining screens (Orders, Fleet, Reports,
 Customers, Tickets); refresh public screenshots from the real UI with consistent fictional data (no development overlays,
 legitimate alerts kept); a restrained 3D trucking showcase (trucks, aggregate, road) with real screens central; an
