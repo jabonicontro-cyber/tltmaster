@@ -60,7 +60,7 @@ test("without early access nothing is reachable except the public website, the g
     const r = await request.get(path, { headers: { accept: "text/html" }, maxRedirects: 0 });
     if (open) {
       expect(r.status(), path).toBe(200);
-      expect(await r.text(), path).not.toMatch(/Good to see you|Attention queue|Loads awaiting a ticket|Sign out/); // marketing, not the app
+      expect(await r.text(), path).not.toMatch(/data-testid="greeting"|Attention queue|Loads awaiting a ticket|Sign out/); // marketing, not the app
     } else {
       expect(r.status(), path).toBe(307);
       expect(r.headers().location, path).toMatch(/\/early-access/);

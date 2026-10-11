@@ -2,7 +2,8 @@
 
 import { DropdownMenu as M } from "radix-ui";
 import Link from "next/link";
-import { Building2, Check, ChevronDown, LogOut, Monitor, MonitorX, Plus, ShieldCheck, UserRound } from "lucide-react";
+import { Building2, Check, ChevronDown, CircleUserRound, LogOut, Monitor, MonitorX, Plus, ShieldCheck } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
 import { THEME_OPTIONS, applyTheme, parseTheme } from "@/lib/theme";
 import { useThemePreference } from "@/components/ui/theme-sync";
 import { usePathname } from "next/navigation";
@@ -13,7 +14,7 @@ import { switchCompany } from "@/app/account/actions";
 
 type CompanyItem = { id: string; name: string; current: boolean; role: string };
 
-export function UserMenu({ name, email, roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false }: { name: string; email: string; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null; platformAdmin?: boolean }) {
+export function UserMenu({ name, email, photo = "", roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false }: { name: string; email: string; photo?: string; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null; platformAdmin?: boolean }) {
   const [signingOut, startSignOut] = useTransition();
   const [toggling, startToggle] = useTransition();
   const pathname = usePathname();
@@ -29,9 +30,7 @@ export function UserMenu({ name, email, roleLabel, companies = [], canCreateComp
   return (
     <M.Root>
       <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-ink hover:bg-surface">
-        <span className="flex size-8 items-center justify-center rounded-full bg-surface ring-1 ring-line">
-          <UserRound className="size-4" aria-hidden />
-        </span>
+        <Avatar name={name || email} src={photo} size={32} />
         <span className="hidden min-w-0 sm:block">
           <span className="block max-w-[12rem] truncate text-sm font-semibold">{name || email}</span>
           <span className="block max-w-[16rem] truncate text-xs text-muted">{roleLabel}</span>
@@ -44,6 +43,9 @@ export function UserMenu({ name, email, roleLabel, companies = [], canCreateComp
             <p className="truncate text-sm font-semibold text-ink">{name || "Signed in"}</p>
             <p className="truncate text-xs text-muted">{email}</p>
           </div>
+          <M.Item asChild className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">
+            <Link href="/profile"><CircleUserRound className="size-4" aria-hidden /> My profile</Link>
+          </M.Item>
           <M.Separator className="my-1 h-px bg-line" />
           {companies.length > 1 && (
             <>

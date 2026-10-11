@@ -22,6 +22,8 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Profile self-service (20261030000100): own row only; photos only within the caller's current company.
+  "public.my_profile", "public.update_my_profile", "public.set_my_photo", "public.profile_photo",
   "private.assign_customer_number", "private.audit_row_change", "private.business_timezone", "private.business_today",
   "private.create_company", "private.current_app_role", "private.current_company_id", "private.handle_new_auth_user",
   "private.has_permission", "private.is_company_member", "private.issue_current_version", "private.log_event",

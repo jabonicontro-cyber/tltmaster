@@ -23,6 +23,7 @@ import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
+import { photoUrl } from "@/server/data/profile";
 import { adminAvailable } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
@@ -93,7 +94,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       role: m.role,
       active: m.active,
       created_at: m.created_at,
+      photo: "",
+      phone: "",
     }));
+    // Photos and phone numbers people set themselves (migration 20261030000100). Read
+    // separately so the list still works on a database without those columns.
+    const { data: extras } = await supabase.from("profiles").select("id, phone, photo_updated_at").in("id", users.map((u) => u.id));
+    for (const e of (extras ?? []) as Array<{ id: string; phone: string; photo_updated_at: string | null }>) {
+      const u = users.find((x) => x.id === e.id);
+      if (u) {
+        u.photo = photoUrl(e.id, e.photo_updated_at);
+        u.phone = e.phone;
+      }
+    }
     content = <UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} isOwner={access.role === "owner"} />;
   } else if (tab === "permissions") {
     const [{ data: perms }, { data: grants }] = await Promise.all([

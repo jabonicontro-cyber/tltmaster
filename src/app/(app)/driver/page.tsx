@@ -6,6 +6,8 @@ import { buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
+import { greeting } from "@/lib/people/greeting";
+import { getMyProfile } from "@/server/data/profile";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { DRIVER_TICKET_STATUS, REPORT_KIND_LABELS, REPORT_STATUS_LABELS, qualificationReminders, siteAddress } from "@/lib/driver/rules";
 import { trimNumber } from "@/lib/fleet/labels";
@@ -79,13 +81,15 @@ function AssignmentCard({ a, today, past }: { a: DriverAssignment; today: string
 }
 
 export default async function DriverHomePage({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
-  await requirePagePermission("driver.portal");
+  const access = await requirePagePermission("driver.portal");
   const sp = await searchParams;
   const home = await loadDriverHome();
+  const hello = greeting((await getMyProfile())?.displayName || access.fullName || (home.ok ? home.data.driver.name : ""));
 
   if (!home.ok) {
     return (
       <div className="mx-auto max-w-xl">
+        <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="mb-4 text-2xl font-black">My Day</h1>
         {home.notLinked ? (
           <Notice tone="warning" title="Your account is not linked to a driver yet">
@@ -107,6 +111,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
+        <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="text-2xl font-black">My Day</h1>
         <p className="text-muted">{h.driver.name} · {formatDate(h.today)}</p>
       </div>

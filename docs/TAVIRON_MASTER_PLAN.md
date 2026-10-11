@@ -121,6 +121,12 @@ days, nothing moved), dispatcher approval creates planned loads only. Next: cycl
 with the next code checkpoint (CLAUDE.md → Workflow). Open: `main` as production branch, domains, Preview variables, the
 mytaviron.com sign-in difference (SESSION_HANDOFF).
 
+**Employee self-service and navigation (2026-10-11, Preview):** collapsible desktop sidebar (icon rail,
+hover/keyboard expansion, pin), personal greeting, `/profile` with photo, display name and phone; role,
+company and full name stay company-controlled. Needs migration `20261030000100` on staging (owner). The
+employee directory, Mechanics shop board and company management (decided 2026-10-11: directory + records,
+shop board, one-time setup links) are next.
+
 **Employee Management (requirements being defined — NOT started):** a dedicated Employees tab with:
 - employee directory and profiles;
 - flexible role-based access: standard and custom roles, authorized individual overrides, audited sensitive actions;

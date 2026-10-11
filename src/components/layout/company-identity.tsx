@@ -5,21 +5,21 @@ import { cn } from "@/lib/cn";
  * otherwise a monogram in the company's accent color with the company name.
  * Taviron appears only as a small "Powered by Taviron" line elsewhere.
  */
-export function CompanyIdentity({ name, logoUrl, tone = "light", className }: { name: string | null; logoUrl: string; tone?: "light" | "dark"; className?: string }) {
+export function CompanyIdentity({ name, logoUrl, tone = "light", compact = false, className }: { name: string | null; logoUrl: string; tone?: "light" | "dark"; /** Square mark only (the collapsed sidebar rail). */ compact?: boolean; className?: string }) {
   const label = name || "Your company";
   if (logoUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a small per-company image served by our own route
-      <img src={logoUrl} alt={label} className={cn("h-8 max-w-40 rounded bg-white object-contain p-1", className)} />
+      <img src={logoUrl} alt={label} className={cn(compact ? "size-9" : "h-8 max-w-40", "rounded bg-white object-contain p-1", className)} />
     );
   }
   const initials = label.replace(/\(.*?\)/g, "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "C";
   return (
     <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand text-[13px] font-semibold text-white" aria-hidden>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand text-[13px] font-semibold text-white" aria-hidden={!compact} role={compact ? "img" : undefined} aria-label={compact ? label : undefined}>
         {initials}
       </span>
-      <span className={cn("line-clamp-2 text-sm leading-tight font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>
+      {!compact && <span className={cn("line-clamp-2 text-sm leading-tight font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>}
     </span>
   );
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { Avatar } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, UserPlus } from "lucide-react";
@@ -283,6 +284,9 @@ export interface UserRow {
   role: AppRole | null;
   active: boolean;
   created_at: string;
+  /** Profile photo URL ("" = initials) and phone, as the person set them. */
+  photo: string;
+  phone: string;
 }
 
 export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = false }: { users: UserRow[]; currentUserId: string; inviteAvailable: boolean; isOwner?: boolean }) {
@@ -312,8 +316,13 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
             {users.map((u) => (
               <Tr key={u.id}>
                 <Td>
-                  <div className="font-semibold">{u.full_name || "—"} {u.id === currentUserId && <span className="text-sm font-normal text-muted">(you)</span>}</div>
-                  <div className="text-sm text-muted">{u.email}</div>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={u.full_name || u.email} src={u.photo} size={36} />
+                    <div className="min-w-0">
+                      <div className="font-semibold">{u.full_name || "—"} {u.id === currentUserId && <span className="text-sm font-normal text-muted">(you)</span>}</div>
+                      <div className="text-sm break-all text-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}</div>
+                    </div>
+                  </div>
                 </Td>
                 <Td>{u.role ? ROLE_LABELS[u.role] : <Badge tone="amber">Waiting for a role</Badge>}</Td>
                 <Td>{u.active ? <Badge tone="green">Active</Badge> : <Badge>Deactivated</Badge>}</Td>

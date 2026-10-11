@@ -7,6 +7,30 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0. Latest checkpoint (2026-10-11 evening) — read first
+
+- **Branches:** work and pushes on `claude/ui-and-signin-checkpoint` (Preview). Production
+  (`claude/top-line-trucking-manager-vmw04i`, mytaviron.com) is still at `16fc188`; Release 1
+  (`3b33dfc`: new layout, Load Build, sign-in fixes; no migration) awaits the owner's go-ahead.
+- **Admin accounts:** `scripts/platform-admin.mjs setup-link <email> --base-url https://mytaviron.com`
+  prints a one-time password-setup link (creates the login if needed); then `grant`. The documented
+  placeholder `you@example.com` must be revoked on staging if it was ever created (owner).
+- **Email:** Resend domain `mytaviron.com` verified (owner). App emails (leads, quotes) use
+  `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `LEAD_NOTIFY_EMAIL`,
+  `EMAIL_TEST_RECIPIENT` (test mode: lead and quote emails only go to that inbox), `APP_BASE_URL`.
+  A malformed value in any of these stops the server rendering pages (env validation). Supabase Auth
+  emails (invitations, resets, confirmations) do **not** use these: they need Supabase → Authentication
+  → SMTP (Resend SMTP) and URL Configuration (owner, not done). No delivery verified from a session.
+  Branded HTML lead emails: `5c7ac2c` (Preview only).
+- **Sidebar, greeting, profile self-service (Preview, not Production):** collapsible desktop rail
+  (hover/keyboard expand, pin stored in a cookie), "Hi, <first name>!" / "Welcome back!", `/profile`
+  (photo resized in the browser, display name, phone). **Needs migration
+  `20261030000100_profile_self_service.sql` on staging before it works there** (back up first,
+  DEPLOYMENT §2a; rollback script in `supabase/rollbacks/`). Without it the app works and `/profile`
+  says editing is not available yet (tested). No PTO exists, so none is shown.
+- **Known flaky locally:** `tests/db/command-center.test.ts` first test runs ~19 s against the large
+  local test database and can hit the 20 s timeout in a full run; passes alone.
+
 ## 1. Repository state (verified)
 
 - **Branch:** `claude/top-line-trucking-manager-vmw04i`. This is the only development branch, and Vercel
