@@ -2,7 +2,7 @@
 
 import { DropdownMenu as M } from "radix-ui";
 import Link from "next/link";
-import { Building2, Check, ChevronDown, LogOut, Monitor, MonitorX, Plus, UserRound } from "lucide-react";
+import { Building2, Check, ChevronDown, LogOut, Monitor, MonitorX, Plus, ShieldCheck, UserRound } from "lucide-react";
 import { THEME_OPTIONS, applyTheme, parseTheme } from "@/lib/theme";
 import { useThemePreference } from "@/components/ui/theme-sync";
 import { usePathname } from "next/navigation";
@@ -13,7 +13,7 @@ import { switchCompany } from "@/app/account/actions";
 
 type CompanyItem = { id: string; name: string; current: boolean; role: string };
 
-export function UserMenu({ name, email, roleLabel, companies = [], canCreateCompany = false, demo = null }: { name: string; email: string; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null }) {
+export function UserMenu({ name, email, roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false }: { name: string; email: string; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null; platformAdmin?: boolean }) {
   const [signingOut, startSignOut] = useTransition();
   const [toggling, startToggle] = useTransition();
   const pathname = usePathname();
@@ -65,6 +65,12 @@ export function UserMenu({ name, email, roleLabel, companies = [], canCreateComp
               ))}
               <M.Separator className="my-1 h-px bg-line" />
             </>
+          )}
+          {/* Shown when the server already confirmed the platform role; /admin checks it again. */}
+          {platformAdmin && (
+            <M.Item asChild className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">
+              <Link href="/admin"><ShieldCheck className="size-4" aria-hidden /> Platform administration</Link>
+            </M.Item>
           )}
           {canCreateCompany && (
             <M.Item asChild className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">

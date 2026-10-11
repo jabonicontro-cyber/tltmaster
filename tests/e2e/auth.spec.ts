@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signIn } from "./helpers";
-import { PASSWORD, USERS } from "./users";
+import { PASSWORD, PLATFORM_USER, USERS } from "./users";
 
 test("anonymous visitors are sent to sign in, then back to the page they wanted", async ({ page }) => {
   await page.goto("/customers");
@@ -56,4 +56,49 @@ test("after sign-in, a 'next' that a browser would read as another site is ignor
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL(/localhost:\d+\/command-center/);
+});
+
+test("an unconfirmed email is named as such after the right password; a wrong password still gets the generic message", async ({ page }) => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!, key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  test.skip(!url || !key, "Needs the local Supabase service key.");
+  const { createClient } = await import("@supabase/supabase-js");
+  const admin = createClient(url, key, { auth: { persistSession: false } });
+  const email = `unconfirmed-${Date.now()}@tavirontest.example`;
+  const { error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: false });
+  expect(error).toBeNull();
+  await page.goto("/login");
+  await page.getByLabel("Email").fill(email);
+  await page.getByLabel("Password").fill("Wrong-Passw0rd-999");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
+  await page.getByLabel("Password").fill(PASSWORD);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.getByText("This email address has not been confirmed yet.", { exact: false })).toBeVisible();
+  await expect(page).toHaveURL(/\/login/); // still not signed in
+});
+
+test("the platform administration link appears only for platform owners, and /admin still checks the role", async ({ page, browser }) => {
+  // A company owner without the platform role: no link, and the area does not exist for them.
+  await signIn(page, "owner");
+  await page.getByRole("banner").getByRole("button").last().click();
+  await expect(page.getByRole("menuitem", { name: /Sign out/ })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: "Platform administration" })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  expect((await page.goto("/admin"))?.status()).toBe(404);
+
+  // A platform owner who is working inside a company sees the link, and it opens the portal.
+  const ctx = await browser.newContext();
+  const p = await ctx.newPage();
+  await p.goto("/login");
+  await p.getByLabel("Email").fill(PLATFORM_USER.email);
+  await p.getByLabel("Password").fill(PASSWORD);
+  await p.getByRole("button", { name: "Sign in" }).click();
+  await p.waitForURL((u) => !u.pathname.startsWith("/login"));
+  await p.goto("/command-center");
+  test.skip(!p.url().includes("/command-center"), "The platform test user has no company here (start the live demo once).");
+  await p.getByRole("banner").getByRole("button").last().click();
+  await p.getByRole("menuitem", { name: "Platform administration" }).click();
+  await expect(p).toHaveURL(/\/admin$/);
+  await expect(p.getByRole("navigation", { name: "Platform" })).toBeVisible();
+  await ctx.close();
 });

@@ -54,6 +54,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
           companies={companies.map((c) => ({ id: c.company_id, name: c.name, current: c.current, role: ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] ?? c.role }))}
           canCreateCompany={access.role === "owner"}
           demo={access.isDemo ? { presentation } : null}
+          platformAdmin={platformAdmin}
         />
       </header>
 

@@ -27,7 +27,12 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   });
   if (error) {
     if (error.status === 429) return { ok: false, error: "Too many attempts. Wait a minute and try again." };
-    if (error.status === 400 || error.code === "invalid_credentials" || error.code === "email_not_confirmed") {
+    // Supabase reports an unconfirmed email only after the password has matched,
+    // so saying so reveals nothing to someone who does not know the password.
+    if (error.code === "email_not_confirmed") {
+      return { ok: false, error: "This email address has not been confirmed yet. Open the confirmation link sent when the account was created, or ask your Taviron administrator to confirm the account." };
+    }
+    if (error.status === 400 || error.code === "invalid_credentials") {
       // Same message either way: do not reveal whether the account exists.
       return { ok: false, error: "Email or password is incorrect." };
     }
