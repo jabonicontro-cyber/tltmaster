@@ -29,6 +29,14 @@ from the user menu (top right) → **Show the demo bar**. Presentation mode does
 
 ## Procedure
 
+Automated: `scripts/capture-screenshots.mjs` signs in, turns on presentation mode and captures the five
+screens used on the website at 1440 × 900 (phone 390 × 844), 2× scale. Credentials come from environment
+variables only. The signed-in person's name appears in the screens (header, greeting, and as a driver in the
+demo), so capture with an account whose display name is a plain person's name — not a test label such as
+"Platform" or "e2e".
+
+Manual:
+
 1. Sign in as a platform-team member and open **Live demo** → start (or reset) the demo.
 2. In the demo company, click **Presentation mode** in the demo bar.
 3. Use a 1440 × 900 window for desktop shots and 390 × 844 for phone shots, at 1× or 2× scale.

@@ -46,13 +46,13 @@ export default function PlatformPage() {
               verified deliveries make an order ready for billing.
             </p>
           </SectionHeading>
-          <Screenshot src="/site/tickets.png" alt="The Taviron delivery ticket review queue" width={1440} height={900} caption="Ticket review — demo company, fictional data." />
+          <Screenshot src="/site/tickets.png" alt="Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided" width={2880} height={1800} caption="Delivery tickets — demo company, fictional data." />
         </Container>
       </section>
 
       <section>
         <Container className="grid items-center gap-12 py-20 lg:grid-cols-2">
-          <Screenshot className="lg:order-first" src="/site/order.png" alt="A Taviron order with its lines, loads and delivered-so-far progress" width={1440} height={900} caption="Order detail — demo company, fictional data." />
+          <Screenshot className="lg:order-first" src="/site/order.png" alt="An order in a demo company with its progress across dispatch, delivery tickets and billing readiness, and its history" width={2880} height={1800} caption="Order detail — demo company, fictional data." />
           <SectionHeading eyebrow="Orders" title="Every order shows where it really stands.">
             <p>Planned loads, assignments, delivered quantities from accepted tickets, and billing state — from the same shared records, not a separate spreadsheet.</p>
           </SectionHeading>

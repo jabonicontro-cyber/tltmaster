@@ -102,6 +102,37 @@
 .site-press:active {
   transform: scale(0.97);
 }
+/* Homepage product showcase: layered CSS perspective, static (no ongoing motion). */
+.showcase-stage {
+  perspective: 2400px;
+}
+@media (min-width: 768px) {
+  .showcase-screen {
+    transform: rotateX(7deg) rotateY(-9deg) rotateZ(0.6deg);
+    transform-origin: 60% 100%;
+  }
+  .showcase-phone {
+    transform: translateZ(80px) rotateY(-14deg) rotateX(4deg);
+  }
+  .showcase-truck {
+    transform: scaleX(-1); /* cab facing out, body running under the screen */
+    filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.55));
+  }
+}
+.showcase-glow {
+  background:
+    radial-gradient(42% 46% at 55% 42%, rgb(22 139 255 / 0.20), transparent 70%),
+    radial-gradient(30% 30% at 18% 78%, rgb(22 139 255 / 0.12), transparent 70%);
+}
+.showcase-road {
+  transform: perspective(700px) rotateX(64deg);
+  transform-origin: 50% 100%;
+  background:
+    repeating-linear-gradient(to top, rgb(22 139 255 / 0.45) 0 18px, transparent 18px 44px) 50% 0 / 0.6% 100% no-repeat,
+    repeating-linear-gradient(90deg, rgb(199 209 222 / 0.07) 0 1px, transparent 1px 64px),
+    linear-gradient(to top, rgb(16 35 58 / 0.95), transparent);
+  mask-image: linear-gradient(to top, black 30%, transparent);
+}
 .site-grid-bg {
   background-image:
     linear-gradient(rgb(199 209 222 / 0.05) 1px, transparent 1px),

@@ -124,6 +124,9 @@ any custom domain added to the project later (none is known).
 
 ## 7. Next recommended task
 
+**Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
+illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
+
 **App overhaul Phase 1 (2026-10-11):** shell + Command Center restyled, urgency colour fixed, presentation mode
 for clean screenshots (IMPLEMENTATION_PLAN §5r, `docs/SCREENSHOTS.md`). The public-page redesign is paused until
 the app modules are done; next app module per the founder's review.

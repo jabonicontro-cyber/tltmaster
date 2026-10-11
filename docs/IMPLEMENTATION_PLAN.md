@@ -1826,6 +1826,21 @@ no new motion), `mobile-native` (larger tap targets, light header that does not 
 - **Tests:** `branding.spec` (default accent, company identity, urgent stays red), `platform.spec` (presentation
   mode on/off with alerts unchanged).
 
+## 5s. Website product showcase and refreshed screenshots (2026-10-11)
+
+- **Screenshots** (`public/site/*.png`): recaptured from a production build of the redesigned app, in the
+  live demo company, in presentation mode (no demo bar, no dev overlay), 1440 × 900 (phone 390 × 844) at 2×,
+  with `scripts/capture-screenshots.mjs`. Urgent items and warnings are kept. The capture account's display
+  name was set to a plain fictional name for the run (a test label would have appeared as the user and as a
+  driver) and restored afterwards — local test data only. Alt texts and captions now describe what each image
+  actually shows. Served optimized by Next.js at about 50–100 KB each.
+- **Showcase** (`src/components/site/product-showcase.tsx`, CSS in `globals.css`): the homepage hero's product
+  image is a layered CSS-perspective composition — the real Command Center screen at the centre (slight
+  angle, still legible), the driver's phone in front, an original tri-axle dump-truck illustration
+  (`dump-truck.tsx`, drawn for Taviron: navy body, silver detail, electric-blue rim light, headlight glow)
+  coming out from behind on a lit road. No 3D library and no ongoing motion (so nothing to reduce for
+  reduced-motion users); below 768px it is the flat screenshot only.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

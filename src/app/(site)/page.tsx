@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
+import { ProductShowcase } from "@/components/site/product-showcase";
 import { Container, CtaLink, Eyebrow, FinalCta, Screenshot, SectionHeading } from "@/components/site/ui";
 
 export const metadata: Metadata = {
@@ -54,7 +55,7 @@ export default function HomePage() {
       <section className="relative overflow-hidden">
         <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgb(22_139_255/0.14),transparent)]" aria-hidden />
-        <Container className="relative pt-16 pb-14 sm:pt-24 sm:pb-20">
+        <Container className="relative pt-16 pb-14 sm:pt-24 sm:pb-20 md:pb-28">
           <div className="max-w-3xl">
             <Eyebrow>For aggregate and material haulers</Eyebrow>
             <h1 className="mt-5 text-[2.5rem] leading-[1.08] font-bold tracking-tight text-balance text-cloud sm:text-6xl">
@@ -74,15 +75,7 @@ export default function HomePage() {
             </div>
             <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
           </div>
-          <Screenshot
-            className="mt-14 sm:mt-16"
-            src="/site/command-center.png"
-            alt="The Taviron Command Center for a demo company: today's orders, loads needing attention and urgent orders"
-            width={1440}
-            height={900}
-            caption="Command Center — the live demo company, fictional data."
-            priority
-          />
+          <ProductShowcase />
         </Container>
       </section>
 
@@ -122,14 +115,14 @@ export default function HomePage() {
               ]}
             />
           </div>
-          <Screenshot src="/site/dispatch.png" alt="The Taviron dispatch board with loads assigned to trucks and drivers" width={1440} height={900} caption="Dispatch board — demo company, fictional data." />
+          <Screenshot src="/site/dispatch.png" alt="Dispatch for a demo company: an urgent order awaiting acknowledgement and Smart Dispatch proposals of a truck and driver for each open load, not yet assigned" width={2880} height={1800} caption="Dispatch board — demo company, fictional data." />
         </Container>
       </section>
 
       {/* Tickets and drivers */}
       <section className="border-t border-silver/10 bg-navy-2">
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
-          <Screenshot className="lg:order-first" src="/site/tickets.png" alt="The Taviron delivery ticket review queue beside the order details" width={1440} height={900} caption="Ticket review — demo company, fictional data." />
+          <Screenshot className="lg:order-first" src="/site/tickets.png" alt="Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided" width={2880} height={1800} caption="Delivery tickets — demo company, fictional data." />
           <div>
             <SectionHeading eyebrow="Tickets to billing" title="Quantities you can stand behind.">
               <p>The ticket starts in the truck, not in a shoebox — and an order reaches billing only when its deliveries are verified.</p>
