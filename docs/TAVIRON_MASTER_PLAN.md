@@ -114,7 +114,7 @@ Sign In, `noindex` unless `SITE_INDEXING=on`, the capability registry and `docs/
 **Smart Load Build (2026-10-11):** canonical spec in [`docs/SMART_LOAD_BUILD.md`](SMART_LOAD_BUILD.md) (accepted
 requirements A–J, gap analysis, rules, open questions, milestones). Increment 1 implemented: draft loads from an
 order's single material line (exact totals, payload limited to usable truck capacity, even spread over scheduled
-days, nothing moved), dispatcher approval creates planned loads only. Next: cycle-time data (decision needed).
+days, nothing moved), dispatcher approval creates planned loads only. Next: cycle-time data — increment 2 audited and proposed in SMART_LOAD_BUILD.md §9 (trip logic tested, not wired); first decision: source of trip times.
 
 **Deployment policy and Preview path (2026-10-11):** non-production branches are verified to deploy to Preview
 (`claude/ui-and-signin-checkpoint`). Claude never pushes the production branch without approval; docs-only changes ride

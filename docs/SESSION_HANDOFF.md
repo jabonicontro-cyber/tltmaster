@@ -134,6 +134,11 @@ any custom domain added to the project later (none is known).
 **Website showcase + screenshots (2026-10-11):** homepage product showcase with an original dump-truck
 illustration; all product screenshots recaptured from the new UI (IMPLEMENTATION_PLAN §5s).
 
+**Smart Load Build increment 2 — prepared (2026-10-11):** audit, data model proposal, staged plan and decisions in
+docs/SMART_LOAD_BUILD.md §9. Implemented only pure trip/cycle-time logic (`src/lib/dispatch/trip-plan.ts`, 10 unit
+tests), not wired to any page — no behaviour change, no migration, not deployed. Next decision: where trip times come
+from (§9.7 question 1).
+
 **Status check (2026-10-11, later session):** verified — Preview branch `claude/ui-and-signin-checkpoint` at `aadf07d`
 (clean, equal to origin; Vercel Preview success); production branch at `16fc188`, still the only Production build
 (16:07 UTC, no later Production record). Migration `20261029000100` on the Production Supabase project: **not

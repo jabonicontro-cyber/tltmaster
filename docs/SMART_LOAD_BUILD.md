@@ -108,3 +108,81 @@ decisions still with the founder; the dependent feature must not ship before the
 
 Risks: travel-time precision without real data (avoided: no estimates are shown); dispatcher-entered daily counts can
 be optimistic (warned against truck count); shared staging database between Preview and Production.
+
+## 9. Increment 2 — trip and cycle-time planning (audit and proposal, 2026-10-11)
+
+### 9.1 What the data holds today (audited in the schema and code)
+
+| Need | In Taviron today | Status |
+| --- | --- | --- |
+| Loading duration | Nothing (no quarry/source records) | **Missing** |
+| Travel time to site | Order and customer-site addresses only; `customer_sites.latitude/longitude` exist but are empty (0 of 153 locally) and no screen fills them; no origin (quarry/yard) location at all | **Missing** |
+| Unloading duration | Nothing | **Missing** |
+| Return / repositioning | Nothing | **Missing** |
+| Truck availability | `active`, `service_status`, `expected_return_date`; open breakdown/inspection reports; active `dispatch_assignments` intervals (no-overlap constraint) | **Stored** |
+| Driver availability | Active flag, qualifications with expiry, assignment intervals; no time off, shifts or availability | **Partial** (time off is part of the future Employees area) |
+| Shift limits / driver-hour rules | Nothing; no rule is assumed | **Missing — decision needed** |
+| Delivery windows | `scheduled_start/end` (dates), `window_start/end` (daily time), `requested_date`, urgency `needed_by` | **Stored** |
+| Firm vs flexible dates | Nothing; every scheduled date is treated as firm | **Missing — decision needed** |
+| Observed timings | `delivery_tickets.delivered_at` per ticket and truck (could yield measured turnaround between a truck's deliveries); driver "delay" reports are free text without durations | **Usable later as "measured"** |
+
+### 9.2 Implemented now (not wired to any page)
+
+`src/lib/dispatch/trip-plan.ts` with `tests/unit/trip-plan.test.ts` (10 tests). Pure logic only:
+- a trip = load + outbound + unload + return minutes; each duration carries its source (`dispatcher`, `measured`,
+  `estimate`) and estimates are called out;
+- `maxTripsPerTruck`: trips one free truck can deliver inside the window (and the shift, when entered);
+- `planTrips`: places a day's loads (exact quantities from increment 1) on usable trucks that can carry them, never
+  overlapping existing bookings, delivery (arrival → unloaded) inside the window, finished within the shift;
+  anything that does not fit is returned as unplanned with the reason — never squeezed in or moved to another day.
+  The truck pairing is for feasibility only: no assignment is created; Smart Dispatch + dispatcher approval remain.
+
+### 9.3 How cycle times change the plan
+
+- One truck makes `floor((latest start − earliest start) / cycle) + 1` trips a day, where the earliest start lets it
+  arrive at the window's opening and the latest start still finishes unloading by its close (or the shift end).
+  Example: 2-hour cycle, 7:00–17:00 window → 5 trips per truck.
+- Trucks needed per day = loads ÷ trips per truck (rounded up). This replaces the dispatcher-entered "loads per day"
+  of increment 1 with a computed figure, and lets one truck take several loads a day: each load gets its own start
+  and end time (today all loads of a day share the order's window).
+- If loads > available trucks × trips, the surplus is reported for that day; with flexible dates (decision below) it
+  could move to another permitted day, with firm dates it is a conflict for the dispatcher.
+
+### 9.4 Proposed data model (not created — needs decisions and approval)
+
+All tables carry `company_id`, RLS limited to the company, writes by permission (`dispatch.edit` or
+`settings.manage`), audit triggers; no secrets; additive migration with a rollback script.
+- `sources` (quarries, plants, yards): name, address, optional latitude/longitude, opening hours, default loading
+  minutes (+ source label), active. Also the foundation for alternative sources (requirement H).
+- `route_times` (source × customer site): outbound and return minutes, each with source label, sample count when
+  measured, updated by/at. Unique per company, source and site.
+- `customer_sites.unload_minutes` (+ source label).
+- `orders.source_id` (preferred source) and `orders.date_flexibility` (`firm` default, `flexible`), changes audited.
+- `company_settings.shift_minutes` (nullable) until driver-hour rules are decided.
+- No change to `order_loads` or `dispatch_assignments`: plans still become planned loads with start/end times.
+
+### 9.5 Routing service (optional; nothing purchased or enabled)
+
+A first version works without one: dispatchers enter minutes per source and site once, and measured times from
+tickets refine them. A routing API (e.g. Google Routes / Distance Matrix, Mapbox Matrix, HERE with truck profiles,
+or an OpenRouteService instance) would fill travel minutes automatically and could respect truck restrictions
+(HERE). All are usage-priced beyond free tiers, need sites and sources geocoded, a server-side key in Vercel, and
+the founder's approval of the cost before any account is created. Results would be stored with source `estimate`.
+
+### 9.6 Staged plan
+
+1. **Done (groundwork):** trip arithmetic and feasibility logic with tests.
+2. Sources + route times + unload minutes (migration, rollback, settings screens) — needs decisions 1–2.
+3. Load Build uses cycle times: computed trips per truck, staggered load times, per-day conflicts.
+4. Measured times from tickets (read-only view, labelled "measured").
+5. Firm vs flexible dates with authorized changes — decision 3.
+6. Shift limits / driver-hour rules — decision 4; time off from the Employees area.
+7. Routing API — decision 5 (cost approval).
+
+### 9.7 Decisions needed (one at a time, first first)
+
+1. Where do trip times come from at first: dispatcher-entered per quarry/site pair, or a routing service?
+2. Is the loading source (quarry/plant/yard) chosen per order, per material, or per load?
+3. Firm vs flexible: default firm? Who may change a firm date?
+4. Driver limits: a company shift length, federal hours-of-service, or both?
+5. Routing service budget, if any.
