@@ -178,3 +178,19 @@ describe("Smart Dispatch and maintenance / hours of service", () => {
     expect(p.notes.join(" ")).toMatch(/Maintenance shop dates were not checked/);
   });
 });
+
+describe("Smart Dispatch and time off", () => {
+  const leave = (status: "approved" | "pending", from: string, to: string) => ({ driver_id: "d-avery", status, starts_at: at(TODAY, from), ends_at: at(TODAY, to) });
+  it("excludes a driver whose approved leave overlaps the load, but not one whose leave is at another time", () => {
+    const blocked = recommend(input({ loads: [load("A")], timeOff: [leave("approved", "12:00", "16:00")] }))[0];
+    expect(blocked.proposal).toBeNull();
+    expect(blocked.excludedDrivers[0].reasons.join(" ")).toMatch(/Approved time off covers this load/);
+    const free = recommend(input({ loads: [load("A")], timeOff: [leave("approved", "06:00", "10:00")] }))[0];
+    expect(free.proposal?.driverLabel).toBe("Avery");
+  });
+  it("pending leave only warns, and missing time-off data is disclosed", () => {
+    const [p] = recommend(input({ loads: [load("A")], timeOff: [leave("pending", "00:00", "23:59")], timeOffChecked: true }));
+    expect(p.proposal!.warnings.join(" ")).toMatch(/pending time-off request/);
+    expect(recommend(input({ loads: [load("A")], timeOffChecked: false }))[0].notes.join(" ")).toMatch(/Driver time off was not checked/);
+  });
+});

@@ -2044,6 +2044,50 @@ safety restriction blocks; shop work is a warning; canceling the visit lifts the
 dispatch.view, stays in the company, exposes no costs), Smart Dispatch unit tests for shop/safety/HOS notes,
 `tests/e2e/dispatch-availability.spec.ts`; existing dispatch concurrency and isolation tests still pass.
 
+## 5z. Driver time off and dispatch availability (2026-10-12)
+
+**Audit first:** no time-off, PTO, leave, balance, accrual or policy code, table or migration existed (master plan
+§2 listed it as a requirement only). Employees (`employees`, linked to logins and driver records), permissions, audit
+and the dispatch checks (`assign_load` → `private.check_assignment` with the load's exact times;
+`private.assignment_eligibility` per date, also used by the Command Center) were reused. No manager hierarchy or work
+schedules exist.
+
+**Migration `20261104000100_time_off.sql`** (rollback tested apply → rollback → re-apply; depends on 20261031000100
+and 20261103000100):
+- `time_off_requests` (category, dates, full day or a partial day with times — hours derived —, comment, status
+  pending → approved | denied | canceled, decision, submission key, edit_seq) and `time_off_events` (history).
+- Permissions `time_off.view` (owner, office, dispatcher) and `time_off.approve` (owner); everyone may request their
+  own (through the employee record linked to their login). Approvers enter time off for anyone (drivers without
+  logins). Nobody decides their own request. One employee's pending/approved requests never overlap (row lock on
+  the employee; no double counting). The employee cancels pending requests, or approved ones before they start;
+  approvers cancel any.
+- Dispatch: approved leave is checked inside `check_assignment` at the moment of assignment, using the load's times
+  for partial days; in `assignment_eligibility` a full approved day is a blocker (`driver_time_off`, so the Command
+  Center flags colliding assignments), a partial day and a pending request are warnings. Approval never cancels or
+  moves assignments; it returns and records the conflicting ones. `dispatch_time_off` gives dispatch dates, times and
+  status only (never category or reason).
+- A full day is the whole calendar day in the company time zone (no work schedules exist).
+
+**App:** `/time-off` (Company → Time Off; everyone): request form (full days or part of a day; approvers can choose
+the employee), my requests, everyone's requests with status/employee/name filters (time_off.view);
+`/time-off/[id]`: details, history, approve/deny with a note, cancel, and "Assignments to review" after approval.
+My Day links to it. Smart Dispatch excludes drivers whose approved leave overlaps a load, warns on pending requests,
+and says when time off could not be read. `/dispatch/resources` shows approved/pending leave per driver, counts
+qualified drivers not on leave, and lists active assignments that overlap approved leave for review. Without the
+migration every page works and says time off is not available yet (verified locally).
+
+**Not built (honest limits):** PTO balances, accruals, policies (annual grant, per-hour, per-period, banks,
+waiting periods, carryover, caps, proration, versioning) — requests are not checked against any balance and the
+page says so; multi-step approval chains and manager scopes (approval is company-wide with the permission); a
+company setting to allow self-approval (always refused); editing a pending request in the UI (the database
+function supports it; cancel and resend in the UI); notifications.
+
+**Tests:** `tests/db/time-off.test.ts` (lifecycle, double submit, overlap, own-decision refused, partial-day
+validation and hours, privacy, enter-for-others needs approve, view ≠ approve, other company; approved full day
+blocks assignment, pending/denied/canceled do not; partial day blocks only overlapping loads; approval flags but
+keeps existing assignments; dispatch never sees category or reason), Smart Dispatch unit tests,
+`tests/e2e/time-off.spec.ts`.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

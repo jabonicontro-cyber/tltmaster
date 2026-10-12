@@ -116,6 +116,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="text-2xl font-black">My Day</h1>
         <p className="text-muted">{access.isDemo && shown ? shown : h.driver.name} · {formatDate(h.today)}</p>
+        <Link href="/time-off" className="mt-1 inline-block text-sm font-semibold underline">Request time off</Link>
       </div>
       {sp.sent && (
         <p role="status" className="rounded-md bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>

@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
-import { recommend, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { recommend, type SmartTimeOff, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
@@ -62,6 +62,10 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const shopMissing = shop.error && (shop.error.code === "PGRST202" || shop.error.code === "42883");
   if (shop.error && !shopMissing) throw new Error(`Smart Dispatch could not read the shop schedule: ${shop.error.message}`);
 
+  const leave = await supabase.rpc("dispatch_time_off", { p_from: addDays(from, -1), p_to: addDays(to, 1) });
+  const leaveMissing = leave.error && (leave.error.code === "PGRST202" || leave.error.code === "42883");
+  if (leave.error && !leaveMissing) throw new Error(`Smart Dispatch could not read driver time off: ${leave.error.message}`);
+
   const byLoad = new Map(loadRows.map((l) => [l.id, l]));
   const assigned = new Set((assignments.data ?? []).map((a) => a.load_id as string));
   const urgent = new Map((urgencies.data ?? []).map((u) => [u.order_id as string, u.needed_by as string | null]));
@@ -108,6 +112,8 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
     shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),
     maintenanceChecked: !shopMissing,
+    timeOff: leaveMissing ? [] : ((leave.data ?? []) as SmartTimeOff[]),
+    timeOffChecked: !leaveMissing,
   };
 }
 

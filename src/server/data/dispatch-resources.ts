@@ -27,6 +27,10 @@ export interface DriverResource {
   qualification: { eligible: boolean; blockers: string[]; warnings: string[] };
   bookings: ResourceBooking[];
   primaryTruck: { id: string; unit: string } | null;
+  /** Approved or pending time off touching this date (no category or reason). */
+  timeOff: Array<{ status: "approved" | "pending"; full_day: boolean; start_time: string | null; end_time: string | null; start_date: string; end_date: string; starts_at: string; ends_at: string }>;
+  /** Active bookings that overlap approved time off — need a dispatcher's review. */
+  leaveConflicts: ResourceBooking[];
 }
 
 export async function getDispatchResources(date: string) {
@@ -40,6 +44,10 @@ export async function getDispatchResources(date: string) {
     supabase.from("order_loads").select("id, order_id, load_number, starts_at, ends_at, orders(order_number)").eq("load_date", date).eq("status", "planned"),
     supabase.rpc("dispatch_shop_schedule", { p_from: date, p_to: date }),
   ]);
+  const leave = await supabase.rpc("dispatch_time_off", { p_from: date, p_to: date });
+  const leaveMissing = Boolean(leave.error && (leave.error.code === "PGRST202" || leave.error.code === "42883"));
+  if (leave.error && !leaveMissing) throw new Error(`Could not read driver time off: ${leave.error.message}`);
+  const leaveRows = (leaveMissing ? [] : (leave.data ?? [])) as Array<DriverResource["timeOff"][number] & { driver_id: string }>;
   for (const r of [trucks, drivers, quals, loads]) if (r.error) throw new Error(`Could not load dispatch resources: ${r.error.message}`);
   const shopMissing = Boolean(shop.error && (shop.error.code === "PGRST202" || shop.error.code === "42883"));
   if (shop.error && !shopMissing) throw new Error(`Could not read the shop schedule: ${shop.error.message}`);
@@ -84,14 +92,20 @@ export async function getDispatchResources(date: string) {
   const driverResources: DriverResource[] = ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map((d) => {
     const q = driverChecks({ active: d.active, qualifications: qualsBy.get(d.id) ?? [] }, false, date);
     const truckId = primary.get(d.id);
+    const timeOff = leaveRows.filter((t) => t.driver_id === d.id);
+    const mine = bookings.filter((b) => b.driver_id === d.id);
+    const overlaps = (a: { starts_at: string; ends_at: string }, b: { starts_at: string; ends_at: string }) =>
+      new Date(a.starts_at).getTime() < new Date(b.ends_at).getTime() && new Date(b.starts_at).getTime() < new Date(a.ends_at).getTime();
     return {
       id: d.id,
       name: d.display_name,
       qualification: { eligible: q.blockers.length === 0, blockers: q.blockers, warnings: q.warnings },
       bookings: bookings.filter((b) => b.driver_id === d.id),
       primaryTruck: truckId ? { id: truckId, unit: truckUnit.get(truckId) ?? "" } : null,
+      timeOff,
+      leaveConflicts: mine.filter((b) => timeOff.some((t) => t.status === "approved" && overlaps(t, b))),
     };
   });
   const unassignedLoads = loadRows.filter((l) => !bookings.some((b) => b.load_id === l.id)).length;
-  return { date, today, timezone, trucks: truckResources, drivers: driverResources, unassignedLoads, maintenanceChecked: !shopMissing };
+  return { date, today, timezone, trucks: truckResources, drivers: driverResources, unassignedLoads, maintenanceChecked: !shopMissing, timeOffChecked: !leaveMissing };
 }

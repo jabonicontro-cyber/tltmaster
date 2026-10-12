@@ -52,9 +52,11 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
     .filter((t) => show === "" || (show === "available" ? t.availability.ready && !t.shopToday : !(t.availability.ready && !t.shopToday)));
   const drivers = r.drivers
     .filter((d) => !q || d.name.toLowerCase().includes(q) || (d.primaryTruck?.unit ?? "").toLowerCase().includes(q))
-    .filter((d) => show === "" || (show === "available" ? d.qualification.eligible : !d.qualification.eligible));
+    .filter((d) => show === "" || (show === "available" ? d.qualification.eligible && !onLeave(d) : !d.qualification.eligible || onLeave(d)));
   const readyTrucks = r.trucks.filter((t) => t.availability.ready && !t.shopToday).length;
-  const qualifiedDrivers = r.drivers.filter((d) => d.qualification.eligible).length;
+  const onLeave = (d: (typeof r.drivers)[number]) => d.timeOff.some((t) => t.status === "approved" && t.full_day);
+  const qualifiedDrivers = r.drivers.filter((d) => d.qualification.eligible && !onLeave(d)).length;
+  const leaveConflicts = r.drivers.flatMap((d) => d.leaveConflicts.map((b) => ({ driver: d, booking: b })));
   const href = (d: string) => `/dispatch/resources?date=${d}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}${show ? `&show=${show}` : ""}`;
 
   return (
@@ -69,14 +71,32 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
         </div>}
       />
 
-      <p role="note" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">{HOS_NOTE} Time off (PTO) is not recorded in Taviron yet.</p>
+      <p role="note" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">{HOS_NOTE}</p>
+      {!r.timeOffChecked && <p role="note" className="mb-4 text-sm text-muted">Driver time off is not shown: the time-off database update is not installed yet.</p>}
       {!r.maintenanceChecked && <p role="note" className="mb-4 text-sm text-muted">Shop visits are not shown: the maintenance database update is not installed yet. Out-of-service status is still enforced.</p>}
 
       <section aria-label="Summary" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card><CardBody><p className="text-sm text-muted">Trucks mechanically ready</p><p className="text-2xl font-bold tabular">{readyTrucks} / {r.trucks.length}</p></CardBody></Card>
-        <Card><CardBody><p className="text-sm text-muted">Drivers qualified on this date</p><p className="text-2xl font-bold tabular">{qualifiedDrivers} / {r.drivers.length}</p></CardBody></Card>
+        <Card><CardBody><p className="text-sm text-muted">Drivers qualified and not on leave</p><p className="text-2xl font-bold tabular">{qualifiedDrivers} / {r.drivers.length}</p></CardBody></Card>
         <Card><CardBody><p className="text-sm text-muted">Loads without a truck</p><p className="text-2xl font-bold tabular"><Link href={`/dispatch?date=${date}`} className="hover:underline">{r.unassignedLoads}</Link></p></CardBody></Card>
       </section>
+
+      {leaveConflicts.length > 0 && (
+        <Card className="mb-5">
+          <CardHeader title="Assignments to review" description="These drivers have approved time off overlapping an active assignment. Nothing was canceled — reassign or confirm with the driver." />
+          <ul className="divide-y divide-line">
+            {leaveConflicts.map(({ driver, booking }) => (
+              <li key={booking.load_id + driver.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
+                <Badge tone="red">On leave</Badge>
+                <Link href={`/fleet/drivers/${driver.id}`} className="font-semibold hover:underline">{driver.name}</Link>
+                <span>is booked on</span>
+                <Link href={`/dispatch?date=${date}&load=${booking.load_id}`} className="hover:underline">{booking.order_number} load {booking.load_number}</Link>
+                <span className="text-muted tabular">{time(booking.starts_at, r.timezone)}–{time(booking.ends_at, r.timezone)}</span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
 
       <Card className="mb-5">
         <FilterBar action="/dispatch/resources" query={sp.q} placeholder="Search truck or driver…" clearHref={`/dispatch/resources?date=${date}`}>
@@ -111,10 +131,10 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
       </Card>
 
       <Card>
-        <CardHeader title="Drivers" description="Qualification = verified, unexpired CDL (class B or higher) and medical card on this date. It does not mean the driver is legally within hours of service." />
+        <CardHeader title="Drivers" description="Qualification = verified, unexpired CDL (class B or higher) and medical card on this date. Approved leave blocks assignments in the database; pending requests only warn. None of this means the driver is within hours of service." />
         <TableWrap>
           <Table>
-            <thead><tr><Th>Driver</Th><Th>Qualification</Th><Th>Bookings</Th><Th className="hidden md:table-cell">Hours of service</Th><Th className="hidden lg:table-cell">Primary truck</Th></tr></thead>
+            <thead><tr><Th>Driver</Th><Th>Qualification</Th><Th>Time off</Th><Th>Bookings</Th><Th className="hidden md:table-cell">Hours of service</Th><Th className="hidden lg:table-cell">Primary truck</Th></tr></thead>
             <tbody>
               {drivers.map((d) => (
                 <Tr key={d.id}>
@@ -125,12 +145,24 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                       <div className="mt-1 max-w-72 text-xs text-muted">{[...d.qualification.blockers, ...d.qualification.warnings].map(eligibilityMessage).join(" ")}</div>
                     )}
                   </Td>
+                  <Td className="text-sm">
+                    {d.timeOff.length === 0 ? <span className="text-muted">—</span> : (
+                      <ul className="space-y-1">
+                        {d.timeOff.map((t, i) => (
+                          <li key={i}>
+                            <Badge tone={t.status === "approved" ? "red" : "amber"}>{t.status === "approved" ? "Approved leave" : "Pending request"}</Badge>
+                            <span className="ml-1 text-xs text-muted">{t.full_day ? (t.start_date === t.end_date ? "full day" : `${t.start_date} – ${t.end_date}`) : `${formatTime(t.start_time)}–${formatTime(t.end_time)}`}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </Td>
                   <Td className="text-sm"><Bookings items={d.bookings} timezone={r.timezone} date={date} /></Td>
                   <Td className="hidden md:table-cell"><Badge tone="gray">Not verified</Badge></Td>
                   <Td className="hidden text-sm lg:table-cell">{d.primaryTruck ? <Link href={`/fleet/trucks/${d.primaryTruck.id}`} className="tabular hover:underline">{d.primaryTruck.unit}</Link> : <span className="text-muted">—</span>}</Td>
                 </Tr>
               ))}
-              {drivers.length === 0 && <Tr><Td className="text-muted" colSpan={5}>No drivers match.</Td></Tr>}
+              {drivers.length === 0 && <Tr><Td className="text-muted" colSpan={6}>No drivers match.</Td></Tr>}
             </tbody>
           </Table>
         </TableWrap>

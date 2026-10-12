@@ -9,6 +9,9 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **Driver time off** (IMPLEMENTATION_PLAN §5z): `/time-off` requests and approvals; approved leave blocks drivers in
+  dispatch at the moment of assignment. **Needs migration `20261104000100_time_off.sql`** after the three pending
+  ones (20261101000100 → 20261102000100 → 20261103000100). No balances or accruals yet. Open decisions: master plan §9 Q24.
 - **Smart Dispatch maintenance awareness + Driver & truck availability** (IMPLEMENTATION_PLAN §5y). **Needs
   migration `20261103000100_dispatch_maintenance.sql`**, after `20261101000100` and `20261102000100` (owner action,
   DEPLOYMENT §2a). Without it dispatch works as before and says shop visits are not checked. Hours of service are

@@ -137,6 +137,7 @@ shop board, one-time setup links) are next.
 - coverage checks, and approved absences feeding Smart Dispatch driver availability;
 - configurable notifications (in-app, email, push where available) and an audit history of administrative actions;
 - tenant isolation and server-side authorization throughout.
+**2026-10-12:** time-off requests, approval and approved absences in dispatch are built (IMPLEMENTATION_PLAN §5z); balances, accruals and policies are not.
 Not a complete specification yet: open questions (e.g. who approves time off, accrual rules, message retention,
 announcement targeting, which actions count as sensitive) stay with the founder. Nothing is implemented.
 
@@ -339,6 +340,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 21. ~~Lead statuses `qualified`, `onboarding`, `spam`~~ — decided 2026-10-11: folded into the six statuses (see §8 W5).
 22. Maintenance defaults to confirm: who may clear a truck for service (default: owner only; grantable to mechanics), whether a mechanic may clear their own repair, warning windows (default 14 days / 500 mi / 25 h), and whether due preventive work orders should be generated automatically each day (needs a scheduler).
 23. Fleet: which vehicle documents are required per vehicle type (registration, insurance, annual inspection, IFTA/IRP permits…), how far ahead to warn (default 30 days), and whether document files should be uploaded and stored in Taviron (needs a private storage bucket).
+24. Time off: who approves (default owner; grantable), whether self-approval is ever allowed, approval chains or manager scopes, which PTO policy model applies (annual grant, hourly accrual, per pay period; banks; carryover), and whether partial days need work schedules.
 
 ## 10. Subscription model (proposal / confirmed policies)
 
