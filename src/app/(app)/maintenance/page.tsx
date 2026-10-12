@@ -73,7 +73,7 @@ export default async function MaintenancePage() {
         <StatCard href="/maintenance/clearance" label="Awaiting clearance" value={awaiting.length} hint="Repairs waiting for inspection" />
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
           <Card>
             <CardHeader

@@ -47,7 +47,7 @@ export default async function LoadBuildPage({ params, searchParams }: { params: 
           {ctx.unavailable} <Link href={`/orders/${ctx.order.id}`} className="font-semibold underline">Back to the order</Link>
         </Notice>
       ) : (
-        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
           <div className="space-y-5">
             <Card>
               <CardHeader title="What is left to plan" />

@@ -94,7 +94,7 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
         </div>}
       />
       <CommunicationsTabs active="messages" counts={{ unread, alerts: counts?.open, critical: counts?.critical }} />
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
           <CardHeader title="Conversations" actions={
             <nav aria-label="Filter conversations" className="flex gap-1">

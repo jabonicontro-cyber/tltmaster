@@ -42,7 +42,7 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
         actions={<TimeOffActions id={r.id} canDecide={canDecide} canCancel={canCancel} />}
       />
       {approver && own && r.status === "pending" && <p className="mb-4 text-sm text-muted">This is your own request: another approver must decide it.</p>}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
           <Card>
             <CardHeader title="Request" />

@@ -23,7 +23,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
     <>
       <PageHeader title="Company onboarding" description="Set up a customer company with the team: create it, import its records from spreadsheets, review, approve." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding" }]} />
       <AdminFlash error={sp.error} />
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_340px]">
         {companies.length === 0 ? (
           <EmptyState title="No companies yet" />
         ) : (

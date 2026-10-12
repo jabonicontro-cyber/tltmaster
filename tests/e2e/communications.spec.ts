@@ -176,3 +176,14 @@ test("authors edit and delete within 5 minutes; replies collapse; presence shows
   await expect(dot).toHaveClass(/bg-red-600/);
   await page.getByLabel("My status").selectOption("");
 });
+
+test.describe("on a phone", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+  test("Communications fits the screen width (no sideways scrolling)", async ({ page }) => {
+    await signIn(page, "owner");
+    await page.goto("/communications");
+    await expect(page.getByRole("heading", { name: "Communications", level: 1 })).toBeVisible();
+    const { sw, w } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth }));
+    expect(sw).toBeLessThanOrEqual(w);
+  });
+});

@@ -26,7 +26,7 @@ export default async function PlatformAdminPage() {
   return (
     <>
       <PageHeader title="Platform administration" description="Who is on the platform team, and every sensitive platform action." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Administration" }]} />
-      <div className="grid gap-5 lg:grid-cols-[340px_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[340px_1fr]">
         <Card>
           <CardHeader title="Platform team" description="Granted and revoked only by an operator with server access: node scripts/platform-admin.mjs. There is no way to grant it from the website." />
           <CardBody>

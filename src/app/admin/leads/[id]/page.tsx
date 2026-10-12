@@ -105,7 +105,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
         }
       />
       <AdminFlash error={sp.error} saved={sp.saved} />
-      <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
           <Card>
             <CardHeader title="Details" />

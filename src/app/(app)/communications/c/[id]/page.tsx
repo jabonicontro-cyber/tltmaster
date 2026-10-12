@@ -79,7 +79,7 @@ export default async function ConversationPage({ params, searchParams }: { param
         </p>
       )}
       {!mine && <Notice title="You left this conversation">You can read messages up to when you left. Nothing new reaches you.</Notice>}
-      <div className="mt-4 grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+      <div className="mt-4 grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <Card>
           <ConversationView
             conversationId={c.id}
