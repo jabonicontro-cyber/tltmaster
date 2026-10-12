@@ -36,6 +36,12 @@ project credentials. Read it together with:
     reason failed) — now falls back to the earlier function and says the reason is not recorded. The
     `demo-owner` script falls back the same way. Everything else degrades as documented.
   - Cleanup job: partial failures now answer 500 and log company ids and counts, so Vercel shows failed runs.
+  - Released `e468636` to Production (22:38 UTC; manager removal fallback, cleanup observability, script fallback,
+    10 s e2e assertion wait) after a third clean gate run on a reset database (vitest 533/533, browser 106/0/10,
+    build, gate spec 8/1-by-design, deployment check, CI, Preview record).
+  - **State at the end of session 3:** Production `e468636`; Preview `100f781`+ (e2e test for the cron route's
+    refusals and these notes — tests/docs only). Hosted migrations `20261107000100` and `20261108000100` and
+    `CRON_SECRET` are still the owner's actions (DEPLOYMENT §2a).
 - **Release status (2026-10-12 19:37 UTC):** Production = `78aa207` (Communications hardening + phone layout fix;
   Vercel Production deployment record: success). Preview is ahead with `c276e59` (demo owners join the sample channel —
   part of the still-unapplied migration `20261108000100`) and `bf6ded9` (accessibility fixes, steadier e2e tests);
