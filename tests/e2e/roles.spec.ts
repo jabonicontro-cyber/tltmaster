@@ -7,7 +7,7 @@ import type { UserKey } from "./users";
  * just by what the navigation shows. (Data-level checks are in tests/db.)
  */
 const MATRIX: Record<string, { allowed: string[]; refused: string[] }> = {
-  // Owners may use My Day (it shows nothing until their account is linked to a driver record).
+  // Owners may use My Day; an owner who is not linked to a driver record is sent to the Command Center.
   owner: { allowed: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center", "/field-reports", "/settings?tab=users", "/driver"], refused: [] },
   office: { allowed: ["/quotes", "/orders", "/dispatch", "/tickets", "/billing", "/fleet", "/command-center"], refused: ["/driver"] },
   dispatcher: { allowed: ["/orders", "/dispatch", "/tickets", "/command-center", "/fleet"], refused: ["/billing", "/driver"] },
@@ -20,6 +20,7 @@ for (const [role, { allowed, refused }] of Object.entries(MATRIX)) {
     await signIn(page, role as UserKey);
     for (const path of allowed) {
       await page.goto(path);
+      if (role === "owner" && path === "/driver") await page.waitForURL(/\/command-center/);
       await expect(page, `${role} ${path}`).not.toHaveURL(/no-access/);
     }
     for (const path of refused) {

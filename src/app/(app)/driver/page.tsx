@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck, Wrench } from "lucide-react";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
+import { can } from "@/lib/permissions";
 import { loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
 
 export const metadata = { title: "My Day" };
@@ -86,6 +88,11 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const home = await loadDriverHome();
   const shown = await shownName(access);
   const hello = greeting(shown || (home.ok ? home.data.driver.name : ""));
+
+  // An owner or office user who does not drive has no My Day: send them to their own home.
+  if (!home.ok && home.notLinked && ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "orders.view", "quotes.view"].some((p) => can(access, p as Parameters<typeof can>[1]))) {
+    redirect("/command-center");
+  }
 
   if (!home.ok) {
     return (

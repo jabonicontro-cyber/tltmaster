@@ -23,19 +23,21 @@ export interface ShellBranding {
  * is a quiet "Powered by Taviron" line. Urgency colors are fixed ("critical")
  * and never follow a company's colors.
  */
-export function AppShell({ access, companies = [], platformAdmin = false, presentation = false, sidebarPinned = false, me = null, branding, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; presentation?: boolean; sidebarPinned?: boolean; /** Display name and photo from the person's own profile, when available. */ me?: { name: string; photo: string } | null; branding?: ShellBranding; children: ReactNode }) {
+export function AppShell({ access, companies = [], platformAdmin = false, presentation = false, sidebarPinned = false, me = null, branding, hideMyDay = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; presentation?: boolean; sidebarPinned?: boolean; /** Display name and photo from the person's own profile, when available. */ me?: { name: string; photo: string } | null; branding?: ShellBranding; /** Hide My Day: the login is not a driver but has other work (owners, office). */ hideMyDay?: boolean; children: ReactNode }) {
   const style = branding ? brandingStyle({ logo: "", color: branding.color, sidebarColor: branding.sidebarColor }) : {};
   const logoUrl = branding?.logoUrl ?? "";
+  // Navigation only (pages still check real permissions): no My Day entry for people who do not drive.
+  const navPermissions = hideMyDay ? access.permissions.filter((p) => p !== "driver.portal") : access.permissions;
   return (
     <div className="app-root min-h-dvh lg:pl-[4.5rem] lg:data-[sidebar=pinned]:pl-64" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
       <UnsavedChangesGuard />
-      <DesktopSidebar permissions={access.permissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
+      <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
 
       {access.isDemo && !presentation ? <DemoBar preview={access.preview ?? null} platformAdmin={platformAdmin} /> : null}
       <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-card/95 px-3 backdrop-blur lg:px-6">
         <div className="flex min-w-0 items-center gap-1">
-          <MobileNav permissions={access.permissions} companyName={access.companyName} logoUrl={logoUrl} />
+          <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} />
           <Link href="/command-center" className="min-w-0 lg:hidden" aria-label={`${access.companyName ?? "Company"} — home`}>
             <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
           </Link>
