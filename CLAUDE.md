@@ -18,6 +18,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/SCHEMA.md` | Database tables and rules. |
 | `docs/RELEASE_CHECKLIST.md` | What to check before a release is called done. |
 | `docs/SCREENSHOTS.md` | How to capture product screenshots for the website. |
+| `docs/DEMO_TENANTS.md` | Demo tenants (presenter demo, prospect demos such as Prairie Lantern Freight): how they stay in sync with the product, the documented intentional differences, sample data, and the per-feature demo checklist. |
 | `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
 
 ## Rules that always apply
@@ -65,6 +66,27 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Deployment and secrets:**
   - Never deploy to production, change DNS or add paid services without approval.
   - Never print or commit secrets.
+
+## Demo tenants stay in sync with the product (permanent requirement, owner 2026-10-12)
+
+- **One application.** Demo companies (`companies.is_demo`; presenter and prospect demos) run the same code, pages,
+  components and database as every company. Never build a separate demo version of a page or component; a demo
+  differs only through tenant data, permissions and the short list of intentional differences in
+  `docs/DEMO_TENANTS.md` §2 (enforced by `tests/unit/demo-parity.test.ts`: any new `isDemo` / `is_demo` / `demo_kind`
+  branch must be added there with its reason).
+- **Demo compatibility is part of the definition of done** for every feature and UI change, without a separate
+  request. In each plan and report: (1) does it apply to demos (default yes when it can run on fictional data);
+  (2) does it need sample data — add it to the demo seed **and** to the refresh
+  (`src/server/demo/prairie-lantern*.ts`, and `seed.ts` for the presenter demo) so existing demos get it via
+  **Refresh demo data**; (3) its dependencies (migrations, env vars, services) and its demo-safe fallback;
+  (4) tests showing it works in a demo (`tests/e2e/demo-parity.spec.ts` covers navigation and page loads; add
+  feature-specific checks); (5) any intentional difference, reported and documented.
+- **Safety first, always:** fictional records only; nothing real is sent, dispatched, paid or exported from a demo
+  (simulate it, as quote emails and invitations already do); tenant isolation and RLS unchanged; never grant extra
+  permissions to make a feature look functional; keep demo labels where users must know data or actions are
+  simulated.
+- A feature that depends on an unapplied hosted migration shows its normal "not available yet" state in demos too;
+  never call it operational there until the migration is applied and verified.
 
 ## Workflow
 

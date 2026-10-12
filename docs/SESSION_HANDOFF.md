@@ -9,6 +9,9 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **Permanent rule — demo tenants stay in sync** (CLAUDE.md, docs/DEMO_TENANTS.md): every feature/UI change must
+  work in demo companies (or document an exception), add sample data to the seed and to Refresh demo data, and pass
+  `tests/unit/demo-parity.test.ts` and `tests/e2e/demo-parity.spec.ts`. Known gaps: DEMO_TENANTS §4.
 - **Prospect demo tenant for Colby Chapman — Prairie Lantern Freight** (IMPLEMENTATION_PLAN §5ab, DEPLOYMENT §3c):
   released. The owner applied the migrations up to `20261106000100` and created the tenant on 2026-10-12 (before the
   logo and data update). **Next migration `20261107000100`** (photos in Communications, `demo-owner --name`, Retire a

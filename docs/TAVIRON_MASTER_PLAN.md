@@ -39,6 +39,9 @@ mobile · company administration, integrations, audit history, data quality.
   Taviron platform area (`/admin`, platform role granted only by `scripts/platform-admin.mjs`).
 - Least privilege, server-side validation, uniqueness constraints, idempotency, audit history and honest error
   handling on every consequential action.
+- **Demo tenants stay in sync with the product** (permanent, confirmed 2026-10-12): one application for every
+  company; demo companies differ only by data and the documented safety differences (docs/DEMO_TENANTS.md §2,
+  enforced by tests); demo compatibility is part of every feature's definition of done; nothing real leaves a demo.
 - **Recommendations never act on their own.** Smart Dispatch, invoice drafts and any future AI extraction only
   propose; an authorized person approves.
 - **Honest data:** never invent prices, quantities, dates, customer terms, material properties, truck

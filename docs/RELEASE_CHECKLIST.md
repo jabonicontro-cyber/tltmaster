@@ -12,6 +12,15 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
 - [ ] `npm run build` succeeds, and the gate spec passes against the production build (SETUP §5).
 - [ ] New `SECURITY DEFINER` functions pin `search_path = ''` and are in the reviewed list in `tests/db/tenancy.test.ts`; new business tables have `company_id` and RLS.
 
+## 1a. Demo tenants (docs/DEMO_TENANTS.md)
+
+- [ ] Each new feature or UI change is available in demo companies, or its exception is documented in DEMO_TENANTS §2.
+- [ ] `tests/unit/demo-parity.test.ts` and `tests/e2e/demo-parity.spec.ts` pass (same navigation and working pages in
+      a demo; invitations refused; nothing sent).
+- [ ] New sample data needed by the feature is in the demo seed and in **Refresh demo data**, so existing demos get it.
+- [ ] Demo actions cannot reach real customers, email, payments or exports.
+- [ ] The report names any intentional difference between the standard app and the demo.
+
 ## 2. Database
 
 - [ ] New migrations are new files — no applied migration was edited.
