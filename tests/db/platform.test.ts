@@ -265,7 +265,7 @@ describe("team-led onboarding imports", () => {
       expect((await pgError(s.query("select public.platform_import_revert($1, '')", [batch]))).code).toBe("22023");
       expect((await s.query<{ r: unknown }>("select public.platform_import_revert($1, 'Wrong file') as r", [batch])).rows[0].r).toEqual({ removed: 1, kept_inactive: 2 });
       await s.asAdmin();
-      const after = (await s.query<{ name: string; active: boolean }>("select name, active from public.customers where company_id = $1 order by name", [company])).rows;
+      const after = (await s.query<{ name: string; active: boolean }>("select name, active from public.customers where company_id = $1 order by name collate \"C\"", [company])).rows;
       expect(after).toEqual([
         { name: "Beta Grading", active: false },
         { name: "Existing Builders", active: true }, // untouched: it was not created by the batch
