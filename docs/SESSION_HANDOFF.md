@@ -33,9 +33,9 @@ project credentials. Read it together with:
   - Communications home and conversation pages were wider than a phone (579 px on 390 px): fixed with a single-column
     grid below the wide breakpoint (same pattern fixed on maintenance, time-off, load build and admin pages); a phone
     width regression test was added.
-  - Minor, not fixed: the employee list/detail request `/people/photo/<user>` for every linked person, producing a
-    404 per person without a photo (the avatar still falls back correctly). A clean fix needs the photo version for
-    coworkers, which only `users.manage` can read — a small definer function in a future migration.
+  - Fixed (needs migration `20261107000100`, still unapplied): employee pages requested `/people/photo/<user>` for
+    every linked person (a 404 per person without a photo). `public.profile_photo_versions` (same rule as
+    `profile_photo`) lets them request only existing photos with a versioned URL; until applied, they behave as before.
   - Not implemented (no spec in the repository): a demo welcome modal, "Demo Information" in the account menu and a
     "Change View" menu replacing the demo bar's "View as". The demo bar with "View as" and Presentation mode is current.
   - The sandbox cannot reach `*.vercel.app` (network policy), so deployed pages were not opened in a browser here;

@@ -92,3 +92,15 @@ test("drivers and other companies cannot open the directory", async ({ page, bro
   await expect(other.getByText("Not found", { exact: true })).toBeVisible();
   await other.close();
 });
+
+test("employee pages request only profile photos that exist (no failed image requests)", async ({ page }) => {
+  await signIn(page, "owner");
+  const failed: string[] = [];
+  page.on("response", (r) => { if (r.status() >= 400 && r.url().includes("/people/photo/")) failed.push(r.url()); });
+  await page.goto("/employees?status=all");
+  await expect(page.getByRole("heading", { name: "Employees", level: 1 })).toBeVisible();
+  const first = page.locator('a[href^="/employees/"]').filter({ hasText: /\w/ }).first();
+  await page.goto((await first.getAttribute("href"))!);
+  await page.waitForLoadState("load");
+  expect(failed).toEqual([]);
+});

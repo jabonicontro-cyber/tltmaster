@@ -22,7 +22,9 @@ Earlier pending migrations first: `20261101000100` → `20261102000100` → `202
 4. `20261105000400_comm_attachments.sql` — private `comm-attachments` bucket and policies. If Storage is not
    installed when it runs, run `select private.setup_comm_attachment_storage();` afterwards.
 
-5. `20261107000100_people_photos_and_demo_retire.sql` — photos in the directory; prospect demo retire.
+5. `20261107000100_people_photos_and_demo_retire.sql` — photos in the directory; prospect demo retire;
+   `profile_photo_versions` (employee pages request only photos that exist; until applied they request every
+   linked person's photo, as before).
 6. `20261108000100_comm_hardening.sql` — fixed 5-minute edit/delete window, manager removal with a reason, 14-day
    message content retention (read time and purge, attachments, legal hold), all-companies housekeeping for the
    scheduler, archive veto for outstanding actions, driver-replacement handoff, demo sample content.

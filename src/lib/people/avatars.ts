@@ -19,3 +19,11 @@ export function personPhoto(userId: string | null | undefined, photoUpdatedAt: s
     fallbackSrc: avatarUrl(avatarKey),
   };
 }
+
+/** Photo URL for a linked person given photoVersions(): versioned when known, "" when they have none. */
+export function employeePhotoSrc(userId: string | null, versions: Map<string, string> | null): string {
+  if (!userId) return "";
+  if (versions === null) return `/people/photo/${userId}`; // function not installed: previous behaviour
+  const v = versions.get(userId);
+  return v ? `/people/photo/${userId}?v=${encodeURIComponent(v)}` : "";
+}

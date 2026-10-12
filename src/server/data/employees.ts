@@ -145,3 +145,18 @@ export async function linkableLogins(companyId: string): Promise<Array<{ user_id
     })
     .sort((a, b) => a.label.localeCompare(b.label));
 }
+
+/**
+ * When each person's profile photo last changed (only people with a photo, in the caller's company), so pages
+ * request only photos that exist, with a versioned URL. null = the database function is not installed yet
+ * (migration 20261107000100): callers then request every linked person's photo, as before.
+ */
+export async function photoVersions(userIds: Array<string | null>): Promise<Map<string, string> | null> {
+  const ids = [...new Set(userIds.filter((v): v is string => Boolean(v)))];
+  if (ids.length === 0) return new Map();
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("profile_photo_versions", { p_user_ids: ids });
+  if (error) return null;
+  return new Map(((data ?? []) as Array<{ user_id: string; updated_at: string }>).map((r) => [r.user_id, r.updated_at]));
+}
+

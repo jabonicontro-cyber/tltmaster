@@ -64,6 +64,13 @@ describe("profile self-service", () => {
       await s.as(null);
       expect((await pgError(s.query("select * from public.profile_photo($1)", [me]))).code).toBe("42501");
 
+      // Photo versions follow the same rule: only people with a photo, only inside the caller's company.
+      await s.as(colleague);
+      const versions = (await s.query<{ user_id: string }>("select user_id from public.profile_photo_versions($1::uuid[])", [[me, colleague, stranger]])).rows;
+      expect(versions.map((v) => v.user_id)).toEqual([me]);
+      await s.as(stranger);
+      expect((await s.query("select * from public.profile_photo_versions($1::uuid[])", [[me]])).rowCount).toBe(0);
+
       await s.as(me);
       await s.query("select public.set_my_photo('image/jpeg', $1)", [JPEG]); // replace
       expect((await s.query("select mime_type from public.profile_photo($1)", [me])).rows[0].mime_type).toBe("image/jpeg");

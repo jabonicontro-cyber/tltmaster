@@ -11,9 +11,9 @@ import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, type EmployeeStatus } from "@/lib/employees";
 import { can } from "@/lib/permissions";
-import { avatarUrl } from "@/lib/people/avatars";
+import { avatarUrl, employeePhotoSrc } from "@/lib/people/avatars";
 import { requirePagePermission } from "@/server/auth";
-import { listEmployees } from "@/server/data/employees";
+import { listEmployees, photoVersions } from "@/server/data/employees";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 
 export const metadata = { title: "Employees" };
@@ -27,6 +27,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   const sp = await searchParams;
   const page = pageParam(sp.page);
   const { rows, total } = await listEmployees({ q: sp.q, status: sp.status, department: sp.department, kind: sp.kind, page });
+  const photos = await photoVersions(rows.map((r) => r.user_id));
   const filtered = Boolean(sp.q || sp.department || sp.kind || (sp.status && sp.status !== "current"));
 
   const hrefFor = (p: number) => {
@@ -84,7 +85,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                     <Tr key={e.id}>
                       <Td>
                         <div className="flex items-center gap-3">
-                          <Avatar name={e.full_name} src={e.user_id ? `/people/photo/${e.user_id}` : ""} fallbackSrc={avatarUrl(e.avatar_key)} size={36} />
+                          <Avatar name={e.full_name} src={employeePhotoSrc(e.user_id, photos)} fallbackSrc={avatarUrl(e.avatar_key)} size={36} />
                           <div className="min-w-0">
                             <Link href={`/employees/${e.id}`} className="font-semibold text-ink hover:text-brand-fg hover:underline">{e.full_name}</Link>
                             <div className="text-sm text-muted">{e.job_title || "No job title"}{e.user_id ? " · has a login" : ""}</div>

@@ -13,10 +13,10 @@ import { formatDate } from "@/lib/dates";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES, formatPay } from "@/lib/employees";
 import { QUALIFICATION_SHORT } from "@/lib/fleet/labels";
 import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
-import { avatarUrl } from "@/lib/people/avatars";
+import { avatarUrl, employeePhotoSrc } from "@/lib/people/avatars";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
-import { getEmployee, linkableLogins } from "@/server/data/employees";
+import { getEmployee, linkableLogins, photoVersions } from "@/server/data/employees";
 
 export const metadata = { title: "Employee" };
 
@@ -38,6 +38,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const detail = await getEmployee(id, { compensation: showPay, trucks: assign });
   if (!detail) notFound();
   const { employee: e, driver, compensation, role } = detail;
+  const photos = await photoVersions([e.user_id]);
   // Linking needs employees.edit, and reading the company's logins needs users.manage (owners by default).
   const canLink = can(access, "employees.edit") && can(access, "users.manage");
   const candidates = canLink && !e.user_id ? await linkableLogins(access.companyId!) : [];
@@ -55,7 +56,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         <div className="space-y-5 lg:col-span-2">
           <Card>
             <div className="flex items-center gap-4 p-4 sm:p-5">
-              <Avatar name={e.full_name} src={e.user_id ? `/people/photo/${e.user_id}` : ""} fallbackSrc={avatarUrl(e.avatar_key)} size={64} />
+              <Avatar name={e.full_name} src={employeePhotoSrc(e.user_id, photos)} fallbackSrc={avatarUrl(e.avatar_key)} size={64} />
               <div className="min-w-0">
                 <p className="text-lg font-semibold">{e.job_title || "No job title"}</p>
                 <p className="text-sm text-muted">{DEPARTMENTS[e.department]} · {EMPLOYMENT_TYPES[e.employment_type]}</p>

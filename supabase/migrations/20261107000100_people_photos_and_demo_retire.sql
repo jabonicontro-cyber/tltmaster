@@ -11,6 +11,9 @@
 -- 3. platform_prospect_demo_retire(company): platform admin only, prospect demos
 --    only. Deactivates the company and its memberships (nothing is deleted), so a
 --    fresh demo with the same name can be created.
+-- 4. profile_photo_versions(users): when each person's profile photo last changed,
+--    under the same rule as profile_photo (yourself, or members of your current
+--    company), so pages request only photos that exist, with a versioned URL.
 --
 -- Rollback: supabase/rollbacks/20261107000100_people_photos_and_demo_retire.down.sql
 -- =============================================================================
@@ -99,6 +102,25 @@ begin
   perform private.platform_log('prospect_demo_retired', 'company', p_company::text, 'Retired a prospect demo company', jsonb_build_object('name', v_name));
 end;
 $$;
+
+/** When each listed person's photo last changed (same visibility rule as profile_photo; no row = no photo). */
+create or replace function public.profile_photo_versions(p_user_ids uuid[])
+returns table (user_id uuid, updated_at timestamptz)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select ph.user_id, ph.updated_at
+  from private.profile_photos ph
+  where ph.user_id = any (coalesce(p_user_ids, '{}'))
+    and cardinality(p_user_ids) <= 500
+    and auth.uid() is not null
+    and (ph.user_id = auth.uid() or private.is_company_member(ph.user_id))
+$$;
+
+revoke execute on function public.profile_photo_versions(uuid[]) from public, anon;
+grant execute on function public.profile_photo_versions(uuid[]) to authenticated;
 
 revoke execute on function public.platform_prospect_demo_add_owner(uuid, uuid, text) from public, anon, authenticated;
 grant execute on function public.platform_prospect_demo_add_owner(uuid, uuid, text) to service_role;

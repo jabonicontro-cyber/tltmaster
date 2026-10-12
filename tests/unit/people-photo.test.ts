@@ -26,3 +26,14 @@ describe("personPhoto", () => {
     expect(personPhoto(null, null, "")).toEqual({ src: "", fallbackSrc: "" });
   });
 });
+
+describe("employee photo URL", () => {
+  it("is versioned for people with a photo, empty for people without, and unversioned when versions are unknown", async () => {
+    const { employeePhotoSrc } = await import("@/lib/people/avatars");
+    const u = "11111111-1111-4111-8111-111111111111";
+    expect(employeePhotoSrc(null, new Map())).toBe("");
+    expect(employeePhotoSrc(u, new Map())).toBe(""); // no photo: no request at all
+    expect(employeePhotoSrc(u, new Map([[u, "2026-10-12T10:00:00Z"]]))).toBe(`/people/photo/${u}?v=2026-10-12T10%3A00%3A00Z`);
+    expect(employeePhotoSrc(u, null)).toBe(`/people/photo/${u}`); // database function not installed yet
+  });
+});

@@ -2,6 +2,7 @@
 -- NOT a migration: run by hand, only after a backup and only if the founder asks.
 -- Retired prospect demos stay retired (reactivate them by hand if needed).
 begin;
+drop function if exists public.profile_photo_versions(uuid[]);
 drop function if exists public.platform_prospect_demo_retire(uuid);
 drop function if exists public.platform_prospect_demo_add_owner(uuid, uuid, text);
 

@@ -93,7 +93,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.maintenance_record_clearance", "public.maintenance_generate_due", "public.driver_maintenance_notices",
   "public.maintenance_pm_status", "public.maintenance_assignee_options",
   // Profile self-service (20261030000100): own row only; photos only within the caller's current company.
-  "public.my_profile", "public.update_my_profile", "public.set_my_photo", "public.profile_photo",
+  "public.my_profile", "public.update_my_profile", "public.set_my_photo", "public.profile_photo", "public.profile_photo_versions",
   // Employees (20261031000100): compensation audit without amounts; primary truck needs fleet.assign, same company.
   "private.audit_compensation_change", "public.set_driver_primary_truck",
   "private.assign_customer_number", "private.audit_row_change", "private.business_timezone", "private.business_today",
