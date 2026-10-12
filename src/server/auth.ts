@@ -1,4 +1,5 @@
 import "server-only";
+import { displayLogin } from "@/lib/usernames";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
@@ -30,7 +31,7 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     userId: row.user_id,
     companyId: row.company_id,
     companyName: row.company_name,
-    email: row.email,
+    email: displayLogin(row.email), // a username for username accounts (display only)
     fullName: row.full_name,
     role: row.role,
     active: row.active,

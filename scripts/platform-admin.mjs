@@ -10,6 +10,7 @@
 //   node --env-file=.env.staging scripts/platform-admin.mjs revoke someone@example.com --note "Left the team"
 //   node --env-file=.env.staging scripts/platform-admin.mjs list
 //   node --env-file=.env.staging scripts/platform-admin.mjs setup-link you@example.com --base-url https://mytaviron.com
+//   node --env-file=.env.staging scripts/platform-admin.mjs setup-link colbychapman --base-url https://mytaviron.com   (username account)
 //   node --env-file=.env.staging scripts/platform-admin.mjs demo-owner prospect@example.com prospect-1a2b3c4d5e
 //     (owner of a PROSPECT demo company only — never a real company; needs migration 20261106000100)
 import { createClient } from "@supabase/supabase-js";
@@ -29,6 +30,17 @@ if (!url || !key) {
   process.exit(1);
 }
 const db = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } });
+
+// Username accounts (same rules as src/lib/usernames.ts): an internal sign-in address
+// <username>@users.mytaviron.com that is never a mailbox and is never sent anything.
+const USERNAME_DOMAIN = "users.mytaviron.com";
+const USERNAME = /^[a-z0-9](?:[a-z0-9.-]{1,30})[a-z0-9]$/;
+/** "<email>" or "<username>" → the sign-in address, or null when neither is valid. */
+function loginAddress(value) {
+  const v = String(value ?? "").trim().toLowerCase();
+  if (v.includes("@")) return v;
+  return USERNAME.test(v) && !v.includes("..") ? `${v}@${USERNAME_DOMAIN}` : null;
+}
 
 if (cmd === "grant" || cmd === "revoke") {
   const email = positional[0];
@@ -60,10 +72,11 @@ if (cmd === "grant" || cmd === "revoke") {
   // for an existing login it changes nothing until the link is used. The link is a
   // credential: it is printed here only, never stored or logged — hand it over
   // privately. It expires (Supabase Auth → Email OTP expiration, 1 hour by default).
-  const email = positional[0];
+  const email = loginAddress(positional[0]);
+  const isUsername = Boolean(email && email.endsWith(`@${USERNAME_DOMAIN}`));
   const base = String(opts["base-url"] ?? process.env.APP_BASE_URL ?? "").replace(/\/$/, "");
-  if (!email || !email.includes("@") || !base) {
-    console.error('Usage: platform-admin.mjs setup-link <email> --base-url https://mytaviron.com');
+  if (!email || !base) {
+    console.error('Usage: platform-admin.mjs setup-link <email | username> --base-url https://mytaviron.com\n  A username: 3–32 lowercase letters, digits, dots or hyphens (e.g. colbychapman).');
     process.exit(1);
   }
   let origin;
@@ -89,19 +102,22 @@ if (cmd === "grant" || cmd === "revoke") {
     process.exit(1);
   }
   const link = `${origin.origin}/auth/confirm?token_hash=${encodeURIComponent(hashed)}&type=${type}&next=/update-password`;
-  console.log(type === "invite" ? `Created a login for ${email} (no company, role or platform access yet).` : `${email} already has a login; its password is unchanged until the link is used.`);
+  const who = isUsername ? `username ${email.slice(0, -(USERNAME_DOMAIN.length + 1))}` : email;
+  console.log(type === "invite" ? `Created a login for ${who} (no company, role or platform access yet).` : `${who} already has a login; its password is unchanged until the link is used.`);
+  if (isUsername) console.log("They sign in with the username. No reset email is possible: run setup-link again if they forget the password.");
   console.log("One-time setup link (single use, expires; share it privately):");
   console.log(link);
 } else if (cmd === "demo-owner") {
   // Makes an EXISTING login (created with setup-link, password chosen by the person)
   // the owner of one prospect demo company. The database refuses real companies and
   // the presenter demo; no login, password or platform access is created here.
-  const [email, slug] = positional;
-  if (!email || !email.includes("@") || !slug) {
-    console.error("Usage: platform-admin.mjs demo-owner <email> <prospect-demo-company-slug>");
+  const email = loginAddress(positional[0]);
+  const slug = positional[1];
+  if (!email || !slug) {
+    console.error("Usage: platform-admin.mjs demo-owner <email | username> <prospect-demo-company-slug>");
     process.exit(1);
   }
-  const { data: profile } = await db.from("profiles").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
   if (!profile) {
     console.error(`No Taviron login exists for ${email}. Create it first with setup-link (the person sets their own password).`);
     process.exit(1);
@@ -116,8 +132,8 @@ if (cmd === "grant" || cmd === "revoke") {
     console.error(`Failed: ${error.message}`);
     process.exit(1);
   }
-  console.log(`${email} is now the owner of the demo company "${company.name}" (and of no other company through this command).`);
+  console.log(`${positional[0]} is now the owner of the demo company "${company.name}" (and of no other company through this command).`);
 } else {
-  console.error("Commands: grant <email> --note, revoke <email> --note, list, setup-link <email> --base-url <https://site>, demo-owner <email> <prospect-demo-slug>");
+  console.error("Commands: grant <email> --note, revoke <email> --note, list, setup-link <email | username> --base-url <https://site>, demo-owner <email | username> <prospect-demo-slug>");
   process.exit(1);
 }

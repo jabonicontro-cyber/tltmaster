@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { isUsernameEmail } from "@/lib/usernames";
 import type { ActionResult } from "@/lib/action-result";
 import { ACCESS_CODE_ERRORS, looksLikeAccessCode } from "@/lib/early-access";
 import { accessCodeHash, clientIp, rateKey } from "@/server/early-access";
@@ -14,7 +15,7 @@ const signupSchema = z
     accessCode: z.string().trim().min(1, "Enter your access code."),
     fullName: z.string().trim().min(1, "Enter your name.").max(120),
     companyName: z.string().trim().min(2, "Enter the company name.").max(120),
-    email: z.email("Enter a valid email address."),
+    email: z.email("Enter a valid email address.").refine((v) => !isUsernameEmail(v), "This address cannot be used."),
     password: z.string().min(10, "Use at least 10 characters.").max(128),
     confirm: z.string(),
     /** Made when the form opens: a repeated submit is recognised, not processed twice. */

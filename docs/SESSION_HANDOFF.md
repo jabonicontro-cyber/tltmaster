@@ -11,8 +11,10 @@ project credentials. Read it together with:
 
 - **Prospect demo tenant for Colby Chapman — Prairie Lantern Freight** (IMPLEMENTATION_PLAN §5ab, DEPLOYMENT §3c):
   code ready; created and checked only in the local dev database. **Needs migration `20261106000100`** (after the
-  Communications ones). **Colby's login does not exist:** his verified email address is needed from the owner, then
-  setup-link (he sets his own password) → demo-owner → verify his sign-in. Each is an owner-approved action.
+  Communications ones). **Colby's login does not exist yet.** Decided 2026-10-12: he signs in with the username
+  `colbychapman` (username sign-in, `src/lib/usernames.ts`; no email needed). Steps (DEPLOYMENT §3c, owner actions):
+  create the tenant in /admin/demo → `setup-link colbychapman` (he sets his own password) → `demo-owner colbychapman
+  <slug>` → verify his sign-in. Username accounts have no reset email; a new setup link replaces it.
 - **Employee Communications** (IMPLEMENTATION_PLAN §5aa, docs/COMMUNICATIONS.md): messages, groups, channels,
   dispatch-linked operational workspaces, operational alerts with safety minimums and escalation, announcements with
   acknowledgment, presence and work status, driver-on-delivery safety notice and deferral, preferences, quiet hours,

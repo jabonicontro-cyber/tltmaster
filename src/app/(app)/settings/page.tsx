@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { displayLogin } from "@/lib/usernames";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -58,7 +59,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <DescriptionList
             items={[
               { label: "Name", value: access.fullName },
-              { label: "Email", value: access.email },
+              { label: "Sign-in", value: access.email },
               { label: "Company", value: access.companyName ?? "" },
               { label: "Role", value: access.role ? ROLE_LABELS[access.role] : "None" },
               { label: "Permissions", value: access.permissions.join(", "), wide: true },
@@ -89,7 +90,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       .order("created_at");
     const users: UserRow[] = ((data ?? []) as unknown as Array<{ user_id: string; role: UserRow["role"]; active: boolean; created_at: string; profiles: { email: string; full_name: string } | null }>).map((m) => ({
       id: m.user_id,
-      email: m.profiles?.email ?? "",
+      email: displayLogin(m.profiles?.email ?? ""),
       full_name: m.profiles?.full_name ?? "",
       role: m.role,
       active: m.active,

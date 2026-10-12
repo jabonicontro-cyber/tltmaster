@@ -338,13 +338,17 @@ replaced by "Start the demo". Needs migration `20261106000100_prospect_demo_tena
 
 1. **Create and fill the tenant:** sign in as a platform admin → `/admin/demo` → "Create the Prairie Lantern Freight
    demo". You become its owner (switch companies from your menu). Note its slug (`prospect-…`) shown there.
-2. **The prospect's login — they choose their own password.** With their verified email address (never guessed):
-   `node --env-file=.env.staging scripts/platform-admin.mjs setup-link <their email> --base-url https://<site>`.
+2. **The prospect's login — they choose their own password.** Either with a **username** (decided 2026-10-12 for
+   Colby Chapman: `colbychapman`) or with their verified email address (never guessed):
+   `node --env-file=.env.staging scripts/platform-admin.mjs setup-link colbychapman --base-url https://<site>`.
    This creates a login with no company and prints a one-time link; nothing is emailed. Give the link to them
    privately; they open it and set their password (Supabase Auth must have the site URL configured, §1).
+   A username account signs in with the username in the "Email or username" box. Its internal sign-in address
+   (`colbychapman@users.mytaviron.com`) is not a mailbox: nothing is ever sent to it, the reset-password page
+   refuses it, and if the password is forgotten you run `setup-link` again for a new link.
 3. **Owner access to that one tenant:** `node --env-file=.env.staging scripts/platform-admin.mjs demo-owner
-   <their email> <prospect-slug>`. The database accepts only an active prospect demo company and an existing login;
-   it never grants access to a real company, the presenter demo, or the platform.
+   colbychapman <prospect-slug>` (a username or an email). The database accepts only an active prospect demo company
+   and an existing login; it never grants access to a real company, the presenter demo, or the platform.
 4. **Verify before saying the login is ready:** they sign in, land on the Command Center of the demo tenant (owner),
    the demo bar shows, and the company menu lists no other company.
 

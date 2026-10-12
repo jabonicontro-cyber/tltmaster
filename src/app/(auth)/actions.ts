@@ -5,11 +5,13 @@ import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { isUsernameEmail, signInAddress } from "@/lib/usernames";
 import type { ActionResult } from "@/lib/action-result";
 import { EARLY_ACCESS_REQUIRED, hasSiteAccess } from "@/server/site-access-request";
 
 const signInSchema = z.object({
-  email: z.email("Enter a valid email address."),
+  /** An email address, or a username (accounts created with one; see src/lib/usernames.ts). */
+  email: z.string().max(254),
   password: z.string().min(1, "Enter your password."),
   next: z.string().optional(),
 });
@@ -20,9 +22,11 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
   }
+  const address = signInAddress(parsed.data.email);
+  if (!address.ok) return { ok: false, error: address.error };
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
-    email: parsed.data.email,
+    email: address.email,
     password: parsed.data.password,
   });
   if (error) {
@@ -37,7 +41,7 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     }
     if (error.status === 400 || error.code === "invalid_credentials") {
       // Same message either way: do not reveal whether the account exists.
-      return { ok: false, error: "Email or password is incorrect." };
+      return { ok: false, error: parsed.data.email.includes("@") ? "Email or password is incorrect." : "Username or password is incorrect." };
     }
     console.error("Sign-in failed", { status: error.status, code: error.code });
     return { ok: false, error: "Sign-in is temporarily unavailable. Please try again in a minute." };
@@ -51,12 +55,19 @@ export async function signOut() {
   redirect("/login");
 }
 
-const resetSchema = z.object({ email: z.email("Enter a valid email address.") });
+const resetSchema = z.object({ email: z.email("Enter the email address you sign in with. Accounts with a username get a new link from their administrator.") });
+
+/** Username accounts have no mailbox: their administrator issues a one-time link instead. */
+const USERNAME_RESET = "Accounts that sign in with a username cannot get a reset email. Ask your administrator for a new one-time link.";
 
 export async function requestPasswordReset(formData: FormData): Promise<ActionResult> {
   if (!(await hasSiteAccess())) return { ok: false, error: EARLY_ACCESS_REQUIRED };
+  const raw = String(formData.get("email") ?? "").trim();
+  if (raw && !raw.includes("@")) return { ok: false, error: USERNAME_RESET };
   const parsed = resetSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Check the form." };
+  // Never send anything to an internal sign-in address.
+  if (isUsernameEmail(parsed.data.email)) return { ok: false, error: USERNAME_RESET };
 
   const supabase = await createClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {

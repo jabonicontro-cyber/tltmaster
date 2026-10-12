@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isUsernameEmail } from "@/lib/usernames";
 import { parsePercentToBp } from "@/lib/money";
 import { ROLES } from "@/lib/permissions";
 import { optionalEmail, optionalPhone, optionalText, postalCode, requiredText, stateCode } from "./common";
@@ -57,7 +58,8 @@ export const sequenceSchema = z.object({
 });
 
 export const inviteSchema = z.object({
-  email: z.email("Enter a valid email address."),
+  // Internal username sign-in addresses have no mailbox; those accounts are set up by the operator.
+  email: z.email("Enter a valid email address.").refine((v) => !isUsernameEmail(v), "This address cannot receive an invitation."),
   full_name: requiredText(120, "Name"),
   role: z.enum(ROLES),
 });
