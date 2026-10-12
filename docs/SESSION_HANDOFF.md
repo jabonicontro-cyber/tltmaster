@@ -17,6 +17,12 @@ project credentials. Read it together with:
   "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
   `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
   keeps the earlier rules.
+- **Release status (2026-10-12 19:37 UTC):** Production = `78aa207` (Communications hardening + phone layout fix;
+  Vercel Production deployment record: success). Preview is ahead with `c276e59` (demo owners join the sample channel —
+  part of the still-unapplied migration `20261108000100`) and `bf6ded9` (accessibility fixes, steadier e2e tests);
+  promote them with the next release after the full checks.
+- **Accessibility sweep (axe, WCAG 2 A/AA, 13 main pages as owner):** fixed the only findings — unfocusable scroll
+  areas on Communications, links nested in the Smart Dispatch summary, unmarked disabled pagination buttons.
 - **Autonomous sprint findings (2026-10-12, evening):**
   - CI's `database` job had been red since before `43ca9fd`: `tests/db/platform.test.ts` compared names sorted
     in the server's collation (CI's Postgres sorts case differently from the local C collation). Fixed (`collate "C"`);

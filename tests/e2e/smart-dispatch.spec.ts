@@ -91,7 +91,8 @@ test("rejecting a proposal moves to the next option; reconsidering brings it bac
   await c.getByRole("button", { name: "Reject…" }).click();
   await c.getByLabel("Reason for rejecting").fill("Driver prefers the north route (e2e)");
   await c.getByRole("button", { name: "Reject this option" }).click();
-  await expect(c.getByText("1 option rejected for this load.")).toBeVisible();
+  // The board recomputes every proposal after a rejection; slow on the dev server with the test database's many trucks.
+  await expect(c.getByText("1 option rejected for this load.")).toBeVisible({ timeout: 20_000 });
   await expect(c.locator("p", { hasText: "Proposed — not assigned" })).not.toHaveText(first);
   await c.getByRole("button", { name: "Reconsider them" }).click();
   await expect(c.getByText("1 option rejected for this load.")).toHaveCount(0);
