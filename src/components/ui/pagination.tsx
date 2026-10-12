@@ -18,14 +18,14 @@ export function Pagination({ page, pageSize, total, hrefFor }: { page: number; p
               Previous
             </Link>
           ) : (
-            <span className={buttonClasses("secondary", "sm", "pointer-events-none opacity-50")}>Previous</span>
+            <span aria-disabled="true" className={buttonClasses("secondary", "sm", "pointer-events-none opacity-50")}>Previous</span>
           )}
           {page < pages ? (
             <Link href={hrefFor(page + 1)} className={buttonClasses("secondary", "sm")}>
               Next
             </Link>
           ) : (
-            <span className={buttonClasses("secondary", "sm", "pointer-events-none opacity-50")}>Next</span>
+            <span aria-disabled="true" className={buttonClasses("secondary", "sm", "pointer-events-none opacity-50")}>Next</span>
           )}
         </div>
       )}

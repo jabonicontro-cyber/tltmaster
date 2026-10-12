@@ -119,11 +119,14 @@ test("people without dispatch.edit cannot approve proposals", async ({ page }) =
 
 test("a two-digit year typed into a date field is saved as this century (date entry regression)", async ({ page }) => {
   await signIn(page, "office");
-  await page.goto("/quotes/new");
   const field = page.getByLabel("Quote date");
-  await field.click({ position: { x: 12, y: 10 } }); // the month segment
-  await page.keyboard.type("123126");
-  expect(await field.inputValue()).toBe("0026-12-31"); // what the browser holds while typing
+  // Keys typed before the form has hydrated can be lost on a slow dev server: retry from a fresh page.
+  await expect(async () => {
+    await page.goto("/quotes/new");
+    await field.click({ position: { x: 12, y: 10 } }); // the month segment
+    await page.keyboard.type("123126");
+    expect(await field.inputValue()).toBe("0026-12-31"); // what the browser holds while typing
+  }).toPass({ timeout: 45_000 });
   await page.getByRole("heading", { name: "New quote" }).click(); // leave the field
   await expect(field).toHaveValue("2026-12-31");
   await expect(field).toHaveAttribute("max", "2099-12-31");

@@ -113,7 +113,7 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
         <div className="space-y-5">
           <Card>
             <CardHeader title="Notifications" description="Only inside Taviron. Critical alerts always notify." />
-            <div className="max-h-[26rem] overflow-y-auto"><NotificationList items={home.notifications} /></div>
+            <div tabIndex={0} role="region" aria-label="Notifications" className="max-h-[26rem] overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand"><NotificationList items={home.notifications} /></div>
           </Card>
           <Card>
             <CardHeader title="Search" />
@@ -122,7 +122,8 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
           <Card>
             <CardHeader title="People" description={STATUS_DISCLAIMER} />
             {coworkers.length === 0 ? <p className="px-4 py-4 text-sm text-muted">No coworkers yet.</p> : (
-              <ul className="max-h-96 divide-y divide-line overflow-y-auto">
+              // Focusable so keyboard users can scroll the list (it has no links of its own).
+              <ul tabIndex={0} aria-label="People" className="max-h-96 divide-y divide-line overflow-y-auto focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand">
                 {coworkers.map((p) => (
                   <li key={p.user_id} className="flex items-center gap-3 px-4 py-2 text-sm">
                     <span className="relative">

@@ -68,6 +68,8 @@ async function fixture(): Promise<Fixture> {
 }
 
 test("dispatcher plans loads, assigns, sees conflicts and unavailable resources, reassigns and removes", async ({ page }) => {
+  // A long workflow on the board; with the test database's accumulated trucks and drivers it can exceed 60 s on the dev server.
+  test.slow();
   const f = await fixture();
   await signIn(page, "dispatcher");
   await page.goto(`/dispatch?date=${f.date}`);

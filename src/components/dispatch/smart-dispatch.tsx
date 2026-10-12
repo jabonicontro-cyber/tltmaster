@@ -162,14 +162,16 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
         <span className="text-sm text-muted">
           {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal · ${plans.length - feasible} need attention`} · {formatDate(from)}–{formatDate(to)}
         </span>
-        <span className="ml-auto flex gap-1 text-xs">
-          {[1, 3, 7].map((d) => (
-            <Link key={d} href={`/dispatch?horizon=${d}`} className={`rounded border px-2 py-0.5 ${d === horizon ? "border-strong bg-strong text-white" : "border-line"}`}>
-              {d === 1 ? "Today" : `${d} days`}
-            </Link>
-          ))}
-        </span>
       </summary>
+      {/* Outside the summary: links inside it would also toggle the section (nested interactive controls). */}
+      <nav aria-label="Smart Dispatch period" className="flex justify-end gap-1 border-b border-line px-4 py-1.5 text-xs">
+        {[1, 3, 7].map((d) => (
+          <Link key={d} href={`/dispatch?horizon=${d}`} aria-current={d === horizon ? "page" : undefined}
+            className={`rounded border px-2 py-0.5 ${d === horizon ? "border-strong bg-strong text-white" : "border-line"}`}>
+            {d === 1 ? "Today" : `${d} days`}
+          </Link>
+        ))}
+      </nav>
       <p className="border-b border-line px-4 py-2 text-xs text-muted">
         Proposals only — nothing is assigned until you approve, and every approval is checked again against current availability, qualifications, capacity, bookings and the shop schedule. {plans[0]?.notes[0]}
       </p>
