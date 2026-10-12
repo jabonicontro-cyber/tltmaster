@@ -155,10 +155,10 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
     await deliver(l, past2.lineId, d2, at, `PLF-${d2.replaceAll("-", "").slice(2)}-${i + 1}`);
   }
 
-  // Today: four loads assigned (one with a delay report), one urgent load unassigned.
+  // Today: four loads assigned, one urgent load unassigned.
   const t1 = await order(2, today, "Pallets to Wabash Bend Packaging", [lineOf("LH-LOAD", "2", 64000, "Linehaul, Rensselaer → Lafayette")], "Dock 4. Call shipping 30 minutes out.");
   const la = await load(t1.id, today, "06:30", "09:30");
-  const aa = await assign(la, "201", "T-53", "Gavin Holt");
+  await assign(la, "201", "T-53", "Gavin Holt");
   const lb = await load(t1.id, today, "10:00", "13:00");
   await assign(lb, "204", "T-53", "Kendra Price");
   const t2 = await order(4, today, "Equipment parts to Tippecanoe Fieldworks", [lineOf("HAUL-HR", "6", 11500, "Hourly hauling, two drops")], "Two drops: shop first, then the field office.");
@@ -167,7 +167,6 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
   const t3 = await order(6, today, "Building supplies to Newton Prairie Builders", [lineOf("LH-LOAD", "1", 58000, "Linehaul, Rensselaer → Kentland")], "Unload at the builders yard; forklift on site.");
   const ld = await load(t3.id, today, "12:00", "15:00");
   await assign(ld, "209", "T-52", "Lucy Tran");
-  await must("delay report", db.rpc("driver_submit_field_report", { p_payload: { assignment_id: aa, kind: "delay", description: "About 30 minutes waiting at the shipper's dock (demo).", submission_key: randomUUID() } }));
   const t4 = await order(1, today, "Seed pallets to Iroquois River Farm Supply", [lineOf("LH-LOAD", "1", 52000, "Linehaul, Fowler → Remington")], "Customer moved the delivery to this afternoon.");
   await load(t4.id, today, "14:00", "17:00");
   await must("urgent", db.rpc("flag_order_urgent", { p_order_id: t4.id, p_reason: "Customer needs the seed before tomorrow's planting (demo)." }));

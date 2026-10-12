@@ -2123,6 +2123,30 @@ an abandoned-attachment cleanup script, scheduled escalation (runs while the com
 (12), `comm-attachments.test.ts` (4), tenancy lists updated; `tests/unit/communications.test.ts` (8);
 `tests/e2e/communications.spec.ts` (4).
 
+## 5ab. Prospect demo tenants — Prairie Lantern Freight (2026-10-12)
+
+**Audit first:** `platform_demo_start` deactivated every demo company and `platform_demo_enter` joined the newest, so
+a demo tenant made for a prospect would be switched off by the next presenter demo. Invitations are refused in demo
+companies, and `create-owner.mjs` sets an operator-chosen password, so neither suits a prospect.
+
+**Migration `20261106000100_prospect_demo_tenants.sql`** (rollback tested apply → rollback → re-apply):
+`companies.demo_kind` (`presenter` | `prospect`, set exactly when `is_demo`); presenter functions touch only presenter
+demos; `platform_prospect_demo_create` (platform admin; caller becomes owner to seed); and
+`platform_prospect_demo_add_owner` (service role only; only an active prospect demo and an existing login; audited).
+
+**App:** `/admin/demo` → "Create the Prairie Lantern Freight demo" seeds `src/server/demo/prairie-lantern.ts`
+through the normal app functions: Rensselaer, IN branding, 8 fictional customers in nearby towns, 10 tractors,
+3 trailers, 10 drivers with CDL and medical cards, 3 staff plus an owner record for Colby Chapman (no contact
+details), 13 loads (4 delivered and verified, 4 assigned today plus 1 urgent unassigned, 3 tomorrow, 2 of them
+assigned), maintenance work orders (1 safety-critical) and 11 preventive schedules, vehicle documents (placeholders,
+one expiring, one expired), approved and pending time off. No VIN, plate, DOT or MC values. Modules whose
+migration is missing are skipped. `scripts/platform-admin.mjs demo-owner <email> <slug>` grants owner access
+after the person set their own password via `setup-link` (DEPLOYMENT §3c).
+
+**Limits:** a failed seed leaves a partly filled tenant (deactivate it and create again); the platform admin who
+creates the tenant stays one of its owners; Smart Dispatch does not choose trailers, so tractor loads are assigned
+on the board. **Tests:** `tests/db/prospect-demo.test.ts`, tenancy lists.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
