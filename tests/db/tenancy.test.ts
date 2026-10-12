@@ -30,6 +30,9 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Prospect demo tenants (20261106000100): create needs the platform role; add_owner is service role only and
+  // accepts only an active prospect demo company and an existing login.
+  "public.platform_prospect_demo_create", "public.platform_prospect_demo_add_owner",
   // Communications attachments (20261105000400): reserve/confirm/discard/send need require_company(), comms.message,
   // current membership and the caller's own upload; readability follows the message's visibility; storage policies
   // only allow the reserved path; abandoned_comm_attachments is service role only.
@@ -147,7 +150,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * platform team only (private.require_platform_admin; tested in
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches"];
+// platform_prospect_demo_add_owner: service role only; refuses every company that is not an active prospect demo.
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;

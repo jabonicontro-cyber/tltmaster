@@ -7,7 +7,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
-import { enterDemo, startDemo } from "../actions";
+import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
+import { createProspectDemo, enterDemo, startDemo } from "../actions";
 
 export const metadata = { title: "Live demo" };
 // Starting a demo seeds a few hundred records through the normal app functions.
@@ -18,6 +19,10 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
   const supabase = await createClient();
   const { data } = await supabase.rpc("platform_overview");
   const demo = (data as { demo_company?: { name: string; created_at: string } | null } | null)?.demo_company ?? null;
+  // Prospect demos (migration 20261106000100); the platform admin is a member of the ones they created.
+  const prospects = await supabase.from("companies").select("id, name, slug, created_at").eq("demo_kind", "prospect").eq("active", true).order("created_at");
+  const prospectsInstalled = !prospects.error;
+  const prospectRows = (prospects.data ?? []) as Array<{ id: string; name: string; slug: string; created_at: string }>;
   return (
     <>
       <PageHeader title="Live demo" description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Live demo" }]} />
@@ -42,7 +47,33 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
             </form>
           </CardBody>
         </Card>
-        <div className="space-y-4">
+        <Card>
+          <CardHeader title="Prospect demo tenants" description="Standing demo companies for one prospect. Starting or resetting the live demo never touches them." />
+          <CardBody className="space-y-4">
+            {!prospectsInstalled ? (
+              <p className="text-sm text-muted">Not available yet: prospect demos need the database update 20261106000100.</p>
+            ) : (
+              <>
+                {prospectRows.length > 0 ? (
+                  <ul className="divide-y divide-line text-sm">
+                    {prospectRows.map((p) => <li key={p.id} className="py-2"><span className="font-medium text-ink">{p.name}</span> <span className="text-muted">· {p.slug} · created {formatDateTime(p.created_at)}</span></li>)}
+                  </ul>
+                ) : <p className="text-sm text-muted">None yet.</p>}
+                {!prospectRows.some((p) => p.name === PRAIRIE_LANTERN.name) && (
+                  <form action={createProspectDemo}>
+                    <SubmitButton variant="secondary" pendingLabel="Creating…">Create the {PRAIRIE_LANTERN.name} demo</SubmitButton>
+                  </form>
+                )}
+                <p className="text-xs text-muted">
+                  You become its owner to fill it with fictional data; switch to it from your company menu. Its prospect gets owner access only
+                  after they set their own password through a one-time setup link and the operator runs
+                  <code className="mx-1">scripts/platform-admin.mjs demo-owner</code>(docs/DEPLOYMENT.md §3c). No login is created here.
+                </p>
+              </>
+            )}
+          </CardBody>
+        </Card>
+        <div className="space-y-4 lg:col-span-2">
           <Notice title="How the demo is kept separate">
             <ul className="mt-1 list-disc space-y-1 pl-5">
               <li>It is its own company: no other company&apos;s records are visible in it, and it cannot see theirs.</li>

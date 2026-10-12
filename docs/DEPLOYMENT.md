@@ -330,6 +330,26 @@ Wrong entries (password or code) count together: 10 per network address per 15 m
 A visitor can remove early access from their own browser from the sign-in page
 ("Remove early access from this browser"); that ends the device's grant.
 
+### 3c. A prospect demo tenant and its owner's login (e.g. Prairie Lantern Freight for Colby Chapman)
+
+A prospect demo is a standing demo company for one prospect: fictional data, the demo bar, nothing sent, and never
+replaced by "Start the demo". Needs migration `20261106000100_prospect_demo_tenants.sql` (after the pending ones;
+§2a). Each step below is an owner action; nothing here is done automatically.
+
+1. **Create and fill the tenant:** sign in as a platform admin → `/admin/demo` → "Create the Prairie Lantern Freight
+   demo". You become its owner (switch companies from your menu). Note its slug (`prospect-…`) shown there.
+2. **The prospect's login — they choose their own password.** With their verified email address (never guessed):
+   `node --env-file=.env.staging scripts/platform-admin.mjs setup-link <their email> --base-url https://<site>`.
+   This creates a login with no company and prints a one-time link; nothing is emailed. Give the link to them
+   privately; they open it and set their password (Supabase Auth must have the site URL configured, §1).
+3. **Owner access to that one tenant:** `node --env-file=.env.staging scripts/platform-admin.mjs demo-owner
+   <their email> <prospect-slug>`. The database accepts only an active prospect demo company and an existing login;
+   it never grants access to a real company, the presenter demo, or the platform.
+4. **Verify before saying the login is ready:** they sign in, land on the Command Center of the demo tenant (owner),
+   the demo bar shows, and the company menu lists no other company.
+
+Do not use `scripts/create-owner.mjs` for a prospect (it sets a password chosen by the operator).
+
 ## 4. Custom domain (later)
 
 1. Vercel → Project → **Settings → Domains** → add `app.yourdomain.com`.

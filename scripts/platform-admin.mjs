@@ -10,6 +10,8 @@
 //   node --env-file=.env.staging scripts/platform-admin.mjs revoke someone@example.com --note "Left the team"
 //   node --env-file=.env.staging scripts/platform-admin.mjs list
 //   node --env-file=.env.staging scripts/platform-admin.mjs setup-link you@example.com --base-url https://mytaviron.com
+//   node --env-file=.env.staging scripts/platform-admin.mjs demo-owner prospect@example.com prospect-1a2b3c4d5e
+//     (owner of a PROSPECT demo company only — never a real company; needs migration 20261106000100)
 import { createClient } from "@supabase/supabase-js";
 
 const [cmd, ...rest] = process.argv.slice(2);
@@ -90,7 +92,32 @@ if (cmd === "grant" || cmd === "revoke") {
   console.log(type === "invite" ? `Created a login for ${email} (no company, role or platform access yet).` : `${email} already has a login; its password is unchanged until the link is used.`);
   console.log("One-time setup link (single use, expires; share it privately):");
   console.log(link);
+} else if (cmd === "demo-owner") {
+  // Makes an EXISTING login (created with setup-link, password chosen by the person)
+  // the owner of one prospect demo company. The database refuses real companies and
+  // the presenter demo; no login, password or platform access is created here.
+  const [email, slug] = positional;
+  if (!email || !email.includes("@") || !slug) {
+    console.error("Usage: platform-admin.mjs demo-owner <email> <prospect-demo-company-slug>");
+    process.exit(1);
+  }
+  const { data: profile } = await db.from("profiles").select("id").eq("email", email.toLowerCase()).maybeSingle();
+  if (!profile) {
+    console.error(`No Taviron login exists for ${email}. Create it first with setup-link (the person sets their own password).`);
+    process.exit(1);
+  }
+  const { data: company } = await db.from("companies").select("id, name, demo_kind").eq("slug", slug).maybeSingle();
+  if (!company || company.demo_kind !== "prospect") {
+    console.error(`${slug} is not a prospect demo company. Nothing was changed.`);
+    process.exit(1);
+  }
+  const { error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id });
+  if (error) {
+    console.error(`Failed: ${error.message}`);
+    process.exit(1);
+  }
+  console.log(`${email} is now the owner of the demo company "${company.name}" (and of no other company through this command).`);
 } else {
-  console.error("Commands: grant <email> --note, revoke <email> --note, list, setup-link <email> --base-url <https://site>");
+  console.error("Commands: grant <email> --note, revoke <email> --note, list, setup-link <email> --base-url <https://site>, demo-owner <email> <prospect-demo-slug>");
   process.exit(1);
 }

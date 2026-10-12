@@ -7,6 +7,7 @@ import { z } from "zod";
 import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
+import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
@@ -160,6 +161,27 @@ export async function startDemo(formData: FormData) {
   (await cookies()).delete(PREVIEW_COOKIE);
   revalidatePath("/", "layout");
   redirect("/command-center?demo=started");
+}
+
+/**
+ * Create the standing "Prairie Lantern Freight" prospect demo tenant (separate
+ * from the presenter demo; never replaced by "Start the demo"), fill it with
+ * fictional data as its owner, and open it. Creates no login for anyone.
+ */
+export async function createProspectDemo() {
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_prospect_demo_create", {
+    p_name: PRAIRIE_LANTERN.name, p_city: PRAIRIE_LANTERN.city, p_state: PRAIRIE_LANTERN.state, p_timezone: PRAIRIE_LANTERN.timeZone,
+  });
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos need the database update 20261106000100, which is not installed yet." : dbErrorMessage(error));
+  try {
+    await seedPrairieLantern(supabase);
+  } catch (e) {
+    back("/admin/demo", e instanceof Error ? e.message : "The demo data could not be created.");
+  }
+  (await cookies()).delete(PREVIEW_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/command-center?demo=prospect");
 }
 
 export async function enterDemo() {
