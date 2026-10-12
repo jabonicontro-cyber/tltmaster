@@ -96,12 +96,12 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
           {err("email")}
         </label>
         <label className="block text-sm font-medium text-white/85">
-          Company{kind === "contact" ? <span className="text-white/45"> (optional)</span> : null}
+          Company{kind === "contact" ? <span className="text-white/60"> (optional)</span> : null}
           <input name="company_name" required={kind === "demo"} maxLength={160} autoComplete="organization" className={input} {...aria("company_name")} />
           {err("company_name")}
         </label>
         <label className="block text-sm font-medium text-white/85">
-          Phone <span className="text-white/45">(optional)</span>
+          Phone <span className="text-white/60">(optional)</span>
           <PhoneInput bare name="phone" maxLength={40} className={input} {...aria("phone")} />
           {err("phone")}
         </label>
@@ -116,7 +116,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
               Number of dispatch bases
               <input name="base_count" type="number" inputMode="numeric" required min={1} max={1000} step={1} className={input} {...aria("base_count")} />
               {err("base_count")}
-              <span className="mt-1 block text-xs text-white/45">Locations your trucks are dispatched from.</span>
+              <span className="mt-1 block text-xs text-white/60">Locations your trucks are dispatched from.</span>
             </label>
           </>
         ) : null}
@@ -124,7 +124,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
       <label className="block text-sm font-medium text-white/85">
         {kind === "demo" ? (
           <>
-            What would you most like Taviron to improve? <span className="text-white/45">(optional)</span>
+            What would you most like Taviron to improve? <span className="text-white/60">(optional)</span>
           </>
         ) : (
           "Message"
@@ -133,7 +133,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
         {err("message")}
       </label>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-white/45">
+        <p className="text-xs text-white/60">
           We use these details only to reply to you. See the{" "}
           <a href="/privacy" className="underline hover:text-white">
             privacy notice
