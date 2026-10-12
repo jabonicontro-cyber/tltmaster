@@ -224,6 +224,10 @@ npm run lint && npm run typecheck && npm test        # no database needed
 npm run test:db                                      # needs a migrated local database
 ```
 
+**Before a release run, reset the local test database** (after `pg_dump -Fc` into `/var/lib/tlt-backups/`):
+`DEV_STORAGE=1 scripts/dev-stack/stack.sh db-reset`. Every e2e run adds companies, trucks and orders; after many
+runs the dev server renders the Dispatch pages so slowly that timing-sensitive tests fail (master plan §8 O11/O12).
+
 Browser tests need the app running against a **local** backend (the setup script refuses
 remote URLs unless `E2E_ALLOW_REMOTE=1`):
 
