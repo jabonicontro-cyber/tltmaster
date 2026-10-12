@@ -237,4 +237,21 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
       { trailer_id: trailer["T-53"], kind: "registration", title: "Trailer registration", reference_number: "PLF-REG-T53", issuing_authority: "", expires_on: addDays(today, -4), submission_key: randomUUID() },
     ]));
   }
+
+  await seedCommunicationSamples(db);
+}
+
+/**
+ * Fictional sample Communications content (a Dispatch channel with pinned sample instructions) through
+ * comm_seed_demo_samples, which only works in a demo company. Returns how many records were added; 0 when
+ * Communications or the update 20261108000100 is not installed yet (the feature then shows its normal
+ * "not available" state, as in any company).
+ */
+export async function seedCommunicationSamples(db: Db): Promise<number> {
+  const { data, error } = await db.rpc("comm_seed_demo_samples");
+  if (error) {
+    if (error.code === "PGRST202" || error.code === "42P01" || error.code === "42883") return 0;
+    throw new Error(`Communications samples: ${error.message}`);
+  }
+  return Number(data ?? 0);
 }

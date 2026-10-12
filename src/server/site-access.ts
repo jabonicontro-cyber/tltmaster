@@ -60,8 +60,11 @@ export function publicSiteEnabled(): boolean {
   return (process.env.PUBLIC_SITE ?? "").trim().toLowerCase() === "on";
 }
 
-/** Paths reachable without early access: the gate itself and Supabase Auth email links (one-time tokens). */
-const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error"];
+/**
+ * Paths reachable without early access: the gate itself, Supabase Auth email links (one-time tokens) and the
+ * scheduled jobs (each checks CRON_SECRET itself and refuses everything without it).
+ */
+const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }

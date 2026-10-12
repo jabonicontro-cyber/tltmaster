@@ -6,6 +6,7 @@ import { ListViewRecorder } from "@/components/nav/nav-memory";
 import { UnsavedChangesGuard } from "@/components/nav/unsaved-guard";
 import { MobileNav } from "./mobile-nav";
 import { UserMenu } from "./user-menu";
+import type { Presence } from "@/lib/communications";
 import { DemoBar } from "./demo-bar";
 import { ROLE_LABELS, type Access } from "@/lib/permissions";
 import type { MyCompany } from "@/server/data/companies";
@@ -23,7 +24,7 @@ export interface ShellBranding {
  * is a quiet "Powered by Taviron" line. Urgency colors are fixed ("critical")
  * and never follow a company's colors.
  */
-export function AppShell({ access, companies = [], platformAdmin = false, presentation = false, sidebarPinned = false, me = null, branding, hideMyDay = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; presentation?: boolean; sidebarPinned?: boolean; /** Display name and photo from the person's own profile, when available. */ me?: { name: string; photo: string } | null; branding?: ShellBranding; /** Hide My Day: the login is not a driver but has other work (owners, office). */ hideMyDay?: boolean; children: ReactNode }) {
+export function AppShell({ access, companies = [], platformAdmin = false, presentation = false, sidebarPinned = false, me = null, branding, hideMyDay = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; presentation?: boolean; sidebarPinned?: boolean; /** Display name and photo from the person's own profile, when available. */ me?: { name: string; photo: string; presence?: Presence | null } | null; branding?: ShellBranding; /** Hide My Day: the login is not a driver but has other work (owners, office). */ hideMyDay?: boolean; children: ReactNode }) {
   const style = branding ? brandingStyle({ logo: "", color: branding.color, sidebarColor: branding.sidebarColor }) : {};
   const logoUrl = branding?.logoUrl ?? "";
   // Navigation only (pages still check real permissions): no My Day entry for people who do not drive.
@@ -46,6 +47,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
           name={me?.name || access.fullName}
           email={access.email}
           photo={me?.photo ?? ""}
+          presence={me?.presence}
           roleLabel={`${access.role ? ROLE_LABELS[access.role] : "No role"}${access.companyName ? ` · ${access.companyName}` : ""}`}
           companies={companies.map((c) => ({ id: c.company_id, name: c.name, current: c.current, role: ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] ?? c.role }))}
           canCreateCompany={access.role === "owner"}

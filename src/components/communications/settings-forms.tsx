@@ -5,7 +5,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, FormError, Input, Select } from "@/components/ui/form";
-import { ACK_SCOPES, allowedPriorities, NOTIFICATION_CATEGORIES, PRIORITIES, type Priority } from "@/lib/communications";
+import { ACK_SCOPES, allowedPriorities, EDIT_WINDOW_MINUTES, RETENTION_DAYS, NOTIFICATION_CATEGORIES, PRIORITIES, type Priority } from "@/lib/communications";
 import { formatDateTime } from "@/lib/dates";
 import { ROLE_LABELS } from "@/lib/permissions";
 import type { AlertType, CommSettings, Preferences } from "@/server/data/communications";
@@ -71,10 +71,12 @@ export function CompanySettingsForm({ initial }: { initial: CommSettings }) {
       if (!r.ok) return setError(r.error);
       toast.success(r.message ?? "Saved.");
     }}>
+      <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-muted">
+        Fixed policies: authors can edit or delete a message for {EDIT_WINDOW_MINUTES} minutes after sending (later edits never extend it);
+        managers can remove any message with a reason, which is recorded. Message content, including replies and files, is removed
+        {" "}{RETENTION_DAYS} days after it was sent unless legal hold is on. Audit records are kept separately.
+      </p>
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Edit and delete window (minutes)" htmlFor="cs-edit" hint="How long authors may edit or delete their messages. 0 = not at all.">
-          <Input id="cs-edit" type="number" min={0} max={1440} value={s.edit_window_minutes} onChange={num("edit_window_minutes")} />
-        </Field>
         <Field label="Away after (minutes)" htmlFor="cs-away" hint="Presence turns Away after this long without activity (an estimate).">
           <Input id="cs-away" type="number" min={5} max={240} value={s.away_after_minutes} onChange={num("away_after_minutes")} />
         </Field>
@@ -93,13 +95,10 @@ export function CompanySettingsForm({ initial }: { initial: CommSettings }) {
         <Field label="Archive finished workspaces after (hours)" htmlFor="cs-archive">
           <Input id="cs-archive" type="number" min={0} max={720} value={s.workspace_archive_hours} onChange={num("workspace_archive_hours")} />
         </Field>
-        <Field label="Delete messages older than (days)" htmlFor="cs-retention" hint="Empty = keep everything. Minimum 30 days.">
-          <Input id="cs-retention" type="number" min={30} max={3650} value={s.retention_days ?? ""} onChange={num("retention_days")} />
-        </Field>
       </div>
       <div className="flex flex-col gap-2">
-      <Checkbox label="Members may delete their own messages (within the window)" checked={s.members_delete_own} onChange={(e) => setS({ ...s, members_delete_own: e.target.checked })} />
-      <Checkbox label="Legal hold: never delete messages, whatever the retention setting" checked={s.legal_hold} onChange={(e) => setS({ ...s, legal_hold: e.target.checked })} />
+      <Checkbox label={`Members may delete their own messages (within ${EDIT_WINDOW_MINUTES} minutes of sending)`} checked={s.members_delete_own} onChange={(e) => setS({ ...s, members_delete_own: e.target.checked })} />
+      <Checkbox label={`Legal hold: keep all message content past ${RETENTION_DAYS} days (nothing expires while this is on)`} checked={s.legal_hold} onChange={(e) => setS({ ...s, legal_hold: e.target.checked })} />
       </div>
       <FormError message={error} />
       <Button type="submit" loading={pending}>Save settings</Button>

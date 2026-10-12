@@ -159,13 +159,16 @@ export async function editMessage(input: { messageId: string; body: string }): P
   });
 }
 
-export async function deleteMessage(messageId: string): Promise<ActionResult> {
+/** Authors: own message within 5 minutes. Managers (comms.admin): any message, with a reason (audited). */
+export async function deleteMessage(messageId: string, reason?: string): Promise<ActionResult> {
   return guard(async () => {
     if (!id.safeParse(messageId).success) return fail("Invalid request.");
-    const { error } = await rpc("comm_delete_message", { p_message: messageId });
+    const why = (reason ?? "").trim().slice(0, 300);
+    const { error } = await rpc("comm_delete_message", why ? { p_message: messageId, p_reason: why } : { p_message: messageId });
+    if (error?.code === "PGRST202") return fail("Removing a message with a reason needs the database update 20261108000100, which is not installed yet.");
     if (error) return fail(dbErrorMessage(error));
     refresh();
-    return ok(undefined, "Message deleted.");
+    return ok(undefined, why ? "Message removed." : "Message deleted.");
   });
 }
 

@@ -4,6 +4,8 @@ import { DropdownMenu as M } from "radix-ui";
 import Link from "next/link";
 import { Building2, Check, ChevronDown, CircleUserRound, LogOut, Monitor, MonitorX, Plus, ShieldCheck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
+import { PresenceDot } from "@/components/communications/status";
+import type { Presence } from "@/lib/communications";
 import { THEME_OPTIONS, applyTheme, parseTheme } from "@/lib/theme";
 import { useThemePreference } from "@/components/ui/theme-sync";
 import { usePathname } from "next/navigation";
@@ -14,7 +16,7 @@ import { switchCompany } from "@/app/account/actions";
 
 type CompanyItem = { id: string; name: string; current: boolean; role: string };
 
-export function UserMenu({ name, email, photo = "", roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false }: { name: string; email: string; photo?: string; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null; platformAdmin?: boolean }) {
+export function UserMenu({ name, email, photo = "", roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false, presence }: { name: string; email: string; photo?: string; /** Undefined: Communications not available to this user (no dot). */ presence?: Presence | null; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; demo?: { presentation: boolean } | null; platformAdmin?: boolean }) {
   const [signingOut, startSignOut] = useTransition();
   const [toggling, startToggle] = useTransition();
   const pathname = usePathname();
@@ -30,7 +32,10 @@ export function UserMenu({ name, email, photo = "", roleLabel, companies = [], c
   return (
     <M.Root>
       <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-ink hover:bg-surface">
-        <Avatar name={name || email} src={photo} size={32} />
+        <span className="relative shrink-0">
+          <Avatar name={name || email} src={photo} size={32} />
+          {presence !== undefined && <PresenceDot presence={presence} className="absolute -right-0.5 -bottom-0.5" />}
+        </span>
         <span className="hidden min-w-0 sm:block">
           <span className="block max-w-[12rem] truncate text-sm font-semibold">{name || email}</span>
           <span className="block max-w-[16rem] truncate text-xs text-muted">{roleLabel}</span>

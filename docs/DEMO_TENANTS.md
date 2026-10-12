@@ -30,6 +30,7 @@ Each is enforced by `tests/unit/demo-parity.test.ts`: adding any other `isDemo` 
 | `src/app/(app)/quotes/actions.ts` | Quote emails are always previews, never sent. | Demos never send anything. |
 | `src/app/(app)/settings/actions.ts` | Inviting users is refused. | Demos never send email; prospect owners are added by the operator (DEPLOYMENT §3c). |
 | `src/app/admin/actions.ts`, `src/app/admin/demo/page.tsx` | Platform tools to create, refresh and retire prospect demos. | Operator tooling, not part of the tenant's app. |
+| Database: `public.comm_seed_demo_samples()` (migration `20261108000100`) | Adds fictional sample Communications content (a "Dispatch desk" channel with pinned sample instructions); refused for real companies; never adds platform operators as members. Called by the seed and Refresh. | Communications needs content to look alive; fictional people cannot post without logins, so samples are system notes marked "Sample". |
 
 Everything else (Communications, Dispatch, Maintenance, Fleet, Employees, Reports, Billing previews, …) behaves
 exactly as for a real company. Features that cannot act for real anyway (e.g. invoices are previews, Smart Dispatch
@@ -52,6 +53,11 @@ only proposes) need no demo branch.
 
 ## 4. Known gaps (to close as features are touched)
 
-- Communications has no sample conversations or announcements yet: they need fictional people with logins.
+- Communications samples are system notes in one channel (no fictional people chatting: they would need logins).
+  The demo's owner joins the channel at the next **Refresh demo data** after being added. Sample notes expire after
+  14 days like all message content; Refresh adds them again. Needs migration `20261108000100`; until then the seed and
+  Refresh skip the samples.
+- The presenter demo gets no Communications samples: its presenter is a platform operator, who is never added to
+  sample conversations.
 - Refresh exists for Prairie Lantern Freight; a new prospect demo needs its own seed and refresh (or a shared one).
 - No scheduler: refresh is a button (`/admin/demo`), not a nightly job.

@@ -63,6 +63,10 @@ test("a demo company's owner has the same navigation and working pages as a stan
     await expect(demo.getByText("This page could not be loaded"), href).toHaveCount(0);
   }
 
+  // Communications runs with the same policies as any company (5-minute window, 14-day retention).
+  await demo.goto("/communications/settings");
+  await expect(demo.getByText(/authors can edit or delete a message for 5 minutes/)).toBeVisible();
+
   // Nothing leaves a demo: invitations are refused.
   await demo.goto("/settings?tab=users");
   await demo.getByRole("button", { name: "Invite user" }).click();

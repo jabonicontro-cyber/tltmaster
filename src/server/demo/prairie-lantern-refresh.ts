@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
-import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
+import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
 
 /**
  * Keeps the Prairie Lantern Freight prospect demo current. Additive only, through
@@ -165,5 +165,6 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
       if (!t.error) await db.rpc("review_delivery_ticket", { p_ticket_id: (t.data as { ticket_id: string }).ticket_id, p_action: "accept", p_note: "" });
     }
   }
+  added += await seedCommunicationSamples(db);
   return { added, loads };
 }

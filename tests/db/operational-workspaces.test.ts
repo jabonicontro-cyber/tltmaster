@@ -37,7 +37,7 @@ const visible = (s: Session, c: string) =>
   s.query<{ body: string }>("select body from public.messages where conversation_id = $1 and kind = 'text' order by created_at", [c]).then((r) => r.rows.map((x) => x.body));
 
 describe("dispatch-linked membership", () => {
-  it("a project workspace follows assignments: replacement hands off pinned context only; the old driver keeps history but gets nothing new", async () => {
+  it("a project workspace follows assignments: replacement inherits the replaced driver's history and a handoff summary; the old driver keeps history but gets nothing new", async () => {
     await withSession(async (s) => {
       const w = await setup(s);
       const a1 = await assign(s, w.l1.load_id, w.f.t1, null, w.f.d1); // Driver C
@@ -59,14 +59,14 @@ describe("dispatch-linked membership", () => {
       await send(s, ws, "After the handoff");
 
       await s.as(w.users.d);
-      expect(await visible(s, ws)).toEqual(["Use the north gate; site contact is on the order", "After the handoff"]);
+      expect(await visible(s, ws)).toEqual(["Use the north gate; site contact is on the order", "Chatter before the change", "After the handoff"]);
       await s.as(w.users.c);
       expect(await visible(s, ws)).toEqual(["Use the north gate; site contact is on the order", "Chatter before the change"]);
       expect((await pgError(send(s, ws, "Am I still in?"))).code).toBe("42501");
 
       await s.asAdmin();
       const sys = (await s.query<{ body: string }>("select body from public.messages where conversation_id = $1 and kind = 'system' order by created_at", [ws])).rows.map((r) => r.body).join(" | ");
-      expect(sys).toMatch(/Driver D joined .* replaces Driver C/);
+      expect(sys).toMatch(/Handoff on .*: Driver D replaces Driver C\. 1 pinned instruction apply\. No open alerts on this load\..*Driver C keeps their history but receives nothing new/);
       const ev = await s.query<{ details: { reason: string; trigger: string } }>("select details from public.conversation_events where conversation_id = $1 and kind in ('member_added', 'member_removed') and user_id in ($2, $3)", [ws, w.users.c, w.users.d]);
       const changes = ev.rows.filter((e) => e.details.trigger !== "created");
       expect(changes.length).toBe(2);
@@ -122,7 +122,7 @@ describe("dispatch-linked membership", () => {
     });
   });
 
-  it("closing ends drivers' access; reopening recalculates from current assignments; finished work archives after the delay", async () => {
+  it("closing ends drivers' access; reopening recalculates from current assignments; finished work archives after the delay, never with an outstanding action", async () => {
     await withSession(async (s) => {
       const w = await setup(s);
       const a1 = await assign(s, w.l1.load_id, w.f.t1, null, w.f.d1);
@@ -141,7 +141,18 @@ describe("dispatch-linked membership", () => {
       await s.query("select public.comm_save_settings('{\"workspace_archive_hours\": 0}'::jsonb)");
       await s.as(w.dispatcher);
       await s.query("select public.cancel_order_load($1, 'Weather')", [w.l1.load_id]);
+      // An outstanding action on the load (open action-required alert) holds the archive back.
       await s.asAdmin();
+      const code = (await s.query<{ code: string }>("select code from public.alert_event_types order by code limit 1")).rows[0].code;
+      const alert = (await s.query<{ id: string }>(
+        "insert into public.alerts (company_id, event_type, source_key, entity_type, entity_id, title, priority, ack_scope) values ($1, $2, 'test-veto', 'load', $3, 'Gate code missing', 'action_required', 'any') returning id",
+        [(await s.query<{ company_id: string }>("select company_id from public.order_loads where id = $1", [w.l1.load_id])).rows[0].company_id, code, w.l1.load_id])).rows[0].id;
+      await s.query("delete from public.comm_housekeeping_runs");
+      await s.as(w.dispatcher);
+      expect((await s.query<{ r: { archived: number } }>("select public.comm_housekeeping() as r")).rows[0].r.archived).toBe(0);
+      await s.asAdmin();
+      expect((await s.query("select status from public.conversations where id = $1", [ws])).rows[0].status).toBe("active");
+      await s.query("update public.alerts set status = 'resolved', resolved_at = now() where id = $1", [alert]);
       await s.query("delete from public.comm_housekeeping_runs");
       await s.as(w.dispatcher);
       expect((await s.query<{ r: { archived: number } }>("select public.comm_housekeeping() as r")).rows[0].r.archived).toBeGreaterThanOrEqual(1);

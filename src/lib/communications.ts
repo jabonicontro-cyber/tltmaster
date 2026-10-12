@@ -174,11 +174,26 @@ export const preferencesSchema = z.object({
 }).refine((v) => (v.quiet_start === null) === (v.quiet_end === null), { message: "Set both the start and end of quiet hours, or neither.", path: ["quiet_end"] })
   .refine((v) => v.quiet_start === null || v.quiet_start !== v.quiet_end, { message: "Quiet hours must start and end at different times.", path: ["quiet_end"] });
 
+/**
+ * Effective presence, as the database computes it (private.comm_presence): the manual
+ * status wins; otherwise Away after the company's inactivity threshold; null when never seen.
+ */
+export function effectivePresence(row: { manual_status: string | null; last_active_at: string | null } | null, awayAfterMinutes: number, now = Date.now()): Presence | null {
+  if (!row) return null;
+  if (row.manual_status === "available" || row.manual_status === "busy" || row.manual_status === "away") return row.manual_status;
+  if (!row.last_active_at) return null;
+  return now - new Date(row.last_active_at).getTime() > awayAfterMinutes * 60_000 ? "away" : "available";
+}
+
+/** Authors may edit or delete their own message for 5 minutes from sending (enforced by the database). */
+export const EDIT_WINDOW_MINUTES = 5;
+/** Message content (text, replies, files) is kept 14 days from creation unless the company is under legal hold. */
+export const RETENTION_DAYS = 14;
+
+/** Company settings. The edit window and message retention are fixed policies, not settings. */
 export const settingsSchema = z.object({
-  edit_window_minutes: z.coerce.number().int().min(0).max(1440),
   members_delete_own: z.boolean(),
   history_for_new_members: z.enum(["from_join", "full"]),
-  retention_days: z.coerce.number().int().min(30).max(3650).nullable(),
   legal_hold: z.boolean(),
   away_after_minutes: z.coerce.number().int().min(5).max(240),
   delivery_notifications: z.enum(["notice", "defer"]),

@@ -30,6 +30,11 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Communications hardening (20261108000100): legal-hold lookup is internal; housekeeping_all and the expired-file
+  // functions are service role only (no company argument; they act on every company by design, from the scheduler);
+  // seed_demo_samples needs require_company(), comms.admin and a demo company.
+  "private.comm_legal_hold", "public.comm_housekeeping_all", "public.comm_expired_attachment_files",
+  "public.comm_mark_attachment_files_removed", "public.comm_seed_demo_samples",
   // Prospect demo tenants (20261106000100): create needs the platform role; add_owner is service role only and
   // accepts only an active prospect demo company and an existing login.
   "public.platform_prospect_demo_create", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire",

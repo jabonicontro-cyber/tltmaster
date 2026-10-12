@@ -113,18 +113,46 @@ describe("direct and group messages", () => {
       expect((await s.query("select * from public.message_revisions where message_id = $1", [m.id])).rowCount).toBe(0); // not for members
       await s.as(owner);
       expect((await s.query<{ old_body: string }>("select old_body from public.message_revisions where message_id = $1", [m.id])).rows[0].old_body).toBe("Load at 7");
-      await s.query("select public.comm_save_settings('{\"edit_window_minutes\": 0}'::jsonb)");
+      // The window is fixed at 5 minutes from creation; earlier edits never restart it.
+      await s.asAdmin();
+      await s.query("update public.conversation_members set history_from = history_from - interval '1 hour' where conversation_id = $1", [dm]);
+      await s.query("update public.messages set created_at = created_at - interval '5 minutes 1 second' where id = $1", [m.id]);
+      await s.as(owner);
+      await s.query("select public.comm_save_settings('{\"edit_window_minutes\": 600}'::jsonb)"); // the old setting no longer widens it
       await s.as(a);
-      expect((await pgError(s.query("select public.comm_edit_message($1, 'Too late')", [m.id]))).message).toMatch(/0 minutes/);
-      expect((await pgError(s.query("select public.comm_delete_message($1)", [m.id]))).message).toMatch(/0 minutes/);
-      await s.as(owner); // administrators may delete; the text is kept in the audit record
-      await s.query("select public.comm_delete_message($1)", [m.id]);
+      expect((await pgError(s.query("select public.comm_edit_message($1, 'Too late')", [m.id]))).message).toMatch(/5 minutes/);
+      expect((await pgError(s.query("select public.comm_delete_message($1)", [m.id]))).message).toMatch(/5 minutes/);
+      expect((await pgError(s.query("select public.comm_delete_message($1, 'I want it gone')", [m.id]))).message).toMatch(/5 minutes/); // a reason is no bypass
+      await s.as(owner); // managers may remove it after the window, with a reason; the text is kept for administrators
+      expect((await pgError(s.query("select public.comm_delete_message($1)", [m.id]))).message).toMatch(/reason/);
+      await s.query("select public.comm_delete_message($1, 'Contained a customer phone number')", [m.id]);
       const del = (await s.query("select body, deleted_at from public.messages where id = $1", [m.id])).rows;
       expect(del).toHaveLength(0); // the owner is not a member: they cannot read it
       await s.as(b);
-      expect((await s.query("select body, deleted_at from public.messages where id = $1", [m.id])).rows[0]).toMatchObject({ body: "" });
+      expect((await s.query("select body, deleted_at, removal_kind from public.messages where id = $1", [m.id])).rows[0]).toMatchObject({ body: "", removal_kind: "manager" });
       await s.as(owner);
-      expect((await s.query<{ action: string }>("select action from public.message_revisions where message_id = $1 order by created_at", [m.id])).rows.map((r) => r.action)).toEqual(["edited", "deleted"]);
+      const revs = (await s.query<{ action: string; reason: string }>("select action, reason from public.message_revisions where message_id = $1 order by created_at", [m.id])).rows;
+      expect(revs).toEqual([{ action: "edited", reason: "" }, { action: "deleted", reason: "Contained a customer phone number" }]);
+      const audit = (await s.query<{ details: Record<string, unknown> }>("select details from public.audit_events where action = 'comm_message_removed' and entity_id = $1", [m.id])).rows;
+      expect(audit).toHaveLength(1);
+      expect(audit[0].details.reason).toBe("Contained a customer phone number");
+      expect(JSON.stringify(audit[0].details)).not.toContain("Load at"); // the audit record never holds message text
+    });
+  });
+
+  it("authors delete their own message within 5 minutes; a tombstone remains", async () => {
+    await withSession(async (s) => {
+      const a = await s.createUser("dispatcher");
+      const b = await s.createUser("driver");
+      await s.as(a);
+      const dm = (await s.query<{ id: string }>("select public.comm_open_direct($1) as id", [b])).rows[0].id;
+      const m = await send(s, dm, "Wrong truck number");
+      await s.query("select public.comm_delete_message($1)", [m.id]);
+      await s.as(b);
+      expect((await s.query("select body, removal_kind, deleted_at is not null as gone from public.messages where id = $1", [m.id])).rows[0]).toEqual({ body: "", removal_kind: "author", gone: true });
+      const other = await send(s, dm, "Mine, not yours");
+      await s.as(a);
+      expect((await pgError(s.query("select public.comm_delete_message($1, 'not mine to remove')", [other.id]))).code).toBe("42501");
     });
   });
 

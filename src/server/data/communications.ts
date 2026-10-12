@@ -143,6 +143,9 @@ export interface Message {
   created_at: string;
   edited_at: string | null;
   deleted_at: string | null;
+  /** 20261108000100: who deleted it (author, or a manager with a reason) and when retention expired it. */
+  removal_kind?: "author" | "manager" | null;
+  expired_at?: string | null;
   attachments: Attachment[];
 }
 
@@ -185,7 +188,8 @@ export async function loadSettings(): Promise<CommSettings | null> {
 }
 
 /** One conversation the caller is (or was) a member of; null when not found, undefined when not installed. */
-export async function loadConversation(id: string) {
+/** One conversation with its newest `limit` messages (older ones load on request: "Show earlier messages"). */
+export async function loadConversation(id: string, limit = 100) {
   const supabase = await createClient();
   const conv = await supabase.from("conversations").select("*").eq("id", id).maybeSingle();
   if (conv.error) {
@@ -197,8 +201,9 @@ export async function loadConversation(id: string) {
   const [members, messages, workspace, receipts, inbox] = await Promise.all([
     supabase.from("conversation_members").select("id, user_id, role, source, joined_at, history_from, left_at, left_reason, muted_until, last_read_at")
       .eq("conversation_id", id).order("joined_at"),
-    supabase.from("messages").select("id, author_id, kind, body, reply_to_id, pinned, created_at, edited_at, deleted_at")
-      .eq("conversation_id", id).order("created_at", { ascending: false }).limit(300),
+    // "*": removal_kind and expired_at exist only once 20261108000100 is applied.
+    supabase.from("messages").select("*")
+      .eq("conversation_id", id).order("created_at", { ascending: false }).limit(limit + 1),
     supabase.from("operation_workspaces").select("scope_type, order_ids, site_key, scope_date, load_ids, sync_status, sync_error, last_synced_at, work_finished_at")
       .eq("conversation_id", id).maybeSingle(),
     supabase.rpc("comm_receipts", { p_conversation: id }),
@@ -206,7 +211,9 @@ export async function loadConversation(id: string) {
   ]);
   if (members.error) fail("members", members.error);
   if (messages.error) fail("messages", messages.error);
-  const rows = ((messages.data ?? []) as Omit<Message, "attachments">[]).reverse();
+  const all = (messages.data ?? []) as Omit<Message, "attachments">[];
+  const hasEarlier = all.length > limit;
+  const rows = all.slice(0, limit).reverse();
   const files = new Map<string, Attachment[]>();
   if (rows.length) {
     const att = await supabase.from("message_attachments").select("id, message_id, file_name, mime_type, size_bytes")
@@ -219,6 +226,7 @@ export async function loadConversation(id: string) {
     conversation: { ...(conv.data as Conversation), title: title || (conv.data as Conversation).title },
     members: (members.data ?? []) as Member[],
     messages: rows.map((m) => ({ ...m, attachments: files.get(m.id) ?? [] })) as Message[],
+    hasEarlier,
     workspace: (workspace.data ?? null) as Workspace | null,
     receipts: (receipts.data ?? {}) as Record<string, { recipients: number; delivered: number; read: number }>,
     attachmentsAvailable: true,

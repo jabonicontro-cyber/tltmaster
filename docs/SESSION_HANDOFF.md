@@ -9,6 +9,14 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **Communications hardening** (IMPLEMENTATION_PLAN §5ac, docs/COMMUNICATIONS.md): fixed 5-minute edit/delete
+  window, manager removal with a required reason (audited, tombstone), 14-day message content retention enforced at
+  read time and purged by a job (attachments, revisions, search; legal hold overrides; audit kept), scheduled job
+  `/api/cron/comm-housekeeping` (Vercel Cron daily, optional pg_cron), archive veto for outstanding actions, driver
+  handoff message and inherited history, presence colours (Busy red, Away yellow) and the dot on the top-bar picture,
+  "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
+  `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
+  keeps the earlier rules.
 - **Permanent rule — demo tenants stay in sync** (CLAUDE.md, docs/DEMO_TENANTS.md): every feature/UI change must
   work in demo companies (or document an exception), add sample data to the seed and to Refresh demo data, and pass
   `tests/unit/demo-parity.test.ts` and `tests/e2e/demo-parity.spec.ts`. Known gaps: DEMO_TENANTS §4.
@@ -23,9 +31,8 @@ project credentials. Read it together with:
   dispatch-linked operational workspaces, operational alerts with safety minimums and escalation, announcements with
   acknowledgment, presence and work status, driver-on-delivery safety notice and deferral, preferences, quiet hours,
   mutes, search (audited admin search), private attachments, retention. In-app only — nothing is emailed or texted.
-  **Needs four hosted migrations, in order, after the pending ones:** `20261105000100` → `20261105000200` →
-  `20261105000300` → `20261105000400` (owner action, DEPLOYMENT §2a). Until then every Communications page says
-  "Not available yet". Open decisions: master plan §9 Q25.
+  Its four migrations (`20261105000100` … `20261105000400`) were applied by the owner with those through
+  `20261106000100`. Open decisions: master plan §9 Q25.
 - **Driver time off** (IMPLEMENTATION_PLAN §5z): `/time-off` requests and approvals; approved leave blocks drivers in
   dispatch at the moment of assignment. **Needs migration `20261104000100_time_off.sql`** after the three pending
   ones (20261101000100 → 20261102000100 → 20261103000100). No balances or accruals yet. Open decisions: master plan §9 Q24.

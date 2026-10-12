@@ -33,10 +33,11 @@ async function scopeText(w: { scope_type: "project" | "destination" | "loads"; o
   return `${SCOPE_LABELS.loads}: ${labels.join(", ") || `${w.load_ids.length} load(s)`}`;
 }
 
-export default async function ConversationPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ConversationPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ show?: string }> }) {
   const access = await requireAccess();
   const { id } = await params;
-  const [data, directory, settings] = await Promise.all([loadConversation(id), loadDirectory(), loadSettings()]);
+  const shown = Math.min(Math.max(Number.parseInt((await searchParams).show ?? "", 10) || 100, 100), 1000);
+  const [data, directory, settings] = await Promise.all([loadConversation(id, shown), loadDirectory(), loadSettings()]);
   if (data === undefined || settings === null) return <CommunicationsUnavailable />;
   if (data === null) notFound();
   const { conversation: c, members, messages, workspace, receipts } = data;
@@ -87,7 +88,8 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
             names={names}
             photos={photos}
             receipts={receipts}
-            editWindowMinutes={settings.edit_window_minutes}
+            hasEarlier={data.hasEarlier}
+            shown={shown}
             membersDeleteOwn={settings.members_delete_own}
             isAdmin={isAdmin}
             canManage={canManage && Boolean(mine)}

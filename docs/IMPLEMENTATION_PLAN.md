@@ -2147,6 +2147,32 @@ after the person set their own password via `setup-link` (DEPLOYMENT §3c).
 creates the tenant stays one of its owners; Smart Dispatch does not choose trailers, so tractor loads are assigned
 on the board. **Tests:** `tests/db/prospect-demo.test.ts`, tenancy lists.
 
+## 5ac. Communications hardening (2026-10-12)
+
+Audit of the released Communications (§5aa) against the owner's hardening spec, then completion — not a rebuild.
+
+- **Migration `20261108000100_comm_hardening.sql`** (+ rollback; apply → rollback → re-apply verified locally):
+  fixed 5-minute edit/own-delete window from creation (`private.comm_edit_window()`); `comm_delete_message(message,
+  reason)` — managers (`comms.admin`) remove after the window with a required reason, `messages.removal_kind`
+  tombstone, reason in `message_revisions.reason`, audit `comm_message_removed` without text; 14-day content
+  retention (`private.comm_retention()`) applied in `comm_message_visible` (RLS, search, unread, files) and by
+  `comm_apply_retention` (empties bodies, deletes revisions, marks attachments `expired`; rows kept); legal hold
+  overrides (`private.comm_legal_hold`); `comm_housekeeping_all()` + `comm_expired_attachment_files()` +
+  `comm_mark_attachment_files_removed()` for the service role; optional pg_cron schedule; archive veto for open
+  critical/action-required alerts and tickets awaiting review; handoff in `comm_sync_operation`;
+  `comm_seed_demo_samples()` (demo companies only).
+- **App:** `/api/cron/comm-housekeeping` (CRON_SECRET, `vercel.json` daily) removes expired files through the Storage
+  API; settings show the fixed policies (edit window and retention inputs removed); conversation view: "Show earlier
+  messages" (100 per step, up to 1,000), collapsible threads, "Edited", deleted/removed/expired tombstones, manager
+  removal dialog with reason; presence Busy red / Away yellow and the dot on the top-bar picture.
+- **Demo:** seed and Refresh call `comm_seed_demo_samples` (skipped until the migration is applied).
+- **Not done / honest limits:** work schedules do not exist, so "Working hours"/"Outside working hours" still show as
+  Unknown; Vercel Hobby runs the cron daily (pg_cron for 15 minutes); no email/SMS (by design).
+- **Tests:** `tests/db/comm-hardening.test.ts` (retention, legal hold, attachments, scheduler permissions, demo
+  samples), updated `communications.test.ts` (window, removal, tombstone), `operational-workspaces.test.ts` (handoff,
+  archive veto), `tests/unit/cron.test.ts`, `communications.test.ts`, `site-access.test.ts`, and
+  `tests/e2e/communications.spec.ts` (edit/delete window, threads, presence dot, fixed policies).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

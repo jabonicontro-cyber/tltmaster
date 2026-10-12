@@ -240,6 +240,18 @@ custom domain you add to the project later. Before setting `PUBLIC_SITE=on`, che
 **Settings → Domains**: if only `tltmaster.vercel.app` is listed, the change affects this
 staging address only. A real launch should use its own project and database.
 
+**Communications hardening (`20261108000100_comm_hardening.sql`, after `20261107000100`).** Fixed 5-minute
+edit/delete window, manager removal with a reason, 14-day message content retention (legal hold overrides), the
+all-companies housekeeping function, the archive veto and the driver handoff (docs/COMMUNICATIONS.md). Optional, before
+pushing it: Supabase → Database → Extensions → enable **pg_cron** if you want the cleanup every 15 minutes (the
+migration then schedules it). Then, separately and only with your approval each time:
+- Vercel → Settings → Environment Variables → add `CRON_SECRET` (at least 16 random characters, e.g.
+  `openssl rand -hex 24`) for Production (and Preview if wanted), then redeploy. Vercel Cron (`vercel.json`) calls
+  `/api/cron/comm-housekeeping` daily with it. Without the variable the route refuses every call and only the
+  read-time expiry and the per-company cleanup while people use Communications apply.
+- Check after the next run: Vercel → Logs for `/api/cron/comm-housekeeping` (200 with `ok: true`).
+Rollback: `supabase/rollbacks/20261108000100_comm_hardening.down.sql` (expired messages stay as deleted tombstones).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

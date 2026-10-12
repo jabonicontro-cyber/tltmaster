@@ -457,13 +457,13 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 | `comm_settings` | Company rules (edit window, history policy, retention, legal hold, away threshold, delivery notifications, archive delay). Audited. | Company members |
 | `conversations` | direct / group / channel / operation; title, department, status active/closed/archived. | Members (current or former) |
 | `conversation_members` | Membership periods: `joined_at`, `history_from`, `left_at`, role, source (manual/dispatch/creator), mute, delivered/read marks. | Members |
-| `messages`, `message_revisions` | Messages (text/system, one level of replies, pinned, client key, edit/delete marks); originals of edits and deletions. | Visible history only; revisions `comms.admin` |
+| `messages`, `message_revisions` | Messages (text/system, one level of replies, pinned, client key, edit/delete marks, `removal_kind` author/manager, `expired_at` after the 14-day retention); originals of edits and deletions with the manager's removal `reason` (deleted when the message expires). | Visible history within 14 days (legal hold: all); revisions `comms.admin` |
 | `conversation_events` | Membership, title, sync and lifecycle history. | Members |
 | `user_presence`, `comm_preferences`, `comm_notifications` | Presence choice and last activity; personal notification settings and quiet hours; in-app notifications (visible / deferred / superseded). | Company / own / own visible |
 | `announcements`, `announcement_revisions`, `announcement_receipts` | Announcements (all or one department, acknowledgment), earlier versions, read/acknowledged marks. | Published + audience; revisions and others' receipts `comms.announce` |
 | `operation_workspaces`, `comm_housekeeping_runs` | Workspace scope (orders / site + date / loads), sync status; throttle for housekeeping. | Members or `comms.operations`; company |
 | `alert_event_types` (global), `comm_alert_settings`, `alerts`, `alert_recipients`, `alert_acknowledgments`, `alert_events` | Alert catalog with safety minimums; company policies (audited); alerts with dedup key, priority, scope, escalation; recipients and responsibility; acknowledgments; history. | `comms.alerts` or recipients |
-| `message_attachments` | File records (pending → uploaded → attached / discarded) for the private `comm-attachments` bucket. | Those who can read the message |
+| `message_attachments` | File records (pending → uploaded → attached / discarded; `expired` with `expired_at` and `file_removed_at` once retention removed the stored file) for the private `comm-attachments` bucket. | Those who can read the message |
 
 ## Planned tables (later phases)
 

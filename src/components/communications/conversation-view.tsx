@@ -1,15 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CheckCheck, CornerDownRight, FileText, Paperclip, Pencil, Pin, PinOff, Reply, Send, Trash2, X } from "lucide-react";
+import { CheckCheck, ChevronDown, ChevronRight, CornerDownRight, FileText, Paperclip, Pencil, Pin, PinOff, Reply, Send, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { Avatar } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
-import { FormError, Textarea } from "@/components/ui/form";
+import { Field, FormError, Textarea } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
-import { formatBytes, MAX_ATTACHMENTS_PER_MESSAGE } from "@/lib/communications";
+import { EDIT_WINDOW_MINUTES, formatBytes, MAX_ATTACHMENTS_PER_MESSAGE, RETENTION_DAYS } from "@/lib/communications";
 import { formatDateTime } from "@/lib/dates";
 import type { Message } from "@/server/data/communications";
 import { deleteMessage, discardAttachment, editMessage, markRead, pinMessage, sendMessage } from "@/app/(app)/communications/actions";
@@ -41,8 +42,10 @@ export function ConversationView(props: {
   /** Each person's picture: own profile photo, else employee avatar (see personPhoto). */
   photos: Record<string, { src: string; fallbackSrc: string }>;
   receipts: Record<string, Receipt>;
-  editWindowMinutes: number;
   membersDeleteOwn: boolean;
+  /** Older messages exist beyond the `shown` newest ones. */
+  hasEarlier: boolean;
+  shown: number;
   isAdmin: boolean;
   canManage: boolean;
   canPost: boolean;
@@ -58,7 +61,9 @@ export function ConversationView(props: {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
-  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<{ id: string; manager: boolean } | null>(null);
+  const [reason, setReason] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const fileInput = useRef<HTMLInputElement>(null);
 
   const top = useMemo(() => messages.filter((m) => !m.reply_to_id || !messages.some((p) => p.id === m.reply_to_id)), [messages]);
@@ -67,7 +72,7 @@ export function ConversationView(props: {
     for (const m of messages) if (m.reply_to_id && messages.some((p) => p.id === m.reply_to_id)) map.set(m.reply_to_id, [...(map.get(m.reply_to_id) ?? []), m]);
     return map;
   }, [messages]);
-  const pinned = messages.filter((m) => m.pinned && !m.deleted_at);
+  const pinned = messages.filter((m) => m.pinned && !m.deleted_at && !m.expired_at);
   const lastId = messages.at(-1)?.id;
 
   // Reading the conversation marks it read (also after each refresh that brings new messages).
@@ -129,8 +134,12 @@ export function ConversationView(props: {
     if (m.kind === "system") {
       return <li key={m.id} id={`m-${m.id}`} className="py-1 text-center text-xs text-muted">{m.body} · {formatDateTime(m.created_at)}</li>;
     }
-    const canEdit = mine && !m.deleted_at && within(m.created_at, props.editWindowMinutes);
-    const canDelete = !m.deleted_at && (props.isAdmin || (mine && props.membersDeleteOwn && within(m.created_at, props.editWindowMinutes)));
+    const gone = Boolean(m.deleted_at || m.expired_at);
+    const ownWindow = mine && within(m.created_at, EDIT_WINDOW_MINUTES);
+    const canEdit = ownWindow && !gone;
+    const ownDelete = ownWindow && props.membersDeleteOwn;
+    const canDelete = !gone && (ownDelete || props.isAdmin);
+    const orphan = m.reply_to_id && !messages.some((p) => p.id === m.reply_to_id);
     return (
       <li key={m.id} id={`m-${m.id}`} className={cn("group flex gap-3 py-2", nested && "ml-10")}>
         <Avatar name={name(m.author_id)} size={nested ? 28 : 34} {...(m.author_id ? props.photos[m.author_id] : {})} />
@@ -138,10 +147,13 @@ export function ConversationView(props: {
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-sm font-semibold text-ink">{mine ? "You" : name(m.author_id)}</span>
             <span className="text-xs text-muted">{formatDateTime(m.created_at)}</span>
-            {m.edited_at && !m.deleted_at && <span className="text-xs text-muted">(edited)</span>}
+            {m.edited_at && !gone && <span className="text-xs text-muted">Edited</span>}
             {m.pinned && <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted"><Pin className="size-3" aria-hidden />Pinned</span>}
           </div>
-          {m.deleted_at ? <p className="text-sm text-muted italic">Message deleted</p> : editing?.id === m.id ? (
+          {orphan && !nested && <p className="text-xs text-muted"><CornerDownRight className="mr-1 inline size-3" aria-hidden />Reply to an earlier message that is no longer shown</p>}
+          {m.expired_at ? <p className="text-sm text-muted italic">Message expired ({RETENTION_DAYS}-day retention)</p>
+            : m.deleted_at ? <p className="text-sm text-muted italic">{m.removal_kind === "manager" ? "Message removed by a manager" : "Message deleted"}</p>
+            : editing?.id === m.id ? (
             <form className="mt-1 space-y-2" onSubmit={async (e) => {
               e.preventDefault();
               const r = await editMessage({ messageId: m.id, body: editing.body });
@@ -153,7 +165,7 @@ export function ConversationView(props: {
               <div className="flex gap-2"><Button size="sm" type="submit">Save</Button><Button size="sm" variant="ghost" onClick={() => setEditing(null)}>Cancel</Button></div>
             </form>
           ) : <p className="text-sm break-words whitespace-pre-wrap text-ink">{m.body}</p>}
-          {!m.deleted_at && m.attachments.length > 0 && (
+          {!gone && m.attachments.length > 0 && (
             <ul className="mt-1.5 flex flex-wrap gap-2">
               {m.attachments.map((a) => (
                 <li key={a.id}>
@@ -168,8 +180,8 @@ export function ConversationView(props: {
             </ul>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            {mine && !m.deleted_at && <ReceiptLine r={receipts[m.id]} />}
-            {!m.deleted_at && (
+            {mine && !gone && <ReceiptLine r={receipts[m.id]} />}
+            {!gone && (
               <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100">
                 {props.canPost && !nested && <Button size="sm" variant="ghost" className="h-7 px-2" icon={<Reply className="size-3.5" />} onClick={() => setReplyTo(m)}>Reply</Button>}
                 {canEdit && <Button size="sm" variant="ghost" className="h-7 px-2" icon={<Pencil className="size-3.5" />} onClick={() => setEditing({ id: m.id, body: m.body })}>Edit</Button>}
@@ -179,7 +191,12 @@ export function ConversationView(props: {
                     {m.pinned ? "Unpin" : "Pin"}
                   </Button>
                 )}
-                {canDelete && <Button size="sm" variant="ghost" className="h-7 px-2 text-red-700" icon={<Trash2 className="size-3.5" />} onClick={() => setDeleting(m.id)}>Delete</Button>}
+                {canDelete && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 text-red-700" icon={<Trash2 className="size-3.5" />}
+                    onClick={() => { setReason(""); setDeleting({ id: m.id, manager: !ownDelete }); }}>
+                    {ownDelete ? "Delete" : "Remove"}
+                  </Button>
+                )}
               </div>
             )}
           </div>
@@ -199,17 +216,35 @@ export function ConversationView(props: {
         </section>
       )}
       <ol ref={list} aria-label="Messages" className="max-h-[60vh] min-h-48 overflow-y-auto px-4 py-2">
-        {messages.length === 0 && <li className="py-10 text-center text-sm text-muted">No messages yet.</li>}
-        {top.map((m) => (
-          <li key={m.id} className="list-none">
-            <ul>{renderMessage(m)}</ul>
-            {replies.get(m.id) && (
-              <ul aria-label="Replies" className="border-l-2 border-line pl-2">
-                {replies.get(m.id)!.map((r) => renderMessage(r, true))}
-              </ul>
-            )}
+        {props.hasEarlier && (
+          <li className="list-none py-2 text-center">
+            <Link href={`?show=${props.shown + 100}`} scroll={false} className="text-sm font-semibold text-brand-fg hover:underline">Show earlier messages</Link>
           </li>
-        ))}
+        )}
+        {messages.length === 0 && <li className="py-10 text-center text-sm text-muted">No messages yet. Messages are kept for {RETENTION_DAYS} days.</li>}
+        {top.map((m) => {
+          const thread = replies.get(m.id) ?? [];
+          const open = !collapsed.has(m.id);
+          return (
+            <li key={m.id} className="list-none">
+              <ul>{renderMessage(m)}</ul>
+              {thread.length > 0 && (
+                <div className="ml-10">
+                  <button type="button" aria-expanded={open} className="inline-flex items-center gap-1 text-xs font-semibold text-muted hover:text-ink"
+                    onClick={() => setCollapsed((c) => { const n = new Set(c); if (n.has(m.id)) n.delete(m.id); else n.add(m.id); return n; })}>
+                    {open ? <ChevronDown className="size-3.5" aria-hidden /> : <ChevronRight className="size-3.5" aria-hidden />}
+                    {open ? "Hide replies" : `Show ${thread.length} ${thread.length === 1 ? "reply" : "replies"}`}
+                  </button>
+                </div>
+              )}
+              {thread.length > 0 && open && (
+                <ul aria-label="Replies" className="border-l-2 border-line pl-2">
+                  {thread.map((r) => renderMessage(r, true))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
       </ol>
 
       <div className="border-t border-line px-4 py-3">
@@ -263,18 +298,27 @@ export function ConversationView(props: {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete this message?"
-        description="Members will see that a message was deleted. Administrators keep the original for the record."
-        confirmLabel="Delete"
+        title={deleting?.manager ? "Remove this message?" : "Delete this message?"}
+        description={deleting?.manager
+          ? "Members will see that a manager removed a message. The reason and the original are kept for administrators and recorded in the audit log."
+          : "Members will see that a message was deleted. Administrators keep the original for the record."}
+        confirmLabel={deleting?.manager ? "Remove" : "Delete"}
         tone="danger"
         onConfirm={async () => {
           if (!deleting) return;
-          const r = await deleteMessage(deleting);
+          if (deleting.manager && reason.trim().length < 5) return "Give the reason for removing this message.";
+          const r = await deleteMessage(deleting.id, deleting.manager ? reason : undefined);
           if (!r.ok) return r.error;
           setDeleting(null);
           router.refresh();
         }}
-      />
+      >
+        {deleting?.manager && (
+          <Field label="Reason (required)" htmlFor="remove-reason">
+            <Textarea id="remove-reason" rows={2} maxLength={300} value={reason} onChange={(e) => setReason(e.target.value)} />
+          </Field>
+        )}
+      </ConfirmDialog>
     </div>
   );
 }

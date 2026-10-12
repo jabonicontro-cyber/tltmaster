@@ -5,8 +5,8 @@ import { DRIVING_NOTICE, PRESENCE, WORK_STATUS, type Presence, type WorkStatus }
 
 const DOT: Record<Presence, string> = {
   available: "bg-green-600",
-  busy: "bg-amber-500",
-  away: "bg-gray-400",
+  busy: "bg-red-600", // Busy is red and Away yellow, as people expect from other chat tools
+  away: "bg-yellow-400",
 };
 
 /** A small presence dot with an accessible label. Unknown (never seen) shows a hollow dot. */

@@ -49,7 +49,7 @@ describe("gate configuration", () => {
   it("uses a __Host- cookie on HTTPS and exempts only the gate and Auth email links", () => {
     expect(accessCookieName(true)).toBe("__Host-taviron-access");
     expect(accessCookieName(false)).toBe("taviron-access");
-    for (const p of ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error"]) expect(isGateExempt(p), p).toBe(true);
-    for (const p of ["/", "/login", "/signup", "/forgot-password", "/command-center", "/tickets/photos/x", "/early-accessx", "/auth/confirmx", "/driver/photos"]) expect(isGateExempt(p), p).toBe(false);
+    for (const p of ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron/comm-housekeeping"]) expect(isGateExempt(p), p).toBe(true);
+    for (const p of ["/", "/login", "/signup", "/forgot-password", "/command-center", "/tickets/photos/x", "/early-accessx", "/auth/confirmx", "/driver/photos", "/api/cronx", "/api/leads"]) expect(isGateExempt(p), p).toBe(false);
   });
 });

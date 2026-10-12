@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  allowedPriorities, checkAttachment, DRIVING_NOTICE, isMuted, messageSchema, muteLabel, preferencesSchema, settingsSchema,
+  allowedPriorities, checkAttachment, DRIVING_NOTICE, isMuted, messageSchema, muteLabel, preferencesSchema, settingsSchema, EDIT_WINDOW_MINUTES, RETENTION_DAYS,
   STATUS_DISCLAIMER, WORK_STATUS, workspaceScopeSchema,
 } from "@/lib/communications";
 
@@ -53,11 +53,13 @@ describe("input rules", () => {
     expect(preferencesSchema.safeParse({ ...base, quiet_start: null, quiet_end: null }).success).toBe(true);
   });
 
-  it("retention is empty or at least 30 days", () => {
-    const base = { edit_window_minutes: 15, members_delete_own: true, history_for_new_members: "from_join", legal_hold: false, away_after_minutes: 15, delivery_notifications: "defer", workspace_archive_hours: 24 };
-    expect(settingsSchema.safeParse({ ...base, retention_days: null }).success).toBe(true);
-    expect(settingsSchema.safeParse({ ...base, retention_days: 10 }).success).toBe(false);
-    expect(settingsSchema.safeParse({ ...base, retention_days: 90 }).success).toBe(true);
+  it("the edit window and message retention are fixed policies, not settings", () => {
+    const base = { members_delete_own: true, history_for_new_members: "from_join", legal_hold: false, away_after_minutes: 15, delivery_notifications: "defer", workspace_archive_hours: 24 };
+    const parsed = settingsSchema.parse({ ...base, edit_window_minutes: 600, retention_days: null });
+    expect(parsed).not.toHaveProperty("edit_window_minutes");
+    expect(parsed).not.toHaveProperty("retention_days");
+    expect(EDIT_WINDOW_MINUTES).toBe(5);
+    expect(RETENTION_DAYS).toBe(14);
   });
 
   it("a workspace scope is a project, a destination on a date, or selected loads", () => {

@@ -103,11 +103,11 @@ test("alerts, settings and the workspace preview respect safety rules and permis
   // Safety alerts cannot be turned off, and the minimum priority is the only floor offered.
   await expect(page.getByLabel(/safety alert — cannot be turned off/)).toBeDisabled();
   await expect(page.locator("#ap-maintenance\\.safety_restriction option")).toHaveCount(1);
-  // Retention below 30 days is refused before anything is saved.
-  const retention = page.getByLabel("Delete messages older than (days)");
-  await retention.fill("10");
-  await page.getByRole("button", { name: "Save settings" }).click();
-  expect(await retention.evaluate((el) => (el as HTMLInputElement).checkValidity())).toBe(false);
+  // The edit window and message retention are fixed policies, not settings.
+  await expect(page.getByText(/authors can edit or delete a message for 5 minutes/)).toBeVisible();
+  await expect(page.getByText(/removed\s+14 days after it was sent unless legal hold is on/)).toBeVisible();
+  await expect(page.getByLabel("Delete messages older than (days)")).toHaveCount(0);
+  await expect(page.getByLabel("Edit and delete window (minutes)")).toHaveCount(0);
 
   await page.goto("/communications/workspaces/new");
   await page.getByLabel("Selected loads").check();
@@ -124,4 +124,55 @@ test("drivers cannot open administrative settings or create workspaces", async (
   await expect(page.getByRole("heading", { name: "Administrative search" })).toHaveCount(0);
   await page.goto("/communications");
   await expect(page.getByRole("link", { name: "New workspace" })).toHaveCount(0);
+});
+
+test("authors edit and delete within 5 minutes; replies collapse; presence shows on the profile picture", async ({ page }) => {
+  const text = `Dock 4 is closed (${unique()})`;
+  await signIn(page, "dispatcher");
+  await page.goto("/communications");
+  await page.getByRole("button", { name: "New message" }).click();
+  const dialog = page.getByRole("dialog");
+  await dialog.getByLabel("Search people").fill(USERS.driver.name);
+  await dialog.getByRole("option", { name: new RegExp(USERS.driver.name) }).click();
+  await dialog.getByRole("button", { name: "Open conversation" }).click();
+  await page.waitForURL(/\/communications\/c\/[0-9a-f-]{36}$/);
+  await page.getByLabel("Message", { exact: true }).fill(text);
+  await page.getByRole("button", { name: "Send" }).click();
+  const messages = page.getByRole("list", { name: "Messages" });
+  const sent = messages.locator('li[id^="m-"]').filter({ hasText: text });
+  await expect(sent).toBeVisible();
+
+  // Reply, then collapse and expand the thread.
+  await sent.getByRole("button", { name: "Reply" }).click();
+  await page.getByLabel("Message", { exact: true }).fill("Use dock 5 instead");
+  await page.getByRole("button", { name: "Send" }).click();
+  const thread = messages.locator(`li:has(> ul > #${await sent.getAttribute("id")})`);
+  await expect(thread.getByRole("list", { name: "Replies" })).toContainText("Use dock 5 instead");
+  await thread.getByRole("button", { name: "Hide replies" }).click();
+  await expect(thread.getByRole("list", { name: "Replies" })).toHaveCount(0);
+  await thread.getByRole("button", { name: "Show 1 reply" }).click();
+  await expect(thread.getByRole("list", { name: "Replies" })).toContainText("Use dock 5 instead");
+
+  // Edit: marked Edited. Delete: a tombstone remains.
+  await sent.getByRole("button", { name: "Edit" }).click();
+  await sent.getByLabel("Edit message").fill(`${text} until noon`);
+  await sent.getByRole("button", { name: "Save" }).click();
+  const edited = messages.locator('li[id^="m-"]').filter({ hasText: `${text} until noon` });
+  await expect(edited.getByText("Edited", { exact: true })).toBeVisible();
+  const id = await edited.getAttribute("id");
+  await edited.getByRole("button", { name: "Delete" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Delete" }).click();
+  await expect(page.locator(`#${id}`).getByText("Message deleted")).toBeVisible();
+  await expect(page.getByText(`${text} until noon`)).toHaveCount(0);
+
+  // Busy is red on the user's own profile picture.
+  await page.goto("/communications");
+  await page.getByLabel("My status").selectOption("busy");
+  const dot = page.getByRole("banner").getByRole("img", { name: "Busy" });
+  await expect(async () => {
+    await page.reload();
+    await expect(dot).toBeVisible({ timeout: 2000 });
+  }).toPass({ timeout: 20_000 });
+  await expect(dot).toHaveClass(/bg-red-600/);
+  await page.getByLabel("My status").selectOption("");
 });
