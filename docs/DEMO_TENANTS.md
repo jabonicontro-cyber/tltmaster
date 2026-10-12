@@ -16,6 +16,10 @@ Demo compatibility is part of the definition of done for every feature and UI ch
   `src/server/demo/prairie-lantern.ts` for Prairie Lantern Freight) and kept current by **Refresh demo data**
   (`src/server/demo/prairie-lantern-refresh.ts`, `/admin/demo`): additive only, it fills empty recent days,
   today and tomorrow with loads and re-adds missing sample records, never changing or deleting the prospect's work.
+- **Feature samples shared by every demo** live in `src/server/demo/samples.ts` (`ensureFeatureSamples`): both seeds
+  and Refresh call it, every step checks before it adds, and it refuses any company that is not a demo. A release
+  that adds samples there reaches existing demos at their next Refresh (presenter demo: next Start/Reset), without
+  recreating the company, duplicating records or removing users and demo owners. See §3 and the per-mode matrix in §5.
 
 ## 2. Intentional differences (the complete list)
 
@@ -31,34 +35,76 @@ Each is enforced by `tests/unit/demo-parity.test.ts`: adding any other `isDemo` 
 | `src/app/(app)/settings/actions.ts` | Inviting users is refused. | Demos never send email; prospect owners are added by the operator (DEPLOYMENT §3c). |
 | `src/app/admin/actions.ts`, `src/app/admin/demo/page.tsx` | Platform tools to create, refresh and retire prospect demos. | Operator tooling, not part of the tenant's app. |
 | Database: `public.comm_seed_demo_samples()` (migration `20261108000100`) | Adds fictional sample Communications content (a "Dispatch desk" channel with pinned sample instructions); refused for real companies; never adds platform operators as members. Called by the seed and Refresh. | Communications needs content to look alive; fictional people cannot post without logins, so samples are system notes marked "Sample". |
+| Database: `private.comm_user_name` (migration `20261108000100`) | In a demo company, Communications names a login linked to an employee record by that record's name. | The presenter appears as the persona (Daniel Mitchell), never under their own name, as everywhere else in the demo. |
 
 Everything else (Communications, Dispatch, Maintenance, Fleet, Employees, Reports, Billing previews, …) behaves
 exactly as for a real company. Features that cannot act for real anyway (e.g. invoices are previews, Smart Dispatch
 only proposes) need no demo branch.
 
-## 3. Checklist for every new feature or UI change
+## 3. Checklist for every new feature or UI change (definition of done)
+
+Demo parity is never an optional follow-up: a feature, module, workflow, page, dashboard, setting, permission or
+major UI change is not done until every applicable demo mode shows it working on realistic sample data.
 
 1. **Applies to demos?** Yes by default when it can run on fictional data. If not, document the exception in §2.
-2. **Sample data?** If the feature needs records to look alive, add them to the seed **and** the refresh, so new and
-   existing demos both get them. Use only invented names, 555-01xx numbers, `.example` addresses; no VINs, plates,
-   DOT/MC numbers or real businesses.
-3. **Dependencies?** Name migrations, env vars and services. Without them the feature shows its normal "not
+2. **Demo modes affected.** Name each role preview that sees the feature: Owner, Dispatcher, Drives too (multi-role),
+   Office administrator, Driver, Mechanic, and any future role (`src/lib/platform/preview.ts`). Each must work with
+   that role's real permissions; never grant extra permissions to make it visible. Add the row to §5.
+3. **Sample data.** If the feature needs records to look alive, add them to the shared, idempotent helper
+   `src/server/demo/samples.ts` (`ensureFeatureSamples`), which both seeds and Refresh call, so new and existing
+   demos both get them. Each step checks before it adds; the helper refuses real companies (`is_demo` only). Use only
+   invented names, 555-01xx numbers, `.example` addresses; no VINs, plates, DOT/MC numbers or real businesses.
+4. **Existing demos receive it** through **Refresh demo data** (`/admin/demo`) after the release, without being
+   recreated: Refresh is additive, a second run adds nothing, and it never deletes records, accounts or demo owners.
+   The presenter demo gets it at the next **Start the demo / Reset**.
+5. **Dependencies?** Name migrations, env vars and services. Without them the feature shows its normal "not
    available yet" state in demos too.
-4. **Safety:** nothing real leaves a demo — email, SMS, push, dispatch to a real driver, payment, accounting export
+6. **Safety:** nothing real leaves a demo — email, SMS, push, dispatch to a real driver, payment, accounting export
    or third-party call is simulated or refused (follow quote emails and invitations). No extra permissions to make a
    feature appear functional. Tenant isolation and RLS unchanged.
-5. **Tests:** `tests/e2e/demo-parity.spec.ts` checks every navigation page loads in a demo with the same navigation as
-   a standard company; add a feature-specific check when the feature has demo-relevant behaviour.
-6. **Report** any intentional difference in the release summary.
+7. **Tests:** `tests/e2e/demo-parity.spec.ts` checks every navigation page loads in a demo with the same navigation as
+   a standard company, opens every page in every demo mode and checks each feature shows sample data;
+   `tests/db/demo-samples.test.ts` checks the samples exist, a repeat adds nothing, demo users are kept and a real
+   company is refused. Add a feature-specific check when the feature has demo-relevant behaviour.
+8. **Report** in every plan and release summary: the demo modes affected, the sample data, how existing demos
+   receive it, the tests, and any intentional difference.
 
 ## 4. Known gaps (to close as features are touched)
 
-- Communications samples are system notes in one channel (no fictional people chatting: they would need logins).
-  A prospect owner added with `demo-owner` joins the channel at once (if the samples exist; otherwise at the next
-  **Refresh demo data**). Sample notes expire after
-  14 days like all message content; Refresh adds them again. Needs migration `20261108000100`; until then the seed and
-  Refresh skip the samples.
-- The presenter demo gets no Communications samples: its presenter is a platform operator, who is never added to
-  sample conversations.
-- Refresh exists for Prairie Lantern Freight; a new prospect demo needs its own seed and refresh (or a shared one).
-- No scheduler: refresh is a button (`/admin/demo`), not a nightly job.
+- Communications samples need migration `20261108000100`; until it is applied the seed, Refresh and the shared
+  samples skip them (the workspace and channel), and Communications shows its normal empty state in demos.
+- Communications samples are system notes and an operation workspace; fictional people do not chat (they would need
+  logins). Sample notes expire after 14 days like all message content; Refresh adds them again. A prospect owner
+  added with `demo-owner` joins the sample channel and the operation workspaces at once.
+- Driver Reports (field reports) have no samples: a report is filed by a driver login, and fictional drivers have
+  none. The page shows its normal empty state.
+- Prairie Lantern Freight prices with charge items rather than materials, so Materials & Pricing is empty there by
+  design of its data; the presenter demo has materials.
+- Refresh exists for Prairie Lantern Freight; the shared samples (`samples.ts`) work for any demo company, but a new
+  prospect demo with different base data needs its own seed and Refresh. The presenter demo is rebuilt by
+  **Start the demo / Reset** instead.
+- No scheduler: Refresh is a button (`/admin/demo`), not a nightly job.
+
+## 5. Demo modes and the sample data behind each feature
+
+Role previews (`src/lib/platform/preview.ts`) only narrow the viewer's real permissions; each mode sees the pages its
+role's permissions allow. "✓" = the mode opens the feature with sample data; "—" = the role has no access.
+Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
+
+| Feature | Sample data | Owner | Dispatcher | Drives too | Office | Driver | Mechanic |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Command Center | Orders and loads for recent days, today and tomorrow (Refresh fills empty days) | ✓ | ✓ | ✓ | ✓ | — (opens My Day) | ✓ |
+| Orders, Dispatch, Smart Dispatch | Same loads; trucks, trailers and drivers | ✓ | ✓ | ✓ | ✓ | — | — |
+| My Day | The demo owner's own driver record (linked employee), qualifications and a load today or tomorrow | ✓ | — | ✓ | — | ✓ | — |
+| Delivery tickets | Tickets on delivered loads | ✓ | ✓ | ✓ | ✓ | — | — |
+| Quotes | A draft quote copied from a sample order line | ✓ | ✓ | ✓ | ✓ | — | — |
+| Fleet and documents | Registrations (one expiring), an inspection due, an expired trailer registration | ✓ | ✓ | ✓ | ✓ | — | ✓ |
+| Maintenance | A safety-critical brake work order on an idle truck, tire and electrical work orders, oil and annual inspection schedules | ✓ | ✓ | ✓ | ✓ | — | ✓ |
+| Time off | An approved vacation, a pending personal day, and a pending request for the viewer's own employee record | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Communications | "Dispatch desk" channel with pinned sample notes; an operation workspace for a scheduled order (needs `20261108000100`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Employees | Fictional employees with departments and qualifications | ✓ | ✓ | ✓ | ✓ | — | ✓ |
+
+Proof: `tests/e2e/demo-parity.spec.ts` opens every navigation page in every demo mode, for the presenter demo and for
+a prospect demo after **Refresh demo data**, and checks Maintenance, Time off, Quotes, Communications and My Day show
+sample data; `tests/db/demo-samples.test.ts` checks the samples, that a second run adds nothing and keeps every demo
+user, and that a real company is refused.

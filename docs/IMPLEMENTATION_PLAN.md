@@ -2173,6 +2173,30 @@ Audit of the released Communications (§5aa) against the owner's hardening spec,
   archive veto), `tests/unit/cron.test.ts`, `communications.test.ts`, `site-access.test.ts`, and
   `tests/e2e/communications.spec.ts` (edit/delete window, threads, presence dot, fixed policies).
 
+## 5ad. Demo feature parity in every demo mode (2026-10-12)
+
+Permanent owner requirement (CLAUDE.md; docs/DEMO_TENANTS.md §3 and §5; RELEASE_CHECKLIST §1a; master plan §2).
+Audit first: opened every navigation page in every role preview (Owner, Dispatcher, Drives too, Office, Driver,
+Mechanic) in the presenter demo and in Prairie Lantern Freight. Found empty Maintenance, Time off, Quotes and
+Communications in the presenter demo, an empty Driver-mode My Day and empty Messages in Prairie Lantern, and Refresh
+not re-adding maintenance, time off or documents.
+
+- **`src/server/demo/samples.ts`** (`ensureFeatureSamples`): one idempotent helper called by both seeds and by
+  Refresh; refuses non-demo companies. Adds, only when missing: maintenance work orders (a safety-critical one on an
+  idle truck) and schedules, fleet documents (expiring and expired), time off (including a request for the viewing
+  employee), a quote draft, a driver day for the demo owner (driver record, qualifications, a load today or
+  tomorrow) and an operation workspace.
+- **Migration `20261108000100`** (unapplied on the hosted database): in a demo, Communications names a login linked
+  to an employee by that employee's name (presenter shows as the persona); `platform_prospect_demo_add_owner` adds
+  the new owner to the sample channel and operation workspaces. Rollback updated; apply → rollback → re-apply
+  verified locally.
+- **Tests:** `tests/db/demo-samples.test.ts` (samples present, repeat and second Refresh add nothing and keep every
+  demo user, real company refused), `tests/db/comm-hardening.test.ts` (persona names), and
+  `tests/e2e/demo-parity.spec.ts` (every page in every demo mode, presenter demo and a refreshed prospect demo, with
+  sample-data checks).
+- **Known gaps:** Driver Reports have no samples (need a driver login); Prairie Lantern prices with charge items, so
+  Materials is empty there; Communications samples wait for `20261108000100` (DEMO_TENANTS §4).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

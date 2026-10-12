@@ -353,6 +353,10 @@ replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_ten
   sample records missing from the current set. It changes and deletes nothing, so the prospect's own work and access
   stay; running it twice on a day adds nothing. You must still be a member of the demo (you are if you created it).
   App features and fixes reach every demo automatically with each release; only the sample data needs refreshing.
+  It also runs the shared feature samples (`src/server/demo/samples.ts`; docs/DEMO_TENANTS.md §5): maintenance work
+  orders and schedules, fleet documents, time off, a quote, an operation workspace, and a driver day for the owner
+  once their employee record is linked (step 3). **After every release that adds samples, run Refresh on each prospect
+  demo** (after applying that release's migrations) so every demo mode shows the new feature.
 0. **Replacing an earlier version of the demo** (needs migration `20261107000100`): `/admin/demo` → tick the box next to
    the old Prairie Lantern Freight → **Retire** (it and its memberships become inactive; nothing is deleted), then
    continue with step 1. Logins made owner of the old demo must be made owner of the new one (step 3).
@@ -370,6 +374,8 @@ replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_ten
    colbychapman <prospect-slug> --name "Colby Chapman"` (a username or an email). `--name` sets the login's name
    when it has none and links the demo's "Colby Chapman" employee record to the login. The database accepts only an active prospect demo company
    and an existing login; it never grants access to a real company, the presenter demo, or the platform.
+   With migration `20261108000100` the owner also joins the sample "Dispatch desk" channel and the demo's operation
+   workspaces at once. Then run **Refresh demo data** so the owner gets their own driver day (My Day, Drives too).
 4. **Verify before saying the login is ready:** they sign in, land on the Command Center of the demo tenant (owner),
    the demo bar shows, and the company menu lists no other company.
 

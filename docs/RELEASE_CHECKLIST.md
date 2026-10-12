@@ -17,7 +17,12 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
 - [ ] Each new feature or UI change is available in demo companies, or its exception is documented in DEMO_TENANTS §2.
 - [ ] `tests/unit/demo-parity.test.ts` and `tests/e2e/demo-parity.spec.ts` pass (same navigation and working pages in
       a demo; invitations refused; nothing sent).
-- [ ] New sample data needed by the feature is in the demo seed and in **Refresh demo data**, so existing demos get it.
+- [ ] Every demo mode the feature applies to (Owner, Dispatcher, Dispatcher who also drives, Office, Driver,
+      Mechanic) opens it with that role's permissions and shows realistic sample data (DEMO_TENANTS §3, §5).
+- [ ] New sample data is in `src/server/demo/samples.ts`, used by both seeds and **Refresh demo data**, so existing
+      demos get it; a second Refresh adds nothing and keeps every demo user and owner (`tests/db/demo-samples.test.ts`).
+- [ ] After promotion: hosted migrations the samples need are applied by the owner, then **Refresh demo data** is run
+      for each prospect demo (the presenter demo is rebuilt by "Start the demo").
 - [ ] Demo actions cannot reach real customers, email, payments or exports.
 - [ ] The report names any intentional difference between the standard app and the demo.
 

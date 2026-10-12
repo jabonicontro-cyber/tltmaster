@@ -90,6 +90,18 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   simulated.
 - A feature that depends on an unapplied hosted migration shows its normal "not available yet" state in demos too;
   never call it operational there until the migration is applied and verified.
+- **Every demo mode, not just the owner (owner 2026-10-12, permanent).** Demo modes are the role previews
+  (`src/lib/platform/preview.ts`: Owner, Dispatcher, Dispatcher who also drives, Office, Driver, Mechanic) in every demo
+  company, plus any role or demo added later. A feature is **not done** until, in each mode whose role can use it, the
+  page opens with that role's permissions and shows realistic sample data that exercises the real feature (lists,
+  counts, dashboards, statuses, at least one edge case) — never an empty page, a placeholder or a demo-only imitation.
+- **Existing demos get it on release.** Sample data goes in a shared, idempotent helper used by the presenter seed, the
+  prospect seed **and** Refresh (`src/server/demo/samples.ts`), so live demos receive new features without being
+  recreated. Refresh must never duplicate records, delete accounts, remove or change demo owners, or touch a real
+  company (`is_demo` only). Required migrations still go through the owner's deployment step (DEPLOYMENT §2a).
+- **Proof per feature:** `tests/e2e/demo-parity.spec.ts` (every mode: navigation, pages load, the feature's page has
+  data) and `tests/db/demo-samples.test.ts` (samples created in a demo, refused for real companies, idempotent). Every
+  plan and report states the demo modes affected, the sample data added, how existing demos receive it, and the tests.
 
 ## Workflow
 

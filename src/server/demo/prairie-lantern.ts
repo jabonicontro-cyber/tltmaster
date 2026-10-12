@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { PRAIRIE_LANTERN_LOGO_PNG_BASE64 } from "./prairie-lantern-logo";
+import { ensureFeatureSamples } from "./samples";
 
 /**
  * Fills the "Prairie Lantern Freight" prospect demo tenant (Rensselaer,
@@ -239,6 +240,8 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
   }
 
   await seedCommunicationSamples(db);
+  // Features this seed does not curate (quotes, the owner's driver day, a workspace, …): shared samples.
+  await ensureFeatureSamples(db, today);
 }
 
 /**

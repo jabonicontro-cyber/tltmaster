@@ -17,6 +17,10 @@ project credentials. Read it together with:
   "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
   `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
   keeps the earlier rules.
+- **Demo feature parity in every demo mode** (permanent rule, IMPLEMENTATION_PLAN §5ad, DEMO_TENANTS §3/§5): shared
+  idempotent samples (`src/server/demo/samples.ts`) used by both seeds and Refresh, persona names in Communications,
+  prospect owners join the sample workspaces. **Owner actions:** after applying `20261107000100` and
+  `20261108000100`, run **Refresh demo data** on Prairie Lantern Freight so every demo mode shows the samples.
 - **Session 3 (2026-10-12, 20:15 UTC onward):**
   - Released `e5991fc` to Production (20:31 UTC) after a reset local database ran every gate clean (vitest 530/530,
     browser 102 passed / 0 failed / 10 skipped, build, gate spec, deployment check, CI, Preview record).

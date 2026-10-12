@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { NORTHFIELD_LOGO_PNG_BASE64 } from "./northfield-logo";
+import { ensureFeatureSamples } from "./samples";
 
 /**
  * Fills a freshly started demo company with fictional data, through the same
@@ -205,6 +206,8 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   } }));
 
   await seedPeople(db, { userId, today, drivers: drv, truck, primary: { [avery]: "101", [marco]: "102", [me]: "103", [theo]: "104", [priya]: "105", [nia]: "107" } });
+  // Every released feature has sample data in every demo mode (maintenance, documents, time off, workspaces, …).
+  await ensureFeatureSamples(db, today);
 }
 
 /**

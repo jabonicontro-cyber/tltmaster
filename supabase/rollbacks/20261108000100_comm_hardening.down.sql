@@ -12,6 +12,19 @@ $$;
 
 drop function if exists public.comm_seed_demo_samples();
 
+-- comm_user_name as released in 20261105000100 (profile names only).
+create or replace function private.comm_user_name(p_user uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.full_name), ''), 'Unnamed user')
+  from public.profiles p where p.id = p_user
+$$;
+revoke execute on function private.comm_user_name(uuid) from public, anon, authenticated;
+
 -- platform_prospect_demo_add_owner as released in 20261107000100 (no sample channel join).
 create or replace function public.platform_prospect_demo_add_owner(p_company uuid, p_user uuid, p_full_name text default null)
 returns void

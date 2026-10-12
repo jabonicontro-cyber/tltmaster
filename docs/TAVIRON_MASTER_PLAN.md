@@ -42,6 +42,10 @@ mobile · company administration, integrations, audit history, data quality.
 - **Demo tenants stay in sync with the product** (permanent, confirmed 2026-10-12): one application for every
   company; demo companies differ only by data and the documented safety differences (docs/DEMO_TENANTS.md §2,
   enforced by tests); demo compatibility is part of every feature's definition of done; nothing real leaves a demo.
+- **Demo feature parity in every demo mode** (permanent, confirmed 2026-10-12): every released feature is demonstrable
+  in each role preview that can use it (Owner, Dispatcher, Dispatcher who also drives, Office, Driver, Mechanic, and any
+  later mode), with realistic sample data from the shared idempotent helper, delivered to existing demos by Refresh
+  without duplicates or losing demo users. A feature is not complete until its demos are (DEMO_TENANTS §3).
 - **Recommendations never act on their own.** Smart Dispatch, invoice drafts and any future AI extraction only
   propose; an authorized person approves.
 - **Honest data:** never invent prices, quantities, dates, customer terms, material properties, truck

@@ -169,3 +169,30 @@ describe("demo sample content", () => {
     });
   });
 });
+
+describe("names in Communications", () => {
+  it("a demo shows a linked login by its employee record's name (the presenter's persona); a real company keeps the login's name", async () => {
+    await withSession(async (s) => {
+      const demo = await s.createCompany(`Persona Demo ${randomUUID().slice(0, 6)}`);
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'presenter' where id = $1", [demo]);
+      const presenter = await s.createUser("owner", { companyId: demo });
+      await s.asAdmin();
+      await s.query("update public.profiles set full_name = 'Real Presenter Name', active_company_id = $2 where id = $1", [presenter, demo]);
+      await s.query("insert into public.employees (company_id, full_name, user_id, department, employment_type, status) values ($1, 'Daniel Mitchell', $2, 'management', 'full_time', 'active')", [demo, presenter]);
+      await s.as(presenter);
+      const names = (await s.query<{ d: Array<{ user_id: string; name: string }> }>("select public.comm_directory() as d")).rows[0].d;
+      expect(names.find((p) => p.user_id === presenter)?.name).toBe("Daniel Mitchell");
+      expect(JSON.stringify(names)).not.toContain("Real Presenter Name");
+
+      // Real company: the same kind of link keeps the person's own name.
+      const owner = await s.createUser("owner");
+      await s.asAdmin();
+      await s.query("update public.profiles set full_name = 'Riley Realname' where id = $1", [owner]);
+      await s.query("insert into public.employees (company_id, full_name, user_id, department, employment_type, status) values ($1, 'Some Other Name', $2, 'management', 'full_time', 'active')", [TOP_LINE, owner]);
+      await s.as(owner);
+      const real = (await s.query<{ d: Array<{ user_id: string; name: string }> }>("select public.comm_directory() as d")).rows[0].d;
+      expect(real.find((p) => p.user_id === owner)?.name).toBe("Riley Realname");
+    });
+  });
+});

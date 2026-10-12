@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
+import { ensureFeatureSamples } from "./samples";
 import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
 
 /**
@@ -166,5 +167,7 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
     }
   }
   added += await seedCommunicationSamples(db);
+  // Existing demos receive every released feature's samples (only those the demo has none of yet).
+  added += (await ensureFeatureSamples(db, today)).added;
   return { added, loads };
 }

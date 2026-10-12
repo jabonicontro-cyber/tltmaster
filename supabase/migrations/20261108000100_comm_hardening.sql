@@ -36,7 +36,8 @@
 --    up to the handoff and receives nothing new.
 -- 7. comm_seed_demo_samples(): fictional sample channel content for demo companies
 --    only (refused for real companies); platform_prospect_demo_add_owner also adds the
---    new owner to that sample channel.
+--    new owner to that sample channel. In demo companies, Communications shows people by
+--    their employee record's name (the presenter's persona), never the login's own name.
 --
 -- Rollback: supabase/rollbacks/20261108000100_comm_hardening.down.sql
 -- =============================================================================
@@ -552,15 +553,39 @@ begin
     where company_id = p_company and user_id is null and lower(full_name) = lower(trim(p_full_name))
       and not exists (select 1 from public.employees e where e.company_id = p_company and e.user_id = p_user);
   end if;
-  -- They see the demo's sample conversations at once (no Refresh needed).
+  -- They see the demo's sample conversations at once (no Refresh needed): the sample channel and the demo's
+  -- operational workspaces (an owner of the demo sees its operations, as the operator who created them does).
   perform private.comm_add_member(p_company, c.id, p_user, 'manual', true, 'manager')
   from public.conversations c
-  where c.company_id = p_company and c.kind = 'channel' and c.title = 'Dispatch desk' and c.department = 'dispatch';
+  where c.company_id = p_company and c.status = 'active'
+    and ((c.kind = 'channel' and c.title = 'Dispatch desk' and c.department = 'dispatch') or c.kind = 'operation');
   insert into public.audit_events (company_id, actor_id, action, entity_type, entity_id, summary, details)
   values (p_company, null, 'membership.demo_owner_added', 'company', p_company, 'Prospect demo owner added by the platform operator',
           jsonb_build_object('user_id', p_user));
 end;
 $$;
+
+-- -----------------------------------------------------------------------------
+-- Names in demo companies: the employee record's name (the presenter's persona)
+-- -----------------------------------------------------------------------------
+/**
+ * The name shown for a person in Communications. In a demo company a login linked to an employee record appears
+ * under that record's name, so the presenter's own name never shows inside the demo (docs/DEMO_TENANTS.md §2).
+ * Real companies are unchanged: display name, then full name.
+ */
+create or replace function private.comm_user_name(p_user uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select coalesce(
+    (select nullif(trim(e.full_name), '') from public.employees e join public.companies c on c.id = e.company_id
+     where e.company_id = private.current_company_id() and e.user_id = p_user and c.is_demo limit 1),
+    (select coalesce(nullif(trim(p.display_name), ''), nullif(trim(p.full_name), ''), 'Unnamed user') from public.profiles p where p.id = p_user))
+$$;
+revoke execute on function private.comm_user_name(uuid) from public, anon, authenticated;
 
 -- -----------------------------------------------------------------------------
 -- Grants
