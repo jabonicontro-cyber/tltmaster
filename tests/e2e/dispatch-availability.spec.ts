@@ -22,7 +22,9 @@ test("availability shows shop visits, safety restrictions and unverified hours o
   await signIn(page, "dispatcher");
   await page.goto("/dispatch");
   await page.getByRole("link", { name: "Driver & truck availability" }).click();
-  await expect(page.getByRole("heading", { name: "Driver & truck availability", level: 1 })).toBeVisible();
+  // The page lists every active truck and driver; on the dev server with the test database's hundreds of
+  // accumulated test trucks it can take longer than the default 5 s to render.
+  await expect(page.getByRole("heading", { name: "Driver & truck availability", level: 1 })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByRole("note").first()).toContainText("Hours of service are not checked");
 
   await page.goto(`/dispatch/resources?date=${today}&q=AV-`);
