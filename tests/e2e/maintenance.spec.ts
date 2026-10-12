@@ -94,7 +94,8 @@ test("preventive schedules flag overdue service and create one work order howeve
   await expect(page.getByRole("row", { name: new RegExp(`Annual inspection ${tag}`) })).toContainText("Overdue");
 
   await page.getByRole("button", { name: "Create work orders for due services" }).click();
-  await expectToast(page, /work orders? created/);
+  // This acts on every due schedule in the company (many accumulated test trucks): allow the dev server time.
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: /work orders? created/ }).first()).toBeVisible({ timeout: 15_000 });
   const woLink = page.getByRole("row", { name: new RegExp(`Annual inspection ${tag}`) }).getByRole("link", { name: /^WO-/ });
   await expect(woLink).toBeVisible();
   await page.getByRole("button", { name: "Create work orders for due services" }).click();
@@ -120,11 +121,12 @@ test("costs are visible only to people with cost access", async ({ page, browser
 
   await signIn(page, "office");
   await page.goto(`/maintenance/work-orders/${wo.id}`);
+  await page.waitForLoadState("networkidle"); // a click before the form hydrates submits nothing on a slow dev server
   await page.getByLabel("Description").fill("Alternator 160A");
   await page.getByLabel("Vendor").fill("Parts counter");
   await page.getByLabel("Unit cost ($)").fill("415.00");
   await page.getByRole("button", { name: "Add cost" }).click();
-  await expectToast(page, "Cost added.");
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "Cost added." }).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Total $415.00")).toBeVisible();
   await expect(page.getByRole("button", { name: "Start work" })).toHaveCount(0); // office records costs, not shop work
 

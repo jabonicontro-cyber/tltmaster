@@ -30,6 +30,12 @@ project credentials. Read it together with:
     including the sample channel.
   - Reviewed: `npm audit` (dev-only lint chain, no runtime exposure — master plan §8 S5); O2 already covered by the
     Command Center; O11/O12 explained by test-data volume (SETUP §5: reset before release runs).
+  - Released `e41e44f` to Production (21:42 UTC) after a second clean gate run (vitest 532/532, browser 106/0/10).
+  - **Hosted-state check:** ran today's code against a local database *without* `20261107000100`/`20261108000100`
+    (Production's real state). Found and fixed: managers could not remove messages at all there (the call with a
+    reason failed) — now falls back to the earlier function and says the reason is not recorded. The
+    `demo-owner` script falls back the same way. Everything else degrades as documented.
+  - Cleanup job: partial failures now answer 500 and log company ids and counts, so Vercel shows failed runs.
 - **Release status (2026-10-12 19:37 UTC):** Production = `78aa207` (Communications hardening + phone layout fix;
   Vercel Production deployment record: success). Preview is ahead with `c276e59` (demo owners join the sample channel —
   part of the still-unapplied migration `20261108000100`) and `bf6ded9` (accessibility fixes, steadier e2e tests);

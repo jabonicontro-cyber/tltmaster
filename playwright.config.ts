@@ -10,6 +10,10 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 60_000,
+  // The suite runs against the dev server, which compiles on demand and re-renders heavy pages (Dispatch,
+  // Maintenance) slowly once the test database has accumulated data: a 5 s assertion wait was flaky there.
+  // Waiting longer never hides a failure (an assertion still fails if the state never appears); retries stay 0.
+  expect: { timeout: 10_000 },
   globalSetup: "./tests/e2e/global-setup.ts",
   reporter: [["list"]],
   use: {
