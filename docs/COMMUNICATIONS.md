@@ -160,7 +160,9 @@ Housekeeping (escalation, document checks, workspace archiving, retention) runs 
    `public.comm_housekeeping_all()` for every company and then removes expired attachment files. **Owner action:**
    set `CRON_SECRET` (at least 16 random characters) in the Vercel environment; without it the route refuses every
    request (503) and nothing runs. It also needs `SUPABASE_SERVICE_ROLE_KEY`, which is used there only for those
-   three database functions and the `comm-attachments` bucket. Vercel Hobby allows daily cron jobs; more often needs
+   three database functions and the `comm-attachments` bucket. A run where any company fails or any expired file
+   cannot be removed answers 500 and logs the company ids and counts (never message content), so Vercel shows the
+   run as failed; the next run retries everything. Vercel Hobby allows daily cron jobs; more often needs
    a paid plan (not added);
 3. **pg_cron**, if the owner installs that extension (Supabase dashboard → Database → Extensions) *before* applying
    `20261108000100`: the migration then schedules `comm-housekeeping` every 15 minutes. If installed later, schedule

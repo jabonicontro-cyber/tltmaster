@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorizedCron } from "@/server/cron";
+import { authorizedCron, housekeepingFailed } from "@/server/cron";
 import { effectivePresence } from "@/lib/communications";
 
 describe("scheduled job authorization", () => {
@@ -24,5 +24,14 @@ describe("own presence", () => {
     expect(effectivePresence({ manual_status: null, last_active_at: "2026-10-12T11:40:00Z" }, 15, now)).toBe("away");
     expect(effectivePresence({ manual_status: null, last_active_at: null }, 15, now)).toBeNull();
     expect(effectivePresence(null, 15, now)).toBeNull();
+  });
+});
+
+describe("housekeeping result", () => {
+  it("is a failure when any company failed or any expired file could not be removed", () => {
+    expect(housekeepingFailed({ failed: [] }, 0)).toBe(false);
+    expect(housekeepingFailed({ failed: [{ company_id: "x", error: "boom" }] }, 0)).toBe(true);
+    expect(housekeepingFailed({ failed: [] }, 3)).toBe(true);
+    expect(housekeepingFailed(null, 0)).toBe(false);
   });
 });

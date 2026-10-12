@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { authorizedCron } from "@/server/cron";
+import { authorizedCron, housekeepingFailed } from "@/server/cron";
 import { createAdminClient } from "@/server/supabase/admin";
 
 // Scheduled Communications housekeeping (Vercel Cron, vercel.json): escalations, document alerts, workspace
@@ -30,6 +30,7 @@ export async function GET(request: Request) {
   const run = await admin.rpc("comm_housekeeping_all");
   if (run.error) {
     const missing = run.error.code === "PGRST202";
+    console.error("comm-housekeeping: database call failed", run.error.code);
     return json({ error: missing ? "Needs the database update 20261108000100, which is not installed yet." : "Housekeeping failed." }, missing ? 503 : 500);
   }
 
@@ -44,6 +45,12 @@ export async function GET(request: Request) {
     // Missing objects count as removed: the goal is that no file of an expired message remains.
     const marked = await admin.rpc("comm_mark_attachment_files_removed", { p_ids: chunk.map((r) => r.attachment_id) });
     if (marked.error) fileErrors += chunk.length; else removed += Number(marked.data ?? 0);
+  }
+  // Partial failures must be visible: Vercel marks a non-2xx cron run as failed, and the log names what failed
+  // (company ids and counts only — never message content or secrets). The next run retries everything.
+  if (housekeepingFailed(run.data as { failed?: unknown[] } | null, fileErrors)) {
+    console.error("comm-housekeeping: partial failure", JSON.stringify({ failedCompanies: (run.data as { failed?: unknown[] }).failed ?? [], fileErrors }));
+    return json({ ok: false, housekeeping: run.data, filesRemoved: removed, fileErrors }, 500);
   }
   return json({ ok: true, housekeeping: run.data, filesRemoved: removed, fileErrors });
 }
