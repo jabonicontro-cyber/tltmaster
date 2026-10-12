@@ -165,7 +165,14 @@ export async function deleteMessage(messageId: string, reason?: string): Promise
     if (!id.safeParse(messageId).success) return fail("Invalid request.");
     const why = (reason ?? "").trim().slice(0, 300);
     const { error } = await rpc("comm_delete_message", why ? { p_message: messageId, p_reason: why } : { p_message: messageId });
-    if (error?.code === "PGRST202") return fail("Removing a message with a reason needs the database update 20261108000100, which is not installed yet.");
+    if (error?.code === "PGRST202" && why) {
+      // Database update 20261108000100 not installed yet: the earlier function still lets managers remove messages
+      // (it keeps the original for administrators), but it cannot store the reason. Removal must keep working.
+      const retry = await rpc("comm_delete_message", { p_message: messageId });
+      if (retry.error) return fail(dbErrorMessage(retry.error));
+      refresh();
+      return ok(undefined, "Message removed. The reason could not be recorded until database update 20261108000100 is installed.");
+    }
     if (error) return fail(dbErrorMessage(error));
     refresh();
     return ok(undefined, why ? "Message removed." : "Message deleted.");

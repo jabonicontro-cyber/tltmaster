@@ -199,7 +199,7 @@ test("a new channel message counts on the Channels tab, not on Messages", async 
   await signIn(page, "driver");
   await page.goto("/communications");
   const tabs = page.getByRole("navigation", { name: "Communications sections" });
-  await expect(tabs.getByRole("link", { name: /Channels\s*\d+\s*unread/ })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: /Channels\s*\d+\+?\s*unread/ })).toBeVisible();
   // The Messages badge only counts conversations listed under Messages.
   await page.goto("/communications/channels");
   await page.getByRole("link", { name: new RegExp(title) }).click();

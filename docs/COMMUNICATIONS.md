@@ -6,8 +6,9 @@ inside Taviron: **nothing is sent by email, text or push**, and the demo company
 Status (2026-10-12): the owner applied the migrations through `20261106000100`, so Communications runs on the hosted
 database. **Two follow-ups are not applied yet:** `20261107000100` (photos in the directory, demo retire) and
 `20261108000100` (hardening, below). Until `20261108000100` is applied, the hosted database still uses the earlier
-rules: the company's edit window (default 15 minutes) instead of the fixed 5, no manager removal with a reason
-(removing with a reason says the update is needed), and the old optional retention instead of the 14-day expiry.
+rules: the company's edit window (default 15 minutes) instead of the fixed 5, manager removal still works but
+cannot store the reason (the app falls back to the earlier function and says so), and the old optional retention
+instead of the 14-day expiry. Verified locally by running today's code against a database without the two updates.
 The scheduled cleanup also needs `CRON_SECRET` (below). None of the hardening is live until both are verified.
 
 ## Hosted migrations (owner action, in this order, after a backup — DEPLOYMENT §2a)
