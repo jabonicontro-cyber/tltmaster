@@ -172,11 +172,8 @@
   }
   /* Critical stays the same fixed red for fills (white text on it), but as text on dark panels the light-mode shade
      is unreadable (2.6:1), so text uses a lighter red here. Still red and never the tenant's brand. */
-  html[data-theme="dark"] body .text-critical {
-    color: #f87171; /* on dark cards 6.3:1 */
-  }
-  html[data-theme="dark"] :is(.site, .force-light) .text-critical {
-    color: var(--color-critical);
+  html[data-theme="dark"] body .text-critical:not(:is(.site, .force-light) *) {
+    color: #f87171; /* on dark cards 6.3:1; the website, documents and print keep the fixed red */
   }
   html[data-theme="dark"] :is(.site, .force-light) {
     color-scheme: light;
