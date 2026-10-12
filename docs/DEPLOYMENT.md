@@ -333,9 +333,12 @@ A visitor can remove early access from their own browser from the sign-in page
 ### 3c. A prospect demo tenant and its owner's login (e.g. Prairie Lantern Freight for Colby Chapman)
 
 A prospect demo is a standing demo company for one prospect: fictional data, the demo bar, nothing sent, and never
-replaced by "Start the demo". Needs migration `20261106000100_prospect_demo_tenants.sql` (after the pending ones;
-§2a). Each step below is an owner action; nothing here is done automatically.
+replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_tenants.sql` and `20261107000100_people_photos_and_demo_retire.sql`
+(after the pending ones; §2a). Each step below is an owner action; nothing here is done automatically.
 
+0. **Replacing an earlier version of the demo** (needs migration `20261107000100`): `/admin/demo` → tick the box next to
+   the old Prairie Lantern Freight → **Retire** (it and its memberships become inactive; nothing is deleted), then
+   continue with step 1. Logins made owner of the old demo must be made owner of the new one (step 3).
 1. **Create and fill the tenant:** sign in as a platform admin → `/admin/demo` → "Create the Prairie Lantern Freight
    demo". You become its owner (switch companies from your menu). Note its slug (`prospect-…`) shown there.
 2. **The prospect's login — they choose their own password.** Either with a **username** (decided 2026-10-12 for

@@ -184,6 +184,18 @@ export async function createProspectDemo() {
   redirect("/command-center?demo=prospect");
 }
 
+/** Retire a prospect demo (kept, inactive) so a fresh one can be created. */
+export async function retireProspectDemo(formData: FormData) {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) back("/admin/demo", "Invalid demo company.");
+  if (formData.get("confirm") !== "on") back("/admin/demo", "Tick the box to confirm retiring the demo.");
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_prospect_demo_retire", { p_company: id.data });
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Retiring needs the database update 20261107000100, which is not installed yet." : dbErrorMessage(error));
+  revalidatePath("/", "layout");
+  redirect("/admin/demo?saved=retired");
+}
+
 export async function enterDemo() {
   const supabase = await db();
   const { error } = await supabase.rpc("platform_demo_enter");

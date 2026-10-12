@@ -74,6 +74,19 @@ describe("prospect demo tenants", () => {
       expect((await s.query("select 1 from public.customers where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
       expect((await s.query("select 1 from public.employees where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
       expect((await pgError(s.query("select public.platform_overview()"))).code).toBe("42501");
+      // Only the platform team retires a prospect demo; real companies and the presenter demo are refused.
+      expect((await pgError(s.query("select public.platform_prospect_demo_retire($1)", [prospect]))).code).toBe("42501");
+      await s.as(admin);
+      expect((await pgError(s.query("select public.platform_prospect_demo_retire($1)", [TOP_LINE]))).code).toBe("P0002");
+      expect((await pgError(s.query("select public.platform_prospect_demo_retire($1)", [presenter]))).code).toBe("P0002");
+      await s.query("select public.platform_prospect_demo_retire($1)", [prospect]);
+      await s.asAdmin();
+      expect((await s.query("select active from public.companies where id = $1", [prospect])).rows[0].active).toBe(false);
+      expect((await s.query("select count(*)::int as n from public.company_memberships where company_id = $1 and active", [prospect])).rows[0].n).toBe(0);
+      // A fresh demo with the same name can be created again.
+      await s.as(admin);
+      const name = (await s.query<{ name: string }>("select name from public.companies where id = $1", [prospect])).rows[0]?.name;
+      if (name) expect(await create(s, name)).not.toBe(prospect);
     });
   });
 });

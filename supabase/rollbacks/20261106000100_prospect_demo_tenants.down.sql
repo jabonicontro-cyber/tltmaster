@@ -4,7 +4,7 @@
 -- become ordinary demos again: the next "Start the demo" would deactivate them.
 -- Deactivate or keep them deliberately before rolling back.
 begin;
-drop function if exists public.platform_prospect_demo_add_owner(uuid, uuid, text);
+drop function if exists public.platform_prospect_demo_add_owner(uuid, uuid);
 drop function if exists public.platform_prospect_demo_create(text, text, text, text);
 
 create or replace function public.platform_demo_start(p_timezone text)

@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
-import { createProspectDemo, enterDemo, startDemo } from "../actions";
+import { createProspectDemo, enterDemo, retireProspectDemo, startDemo } from "../actions";
 
 export const metadata = { title: "Live demo" };
 // Starting a demo seeds a few hundred records through the normal app functions.
@@ -56,7 +56,16 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
               <>
                 {prospectRows.length > 0 ? (
                   <ul className="divide-y divide-line text-sm">
-                    {prospectRows.map((p) => <li key={p.id} className="py-2"><span className="font-medium text-ink">{p.name}</span> <span className="text-muted">· {p.slug} · created {formatDateTime(p.created_at)}</span></li>)}
+                    {prospectRows.map((p) => (
+                      <li key={p.id} className="space-y-1 py-2">
+                        <div><span className="font-medium text-ink">{p.name}</span> <span className="text-muted">· {p.slug} · created {formatDateTime(p.created_at)}</span></div>
+                        <form action={retireProspectDemo} className="flex flex-wrap items-center gap-3">
+                          <input type="hidden" name="id" value={p.id} />
+                          <label className="inline-flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" name="confirm" className="accent-brand" />Retire it (its owners lose access; nothing is deleted)</label>
+                          <SubmitButton variant="secondary" size="sm" pendingLabel="Retiring…">Retire</SubmitButton>
+                        </form>
+                      </li>
+                    ))}
                   </ul>
                 ) : <p className="text-sm text-muted">None yet.</p>}
                 {!prospectRows.some((p) => p.name === PRAIRIE_LANTERN.name) && (

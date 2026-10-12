@@ -10,8 +10,9 @@ project credentials. Read it together with:
 ## 0. Latest checkpoint (2026-10-12) — read first
 
 - **Prospect demo tenant for Colby Chapman — Prairie Lantern Freight** (IMPLEMENTATION_PLAN §5ab, DEPLOYMENT §3c):
-  code ready; created and checked only in the local dev database. **Needs migration `20261106000100`** (after the
-  Communications ones). **Colby's login does not exist yet.** Decided 2026-10-12: he signs in with the username
+  released. The owner applied the migrations up to `20261106000100` and created the tenant on 2026-10-12 (before the
+  logo and data update). **Next migration `20261107000100`** (photos in Communications, `demo-owner --name`, Retire a
+  prospect demo) — then retire the old tenant and create it again (DEPLOYMENT §3c step 0). **Colby's login does not exist yet.** Decided 2026-10-12: he signs in with the username
   `colbychapman` (username sign-in, `src/lib/usernames.ts`; no email needed). Steps (DEPLOYMENT §3c, owner actions):
   create the tenant in /admin/demo → `setup-link colbychapman` (he sets his own password) → `demo-owner colbychapman
   <slug>` → verify his sign-in. Username accounts have no reset email; a new setup link replaces it.
