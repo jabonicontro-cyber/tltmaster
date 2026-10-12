@@ -1,9 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Avatar } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
 import { DEPARTMENTS } from "@/lib/employees";
+import { personPhoto } from "@/lib/people/avatars";
 import { ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import type { Person } from "@/server/data/communications";
 import { PresenceDot, WorkStatusBadge } from "./status";
@@ -37,7 +39,10 @@ export function PeoplePicker({ people, selected, onChange, multiple = true, excl
               <button type="button" onClick={() => toggle(p.user_id)}
                 className={cn("flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-surface", on && "bg-strong/5")}>
                 <input type={multiple ? "checkbox" : "radio"} readOnly checked={on} tabIndex={-1} aria-hidden className="size-4 accent-brand" />
-                <PresenceDot presence={p.presence} />
+                <span className="relative">
+                  <Avatar name={p.name} size={32} {...personPhoto(p.user_id, p.photo_updated_at, p.avatar_key)} />
+                  <PresenceDot presence={p.presence} className="absolute -right-0.5 -bottom-0.5" />
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium text-ink">{p.name}</span>
                   <span className="block truncate text-xs text-muted">

@@ -2,15 +2,18 @@ import { cn } from "@/lib/cn";
 
 /**
  * The company's own identity in its workspace: its logo when one is set,
- * otherwise a monogram in the company's accent color with the company name.
+ * otherwise a monogram in the company's accent color with the company name (the monogram alone in the
+ * collapsed rail).
  * Taviron appears only as a small "Powered by Taviron" line elsewhere.
  */
 export function CompanyIdentity({ name, logoUrl, tone = "light", compact = false, className }: { name: string | null; logoUrl: string; tone?: "light" | "dark"; /** Square mark only (the collapsed sidebar rail). */ compact?: boolean; className?: string }) {
   const label = name || "Your company";
-  if (logoUrl) {
+  // The collapsed rail is a small square: most logos are wide wordmarks that would be unreadable there,
+  // so it shows the monogram in the company's colour; the full logo shows when the sidebar is expanded.
+  if (logoUrl && !compact) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a small per-company image served by our own route
-      <img src={logoUrl} alt={label} className={cn(compact ? "size-9" : "h-8 max-w-40", "rounded bg-white object-contain p-1", className)} />
+      <img src={logoUrl} alt={label} className={cn("h-8 max-w-40 rounded bg-white object-contain p-1", className)} />
     );
   }
   const initials = label.replace(/\(.*?\)/g, "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "C";

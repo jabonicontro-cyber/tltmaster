@@ -17,3 +17,12 @@ describe("profile photo helpers", () => {
     expect(squareCrop(256, 256)).toEqual({ sx: 0, sy: 0, size: 256 });
   });
 });
+
+describe("personPhoto", () => {
+  it("prefers the person's own profile photo, then the employee avatar, then initials", async () => {
+    const { personPhoto } = await import("@/lib/people/avatars");
+    expect(personPhoto("u1", "2026-10-12T00:00:00Z", "avatar-03")).toEqual({ src: "/people/photo/u1?v=2026-10-12T00%3A00%3A00Z", fallbackSrc: "/avatars/avatar-03.png" });
+    expect(personPhoto("u1", null, "avatar-03")).toEqual({ src: "", fallbackSrc: "/avatars/avatar-03.png" });
+    expect(personPhoto(null, null, "")).toEqual({ src: "", fallbackSrc: "" });
+  });
+});

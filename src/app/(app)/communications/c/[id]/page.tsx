@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { CONVERSATION_KINDS, SCOPE_LABELS } from "@/lib/communications";
 import { formatDate } from "@/lib/dates";
+import { personPhoto } from "@/lib/people/avatars";
 import { DEPARTMENTS } from "@/lib/employees";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
@@ -41,6 +42,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
   const { conversation: c, members, messages, workspace, receipts } = data;
   const people = new Map((directory ?? []).map((p) => [p.user_id, p]));
   const names: Record<string, string> = Object.fromEntries((directory ?? []).map((p) => [p.user_id, p.name]));
+  const photos = Object.fromEntries((directory ?? []).map((p) => [p.user_id, personPhoto(p.user_id, p.photo_updated_at, p.avatar_key)]));
   const active = members.filter((m) => !m.left_at);
   const mine = active.find((m) => m.user_id === access.userId) ?? null;
   const isAdmin = can(access, "comms.admin");
@@ -83,6 +85,7 @@ export default async function ConversationPage({ params }: { params: Promise<{ i
             me={access.userId}
             messages={messages}
             names={names}
+            photos={photos}
             receipts={receipts}
             editWindowMinutes={settings.edit_window_minutes}
             membersDeleteOwn={settings.members_delete_own}

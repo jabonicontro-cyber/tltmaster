@@ -11,7 +11,7 @@
 //   node --env-file=.env.staging scripts/platform-admin.mjs list
 //   node --env-file=.env.staging scripts/platform-admin.mjs setup-link you@example.com --base-url https://mytaviron.com
 //   node --env-file=.env.staging scripts/platform-admin.mjs setup-link colbychapman --base-url https://mytaviron.com   (username account)
-//   node --env-file=.env.staging scripts/platform-admin.mjs demo-owner prospect@example.com prospect-1a2b3c4d5e
+//   node --env-file=.env.staging scripts/platform-admin.mjs demo-owner colbychapman prospect-1a2b3c4d5e --name "Colby Chapman"
 //     (owner of a PROSPECT demo company only — never a real company; needs migration 20261106000100)
 import { createClient } from "@supabase/supabase-js";
 
@@ -114,7 +114,7 @@ if (cmd === "grant" || cmd === "revoke") {
   const email = loginAddress(positional[0]);
   const slug = positional[1];
   if (!email || !slug) {
-    console.error("Usage: platform-admin.mjs demo-owner <email | username> <prospect-demo-company-slug>");
+    console.error('Usage: platform-admin.mjs demo-owner <email | username> <prospect-demo-company-slug> [--name "Full Name"]');
     process.exit(1);
   }
   const { data: profile } = await db.from("profiles").select("id").eq("email", email).maybeSingle();
@@ -127,7 +127,8 @@ if (cmd === "grant" || cmd === "revoke") {
     console.error(`${slug} is not a prospect demo company. Nothing was changed.`);
     process.exit(1);
   }
-  const { error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id });
+  const name = typeof opts.name === "string" ? opts.name : null;
+  const { error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id, p_full_name: name });
   if (error) {
     console.error(`Failed: ${error.message}`);
     process.exit(1);

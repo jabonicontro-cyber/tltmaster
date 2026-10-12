@@ -17,9 +17,10 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { CONVERSATION_KINDS, isMuted, STATUS_DISCLAIMER } from "@/lib/communications";
 import { formatDateTime } from "@/lib/dates";
+import { personPhoto } from "@/lib/people/avatars";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
-import { isCommunicationsInstalled, loadAlertCounts, loadCommunicationsHome, loadMyPresence, type InboxItem } from "@/server/data/communications";
+import { isCommunicationsInstalled, loadAlertCounts, loadCommunicationsHome, loadMyPresence, type InboxItem, type Person } from "@/server/data/communications";
 
 export const metadata = { title: "Communications" };
 
@@ -28,7 +29,7 @@ type View = keyof typeof VIEWS;
 
 const KIND_ICON = { direct: MessagesSquare, group: Users, channel: Hash, operation: Briefcase } as const;
 
-function Row({ c, people }: { c: InboxItem; people: Map<string, { presence: "available" | "busy" | "away" | null }> }) {
+function Row({ c, people }: { c: InboxItem; people: Map<string, Person> }) {
   const Icon = KIND_ICON[c.kind];
   const title = c.title || (c.kind === "group" ? "Group (only you)" : CONVERSATION_KINDS[c.kind]);
   return (
@@ -36,7 +37,7 @@ function Row({ c, people }: { c: InboxItem; people: Map<string, { presence: "ava
       <Link href={`/communications/c/${c.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-surface">
         {c.kind === "direct" ? (
           <span className="relative">
-            <Avatar name={title} size={36} />
+            <Avatar name={title} size={36} {...(c.other_user_id ? personPhoto(c.other_user_id, people.get(c.other_user_id)?.photo_updated_at, people.get(c.other_user_id)?.avatar_key) : {})} />
             <PresenceDot presence={c.other_user_id ? people.get(c.other_user_id)?.presence ?? null : null} className="absolute -right-0.5 -bottom-0.5" />
           </span>
         ) : (
@@ -124,7 +125,10 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
               <ul className="max-h-96 divide-y divide-line overflow-y-auto">
                 {coworkers.map((p) => (
                   <li key={p.user_id} className="flex items-center gap-3 px-4 py-2 text-sm">
-                    <PresenceDot presence={p.presence} />
+                    <span className="relative">
+                      <Avatar name={p.name} size={28} {...personPhoto(p.user_id, p.photo_updated_at, p.avatar_key)} />
+                      <PresenceDot presence={p.presence} className="absolute -right-0.5 -bottom-0.5" />
+                    </span>
                     <span className="min-w-0 flex-1 truncate text-ink">{p.name}</span>
                     <WorkStatusBadge status={p.work_status} />
                   </li>

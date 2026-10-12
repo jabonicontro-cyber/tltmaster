@@ -4,12 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Bell, BellOff, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, FormError, Input, Select } from "@/components/ui/form";
 import { isMuted, muteLabel, MUTE_CHOICES } from "@/lib/communications";
 import { DEFAULT_TIMEZONE } from "@/lib/dates";
+import { personPhoto } from "@/lib/people/avatars";
 import type { Person } from "@/server/data/communications";
 import { addMembers, mute, removeMember, setMemberRole, setTitle } from "@/app/(app)/communications/actions";
 import { PeoplePicker } from "./people-picker";
@@ -101,7 +103,10 @@ export function MembersPanel(props: {
         <ul className="divide-y divide-line">
           {props.members.map((m) => (
             <li key={m.user_id} className="flex items-center gap-2 py-2 text-sm">
-              <PresenceDot presence={m.person?.presence ?? null} />
+              <span className="relative">
+                <Avatar name={m.name} size={28} {...personPhoto(m.user_id, m.person?.photo_updated_at, m.person?.avatar_key)} />
+                <PresenceDot presence={m.person?.presence ?? null} className="absolute -right-0.5 -bottom-0.5" />
+              </span>
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-ink">{m.user_id === props.me ? `${m.name} (you)` : m.name}</span>
                 <span className="flex flex-wrap items-center gap-1">

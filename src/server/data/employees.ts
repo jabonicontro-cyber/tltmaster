@@ -1,4 +1,5 @@
 import "server-only";
+import { displayLogin } from "@/lib/usernames";
 import { createClient } from "@/server/supabase/server";
 import { ilikePattern, PAGE_SIZE } from "@/server/data/search";
 import type { Department, EmployeeStatus, EmploymentType, PayType } from "@/lib/employees";
@@ -121,4 +122,26 @@ export async function getEmployee(id: string, opts: { compensation: boolean; tru
     compensation: c ? { ...c, rate_cents: c.rate_cents === null ? null : Number(c.rate_cents), rate_percent: c.rate_percent === null ? null : Number(c.rate_percent) } : null,
     trucks: ((trucks.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => ({ id: t.id, unit: t.unit_number, heldBy: holders.get(t.id) ?? null })),
   };
+}
+
+/**
+ * Logins of the current company that no employee record uses yet (to link one). Needs users.manage to read
+ * memberships and names; returns [] otherwise. Shown as "Name — username/email".
+ */
+export async function linkableLogins(companyId: string): Promise<Array<{ user_id: string; label: string }>> {
+  const supabase = await createClient();
+  const [members, linked] = await Promise.all([
+    // RLS also returns the caller's own memberships in other companies: filter to this company.
+    supabase.from("company_memberships").select("user_id, role, active, profiles(email, full_name)").eq("company_id", companyId).eq("active", true),
+    supabase.from("employees").select("user_id").not("user_id", "is", null),
+  ]);
+  if (members.error) return [];
+  const taken = new Set(((linked.data ?? []) as Array<{ user_id: string }>).map((r) => r.user_id));
+  return ((members.data ?? []) as unknown as Array<{ user_id: string; role: string | null; profiles: { email: string; full_name: string } | null }>)
+    .filter((m) => m.role && !taken.has(m.user_id))
+    .map((m) => {
+      const login = displayLogin(m.profiles?.email ?? "");
+      return { user_id: m.user_id, label: m.profiles?.full_name ? `${m.profiles.full_name} — ${login}` : login };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
 }

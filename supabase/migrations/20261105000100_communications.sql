@@ -495,6 +495,9 @@ begin
     select jsonb_agg(jsonb_build_object(
       'user_id', m.user_id, 'name', private.comm_user_name(m.user_id), 'role', m.role,
       'department', (select e.department from public.employees e where e.company_id = v_company and e.user_id = m.user_id limit 1),
+      -- Their own profile photo wins; otherwise the illustrated avatar chosen on their employee record.
+      'photo_updated_at', (select p.photo_updated_at from public.profiles p where p.id = m.user_id),
+      'avatar_key', coalesce((select e.avatar_key from public.employees e where e.company_id = v_company and e.user_id = m.user_id limit 1), ''),
       'presence', private.comm_presence(v_company, m.user_id),
       'work_status', private.comm_work_status(v_company, m.user_id)) order by private.comm_user_name(m.user_id))
     from public.company_memberships m

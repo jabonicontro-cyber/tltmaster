@@ -38,6 +38,8 @@ export function ConversationView(props: {
   me: string;
   messages: Message[];
   names: Record<string, string>;
+  /** Each person's picture: own profile photo, else employee avatar (see personPhoto). */
+  photos: Record<string, { src: string; fallbackSrc: string }>;
   receipts: Record<string, Receipt>;
   editWindowMinutes: number;
   membersDeleteOwn: boolean;
@@ -131,7 +133,7 @@ export function ConversationView(props: {
     const canDelete = !m.deleted_at && (props.isAdmin || (mine && props.membersDeleteOwn && within(m.created_at, props.editWindowMinutes)));
     return (
       <li key={m.id} id={`m-${m.id}`} className={cn("group flex gap-3 py-2", nested && "ml-10")}>
-        <Avatar name={name(m.author_id)} size={nested ? 28 : 34} />
+        <Avatar name={name(m.author_id)} size={nested ? 28 : 34} {...(m.author_id ? props.photos[m.author_id] : {})} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2">
             <span className="text-sm font-semibold text-ink">{mine ? "You" : name(m.author_id)}</span>

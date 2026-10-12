@@ -62,3 +62,41 @@ export async function setPrimaryTruck(employeeId: string, driverId: string, truc
     return ok(undefined, truckId ? "Primary truck set." : "Primary truck removed.");
   });
 }
+
+/**
+ * Link an employee record to a login of this company, or unlink it (userId null). Needs employees.edit;
+ * the database guarantees the login is a member of the same company (foreign key) and is linked to at most
+ * one employee (unique index). When the employee is a driver, the driver record follows, so the driver
+ * portal (My Day) works for that login.
+ */
+export async function linkEmployeeLogin(employeeId: string, userId: string | null): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("employees.edit");
+    if (!uuid.safeParse(employeeId).success || (userId !== null && !uuid.safeParse(userId).success)) return fail("Invalid request.");
+    const supabase = await createClient();
+    const { data: before } = await supabase.from("employees").select("user_id, driver_id").eq("id", employeeId).maybeSingle();
+    if (!before) return fail("Employee not found.");
+    const res = await supabase.from("employees").update({ user_id: userId }).eq("id", employeeId).select("id");
+    if (res.error) {
+      if (res.error.code === "23505") return fail("That login is already linked to another employee. Unlink it there first.");
+      if (res.error.code === "23503") return fail("That login is not a member of this company.");
+      return fail(dbErrorMessage(res.error));
+    }
+    if (!res.data?.length) return fail("The employee could not be changed (not found or not permitted).");
+    let note = "";
+    const driverId = (before as { driver_id: string | null }).driver_id;
+    if (driverId) {
+      const previous = (before as { user_id: string | null }).user_id;
+      const d = userId
+        ? await supabase.from("drivers").update({ user_id: userId }).eq("id", driverId).select("id")
+        : previous
+          ? await supabase.from("drivers").update({ user_id: null }).eq("id", driverId).eq("user_id", previous).select("id")
+          : { data: [], error: null };
+      if (d.error) note = d.error.code === "23505"
+        ? " The driver record could not follow: that login is already linked to another driver."
+        : " The driver record could not be updated with your permissions; ask an owner to link it in Fleet.";
+    }
+    revalidatePath("/employees", "layout");
+    return ok(undefined, (userId ? "Login linked." : "Login unlinked.") + note);
+  });
+}

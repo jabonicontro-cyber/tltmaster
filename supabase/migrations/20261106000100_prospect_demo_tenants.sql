@@ -141,7 +141,7 @@ $$;
  * (scripts/platform-admin.mjs demo-owner). Refuses real companies and the
  * presenter demo, never creates a login, and never grants platform access.
  */
-create or replace function public.platform_prospect_demo_add_owner(p_company uuid, p_user uuid)
+create or replace function public.platform_prospect_demo_add_owner(p_company uuid, p_user uuid, p_full_name text default null)
 returns void
 language plpgsql
 security definer
@@ -160,6 +160,13 @@ begin
   update public.profiles set active_company_id = p_company
   where id = p_user and (active_company_id is null
     or not exists (select 1 from public.company_memberships m where m.user_id = p_user and m.company_id = active_company_id and m.active));
+  -- Their name (only when the login has none yet), and the demo's matching, still unlinked employee record.
+  if nullif(trim(p_full_name), '') is not null then
+    update public.profiles set full_name = left(trim(p_full_name), 120) where id = p_user and coalesce(trim(full_name), '') = '';
+    update public.employees set user_id = p_user
+    where company_id = p_company and user_id is null and lower(full_name) = lower(trim(p_full_name))
+      and not exists (select 1 from public.employees e where e.company_id = p_company and e.user_id = p_user);
+  end if;
   insert into public.audit_events (company_id, actor_id, action, entity_type, entity_id, summary, details)
   values (p_company, null, 'membership.demo_owner_added', 'company', p_company, 'Prospect demo owner added by the platform operator',
           jsonb_build_object('user_id', p_user));
@@ -168,5 +175,5 @@ $$;
 
 revoke execute on function public.platform_prospect_demo_create(text, text, text, text) from public, anon;
 grant execute on function public.platform_prospect_demo_create(text, text, text, text) to authenticated;
-revoke execute on function public.platform_prospect_demo_add_owner(uuid, uuid) from public, anon, authenticated;
-grant execute on function public.platform_prospect_demo_add_owner(uuid, uuid) to service_role;
+revoke execute on function public.platform_prospect_demo_add_owner(uuid, uuid, text) from public, anon, authenticated;
+grant execute on function public.platform_prospect_demo_add_owner(uuid, uuid, text) to service_role;

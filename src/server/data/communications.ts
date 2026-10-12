@@ -31,6 +31,10 @@ export interface Person {
   department: string | null;
   presence: Presence | null;
   work_status: WorkStatus;
+  /** Set when the person has their own profile photo (null before the photo columns exist). */
+  photo_updated_at?: string | null;
+  /** Illustrated avatar from their employee record ("" when none). */
+  avatar_key?: string;
 }
 
 export interface InboxItem {

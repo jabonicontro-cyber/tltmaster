@@ -347,7 +347,8 @@ replaced by "Start the demo". Needs migration `20261106000100_prospect_demo_tena
    (`colbychapman@users.mytaviron.com`) is not a mailbox: nothing is ever sent to it, the reset-password page
    refuses it, and if the password is forgotten you run `setup-link` again for a new link.
 3. **Owner access to that one tenant:** `node --env-file=.env.staging scripts/platform-admin.mjs demo-owner
-   colbychapman <prospect-slug>` (a username or an email). The database accepts only an active prospect demo company
+   colbychapman <prospect-slug> --name "Colby Chapman"` (a username or an email). `--name` sets the login's name
+   when it has none and links the demo's "Colby Chapman" employee record to the login. The database accepts only an active prospect demo company
    and an existing login; it never grants access to a real company, the presenter demo, or the platform.
 4. **Verify before saying the login is ready:** they sign in, land on the Command Center of the demo tenant (owner),
    the demo bar shows, and the company menu lists no other company.
