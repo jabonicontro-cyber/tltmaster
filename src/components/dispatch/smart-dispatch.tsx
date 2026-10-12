@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { approveRecommendation, reconsiderRecommendations, rejectRecommendation } from "@/app/(app)/dispatch/actions";
 import type { Candidate, LoadPlan } from "@/lib/dispatch/smart";
+import { HOS_NOTE } from "@/lib/dispatch/smart";
 import { formatDate } from "@/lib/dates";
 import { withReturn } from "@/lib/safe-redirect";
 
@@ -170,8 +171,12 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
         </span>
       </summary>
       <p className="border-b border-line px-4 py-2 text-xs text-muted">
-        Proposals only — nothing is assigned until you approve, and every approval is checked again against current availability, qualifications, capacity and bookings. {plans[0]?.notes[0]}
+        Proposals only — nothing is assigned until you approve, and every approval is checked again against current availability, qualifications, capacity, bookings and the shop schedule. {plans[0]?.notes[0]}
       </p>
+      <ul className="border-b border-line px-4 py-2 text-xs" aria-label="Limits of these proposals">
+        <li className="font-medium text-amber-900 dark:text-amber-200">{HOS_NOTE}</li>
+        {(plans[0]?.notes ?? []).slice(1).filter((n) => n !== HOS_NOTE).map((n) => <li key={n} className="text-muted">{n}</li>)}
+      </ul>
       {plans.length > 0 ? <ul className="divide-y divide-line">{plans.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} />)}</ul> : null}
     </details>
   );

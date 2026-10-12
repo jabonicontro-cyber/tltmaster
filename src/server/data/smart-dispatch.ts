@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
-import { recommend, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { recommend, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
@@ -55,6 +55,13 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     : [{ data: [], error: null }, { data: [], error: null }];
   if (assignments.error || rejections.error) throw new Error("Smart Dispatch could not read current assignments.");
 
+  // Shop visits and restrictions from Maintenance (dispatch.view is enough). When the
+  // function does not exist yet (database update not installed), say so instead of failing;
+  // the database still refuses unsafe assignments where the update is installed.
+  const shop = await supabase.rpc("dispatch_shop_schedule", { p_from: addDays(from, -1), p_to: addDays(to, 1) });
+  const shopMissing = shop.error && (shop.error.code === "PGRST202" || shop.error.code === "42883");
+  if (shop.error && !shopMissing) throw new Error(`Smart Dispatch could not read the shop schedule: ${shop.error.message}`);
+
   const byLoad = new Map(loadRows.map((l) => [l.id, l]));
   const assigned = new Set((assignments.data ?? []).map((a) => a.load_id as string));
   const urgent = new Map((urgencies.data ?? []).map((u) => [u.order_id as string, u.needed_by as string | null]));
@@ -99,6 +106,8 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [] })),
     truckReports: ((reports.data ?? []) as Array<{ truck_id: string | null; kind: string }>).filter((r) => r.truck_id).map((r) => ({ truck_id: r.truck_id as string, kind: r.kind })),
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
+    shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),
+    maintenanceChecked: !shopMissing,
   };
 }
 

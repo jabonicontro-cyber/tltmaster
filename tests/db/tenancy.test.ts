@@ -25,6 +25,8 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Dispatch maintenance (20261103000100): shop schedule needs dispatch.view, caller's company only, no costs.
+  "public.dispatch_shop_schedule",
   // Fleet management (20261102000100): assignment history trigger (internal, not executable by app users);
   // assign_truck_driver needs fleet.assign and checks truck and driver against require_company().
   "private.record_truck_assignment", "public.assign_truck_driver",

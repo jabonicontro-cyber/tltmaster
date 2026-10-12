@@ -2006,6 +2006,44 @@ lifts a safety restriction), `tests/unit/fleet-availability.test.ts`, `tests/e2e
 (expired document flagged on profile, directory and overview; assign/reassign/remove with history; restricted
 truck has no return-to-service; driver and other company refused); tenancy lists updated.
 
+## 5y. Smart Dispatch — maintenance awareness and availability (2026-10-12)
+
+**Audit first (what already existed and is reused):** orders → planned loads with date and time windows
+(`order_loads`); assignments of truck, optional trailer and driver (`dispatch_assignments`, active/canceled) made only
+through `assign_load`, which locks, re-checks eligibility, conflicts and capacity in the database at that moment and
+records history; replacement (reassign) and `cancel_assignment` with a reason; concurrency tests
+(tests/db/dispatch.test.ts); Smart Dispatch proposals (`src/lib/dispatch/smart.ts`, explained, dispatcher approves,
+rejections remembered); the dispatch board, needs-scheduling queue, urgent orders and Command Center checks. Route
+Planner is a planned placeholder; no map, geocoding, routing, GPS, ELD/HOS or PTO data or service exists.
+
+**Migration `20261103000100_dispatch_maintenance.sql`** (rollback restores the previous function bodies; tested
+apply → rollback → re-apply): `private.assignment_eligibility` adds `truck_safety_restricted` (blocker: open
+safety-critical work order), `truck_shop_scheduled` (blocker: open work order scheduled on the load date) and
+`truck_shop_work_open` (warning). Because `assign_load` and the Command Center use the same function, assignments are
+refused at the moment of assignment and existing assignments that collide with a shop visit show as problems.
+`public.dispatch_shop_schedule(from, to)` (dispatch.view) gives dispatch the shop dates and restrictions without
+maintenance permission or costs. Messages mirrored in `ELIGIBILITY_MESSAGES` (parity-tested). Depends on 20261101000100.
+
+**App:** Smart Dispatch excludes trucks with a safety restriction or a shop visit on the load date, warns about
+open shop work, and always states that hours of service are not checked (no ELD data) and when the shop schedule
+could not be read. New `/dispatch/resources` ("Driver & truck availability", linked from Dispatch): per day, trucks
+with mechanical availability, shop visits, bookings and primary driver; drivers with qualification on that date,
+bookings, primary truck, and hours of service shown as "Not verified"; summary of ready trucks, qualified drivers
+and loads without a truck; search, ready/not-available filter, previous/next day. Without the migration the pages
+work and say shop visits are not checked (verified locally); out-of-service status is still enforced.
+
+**Kept separate, never inferred:** administrative status (active), schedule (bookings), qualification (CDL and
+medical card), hours of service (unknown — no data). PTO is not recorded in Taviron.
+
+**Not built (honest limits):** HOS/ELD integration; PTO; travel time, distance, ETAs and route planning (no routing
+provider approved — Route Planner stays a placeholder); a confirmed/in-progress assignment state beyond the existing
+active/canceled + delivery tickets; trailer recommendations in Smart Dispatch (trailers are chosen on the board).
+
+**Tests:** `tests/db/dispatch-maintenance.test.ts` (shop visit on the load date blocks, another date does not;
+safety restriction blocks; shop work is a warning; canceling the visit lifts the block; schedule function needs
+dispatch.view, stays in the company, exposes no costs), Smart Dispatch unit tests for shop/safety/HOS notes,
+`tests/e2e/dispatch-availability.spec.ts`; existing dispatch concurrency and isolation tests still pass.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

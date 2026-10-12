@@ -334,7 +334,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 18. Urgent-order escalation beyond one time limit.
 19. N15 rules awaiting confirmation: breakdown/inspection reports block a truck and equipment issues only warn;
     capacity overruns are refused; a delivery location is needed to schedule; the definition of "fully delivered".
-20. Smart Dispatch preferences: driver availability and hours, driver–truck pairings, customer priorities,
+20. Smart Dispatch preferences (2026-10-12: maintenance shop dates and safety restrictions now block assignments; hours of service remain unverified until an ELD/log source is chosen): driver availability and hours, driver–truck pairings, customer priorities,
     fairness, whether truck locations will be recorded.
 21. ~~Lead statuses `qualified`, `onboarding`, `spam`~~ — decided 2026-10-11: folded into the six statuses (see §8 W5).
 22. Maintenance defaults to confirm: who may clear a truck for service (default: owner only; grantable to mechanics), whether a mechanic may clear their own repair, warning windows (default 14 days / 500 mi / 25 h), and whether due preventive work orders should be generated automatically each day (needs a scheduler).

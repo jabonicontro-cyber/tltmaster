@@ -5,7 +5,8 @@
 // the database at that moment (eligibility, conflicts, capacity, stale state).
 //
 // Hard constraints (a truck or driver is excluded, with the reason):
-//   truck/driver deactivated · truck out of service · an unresolved driver
+//   truck/driver deactivated · truck out of service · an open safety-critical
+//   work order · a shop visit scheduled on the load date · an unresolved driver
 //   report of a breakdown or inspection problem on the truck · the load's
 //   planned quantity exceeds the truck's recorded capacity · a tractor (needs a
 //   trailer — choose one on the board) · the driver's CDL or medical card is
@@ -87,7 +88,22 @@ export interface SmartInput {
   truckReports: SmartReport[];
   /** Pairs a dispatcher rejected for a load. */
   rejections: Array<{ load_id: string; truck_id: string; driver_id: string }>;
+  /** Open work orders from Maintenance (shop visits, restrictions, shop work in progress). */
+  shopVisits?: SmartShopVisit[];
+  /** False when the maintenance schedule could not be read (database update not installed). */
+  maintenanceChecked?: boolean;
 }
+
+export interface SmartShopVisit {
+  truck_id: string;
+  number: string;
+  status: string;
+  scheduled_for: string | null;
+  safety_critical: boolean;
+}
+
+/** Hours of service are never assumed: Taviron has no ELD or driver-log data. */
+export const HOS_NOTE = "Hours of service are not checked: no ELD or driver-log data is connected. Confirm each driver's available hours before dispatching.";
 
 export interface Candidate {
   truckId: string;
@@ -173,6 +189,11 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserve
   const out: string[] = [];
   if (!t.active) out.push(eligibilityMessage("truck_inactive"));
   if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${t.expected_return_date})` : ""}.`);
+  const shop = (input.shopVisits ?? []).filter((v) => v.truck_id === t.id);
+  const restricted = shop.find((v) => v.safety_critical);
+  if (restricted) out.push(`Safety-critical work order ${restricted.number} is open — the truck returns only through clearance in Maintenance.`);
+  const visit = shop.find((v) => v.scheduled_for === l.load_date && v.status !== "awaiting_inspection");
+  if (visit) out.push(`In the shop on this date (${visit.number}).`);
   const safety = input.truckReports.filter((r) => r.truck_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"));
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
   if (t.truck_type === "tractor") out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
@@ -231,6 +252,11 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
     score -= 3;
     warnings.push(eligibilityMessage("truck_capacity_unverified"));
   }
+  const inShop = (input.shopVisits ?? []).find((v) => v.truck_id === t.id && (v.status === "in_progress" || v.status === "awaiting_parts"));
+  if (inShop) {
+    score -= 10;
+    warnings.push(`Shop work ${inShop.number} is ${inShop.status.replace("_", " ")} — check with the shop.`);
+  }
   if (input.truckReports.some((r) => r.truck_id === t.id && r.kind === "equipment_issue")) {
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));
@@ -261,7 +287,11 @@ const byScore = (a: Scored, b: Scored) => b.score - a.score || a.label.localeCom
 export function recommend(input: SmartInput): LoadPlan[] {
   const reserved: Reservation[] = [];
   const plans: LoadPlan[] = [];
-  const notes = ["Travel distance is not calculated: no truck locations are recorded. Job and site continuity are used instead."];
+  const notes = [
+    "Travel distance is not calculated: no truck locations are recorded. Job and site continuity are used instead.",
+    HOS_NOTE,
+    ...(input.maintenanceChecked === false ? ["Maintenance shop dates were not checked: the maintenance database update is not installed yet."] : []),
+  ];
 
   for (const load of orderLoads(input.loads, input.today)) {
     const dayWork = [

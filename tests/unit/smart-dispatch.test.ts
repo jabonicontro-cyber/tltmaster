@@ -146,3 +146,35 @@ describe("Smart Dispatch recommendations", () => {
     expect(JSON.stringify(recommend(input({ loads: [...loads].reverse(), drivers: [...drivers].reverse(), trucks: [...trucks].reverse() })))).toBe(JSON.stringify(a));
   });
 });
+
+describe("Smart Dispatch and maintenance / hours of service", () => {
+  it("excludes a truck in the shop on the load date or under a safety restriction, and warns about open shop work", () => {
+    const trucks = [truck("101"), truck("102"), truck("103")];
+    const shopVisits = [
+      { truck_id: "t-101", number: "WO-1", status: "scheduled", scheduled_for: TODAY, safety_critical: false },
+      { truck_id: "t-102", number: "WO-2", status: "in_progress", scheduled_for: null, safety_critical: true },
+      { truck_id: "t-103", number: "WO-3", status: "awaiting_parts", scheduled_for: null, safety_critical: false },
+    ];
+    const [p] = recommend(input({ loads: [load("A")], trucks, shopVisits }));
+    const why = Object.fromEntries(p.excludedTrucks.map((x) => [x.label, x.reasons.join(" ")]));
+    expect(why["101"]).toMatch(/In the shop on this date \(WO-1\)/);
+    expect(why["102"]).toMatch(/Safety-critical work order WO-2/);
+    expect(p.proposal?.truckLabel).toBe("103");
+    expect(p.proposal!.warnings.join(" ")).toMatch(/Shop work WO-3 is awaiting parts/);
+  });
+
+  it("a shop visit on another day does not block, and when nothing is safe it says so", () => {
+    const visitTomorrow = [{ truck_id: "t-101", number: "WO-9", status: "scheduled", scheduled_for: "2026-10-13", safety_critical: false }];
+    expect(recommend(input({ loads: [load("A")], shopVisits: visitTomorrow }))[0].proposal?.truckLabel).toBe("101");
+    const restricted = [{ truck_id: "t-101", number: "WO-8", status: "reported", scheduled_for: null, safety_critical: true }];
+    const [p] = recommend(input({ loads: [load("A")], shopVisits: restricted }));
+    expect(p.proposal).toBeNull();
+    expect(p.blocked!.why.join(" ")).toMatch(/None of the 1 trucks can take this load/);
+  });
+
+  it("never claims hours-of-service compliance, and says when maintenance could not be checked", () => {
+    const [p] = recommend(input({ loads: [load("A")], maintenanceChecked: false }));
+    expect(p.notes.join(" ")).toMatch(/Hours of service are not checked/);
+    expect(p.notes.join(" ")).toMatch(/Maintenance shop dates were not checked/);
+  });
+});

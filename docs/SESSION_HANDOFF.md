@@ -7,8 +7,12 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 0. Latest checkpoint (2026-10-11 evening) — read first
+## 0. Latest checkpoint (2026-10-12) — read first
 
+- **Smart Dispatch maintenance awareness + Driver & truck availability** (IMPLEMENTATION_PLAN §5y). **Needs
+  migration `20261103000100_dispatch_maintenance.sql`**, after `20261101000100` and `20261102000100` (owner action,
+  DEPLOYMENT §2a). Without it dispatch works as before and says shop visits are not checked. Hours of service are
+  never verified (no ELD data); PTO is not recorded.
 - **Fleet Management (code released to Production with this checkpoint under the standing release rule in CLAUDE.md; hosted migrations still pending):** vehicle documents with expiry warnings (metadata, no
   upload), ownership, driver assignment with history and atomic reassign, availability derived from service status
   and maintenance, maintenance/readings/costs/downtime on truck profiles, new overview cards and directory filters
