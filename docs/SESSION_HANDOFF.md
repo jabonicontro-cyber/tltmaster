@@ -17,6 +17,19 @@ project credentials. Read it together with:
   "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
   `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
   keeps the earlier rules.
+- **Session 3 (2026-10-12, 20:15 UTC onward):**
+  - Released `e5991fc` to Production (20:31 UTC) after a reset local database ran every gate clean (vitest 530/530,
+    browser 102 passed / 0 failed / 10 skipped, build, gate spec, deployment check, CI, Preview record).
+  - Fixed: employee pages request only existing photos (`profile_photo_versions`, in unapplied `20261107000100`);
+    Channels have their own unread badge (Messages no longer shows channel counts over an empty list); dark mode
+    no longer uses Tailwind `dark:` (misfired with the person's theme choice) and critical text is legible there;
+    profile photo input labelled; public lead form hints meet AA contrast.
+  - Sweeps run clean after fixes: every app page for dispatcher/office/mechanic/driver/owner (axe, phone width,
+    console, failed requests), dark mode and Light-on-dark-device, public site and sign-in, `/admin`, and a
+    brand-new empty company (every page loads). A Prairie Lantern walkthrough as a fictional prospect owner worked,
+    including the sample channel.
+  - Reviewed: `npm audit` (dev-only lint chain, no runtime exposure — master plan §8 S5); O2 already covered by the
+    Command Center; O11/O12 explained by test-data volume (SETUP §5: reset before release runs).
 - **Release status (2026-10-12 19:37 UTC):** Production = `78aa207` (Communications hardening + phone layout fix;
   Vercel Production deployment record: success). Preview is ahead with `c276e59` (demo owners join the sample channel —
   part of the still-unapplied migration `20261108000100`) and `bf6ded9` (accessibility fixes, steadier e2e tests);
