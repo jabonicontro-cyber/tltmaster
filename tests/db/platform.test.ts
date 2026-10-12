@@ -252,7 +252,7 @@ describe("team-led onboarding imports", () => {
       expect((await pgError(s.query("select public.platform_import_decide($1, 'skip')", [byRow[2].id]))).code).toBe("P0002"); // decisions are closed
 
       await s.asAdmin();
-      const created = (await s.query<{ name: string; po_required: boolean; customer_number: string }>("select name, po_required, customer_number from public.customers where company_id = $1 order by name", [company])).rows;
+      const created = (await s.query<{ name: string; po_required: boolean; customer_number: string }>("select name, po_required, customer_number from public.customers where company_id = $1 order by name collate \"C\"", [company])).rows;
       expect(created.map((c) => c.name)).toEqual(["Alpha Paving", "Beta Grading", "Existing Builders", "existing builders"]);
       expect(created.find((c) => c.name === "Beta Grading")!.po_required).toBe(true);
       expect(created.every((c) => c.customer_number.startsWith("C-"))).toBe(true);
