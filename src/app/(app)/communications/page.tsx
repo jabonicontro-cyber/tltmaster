@@ -78,7 +78,9 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
   const view: View = sp.view && sp.view in VIEWS ? (sp.view as View) : "all";
   const people = new Map(home.directory.map((p) => [p.user_id, p]));
   const list = home.inbox.filter((c) => c.kind !== "channel" && (view === "all" || c.kind === view));
-  const unread = home.inbox.reduce((n, c) => n + c.unread, 0);
+  // Messages counts direct, group and workspace conversations; channels have their own tab and count.
+  const unread = home.inbox.reduce((n, c) => n + (c.kind === "channel" ? 0 : c.unread), 0);
+  const channelUnread = home.inbox.reduce((n, c) => n + (c.kind === "channel" ? c.unread : 0), 0);
   const coworkers = home.directory.filter((p) => p.user_id !== access.userId);
 
   return (
@@ -93,7 +95,7 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
           {can(access, "comms.operations") && <ButtonLink href="/communications/workspaces/new" variant="secondary" icon={<Briefcase className="size-4" />}>New workspace</ButtonLink>}
         </div>}
       />
-      <CommunicationsTabs active="messages" counts={{ unread, alerts: counts?.open, critical: counts?.critical }} />
+      <CommunicationsTabs active="messages" counts={{ unread, channelUnread, alerts: counts?.open, critical: counts?.critical }} />
       <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
         <Card>
           <CardHeader title="Conversations" actions={

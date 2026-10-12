@@ -25,13 +25,15 @@ export default async function ChannelsPage() {
   if (!home) return <CommunicationsUnavailable title="Channels" />;
   const counts = await loadAlertCounts();
   const channels = home.inbox.filter((c) => c.kind === "channel");
-  const unread = home.inbox.reduce((n, c) => n + c.unread, 0);
+  // Messages counts direct, group and workspace conversations; channels have their own tab and count.
+  const unread = home.inbox.reduce((n, c) => n + (c.kind === "channel" ? 0 : c.unread), 0);
+  const channelUnread = home.inbox.reduce((n, c) => n + (c.kind === "channel" ? c.unread : 0), 0);
   return (
     <>
       <Poller />
       <PageHeader title="Channels" description="Department and topic channels you belong to."
         actions={can(access, "comms.channels") ? <NewChannel people={home.directory} me={access.userId} /> : undefined} />
-      <CommunicationsTabs active="channels" counts={{ unread, alerts: counts?.open, critical: counts?.critical }} />
+      <CommunicationsTabs active="channels" counts={{ unread, channelUnread, alerts: counts?.open, critical: counts?.critical }} />
       <Card>
         {channels.length === 0 ? (
           <EmptyState icon={<Hash className="size-6" />} title="No channels yet"

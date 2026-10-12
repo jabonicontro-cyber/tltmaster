@@ -25,7 +25,7 @@ export function CommSearch() {
         if (!r.ok) { setResult(null); return setError(r.error); }
         setResult(r.data);
       }}>
-        <Input type="search" aria-label="Search messages and announcements" placeholder="Search messages and announcements…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <Input type="search" aria-label="Search messages and announcements" placeholder="Search messages…" value={q} onChange={(e) => setQ(e.target.value)} />
         <Button type="submit" variant="secondary" loading={pending} icon={<Search className="size-4" />}>Search</Button>
       </form>
       <FormError message={error} />

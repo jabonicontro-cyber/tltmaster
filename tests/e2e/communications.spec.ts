@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectToast, signIn, unique } from "./helpers";
+import { asUser } from "./db";
 import { USERS } from "./users";
 
 // Communications: direct messages with a private attachment, read state,
@@ -186,4 +187,23 @@ test.describe("on a phone", () => {
     const { sw, w } = await page.evaluate(() => ({ sw: document.documentElement.scrollWidth, w: document.documentElement.clientWidth }));
     expect(sw).toBeLessThanOrEqual(w);
   });
+});
+
+test("a new channel message counts on the Channels tab, not on Messages", async ({ page }) => {
+  const title = `Yard notes ${unique()}`;
+  await asUser(USERS.owner.email, async (q) => {
+    const driver = (await q("select id from public.profiles where email = $1", [USERS.driver.email])).rows[0].id as string;
+    const ch = (await q("select public.comm_create_channel($1, '', 'operations', false, $2::uuid[]) as id", [title, [driver]])).rows[0].id as string;
+    await q("select public.comm_send($1, 'Gate 3 is closed today')", [ch]);
+  });
+  await signIn(page, "driver");
+  await page.goto("/communications");
+  const tabs = page.getByRole("navigation", { name: "Communications sections" });
+  await expect(tabs.getByRole("link", { name: /Channels\s*\d+\s*unread/ })).toBeVisible();
+  // The Messages badge only counts conversations listed under Messages.
+  await page.goto("/communications/channels");
+  await page.getByRole("link", { name: new RegExp(title) }).click();
+  await expect(page.getByText("Gate 3 is closed today")).toBeVisible();
+  await page.goto("/communications/channels");
+  await expect(page.getByRole("link", { name: new RegExp(title) })).not.toContainText("unread");
 });

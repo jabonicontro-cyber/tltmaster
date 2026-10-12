@@ -3,10 +3,10 @@ import { cn } from "@/lib/cn";
 
 export type CommTab = "messages" | "channels" | "alerts" | "announcements" | "settings";
 
-export function CommunicationsTabs({ active, counts }: { active: CommTab; counts?: { unread?: number; alerts?: number; critical?: number } }) {
+export function CommunicationsTabs({ active, counts }: { active: CommTab; counts?: { unread?: number; channelUnread?: number; alerts?: number; critical?: number } }) {
   const tabs: Array<{ key: CommTab; label: string; href: string; badge?: number; critical?: boolean }> = [
     { key: "messages", label: "Messages", href: "/communications", badge: counts?.unread },
-    { key: "channels", label: "Channels", href: "/communications/channels" },
+    { key: "channels", label: "Channels", href: "/communications/channels", badge: counts?.channelUnread },
     { key: "alerts", label: "Alerts", href: "/communications/alerts", badge: counts?.alerts, critical: Boolean(counts?.critical) },
     { key: "announcements", label: "Announcements", href: "/communications/announcements" },
     { key: "settings", label: "Settings", href: "/communications/settings" },
