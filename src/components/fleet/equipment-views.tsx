@@ -156,9 +156,9 @@ export function EquipmentList({
                     </Td>
                     <Td className="hidden text-sm md:table-cell">
                       <div className="flex flex-col gap-1">
-                        {x.maintenance && <span className={x.maintenance.tone === "red" ? "font-medium text-critical" : x.maintenance.tone === "amber" ? "text-amber-800 dark:text-amber-300" : "text-muted"}>{x.maintenance.text}</span>}
+                        {x.maintenance && <span className={x.maintenance.tone === "red" ? "font-medium text-critical" : x.maintenance.tone === "amber" ? "text-amber-800" : "text-muted"}>{x.maintenance.text}</span>}
                         {x.documents && x.documents.expired > 0 && <span className="font-medium text-critical">{x.documents.expired} document{x.documents.expired === 1 ? "" : "s"} expired</span>}
-                        {x.documents && x.documents.expiring > 0 && <span className="text-amber-800 dark:text-amber-300">{x.documents.expiring} expiring soon</span>}
+                        {x.documents && x.documents.expiring > 0 && <span className="text-amber-800">{x.documents.expiring} expiring soon</span>}
                         {x.documents && x.documents.notRecorded.length > 0 && <span className="text-xs text-muted">No {x.documents.notRecorded.map((k) => k.toLowerCase()).join(" or ")} on file</span>}
                         {!x.maintenance && !(x.documents && (x.documents.expired || x.documents.expiring || x.documents.notRecorded.length)) && <span className="text-muted">—</span>}
                       </div>

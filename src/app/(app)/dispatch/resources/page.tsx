@@ -71,7 +71,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
         </div>}
       />
 
-      <p role="note" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">{HOS_NOTE}</p>
+      <p role="note" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{HOS_NOTE}</p>
       {!r.timeOffChecked && <p role="note" className="mb-4 text-sm text-muted">Driver time off is not shown: the time-off database update is not installed yet.</p>}
       {!r.maintenanceChecked && <p role="note" className="mb-4 text-sm text-muted">Shop visits are not shown: the maintenance database update is not installed yet. Out-of-service status is still enforced.</p>}
 

@@ -96,7 +96,7 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
                           <li key={t.label} className={t.state === "overdue" ? "font-medium text-critical" : t.state === "unknown" ? "text-muted italic" : undefined}>{t.label}</li>
                         ))}
                       </ul>
-                      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700 dark:text-amber-300">Reading older than 30 days — record a new one.</div>}
+                      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700">Reading older than 30 days — record a new one.</div>}
                     </Td>
                     <Td><PmStateBadge state={p.state} /></Td>
                     <Td className="hidden md:table-cell">

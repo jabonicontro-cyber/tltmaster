@@ -210,7 +210,7 @@ export function MaintenanceCard({ truckId, records, canSee, canCreate, timezone 
                       <span className="font-medium">{p.name}</span>
                       <Badge tone={p.state === "overdue" ? "critical" : p.state === "due_soon" ? "amber" : p.state === "ok" ? "green" : "gray"}>{p.state === "unknown" ? "Not enough data" : p.state.replace("_", " ")}</Badge>
                       <span className="text-muted">{[p.next_due_on && `next ${formatDate(p.next_due_on)}`, p.next_due_miles !== null && `at ${num(Number(p.next_due_miles))} mi`, p.next_due_hours !== null && `at ${num(Number(p.next_due_hours))} h`].filter(Boolean).join(" · ")}</span>
-                      {p.readings_stale && <span className="text-xs text-amber-800 dark:text-amber-300">reading older than 30 days</span>}
+                      {p.readings_stale && <span className="text-xs text-amber-800">reading older than 30 days</span>}
                     </li>
                   ))}
                 </ul>

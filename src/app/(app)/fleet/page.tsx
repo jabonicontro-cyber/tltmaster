@@ -98,7 +98,7 @@ export default async function FleetPage() {
               <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
                 <Link href={`/fleet/${kind}s/${v.id}`} className="font-semibold hover:underline">{kind === "truck" ? "Truck" : "Trailer"} {v.unit_number}</Link>
                 {att.expired.map((d) => <span key={d.id} className="font-medium text-critical">{att.label(d.kind)} expired {formatDate(d.expires_on)}</span>)}
-                {att.expiring.map((d) => <span key={d.id} className="text-amber-800 dark:text-amber-300">{att.label(d.kind)} expires {formatDate(d.expires_on)}</span>)}
+                {att.expiring.map((d) => <span key={d.id} className="text-amber-800">{att.label(d.kind)} expires {formatDate(d.expires_on)}</span>)}
               </li>
             ))}
           </ul>

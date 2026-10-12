@@ -110,7 +110,7 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
       <Avatar name={name} src={shown} size={96} label={shown ? "Your profile photo" : `No photo — initials of ${name}`} />
       <div className="space-y-2">
-        <input ref={input} type="file" accept="image/*" className="sr-only" id="photo" aria-describedby="photo-help" onChange={(e) => pick(e.target.files?.[0])} disabled={pending} />
+        <input ref={input} type="file" accept="image/*" className="sr-only" id="photo" aria-label="Choose a profile photo" tabIndex={-1} aria-describedby="photo-help" onChange={(e) => pick(e.target.files?.[0])} disabled={pending} />
         <div className="flex flex-wrap gap-2">
           <Button type="button" onClick={() => input.current?.click()} disabled={pending} icon={<Camera className="size-4" />} className="min-h-11">
             {pending ? "Saving…" : shown ? "Change photo" : "Add a photo"}
