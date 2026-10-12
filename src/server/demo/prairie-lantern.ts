@@ -35,7 +35,7 @@ async function installed(db: Db, table: string) {
 
 export const PRAIRIE_LANTERN = { name: "Prairie Lantern Freight", city: "Rensselaer", state: "IN", timeZone: "America/Chicago" };
 
-const CUSTOMERS = [
+export const CUSTOMERS = [
   { name: "Bluestem Grain Cooperative", city: "Rensselaer", site: "Elevator receiving dock", line1: "1200 Bluestem Way" },
   { name: "Sugarbush Farm Supply", city: "Remington", site: "Main warehouse, door 3", line1: "40 Millrace St" },
   { name: "Ridgeline Packaging", city: "Lafayette", site: "Plant 2 shipping yard", line1: "880 Kestrel Industrial Pkwy" },
@@ -46,7 +46,7 @@ const CUSTOMERS = [
   { name: "Ironweed Implement", city: "Delphi", site: "Parts depot", line1: "9 Ironweed Ct" },
 ];
 
-const TRUCKS = [
+export const TRUCKS = [
   { unit: "201", make: "Freightliner", model: "Cascadia", year: 2022 },
   { unit: "202", make: "Kenworth", model: "T680", year: 2021 },
   { unit: "203", make: "Peterbilt", model: "579", year: 2023 },
@@ -59,15 +59,15 @@ const TRUCKS = [
   { unit: "210", make: "Volvo", model: "VNL 660", year: 2019 },
 ];
 
-const TRAILERS = [
+export const TRAILERS = [
   { unit: "T-51", type: "flatbed", notes: "48 ft flatbed" },
   { unit: "T-52", type: "flatbed", notes: "48 ft flatbed, tarps and straps" },
   { unit: "T-53", type: "other", notes: "53 ft dry van" },
 ];
 
-const DRIVERS = ["Gavin Holt", "Rosa Medina", "Eli Sutter", "Kendra Price", "Mateo Ruiz", "Hannah Voss", "Darnell Hayes", "Lucy Tran", "Wes Carver", "Amira Saleh"];
+export const DRIVERS = ["Gavin Holt", "Rosa Medina", "Eli Sutter", "Kendra Price", "Mateo Ruiz", "Hannah Voss", "Darnell Hayes", "Lucy Tran", "Wes Carver", "Amira Saleh"];
 
-const STAFF = [
+export const STAFF = [
   { full_name: "Bethany Cole", job_title: "Dispatcher", department: "dispatch", hire: -1500 },
   { full_name: "Victor Lang", job_title: "Shop mechanic", department: "shop", hire: -2200 },
   { full_name: "Marisol Duarte", job_title: "Office & billing manager", department: "office", hire: -900 },
@@ -169,7 +169,7 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
   const t1 = await order(2, today, "Pallets to Ridgeline Packaging", [lineOf("LH-LOAD", "2", 64000, "Linehaul, Rensselaer → Lafayette")], "Dock 4. Call shipping 30 minutes out.");
   await today_(t1.id, t1.lineId, "06:30", "09:30", "201", "T-53", "Gavin Holt");
   await today_(t1.id, t1.lineId, "10:00", "13:00", "204", "T-53", "Kendra Price");
-  const t2 = await order(4, today, "Equipment parts to Kestrel Fieldworks", [lineOf("HAUL-HR", "6", 11500, "Hourly hauling, two drops")], "Two drops: shop first, then the field office.");
+  const t2 = await order(4, today, "Equipment parts to Kestrel Fieldworks", [lineOf("LH-LOAD", "1", 70000, "Linehaul with two drops, Rensselaer → Monticello")], "Two drops: shop first, then the field office.");
   await today_(t2.id, t2.lineId, "08:00", "14:00", "208", "T-51", "Darnell Hayes");
   const t3 = await order(6, today, "Building supplies to Prairie Gate Builders", [lineOf("LH-LOAD", "1", 58000, "Linehaul, Rensselaer → Kentland")], "Unload at the builders yard; forklift on site.");
   await today_(t3.id, t3.lineId, "12:00", "15:00", "209", "T-52", "Lucy Tran");

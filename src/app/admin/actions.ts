@@ -8,6 +8,7 @@ import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, pa
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
 import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
+import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
@@ -182,6 +183,29 @@ export async function createProspectDemo() {
   (await cookies()).delete(PREVIEW_COOKIE);
   revalidatePath("/", "layout");
   redirect("/command-center?demo=prospect");
+}
+
+/**
+ * Refresh a prospect demo's sample data (additive; see prairie-lantern-refresh.ts). Works inside the demo as
+ * its owner: the platform admin must still be an active member (they are when they created it).
+ */
+export async function refreshProspectDemo(formData: FormData) {
+  const id = uuid.safeParse(formData.get("id"));
+  if (!id.success) back("/admin/demo", "Invalid demo company.");
+  const supabase = await db();
+  const { data: company } = await supabase.from("companies").select("name, demo_kind").eq("id", id.data).maybeSingle();
+  if (!company || (company as { demo_kind: string }).demo_kind !== "prospect") back("/admin/demo", "Only a prospect demo you belong to can be refreshed.");
+  if ((company as { name: string }).name !== PRAIRIE_LANTERN.name) back("/admin/demo", "Refresh is available for the Prairie Lantern Freight demo.");
+  const sw = await supabase.rpc("switch_company", { p_company_id: id.data });
+  if (sw.error) back("/admin/demo", "You are no longer a member of this demo, so it cannot be refreshed from here.");
+  let r: { added: number; loads: number } = { added: 0, loads: 0 };
+  try {
+    r = await refreshPrairieLantern(supabase);
+  } catch (e) {
+    back("/admin/demo", e instanceof Error ? e.message : "The demo could not be refreshed.");
+  }
+  revalidatePath("/", "layout");
+  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
 }
 
 /** Retire a prospect demo (kept, inactive) so a fresh one can be created. */

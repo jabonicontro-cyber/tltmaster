@@ -8,13 +8,13 @@ import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
-import { createProspectDemo, enterDemo, retireProspectDemo, startDemo } from "../actions";
+import { createProspectDemo, enterDemo, refreshProspectDemo, retireProspectDemo, startDemo } from "../actions";
 
 export const metadata = { title: "Live demo" };
 // Starting a demo seeds a few hundred records through the normal app functions.
 export const maxDuration = 60;
 
-export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; loads?: string; added?: string }> }) {
   const sp = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.rpc("platform_overview");
@@ -26,7 +26,8 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader title="Live demo" description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Live demo" }]} />
-      <AdminFlash error={sp.error} />
+      <AdminFlash error={sp.error} saved={sp.saved} savedText={sp.saved === "retired" ? "Demo retired. You can create it again below."
+        : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.` : "Saved."} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title={demo ? demo.name : "No demo company yet"} description={demo ? `Started ${formatDateTime(demo.created_at)}` : "Start one to begin."} />
@@ -59,6 +60,13 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                     {prospectRows.map((p) => (
                       <li key={p.id} className="space-y-1 py-2">
                         <div><span className="font-medium text-ink">{p.name}</span> <span className="text-muted">· {p.slug} · created {formatDateTime(p.created_at)}</span></div>
+                        {p.name === PRAIRIE_LANTERN.name && (
+                          <form action={refreshProspectDemo} className="flex flex-wrap items-center gap-3">
+                            <input type="hidden" name="id" value={p.id} />
+                            <SubmitButton size="sm" pendingLabel="Refreshing…">Refresh demo data</SubmitButton>
+                            <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty, and any missing sample records. Changes and deletes nothing.</span>
+                          </form>
+                        )}
                         <form action={retireProspectDemo} className="flex flex-wrap items-center gap-3">
                           <input type="hidden" name="id" value={p.id} />
                           <label className="inline-flex items-center gap-1.5 text-xs text-muted"><input type="checkbox" name="confirm" className="accent-brand" />Retire it (its owners lose access; nothing is deleted)</label>

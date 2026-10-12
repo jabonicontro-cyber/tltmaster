@@ -336,6 +336,11 @@ A prospect demo is a standing demo company for one prospect: fictional data, the
 replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_tenants.sql` and `20261107000100_people_photos_and_demo_retire.sql`
 (after the pending ones; §2a). Each step below is an owner action; nothing here is done automatically.
 
+- **Keeping the demo current:** `/admin/demo` → **Refresh demo data** (Prairie Lantern Freight). Additive only: loads for
+  the last 10 weekdays, today and tomorrow when those days are empty (finished ones delivered and verified), and any
+  sample records missing from the current set. It changes and deletes nothing, so the prospect's own work and access
+  stay; running it twice on a day adds nothing. You must still be a member of the demo (you are if you created it).
+  App features and fixes reach every demo automatically with each release; only the sample data needs refreshing.
 0. **Replacing an earlier version of the demo** (needs migration `20261107000100`): `/admin/demo` → tick the box next to
    the old Prairie Lantern Freight → **Retire** (it and its memberships become inactive; nothing is deleted), then
    continue with step 1. Logins made owner of the old demo must be made owner of the new one (step 3).
