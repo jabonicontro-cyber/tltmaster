@@ -34,7 +34,7 @@ test("a driver requests time off, an approver approves it, and dispatch shows th
   await page.getByLabel("Comment (optional)").fill("Family event (e2e)");
   await page.getByRole("button", { name: "Send request" }).click();
   await expectToast(page, "Time-off request sent.");
-  const row = page.getByRole("row", { name: /full day/ }).first();
+  const row = page.getByRole("row", { name: /full day/ }).filter({ hasText: "Pending" }).first() // earlier same-day runs leave canceled rows;
   await expect(row).toContainText("Pending");
   // Sending the same dates again is refused (no double counting).
   await page.getByLabel("First day").fill(day);
