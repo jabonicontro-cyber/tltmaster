@@ -207,3 +207,48 @@ test("a new channel message counts on the Channels tab, not on Messages", async 
   await page.goto("/communications/channels");
   await expect(page.getByRole("link", { name: new RegExp(title) })).not.toContainText("unread");
 });
+
+test("a manager removes a message with a required reason; members see a placeholder", async ({ page }) => {
+  const title = `Shop floor ${unique()}`;
+  const text = `Call me on my cell 555-0100 (${unique()})`;
+  await asUser(USERS.owner.email, async (q) => {
+    const driver = (await q("select id from public.profiles where email = $1", [USERS.driver.email])).rows[0].id as string;
+    await q("select public.comm_create_channel($1, '', 'shop', false, $2::uuid[])", [title, [driver]]);
+  });
+  await asUser(USERS.driver.email, async (q) => {
+    const ch = (await q("select id from public.conversations where title = $1", [title])).rows[0].id as string;
+    await q("select public.comm_send($1, $2)", [ch, text]);
+  });
+  await signIn(page, "owner");
+  await page.goto("/communications/channels");
+  await page.getByRole("link", { name: new RegExp(title) }).click();
+  const msg = page.getByRole("list", { name: "Messages" }).locator('li[id^="m-"]').filter({ hasText: text });
+  const id = await msg.getAttribute("id");
+  await msg.getByRole("button", { name: "Remove" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: "Remove this message?" })).toBeVisible();
+  await dialog.getByRole("button", { name: "Remove" }).click();
+  await expect(dialog.getByText("Give the reason for removing this message.")).toBeVisible(); // reason required
+  await dialog.getByLabel("Reason (required)").fill("Personal phone number shared in a channel");
+  await dialog.getByRole("button", { name: "Remove" }).click();
+  await expect(page.locator(`#${id}`).getByText("Message removed by a manager")).toBeVisible();
+  await expect(page.getByText(text)).toHaveCount(0);
+});
+
+test("long conversations show the newest messages first and load earlier ones on request", async ({ page }) => {
+  const title = `Long thread ${unique()}`;
+  await asUser(USERS.owner.email, async (q) => {
+    const driver = (await q("select id from public.profiles where email = $1", [USERS.driver.email])).rows[0].id as string;
+    const ch = (await q("select public.comm_create_channel($1, '', 'dispatch', false, $2::uuid[]) as id", [title, [driver]])).rows[0].id as string;
+    for (let i = 1; i <= 105; i++) await q("select public.comm_send($1, $2)", [ch, `Update number ${i}.`]);
+  });
+  await signIn(page, "owner");
+  await page.goto("/communications/channels");
+  await page.getByRole("link", { name: new RegExp(title) }).click();
+  const list = page.getByRole("list", { name: "Messages" });
+  await expect(list.getByText("Update number 105.")).toBeAttached();
+  await expect(list.getByText("Update number 1.", { exact: true })).toHaveCount(0);
+  await list.getByRole("link", { name: "Show earlier messages" }).click();
+  await expect(list.getByText("Update number 1.", { exact: true })).toBeAttached();
+  await expect(list.getByRole("link", { name: "Show earlier messages" })).toHaveCount(0);
+});
