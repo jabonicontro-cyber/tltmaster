@@ -158,6 +158,14 @@ describe("demo sample content", () => {
       expect(mem).toEqual([demoOwner]);
       const msgs = (await s.query<{ body: string }>("select body from public.messages where conversation_id = $1", [conv])).rows.map((x) => x.body);
       expect(msgs.every((b) => b.startsWith("Sample"))).toBe(true);
+      // A prospect owner added later (the operator's way) joins the sample channel at once.
+      const later = await s.createUser(null, { membership: false });
+      await s.asAdmin();
+      await s.query("set local role service_role");
+      await s.query("select public.platform_prospect_demo_add_owner($1, $2, null)", [demo, later]);
+      await s.asAdmin();
+      const joined = (await s.query("select 1 from public.conversation_members where conversation_id = $1 and user_id = $2 and left_at is null", [conv, later])).rowCount;
+      expect(joined).toBe(1);
     });
   });
 });

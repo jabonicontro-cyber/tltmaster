@@ -54,7 +54,8 @@ only proposes) need no demo branch.
 ## 4. Known gaps (to close as features are touched)
 
 - Communications samples are system notes in one channel (no fictional people chatting: they would need logins).
-  The demo's owner joins the channel at the next **Refresh demo data** after being added. Sample notes expire after
+  A prospect owner added with `demo-owner` joins the channel at once (if the samples exist; otherwise at the next
+  **Refresh demo data**). Sample notes expire after
   14 days like all message content; Refresh adds them again. Needs migration `20261108000100`; until then the seed and
   Refresh skip the samples.
 - The presenter demo gets no Communications samples: its presenter is a platform operator, who is never added to

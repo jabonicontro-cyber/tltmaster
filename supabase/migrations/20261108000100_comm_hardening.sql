@@ -35,7 +35,8 @@
 --    alerts and tickets awaiting review). The replaced driver keeps their history
 --    up to the handoff and receives nothing new.
 -- 7. comm_seed_demo_samples(): fictional sample channel content for demo companies
---    only (refused for real companies).
+--    only (refused for real companies); platform_prospect_demo_add_owner also adds the
+--    new owner to that sample channel.
 --
 -- Rollback: supabase/rollbacks/20261108000100_comm_hardening.down.sql
 -- =============================================================================
@@ -518,6 +519,46 @@ begin
     v_n := v_n + 3;
   end if;
   return v_n;
+end;
+$$;
+
+-- -----------------------------------------------------------------------------
+-- Prospect demo owners join the sample conversations when they are added
+-- (redefines 20261107000100's function; same signature and grants).
+-- -----------------------------------------------------------------------------
+create or replace function public.platform_prospect_demo_add_owner(p_company uuid, p_user uuid, p_full_name text default null)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if not exists (select 1 from public.companies where id = p_company and demo_kind = 'prospect' and active) then
+    raise exception 'Owners can be added this way only to an active prospect demo company.' using errcode = '42501';
+  end if;
+  if not exists (select 1 from public.profiles where id = p_user) then
+    raise exception 'That login does not exist yet. Create it with a setup link first.' using errcode = 'P0002';
+  end if;
+  insert into public.company_memberships (company_id, user_id, role, active) values (p_company, p_user, 'owner', true)
+  on conflict (company_id, user_id) do update set role = 'owner', active = true;
+  -- Their first sign-in lands in the demo only if they belong to no other company.
+  update public.profiles set active_company_id = p_company
+  where id = p_user and (active_company_id is null
+    or not exists (select 1 from public.company_memberships m where m.user_id = p_user and m.company_id = active_company_id and m.active));
+  -- Their name (only when the login has none yet), and the demo's matching, still unlinked employee record.
+  if nullif(trim(p_full_name), '') is not null then
+    update public.profiles set full_name = left(trim(p_full_name), 120) where id = p_user and coalesce(trim(full_name), '') = '';
+    update public.employees set user_id = p_user
+    where company_id = p_company and user_id is null and lower(full_name) = lower(trim(p_full_name))
+      and not exists (select 1 from public.employees e where e.company_id = p_company and e.user_id = p_user);
+  end if;
+  -- They see the demo's sample conversations at once (no Refresh needed).
+  perform private.comm_add_member(p_company, c.id, p_user, 'manual', true, 'manager')
+  from public.conversations c
+  where c.company_id = p_company and c.kind = 'channel' and c.title = 'Dispatch desk' and c.department = 'dispatch';
+  insert into public.audit_events (company_id, actor_id, action, entity_type, entity_id, summary, details)
+  values (p_company, null, 'membership.demo_owner_added', 'company', p_company, 'Prospect demo owner added by the platform operator',
+          jsonb_build_object('user_id', p_user));
 end;
 $$;
 

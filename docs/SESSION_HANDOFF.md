@@ -17,6 +17,23 @@ project credentials. Read it together with:
   "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
   `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
   keeps the earlier rules.
+- **Autonomous sprint findings (2026-10-12, evening):**
+  - CI's `database` job had been red since before `43ca9fd`: `tests/db/platform.test.ts` compared names sorted
+    in the server's collation (CI's Postgres sorts case differently from the local C collation). Fixed (`collate "C"`);
+    CI is green again from `fa7b8ca`.
+  - Vercel deployments are queued, not lost: Preview records appeared 20–40 minutes after each push. A missing record
+    a few minutes after a push is not a failure; wait before diagnosing. (`vercel.json` was briefly removed while
+    diagnosing and restored — it was not the cause; `25a83df` deployed with it.)
+  - Communications home and conversation pages were wider than a phone (579 px on 390 px): fixed with a single-column
+    grid below the wide breakpoint (same pattern fixed on maintenance, time-off, load build and admin pages); a phone
+    width regression test was added.
+  - Minor, not fixed: the employee list/detail request `/people/photo/<user>` for every linked person, producing a
+    404 per person without a photo (the avatar still falls back correctly). A clean fix needs the photo version for
+    coworkers, which only `users.manage` can read — a small definer function in a future migration.
+  - Not implemented (no spec in the repository): a demo welcome modal, "Demo Information" in the account menu and a
+    "Change View" menu replacing the demo bar's "View as". The demo bar with "View as" and Presentation mode is current.
+  - The sandbox cannot reach `*.vercel.app` (network policy), so deployed pages were not opened in a browser here;
+    releases are verified by GitHub deployment records plus the local production build, gate spec and deployment check.
 - **Permanent rule — demo tenants stay in sync** (CLAUDE.md, docs/DEMO_TENANTS.md): every feature/UI change must
   work in demo companies (or document an exception), add sample data to the seed and to Refresh demo data, and pass
   `tests/unit/demo-parity.test.ts` and `tests/e2e/demo-parity.spec.ts`. Known gaps: DEMO_TENANTS §4.
