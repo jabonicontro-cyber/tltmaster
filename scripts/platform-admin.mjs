@@ -128,7 +128,12 @@ if (cmd === "grant" || cmd === "revoke") {
     process.exit(1);
   }
   const name = typeof opts.name === "string" ? opts.name : null;
-  const { error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id, p_full_name: name });
+  let { error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id, p_full_name: name });
+  if (error?.code === "PGRST202") {
+    // The database does not have migration 20261107000100 yet: use the earlier two-argument version.
+    ({ error } = await db.rpc("platform_prospect_demo_add_owner", { p_company: company.id, p_user: profile.id }));
+    if (!error) console.warn("Note: the --name option and employee linking need database update 20261107000100, which is not installed yet; the owner was added without them.");
+  }
   if (error) {
     console.error(`Failed: ${error.message}`);
     process.exit(1);
