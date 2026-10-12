@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff,
+  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -24,6 +24,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/driver", label: "My Day", icon: Route, permission: "driver.portal" },
   // One home for everyone with office, dispatch, shop or sales responsibilities (drivers start on My Day).
   { href: "/command-center", label: "Command Center", icon: Siren, anyOf: ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view", "orders.view", "quotes.view"] },
+  // Everyone: messages need comms.message, but alerts and announcements addressed to a person are always theirs to read.
+  { href: "/communications", label: "Communications", icon: MessagesSquare },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers.view", group: "Sales" },
   { href: "/quotes", label: "Quotes", icon: FileText, permission: "quotes.view", group: "Sales" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view", group: "Sales" },

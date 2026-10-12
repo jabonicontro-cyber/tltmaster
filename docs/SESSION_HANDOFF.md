@@ -9,6 +9,13 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **Employee Communications** (IMPLEMENTATION_PLAN §5aa, docs/COMMUNICATIONS.md): messages, groups, channels,
+  dispatch-linked operational workspaces, operational alerts with safety minimums and escalation, announcements with
+  acknowledgment, presence and work status, driver-on-delivery safety notice and deferral, preferences, quiet hours,
+  mutes, search (audited admin search), private attachments, retention. In-app only — nothing is emailed or texted.
+  **Needs four hosted migrations, in order, after the pending ones:** `20261105000100` → `20261105000200` →
+  `20261105000300` → `20261105000400` (owner action, DEPLOYMENT §2a). Until then every Communications page says
+  "Not available yet". Open decisions: master plan §9 Q25.
 - **Driver time off** (IMPLEMENTATION_PLAN §5z): `/time-off` requests and approvals; approved leave blocks drivers in
   dispatch at the moment of assignment. **Needs migration `20261104000100_time_off.sql`** after the three pending
   ones (20261101000100 → 20261102000100 → 20261103000100). No balances or accruals yet. Open decisions: master plan §9 Q24.

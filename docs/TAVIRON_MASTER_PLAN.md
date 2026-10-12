@@ -138,8 +138,12 @@ shop board, one-time setup links) are next.
 - configurable notifications (in-app, email, push where available) and an audit history of administrative actions;
 - tenant isolation and server-side authorization throughout.
 **2026-10-12:** time-off requests, approval and approved absences in dispatch are built (IMPLEMENTATION_PLAN §5z); balances, accruals and policies are not.
+**2026-10-12:** in-app employee communications are built (IMPLEMENTATION_PLAN §5aa, docs/COMMUNICATIONS.md): direct
+messages, groups, department channels, dispatch-linked operational workspaces, operational alerts, announcements with
+acknowledgment, presence, notification preferences and private attachments. Email/SMS/push delivery is not built;
+hosted migrations pending.
 Not a complete specification yet: open questions (e.g. who approves time off, accrual rules, message retention,
-announcement targeting, which actions count as sensitive) stay with the founder. Nothing is implemented.
+announcement targeting, which actions count as sensitive) stay with the founder. Custom roles, overrides, balances and accruals are not implemented.
 
 **Roadmap after the UI checkpoints (not started):** further polish of the remaining screens (Orders, Fleet, Reports,
 Customers, Tickets); refresh public screenshots from the real UI with consistent fictional data (no development overlays,
@@ -341,6 +345,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 22. Maintenance defaults to confirm: who may clear a truck for service (default: owner only; grantable to mechanics), whether a mechanic may clear their own repair, warning windows (default 14 days / 500 mi / 25 h), and whether due preventive work orders should be generated automatically each day (needs a scheduler).
 23. Fleet: which vehicle documents are required per vehicle type (registration, insurance, annual inspection, IFTA/IRP permits…), how far ahead to warn (default 30 days), and whether document files should be uploaded and stored in Taviron (needs a private storage bucket).
 24. Time off: who approves (default owner; grantable), whether self-approval is ever allowed, approval chains or manager scopes, which PTO policy model applies (annual grant, hourly accrual, per pay period; banks; carryover), and whether partial days need work schedules.
+25. Communications defaults to confirm: edit/delete window (default 15 min), whether new group members see earlier history (default: from when they join), message retention period and legal hold (default: keep everything), drivers on an active delivery (default: hold routine notifications and send one catch-up), auto-archive delay for finished workspaces (default 24 h), alert escalation intervals and roles (default owner), which alert types are enabled, and whether email/SMS/push delivery should be added (needs a provider and approval).
 
 ## 10. Subscription model (proposal / confirmed policies)
 

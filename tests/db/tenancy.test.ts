@@ -8,6 +8,10 @@ afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
+  "comm_settings", "conversations", "conversation_members", "messages", "message_revisions", "conversation_events",
+  "user_presence", "comm_preferences", "comm_notifications", "announcements", "announcement_revisions", "announcement_receipts",
+  "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
+  "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "employees", "employee_compensation",
   "time_off_requests", "time_off_events",
   "vehicle_documents", "truck_assignment_events",
@@ -26,6 +30,42 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Communications attachments (20261105000400): reserve/confirm/discard/send need require_company(), comms.message,
+  // current membership and the caller's own upload; readability follows the message's visibility; storage policies
+  // only allow the reserved path; abandoned_comm_attachments is service role only.
+  "private.can_read_comm_attachment", "private.can_upload_comm_attachment", "private.comm_attachment_readable",
+  "public.abandoned_comm_attachments", "public.comm_begin_attachment", "public.comm_confirm_attachment",
+  "public.comm_discard_attachment", "public.comm_send_files",
+  // Communications (20261105000100): every public function uses require_company() and a comms.* permission or
+  // active membership of the conversation; coworkers are checked with comm_require_coworker; history before a
+  // member's history_from is never returned; admin search needs comms.admin and a reason and is audited.
+  // Private helpers take a company id only from server-side callers (not executable by app users).
+  "private.comm_active_member", "private.comm_add_member", "private.comm_apply_retention", "private.comm_can_manage",
+  "private.comm_ever_member", "private.comm_in_quiet_hours", "private.comm_message_visible", "private.comm_my_department",
+  "private.comm_notify", "private.comm_presence", "private.comm_require_coworker", "private.comm_settings_of",
+  "private.comm_user_name", "private.comm_work_status",
+  "public.comm_add_members", "public.comm_admin_search", "public.comm_announcement_receipt", "public.comm_create_channel",
+  "public.comm_create_group", "public.comm_delete_message", "public.comm_directory", "public.comm_edit_announcement",
+  "public.comm_edit_message", "public.comm_inbox", "public.comm_mark_notifications_read", "public.comm_mark_read",
+  "public.comm_mute", "public.comm_open_direct", "public.comm_pin_message", "public.comm_publish_announcement",
+  "public.comm_receipts", "public.comm_release_deferred", "public.comm_remove_member", "public.comm_save_preferences",
+  "public.comm_save_settings", "public.comm_search", "public.comm_send", "public.comm_set_member_role",
+  "public.comm_set_presence", "public.comm_set_title", "public.comm_withdraw_announcement",
+  // Operational workspaces (20261105000200): comms.operations; scopes resolve orders and loads of require_company()
+  // only (another company's ids are "not found"); dispatch triggers sync inside the same company.
+  "private.comm_archive_finished", "private.comm_on_dispatch_change", "private.comm_scope_drivers", "private.comm_scope_from",
+  "private.comm_scope_loads", "private.comm_sync_operation", "private.comm_sync_safely", "private.comm_workspaces_for_load",
+  "public.comm_create_operation", "public.comm_housekeeping", "public.comm_operation_close", "public.comm_operation_preview",
+  "public.comm_operation_reopen", "public.comm_operation_resync", "public.comm_operation_update_scope",
+  // Operational alerts (20261105000300): actions need require_company() plus responsible recipiency (acknowledge) or
+  // comms.alerts / comms.admin; recipients are always members of the alert's company; source triggers are internal.
+  "private.alert_is_recipient", "private.alert_outstanding", "private.alert_policy", "private.alert_users_with",
+  "private.alerts_from_announcement_receipts", "private.alerts_from_announcements", "private.alerts_from_assignments",
+  "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
+  "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
+  "private.comm_raise_alert", "private.comm_resolve_alert",
+  "public.comm_alert_acknowledge", "public.comm_alert_counts", "public.comm_alert_reassign", "public.comm_alert_resolve",
+  "public.comm_alert_set_priority", "public.comm_save_alert_setting",
   // Time off (20261104000100): own-employee check for RLS; conflict helpers are internal; save/decide/cancel check
   // the caller's company, own record or time_off.approve, and never let anyone decide their own request;
   // dispatch_time_off needs dispatch.view and returns no category or reason.
@@ -156,7 +196,7 @@ describe("schema guards", () => {
       const noRls = await s.query("select relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity");
       expect(noRls.rows).toEqual([]);
       const tables = await s.query<{ relname: string }>(
-        "select relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and relname not in ('companies', 'profiles', 'permissions', 'role_permission_defaults') order by 1",
+        "select relname from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and relname not in ('companies', 'profiles', 'permissions', 'role_permission_defaults', 'alert_event_types') order by 1",
       );
       expect(tables.rows.map((r) => r.relname).sort()).toEqual([...TENANT_TABLES].sort());
       const nullable = await s.query(

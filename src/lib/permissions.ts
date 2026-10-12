@@ -41,6 +41,13 @@ export const PERMISSIONS = [
   "maintenance.manage",
   "maintenance.costs",
   "maintenance.clear",
+  "comms.message",
+  "comms.groups",
+  "comms.channels",
+  "comms.announce",
+  "comms.operations",
+  "comms.alerts",
+  "comms.admin",
   "audit.view",
 ] as const;
 

@@ -2088,6 +2088,41 @@ blocks assignment, pending/denied/canceled do not; partial day blocks only overl
 keeps existing assignments; dispatch never sees category or reason), Smart Dispatch unit tests,
 `tests/e2e/time-off.spec.ts`.
 
+## 5aa. Employee Communications (2026-10-12)
+
+**Audit first:** no messaging, notification, presence, announcement or alert code existed (master plan §2 listed
+messaging as a requirement only). No realtime service and no scheduler exist; Storage is used only for ticket
+photos. Reused: tenancy helpers, `log_event`/audit triggers, employee departments, time off, dispatch assignments
+and the ticket-photo storage pattern. Full description: **docs/COMMUNICATIONS.md**.
+
+**Migrations** (each with a rollback in `supabase/rollbacks/`, apply → rollback → re-apply tested locally):
+`20261105000100_communications.sql` (conversations, membership periods, messages with revisions, receipts,
+presence, preferences, in-app notifications with quiet-hours and active-delivery deferral, announcements with
+receipts and revisions, channels, permission-aware and audited admin search, retention, seven `comms.*`
+permissions), `20261105000200_operational_workspaces.sql` (project / destination / loads workspaces whose driver
+membership follows committed dispatch changes, replacement handoff, safe sync failure, close/reopen, auto-archive),
+`20261105000300_operational_alerts.sql` (catalog with safety minimums, company policies, dedup, any/all
+acknowledgment, escalation, reassignment, resolution notices, source triggers), `20261105000400_comm_attachments.sql`
+(private `comm-attachments` bucket; reserve → upload → confirm; reads follow message visibility).
+
+**App:** Communications in the main navigation for everyone. `/communications` (conversations, notifications,
+search, people with presence and work status, presence picker, new message/group/workspace), `/communications/c/[id]`
+(messages with one level of threads, pinned messages, edit/delete within the window, receipts, attachments, members,
+mute, rename, workspace scope/sync/close/reopen, driving notice), `/channels`, `/alerts` and `/alerts/[id]`
+(acknowledge, change priority within the minimum, reassign, resolve, history), `/announcements` and
+`/announcements/[id]` (publish, acknowledge, receipts, versions, withdraw), `/workspaces/new` (scope + mandatory
+recipient preview), `/settings` (personal notifications and quiet hours; company rules, alert policies and the audited
+administrative search for `comms.admin`). File routes `/communications/files` (upload) and `/communications/files/[id]`
+(access-checked, 60-second signed redirect). Pages poll every 10 s while visible. Without the migrations every page
+shows "Not available yet".
+
+**Not built:** email/SMS/push delivery, work schedules (so no "working hours" status), channel self-join, reactions,
+an abandoned-attachment cleanup script, scheduled escalation (runs while the company uses Communications).
+
+**Tests:** `tests/db/communications.test.ts` (11), `operational-workspaces.test.ts` (5), `operational-alerts.test.ts`
+(12), `comm-attachments.test.ts` (4), tenancy lists updated; `tests/unit/communications.test.ts` (8);
+`tests/e2e/communications.spec.ts` (4).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
