@@ -31,6 +31,9 @@ describe("release risk classification", () => {
     expect(ruleOf("src/app/(app)/demo-actions.ts")).toBe("access-adjacent");
     expect(ruleOf("src/app/admin/actions.ts")).toBe("access-adjacent");
     expect(ruleOf("src/server/demo/samples.ts")).toBe("demo-seed");
+    expect(ruleOf("src/server/ai/openai.ts")).toBe("ai");
+    expect(ruleOf("src/lib/ai/evidence.ts")).toBe("ai");
+    expect(ruleOf(".env.example")).toBe("ai");
     expect(ruleOf("something/unknown.bin")).toBe("other");
     for (const f of ["supabase/migrations/x.sql", "package.json", "src/lib/dispatch/smart.ts", "something/unknown.bin"]) expect(tierOf(f), f).toBe("review");
   });
