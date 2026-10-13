@@ -41,17 +41,40 @@ migrations: everything below is **committed locally only** on top of `7eba5e4`.
 §9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
 is open decision §9 Q20 (recommend a soft preference for keeping a driver on their primary truck).
 
-**Verification on `69e9ba5` (code identical at the handoff commits), local, 2026-10-13:**
-- Lint and typecheck clean. `npx vitest run`: **642 / 642** (84 files) — after `jit = off` on the local database; before
-  it, 18 DB tests timed out (JIT compile, see `69e9ba5`).
-- Full browser suite: **128 passed, 1 failed, 9 skipped** (conditional). The failure was `ERR_CONNECTION_REFUSED` to
-  the dev server during `communications.spec.ts:130` (server momentarily unreachable, no assertion failed); the
-  spec re-run passed **9 / 9**. An earlier full run today (before this session's changes landed) had one sidebar hover
-  failure under load; the test now retries the first hover (`1202869`) and passed 3/3 on repeat.
-- `npm run build` passes. Gate spec on a gated production build: **8 passed, 1 skipped**. `check-deployment.mjs`
-  against it: **all checks passed**. `risk.mjs 651c37b`: tier **REVIEW**; hosted migrations in range:
-  `20261110000100_ai_usage` (optional while AI is off) and `20261111000100_demo_driver_names` (optional).
-- Not verified live: Preview `7eba5e4` (sandbox cannot reach `*.vercel.app`).
+**Final verification on `af9f377` (local, 2026-10-13, 17:30 UTC; all on the same commit):**
+- `npm run lint` clean; `npx tsc --noEmit` clean; `npx vitest run`: **646 / 646** (85 files, unit + DB + storage).
+- Full browser suite (`npx playwright test`, dev server): **130 passed, 0 failed, 9 skipped** — the 9 are `gate.spec.ts`,
+  which runs separately against a gated production build: **8 passed, 1 skipped** (the "no shared password
+  configured" case needs a server without it). `check-deployment.mjs` against that build: **all checks passed**.
+- `npm run build` passes. `risk.mjs 651c37b`: tier **REVIEW**; hosted migrations in range: `20261110000100_ai_usage`,
+  `20261111000100`, `000200`, `000300` (all optional, owner applies).
+- Earlier full runs today, for the record: 129/1/9 (prospect-demo test timed out at 15 min once; passed alone and in
+  sequence; its retire loop is now bounded, `08256e6`), then 126/2/9 (breadcrumb test lost a race with hydration —
+  fixed in the test, `af9f377`; one sign-in timeout that passed in five reruns). One commit message (`f8b349f`) wrongly
+  said the old theme test failed on the old code; it had passed vacuously — corrected in `4fbd8a9`.
+- Plan the day page on the production build (Top Line test company): 9.9 s with 16 loads × 327 trucks × 224 drivers
+  (the shared e2e company grows with every run; the same page was 12.8 s this morning at 227 × 149). Same-input
+  comparison: 13.4 s → 2.7 s. Every other page under 1.1 s.
+- Not verified live: Preview `7eba5e4` (sandbox cannot reach `*.vercel.app`). Nothing after `7eba5e4` is pushed.
+
+### Release report (DEVELOPMENT_WORKFLOW §6) — local bundle `7eba5e4..af9f377`
+
+```
+Feature: B44 release-readiness sprint — demo persona everywhere, dispatch edges, planner speed, phone/dark-mode fixes
+Changed: demo samples (billing states, sent quote, assigned item, waiting order); persona names (3 migrations);
+  Resources primary-truck note; Plan the day plain errors, replaced-day notice, On-leave review note, ~20× / ~5× faster;
+  phone layout (long names), dark-mode alerts, plain error messages; 13 screenshots; homepage opening shot
+Commits: 7eba5e4..af9f377 (local only) · Preview: 7eba5e4 · Production: 651c37b
+Risk tier: REVIEW; approvals outstanding: push (owner), promote (owner), hosted migrations (owner, optional)
+Tests: lint ok · tsc ok · vitest 646/646 · browser 130 passed / 0 failed / 9 skipped (gate, run separately: 8/1 skipped)
+  · build ok · check-deployment all passed
+Demo modes: all six previews; samples via ensureFeatureSamples (presenter seed, prospect seed and Refresh)
+Deployment: nothing pushed or deployed by this sprint (owner instruction)
+Verified: local only; not verified live
+Limitations: hosted demos show the presenter's login name in some places until the 3 migrations are applied
+Rollback: Vercel instant rollback; each migration has a tested rollback in supabase/rollbacks/
+Next: owner decisions below; then B42 only when authorized
+```
 
 **Hosted-state check (2026-10-13, local).** Hosted databases do not have `20261110000100_ai_usage` or the three
 demo-name migrations yet. With those four rolled back locally (backup
