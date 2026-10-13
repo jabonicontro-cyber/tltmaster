@@ -50,8 +50,8 @@ interface Scene {
   travel: number;
 }
 export const SCENES: Scene[] = [
-  // Intro — the rig, front three-quarter (a little further back so the bumper never touches the edge).
-  { cam: [14.5, 3.6, 17], look: [-1.2, 1.3, 0], fleet: 0, links: 0, checks: 0, plans: 0, dump: 0, travel: 0 },
+  // Intro — the rig, front three-quarter, framed so the whole nose stays inside the window from 1024 to 1920 px wide.
+  { cam: [15.6, 3.9, 18.4], look: [-0.3, 1.3, 0], fleet: 0, links: 0, checks: 0, plans: 0, dump: 0, travel: 0 },
   // Every load, truck and driver planned together — the fleet in the yard, lines to each load.
   { cam: [13, 19, 31], look: [-1, 0, 0], fleet: 1, links: 1, checks: 0, plans: 0, dump: 0, travel: 0 },
   // Revenue in view — on the way to the delivery: profile, the road moving under the truck.
