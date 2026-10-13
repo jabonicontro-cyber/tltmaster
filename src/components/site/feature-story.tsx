@@ -96,3 +96,10 @@ export function FeatureBrief({ feature }: { feature: Feature }) {
     </article>
   );
 }
+
+/** A catalogued screenshot by id (src/lib/site/screenshots.json), so alt text and caption always match the image. */
+export function CatalogShot({ id, className, priority }: { id: string; className?: string; priority?: boolean }) {
+  const shot = screenshotById(id);
+  if (!shot) return null;
+  return <Screenshot className={className} src={`/site/${shot.file}`} alt={shot.alt} width={2880} height={1800} caption={shot.caption} priority={priority} />;
+}

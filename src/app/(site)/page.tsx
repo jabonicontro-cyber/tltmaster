@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
+import { CatalogShot } from "@/components/site/feature-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
 import { TruckStory, type StoryChapter } from "@/components/site/truck-story";
-import { Container, CtaLink, Eyebrow, FinalCta, Screenshot, SectionHeading } from "@/components/site/ui";
+import { Container, CtaLink, Eyebrow, FinalCta, SectionHeading } from "@/components/site/ui";
+import { publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: { absolute: "Taviron — plan the whole hauling operation" },
@@ -189,14 +191,14 @@ export default function HomePage() {
               ]}
             />
           </div>
-          <Screenshot src="/site/dispatch.png" alt="Dispatch for a demo company: an urgent order awaiting acknowledgement and Smart Dispatch proposals of a truck and driver for each open load, not yet assigned" width={2880} height={1800} caption="Dispatch board — demo company, fictional data." />
+          <CatalogShot id="dispatch" />
         </Container>
       </section>
 
       {/* Tickets and drivers */}
       <section className="border-t border-silver/10 bg-navy-2">
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
-          <Screenshot className="lg:order-first" src="/site/tickets.png" alt="Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided" width={2880} height={1800} caption="Delivery tickets — demo company, fictional data." />
+          <CatalogShot id="tickets" className="lg:order-first" />
           <div>
             <SectionHeading eyebrow="Tickets to billing" title="Quantities you can stand behind.">
               <p>The ticket starts in the truck, not in a shoebox — and an order reaches billing only when its deliveries are verified.</p>
@@ -209,6 +211,37 @@ export default function HomePage() {
               ]}
             />
           </div>
+        </Container>
+      </section>
+
+      {/* Every capability, from the feature catalog: one line each, linking to its section on the platform page. */}
+      <section aria-labelledby="capabilities-title" className="border-t border-silver/10">
+        <Container className="py-20 sm:py-24">
+          <SectionHeading id="capabilities-title" eyebrow="The whole platform" title="One system for the office, dispatch, the shop and the trucks.">
+            <p>Each of these is in the app today, shown with the demo company&apos;s fictional data on the platform page.</p>
+          </SectionHeading>
+          <ul className="mt-12 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-3">
+            {publishedFeatures().map((f) => (
+              <li key={f.id} className="bg-navy">
+                <Link href={`/platform#feature-${f.id}`} className="group flex h-full flex-col p-5 hover:bg-navy-2 focus-visible:bg-navy-2">
+                  <span className="flex items-center justify-between gap-3 font-semibold text-cloud">
+                    {f.name}
+                    <ArrowRight className="size-4 shrink-0 text-silver/40 transition-transform group-hover:translate-x-0.5 group-hover:text-electric motion-reduce:transition-none" aria-hidden />
+                  </span>
+                  <span className="mt-1.5 text-sm leading-relaxed text-silver/85">{f.value}</span>
+                </Link>
+              </li>
+            ))}
+            {/* Closes the grid evenly whatever the number of capabilities: it fills the rest of the last row. */}
+            <li className={`bg-navy-2 ${publishedFeatures().length % 2 === 0 ? "sm:col-span-2" : "sm:col-span-1"} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][publishedFeatures().length % 3]}`}>
+              <Link href="/platform" className="group flex h-full flex-col justify-center p-5 hover:bg-navy">
+                <span className="flex items-center gap-2 font-semibold text-electric">
+                  See every capability on the real app <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
+                </span>
+                <span className="mt-1.5 text-sm text-silver/85">Screens from the demo company, what each one does — and what it does not do yet.</span>
+              </Link>
+            </li>
+          </ul>
         </Container>
       </section>
 

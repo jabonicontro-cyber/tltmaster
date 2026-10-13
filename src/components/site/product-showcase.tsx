@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { screenshotById } from "@/lib/site/features";
 import { DumpTruck } from "./dump-truck";
 import { Screenshot } from "./ui";
 
@@ -9,6 +10,8 @@ import { Screenshot } from "./ui";
  * library and no ongoing motion. On small screens it flattens to the screenshot.
  */
 export function ProductShowcase() {
+  const cc = screenshotById("command-center")!;
+  const driver = screenshotById("driver")!;
   return (
     <div className="showcase relative mt-14 sm:mt-16">
       <div className="showcase-glow pointer-events-none absolute inset-x-[-10%] -top-16 bottom-0 hidden md:block" aria-hidden />
@@ -18,19 +21,19 @@ export function ProductShowcase() {
       <div className="showcase-stage relative">
         <div className="showcase-screen relative z-10 md:mx-auto md:w-[84%]">
           <Screenshot
-            src="/site/command-center.png"
-            alt="The Taviron Command Center for a demo company: seven items need attention, two urgent, with the attention queue and today's work"
+            src={`/site/${cc.file}`}
+            alt={cc.alt}
             width={2880}
             height={1800}
-            caption="Command Center — the live demo company, fictional data."
+            caption={cc.caption}
             priority
           />
         </div>
         <figure className="showcase-phone absolute right-[1%] bottom-[-10%] z-20 hidden w-[19%] md:block">
           <div className="overflow-hidden rounded-[26px] border-[5px] border-[#1d2b3d] bg-black shadow-[0_40px_80px_-24px_rgb(0_0_0/0.8)] ring-1 ring-silver/25">
-            <Image src="/site/driver.png" alt="The driver's My Day on a phone: today's load with site, truck and planned tons, and buttons to enter the ticket or report a problem" width={780} height={1688} className="h-auto w-full" sizes="(min-width: 1024px) 220px, 20vw" />
+            <Image src={`/site/${driver.file}`} alt={driver.alt} width={780} height={1688} className="h-auto w-full" sizes="(min-width: 1024px) 220px, 20vw" />
           </div>
-          <figcaption className="sr-only">Driver portal on a phone — demo company, fictional data.</figcaption>
+          <figcaption className="sr-only">{driver.caption}</figcaption>
         </figure>
       </div>
     </div>
