@@ -25,3 +25,15 @@ export async function closeDemoWelcome(page: Page) {
   await welcome.getByRole("button", { name: "Explore the demo" }).click();
   await expect(welcome).toHaveCount(0);
 }
+
+/** Close the demo welcome if it is open (a platform user's current company may be a demo they have not opened yet). */
+export async function closeDemoWelcomeIfShown(page: Page) {
+  const welcome = page.getByRole("dialog", { name: "Welcome to the Taviron demo" });
+  try {
+    await welcome.waitFor({ state: "visible", timeout: 3000 });
+  } catch {
+    return; // not a demo company, or already dismissed
+  }
+  await welcome.getByRole("button", { name: "Explore the demo" }).click();
+  await expect(welcome).toHaveCount(0);
+}

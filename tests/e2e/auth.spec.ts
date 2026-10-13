@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, closeDemoWelcomeIfShown } from "./helpers";
 import { PASSWORD, PLATFORM_USER, USERS } from "./users";
 
 test("anonymous visitors are sent to sign in, then back to the page they wanted", async ({ page }) => {
@@ -96,6 +96,7 @@ test("the platform administration link appears only for platform owners, and /ad
   await p.waitForURL((u) => !u.pathname.startsWith("/login"));
   await p.goto("/command-center");
   test.skip(!p.url().includes("/command-center"), "The platform test user has no company here (start the live demo once).");
+  await closeDemoWelcomeIfShown(p); // the platform user's current company may be a demo created by another test
   await p.getByRole("banner").getByRole("button").last().click();
   await p.getByRole("menuitem", { name: "Platform administration" }).click();
   await expect(p).toHaveURL(/\/admin$/);

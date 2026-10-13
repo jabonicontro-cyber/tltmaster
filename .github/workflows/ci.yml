@@ -95,8 +95,11 @@ jobs:
           bash scripts/dev-stack/stack.sh db-reset
           bash scripts/dev-stack/stack.sh up
           bash scripts/dev-stack/stack.sh env > .env.local
-          echo "E2E_GATE_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
-          echo "E2E_SITE_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          # Throwaway values for this run only; masked so they never appear in the log.
+          pw=$(openssl rand -hex 12); secret=$(openssl rand -hex 32)
+          echo "::add-mask::$pw"; echo "::add-mask::$secret"
+          echo "E2E_GATE_PASSWORD=$pw" >> "$GITHUB_ENV"
+          echo "E2E_SITE_SECRET=$secret" >> "$GITHUB_ENV"
       - run: npx playwright install --with-deps chromium
       - name: Production build
         run: set -a && . ./.env.local && set +a && npm run build
