@@ -46,7 +46,7 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
             <span className={cn("flex-1 truncate transition-opacity duration-150 motion-reduce:transition-none", collapsed && "opacity-0")}>{item.label}</span>
             {item.planned && !collapsed && (
               <span className="rounded border border-white/15 px-1.5 py-px text-[10px] font-medium tracking-wide text-white/55 uppercase">
-                Planned
+                Coming soon
               </span>
             )}
           </Link>

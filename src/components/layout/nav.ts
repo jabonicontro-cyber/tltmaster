@@ -12,7 +12,7 @@ export interface NavItem {
   permission?: Permission;
   /** Shown when the user has at least one of these permissions. */
   anyOf?: Permission[];
-  /** Module not built yet — shown with a "Planned" label. */
+  /** Module not built yet — shown with a "Coming soon" label (owner 2026-10-13). */
   planned?: boolean;
   /** Sidebar group heading this item sits under (none: the top group). */
   group?: NavGroup;

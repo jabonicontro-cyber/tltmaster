@@ -17,12 +17,12 @@ export function PlannedModule({ title, phase, summary, features, dependsOn }: { 
           <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
             <Construction className="mt-0.5 size-5 shrink-0" aria-hidden />
             <div>
-              <p className="font-semibold">Not built yet — scheduled for {phase}</p>
+              <p className="font-semibold">Coming soon — scheduled for {phase}</p>
               <p className="text-sm">Nothing on this page is live. No data is shown or changed here.</p>
             </div>
           </div>
           <div>
-            <h2 className="mb-2 text-sm font-bold tracking-wide text-muted uppercase">Planned capabilities</h2>
+            <h2 className="mb-2 text-sm font-bold tracking-wide text-muted uppercase">What it will do</h2>
             <ul className="list-disc space-y-1 pl-5 text-[15px]">
               {features.map((f) => (
                 <li key={f}>{f}</li>

@@ -146,3 +146,19 @@ test("keyboard: the toggle is reachable, labelled and works with Enter", async (
   await page.keyboard.press("Enter");
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 });
+
+// Unfinished modules are labelled "Coming soon" (owner 2026-10-13), never shown as working features.
+test("unfinished modules say Coming soon in the sidebar and on their page", async ({ page }) => {
+  await signIn(page, "owner");
+  await page.goto("/command-center");
+  const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+  await expect(async () => {
+    await page.mouse.move(900, 450);
+    await sidebar.hover();
+    await expect(sidebar).toHaveAttribute("data-expanded", "true", { timeout: 1_500 });
+  }).toPass({ timeout: 15_000 });
+  await expect(sidebar.getByRole("link", { name: /Route Planner/ })).toContainText("Coming soon");
+  await page.goto("/route-planner");
+  await expect(page.getByText(/^Coming soon — scheduled for/)).toBeVisible();
+  await expect(page.getByText("Nothing on this page is live.")).toBeVisible();
+});
