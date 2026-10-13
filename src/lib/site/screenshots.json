@@ -82,6 +82,26 @@
       "ready": "Fleet",
       "alt": "The fleet overview for a demo company: trucks and trailers with service status, documents expiring soon and equipment needing attention",
       "caption": "Fleet — demo company, fictional data."
+    },
+    {
+      "id": "billing",
+      "file": "billing.png",
+      "feature": "billing",
+      "path": "/billing",
+      "viewport": "desktop",
+      "ready": "Billing",
+      "alt": "Billing readiness in a demo company: orders by readiness, with what still blocks each one — missing or unverified tickets, review exceptions — and the orders ready for an invoice draft",
+      "caption": "Billing readiness — demo company, fictional data. Drafts are prepared for review; nothing is sent."
+    },
+    {
+      "id": "communications",
+      "file": "communications.png",
+      "feature": "communications",
+      "path": "/communications",
+      "viewport": "desktop",
+      "ready": "Communications",
+      "alt": "Communications in a demo company: the workspace for an order in dispatch, and notifications for expiring truck registrations and inspections, time-off requests and a critical truck restriction",
+      "caption": "Communications — demo company, fictional data."
     }
   ]
 }

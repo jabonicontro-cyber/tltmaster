@@ -71,6 +71,24 @@
       "capturedAt": "2026-10-13T04:09:11.435Z",
       "source": "local production build",
       "checks": "passed"
+    },
+    "billing": {
+      "file": "billing.png",
+      "feature": "billing",
+      "path": "/billing",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-13T04:42:21.322Z",
+      "source": "local production build",
+      "checks": "passed"
+    },
+    "communications": {
+      "file": "communications.png",
+      "feature": "communications",
+      "path": "/communications",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-13T04:42:22.725Z",
+      "source": "local production build",
+      "checks": "passed"
     }
   }
 }

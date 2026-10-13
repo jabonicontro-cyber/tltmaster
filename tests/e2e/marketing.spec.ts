@@ -24,7 +24,8 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["pho
         const img = page.getByRole("img", { name: shot.alt });
         await img.scrollIntoViewIfNeeded();
         await expect(img).toBeVisible();
-        expect(await img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+        // Images below the fold load lazily: wait for this one to finish, then require it to have real pixels.
+        await expect.poll(() => img.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0), { timeout: 15_000 }).toBe(true);
       }
     }
     // Capability links jump to their section.

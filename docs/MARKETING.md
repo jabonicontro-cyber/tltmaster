@@ -92,11 +92,11 @@ public page.
 
 ## 6. Current coverage (2026-10-13)
 
-- **Published, with screens:** Command Center, Plan the day, Dispatch and Smart Dispatch, Customers / quotes / orders,
+- **Published, with screens:** Command Center, Plan the day, Dispatch and Smart Dispatch, Customers / quotes / orders, Billing readiness, Communications,
   Driver portal, Delivery tickets, Maintenance, Fleet.
-- **Published, brief only (no screenshot yet):** Billing readiness, Communications, Employees and time off, Reports,
+- **Published, brief only (no screenshot yet):** Employees and time off, Reports,
   Company setup / roles / security.
 - **Not published:** AI explanation of a plan (in development), Route planning (planned).
 
-Next screenshots to add, if the demo data shows them well: Billing (invoice draft), Communications (job workspace),
-Time off.
+Next screenshots to add, if the demo data shows them well: Time off, Reports, Company setup; a richer Communications
+sample (the demo has one workspace conversation).
