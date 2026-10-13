@@ -17,6 +17,11 @@ project credentials. Read it together with:
   "Show earlier messages", collapsible threads, demo sample channel. **Not live until the owner applies
   `20261107000100` then `20261108000100` and sets `CRON_SECRET`** (DEPLOYMENT §2a); until then hosted Communications
   keeps the earlier rules.
+- **Demo experience** (IMPLEMENTATION_PLAN §5ae): the header shows the person's own profile photo in demos too (it
+  showed initials for Colby Chapman); the yellow demo bar is replaced by a one-time welcome dialog, a small "Demo"
+  badge, and **Change view** / **About this demo** / **Presentation mode** in the profile menu. **Owner action:** apply
+  `20261109000100` (after `20261108000100`) so the welcome is remembered per account; until then a browser cookie
+  remembers it.
 - **Demo feature parity in every demo mode** (permanent rule, IMPLEMENTATION_PLAN §5ad, DEMO_TENANTS §3/§5): shared
   idempotent samples (`src/server/demo/samples.ts`) used by both seeds and Refresh, persona names in Communications,
   prospect owners join the sample workspaces. **Owner actions:** after applying `20261107000100` and
@@ -65,8 +70,8 @@ project credentials. Read it together with:
   - Fixed (needs migration `20261107000100`, still unapplied): employee pages requested `/people/photo/<user>` for
     every linked person (a 404 per person without a photo). `public.profile_photo_versions` (same rule as
     `profile_photo`) lets them request only existing photos with a versioned URL; until applied, they behave as before.
-  - Not implemented (no spec in the repository): a demo welcome modal, "Demo Information" in the account menu and a
-    "Change View" menu replacing the demo bar's "View as". The demo bar with "View as" and Presentation mode is current.
+  - Since implemented (2026-10-13, IMPLEMENTATION_PLAN §5ae): the demo welcome dialog, "About this demo" and
+    "Change view" in the profile menu replace the demo bar.
   - The sandbox cannot reach `*.vercel.app` (network policy), so deployed pages were not opened in a browser here;
     releases are verified by GitHub deployment records plus the local production build, gate spec and deployment check.
 - **Permanent rule — demo tenants stay in sync** (CLAUDE.md, docs/DEMO_TENANTS.md): every feature/UI change must

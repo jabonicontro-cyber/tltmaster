@@ -28,8 +28,23 @@ export const PREVIEW_SOURCES: Record<PreviewRole, AppRole[]> = {
 
 export const PREVIEW_COOKIE = "taviron-preview";
 
-/** Presentation mode (demo company only): the demo bar is tucked into the user menu. */
+/** Presentation mode (demo company only): hides the demo badge and the welcome dialog for screenshots and live demos. */
 export const PRESENTATION_COOKIE = "taviron-presentation";
+
+/**
+ * Fallback memory of the demo welcome when the database cannot keep it (migration 20261109000100 not applied):
+ * "<company>.<user>" pairs, newest last. The database row (user_preferences 'demo_welcome') is the account-wide record.
+ */
+export const DEMO_WELCOME_COOKIE = "taviron-demo-welcome";
+export const welcomeToken = (companyId: string, userId: string) => `${companyId}.${userId}`;
+export function welcomedInCookie(value: string | undefined, token: string): boolean {
+  return (value ?? "").split(",").includes(token);
+}
+/** Adds a pair, keeping the cookie small (the last 6 demo companies or people on this browser). */
+export function withWelcomeToken(value: string | undefined, token: string): string {
+  const list = (value ?? "").split(",").filter((t) => t && t !== token);
+  return [...list, token].slice(-6).join(",");
+}
 
 export function parsePreviewRole(value: string | null | undefined): PreviewRole | null {
   return value && (PREVIEW_ROLES as readonly string[]).includes(value) ? (value as PreviewRole) : null;

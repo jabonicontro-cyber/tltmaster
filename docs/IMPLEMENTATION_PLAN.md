@@ -2197,6 +2197,33 @@ not re-adding maintenance, time off or documents.
 - **Known gaps:** Driver Reports have no samples (need a driver login); Prairie Lantern prices with charge items, so
   Materials is empty there; Communications samples wait for `20261108000100` (DEMO_TENANTS §4).
 
+## 5ae. Demo experience: header photo, welcome dialog, Change view (2026-10-13)
+
+Audit first. The header showed initials for a prospect owner (Colby Chapman) whose photo showed elsewhere: in a demo,
+`src/app/(app)/layout.tsx` took the picture only from the linked employee record's illustrated avatar (the persona
+path), while every other page uses `personPhoto` (own profile photo, else the avatar, else initials).
+
+- **Header photo:** the layout now uses `personPhoto` for everyone; the persona supplies only the name. `Avatar`
+  detects a photo that failed before hydration (initials instead of a broken image) and is keyed by its URL, so a new
+  photo or another person never shows a stale image. The account button has an accessible name on phones.
+- **Welcome instead of the demo bar:** `demo-bar.tsx` removed. `demo-welcome.tsx` opens once per person and demo
+  company (closing it by button, ×, Escape or overlay counts), focus on **Explore the demo**; remembered by
+  `dismiss_demo_welcome()` (migration `20261109000100`, unapplied on the hosted database) with a browser cookie as
+  fallback; not shown in presentation mode; reopened by **About this demo**. A small "Demo" badge (with the current
+  view) on the account button and a demo line in the profile menu keep the demo identifiable.
+- **Change view:** profile menu → **Change view** opens a dialog listing Myself and the six demo modes with the current
+  one marked; it calls the existing `setDemoPreview` (cookie, only narrowing real permissions). Only in demo
+  companies. A submenu was tried first and dropped: at the right screen edge it flipped over the menu and closed on
+  pointer travel.
+- **Presentation mode** moved to a checkbox item in the profile menu; it hides the badge and the welcome.
+- **Demo modes:** all (Owner, Dispatcher, Dispatcher who also drives, Office, Driver, Mechanic) in every demo company;
+  no sample data needed; existing demos get it on deploy (the welcome shows once to existing demo users too).
+- **Tests:** `tests/e2e/demo-experience.spec.ts` (photo and fallbacks for a demo owner and a regular account, welcome
+  once across pages/reloads/browsers, keyboard and focus, Change view on desktop and phone in dark mode, presentation
+  mode), updated `platform.spec.ts`, `demo-parity.spec.ts`, `username-login.spec.ts`; `tests/db/demo-samples.test.ts`
+  (welcome remembered per person, refused for real companies); `dismiss_demo_welcome` in the reviewed
+  `SECURITY DEFINER` list.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

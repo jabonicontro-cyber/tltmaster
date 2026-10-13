@@ -252,6 +252,12 @@ migration then schedules it). Then, separately and only with your approval each 
 - Check after the next run: Vercel → Logs for `/api/cron/comm-housekeeping` (200 with `ok: true`).
 Rollback: `supabase/rollbacks/20261108000100_comm_hardening.down.sql` (expired messages stay as deleted tombstones).
 
+**Demo welcome (`20261109000100_demo_welcome.sql`, after `20261108000100`).** Remembers, per person and demo company,
+that the demo welcome dialog was seen (`user_preferences` key `demo_welcome`, `public.dismiss_demo_welcome()`; refused
+for real companies). Additive. Until it is applied, the app remembers the dismissal in a browser cookie, so a demo
+user who signs in on another browser sees the welcome once more there. Rollback:
+`supabase/rollbacks/20261109000100_demo_welcome.down.sql`.
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging
@@ -344,7 +350,7 @@ A visitor can remove early access from their own browser from the sign-in page
 
 ### 3c. A prospect demo tenant and its owner's login (e.g. Prairie Lantern Freight for Colby Chapman)
 
-A prospect demo is a standing demo company for one prospect: fictional data, the demo bar, nothing sent, and never
+A prospect demo is a standing demo company for one prospect: fictional data, a one-time demo welcome and a "Demo" badge, nothing sent, and never
 replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_tenants.sql` and `20261107000100_people_photos_and_demo_retire.sql`
 (after the pending ones; §2a). Each step below is an owner action; nothing here is done automatically.
 
@@ -377,7 +383,8 @@ replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_ten
    With migration `20261108000100` the owner also joins the sample "Dispatch desk" channel and the demo's operation
    workspaces at once. Then run **Refresh demo data** so the owner gets their own driver day (My Day, Drives too).
 4. **Verify before saying the login is ready:** they sign in, land on the Command Center of the demo tenant (owner),
-   the demo bar shows, and the company menu lists no other company.
+   the demo welcome appears once (then the "Demo" badge on the account button), their own profile photo shows in the
+   header if they added one, and the company menu lists no other company.
 
 Do not use `scripts/create-owner.mjs` for a prospect (it sets a password chosen by the operator).
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { initialsOf } from "@/lib/people/photo";
 
@@ -10,6 +10,12 @@ import { initialsOf } from "@/lib/people/photo";
  */
 export function Avatar({ name, src, fallbackSrc, size = 32, label, className }: { name: string; src?: string; /** Shown when `src` is missing or fails (e.g. a chosen illustrated avatar). */ fallbackSrc?: string; size?: number; label?: string; className?: string }) {
   const [failed, setFailed] = useState(false);
+  const img = useRef<HTMLImageElement>(null);
+  // A photo that failed before the page hydrated fired its error with no handler attached: check once mounted.
+  useEffect(() => {
+    const el = img.current;
+    if (el && el.complete && el.naturalWidth === 0) setFailed(true);
+  }, []);
   if ((!src || failed) && fallbackSrc) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a small static illustration
@@ -21,7 +27,7 @@ export function Avatar({ name, src, fallbackSrc, size = 32, label, className }: 
   if (src && !failed) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a small private image served by our own route
-      <img src={src} alt={label ?? ""} aria-hidden={label ? undefined : true} width={size} height={size} onError={() => setFailed(true)} style={style} className={cn("shrink-0 rounded-full bg-surface object-cover ring-1 ring-line", className)} />
+      <img ref={img} src={src} alt={label ?? ""} aria-hidden={label ? undefined : true} width={size} height={size} onError={() => setFailed(true)} style={style} className={cn("shrink-0 rounded-full bg-surface object-cover ring-1 ring-line", className)} />
     );
   }
   return (

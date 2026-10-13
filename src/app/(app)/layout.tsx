@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
-import { PRESENTATION_COOKIE } from "@/lib/platform/preview";
+import { DEMO_WELCOME_COOKIE, PRESENTATION_COOKIE, welcomeToken, welcomedInCookie } from "@/lib/platform/preview";
 import { AppShell, type ShellBranding } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/sidebar-cookie";
 import { requireAccess } from "@/server/auth";
 import { myCompanies } from "@/server/data/companies";
 import { getSettings } from "@/server/data/settings";
-import { getDemoPersona, getMyProfile, photoUrl } from "@/server/data/profile";
-import { avatarUrl } from "@/lib/people/avatars";
+import { getDemoPersona, getMyProfile } from "@/server/data/profile";
+import { personPhoto } from "@/lib/people/avatars";
 import { effectivePresence } from "@/lib/communications";
 import { can } from "@/lib/permissions";
 import { isPlatformAdmin } from "@/server/platform";
@@ -28,22 +28,31 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ]);
   // Own employee avatar (fallback when there is no profile photo) and whether this login drives.
   const supabase = await createClient();
-  const [ownEmployee, ownDriver, ownPresence, commSettings] = await Promise.all([
+  const [ownEmployee, ownDriver, ownPresence, commSettings, welcomed] = await Promise.all([
     supabase.from("employees").select("avatar_key").eq("user_id", access.userId).maybeSingle(),
     supabase.from("drivers").select("id").eq("user_id", access.userId).eq("active", true).maybeSingle(),
     // Own presence for the dot on the profile picture (Communications; absent until it is installed).
     supabase.from("user_presence").select("manual_status, last_active_at").eq("company_id", access.companyId).eq("user_id", access.userId).maybeSingle(),
     supabase.from("comm_settings").select("away_after_minutes").eq("company_id", access.companyId).maybeSingle(),
+    // Demo welcome already seen in this demo company (own row only, row-level security).
+    access.isDemo ? supabase.from("user_preferences").select("key").eq("key", "demo_welcome").maybeSingle() : Promise.resolve({ data: null }),
   ]);
   const presence = can(access, "comms.message") && !ownPresence.error
     ? effectivePresence(ownPresence.data as { manual_status: string | null; last_active_at: string | null } | null,
         (commSettings.data as { away_after_minutes?: number } | null)?.away_after_minutes ?? 15)
     : undefined;
-  const ownAvatar = avatarUrl((ownEmployee.data as { avatar_key?: string } | null)?.avatar_key);
+  const ownAvatarKey = (ownEmployee.data as { avatar_key?: string } | null)?.avatar_key ?? "";
   const hideMyDay = !ownDriver.data && !ownDriver.error && access.permissions.some((p) => p !== "driver.portal" && /^(dispatch|tickets|billing|fleet|orders|quotes)\.view$/.test(p));
   // Presentation mode only ever applies inside a demo company.
   const jar = await cookies();
   const presentation = access.isDemo && jar.get(PRESENTATION_COOKIE)?.value === "1";
   const sidebarPinned = jar.get(SIDEBAR_COOKIE)?.value === "pinned";
-  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} presentation={presentation} sidebarPinned={sidebarPinned} me={persona ? { name: persona.name, photo: avatarUrl(persona.avatarKey), presence } : profile ? { name: profile.displayName || profile.fullName, photo: photoUrl(profile.userId, profile.photoUpdatedAt) || ownAvatar, presence } : null} branding={branding} hideMyDay={!persona && hideMyDay}>{children}</AppShell>;
+  // The demo welcome shows until this person dismisses it in this demo company (never in presentation mode).
+  const welcome = Boolean(access.isDemo && !presentation && access.companyId && !welcomed.data &&
+    !welcomedInCookie(jar.get(DEMO_WELCOME_COOKIE)?.value, welcomeToken(access.companyId, access.userId)));
+  // The header picture follows the same order as every other page (personPhoto): the person's own profile photo,
+  // else the illustrated avatar on their employee record, else initials. In a demo the persona supplies the name only.
+  const picture = personPhoto(access.userId, profile?.photoUpdatedAt, persona?.avatarKey || ownAvatarKey);
+  const me = persona || profile ? { name: persona?.name || profile?.displayName || profile?.fullName || "", photo: picture.src, fallbackPhoto: picture.fallbackSrc, presence } : null;
+  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}>{children}</AppShell>;
 }

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { signIn, unique } from "./helpers";
+import { closeDemoWelcome, signIn, unique } from "./helpers";
 import { asUser } from "./db";
 import { PASSWORD, PLATFORM_USER } from "./users";
 
@@ -163,8 +163,17 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();
   await expect(page).toHaveURL(/\/command-center/, { timeout: 60_000 });
-  const bar = page.getByRole("region", { name: "Demo company" });
-  await expect(bar).toContainText("fictional data");
+  // A one-time welcome says it is a demo (no bar on every page); the menu keeps saying so.
+  await expect(page.getByRole("dialog", { name: "Welcome to the Taviron demo" })).toContainText("fictional sample data");
+  await closeDemoWelcome(page);
+  await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
+  const menu = () => page.getByRole("button", { name: /Daniel Mitchell/ });
+  /** Change view in the profile menu: the existing role preview, which only narrows what is shown. */
+  const changeView = async (label: RegExp) => {
+    await menu().click();
+    await page.getByRole("menuitem", { name: /Change view/ }).click();
+    await page.getByRole("dialog", { name: "Change view" }).getByRole("button", { name: label }).click();
+  };
   await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
   // A fictional persona and the company's own branding — the presenter's real account is untouched.
   await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
@@ -188,8 +197,8 @@ test("live demo: a separate company with fictional data; role previews only narr
   const nav = page.getByRole("navigation").first();
   await page.goto("/command-center");
   await expect(nav.getByRole("link", { name: "Billing" })).toBeVisible();
-  await bar.getByLabel("View as").selectOption("dispatcher");
-  await expect(bar).toContainText("previewing as Dispatcher");
+  await changeView(/^Dispatcher [A-Z]/);
+  await expect(page.getByRole("banner")).toContainText("Demo · Dispatcher");
   await expect(nav.getByRole("link", { name: "Billing" })).toHaveCount(0);
   await expect(nav.getByRole("link", { name: "Dispatch" })).toBeVisible();
   await page.goto("/billing");
@@ -197,7 +206,7 @@ test("live demo: a separate company with fictional data; role previews only narr
 
   // Driver preview: the driver portal with the demo assignment.
   await page.goto("/command-center");
-  await page.getByRole("region", { name: "Demo company" }).getByLabel("View as").selectOption("driver");
+  await changeView(/^Driver [A-Z]/);
   await expect(page).toHaveURL(/\/driver/);
   await expect(page.getByText("4th St water main — bedding stone").first()).toBeVisible();
   await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
@@ -211,27 +220,37 @@ test("live demo: a separate company with fictional data; role previews only narr
   for (const q of quantities) {
     expect(Number(q.replace(/[^\d.]/g, "")), q).toBeLessThanOrEqual(15);
   }
-  // On a phone the demo bar wraps instead of pushing the page sideways.
+  // On a phone the header and the Change view menu fit without pushing the page sideways.
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+  await menu().click(); // the account menu keeps its name on a phone, where only the picture shows
+  await page.getByRole("menuitem", { name: /Change view/ }).click();
+  const views = page.getByRole("dialog", { name: "Change view" });
+  const box = (await views.boundingBox())!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
   await page.setViewportSize({ width: 1366, height: 900 });
 
   // Back to myself.
-  await page.getByRole("region", { name: "Demo company" }).getByLabel("View as").selectOption("");
-  await expect(page.getByRole("region", { name: "Demo company" })).not.toContainText("previewing");
+  await changeView(/^Myself [A-Z]/);
+  await expect(page.getByRole("banner")).not.toContainText("Demo · ");
 
   // Presentation mode (for screenshots and live demos): the bar is tucked away — data, alerts and
   // permissions unchanged — and comes back from the user menu.
   await page.goto("/command-center");
   const attention = (await page.getByRole("region", { name: "Attention summary" }).textContent())!.split("As of")[0].trim();
-  await page.getByRole("region", { name: "Demo company" }).getByRole("button", { name: "Presentation mode" }).click();
-  await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
+  await expect(page.getByRole("banner").getByText("Demo", { exact: true })).toBeVisible();
+  await menu().click();
+  await page.getByRole("menuitemcheckbox", { name: "Presentation mode" }).click();
+  await expect(page.getByRole("banner").getByText("Demo", { exact: true })).toHaveCount(0);
   await expect(page.getByRole("region", { name: "Attention summary" })).toContainText(attention); // alerts unchanged
   await page.reload();
-  await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
-  await page.getByRole("button", { name: /Daniel Mitchell/ }).click();
-  await page.getByRole("menuitem", { name: "Show the demo bar" }).click();
-  await expect(page.getByRole("region", { name: "Demo company" })).toBeVisible();
+  await expect(page.getByRole("banner").getByText("Demo", { exact: true })).toHaveCount(0);
+  await menu().click();
+  await expect(page.getByRole("menuitemcheckbox", { name: "Presentation mode" })).toHaveAttribute("aria-checked", "true");
+  await page.getByRole("menuitemcheckbox", { name: "Presentation mode" }).click();
+  await expect(page.getByRole("banner").getByText("Demo", { exact: true })).toBeVisible();
   await page.goto("/billing");
   await expect(page).toHaveURL(/\/billing/);
   // No external side effects: invitations are refused in the demo company.

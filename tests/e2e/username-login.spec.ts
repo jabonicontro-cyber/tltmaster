@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { unique } from "./helpers";
+import { unique, closeDemoWelcome } from "./helpers";
 
 // Username accounts: the operator prints a one-time link (nothing is emailed), the
 // person chooses their own password, signs in with the username, and — once made
@@ -51,7 +51,7 @@ test("a username account sets its own password, signs in with the username, and 
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL(/\/command-center/);
-  await expect(page.getByRole("region", { name: "Demo company" })).toBeVisible();
+  await closeDemoWelcome(page); // a demo, said once
   await expect(page.locator("body")).toContainText("Owner / Administrator · E2E Prospect Demo");
   await expect(page.getByText(username).first()).toBeVisible(); // shown as the username, never the internal address
   await expect(page.getByText("users.mytaviron.com")).toHaveCount(0);

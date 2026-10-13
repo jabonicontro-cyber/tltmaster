@@ -23,6 +23,8 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
       demos get it; a second Refresh adds nothing and keeps every demo user and owner (`tests/db/demo-samples.test.ts`).
 - [ ] After promotion: hosted migrations the samples need are applied by the owner, then **Refresh demo data** is run
       for each prospect demo (the presenter demo is rebuilt by "Start the demo").
+- [ ] The demo welcome appears once per person and demo company, **Change view** lists every demo mode and switches
+      only through the role preview, presentation mode hides the badge and welcome (`tests/e2e/demo-experience.spec.ts`).
 - [ ] Demo actions cannot reach real customers, email, payments or exports.
 - [ ] The report names any intentional difference between the standard app and the demo.
 

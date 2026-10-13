@@ -116,6 +116,20 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(r1.added).toBeGreaterThanOrEqual(0);
   }, 240_000);
 
+  it("remembers the demo welcome per person in a demo company only", async () => {
+    const seen = () => as(w.owner).from("user_preferences").select("key").eq("key", "demo_welcome").maybeSingle();
+    expect((await seen()).data).toBeNull();
+    expect((await as(w.owner).rpc("dismiss_demo_welcome")).error).toBeNull();
+    expect((await as(w.owner).rpc("dismiss_demo_welcome")).error).toBeNull(); // idempotent
+    expect((await seen()).data).toEqual({ key: "demo_welcome" });
+    const rows = await q("select user_id from public.user_preferences where company_id = $1 and key = 'demo_welcome'", [w.company]);
+    expect(rows.rows).toEqual([{ user_id: w.owner }]);
+    // A real company has no demo welcome, and nothing is written there.
+    const real = await as(w.realOwner).rpc("dismiss_demo_welcome");
+    expect(real.error?.message).toMatch(/Only demo companies/);
+    expect((await q("select 1 from public.user_preferences where company_id = $1 and key = 'demo_welcome'", [TOP_LINE])).rowCount).toBe(0);
+  }, 60_000);
+
   it("is refused for a real company, which is left untouched", async () => {
     const before = await counts(TOP_LINE);
     await expect(ensureFeatureSamples(as(w.realOwner), todayIn(TZ))).rejects.toThrow(/only added to demo companies/);

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { signIn, unique } from "./helpers";
+import { closeDemoWelcome, signIn, unique } from "./helpers";
 import { PASSWORD, PLATFORM_USER } from "./users";
 import { PREVIEW_COOKIE, PREVIEW_ROLES } from "@/lib/platform/preview";
 
@@ -60,7 +60,9 @@ test("a demo company's owner has the same navigation and working pages as a stan
   await demo.getByLabel("Password").fill(owner.password);
   await demo.getByRole("button", { name: "Sign in" }).click();
   await demo.waitForURL(/\/command-center/);
-  await expect(demo.getByRole("region", { name: "Demo company" })).toContainText("nothing is sent outside Taviron");
+  await expect(demo.getByRole("dialog", { name: "Welcome to the Taviron demo" })).toContainText("nothing is sent outside Taviron");
+  await closeDemoWelcome(demo);
+  await expect(demo.getByRole("banner")).toContainText("Demo"); // still marked as a demo, unobtrusively
   const inDemo = await navHrefs(demo);
   expect(inDemo).toEqual(standard);
 
@@ -98,6 +100,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();
   await page.waitForURL(/command-center/, { timeout: 240_000 });
+  await closeDemoWelcome(page);
 
   // Feature pages that must not be empty, for the modes whose role can open them.
   const filled: Record<string, RegExp> = {
@@ -172,6 +175,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await owner.getByLabel("Password").fill(password);
   await owner.getByRole("button", { name: "Sign in" }).click();
   await owner.waitForURL(/command-center/);
+  await closeDemoWelcome(owner);
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {
