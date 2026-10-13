@@ -101,7 +101,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | My Day | The demo owner's own driver record (linked employee), qualifications and a load today or tomorrow | ✓ | — | ✓ | — | ✓ | — |
 | Delivery tickets | Tickets on delivered loads | ✓ | ✓ | ✓ | ✓ | — | — |
 | Billing readiness | Every state: missing tickets, tickets to review, exceptions (presenter scenario 1), one order **Ready to bill** and one **Handed off** in an internal batch (`samples.ts` `billing()`, 2026-10-13: before it no demo showed either). Nothing is sent, exported or invoiced | ✓ | — | — | ✓ | — | — |
-| Quotes | A draft quote copied from a sample order line | ✓ | ✓ | ✓ | ✓ | — | — |
+| Quotes | A draft quote copied from a sample order line, and a second quote marked handed to the customer outside Taviron (locked v1, status Sent; nothing is sent — 2026-10-13) | ✓ | ✓ | ✓ | ✓ | — | — |
 | Fleet and documents | Registrations (one expiring), an inspection due, an expired trailer registration | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Maintenance | A safety-critical brake work order on an idle truck, tire and electrical work orders, oil and annual inspection schedules | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Time off | An approved vacation, a pending personal day, and a pending request for the viewer's own employee record | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |

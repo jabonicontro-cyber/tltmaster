@@ -101,6 +101,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(readiness).toContain("ready");
     expect(readiness).toContain("handed_off");
     expect(c.handoffs).toBe(1);
+    // Quotes show an issued, locked version: one quote marked handed over outside Taviron (nothing sent).
+    const sent = await q<{ n: string }>("select count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and q.status = 'sent' and v.sent_at is not null", [w.company]);
+    expect(Number(sent.rows[0].n)).toBe(1);
+    const delivered = await q<{ n: string }>("select count(*) n from public.email_deliveries d join public.quotes q on q.id = d.quote_id where q.company_id = $1 and d.channel <> 'manual'", [w.company]);
+    expect(Number(delivered.rows[0].n)).toBe(0); // no email was recorded as sent
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

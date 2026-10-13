@@ -62,6 +62,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   note("time off", await timeOff(db, today));
   note("quotes", await quotes(db, today));
+  note("issued quote", await issuedQuote(db, today));
   note("operational workspace", await workspace(db, today, userId));
   note("planning day", await planningDay(db, today));
   note("billing: ready and handed off", await billing(db, today));
@@ -244,6 +245,32 @@ async function quotes(db: Db, today: string): Promise<number> {
     ...(site ? { site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
     lines: [{ ...base, quantity: String(Number(base.quantity ?? 1) * 4) }],
   } }));
+  return 1;
+}
+
+/**
+ * Quotes show their locked, issued versions only once a version is issued. Demos never send email (the app records a
+ * preview), so the sample uses the app's manual path: a second quote, copied like the draft above, marked as handed to
+ * the customer outside Taviron. That locks version 1 and the quote reads Sent; nothing is sent. Added only while the
+ * demo has no quote beyond Draft.
+ */
+async function issuedQuote(db: Db, today: string): Promise<number> {
+  const beyondDraft = await db.from("quotes").select("id").neq("status", "draft").limit(1);
+  if (missing(beyondDraft.error)) return 0;
+  if (beyondDraft.error) throw new Error(`Demo samples (issued quote): ${beyondDraft.error.message}`);
+  if ((beyondDraft.data ?? []).length) return 0;
+  const lines = (await must("order lines", db.from("order_lines").select("kind, calc_method, material_id, charge_item_id, description, unit_code, quantity, unit_rate_cents, taxable").order("line_no").limit(1))) as Array<Record<string, unknown>>;
+  const customers = (await must("customers", db.from("customers").select("id").order("name").limit(2))) as Array<{ id: string }>;
+  const customer = customers[1] ?? customers[0];
+  if (!lines.length || !customer) return 0;
+  const site = ((await db.from("customer_sites").select("label, line1, city").eq("customer_id", customer.id).limit(1)).data ?? [])[0] as { label: string; line1: string; city: string } | undefined;
+  const base = Object.fromEntries(Object.entries(lines[0]).filter(([, v]) => v !== null));
+  const saved = (await must("issued quote", db.rpc("save_quote_draft", { p_payload: {
+    customer_id: customer.id, quote_date: addDays(today, -3), valid_until: addDays(today, 27), tax_rate_bp: 0,
+    ...(site ? { site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
+    lines: [{ ...base, quantity: String(Number(base.quantity ?? 1) * 6) }],
+  } }))) as { quote_id: string; edit_seq: number };
+  await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: printed and handed to the customer at the yard (fictional — nothing was sent)." }));
   return 1;
 }
 
