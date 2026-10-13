@@ -1,0 +1,70 @@
+# Optimization core
+
+Taviron's differentiator is whole-operation optimization: balancing service reliability, revenue, fleet
+utilization, efficiency and workload, always under hard safety, legal, feasibility and company constraints. This
+document describes what exists today (first slice, 2026-10-13), how it decides, and what comes next. Backlog rows:
+master plan §12 B5 (this slice), B6–B10 (AI platform, Smart Dispatch Stage 2, profitability, customer intelligence,
+routing).
+
+## 1. What exists
+
+| Piece | Where | What it does |
+| --- | --- | --- |
+| Smart Dispatch (Stage 1) | `src/lib/dispatch/smart.ts` | Per-load proposals, most urgent first, with reasons, alternatives and exclusions. |
+| **Optimization core** | `src/lib/optimization/plan.ts` | A whole-day plan for every unassigned load across all trucks and drivers at once; configurable priorities; alternatives with trade-offs; statuses and missing-data notes. Pure and deterministic. |
+| Data loader | `src/server/data/optimization.ts` | The Smart Dispatch input (RLS, caller's company) plus a revenue estimate per load. |
+| Plan the day | `/dispatch/plan` (`src/app/(app)/dispatch/plan/`, `src/components/dispatch/optimization-planner.tsx`) | Choose a day and priorities, compare plans, review each assignment, approve a selection. |
+| Approval | `approvePlanAssignments` (`src/app/(app)/dispatch/plan/actions.ts`) | Re-checks each selected assignment against current data, then `public.assign_load`; never replaces a confirmed assignment. |
+
+No language model is involved: every quantity and constraint is calculated. A future AI layer (backlog B6) may
+explain plans and help explore alternatives, but it will call this core rather than invent results.
+
+## 2. How a plan is made
+
+1. **Hard constraints first.** A truck–driver pair is considered for a load only if Smart Dispatch's `checkPair`
+   accepts it: active and in service, no safety-critical work order or shop visit that day, no unresolved
+   breakdown/inspection report, capacity at least the planned quantity, not a tractor without a trailer, driver's
+   CDL and medical card valid and verified, no approved time off, no overlapping existing booking, not rejected by a
+   dispatcher. Inside a plan, a truck or driver never gets two overlapping loads.
+2. **Value of covering each load** (always positive) grows with the *service* weight (urgent, overdue, due that day)
+   and the *revenue* weight (estimated revenue relative to the day's largest).
+3. **Value of a pair** grows with the *utilization* weight (planned quantity ÷ recorded capacity), the *efficiency*
+   weight (the truck already works that site that day; a site change costs), falls with the *balance* weight (the
+   driver already has loads that day), and slightly prefers pairs with complete data.
+4. **Search:** a greedy pass by load value, then improvement moves until none helps (move a load to another pair;
+   free an assignment so a more valuable uncovered load fits, re-placing the freed one if possible). Bounded and
+   deterministic (ties break by unit number and name).
+5. **Alternatives:** the same search with each preset (Balanced, Service first, Revenue first, Efficiency first);
+   identical plans are shown once. Trade-offs are listed against the plan for the chosen priorities.
+
+## 3. Statuses and honesty rules
+
+- **Verified feasible** only when every check passed *and* hours of service are verified. No ELD or driver-log data
+  is connected, so today every assignment is **Needs review**, with the reasons listed (hours of service, unverified
+  or missing capacity, open equipment report, pending time off, checks that could not run).
+- **Blocked** loads: no pair passes the hard constraints, or every feasible pair is used by higher-value loads; the
+  reason is shown. Smart Dispatch on the Dispatch board lists each truck's and driver's exclusion reasons.
+- **Revenue** is an estimate: the order's material line rate × the load's planned quantity (same unit). No rate, no
+  estimate — never a guessed price.
+- **Margin is not evaluated:** no fuel, wage, maintenance or other cost data is recorded (master plan §9 Q17).
+- **Travel distance and drive time are not calculated:** no truck locations or truck-routing provider. "Fewer
+  empty trips" counts site changes and says so. A passenger-car router is never substituted.
+- Confirmed assignments are never changed by a plan. Approval re-validates each assignment with fresh data, one at a
+  time, and reports exactly which were assigned and why others were not.
+
+## 4. Demo coverage
+
+Demo modes with dispatch access (Owner, Dispatcher, Dispatcher who also drives, Office) open **Plan the day**;
+Driver and Mechanic have no dispatch access. Demo companies need unassigned loads on upcoming days to show a plan:
+the seeds and **Refresh demo data** leave open loads (see DEMO_TENANTS §5); approving in a demo assigns fictional
+loads only.
+
+## 5. Next steps (dependency order)
+
+1. Persist company priority defaults (settings; needs a migration — owner applies).
+2. Multi-day horizon and trailer pairing for tractors (Prairie Lantern-style fleets).
+3. Disruption repair: when a truck goes out of service or a driver calls off, propose the smallest set of changes
+   (Smart Dispatch Stage 2, backlog B7) — never applied without approval.
+4. Recorded decisions (approved vs edited vs rejected) as learning evidence; outcomes from delivered tickets.
+5. Cost inputs and load profitability (B8) once cost data exists; routing and ELD adapters (B10) once providers are
+   approved.
