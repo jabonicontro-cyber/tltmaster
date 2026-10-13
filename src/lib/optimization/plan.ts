@@ -325,9 +325,10 @@ function planScore(input: OptimizationInput, assignments: PlannedAssignment[], l
 }
 
 /** One plan for one set of priorities: greedy by load value, then improving single-load moves until none helps. */
-export function optimize(input: OptimizationInput, priorities: Priorities, key = "custom", label = "Your priorities"): Plan {
+export function optimize(input: OptimizationInput, priorities: Priorities, key = "custom", label = "Your priorities", shared?: Map<string, Pair[]>): Plan {
   const loads = new Map(input.loads.map((l) => [l.id, l]));
-  const pairs = feasiblePairs(input);
+  // The hard-constraint pairs depend only on the input, so callers comparing several priorities share one matrix.
+  const pairs = shared ?? feasiblePairs(input);
   const maxRevenue = Math.max(0, ...Object.values(input.revenueCents).map((v) => v ?? 0));
   const urgencyOrder = new Map(orderLoads(input.loads, input.today).map((l, i) => [l.id, i]));
   const order = [...input.loads].sort((a, b) =>
@@ -429,16 +430,16 @@ export function tradeoffs(base: Plan, alt: Plan): string[] {
 
 /** The plan for `priorities` plus one plan per preset, de-duplicated, with trade-offs against the first. */
 export function optimizeWithAlternatives(input: OptimizationInput, priorities: Priorities, presetKey: string | null): Optimization {
-  const main = optimize(input, priorities, presetKey ?? "custom", presetKey ? PRESETS[presetKey]?.label ?? "Your priorities" : "Your priorities");
+  const pairs = feasiblePairs(input);
+  const main = optimize(input, priorities, presetKey ?? "custom", presetKey ? PRESETS[presetKey]?.label ?? "Your priorities" : "Your priorities", pairs);
   const plans: Plan[] = [main];
   const signature = (p: Plan) => p.assignments.map((a) => `${a.loadId}:${a.truckId}:${a.trailerId ?? ""}:${a.driverId}`).sort().join(",");
   for (const [key, preset] of Object.entries(PRESETS)) {
     if (key === presetKey) continue;
-    const p = optimize(input, preset.priorities, key, preset.label);
+    const p = optimize(input, preset.priorities, key, preset.label, pairs);
     if (!plans.some((x) => signature(x) === signature(p))) plans.push(p);
   }
   const loads = new Map(input.loads.map((l) => [l.id, l]));
-  const pairs = feasiblePairs(input);
   const dataNotes = [
     input.hoursOfServiceVerified ? null : HOS_NOTE,
     "Travel distance and drive time are not calculated: no truck locations or routing provider are connected. “Fewer empty trips” counts site changes instead.",
