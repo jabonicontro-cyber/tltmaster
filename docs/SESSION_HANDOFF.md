@@ -29,7 +29,14 @@ project credentials. Read it together with:
 - **Gate spec on the production build:** 8 passed, 1 skipped (public-site case).
 - **`check-deployment.mjs`:** all checks passed.
 - **Full browser suite, first run:** 126 passed, 1 failed, 9 skipped. The failure was a test-side race (dev-server reload during a read); fixed, and the test re-run passed.
-- **Second full run:** see the end of this section.
+- **Final full browser suite on the complete bundle:** 129 passed, 0 failed, 9 skipped (conditional skips).
+- **Final checks on `39c5a4a`:**
+  - vitest 639 / 639;
+  - build passes;
+  - gate spec 8 passed, 1 skipped;
+  - `check-deployment.mjs` all checks passed;
+  - release risk tier REVIEW, with no approval-tier item. The only hosted migration is `20261110000100_ai_usage`, and
+    it is optional while AI is off.
 - **Local database:** the gate spec failed only because the bloated local database made the Command Center take 12 s. The database was backed up (`/var/lib/tlt-backups/pre-release-reset-20261013040157.dump`) and reset, as SETUP §5 prescribes. The whole migration chain re-applied cleanly, and the gate spec then passed.
 
 **Found, not fixed (next):** in the presenter demo the header shows the persona name, for example "Daniel Mitchell", but
@@ -65,11 +72,12 @@ demo-consistency gap; the screenshots use a plain-named local capture account, s
 
 - **Mechanism:** the session's push tool. It returns "push requested" and gives no delivery receipt, so delivery is
   unconfirmed.
-- **Schedule:** a two-hour self check-in (`send_later`, trigger `trig_01QaKLuk3YtDQpnCoH5StF8R`, 05:33 UTC).
+- **Schedule:** a two-hour self check-in (`send_later`, trigger `trig_01QaKLuk3YtDQpnCoH5StF8R`, next 07:20 UTC).
 - **Rule:** one alert per issue; repeat only when its severity changes.
 
 | UTC | Kind | Sent |
 | --- | --- | --- |
+| 05:19 | progress | All release checks green on the local bundle (639 unit, 129 browser, build, gate). Marketing catalog, new platform page, 10 real screenshots. Push awaits OK. (Check-in moved to 07:20 UTC.) |
 | 03:32 | progress | Plan the day fixes, iPad sidebar toggle, homepage 3D done (633 tests pass; browser suite running). Next: marketing feature catalog. Push awaits OK. |
 
 ### Queued, not started (owner instructions)
