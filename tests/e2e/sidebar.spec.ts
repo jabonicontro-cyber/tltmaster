@@ -66,3 +66,78 @@ test("phones use the menu button, not the hover rail", async ({ page }) => {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+// Tablets in landscape (and other touch screens at 1024 px or wider) get the rail, which a finger cannot hover: the
+// toggle at its top opens and closes it on purpose; tapping outside, Escape or choosing a page closes it again.
+test.describe("touch screens", () => {
+  test.use({ viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: false });
+
+  test("the rail opens and closes with the toggle, without hover", async ({ page }) => {
+    await signIn(page, "dispatcher");
+    await page.goto("/command-center");
+    const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+    await expect(sidebar).toHaveAttribute("data-expanded", "false");
+    const toggle = sidebar.getByRole("button", { name: "Expand navigation" });
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect((await toggle.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44); // a comfortable touch target
+
+    await toggle.tap();
+    await expect(sidebar).toHaveAttribute("data-expanded", "true");
+    await expect(sidebar.getByText("Dispatch", { exact: true })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: "Collapse navigation" })).toHaveAttribute("aria-expanded", "true");
+    await expect.poll(() => width(page)).toBeGreaterThan(240); // after the width transition
+    // Opened over the page: the content does not move.
+    expect((await page.locator("#main").boundingBox())?.x ?? 0).toBeLessThan(200 + 72);
+
+    // Tap outside closes it.
+    await page.getByTestId("sidebar-backdrop").tap({ position: { x: 900, y: 400 } });
+    await expect(sidebar).toHaveAttribute("data-expanded", "false");
+
+    // Choosing a page navigates and closes it.
+    await sidebar.getByRole("button", { name: "Expand navigation" }).tap();
+    await sidebar.getByRole("link", { name: "Dispatch" }).tap();
+    await page.waitForURL(/\/dispatch/);
+    await expect(page.getByRole("complementary", { name: "Sidebar" })).toHaveAttribute("data-expanded", "false");
+
+    // The toggle again collapses it; Escape too.
+    await sidebar.getByRole("button", { name: "Expand navigation" }).tap();
+    await sidebar.getByRole("button", { name: "Collapse navigation" }).tap();
+    await expect(sidebar).toHaveAttribute("data-expanded", "false");
+    await sidebar.getByRole("button", { name: "Expand navigation" }).tap();
+    await page.keyboard.press("Escape");
+    await expect(sidebar).toHaveAttribute("data-expanded", "false");
+  });
+
+  test("scrolling the page never opens the rail", async ({ page }) => {
+    await signIn(page, "dispatcher");
+    await page.goto("/dispatch");
+    const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+    await page.mouse.wheel(0, 600);
+    await page.touchscreen.tap(30, 500); // a tap on a rail icon area that is not the toggle navigates, it does not expand
+    await expect(sidebar).toHaveAttribute("data-expanded", "false");
+  });
+
+  test("tablets in portrait use the menu button", async ({ page }) => {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await signIn(page, "dispatcher");
+    await page.goto("/command-center");
+    await expect(page.getByRole("complementary", { name: "Sidebar" })).toBeHidden();
+    await page.getByRole("button", { name: "Open menu" }).tap();
+    await expect(page.getByRole("dialog").getByRole("link", { name: "Dispatch" })).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow).toBeLessThanOrEqual(0);
+  });
+});
+
+test("keyboard: the toggle is reachable, labelled and works with Enter", async ({ page }) => {
+  await signIn(page, "dispatcher");
+  await page.goto("/command-center");
+  const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+  const toggle = sidebar.getByRole("button", { name: /Expand navigation|Collapse navigation/ });
+  await toggle.focus();
+  await expect(sidebar).toHaveAttribute("data-expanded", "true"); // keyboard focus inside opens it, as before
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await page.keyboard.press("Enter");
+  await expect(toggle).toHaveAttribute("aria-expanded", "true");
+});

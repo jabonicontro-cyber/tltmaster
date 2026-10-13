@@ -71,6 +71,13 @@ export interface OptimizationInput extends SmartInput {
   revenueCents: Record<string, number | null>;
   /** Hours of service from an ELD or driver logs. Not connected yet: always false. */
   hoursOfServiceVerified?: boolean;
+  /**
+   * Latest registration, insurance, inspection or permit on record per vehicle and kind, where it expired before the
+   * day (Fleet documents). Shown for review only: no assignment rule uses vehicle documents today.
+   */
+  expiredDocuments?: Array<{ truck_id: string | null; trailer_id: string | null; kind: string; expires_on: string }>;
+  /** False when vehicle documents could not be read (for example without fleet access). */
+  documentsChecked?: boolean;
 }
 
 export interface PlannedAssignment {
@@ -221,6 +228,12 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
+  for (const d of input.expiredDocuments ?? []) {
+    if (d.expires_on >= load.load_date) continue;
+    const kind = d.kind.replace(/_/g, " ");
+    if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);
+    if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);
+  }
   if (input.maintenanceChecked === false) r.push("Maintenance shop dates could not be checked.");
   if (input.timeOffChecked === false) r.push("Driver time off could not be checked.");
   return r;
@@ -447,6 +460,7 @@ export function optimizeWithAlternatives(input: OptimizationInput, priorities: P
     Object.values(input.revenueCents).some((v) => v === null) ? `${Object.values(input.revenueCents).filter((v) => v === null).length} load(s) have no rate to estimate revenue from.` : null,
     input.maintenanceChecked === false ? "Maintenance shop dates were not checked (database update not installed)." : null,
     input.timeOffChecked === false ? "Driver time off was not checked (database update not installed)." : null,
+    input.documentsChecked === false ? "Vehicle registrations, insurance and inspections could not be checked." : null,
   ].filter((x): x is string => Boolean(x));
   const blocked = [...loads.values()].filter((l) => !(pairs.get(l.id) ?? []).length).map((l) => ({ loadId: l.id, why: "No truck-and-driver pair passes the hard constraints." }));
   return { plans, tradeoffs: plans.slice(1).map((p) => ({ key: p.key, label: p.label, differences: tradeoffs(main, p) })), dataNotes, blocked };

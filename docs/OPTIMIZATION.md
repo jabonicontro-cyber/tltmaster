@@ -44,7 +44,7 @@ explain plans and help explore alternatives, but it will call this core rather t
   or missing capacity, open equipment report, pending time off, checks that could not run).
 - **Blocked** loads: no pair passes the hard constraints, or every feasible pair is used by higher-value loads; the
   reason is shown. Smart Dispatch on the Dispatch board lists each truck's and driver's exclusion reasons.
-- **Revenue** is an estimate: the order's material line rate × the load's planned quantity (same unit). No rate, no
+- **Revenue** is an estimate: the order's material and hauling line rates in the load's unit × its planned quantity (aggregate per ton, freight per load; fixed one-off charges and surcharges are not spread over loads). No rate, no
   estimate — never a guessed price.
 - **Margin is not evaluated:** no fuel, wage, maintenance or other cost data is recorded (master plan §9 Q17).
 - **Travel distance and drive time are not calculated:** no truck locations or truck-routing provider. "Fewer
@@ -68,6 +68,12 @@ explain plans and help explore alternatives, but it will call this core rather t
 - **Empty days:** a day with nothing to plan is no longer a dead end. The page lists the days in the next two weeks
   that have loads waiting for a truck and driver (`getUpcomingOpenLoadDays`), and points to the Dispatch board and
   "Needs scheduling".
+- **Revenue for freight:** the estimate now includes hauling lines in the load's unit (for example "per load"), not
+  only material lines. Before this, Prairie Lantern's per-load linehaul showed $0.
+- **Vehicle documents:** when the latest registration, insurance, inspection or permit on record for the truck or
+  trailer expired before the day, the proposal carries a review note ("… expired … — confirm it was renewed"). No
+  assignment rule uses vehicle documents today, so this never blocks. If the documents cannot be read, a data note
+  says so.
 - **Not modelled (stated, not hidden):**
   - Loads have one site and a time window; there is no separate pickup stop, so pickup-before-delivery order is only
     the load's own window.

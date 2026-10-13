@@ -100,4 +100,20 @@ describe("Plan the day: why loads are blocked and what is unavailable", () => {
     expect(explainLoad(input({ loads: [load("A")], drivers: [] }), "A").summary).toBe("There are no active drivers.");
     expect(unavailableResources(input({ loads: [] }))).toEqual([]);
   });
+
+  it("an expired registration or inspection on record is a review note, never a silent pass or an invented block", () => {
+    const ctx = input({
+      loads: [load("A")],
+      trucks: [tractor("201")],
+      trailers: [trailer("T-53")],
+      expiredDocuments: [{ truck_id: null, trailer_id: "tr-T-53", kind: "registration", expires_on: "2026-10-09" }],
+    });
+    const result = optimizeWithAlternatives(ctx, PRESETS.balanced.priorities, "balanced");
+    const a = result.plans[0].assignments[0];
+    expect(a.trailerLabel).toBe("T-53");
+    expect(a.status).toBe("needs_review");
+    expect(a.review).toContain("Trailer T-53's registration on record expired 2026-10-09 — confirm it was renewed.");
+    const unchecked = optimizeWithAlternatives({ ...ctx, expiredDocuments: [], documentsChecked: false }, PRESETS.balanced.priorities, "balanced");
+    expect(unchecked.dataNotes).toContain("Vehicle registrations, insurance and inspections could not be checked.");
+  });
 });
