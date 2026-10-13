@@ -9,6 +9,11 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **2026-10-13:** Production promoted to `db7990b` (deployment record: success). The owner applied hosted migrations
+  `20261108000100` and `20261109000100` (`20261107000100` was already applied); `migration list` shows every
+  migration Local and Remote. Still owner actions: **Refresh demo data** on Prairie Lantern Freight; add
+  `CRON_SECRET` in Vercel (takes effect with the next deployment — no separate redeploy, deployment budget).
+
 - **Communications hardening** (IMPLEMENTATION_PLAN §5ac, docs/COMMUNICATIONS.md): fixed 5-minute edit/delete
   window, manager removal with a required reason (audited, tombstone), 14-day message content retention enforced at
   read time and purged by a job (attachments, revisions, search; legal hold overrides; audit kept), scheduled job
