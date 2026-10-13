@@ -54,9 +54,8 @@ is open decision §9 Q20 (recommend a soft preference for keeping a driver on th
    (except the Command Center preferring a person's own display name, as Communications does). Without it, hosted demos show the presenter's own login name in Plan the day, Dispatch and
    Tickets. Recommended: apply with the next release (DEPLOYMENT §2a).
 3. **JIT on hosted Postgres.** Locally, JIT compilation cost 4.9 s per billing/Command Center query (the query runs in
-   0.16 s). Check hosted with `show jit;` in the Supabase SQL editor. If it says `on`, recommended: a small migration
-   `alter role authenticated set jit = off;` (reversible; OLTP queries do not benefit from JIT). Not done: it is a
-   hosted database setting.
+   0.16 s). Read-only check, exact SQL and rollback: `docs/proposals/hosted-jit.md`. Recommended: check; if `jit` is
+   on, turn it off for the app's roles. Not done: it is a hosted database setting.
 4. **Expired vehicle documents** (master plan §9 Q23): recommended — block expired insurance and registration once
    verified, warn for inspections and permits. Nothing blocks today.
 5. **Driver–truck pairing** (§9 Q20): the planner can give one truck a different driver per load in one day.
