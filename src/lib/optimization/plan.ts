@@ -251,7 +251,58 @@ function loadValue(load: SmartLoad, input: OptimizationInput, p: Priorities, max
   return { value, reasons };
 }
 
-function pairScore(load: SmartLoad, pair: Pair, p: Priorities, plan: PlannedAssignment[], loads: Map<string, SmartLoad>, input: OptimizationInput): { score: number; reasons: string[] } {
+/**
+ * Who is where in a (partial) plan, per day: the sites each truck visits, the loads each driver has, and each
+ * truck's, driver's and trailer's loads (for overlap checks). Built once per step so scoring a candidate pair is a
+ * lookup instead of a scan of the whole plan (Plan the day at 80 loads × 40 trucks × 40 drivers).
+ */
+interface PlanIndex {
+  truckSites: Map<string, Set<string>>;
+  driverLoads: Map<string, number>;
+  byTruck: Map<string, SmartLoad[]>;
+  byDriver: Map<string, SmartLoad[]>;
+  byTrailer: Map<string, SmartLoad[]>;
+}
+const dayKey = (id: string, date: string) => `${id}|${date}`;
+const emptyIndex = (): PlanIndex => ({ truckSites: new Map(), driverLoads: new Map(), byTruck: new Map(), byDriver: new Map(), byTrailer: new Map() });
+const push = <K, V>(m: Map<K, V[]>, k: K, v: V) => { const list = m.get(k); if (list) list.push(v); else m.set(k, [v]); };
+function addToIndex(idx: PlanIndex, a: { truckId: string; driverId: string; trailerId: string | null }, l: SmartLoad) {
+  const tk = dayKey(a.truckId, l.load_date);
+  const sites = idx.truckSites.get(tk);
+  if (sites) sites.add(l.site); else idx.truckSites.set(tk, new Set([l.site]));
+  const dk = dayKey(a.driverId, l.load_date);
+  idx.driverLoads.set(dk, (idx.driverLoads.get(dk) ?? 0) + 1);
+  push(idx.byTruck, a.truckId, l);
+  push(idx.byDriver, a.driverId, l);
+  if (a.trailerId) push(idx.byTrailer, a.trailerId, l);
+}
+function indexPlan(plan: PlannedAssignment[], loads: Map<string, SmartLoad>): PlanIndex {
+  const idx = emptyIndex();
+  for (const a of plan) addToIndex(idx, a, loads.get(a.loadId)!);
+  return idx;
+}
+
+/** Existing bookings by truck and by driver per day (they never change while a plan is built). */
+interface BookedIndex { truckSites: Map<string, string[]>; driverLoads: Map<string, number> }
+const bookedCache = new WeakMap<OptimizationInput, BookedIndex>();
+function bookedIndex(input: OptimizationInput): BookedIndex {
+  let b = bookedCache.get(input);
+  if (b) return b;
+  b = { truckSites: new Map(), driverLoads: new Map() };
+  for (const x of input.bookings) {
+    push(b.truckSites, dayKey(x.truck_id, x.load_date), x.site);
+    const dk = dayKey(x.driver_id, x.load_date);
+    b.driverLoads.set(dk, (b.driverLoads.get(dk) ?? 0) + 1);
+  }
+  bookedCache.set(input, b);
+  return b;
+}
+
+/**
+ * The score of one pair given what came before it that day: whether its truck already has a planned stop that day
+ * (and at this site) and how many loads its driver already has. Bookings are added here.
+ */
+function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boolean, plannedHere: boolean, plannedDriverLoads: number, input: OptimizationInput): { score: number; reasons: string[] } {
   const reasons: string[] = [];
   let score = 0;
   const cap = capacity(pair.truck, load.unit_code, pair.trailer);
@@ -260,21 +311,27 @@ function pairScore(load: SmartLoad, pair: Pair, p: Priorities, plan: PlannedAssi
     score += 6 * p.utilization * fill;
     if (fill >= 0.8) reasons.push(`uses ${Math.round(fill * 100)}% of the capacity of ${equipmentLabel(pair.truck, pair.trailer)}`);
   }
-  const sameDay = (truckOrDriver: (a: PlannedAssignment) => boolean) =>
-    plan.filter((a) => truckOrDriver(a) && loads.get(a.loadId)!.load_date === load.load_date).map((a) => loads.get(a.loadId)!);
-  const bookedSites = input.bookings.filter((b) => b.truck_id === pair.truck.id && b.load_date === load.load_date).map((b) => b.site);
-  const truckSites = [...sameDay((a) => a.truckId === pair.truck.id).map((l) => l.site), ...bookedSites];
-  if (truckSites.length && truckSites.includes(load.site)) { score += 6 * p.efficiency; reasons.push(`truck ${pair.truck.unit_number} is already at this site that day`); }
-  else if (truckSites.length) score -= 3 * p.efficiency; // a site change: an empty repositioning trip
-  const driverLoads = sameDay((a) => a.driverId === pair.driverId).length + input.bookings.filter((b) => b.driver_id === pair.driverId && b.load_date === load.load_date).length;
+  const booked = bookedIndex(input);
+  const bookedSites = booked.truckSites.get(dayKey(pair.truck.id, load.load_date));
+  const anySite = plannedAny || Boolean(bookedSites?.length);
+  if (anySite && (plannedHere || bookedSites?.includes(load.site))) { score += 6 * p.efficiency; reasons.push(`truck ${pair.truck.unit_number} is already at this site that day`); }
+  else if (anySite) score -= 3 * p.efficiency; // a site change: an empty repositioning trip
+  const driverLoads = plannedDriverLoads + (booked.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0);
   score -= 2 * p.balance * driverLoads;
   if (driverLoads === 0 && p.balance > 0) reasons.push(`${pair.driverLabel} has no other load that day`);
   score -= pair.review.length - (input.hoursOfServiceVerified ? 0 : 1); // prefer pairs with complete data
   return { score, reasons };
 }
 
-const conflicts = (plan: PlannedAssignment[], loads: Map<string, SmartLoad>, load: SmartLoad, pair: Pair) =>
-  plan.some((a) => (a.truckId === pair.truck.id || a.driverId === pair.driverId || (pair.trailer !== null && a.trailerId === pair.trailer.id)) && overlaps(loads.get(a.loadId)!, load));
+function pairScore(load: SmartLoad, pair: Pair, p: Priorities, idx: PlanIndex, input: OptimizationInput): { score: number; reasons: string[] } {
+  const planned = idx.truckSites.get(dayKey(pair.truck.id, load.load_date));
+  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0, input);
+}
+
+const conflicts = (idx: PlanIndex, load: SmartLoad, pair: Pair) =>
+  (idx.byTruck.get(pair.truck.id) ?? []).some((l) => overlaps(l, load)) ||
+  (idx.byDriver.get(pair.driverId) ?? []).some((l) => overlaps(l, load)) ||
+  (pair.trailer !== null && (idx.byTrailer.get(pair.trailer.id) ?? []).some((l) => overlaps(l, load)));
 const trailerOf = (input: OptimizationInput, id: string | null) => (id ? (input.trailers ?? []).find((t) => t.id === id) ?? null : null);
 
 function metricsOf(input: OptimizationInput, assignments: PlannedAssignment[], loads: Map<string, SmartLoad>): PlanMetrics {
@@ -326,14 +383,101 @@ function metricsOf(input: OptimizationInput, assignments: PlannedAssignment[], l
   };
 }
 
-function planScore(input: OptimizationInput, assignments: PlannedAssignment[], loads: Map<string, SmartLoad>, p: Priorities, maxRevenue: number): number {
+/** Lookups that stay fixed while one plan is built: load values for the priorities, trucks and trailers by id. */
+interface ScoreContext { value: Map<string, number>; trucks: Map<string, SmartTruck>; trailers: Map<string, OptTrailer> }
+function scoreContext(input: OptimizationInput, p: Priorities, maxRevenue: number): ScoreContext {
+  return {
+    value: new Map(input.loads.map((l) => [l.id, loadValue(l, input, p, maxRevenue).value])),
+    trucks: new Map(input.trucks.map((t) => [t.id, t])),
+    trailers: new Map((input.trailers ?? []).map((t) => [t.id, t])),
+  };
+}
+const byTime = (loads: Map<string, SmartLoad>) => (x: PlannedAssignment, y: PlannedAssignment) =>
+  loads.get(x.loadId)!.starts_at.localeCompare(loads.get(y.loadId)!.starts_at) || x.loadId.localeCompare(y.loadId);
+
+/** A scored plan: assignments in time order with what each saw before it and what it contributed. */
+interface Scored { sorted: PlannedAssignment[]; slot: Map<string, { any: boolean; here: boolean; driver: number; c: number }>; total: number }
+const pairOf = (a: PlannedAssignment, ctx: ScoreContext): Pair =>
+  ({ truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review });
+
+function scorePlan(input: OptimizationInput, assignments: PlannedAssignment[], loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): Scored {
   let score = 0;
-  const done: PlannedAssignment[] = [];
-  for (const a of [...assignments].sort((x, y) => loads.get(x.loadId)!.starts_at.localeCompare(loads.get(y.loadId)!.starts_at) || x.loadId.localeCompare(y.loadId))) {
+  const done = emptyIndex();
+  const sorted = [...assignments].sort(byTime(loads));
+  const slot: Scored["slot"] = new Map();
+  for (const a of sorted) {
     const l = loads.get(a.loadId)!;
-    const pair: Pair = { truck: input.trucks.find((t) => t.id === a.truckId)!, trailer: trailerOf(input, a.trailerId), driverId: a.driverId, driverLabel: a.driverLabel, review: a.review };
-    score += loadValue(l, input, p, maxRevenue).value + pairScore(l, pair, p, done, loads, input).score;
-    done.push(a);
+    const planned = done.truckSites.get(dayKey(a.truckId, l.load_date));
+    const any = Boolean(planned?.size), here = Boolean(planned?.has(l.site)), driver = done.driverLoads.get(dayKey(a.driverId, l.load_date)) ?? 0;
+    const c = ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input).score;
+    score += c;
+    slot.set(a.loadId, { any, here, driver, c });
+    addToIndex(done, a, l);
+  }
+  return { sorted, slot, total: Math.round(score * 100) / 100 };
+}
+
+/** What every candidate move of one load shares: the plan without that load, in time order, and where it goes back in. */
+interface MovePrep { load: SmartLoad; before: PlannedAssignment | undefined; list: PlannedAssignment[]; at: number; sameDay: boolean[] }
+function prepareMove(base: Scored, load: SmartLoad, loads: Map<string, SmartLoad>, rank: Map<string, number>): MovePrep {
+  const list = base.sorted.filter((a) => a.loadId !== load.id);
+  const r = rank.get(load.id)!;
+  let at = list.findIndex((a) => rank.get(a.loadId)! > r);
+  if (at < 0) at = list.length;
+  return { load, before: base.sorted.find((a) => a.loadId === load.id), list, at, sameDay: list.map((a) => loads.get(a.loadId)!.load_date === load.load_date) };
+}
+
+/**
+ * The score of the plan with one load given a new pair (or newly covered), without re-scoring every assignment: only
+ * the moved load and the later assignments that day on its old or new truck or driver can change. The sum runs in
+ * the same order over the same contributions as scorePlan, so the result is identical to re-scoring the whole plan.
+ */
+function scoreMove(base: Scored, prep: MovePrep, moved: PlannedAssignment, input: OptimizationInput, loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): number {
+  const { load, before, list, at, sameDay } = prep;
+  const oldTruck = before?.truckId, oldDriver = before?.driverId;
+  const isTruck = (id: string) => id === moved.truckId || id === oldTruck;
+  const isDriver = (id: string) => id === moved.driverId || id === oldDriver;
+  const sites = new Map<string, Set<string>>();
+  const counts = new Map<string, number>();
+  const track = (a: PlannedAssignment, l: SmartLoad) => {
+    if (isTruck(a.truckId)) { const t = sites.get(a.truckId); if (t) t.add(l.site); else sites.set(a.truckId, new Set([l.site])); }
+    if (isDriver(a.driverId)) counts.set(a.driverId, (counts.get(a.driverId) ?? 0) + 1);
+  };
+  const recompute = (a: PlannedAssignment, l: SmartLoad) => {
+    const cached = base.slot.get(a.loadId);
+    const tracked = sites.get(a.truckId);
+    const any = isTruck(a.truckId) ? Boolean(tracked?.size) : cached!.any;
+    const here = isTruck(a.truckId) ? Boolean(tracked?.has(l.site)) : cached!.here;
+    const driver = isDriver(a.driverId) ? counts.get(a.driverId) ?? 0 : cached!.driver;
+    return ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input).score;
+  };
+  let score = 0;
+  for (let i = 0; i < at; i++) {
+    const a = list[i];
+    score += base.slot.get(a.loadId)!.c;
+    if (sameDay[i]) track(a, loads.get(a.loadId)!);
+  }
+  score += recompute(moved, load);
+  track(moved, load);
+  for (let i = at; i < list.length; i++) {
+    const a = list[i];
+    if (sameDay[i] && (isTruck(a.truckId) || isDriver(a.driverId))) {
+      const l = loads.get(a.loadId)!;
+      score += recompute(a, l);
+      track(a, l);
+    } else score += base.slot.get(a.loadId)!.c;
+  }
+  return Math.round(score * 100) / 100;
+}
+
+function planScore(input: OptimizationInput, assignments: PlannedAssignment[], loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): number {
+  let score = 0;
+  const done = emptyIndex();
+  for (const a of [...assignments].sort(byTime(loads))) {
+    const l = loads.get(a.loadId)!;
+    const pair: Pair = { truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review };
+    score += ctx.value.get(l.id)! + pairScore(l, pair, p, done, input).score;
+    addToIndex(done, a, l);
   }
   return Math.round(score * 100) / 100;
 }
@@ -344,13 +488,14 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
   // The hard-constraint pairs depend only on the input, so callers comparing several priorities share one matrix.
   const pairs = shared ?? feasiblePairs(input);
   const maxRevenue = Math.max(0, ...Object.values(input.revenueCents).map((v) => v ?? 0));
+  const ctx = scoreContext(input, priorities, maxRevenue);
   const urgencyOrder = new Map(orderLoads(input.loads, input.today).map((l, i) => [l.id, i]));
   const order = [...input.loads].sort((a, b) =>
-    loadValue(b, input, priorities, maxRevenue).value - loadValue(a, input, priorities, maxRevenue).value ||
+    ctx.value.get(b.id)! - ctx.value.get(a.id)! ||
     urgencyOrder.get(a.id)! - urgencyOrder.get(b.id)! || a.id.localeCompare(b.id));
 
-  const build = (load: SmartLoad, pair: Pair, plan: PlannedAssignment[]): PlannedAssignment => {
-    const { reasons } = pairScore(load, pair, priorities, plan, loads, input);
+  const build = (load: SmartLoad, pair: Pair, idx: PlanIndex): PlannedAssignment => {
+    const { reasons } = pairScore(load, pair, priorities, idx, input);
     return {
       loadId: load.id, truckId: pair.truck.id, truckLabel: pair.truck.unit_number, trailerId: pair.trailer?.id ?? null, trailerLabel: pair.trailer?.unit_number ?? null,
       driverId: pair.driverId, driverLabel: pair.driverLabel,
@@ -359,49 +504,61 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
       review: pair.review,
     };
   };
-  const best = (load: SmartLoad, plan: PlannedAssignment[]): Pair | null => {
+  const pairKey = (x: Pair) => `${x.truck.unit_number}|${x.trailer?.unit_number ?? ""}|${x.driverLabel}`;
+  const best = (load: SmartLoad, idx: PlanIndex): Pair | null => {
     let top: { pair: Pair; score: number } | null = null;
     for (const pair of pairs.get(load.id) ?? []) {
-      if (conflicts(plan, loads, load, pair)) continue;
-      const s = pairScore(load, pair, priorities, plan, loads, input).score;
-      const key = (x: Pair) => `${x.truck.unit_number}|${x.trailer?.unit_number ?? ""}|${x.driverLabel}`;
-      if (!top || s > top.score || (s === top.score && key(pair) < key(top.pair))) top = { pair, score: s };
+      if (conflicts(idx, load, pair)) continue;
+      const s = pairScore(load, pair, priorities, idx, input).score;
+      if (!top || s > top.score || (s === top.score && pairKey(pair) < pairKey(top.pair))) top = { pair, score: s };
     }
     return top?.pair ?? null;
   };
 
   let plan: PlannedAssignment[] = [];
+  const greedy = emptyIndex();
   for (const load of order) {
-    const pair = best(load, plan);
-    if (pair) plan.push(build(load, pair, plan));
+    const pair = best(load, greedy);
+    if (pair) {
+      const a = build(load, pair, greedy);
+      plan.push(a);
+      addToIndex(greedy, a, load);
+    }
   }
 
   // Improvement: move one load to another pair, or drop a covered load to cover a more valuable uncovered one.
-  let score = planScore(input, plan, loads, priorities, maxRevenue);
+  const rank = new Map([...input.loads].sort((a, b) => a.starts_at.localeCompare(b.starts_at) || a.id.localeCompare(b.id)).map((l, i) => [l.id, i]));
+  let base = scorePlan(input, plan, loads, priorities, ctx);
+  let score = base.total;
   for (let round = 0; round < 50; round++) {
     let improved = false;
     for (const load of order) {
       const without = plan.filter((a) => a.loadId !== load.id);
+      const withoutIdx = indexPlan(without, loads);
+      const current = plan.find((a) => a.loadId === load.id);
+      const prep = prepareMove(base, load, loads, rank);
       for (const pair of pairs.get(load.id) ?? []) {
-        if (conflicts(without, loads, load, pair)) continue;
-        const current = plan.find((a) => a.loadId === load.id);
+        if (conflicts(withoutIdx, load, pair)) continue;
         if (current && current.truckId === pair.truck.id && current.driverId === pair.driverId && current.trailerId === (pair.trailer?.id ?? null)) continue;
-        const candidate = [...without, build(load, pair, without)];
-        const s = planScore(input, candidate, loads, priorities, maxRevenue);
-        if (s > score + 1e-9) { plan = candidate; score = s; improved = true; break; }
+        const moved = build(load, pair, withoutIdx);
+        const s = scoreMove(base, prep, moved, input, loads, priorities, ctx);
+        if (s > score + 1e-9) { plan = [...without, moved]; base = scorePlan(input, plan, loads, priorities, ctx); score = s; improved = true; break; }
       }
       if (!plan.some((a) => a.loadId === load.id)) {
         // An uncovered load: try freeing one conflicting assignment of lower value.
         for (const victim of plan) {
           const rest = plan.filter((a) => a !== victim);
-          const pair = best(load, rest);
+          const restIdx = indexPlan(rest, loads);
+          const pair = best(load, restIdx);
           if (!pair) continue;
-          let candidate = [...rest, build(load, pair, rest)];
+          const added = build(load, pair, restIdx);
+          let candidate = [...rest, added];
+          addToIndex(restIdx, added, load);
           const vLoad = loads.get(victim.loadId)!;
-          const vPair = best(vLoad, candidate);
-          if (vPair) candidate = [...candidate, build(vLoad, vPair, candidate)];
-          const s = planScore(input, candidate, loads, priorities, maxRevenue);
-          if (s > score + 1e-9) { plan = candidate; score = s; improved = true; break; }
+          const vPair = best(vLoad, restIdx);
+          if (vPair) candidate = [...candidate, build(vLoad, vPair, restIdx)];
+          const s = planScore(input, candidate, loads, priorities, ctx);
+          if (s > score + 1e-9) { plan = candidate; base = scorePlan(input, plan, loads, priorities, ctx); score = s; improved = true; break; }
         }
       }
     }
@@ -409,14 +566,18 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
   }
   // Rebuild reasons in time order so they describe the final plan.
   const final: PlannedAssignment[] = [];
-  for (const a of [...plan].sort((x, y) => loads.get(x.loadId)!.starts_at.localeCompare(loads.get(y.loadId)!.starts_at) || x.loadId.localeCompare(y.loadId))) {
-    final.push(build(loads.get(a.loadId)!, { truck: input.trucks.find((t) => t.id === a.truckId)!, trailer: trailerOf(input, a.trailerId), driverId: a.driverId, driverLabel: a.driverLabel, review: a.review }, final));
+  const finalIdx = emptyIndex();
+  for (const a of [...plan].sort(byTime(loads))) {
+    const l = loads.get(a.loadId)!;
+    const rebuilt = build(l, { truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review }, finalIdx);
+    final.push(rebuilt);
+    addToIndex(finalIdx, rebuilt, l);
   }
   const covered = new Set(final.map((a) => a.loadId));
   const uncovered = orderLoads(input.loads, input.today)
     .filter((l) => !covered.has(l.id))
     .map((l) => ({ loadId: l.id, why: (pairs.get(l.id) ?? []).length ? "Every feasible truck and driver is used by a higher-priority load at that time." : "No truck-and-driver pair passes the hard constraints (see Smart Dispatch for each reason)." }));
-  return { key, label, priorities, assignments: final, uncovered, metrics: metricsOf(input, final, loads), score: planScore(input, final, loads, priorities, maxRevenue) };
+  return { key, label, priorities, assignments: final, uncovered, metrics: metricsOf(input, final, loads), score: planScore(input, final, loads, priorities, ctx) };
 }
 
 const money = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;

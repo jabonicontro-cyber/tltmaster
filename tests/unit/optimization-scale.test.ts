@@ -33,4 +33,14 @@ describe("optimization at fleet scale", () => {
     expect(out.plans[0].metrics.covered).toBeGreaterThan(30);
     expect(ms).toBeLessThan(8000);
   }, 60_000);
+
+  // A 40-truck fleet with 80 loads took 84 s before incremental move scoring (2026-10-13), about 4 s after.
+  it("plans 80 loads across 40 trucks and 40 drivers, with every alternative, in seconds rather than minutes", () => {
+    const started = performance.now();
+    const out = optimizeWithAlternatives(bigDay(80, 40, 40), PRESETS.balanced.priorities, "balanced");
+    const ms = performance.now() - started;
+    console.log(`optimization 80×40×40: ${Math.round(ms)} ms, ${out.plans.length} plans, covered ${out.plans[0].metrics.covered}`);
+    expect(out.plans[0].metrics.covered).toBeGreaterThan(60);
+    expect(ms).toBeLessThan(20_000);
+  }, 120_000);
 });
