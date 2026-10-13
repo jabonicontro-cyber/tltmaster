@@ -11,7 +11,14 @@ import { TIME_OFF_CATEGORIES } from "@/lib/time-off";
 import { submitTimeOff } from "@/app/(app)/time-off/actions";
 
 /** Request time off for yourself, or (approvers) enter it for an employee. */
-export function TimeOffForm({ employees, ownEmployeeId }: { employees: Array<{ id: string; full_name: string }> | null; ownEmployeeId: string | null }) {
+export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
+  employees: Array<{ id: string; full_name: string }> | null;
+  ownEmployeeId: string | null;
+  /** Kinds of time off that draw from a PTO bank, with the caller's own available hours when known. */
+  bankFor?: Record<string, { name: string; available: number | null }>;
+}) {
+  const [category, setCategory] = useState("vacation");
+  const bank = bankFor[category];
   const router = useRouter();
   const [key, setKey] = useState(0);
   const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
@@ -22,6 +29,7 @@ export function TimeOffForm({ employees, ownEmployeeId }: { employees: Array<{ i
       setKey((k) => k + 1);
       setSubmissionKey(crypto.randomUUID());
       setKind("full");
+      setCategory("vacation");
       router.refresh();
     },
   });
@@ -40,7 +48,7 @@ export function TimeOffForm({ employees, ownEmployeeId }: { employees: Array<{ i
         </Field>
       )}
       <Field label="Category" htmlFor="to-category" required error={fieldError("category")} className={employees ? "sm:col-span-3" : "sm:col-span-2"}>
-        <Select {...f("category")} defaultValue="vacation">{Object.entries(TIME_OFF_CATEGORIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
+        <Select {...f("category")} value={category} onChange={(e) => setCategory(e.target.value)}>{Object.entries(TIME_OFF_CATEGORIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
       </Field>
       <fieldset className="sm:col-span-6">
         <legend className="mb-1 text-sm font-semibold text-ink">Length</legend>
@@ -66,6 +74,13 @@ export function TimeOffForm({ employees, ownEmployeeId }: { employees: Array<{ i
           </Field>
         </>
       )}
+      {bank && kind === "full" && (
+        <Field label={`Hours of ${bank.name}`} htmlFor="to-hours" required error={fieldError("hours")} className="sm:col-span-2"
+          hint={bank.available !== null && !employees ? `${Number(bank.available.toFixed(2))} h of your ${bank.name} available.` : `Draws from ${bank.name}; a request above the available hours is refused.`}>
+          <Input {...f("hours")} inputMode="decimal" placeholder="8" />
+        </Field>
+      )}
+      {bank && kind === "partial" && <p className="text-sm text-muted sm:col-span-6">The hours between the start and end time are taken from {bank.name}.</p>}
       <Field label="Comment (optional)" htmlFor="to-reason" error={fieldError("reason")} className="sm:col-span-6" hint="Visible to you and to people who manage time off — never to dispatch.">
         <Textarea {...f("reason")} rows={2} maxLength={1000} />
       </Field>

@@ -28,7 +28,8 @@ test("a driver requests time off, an approver approves it, and dispatch shows th
   await signIn(page, "driver");
   await page.goto("/driver");
   await page.getByRole("link", { name: "Request time off" }).click();
-  await expect(page.getByText("Balances are not tracked yet")).toBeVisible();
+  // No bank covers vacation in the test company, so the request is not checked against a balance (pto-balances.spec covers banks).
+  await expect(page.getByText(/No balances are tracked|Time-off balances/).first()).toBeVisible();
   await page.getByLabel("Category").selectOption("vacation");
   await page.getByLabel("First day").fill(day);
   await page.getByLabel("Comment (optional)").fill("Family event (e2e)");

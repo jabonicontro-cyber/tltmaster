@@ -283,6 +283,14 @@ name as an item's assignee). Rollback: `supabase/rollbacks/20261111000200_demo_p
 names) and `private.assignment_label`; real companies get identical values. Safe to skip. Rollback:
 `supabase/rollbacks/20261111000300_demo_history_names.down.sql` (tested locally 2026-10-13).
 
+**PTO banks and balances (`20261112000100_pto_balances.sql`, after `20261104000100`).** Adds `pto_banks`,
+the append-only `pto_ledger`, `time_off_requests.pto_bank_id`, the `time_off.balances` permission (owner) and replaces
+`time_off_save`, `time_off_decide` and `time_off_cancel` with versions that check and post balances. Nothing changes
+for a company until it creates a bank (requests in categories without a bank are not checked). Without the migration
+the Time off page says balances are coming soon and Banks and balances says it is not available yet. Rollback:
+`supabase/rollbacks/20261112000100_pto_balances.down.sql` (tested locally 2026-10-13: apply → rollback → time-off tests
+pass → re-apply). After applying, run **Refresh demo data** so demos get the Paid time off bank and opening grants.
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

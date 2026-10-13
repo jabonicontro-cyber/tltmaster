@@ -212,9 +212,9 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
 
     // Time off: approved leave next week, and a pending request.
     if (await installed(db, "time_off_requests")) {
-      const approved = (await must("time off", db.rpc("time_off_save", { p: { employee_id: emp["Hannah Voss"], category: "vacation", start_date: addDays(today, 7), end_date: addDays(today, 9), reason: "" } }))) as { id: string };
+      const approved = (await must("time off", db.rpc("time_off_save", { p: { employee_id: emp["Hannah Voss"], category: "vacation", start_date: addDays(today, 7), end_date: addDays(today, 9), hours: 24, reason: "" } }))) as { id: string };
       await must("approve", db.rpc("time_off_decide", { p_id: approved.id, p_decision: "approved", p_note: "Approved. Enjoy the time off." }));
-      await must("time off", db.rpc("time_off_save", { p: { employee_id: emp["Wes Carver"], category: "personal", start_date: addDays(today, 12), end_date: addDays(today, 12), reason: "" } }));
+      await must("time off", db.rpc("time_off_save", { p: { employee_id: emp["Wes Carver"], category: "personal", start_date: addDays(today, 12), end_date: addDays(today, 12), hours: 8, reason: "" } }));
     }
   }
 

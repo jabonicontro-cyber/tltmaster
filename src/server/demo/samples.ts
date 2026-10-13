@@ -60,6 +60,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("maintenance", await maintenance(db, today, trucks));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
+  // Balances first: once a bank covers vacation and personal time, requests on it need hours and a balance.
+  note("time-off balances", await ptoBalances(db));
   note("time off", await timeOff(db, today));
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
@@ -248,9 +250,9 @@ async function timeOff(db: Db, today: string): Promise<number> {
   if (total === 0) {
     const people = (await must("employees", db.from("employees").select("id").eq("status", "active").not("driver_id", "is", null).is("user_id", null).order("full_name").limit(2))) as Array<{ id: string }>;
     if (people.length === 2) {
-      const approved = (await must("time off", db.rpc("time_off_save", { p: { employee_id: people[0].id, category: "vacation", start_date: addDays(today, 7), end_date: addDays(today, 9), reason: "" } }))) as { id: string };
+      const approved = (await must("time off", db.rpc("time_off_save", { p: { employee_id: people[0].id, category: "vacation", start_date: addDays(today, 7), end_date: addDays(today, 9), hours: 24, reason: "" } }))) as { id: string };
       await must("approve", db.rpc("time_off_decide", { p_id: approved.id, p_decision: "approved", p_note: "Approved. Enjoy the time off." }));
-      await must("time off", db.rpc("time_off_save", { p: { employee_id: people[1].id, category: "personal", start_date: addDays(today, 12), end_date: addDays(today, 12), reason: "" } }));
+      await must("time off", db.rpc("time_off_save", { p: { employee_id: people[1].id, category: "personal", start_date: addDays(today, 12), end_date: addDays(today, 12), hours: 8, reason: "" } }));
       n += 2;
     }
   }
@@ -258,7 +260,35 @@ async function timeOff(db: Db, today: string): Promise<number> {
   for (const v of viewers) {
     const mine = (await must("time off", db.from("time_off_requests").select("id").eq("employee_id", v.id).limit(1))) as Array<{ id: string }>;
     if (mine.length) continue;
-    await must("time off", db.rpc("time_off_save", { p: { employee_id: v.id, category: "personal", start_date: addDays(today, 21), end_date: addDays(today, 21), reason: "" } }));
+    await must("time off", db.rpc("time_off_save", { p: { employee_id: v.id, category: "personal", start_date: addDays(today, 21), end_date: addDays(today, 21), hours: 8, reason: "" } }));
+    n++;
+  }
+  return n;
+}
+
+/**
+ * Time-off balances (20261112000100): one combined "Paid time off" bank (vacation and personal; full- and part-time)
+ * and a fictional opening grant for each current employee who has no entry on it yet, so My balances, Banks and
+ * balances and the request form show real numbers. Grants go through pto_adjust (owner's time_off.balances); amounts
+ * are demo data, labelled as such in the history, never a policy.
+ */
+async function ptoBalances(db: Db): Promise<number> {
+  const banks = await db.from("pto_banks").select("id, active");
+  if (missing(banks.error)) return 0;
+  if (banks.error) throw new Error(`Demo samples (time-off banks): ${banks.error.message}`);
+  let n = 0;
+  let bankId = ((banks.data ?? []) as Array<{ id: string; active: boolean }>).find((b) => b.active)?.id;
+  if (!bankId) {
+    if ((banks.data ?? []).length) return 0; // banks exist but none is active: the demo owner changed them, leave them be
+    bankId = ((await must("time-off bank", db.rpc("pto_bank_save", { p: { name: "Paid time off", categories: ["vacation", "personal"], employment_types: ["full_time", "part_time"], waiting_days: 0 } }))) as { id: string }).id;
+    n++;
+  }
+  const people = (await must("employees", db.from("employees").select("id, employment_type").in("status", ["active", "on_leave"]).in("employment_type", ["full_time", "part_time"]).order("full_name"))) as Array<{ id: string; employment_type: string }>;
+  const have = new Set(((await must("balances", db.from("pto_ledger").select("employee_id").eq("bank_id", bankId))) as Array<{ employee_id: string }>).map((r) => r.employee_id));
+  for (const [i, p] of people.entries()) {
+    if (have.has(p.id)) continue;
+    const hours = p.employment_type === "part_time" ? 16 : 40 + (i % 3) * 8;
+    await must("time-off grant", db.rpc("pto_adjust", { p: { employee_id: p.id, bank_id: bankId, kind: "grant", hours, note: "Demo: opening balance (fictional)" } }));
     n++;
   }
   return n;

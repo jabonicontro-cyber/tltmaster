@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { uuid } from "@/lib/schemas/common";
+import { adjustSchema, bankSchema } from "@/lib/pto";
 import { timeOffSchema } from "@/lib/time-off";
 import { requireAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -62,5 +63,45 @@ export async function cancelTimeOff(input: z.input<typeof cancel>): Promise<Acti
     if (error) return fail(dbErrorMessage(error));
     refresh(parsed.data.id);
     return ok(undefined, "Request canceled.");
+  });
+}
+
+// PTO banks and balances (20261112000100): time_off.balances is checked by the database functions.
+
+function bankInput(formData: FormData) {
+  return {
+    id: formData.get("id")?.toString() ?? "",
+    name: formData.get("name")?.toString() ?? "",
+    categories: formData.getAll("categories").map(String),
+    employment_types: formData.getAll("employment_types").map(String),
+    waiting_days: formData.get("waiting_days")?.toString() || "0",
+    active: formData.get("active") !== "false",
+  };
+}
+
+export async function saveBank(formData: FormData): Promise<ActionResult<{ id: string }>> {
+  return guard(async () => {
+    await requireAccess();
+    const parsed = bankSchema.safeParse(bankInput(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("pto_bank_save", { p: parsed.data });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/time-off", "layout");
+    return ok(data as { id: string }, parsed.data.id ? "Bank saved." : "Bank created.");
+  });
+}
+
+export async function adjustBalance(formData: FormData): Promise<ActionResult<{ balance: number | null }>> {
+  return guard(async () => {
+    await requireAccess();
+    const parsed = adjustSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("pto_adjust", { p: parsed.data });
+    if (error) return fail(dbErrorMessage(error));
+    const r = data as { duplicate: boolean; balance: number | null };
+    revalidatePath("/time-off", "layout");
+    return ok({ balance: r.balance === null ? null : Number(r.balance) }, r.duplicate ? "This entry was already recorded." : parsed.data.kind === "grant" ? "Hours granted." : "Balance adjusted.");
   });
 }

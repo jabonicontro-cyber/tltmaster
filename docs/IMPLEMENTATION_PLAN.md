@@ -2315,6 +2315,29 @@ Local commits only (owner instruction: no push, deploy or hosted migration). Det
   enforcement recommendation (master plan §9 Q23); hosted JIT check (`docs/proposals/hosted-jit.md`); "Keep crews
   together" priority (`docs/proposals/crew-continuity.md`).
 
+## 5ai. Driver time off: PTO banks and balances (2026-10-13, evening)
+
+Owner directive 2026-10-13 settles the PTO model (master plan §9 Q24). Slice 1 is the foundation every accrual posts
+into. Migration `20261112000100_pto_balances.sql` (rollback tested):
+- **Banks** (`pto_banks`): per company; one or more request categories (separate or combined banks), eligible
+  employment types (policies differ for full- and part-time), waiting period from the hire date. No amounts are
+  invented: hours come only from grants and adjustments.
+- **Ledger** (`pto_ledger`, append-only, audited): grant, adjustment (reason required; never below zero), usage on
+  approval, reversal when approved time off is canceled; idempotent submission keys.
+- **Checks in the database**: a request on a bank needs known hours, an eligible employment type, the waiting period
+  passed (or is refused with the date; a missing hire date is named), and fits the available balance (balance minus
+  other pending requests; the employee row is locked). Approval re-checks the balance and posts the usage.
+- **Privacy**: employees see their own balances and history; `time_off.balances` (owner) sees and manages everyone's.
+- **App**: My balances on Time off; hours field on the request form for banked categories (with the available hours);
+  Banks and balances page (banks, grant/adjust, balances, recent history) with a "Coming soon" note for accruals,
+  carryover/expiration and approval chains.
+- **Demo**: a Paid time off bank and opening grants via `samples.ts` (presenter, prospect and Refresh).
+- **Tests**: `tests/db/pto-balances.test.ts` (6), tenancy and permission catalog, `tests/db/demo-samples.test.ts`,
+  `tests/e2e/pto-balances.spec.ts` (2), `time-off.spec.ts`, `demo-parity.spec.ts` (owner balances).
+
+Also this evening: **Keep crews together** (OPTIMIZATION §2 item 7) and **demo billing samples** fixed for late-day
+seeds (`95320c4`).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

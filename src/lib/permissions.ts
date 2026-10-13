@@ -37,6 +37,7 @@ export const PERMISSIONS = [
   "employees.compensation",
   "time_off.view",
   "time_off.approve",
+  "time_off.balances",
   "maintenance.view",
   "maintenance.manage",
   "maintenance.costs",

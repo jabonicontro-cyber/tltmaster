@@ -30,10 +30,14 @@ export const timeOffSchema = z
     start_time: z.string().optional().transform((v) => v?.trim() || ""),
     end_time: z.string().optional().transform((v) => v?.trim() || ""),
     reason: z.string().trim().max(1000, "Use at most 1000 characters.").default(""),
+    // Hours a full-day request uses from a PTO bank (partial days derive them from the times). Optional here: the
+    // database requires them only when the category draws from a bank.
+    hours: z.string().optional().transform((v) => v?.trim() || ""),
     submission_key: z.uuid().optional(),
   })
   .superRefine((v, ctx) => {
     if (v.day_kind === "full") {
+      if (v.hours && (!/^\d{1,4}(\.\d{1,2})?$/.test(v.hours) || Number(v.hours) <= 0)) ctx.addIssue({ code: "custom", path: ["hours"], message: "Enter hours like 8 or 7.5." });
       if (v.end_date && !isOperationalDate(v.end_date)) ctx.addIssue({ code: "custom", path: ["end_date"], message: OPERATIONAL_DATE_MESSAGE });
       else if (v.end_date && v.end_date < v.start_date) ctx.addIssue({ code: "custom", path: ["end_date"], message: "The last day is before the first day." });
     } else {
@@ -51,6 +55,7 @@ export const timeOffSchema = z
     start_time: v.day_kind === "partial" ? v.start_time : null,
     end_time: v.day_kind === "partial" ? v.end_time : null,
     reason: v.reason,
+    hours: v.day_kind === "full" && v.hours ? Number(v.hours) : null,
     submission_key: v.submission_key,
   }));
 

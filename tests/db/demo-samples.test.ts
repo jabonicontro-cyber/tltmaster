@@ -55,6 +55,7 @@ async function counts(company: string) {
     schedules: await one("select count(*) n from public.maintenance_schedules where company_id = $1"),
     documents: await one("select count(*) n from public.vehicle_documents where company_id = $1"),
     timeOff: await one("select count(*) n from public.time_off_requests where company_id = $1"),
+    ptoEntries: await one("select count(*) n from public.pto_ledger where company_id = $1"),
     quotes: await one("select count(*) n from public.quotes where company_id = $1"),
     workspaces: await one("select count(*) n from public.operation_workspaces where company_id = $1"),
     loads: await one("select count(*) n from public.order_loads where company_id = $1"),
@@ -96,6 +97,12 @@ describe.skipIf(!available)("demo feature samples", () => {
       [w.company, todayIn(TZ)],
     );
     expect(Number(open.rows[0].n)).toBeGreaterThanOrEqual(4);
+    // Time-off balances (20261112000100): one Paid time off bank and an opening grant (demo data) per current employee.
+    const banks = await q<{ name: string }>("select name from public.pto_banks where company_id = $1 and active", [w.company]);
+    expect(banks.rows.map((r) => r.name)).toEqual(["Paid time off"]);
+    const grants = await q<{ n: string; note: string }>("select count(*) n, min(note) note from public.pto_ledger where company_id = $1 and kind = 'grant'", [w.company]);
+    expect(Number(grants.rows[0].n)).toBeGreaterThanOrEqual(3);
+    expect(grants.rows[0].note).toMatch(/^Demo:/);
     // Billing shows every state: an order delivered exactly as ordered (ready) and one handed off (internal batch).
     const readiness = ((await as(w.owner).from("billing_order_status").select("readiness")).data ?? []).map((r) => (r as { readiness: string }).readiness);
     expect(readiness).toContain("ready");

@@ -11,7 +11,10 @@ import { formatDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
 import { calendarDays, STATUS_TONE, TIME_OFF_CATEGORIES, TIME_OFF_STATUSES } from "@/lib/time-off";
+import { buttonClasses } from "@/components/ui/button";
+import { formatHours } from "@/lib/pto";
 import { requireAccess } from "@/server/auth";
+import { balancesFor, listBanks } from "@/server/data/pto";
 import { currentEmployees, employeeNames, listTimeOff, myEmployee, type TimeOffRow } from "@/server/data/time-off";
 
 export const metadata = { title: "Time off" };
@@ -61,24 +64,60 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
     );
   }
   const status = sp.status ?? "pending";
-  const [all, names, employees] = await Promise.all([
+  const canBalances = can(access, "time_off.balances");
+  const [all, names, employees, banks, myBalances] = await Promise.all([
     canView ? listTimeOff({ status, employee: sp.employee }) : Promise.resolve([] as TimeOffRow[]),
     employeeNames(),
     canApprove ? currentEmployees() : Promise.resolve(null),
+    listBanks(),
+    me ? balancesFor() : Promise.resolve([]),
   ]);
+  // Which bank each kind of time off draws from, for the request form (null = balances not installed yet).
+  const bankFor: Record<string, { name: string; available: number | null }> = {};
+  for (const b of (banks ?? []).filter((x) => x.active)) {
+    const mine = myBalances.find((m) => m.bank_id === b.id);
+    for (const c of b.categories) bankFor[c] = { name: b.name, available: mine ? mine.available : null };
+  }
 
   const q = (sp.q ?? "").trim().toLowerCase();
   const shown = (all ?? []).filter((r) => !q || (names.get(r.employee_id)?.name ?? "").toLowerCase().includes(q));
 
   return (
     <>
-      <PageHeader title="Time off" description="Request time off and follow your requests. Approved leave makes a driver unavailable to dispatch for those dates and hours." />
-      <Notice title="Balances are not tracked yet">Taviron does not calculate PTO balances or accruals yet, so requests are not checked against a balance. Hours shown are the requested time only.</Notice>
+      <PageHeader
+        title="Time off"
+        description="Request time off and follow your requests. Approved leave makes a driver unavailable to dispatch for those dates and hours."
+        actions={canBalances && banks !== null ? <Link href="/time-off/balances" className={buttonClasses("secondary", "md")}>Banks and balances</Link> : undefined}
+      />
+      {banks === null ? (
+        <Notice title="Coming soon">Time-off balances. Until they are installed, requests are not checked against a balance.</Notice>
+      ) : banks.every((b) => !b.active) ? (
+        <Notice title="No balances are tracked">
+          No time-off bank is set up, so requests are not checked against a balance.{canBalances ? <> Set one up in <Link href="/time-off/balances" className="underline">Banks and balances</Link>.</> : null}
+        </Notice>
+      ) : null}
+      {myBalances.length > 0 && (
+        <Card className="mt-5">
+          <CardHeader title="My balances" description="Available = balance minus your pending requests." />
+          <ul className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3" aria-label="My balances">
+            {myBalances.map((b) => (
+              <li key={b.bank_id} className="bg-card px-4 py-3 sm:px-5">
+                <p className="text-sm font-semibold">{b.name}</p>
+                <p className="mt-1 text-2xl font-semibold tabular" data-testid="available-hours">{formatHours(b.available)} <span className="text-sm font-normal text-muted">available</span></p>
+                <p className="text-xs text-muted">Balance {formatHours(b.balance)}{b.pending ? ` · ${formatHours(b.pending)} pending` : ""}</p>
+                {!b.eligible && <p className="mt-1 text-xs text-muted">Your employment type cannot use this bank.</p>}
+                {b.usable_from && <p className="mt-1 text-xs text-muted">Usable from {formatDate(b.usable_from)}.</p>}
+                {b.hire_date_missing && <p className="mt-1 text-xs text-muted">No hire date is recorded, so the waiting period cannot be checked — ask the office.</p>}
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       <div className="mt-5 grid gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader title={canApprove ? "Request or enter time off" : "Request time off"} />
           <CardBody>
-            {me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} /> : (
+            {me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} bankFor={bankFor} /> : (
               <p className="text-sm text-muted">Your login is not linked to an employee record, so you cannot request time off here yet. Ask the office to link it in Employees.</p>
             )}
           </CardBody>
