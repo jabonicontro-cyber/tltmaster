@@ -31,7 +31,8 @@ export function FilterBar({ action, query, placeholder = "Search…", children, 
 
 export function FilterSelect({ name, label, value, options }: { name: string; label: string; value?: string; options: Array<{ value: string; label: string }> }) {
   return (
-    <div>
+    // A long option (a customer's full name) must never widen the page: the select shrinks to the space it has.
+    <div className="min-w-0 max-w-full">
       <label htmlFor={`f-${name}`} className="mb-1 block text-xs font-semibold text-muted uppercase">
         {label}
       </label>
@@ -39,7 +40,7 @@ export function FilterSelect({ name, label, value, options }: { name: string; la
         id={`f-${name}`}
         name={name}
         defaultValue={value ?? ""}
-        className="h-10 rounded-md border border-line bg-card px-3 text-[15px] focus:border-strong focus:outline-none"
+        className="h-10 max-w-full rounded-md border border-line bg-card px-3 text-[15px] focus:border-strong focus:outline-none sm:max-w-xs"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
