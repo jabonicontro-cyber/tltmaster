@@ -21,6 +21,11 @@ project credentials. Read it together with:
 | `b699785` | Handoff, master plan statuses, pending decisions |
 | `6b1a3b6`, `f853b16` | Marketing: feature catalog (`src/lib/site/features.ts`), screenshot list with a quality gate, capture script fixed, `/platform` generated from the catalog, 8 verified screenshots (3 new), catalog and marketing tests (docs/MARKETING.md) |
 | `bf7bc63` | Demo parity e2e: read the sidebar once the page has settled (dev-server reload) |
+| `84806c7`, `b699785`, `39c5a4a`, `d56c387` | Handoff, master plan B43, implementation plan §5ag |
+| `7d13db2` | Demo parity e2e: one shared `sidebarHrefs()` helper |
+| `3453d68` | Billing and Communications screenshots |
+| `051dbda` | Homepage: capability index from the catalog; homepage screens take their alt text and captions from it |
+| `ee168de` | Employees, Reports and Company setup screenshots: every published capability now has a real screen (13 shots) |
 
 **Verification on this bundle (local, 2026-10-13):**
 - **Lint and typecheck:** clean.
@@ -30,6 +35,8 @@ project credentials. Read it together with:
 - **`check-deployment.mjs`:** all checks passed.
 - **Full browser suite, first run:** 126 passed, 1 failed, 9 skipped. The failure was a test-side race (dev-server reload during a read); fixed, and the test re-run passed.
 - **Final full browser suite on the complete bundle:** 129 passed, 0 failed, 9 skipped (conditional skips).
+- **After `ee168de` (site-only change):** lint and typecheck clean; unit tests 365 / 365; production build passes;
+  marketing and homepage browser specs 7 / 7; `/platform` checked at desktop and phone (no sideways overflow).
 - **Final checks on `39c5a4a`:**
   - vitest 639 / 639;
   - build passes;
@@ -72,11 +79,12 @@ demo-consistency gap; the screenshots use a plain-named local capture account, s
 
 - **Mechanism:** the session's push tool. It returns "push requested" and gives no delivery receipt, so delivery is
   unconfirmed.
-- **Schedule:** a two-hour self check-in (`send_later`, trigger `trig_01QaKLuk3YtDQpnCoH5StF8R`, next 07:20 UTC).
+- **Schedule:** two-hour self check-ins during the sprint (`send_later`); stopped at sprint end (05:55 UTC).
 - **Rule:** one alert per issue; repeat only when its severity changes.
 
 | UTC | Kind | Sent |
 | --- | --- | --- |
+| 05:55 | final | Sprint finished. Everything committed locally, nothing pushed or deployed. Your decisions: push the bundle (1), expired documents rule (2). The two-hour check-ins have stopped. |
 | 05:19 | progress | All release checks green on the local bundle (639 unit, 129 browser, build, gate). Marketing catalog, new platform page, 10 real screenshots. Push awaits OK. (Check-in moved to 07:20 UTC.) |
 | 03:32 | progress | Plan the day fixes, iPad sidebar toggle, homepage 3D done (633 tests pass; browser suite running). Next: marketing feature catalog. Push awaits OK. |
 
