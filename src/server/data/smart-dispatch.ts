@@ -1,6 +1,6 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
-import { recommend, type SmartTimeOff, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { recommend, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
@@ -67,6 +67,12 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const shopMissing = shop.error && (shop.error.code === "PGRST202" || shop.error.code === "42883");
   if (shop.error && !shopMissing) throw new Error(`Smart Dispatch could not read the shop schedule: ${shop.error.message}`);
 
+  // Expired vehicle documents and the company's rule per kind (20261112000200). Missing = not installed yet: the
+  // database then has no document rule either, so nothing is blocked on documents.
+  const docs = await supabase.rpc("dispatch_document_issues", { p_on: addDays(to, 2) });
+  const docsMissing = docs.error && (docs.error.code === "PGRST202" || docs.error.code === "42883");
+  if (docs.error && !docsMissing) throw new Error(`Smart Dispatch could not read vehicle documents: ${docs.error.message}`);
+
   const leave = await supabase.rpc("dispatch_time_off", { p_from: addDays(from, -1), p_to: addDays(to, 1) });
   const leaveMissing = leave.error && (leave.error.code === "PGRST202" || leave.error.code === "42883");
   if (leave.error && !leaveMissing) throw new Error(`Smart Dispatch could not read driver time off: ${leave.error.message}`);
@@ -116,6 +122,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     truckReports: ((reports.data ?? []) as Array<{ truck_id: string | null; kind: string }>).filter((r) => r.truck_id).map((r) => ({ truck_id: r.truck_id as string, kind: r.kind })),
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
     shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),
+    documentIssues: docsMissing ? undefined : ((docs.data ?? []) as SmartDocumentIssue[]),
     maintenanceChecked: !shopMissing,
     timeOff: leaveMissing ? [] : ((leave.data ?? []) as SmartTimeOff[]),
     timeOffChecked: !leaveMissing,

@@ -178,3 +178,22 @@ export async function saveBranding(formData: FormData): Promise<ActionResult> {
     return ok(undefined, "Branding saved. Everyone in your company sees it on their next page.");
   });
 }
+
+const DOCUMENT_RULE_KINDS = ["registration", "insurance", "inspection", "permit"] as const;
+
+/** Set the dispatch rule per vehicle document kind (settings.manage; checked again by the database). */
+export async function saveDocumentRules(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("settings.manage");
+    const supabase = await createClient();
+    for (const kind of DOCUMENT_RULE_KINDS) {
+      const action = formData.get(kind);
+      if (action !== "block" && action !== "warn") return fail("Choose block or warn for every document.");
+      const { error } = await supabase.rpc("set_document_rule", { p_kind: kind, p_action: action });
+      if (error) return fail(dbErrorMessage(error));
+    }
+    revalidatePath("/settings");
+    revalidatePath("/dispatch", "layout");
+    return ok(undefined, "Document rules saved. Dispatch checks use them from now on.");
+  });
+}

@@ -291,6 +291,15 @@ the Time off page says balances are coming soon and Banks and balances says it i
 `supabase/rollbacks/20261112000100_pto_balances.down.sql` (tested locally 2026-10-13: apply → rollback → time-off tests
 pass → re-apply). After applying, run **Refresh demo data** so demos get the Paid time off bank and opening grants.
 
+**Expired vehicle documents policy (`20261112000200_document_policy.sql`, after `20261112000100`).** Adds
+`vehicle_document_rules` (per kind: block or warn; defaults insurance/registration block, inspection/permit warn),
+`vehicle_documents.verified_at/verified_by` (cleared when the kind, dates or archive change) and replaces
+`private.assignment_eligibility`, `private.eligibility_message` and `private.check_assignment` so a VERIFIED expired
+document on a blocking kind refuses the assignment, naming the vehicle, document, date and fix. Existing documents are
+unverified after the update, so nothing is blocked until someone marks a record verified in Fleet. Without the update
+expired documents stay review notes. Rollback: `supabase/rollbacks/20261112000200_document_policy.down.sql` (tested
+locally 2026-10-13: apply → rollback → dispatch tests pass → re-apply).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

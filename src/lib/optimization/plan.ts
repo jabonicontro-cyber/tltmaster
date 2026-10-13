@@ -16,7 +16,7 @@
 // recorded (site continuity is used as the efficiency proxy, and said so); hours of service are not verified
 // because no ELD data is connected — so no assignment is ever "Verified feasible" yet, only "Needs review".
 
-import { checkPair, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { checkPair, documentLabel, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 
 export type FeasibilityStatus = "verified" | "needs_review" | "blocked";
@@ -182,6 +182,9 @@ function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, tru
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === trailer.id && b.load_id !== load.id && overlaps(b, load))) out.push(`Trailer ${trailer.unit_number} is already booked at an overlapping time.`);
   const cap = capacity(truck, load.unit_code, trailer);
   if (load.planned_quantity !== null && cap !== null && load.planned_quantity > cap) out.push(`Planned ${load.planned_quantity} ${load.unit_code ?? ""} exceeds the recorded capacity of ${equipmentLabel(truck, trailer)}.`);
+  for (const d of (input.documentIssues ?? []).filter((x) => x.trailer_id === trailer.id && x.blocks && x.expires_on < load.load_date)) {
+    out.push(`Trailer ${trailer.unit_number}'s ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
+  }
   return out;
 }
 
@@ -260,7 +263,7 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
   if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave — confirm they are working that day.");
   for (const d of input.expiredDocuments ?? []) {
-    if (d.expires_on >= load.load_date) continue;
+    if (d.expires_on >= load.load_date || (d as { blocks?: boolean }).blocks) continue; // blocking ones never reach a plan
     const kind = d.kind.replace(/_/g, " ");
     if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);
     if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);

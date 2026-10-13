@@ -11,7 +11,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TRAILER_TYPE_LABELS } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getTrailer, vehicleRecords } from "@/server/data/fleet";
+import { documentRules, getTrailer, vehicleRecords } from "@/server/data/fleet";
 import { downtimeDays, vehicleAvailability } from "@/lib/fleet/availability";
 import { AvailabilityCard, DocumentsCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
 import { businessToday } from "@/server/data/settings";
@@ -26,7 +26,7 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
   if (!detail) notFound();
   const { trailer: t, events, audit, defaultTruck, names } = detail;
   const { timezone, today } = await businessToday();
-  const records = await vehicleRecords("trailer", t.id, { maintenance: false, costs: false });
+  const [records, rules] = await Promise.all([vehicleRecords("trailer", t.id, { maintenance: false, costs: false }), documentRules()]);
   const availability = vehicleAvailability(t, [], today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
 
@@ -62,7 +62,7 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
         <div className="space-y-5 xl:col-span-2">
           <AvailabilityCard a={availability} timezone={timezone} />
           <ServiceCard e={t} timezone={timezone} />
-          <DocumentsCard vehicle={{ kind: "trailer", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} />
+          <DocumentsCard vehicle={{ kind: "trailer", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
           <p className="text-sm text-muted">Out of service for {downtimeDays(events, t, new Date(), 90)} days in the last 90 (recorded status changes). Work orders cover trucks only for now.</p>
           <CapacityCard e={t} timezone={timezone} who={who} />
           <EquipmentDetails

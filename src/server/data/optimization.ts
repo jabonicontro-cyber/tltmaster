@@ -52,8 +52,10 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     ...smart,
     revenueCents,
     hoursOfServiceVerified: false,
-    expiredDocuments: documents.error ? [] : expiredDocuments,
-    documentsChecked: !documents.error,
+    // The company's document rules (20261112000200) when installed: every expired document, with whether it blocks.
+    // Before that, the latest documents read directly (fleet.view) give review notes only.
+    expiredDocuments: smart.documentIssues ?? (documents.error ? [] : expiredDocuments),
+    documentsChecked: smart.documentIssues !== undefined || !documents.error,
     trailers: ((trailers.data ?? []) as Array<OptTrailer & { weight_capacity: number | string | null; volume_capacity: number | string | null; compatible_truck_types: string[] | null }>).map((t) => ({
       ...t,
       weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),

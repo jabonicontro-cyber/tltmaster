@@ -45,7 +45,7 @@ describe("PTO banks and balances", () => {
       expect(sick.id).not.toBe(combined.id);
       // Everyone in the company can read the bank definitions (the request form needs them).
       await s.as(dispatcher);
-      expect((await s.query("select name from public.pto_banks order by name")).rows.map((r) => r.name)).toEqual(["Paid time off", "Sick leave"]);
+      expect((await s.query("select name from public.pto_banks where active order by name")).rows.map((r) => r.name)).toEqual(["Paid time off", "Sick leave"]);
     });
   });
 

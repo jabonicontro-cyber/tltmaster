@@ -27,6 +27,8 @@ import { businessToday, getSettings } from "@/server/data/settings";
 import { photoUrl } from "@/server/data/profile";
 import { adminAvailable } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
+import { documentRules } from "@/server/data/fleet";
+import { DocumentRulesForm } from "@/components/settings/document-rules-form";
 
 export const metadata = { title: "Settings" };
 
@@ -34,6 +36,7 @@ const TABS: Array<{ key: string; label: string; visible: (a: Access) => boolean 
   { key: "account", label: "My account", visible: () => true },
   { key: "company", label: "Company", visible: () => true },
   { key: "numbering", label: "Numbering", visible: (a) => can(a, "settings.manage") },
+  { key: "dispatch", label: "Dispatch rules", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
   { key: "users", label: "Users", visible: (a) => can(a, "users.manage") },
   { key: "permissions", label: "Permissions", visible: (a) => can(a, "users.manage") },
   { key: "email", label: "Email", visible: () => true },
@@ -77,6 +80,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <div className="border-t border-line">
           <BrandingForm settings={settings} canEdit={can(access, "settings.manage")} companyId={access.companyId!} />
         </div>
+      </>
+    );
+  } else if (tab === "dispatch") {
+    const rules = await documentRules();
+    content = (
+      <>
+        <CardHeader
+          title="Expired vehicle documents"
+          description="What an expired document does to dispatch, per kind. Only a document someone marked verified in Fleet can block; an unverified one is a warning so a person confirms the renewal. Lease, title and other documents are not checked. Check the rules that apply where you operate."
+        />
+        <CardBody>
+          {rules ? <DocumentRulesForm rules={rules} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Document rules need a database update that has not been installed yet. Until then expired documents are review notes only.</p>}
+        </CardBody>
       </>
     );
   } else if (tab === "numbering") {

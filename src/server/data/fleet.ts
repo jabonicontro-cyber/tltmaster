@@ -244,6 +244,17 @@ export interface VehicleDocumentRow {
   archived_by: string | null;
   created_by: string | null;
   created_at: string;
+  /** A person confirmed the record (20261112000200); absent before that update is installed. */
+  verified_at?: string | null;
+}
+
+export type DocumentRule = "block" | "warn";
+/** The company's rule per checked document kind (20261112000200), or null when not installed. */
+export async function documentRules(): Promise<Record<"registration" | "insurance" | "inspection" | "permit", DocumentRule> | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("document_rules");
+  if (error) return null;
+  return data as Record<"registration" | "insurance" | "inspection" | "permit", DocumentRule>;
 }
 
 type Optional<T> = { available: boolean; rows: T[] };

@@ -92,6 +92,12 @@ export interface SmartInput {
   rejections: Array<{ load_id: string; truck_id: string; driver_id: string }>;
   /** Open work orders from Maintenance (shop visits, restrictions, shop work in progress). */
   shopVisits?: SmartShopVisit[];
+  /**
+   * Expired registration, insurance, inspection or permit on record (latest per vehicle and kind; 20261112000200).
+   * `blocks` = verified and the company's rule for that kind is "block": the equipment is excluded, as the database
+   * refuses it. Anything else is a warning to confirm the renewal. Undefined when the rules are not installed.
+   */
+  documentIssues?: SmartDocumentIssue[];
   /** False when the maintenance schedule could not be read (database update not installed). */
   maintenanceChecked?: boolean;
   /** Approved and pending time off of drivers (no category or reason). */
@@ -101,6 +107,19 @@ export interface SmartInput {
   /** Drivers whose employee record says On leave (an HR status, separate from dated time off): a warning, never a block. */
   driversOnLeave?: string[];
 }
+
+export interface SmartDocumentIssue {
+  truck_id: string | null;
+  trailer_id: string | null;
+  kind: string;
+  expires_on: string;
+  verified: boolean;
+  action: "block" | "warn";
+  blocks: boolean;
+}
+
+/** Plain words for a document issue: "insurance expired 2026-09-30". */
+export const documentLabel = (d: Pick<SmartDocumentIssue, "kind" | "expires_on">) => `${d.kind.replace(/_/g, " ")} expired ${d.expires_on}`;
 
 export interface SmartTimeOff {
   driver_id: string;
@@ -212,6 +231,9 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserve
   const safety = input.truckReports.filter((r) => r.truck_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"));
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
   if (t.truck_type === "tractor") out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
+  for (const d of (input.documentIssues ?? []).filter((x) => x.truck_id === t.id && x.blocks && x.expires_on < l.load_date)) {
+    out.push(`Its ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
+  }
   if (l.planned_quantity !== null && comparableUnit(l.unit_code)) {
     const cap = capacityIn(t, l.unit_code);
     if (cap !== null && l.planned_quantity > cap) out.push(`Planned ${fmt(l.planned_quantity)} ${unitLabel(l.unit_code)} exceeds its recorded capacity of ${fmt(cap)} ${unitLabel(l.unit_code)}.`);
@@ -272,6 +294,9 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
   if (t.capacity_verified_at === null && (t.weight_capacity !== null || t.volume_capacity !== null)) {
     score -= 3;
     warnings.push(eligibilityMessage("truck_capacity_unverified"));
+  }
+  for (const d of (input.documentIssues ?? []).filter((x) => x.truck_id === t.id && !x.blocks && x.expires_on < l.load_date)) {
+    warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"} — confirm it was renewed.`);
   }
   const inShop = (input.shopVisits ?? []).find((v) => v.truck_id === t.id && (v.status === "in_progress" || v.status === "awaiting_parts"));
   if (inShop) {

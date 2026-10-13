@@ -352,7 +352,7 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 21. ~~Lead statuses `qualified`, `onboarding`, `spam`~~ — decided 2026-10-11: folded into the six statuses (see §8 W5).
 22. Maintenance defaults to confirm: who may clear a truck for service (default: owner only; grantable to mechanics), whether a mechanic may clear their own repair, warning windows (default 14 days / 500 mi / 25 h), and whether due preventive work orders should be generated automatically each day (needs a scheduler).
 23. Fleet: which vehicle documents are required per vehicle type (registration, insurance, annual inspection, IFTA/IRP permits…), how far ahead to warn (default 30 days), and whether document files should be uploaded and stored in Taviron (needs a private storage bucket). **Enforcement
-    (reviewed 2026-10-13):** §6 states the direction "verified-expired documents block use", but today nothing blocks:
+    (reviewed 2026-10-13; **decided and built 2026-10-13 evening by owner directive: the recommendation below, per kind and configurable — IMPLEMENTATION_PLAN §5ai**):** §6 states the direction "verified-expired documents block use", but today nothing blocks:
     `vehicle_documents` has no verification state, `assign_load` and Smart Dispatch never read documents, and Plan the
     day only adds a review note per expired registration, insurance, inspection or permit. **Recommendation, awaiting
     the owner:** (a) block assignment for an expired **insurance** or **registration** once a person has verified the

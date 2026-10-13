@@ -198,4 +198,23 @@ describe("Smart Dispatch and time off", () => {
     expect(p.proposal?.driverLabel).toBe("Avery");
     expect(p.proposal!.warnings.join(" ")).toMatch(/employee record says On leave/);
   });
+
+  // Expired vehicle documents (20261112000200, owner 2026-10-13): a verified expired document on a "block" kind
+  // excludes the truck, as the database refuses it; an unverified one, or a "warn" kind, is a warning only.
+  it("a verified expired insurance blocks the truck; an unverified one or an expired inspection only warns", () => {
+    const issue = (over: Record<string, unknown>) => ({ truck_id: "t-101", trailer_id: null, kind: "insurance", expires_on: "2026-09-30", verified: true, action: "block" as const, blocks: true, ...over });
+    const blocked = recommend(input({ loads: [load("A")], trucks: [truck("101"), truck("102")], documentIssues: [issue({})] }))[0];
+    expect(blocked.proposal?.truckLabel).toBe("102");
+    expect(blocked.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired 2026-09-30 \(verified\) — the company rule blocks it/);
+
+    const unverified = recommend(input({ loads: [load("A")], documentIssues: [issue({ verified: false, blocks: false })] }))[0];
+    expect(unverified.proposal?.truckLabel).toBe("101");
+    expect(unverified.proposal!.warnings.join(" ")).toMatch(/insurance expired 2026-09-30 on record \(not verified\) — confirm it was renewed/);
+
+    const inspection = recommend(input({ loads: [load("A")], documentIssues: [issue({ kind: "inspection", action: "warn", blocks: false })] }))[0];
+    expect(inspection.proposal?.truckLabel).toBe("101");
+    // A document that expires after the load date changes nothing.
+    const later = recommend(input({ loads: [load("A")], documentIssues: [issue({ expires_on: "2026-12-31" })] }))[0];
+    expect(later.proposal?.truckLabel).toBe("101");
+  });
 });

@@ -81,9 +81,11 @@ export function AssignmentCard({ truckId, current, drivers, history, names, canA
   );
 }
 
-export function DocumentsCard({ vehicle, docs, today, canEdit, timezone }: {
+export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules = null }: {
   vehicle: { kind: "truck" | "trailer"; id: string };
   docs: { available: boolean; rows: VehicleDocumentRow[] };
+  /** The company's dispatch rule per checked kind (20261112000200); null when not installed. */
+  rules?: Record<string, "block" | "warn"> | null;
   today: string;
   canEdit: boolean;
   timezone: string;
@@ -102,7 +104,16 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone }: {
           <>
             {(att.expired.length > 0 || att.notRecorded.length > 0) && (
               <ul className="space-y-1 text-sm">
-                {att.expired.map((d) => <li key={d.id} className="font-medium text-critical">{DOCUMENT_KINDS[d.kind as DocumentKind]} expired {formatDate(d.expires_on)}.</li>)}
+                {att.expired.map((d) => {
+                  const rule = rules?.[d.kind];
+                  const verified = Boolean(current.find((c) => c.id === d.id)?.verified_at);
+                  return (
+                    <li key={d.id} className="font-medium text-critical">
+                      {DOCUMENT_KINDS[d.kind as DocumentKind]} expired {formatDate(d.expires_on)}.
+                      {rule && <span className="font-normal text-ink"> {rule === "block" && verified ? "Blocks dispatch until the renewed document is recorded." : rule === "block" ? "Blocks dispatch once verified — confirm whether it was renewed." : "Dispatch is warned (company rule)."}</span>}
+                    </li>
+                  );
+                })}
                 {att.notRecorded.map((k) => <li key={k} className="text-muted">{DOCUMENT_KINDS[k]} not recorded.</li>)}
               </ul>
             )}
@@ -116,13 +127,14 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone }: {
                           <FileText className="size-4 text-muted" aria-hidden />
                           {d.kind === "other" ? d.title : DOCUMENT_KINDS[d.kind]}{d.kind !== "other" && d.title ? ` · ${d.title}` : ""}
                           <DocumentStateBadge state={documentState(d.expires_on, today)} expiresOn={d.expires_on} />
+                          {rules && d.kind in rules && <Badge tone={d.verified_at ? "green" : "gray"}>{d.verified_at ? "Verified" : "Not verified"}</Badge>}
                         </p>
                         <p className="text-sm text-muted">
                           {[d.reference_number && `No. ${d.reference_number}`, d.issuing_authority, d.issued_on && `issued ${formatDate(d.issued_on)}`].filter(Boolean).join(" · ") || "No number or issuer recorded"}
                         </p>
                         {d.notes && <p className="text-sm whitespace-pre-line">{d.notes}</p>}
                       </div>
-                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} />}
+                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} canVerify={Boolean(rules && d.kind in rules && !d.verified_at)} />}
                     </div>
                   </li>
                 ))}

@@ -2335,6 +2335,15 @@ into. Migration `20261112000100_pto_balances.sql` (rollback tested):
 - **Tests**: `tests/db/pto-balances.test.ts` (6), tenancy and permission catalog, `tests/db/demo-samples.test.ts`,
   `tests/e2e/pto-balances.spec.ts` (2), `time-off.spec.ts`, `demo-parity.spec.ts` (owner balances).
 
+**Expired vehicle documents policy** (owner directive 2026-10-13; master plan §9 Q23) — migration
+`20261112000200_document_policy.sql` (rollback tested): a rule per kind (insurance and registration block, inspection
+and permit warn by default; Settings → Dispatch rules), document verification in Fleet ("Mark verified"; cleared when
+the record changes), and enforcement in the database (`assignment_eligibility` for the Command Center and checks,
+`check_assignment` for every assignment, naming vehicle, kind, date and fix). Smart Dispatch and Plan the day read the
+same rules (`dispatch_document_issues`, dispatch.view, no document details): verified blocking documents exclude the
+truck or trailer; others are warnings. Tests: `tests/db/document-policy.test.ts` (4), smart-dispatch unit test,
+`tests/e2e/document-policy.spec.ts`.
+
 Also this evening: **Keep crews together** (OPTIMIZATION §2 item 7) and **demo billing samples** fixed for late-day
 seeds (`95320c4`).
 

@@ -15,7 +15,7 @@ const TENANT_TABLES = [
   "ai_usage_events",
   "employees", "employee_compensation",
   "time_off_requests", "time_off_events", "pto_banks", "pto_ledger",
-  "vehicle_documents", "truck_assignment_events",
+  "vehicle_documents", "truck_assignment_events", "vehicle_document_rules",
   "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
   "price_lists", "customers", "customer_contacts", "customer_sites", "materials", "charge_items",
@@ -83,6 +83,11 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // PTO balances (20261112000100): bank_save and adjust need time_off.balances in the caller's company; balances
   // returns the caller's own, or another employee's only with time_off.balances; overview needs time_off.balances.
   "public.pto_bank_save", "public.pto_adjust", "public.pto_balances", "public.pto_balance_overview",
+  // Vehicle document policy (20261112000200): document_rule and expired_vehicle_documents are internal (not executable
+  // by API roles) and called with the caller's company by eligibility checks; verify needs fleet.edit, set_document_rule
+  // settings.manage, dispatch_document_issues dispatch.view (no document details), document_rules the caller's company.
+  "private.document_rule", "private.expired_vehicle_documents", "public.verify_vehicle_document", "public.set_document_rule",
+  "public.document_rules", "public.dispatch_document_issues",
   // Dispatch maintenance (20261103000100): shop schedule needs dispatch.view, caller's company only, no costs.
   "public.dispatch_shop_schedule",
   // Fleet management (20261102000100): assignment history trigger (internal, not executable by app users);

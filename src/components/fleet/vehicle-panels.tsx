@@ -9,7 +9,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { DOCUMENT_KINDS, OWNERSHIP } from "@/lib/fleet/availability";
-import { archiveVehicleDocument, assignTruckDriver, saveVehicleDocument, setOwnership } from "@/app/(app)/fleet/actions";
+import { archiveVehicleDocument, assignTruckDriver, saveVehicleDocument, setOwnership, verifyVehicleDocument } from "@/app/(app)/fleet/actions";
 
 type Vehicle = { kind: "truck" | "trailer"; id: string };
 
@@ -82,6 +82,7 @@ export interface DocumentValues {
   issued_on: string | null;
   expires_on: string | null;
   notes: string;
+  verified_at?: string | null;
 }
 
 /** Add a document, or edit one (pass `doc`). */
@@ -135,13 +136,23 @@ export function DocumentForm({ vehicle, doc, onDone }: { vehicle: Vehicle; doc?:
   );
 }
 
-export function DocumentRowActions({ vehicle, doc }: { vehicle: Vehicle; doc: DocumentValues }) {
+export function DocumentRowActions({ vehicle, doc, canVerify = false }: { vehicle: Vehicle; doc: DocumentValues; canVerify?: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
   if (editing) return <div className="mt-3 rounded-md border border-line p-3"><DocumentForm vehicle={vehicle} doc={doc} onDone={() => setEditing(false)} /></div>;
   return (
     <div className="flex gap-1">
+      {canVerify && (
+        <Button size="sm" variant="ghost" disabled={pending} onClick={() => {
+          if (!window.confirm("Mark this document verified? Confirm the kind and dates match the paper document. A verified expired insurance or registration blocks dispatch under the company rule.")) return;
+          start(async () => {
+            const r = await verifyVehicleDocument(vehicle, doc.id);
+            if (!r.ok) toast.error(r.error);
+            else { toast.success(r.message ?? "Verified."); router.refresh(); }
+          });
+        }}>Mark verified</Button>
+      )}
       <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)} aria-label={`Edit ${DOCUMENT_KINDS[doc.kind as keyof typeof DOCUMENT_KINDS] ?? "document"}`}>Edit</Button>
       <Button size="sm" variant="ghost" disabled={pending} icon={<Archive className="size-3.5" />} onClick={() => {
         if (!window.confirm("Archive this document? It stays in the history but no longer counts as current.")) return;

@@ -296,3 +296,18 @@ export async function setOwnership(vehicle: z.input<typeof vehicleRef>, formData
     return ok(undefined, "Ownership saved.");
   });
 }
+
+/** Confirm a document record matches the paper (fleet.edit). Only verified expired documents can block dispatch. */
+export async function verifyVehicleDocument(vehicle: z.input<typeof vehicleRef>, documentId: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("fleet.edit");
+    const v = vehicleRef.safeParse(vehicle);
+    if (!v.success || !uuid.safeParse(documentId).success) return fail("Invalid document.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("verify_vehicle_document", { p_id: documentId });
+    if (error) return fail(dbErrorMessage(error));
+    revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
+    revalidatePath("/dispatch", "layout");
+    return ok(undefined, "Document marked verified.");
+  });
+}
