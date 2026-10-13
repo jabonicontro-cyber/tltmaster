@@ -5,8 +5,8 @@
       "feature": "plan-the-day",
       "path": "/dispatch/plan",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:03.353Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:51.994Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "dispatch": {
@@ -14,8 +14,8 @@
       "feature": "smart-dispatch",
       "path": "/dispatch",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:04.731Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:53.498Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "order": {
@@ -23,8 +23,8 @@
       "feature": "orders",
       "path": "/orders",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:06.456Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:55.969Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "maintenance": {
@@ -32,8 +32,8 @@
       "feature": "maintenance",
       "path": "/maintenance",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:10.000Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:59.642Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "command-center": {
@@ -41,8 +41,8 @@
       "feature": "command-center",
       "path": "/command-center",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:01.963Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:50.665Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "tickets": {
@@ -50,8 +50,8 @@
       "feature": "delivery-tickets",
       "path": "/tickets?view=review",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:41.492Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:57.324Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "driver": {
@@ -59,8 +59,8 @@
       "feature": "driver-portal",
       "path": "/driver",
       "viewport": "phone",
-      "capturedAt": "2026-10-13T04:09:08.667Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:31:58.232Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "fleet": {
@@ -68,8 +68,8 @@
       "feature": "fleet",
       "path": "/fleet",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:09:11.435Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:32:01.013Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "billing": {
@@ -77,8 +77,8 @@
       "feature": "billing",
       "path": "/billing",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:42:21.322Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:32:02.465Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "communications": {
@@ -86,8 +86,8 @@
       "feature": "communications",
       "path": "/communications",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T04:42:22.725Z",
-      "source": "local production build",
+      "capturedAt": "2026-10-13T12:32:03.874Z",
+      "source": "localhost:3002",
       "checks": "passed"
     },
     "employees": {
@@ -95,7 +95,7 @@
       "feature": "people",
       "path": "/employees",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T05:22:27.399Z",
+      "capturedAt": "2026-10-13T12:32:05.232Z",
       "source": "localhost:3002",
       "checks": "passed"
     },
@@ -104,7 +104,7 @@
       "feature": "reports",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T05:22:28.694Z",
+      "capturedAt": "2026-10-13T12:32:06.533Z",
       "source": "localhost:3002",
       "checks": "passed"
     },
@@ -113,7 +113,7 @@
       "feature": "company-controls",
       "path": "/setup",
       "viewport": "desktop",
-      "capturedAt": "2026-10-13T05:22:29.838Z",
+      "capturedAt": "2026-10-13T12:32:07.658Z",
       "source": "localhost:3002",
       "checks": "passed"
     }
