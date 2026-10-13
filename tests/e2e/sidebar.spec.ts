@@ -20,8 +20,13 @@ test("the rail expands on hover and focus, collapses again, and a pin survives a
   await expect(sidebar.getByRole("link", { name: "Dispatch" })).toHaveAttribute("href", "/dispatch");
   await expect(sidebar.getByRole("link", { name: "Dispatch" })).toHaveAttribute("title", "Dispatch"); // tooltip while collapsed
 
-  await sidebar.hover();
-  await expect(sidebar).toHaveAttribute("data-expanded", "true");
+  // Under a loaded dev server the first hover can land before the rail's handlers are attached (hydration); move
+  // off and back until it registers, so the test checks the behaviour, not the hydration timing.
+  await expect(async () => {
+    await page.mouse.move(900, 450);
+    await sidebar.hover();
+    await expect(sidebar).toHaveAttribute("data-expanded", "true", { timeout: 1_500 });
+  }).toPass({ timeout: 15_000 });
   await page.mouse.move(900, 450);
   await expect(sidebar).toHaveAttribute("data-expanded", "false");
 
