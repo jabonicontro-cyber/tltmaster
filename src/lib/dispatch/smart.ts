@@ -419,6 +419,27 @@ export function recommend(input: SmartInput): LoadPlan[] {
  * proposals for other loads (the dispatcher may choose differently). Hard
  * constraints only; the database re-checks them again when assigning.
  */
+/**
+ * Why each truck and driver cannot take `loadId` on its own (hard rules only, against existing bookings; no proposals).
+ * The same rules as checkPair, per resource, so a planner can say which trucks and drivers are unavailable and why.
+ * Resources with no reason are omitted.
+ */
+export function resourceExclusions(input: SmartInput, loadId: string): { trucks: Map<string, string[]>; drivers: Map<string, string[]> } {
+  const load = input.loads.find((l) => l.id === loadId);
+  const trucks = new Map<string, string[]>();
+  const drivers = new Map<string, string[]>();
+  if (!load) return { trucks, drivers };
+  for (const t of input.trucks) {
+    const r = truckExclusions(t, load, input, [], input.bookings);
+    if (r.length) trucks.set(t.id, r);
+  }
+  for (const d of input.drivers) {
+    const r = driverExclusions(d, load, [], input.bookings, input.timeOff).blockers;
+    if (r.length) drivers.set(d.id, r);
+  }
+  return { trucks, drivers };
+}
+
 export function checkPair(input: SmartInput, loadId: string, truckId: string, driverId: string): { ok: boolean; reasons: string[] } {
   const load = input.loads.find((l) => l.id === loadId);
   if (!load) return { ok: false, reasons: ["The load is no longer waiting for a truck (it was assigned, canceled or rescheduled)."] };

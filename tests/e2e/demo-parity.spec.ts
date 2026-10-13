@@ -179,6 +179,8 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   // Plan the day works for a tractor fleet: each tractor is planned with a trailer.
   await visit(owner, "/dispatch/plan");
   await expect(owner.getByRole("region", { name: /Proposed assignments/ })).toContainText("+ trailer");
+  // Truck 207 is out of service in the Prairie Lantern sample fleet: listed as unavailable all day, with the reason.
+  await expect(owner.getByRole("region", { name: /Not available for any open load/ })).toContainText(/Truck 207 — Out of service/);
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {

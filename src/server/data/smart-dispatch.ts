@@ -5,7 +5,7 @@ import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
 
-const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
+export const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
 
 interface LoadRow {
   id: string;

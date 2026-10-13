@@ -76,13 +76,40 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
     await db.end();
   }
 
-  // Demo modes: the dispatcher view plans and approves; the driver view has no dispatch access.
+  // Changing the day with "Show plan" keeps the preset; an empty day points to the days that have open loads.
+  const far = await page.evaluate(() => {
+    const d = new Date(); d.setUTCDate(d.getUTCDate() + 13); return d.toISOString().slice(0, 10);
+  });
+  await page.goto(`/dispatch/plan?preset=service`);
+  await page.getByLabel("Day", { exact: true }).fill(far);
+  await page.getByRole("button", { name: "Show plan" }).click();
+  await page.waitForURL(new RegExp(`date=${far}.*preset=service|preset=service.*date=${far}`));
+  await expect(page.getByText(/Planning the day —/)).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: "Nothing to plan" }).or(page.getByRole("tablist", { name: "Plans" }))).toBeVisible();
+  const empty = page.getByRole("status").filter({ hasText: "Nothing to plan" });
+  if (await empty.count()) {
+    const days = empty.getByRole("link", { name: / open$/ });
+    if (await days.count()) {
+      await days.first().click();
+      await expect(page.getByRole("region", { name: /Proposed assignments/ })).toBeVisible();
+      await expect(page).toHaveURL(/preset=service/);
+    } else {
+      await expect(empty).toContainText("No other day in the next two weeks has open loads either.");
+    }
+  } else {
+    await expect(page.getByRole("tablist", { name: "Plans" }).getByRole("tab").first()).toContainText("Service first");
+  }
+
+  // Demo modes: the dispatcher view plans and approves; the driver and mechanic views have no dispatch access.
   await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: page.url() }]);
   await page.goto("/dispatch/plan");
   await expect(page.getByRole("heading", { name: "Plan the day", level: 1 })).toBeVisible();
   await context.addCookies([{ name: PREVIEW_COOKIE, value: "driver", url: page.url() }]);
   await page.goto("/dispatch/plan");
   await expect(page).toHaveURL(/no-access|\/driver/);
+  await context.addCookies([{ name: PREVIEW_COOKIE, value: "mechanic", url: page.url() }]);
+  await page.goto("/dispatch/plan");
+  await expect(page).toHaveURL(/no-access/);
   await context.clearCookies({ name: PREVIEW_COOKIE });
 });
 

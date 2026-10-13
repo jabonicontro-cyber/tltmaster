@@ -8,7 +8,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PlanExplanation, type PlanAiState } from "@/components/dispatch/plan-explanation";
 import type { SmartLoad } from "@/lib/dispatch/smart";
+import type { LoadExplanation, Unavailable } from "@/lib/optimization/availability";
 import type { Optimization, Plan } from "@/lib/optimization/plan";
+import { formatDateLong } from "@/lib/dates";
+import Link from "next/link";
 
 const time = (iso: string, tz: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(new Date(iso));
 const money = (cents: number) => `$${Math.round(cents / 100).toLocaleString("en-US")}`;
@@ -43,9 +46,27 @@ function Metrics({ plan }: { plan: Plan }) {
  * priorities with its alternatives, review each assignment and approve a selection. Approval re-checks every
  * assignment against current data and assigns through public.assign_load; nothing else is changed.
  */
-export function OptimizationPlanner({ date, timezone, loads, revenueCents, result, canEdit, ai, preset, priorities }: {
+function UnavailableList({ items }: { items: Unavailable[] }) {
+  return (
+    <ul className="mt-2 space-y-1 text-sm">
+      {items.map((u) => (
+        <li key={`${u.kind}:${u.id}`}>
+          <span className="font-semibold text-ink">{u.label}</span> <span className="text-muted">— {u.reasons.join(" ")}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+export function OptimizationPlanner({ date, timezone, loads, revenueCents, result, canEdit, ai, preset, priorities, explanations = [], unavailable = [], upcoming = [] }: {
   date: string; timezone: string; loads: SmartLoad[]; revenueCents: Record<string, number | null>; result: Optimization; canEdit: boolean;
   ai: PlanAiState; preset: string | null; priorities: Record<string, number>;
+  /** Why loads with no feasible truck, trailer and driver are blocked (src/lib/optimization/availability.ts). */
+  explanations?: LoadExplanation[];
+  /** Trucks, trailers and drivers that cannot take any open load this day. */
+  unavailable?: Unavailable[];
+  /** Other days with open loads (shown when this day has none); null when they could not be read. */
+  upcoming?: Array<{ date: string; open: number }> | null;
 }) {
   const router = useRouter();
   const [active, setActive] = useState(0);
@@ -57,8 +78,29 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
 
   if (!loads.length) {
     return (
-      <div className="rounded-lg border border-line bg-card p-6 text-sm text-muted">
-        No unassigned loads on this day. Plan loads for scheduled orders on the Dispatch board first, or choose another day.
+      <div className="rounded-lg border border-line bg-card p-6 text-sm" role="status">
+        <p className="font-semibold text-ink">Nothing to plan on {formatDateLong(date)}: every load that day already has a truck and driver, or no loads are planned yet.</p>
+        {upcoming === null ? (
+          <p className="mt-2 text-muted">Other days could not be checked right now.</p>
+        ) : upcoming.length ? (
+          <div className="mt-3">
+            <p className="text-muted">Days in the next two weeks with loads waiting for a truck and driver:</p>
+            <ul className="mt-2 flex flex-wrap gap-2">
+              {upcoming.map((d) => (
+                <li key={d.date}>
+                  <Link href={`/dispatch/plan?date=${d.date}${preset ? `&preset=${preset}` : ""}`} className="inline-flex min-h-10 items-center rounded-md border border-line px-3 font-semibold text-ink hover:bg-surface">
+                    {formatDateLong(d.date)} · {d.open} open
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="mt-2 text-muted">No other day in the next two weeks has open loads either.</p>
+        )}
+        <p className="mt-3 text-muted">
+          To plan more work, add loads to scheduled orders on the <Link href={`/dispatch?date=${date}`} className="font-semibold text-brand-fg hover:underline">Dispatch board</Link>, or give orders waiting for a delivery date a schedule (listed there under &ldquo;Needs scheduling&rdquo;).
+        </p>
       </div>
     );
   }
@@ -168,11 +210,33 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
             <li key={u.loadId} className="px-4 py-3">
               <p className="text-sm font-semibold text-ink">{loadLabel(u.loadId)} · not covered</p>
               <div className="mt-1 flex gap-1.5"><Badge tone="red">Blocked</Badge>{byId.get(u.loadId)?.urgent && <Badge tone="critical">Urgent</Badge>}</div>
-              <p className="mt-1 text-sm text-muted">{u.why}</p>
+              {(() => {
+                const ex = explanations.find((e) => e.loadId === u.loadId);
+                if (!ex) return <p className="mt-1 text-sm text-muted">{u.why}</p>;
+                return (
+                  <div className="mt-1 text-sm">
+                    <p className="text-ink">{ex.summary}</p>
+                    {ex.unavailable.length > 0 && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer font-semibold text-ink">Why each truck, trailer or driver cannot take it ({ex.unavailable.length})</summary>
+                        <UnavailableList items={ex.unavailable} />
+                      </details>
+                    )}
+                  </div>
+                );
+              })()}
             </li>
           ))}
         </ul>
       </section>
+
+      {unavailable.length > 0 && (
+        <section aria-labelledby="unavailable-title" className="rounded-lg border border-line bg-card p-4">
+          <h2 id="unavailable-title" className="text-base font-bold text-ink">Not available for any open load this day ({unavailable.length})</h2>
+          <p className="mt-1 text-xs text-muted">From Taviron&apos;s records: service status, maintenance, reports, bookings, qualifications and time off. Resources busy for only part of the day appear under the loads they block.</p>
+          <UnavailableList items={unavailable} />
+        </section>
+      )}
 
       <section aria-labelledby="data-title" className="rounded-lg border border-line bg-card p-4">
         <h2 id="data-title" className="text-base font-bold text-ink">Missing or estimated information</h2>

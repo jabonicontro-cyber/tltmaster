@@ -9,7 +9,7 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { GATE_LABELS } from "@/lib/ai/capabilities";
 import { capabilityGate } from "@/server/ai/gates";
-import { getOptimizationPlan } from "@/server/data/optimization";
+import { getOptimizationPlan, getUpcomingOpenLoadDays } from "@/server/data/optimization";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Plan the day" };
@@ -27,6 +27,10 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
     getOptimizationPlan(date, priorities, preset).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The optimizer is unavailable." })),
     capabilityGate("plan_explanation", access),
   ]);
+  // Empty day: point to the days that do have open loads instead of a dead end.
+  const upcoming = !("error" in plan) && plan.input.loads.length === 0
+    ? await getUpcomingOpenLoadDays(today, addDays(today, 14)).then((d) => d.filter((x) => x.date !== date)).catch(() => null)
+    : [];
   const ai = { state: gate.state, label: GATE_LABELS[gate.state], canRun: gate.canRun, reasons: can(access, "settings.manage") ? gate.reasons : null };
 
   return (
@@ -42,6 +46,10 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
             <span className="mb-1 block font-semibold text-ink">Day</span>
             <DateInput name="date" defaultValue={date} min={today} max={addDays(today, 14)} />
           </label>
+          {/* Changing the day keeps the current preset or custom priorities. */}
+          <button name="preset" value={preset ?? ""} className="h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">
+            Show plan
+          </button>
           <fieldset className="text-sm">
             <legend className="mb-1 font-semibold text-ink">Start from</legend>
             <div className="flex flex-wrap gap-2">
@@ -81,6 +89,9 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           result={plan.result}
           canEdit={can(access, "dispatch.edit")}
           ai={ai}
+          explanations={plan.explanations}
+          unavailable={plan.unavailable}
+          upcoming={upcoming}
           preset={preset}
           priorities={{ ...priorities }}
         />

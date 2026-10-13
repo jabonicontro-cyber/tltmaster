@@ -52,6 +52,31 @@ explain plans and help explore alternatives, but it will call this core rather t
 - Confirmed assignments are never changed by a plan. Approval re-validates each assignment with fresh data, one at a
   time, and reports exactly which were assigned and why others were not.
 
+## 3a. Blocked loads, unavailable resources and empty days (2026-10-13, after iPad testing)
+
+- **Why a load is blocked:** for each load with no feasible truck, trailer and driver,
+  `explainLoad` (`src/lib/optimization/availability.ts`) lists every truck, trailer and driver that cannot take it,
+  each with the rule that stops it. The rules come from Smart Dispatch (`resourceExclusions` in
+  `src/lib/dispatch/smart.ts`) and the optimizer's own trailer rules. When every resource is free on its own but no
+  combination passes, the page says exactly that and points to Smart Dispatch for each pair; it never invents a
+  reason.
+- **Not available all day:** `unavailableResources` lists the resources that cannot take *any* open load that day,
+  with the reasons common to every load (out of service, safety-critical work, expired qualifications, approved time
+  off covering the day). Resources busy for only part of the day appear under the loads they block.
+- **Changing the day:** a **Show plan** button next to the day keeps the current preset or custom priorities.
+- **Loading:** `dispatch/plan/loading.tsx` says what is being checked while the plan is computed.
+- **Empty days:** a day with nothing to plan is no longer a dead end. The page lists the days in the next two weeks
+  that have loads waiting for a truck and driver (`getUpcomingOpenLoadDays`), and points to the Dispatch board and
+  "Needs scheduling".
+- **Not modelled (stated, not hidden):**
+  - Loads have one site and a time window; there is no separate pickup stop, so pickup-before-delivery order is only
+    the load's own window.
+  - Hours of service are not verified (no ELD data). Every proposal stays **Needs review**.
+- **Demo data:** Refresh gives tomorrow loads; `planningDay` (`src/server/demo/samples.ts`) tops tomorrow up to four
+  open loads. In Prairie Lantern, the open trailers, booked trailers and out-of-service truck 207 exercise the blocked
+  and unavailable views. A demo refreshed before a given day shows the empty state for later days until it is
+  refreshed again.
+
 ## 4. Demo coverage
 
 Demo modes with dispatch access (Owner, Dispatcher, Dispatcher who also drives, Office) open **Plan the day**;

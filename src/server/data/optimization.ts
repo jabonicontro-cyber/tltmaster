@@ -1,8 +1,9 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
+import { explainLoad, unavailableResources } from "@/lib/optimization/availability";
 import { optimizeWithAlternatives, type OptimizationInput, type OptTrailer, type Priorities } from "@/lib/optimization/plan";
 import { createClient } from "@/server/supabase/server";
-import { getSmartDispatchInput } from "./smart-dispatch";
+import { DISPATCHABLE, getSmartDispatchInput } from "./smart-dispatch";
 
 /**
  * Everything the optimization core reads for one day, from the caller's own company (RLS): the Smart Dispatch input
@@ -54,5 +55,35 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
 
 export async function getOptimizationPlan(date: string, priorities: Priorities, preset: string | null) {
   const input = await getOptimizationInput(date);
-  return { input, result: optimizeWithAlternatives(input, priorities, preset) };
+  const result = optimizeWithAlternatives(input, priorities, preset);
+  return {
+    input,
+    result,
+    // Why the loads with no feasible truck, trailer and driver are blocked, and what cannot work at all that day.
+    explanations: result.blocked.map((b) => explainLoad(input, b.loadId)),
+    unavailable: unavailableResources(input),
+  };
+}
+
+/**
+ * Days from `from` through `to` with loads still waiting for a truck and driver (planned, not assigned, on an order
+ * that can be dispatched), for the empty state of Plan the day. Caller's own company (RLS).
+ */
+export async function getUpcomingOpenLoadDays(from: string, to: string): Promise<Array<{ date: string; open: number }>> {
+  const db = await createClient();
+  const { data, error } = await db
+    .from("order_loads")
+    .select("id, load_date, orders(status)")
+    .eq("status", "planned")
+    .gte("load_date", from)
+    .lte("load_date", to);
+  if (error) throw new Error(`Upcoming loads could not be read: ${error.message}`);
+  const rows = ((data ?? []) as unknown as Array<{ id: string; load_date: string; orders: { status: string } | null }>).filter((r) => r.orders && DISPATCHABLE.includes(r.orders.status));
+  if (!rows.length) return [];
+  const { data: assigned, error: aErr } = await db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", rows.map((r) => r.id));
+  if (aErr) throw new Error(`Upcoming loads could not be read: ${aErr.message}`);
+  const taken = new Set((assigned ?? []).map((a) => a.load_id as string));
+  const days = new Map<string, number>();
+  for (const r of rows) if (!taken.has(r.id)) days.set(r.load_date, (days.get(r.load_date) ?? 0) + 1);
+  return [...days.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([date, open]) => ({ date, open }));
 }
