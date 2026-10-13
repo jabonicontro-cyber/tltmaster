@@ -59,6 +59,7 @@ async function counts(company: string) {
     workspaces: await one("select count(*) n from public.operation_workspaces where company_id = $1"),
     loads: await one("select count(*) n from public.order_loads where company_id = $1"),
     drivers: await one("select count(*) n from public.drivers where company_id = $1"),
+    handoffs: await one("select count(*) n from public.billing_handoffs where company_id = $1"),
     memberships: (await q<{ user_id: string; role: string; active: boolean }>("select user_id, role, active from public.company_memberships where company_id = $1 order by user_id", [company])).rows,
   };
 }
@@ -95,6 +96,11 @@ describe.skipIf(!available)("demo feature samples", () => {
       [w.company, todayIn(TZ)],
     );
     expect(Number(open.rows[0].n)).toBeGreaterThanOrEqual(4);
+    // Billing shows every state: an order delivered exactly as ordered (ready) and one handed off (internal batch).
+    const readiness = ((await as(w.owner).from("billing_order_status").select("readiness")).data ?? []).map((r) => (r as { readiness: string }).readiness);
+    expect(readiness).toContain("ready");
+    expect(readiness).toContain("handed_off");
+    expect(c.handoffs).toBe(1);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

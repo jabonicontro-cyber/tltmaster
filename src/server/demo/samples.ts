@@ -64,7 +64,73 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("quotes", await quotes(db, today));
   note("operational workspace", await workspace(db, today, userId));
   note("planning day", await planningDay(db, today));
+  note("billing: ready and handed off", await billing(db, today));
   return result;
+}
+
+/**
+ * Billing (docs/IMPLEMENTATION_PLAN.md §5k): the Ready to bill and Handed off views need an order delivered exactly as
+ * ordered. When the demo has neither, two small past orders are created through the real paths — order, schedule,
+ * loads, assignment, tickets entered and accepted — copying a per-unit line (rate included) from the demo's own
+ * orders, for a customer that needs no PO. The second is handed off to billing (an internal batch: nothing is sent,
+ * exported or invoiced). A second run adds nothing while any order is ready or handed off.
+ */
+async function billing(db: Db, today: string): Promise<number> {
+  const status = await db.from("billing_order_status").select("readiness").in("readiness", ["ready", "handed_off"]).limit(1);
+  if (missing(status.error)) return 0;
+  if (status.error) throw new Error(`Demo samples (billing): ${status.error.message}`);
+  if ((status.data ?? []).length) return 0;
+  type Line = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
+  type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null; order_lines: Line[] };
+  const candidates = ((await must("billing template", db.from("orders")
+    .select("customer_id, site_label, site_line1, site_city, customers(po_required), order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
+    .not("site_line1", "is", null).order("order_number").limit(40))) as unknown as Tmpl[]);
+  const tmpl = candidates.find((o) => o.customers && !o.customers.po_required && o.order_lines.some((l) => l.calc_method === "per_unit" && l.unit_code && Number(l.unit_rate_cents) > 0));
+  if (!tmpl) return 0;
+  const src = tmpl.order_lines.find((l) => l.calc_method === "per_unit" && l.unit_code && Number(l.unit_rate_cents) > 0)!;
+  const qty = 12;
+  const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  const drivers = ((await db.from("drivers").select("id").eq("active", true).order("name")).data ?? []) as Array<{ id: string }>;
+  const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
+  let n = 0;
+  for (const [i, back] of [4, 6].entries()) {
+    let day = addDays(today, -back);
+    while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, -1); // a weekday
+    const o = (await must("billing order", db.rpc("save_order_draft", { p_payload: {
+      customer_id: tmpl.customer_id, order_date: day, project_name: `${tmpl.site_label ?? "Site"} — ${src.description}`,
+      job_instructions: "Demo: delivered exactly as ordered.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+      lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: String(qty * 2), unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
+    } }))) as { order_id: string; order_number: string };
+    await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
+    await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
+    await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
+    const lineId = (((await must("line", db.from("order_lines").select("id").eq("order_id", o.order_id).limit(1))) as Array<{ id: string }>)[0]).id;
+    let delivered = 0;
+    for (const [k, [start, end]] of [["16:00", "16:45"], ["17:00", "17:45"]].entries()) {
+      const loadId = ((await must("billing load", db.rpc("save_order_load", { p_payload: { order_id: o.order_id, load_date: day, start_time: start, end_time: end, planned_quantity: String(qty), unit_code: src.unit_code } }))) as { load_id: string }).load_id;
+      // Any truck (with a trailer when it needs one) and driver the dispatch rules accept at that time.
+      let ok = false;
+      for (const t of trucks) {
+        for (const d of drivers) {
+          for (const tr of trailers) {
+            if (!(await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" })).error) { ok = true; break; }
+          }
+          if (ok) break;
+        }
+        if (ok) break;
+      }
+      if (!ok) break;
+      const ticket = ((await must("billing ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: String(qty), unit_code: src.unit_code, external_reference: `DEMO-B${i + 1}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
+      await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
+      delivered++;
+    }
+    n += delivered;
+    if (delivered === 2 && i === 1) {
+      await must("hand off", db.rpc("hand_off_orders", { p_order_ids: [o.order_id], p_reference: "Demo batch", p_notes: "Demo: handed to billing; nothing is sent or exported.", p_submission_key: randomUUID() }));
+      n++;
+    }
+  }
+  return n;
 }
 
 /**

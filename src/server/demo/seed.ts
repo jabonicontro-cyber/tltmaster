@@ -161,7 +161,8 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     n++;
   }
 
-  // 1. Last week: delivered and verified — ready for billing.
+  // 1. Last week: delivered and verified, but each ticket is a little under the planned 22 t, so billing shows
+  //    quantity exceptions to acknowledge. (Ready to bill and Handed off come from samples.ts billing().)
   const o1 = await order(1, lastWeek, "County Rd 9 widening — base course", [line("LS-53", "88")], "Spread on the east shoulder; flagger at the north end.", [lastWeek, lastWeek]);
   for (const [i, t] of [["101", avery], ["102", marco], ["105", priya], ["101", theo]].entries()) {
     const l = await load(o1.order_id, lastWeek, `0${7 + i}:00`, `0${7 + i}:45`, "22");

@@ -100,6 +100,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | Orders, Dispatch, Smart Dispatch | Same loads; trucks, trailers and drivers | ✓ | ✓ | ✓ | ✓ | — | — |
 | My Day | The demo owner's own driver record (linked employee), qualifications and a load today or tomorrow | ✓ | — | ✓ | — | ✓ | — |
 | Delivery tickets | Tickets on delivered loads | ✓ | ✓ | ✓ | ✓ | — | — |
+| Billing readiness | Every state: missing tickets, tickets to review, exceptions (presenter scenario 1), one order **Ready to bill** and one **Handed off** in an internal batch (`samples.ts` `billing()`, 2026-10-13: before it no demo showed either). Nothing is sent, exported or invoiced | ✓ | — | — | ✓ | — | — |
 | Quotes | A draft quote copied from a sample order line | ✓ | ✓ | ✓ | ✓ | — | — |
 | Fleet and documents | Registrations (one expiring), an inspection due, an expired trailer registration | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Maintenance | A safety-critical brake work order on an idle truck, tire and electrical work orders, oil and annual inspection schedules | ✓ | ✓ | ✓ | ✓ | — | ✓ |

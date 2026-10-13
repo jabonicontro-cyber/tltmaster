@@ -194,6 +194,11 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByRole("region", { name: /Proposed assignments/ })).toContainText("+ trailer");
   // Truck 207 is out of service in the Prairie Lantern sample fleet: listed as unavailable all day, with the reason.
   await expect(owner.getByRole("region", { name: /Not available for any open load/ })).toContainText(/Truck 207 — Out of service/);
+  // Billing shows every state in a demo: an order ready to bill and one handed off (samples.ts billing()).
+  await visit(owner, "/billing");
+  const views = owner.getByRole("navigation", { name: "Billing views" });
+  await expect(views.getByRole("link", { name: /Ready to bill\s*\d/ })).toBeVisible();
+  await expect(views.getByRole("link", { name: /Handed off\s*\d/ })).toBeVisible();
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {
