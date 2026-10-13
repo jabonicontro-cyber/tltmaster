@@ -13,7 +13,7 @@ test("a very long customer name never widens pages on a phone", async ({ page })
     const customer = (await q("insert into public.customers (name) values ($1) returning id", [
       `Northwestern Regional Aggregate and Infrastructure Development Cooperative of Greater Prairie Counties ${tag}`,
     ])).rows[0].id;
-    const material = (await q("select id, default_unit_code as unit from public.materials where active limit 1")).rows[0];
+    const material = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
     const today = (await q("select (now() at time zone 'America/Chicago')::date::text as d")).rows[0].d as string;
     const order = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       customer_id: customer, order_date: today, project_name: "Extraordinarily long project name for the interchange reconstruction, phase four",
