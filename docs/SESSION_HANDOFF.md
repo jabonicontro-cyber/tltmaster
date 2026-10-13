@@ -33,6 +33,9 @@ migrations: everything below is **committed locally only** on top of `7eba5e4`.
 | `4ff8ec3`, `4d22ebc` | Phone layout: a very long customer name no longer widens Billing and the Command Center (525 px); e2e `long-names.spec.ts` |
 | `f8b349f`, `4fbd8a9` | Dark mode: three warning alerts had near-black text; theme test fixed to read the dark palette block (the earlier commit message wrongly said the old test failed on the old code — it passed vacuously; `4fbd8a9` makes it fail when an unmapped shade is restored) |
 | `6dbb159`, `67d2110` | Proposals: hosted JIT check (`docs/proposals/hosted-jit.md`), "Keep crews together" (`docs/proposals/crew-continuity.md`) |
+| `7f0ffe5` | Plan the day ~5× faster with large fleets: Top Line test company (20 loads × 227 trucks × 149 drivers) 13.4 s → ~2.7 s, plans byte-identical; `optimization-feasibility.test.ts` (per-part check = `checkAssignment` for every combination; scale test fails on the old code at 30 s) |
+| `c7db0b5` | Dispatch board on phones: a very long driver or truck name wraps instead of pushing the Drivers today list 31 px sideways and cutting off its badge (found by a sweep; `long-names.spec.ts` fails without the fix) |
+| `f40aacc`, `45a302a` | Handoff, implementation plan §5ah and master plan B44 brought up to date |
 
 **Findings recorded, not changed (decisions):** expired vehicle documents block nothing (recommendation in master plan
 §9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
@@ -56,6 +59,12 @@ demo-name migrations yet. With those four rolled back locally (backup
 dispatch, smart-dispatch, dispatch-availability, coordination, billing, long-names, demo-experience) passed
 **26 / 26** — the code works without them; demos then show the presenter's login name in the places listed in
 decision 2. Migrations re-applied afterwards; demo-samples, tenancy, ai-usage, quotes and fleet DB tests **48 / 48**.
+
+**Sweeps (2026-10-13 afternoon, production build).** Presenter demo, all six role previews: 82 pages at desktop,
+phone and tablet plus 35 detail pages — no console errors, no failed (4xx/5xx) requests, no sideways scrolling (now
+also inside scrolling lists). Top Line test company at phone/tablet, 17 pages + 21 detail pages: one finding, fixed
+in `c7db0b5`. Page times (Top Line, production build): every page under 0.9 s except Plan the day (12.8 s before
+`7f0ffe5`; the planner part is now ~2.7 s).
 
 ### Decisions for James (current, with recommendations)
 

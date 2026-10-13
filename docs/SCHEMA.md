@@ -185,7 +185,8 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 | `equipment_status_events` | Append-only service-status history (truck or trailer, from, to, reason, expected return, who, when). |
 | `drivers` | Optional `user_id` → `company_memberships (company_id, user_id)` (one driver per account), or a `name`; employee number (unique per company), phone, hire date, active, notes. |
 | `driver_qualifications` | `kind` (`cdl`, `medical_card`, `hazmat`, `twic`, `other`), `cdl_class` (required for CDLs), endorsements, description (required for other), issuing state, issued / expires (`NULL` = unknown), `verified_at/by`, notes. No license numbers. |
-| `driver_list` (view) | Drivers with a display name (the linked account's name, else the stored name) and the account's active flag and role (security-invoker; names via `private.member_summary`, limited to the caller's company). |
+| `driver_list` (view) | Drivers with a display name (the linked account's name, else the stored name; in a demo company the stored name first, so the presenter appears as the persona — migration `20261111000100`) and the account's active flag and role (security-invoker; names via `private.member_summary`, limited to the caller's company). |
+| `private.demo_person_name(company, user)` (function) | Demo companies only: the person's employee name, else their driver name; null for real companies. Used first in history lines, field reports, My Day, operational exceptions and assignment labels (migration `20261111000300`; security definer, `search_path = ''`, not executable by API roles). |
 
 ### Fleet rules
 

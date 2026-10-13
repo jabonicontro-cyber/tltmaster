@@ -158,12 +158,14 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   // A fresh Prairie Lantern demo (retire an earlier one first: its owner record is already linked).
   await page.goto("/admin/demo");
   const old = page.locator("li").filter({ hasText: "Prairie Lantern Freight" }).filter({ has: page.getByRole("button", { name: "Retire" }) });
-  while (await old.count()) {
+  // Bounded: a retire that silently does nothing must fail here with a message, not spin until the test times out.
+  for (let i = 0; i < 10 && (await old.count()); i++) {
     await old.first().getByRole("checkbox").check();
     await old.first().getByRole("button", { name: "Retire" }).click();
     await page.waitForLoadState("load");
     await page.goto("/admin/demo");
   }
+  await expect(old, "earlier Prairie Lantern demos could not be retired").toHaveCount(0);
   await page.getByRole("button", { name: /Create the Prairie Lantern Freight demo/ }).click();
   await page.waitForURL(/command-center/, { timeout: 240_000 });
 
