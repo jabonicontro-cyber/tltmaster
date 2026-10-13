@@ -4,8 +4,8 @@ import { asUser } from "./db";
 import { USERS } from "./users";
 
 // Worst-case data on a phone: a customer with a very long name must never make a page scroll sideways (a filter
-// dropdown sized itself to the longest customer name and widened Billing and the Command Center by 525 px).
-// Fictional data only.
+// dropdown sized itself to the longest customer name and widened Billing and the Command Center by 525 px), and a
+// driver with a very long unbroken surname must not push the board's resource lists sideways. Fictional data only.
 
 test("a very long customer name never widens pages on a phone", async ({ page }) => {
   const tag = unique();
@@ -23,6 +23,7 @@ test("a very long customer name never widens pages on a phone", async ({ page })
     await q("select public.set_order_status($1, 'confirmed', '')", [order]);
     await q("select public.update_order_schedule($1, null, $2::jsonb)", [order, JSON.stringify({ scheduled_start: today, scheduled_end: today })]);
     await q("select public.set_order_status($1, 'scheduled', '')", [order]);
+    await q("insert into public.drivers (name) values ($1)", [`Maximiliana Wolfeschlegelsteinhausenbergerdorffvoralternwarengewissenhaft ${tag}`]);
   });
 
   await page.setViewportSize({ width: 390, height: 844 });
@@ -32,5 +33,12 @@ test("a very long customer name never widens pages on a phone", async ({ page })
     await expect(page.getByRole("main")).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     expect(overflow, `${path} scrolls sideways`).toBe(0);
+  }
+  // The board's truck and driver lists scroll down, never sideways (a name wraps; its badge stays in view).
+  await page.goto("/dispatch");
+  for (const name of ["Trucks today", "Drivers today"]) {
+    const list = page.getByRole("list", { name });
+    await expect(list).toBeVisible();
+    expect(await list.evaluate((el) => el.scrollWidth - el.clientWidth), `${name} scrolls sideways`).toBeLessThanOrEqual(0);
   }
 });

@@ -414,7 +414,7 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
               return (
                 <li key={t.id} className="px-4 py-2 sm:px-5">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/fleet/trucks/${t.id}`} className="font-semibold hover:underline">{t.unit_number}</Link>
+                    <Link href={`/fleet/trucks/${t.id}`} className="min-w-0 font-semibold break-words hover:underline">{t.unit_number}</Link>
                     {t.service_status === "out_of_service" ? (
                       <Badge tone="red">Out of service</Badge>
                     ) : bookings.length ? (
@@ -445,7 +445,7 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
               return (
                 <li key={d.id} className="px-4 py-2 sm:px-5">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:underline">{d.display_name}</Link>
+                    <Link href={`/fleet/drivers/${d.id}`} className="min-w-0 font-semibold break-words hover:underline">{d.display_name}</Link>
                     {!r.eligible ? (
                       <Badge tone="red">Not eligible</Badge>
                     ) : bookings.length ? (
