@@ -258,6 +258,12 @@ for real companies). Additive. Until it is applied, the app remembers the dismis
 user who signs in on another browser sees the welcome once more there. Rollback:
 `supabase/rollbacks/20261109000100_demo_welcome.down.sql`.
 
+**AI usage ledger (`20261110000100_ai_usage.sql`, after `20261109000100`).** Adds `public.ai_usage_events` (counts,
+timings and outcomes per AI call; no prompts or answers), `public.record_ai_usage(...)` and
+`public.ai_usage_summary()` (docs/AI.md §6). Additive and needed only when an AI capability is turned on. Until it is
+applied every AI capability is Blocked ("usage ledger not available") and nothing is sent to a model. Rollback:
+`supabase/rollbacks/20261110000100_ai_usage.down.sql`.
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

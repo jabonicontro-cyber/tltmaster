@@ -2,6 +2,8 @@ import Link from "next/link";
 import { ArrowRight, CircleCheck, CircleDashed, CircleAlert } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { requirePagePermission } from "@/server/auth";
+import { GATE_LABELS, type GateState } from "@/lib/ai/capabilities";
+import { allCapabilityGates } from "@/server/ai/gates";
 import { getCompanyReadiness } from "@/server/data/readiness";
 
 export const metadata = { title: "Company setup" };
@@ -9,6 +11,7 @@ export const metadata = { title: "Company setup" };
 const ICON = { done: CircleCheck, incomplete: CircleAlert, missing: CircleDashed };
 const LABEL = { done: "Done", incomplete: "Incomplete", missing: "Not started" };
 const TONE = { done: "text-green-700", incomplete: "text-amber-700", missing: "text-muted" };
+const GATE_TONE: Record<GateState, string> = { ready: "text-green-700", limited: "text-amber-700", needs_review: "text-amber-700", blocked: "text-muted" };
 
 /**
  * Company setup checklist for administrators (docs/ONBOARDING.md): what is set up, what is incomplete and what is
@@ -17,7 +20,10 @@ const TONE = { done: "text-green-700", incomplete: "text-amber-700", missing: "t
  */
 export default async function SetupPage() {
   const access = await requirePagePermission("settings.manage");
-  const readiness = await getCompanyReadiness(access.companyId!).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The checklist is unavailable." }));
+  const [readiness, gates] = await Promise.all([
+    getCompanyReadiness(access.companyId!).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The checklist is unavailable." })),
+    allCapabilityGates(access),
+  ]);
   return (
     <>
       <PageHeader
@@ -62,6 +68,30 @@ export default async function SetupPage() {
           </p>
         </>
       )}
+      <section aria-labelledby="ai-title" className="mt-8">
+        <h2 id="ai-title" className="text-base font-bold text-ink">AI capabilities</h2>
+        <p className="mt-1 text-sm text-muted">
+          Each AI feature has its own switch, model, evaluation and token limit; an API key alone turns nothing on. Ready and Limited
+          features can be used; Needs review and Blocked never call a model. See docs/AI.md.
+        </p>
+        <ul className="mt-3 space-y-3">
+          {gates.map(({ capability: c, gate }) => (
+            <li key={c.id} className="rounded-lg border border-line bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h3 className="font-semibold text-ink">{c.label}</h3>
+                <span className={`text-xs font-semibold ${GATE_TONE[gate.state]}`}>{GATE_LABELS[gate.state]}</span>
+              </div>
+              <p className="mt-1 text-sm text-ink">{c.description}</p>
+              {gate.model && <p className="mt-1 text-xs text-muted">Model: {gate.model}{gate.fallbackModel ? ` · approved fallback: ${gate.fallbackModel}` : ""}</p>}
+              {gate.reasons.length > 0 && (
+                <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs text-muted">
+                  {gate.reasons.map((r) => <li key={r}>{r}</li>)}
+                </ul>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
     </>
   );
 }

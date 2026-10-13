@@ -57,6 +57,19 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
 - [ ] Suggestions (Smart Dispatch, invoice drafts) never commit anything on their own.
 - [ ] No secrets in the code, the docs or the commit history.
 
+## 4a. AI (docs/AI.md)
+
+- [ ] The core suite needs no AI key: `tests/unit/ai-foundation.test.ts` uses mocked provider responses only.
+- [ ] No capability is described as working unless its gate is Ready or Limited **in that environment**: provider and
+      key set by the owner, capability switched on, model chosen, monthly token limit, the `20261110000100_ai_usage`
+      migration applied, and passing evaluation evidence for that model committed in `src/lib/ai/evidence.ts` from a
+      real `npm run ai:eval` run (never hand-written).
+- [ ] No `execute` tool is registered without explicit authorization; tools are read or propose only, and model
+      arguments are validated and permission-checked on the server.
+- [ ] Outgoing requests carry pseudonyms only (no names, emails, ids); prompts and answers are not stored.
+- [ ] AI output is labelled as AI-generated, and the deterministic result works without it.
+- [ ] AI features are not on the public website until verified live (`src/lib/site/capabilities.ts`).
+
 ## 5. After pushing
 
 - [ ] The GitHub deployment for the commit reports success (`curl https://api.github.com/repos/jabonicontro-cyber/tltmaster/deployments?sha=<commit>` and its statuses).

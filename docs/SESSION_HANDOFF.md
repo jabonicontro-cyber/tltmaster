@@ -9,6 +9,18 @@ project credentials. Read it together with:
 
 ## 0. Latest checkpoint (2026-10-12) — read first
 
+- **2026-10-13, AI runtime foundation (docs/AI.md, master plan B6):**
+  - Built: provider-independent interface, OpenAI adapter (Responses API, `store: false`), server-only configuration,
+    readiness gates (Ready / Limited / Needs review / Blocked), tool registry (read / propose / execute with approval),
+    evaluation runner, usage ledger with monthly token cap, per-minute rate limit and cost estimates, and the first
+    capability, "Explain this plan" on Plan the day. Migration `20261110000100_ai_usage.sql` is applied to the
+    **local** database only.
+  - Status: committed locally, not pushed, not deployed. No real OpenAI call was made; no evaluation evidence exists,
+    so every capability shows **Blocked** (no provider configured) everywhere, demos included.
+  - Owner actions before it can run (each needs approval): apply `20261110000100` on hosted (back up first); choose a
+    model and run `npm run ai:eval` with a key; set `AI_PROVIDER`, `OPENAI_API_KEY`, `AI_CAPABILITIES`,
+    `AI_MODEL_PLAN_EXPLANATION` and `AI_MONTHLY_TOKEN_LIMIT` in Vercel; then deploy and verify (docs/AI.md §12).
+
 - **2026-10-13:** Production promoted to `db7990b` (deployment record: success). The owner applied hosted migrations
   `20261108000100` and `20261109000100` (`20261107000100` was already applied); `migration list` shows every
   migration Local and Remote. The owner then ran **Refresh demo data** on Prairie Lantern Freight and added
@@ -260,6 +272,10 @@ any custom domain added to the project later (none is known).
    `20261029000100_shared_early_access_password.sql` (§2a), then add `EARLY_ACCESS_PASSWORD` (Sensitive) in Vercel and
    redeploy. Until both are done the shared password does not work — "not valid" without the variable, "temporarily
    unavailable" without the migration — and no access is granted; personal codes keep working. If a custom domain is attached, add it to Supabase → Authentication → URL Configuration → Redirect URLs.
+
+10. **AI (optional, when you decide):** follow docs/AI.md §12 — hosted migration `20261110000100_ai_usage.sql`, a passing
+   live evaluation for your chosen model, then the AI variables in Vercel. Until then AI stays Blocked and nothing is
+   sent to OpenAI.
 
 ## 6. Known issues and decisions pending
 

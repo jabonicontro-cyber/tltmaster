@@ -12,6 +12,7 @@ const TENANT_TABLES = [
   "user_presence", "comm_preferences", "comm_notifications", "announcements", "announcement_revisions", "announcement_receipts",
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
+  "ai_usage_events",
   "employees", "employee_compensation",
   "time_off_requests", "time_off_events",
   "vehicle_documents", "truck_assignment_events",
@@ -129,6 +130,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.complete_company_onboarding", "public.create_company_with_access_code",
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome",
+  // AI usage ledger (docs/AI.md §6).
+  "public.record_ai_usage", "public.ai_usage_summary",
   // N11: office scans of paper tickets.
   "public.begin_ticket_scan", "public.attach_ticket_scan",
   // N12: early-access site gate (service role only).

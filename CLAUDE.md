@@ -20,6 +20,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/DEVELOPMENT_WORKFLOW.md` | Feature lifecycle, release risk tiers (`scripts/release/risk.mjs`), which gates CI runs, the release report template, and what is automated vs needs a session or the owner. |
 | `docs/SCREENSHOTS.md` | How to capture product screenshots for the website. |
 | `docs/DEMO_TENANTS.md` | Demo tenants (presenter demo, prospect demos such as Prairie Lantern Freight): how they stay in sync with the product, the documented intentional differences, sample data, and the per-feature demo checklist. |
+| `docs/AI.md` | AI runtime: provider interface, OpenAI adapter, configuration, readiness gates, evaluations, usage ledger and budgets, tools and approvals, demo behaviour, owner steps to turn a capability on. |
 | `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
 
 ## Rules that always apply
@@ -43,6 +44,16 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Suggestions never act on their own:**
   - Smart Dispatch (`src/lib/dispatch/smart.ts`) only proposes; assignments go through `assign_load` after a dispatcher approves.
   - Invoice drafts are computed previews; nothing is issued or exported.
+- **AI (docs/AI.md):**
+  - Models are called only through `src/server/ai/` (the `AiProvider` interface; OpenAI is one adapter), on the server.
+    Keys are server-only env vars set by the owner; never `NEXT_PUBLIC_`, never committed, never in errors or logs.
+  - A key alone enables nothing: each capability needs its switch, model, token limit, the usage ledger and passing
+    evaluation evidence (`src/lib/ai/evidence.ts`, only from a real `npm run ai:eval`). Never write evidence by hand.
+  - Tools are registered in `src/server/ai/tools.ts` as read / propose / execute, validated and permission-checked on the
+    server; model arguments are untrusted; company ids are never tool arguments. No `execute` tool without explicit
+    authorization, and those still need a person's approval.
+  - Send pseudonyms, not names, emails or ids; store usage counts, never prompts or answers. Label AI output and keep
+    the deterministic result working without it. Core tests use mocked providers only.
 - **Working with the founder:**
   - Audit before rebuilding; verify earlier reports instead of trusting them.
   - During requirements discovery ask one concise question at a time; never re-ask what the master plan answers.

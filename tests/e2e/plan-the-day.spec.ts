@@ -35,6 +35,12 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   await expect(missing).toContainText("Hours of service are not checked");
   await expect(missing).toContainText("Travel distance and drive time are not calculated");
   await expect(page.getByText("Verified feasible")).toHaveCount(0);
+  // AI explanation (docs/AI.md): without the owner's AI configuration it is Blocked, says why, and offers no button;
+  // the deterministic plan is complete without it.
+  const explain = page.getByRole("region", { name: "Explain this plan" });
+  await expect(explain).toContainText("AI explanations are not available for this company yet.");
+  await expect(explain).toContainText("AI: Blocked");
+  await expect(explain.getByRole("button")).toHaveCount(0);
   const assignments = page.getByRole("region", { name: /Proposed assignments/ }).getByRole("listitem").filter({ has: page.getByRole("checkbox") });
   const count = await assignments.count();
   expect(count).toBeGreaterThanOrEqual(2);
@@ -90,6 +96,10 @@ test("Company setup: owners see what is done, incomplete or missing; others cann
   for (const step of ["Company profile", "People and roles", "Customers", "Materials and rates", "Trucks and capacity", "Drivers and qualifications"]) {
     await expect(page.getByRole("heading", { name: step, level: 2 })).toBeVisible();
   }
+  const ai = page.getByRole("region", { name: "AI capabilities" });
+  await expect(ai.getByRole("heading", { name: "Explain this plan", level: 3 })).toBeVisible();
+  await expect(ai).toContainText("Blocked");
+  await expect(ai).toContainText("No AI provider is configured.");
   await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: page.url() }]);
   await page.goto("/setup");
   await expect(page).toHaveURL(/no-access/);

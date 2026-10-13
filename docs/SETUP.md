@@ -24,6 +24,9 @@ dashboard (production). Never commit real values.
 | `EARLY_ACCESS_RECHECK_SECONDS` | no (300) | How often an admitted device is re-checked against the database (revocation delay) |
 | `PUBLIC_SITE` | no (closed) | `on` opens the public website (home, pricing, demo request…) to everyone while the early-access gate is on. Empty: behind the gate like the rest. (With the gate off, as in `npm run dev`, it is open anyway) |
 | `SITE_INDEXING` | no (off) | `on` lets search engines index the nine public pages only (read at build time) |
+| `AI_PROVIDER`, `OPENAI_API_KEY` | no (AI off) | `openai` and the key. **Server only**; the key is set by the owner in the hosting provider, never committed. A key alone switches nothing on (docs/AI.md §3) |
+| `AI_CAPABILITIES`, `AI_MODEL_PLAN_EXPLANATION`, `AI_MONTHLY_TOKEN_LIMIT` | to run an AI capability | Explicit switch, model id and per-company monthly token cap. The capability also needs the `20261110000100_ai_usage` migration and passing evaluation evidence |
+| `AI_FALLBACK_MODEL_PLAN_EXPLANATION`, `AI_REQUESTS_PER_MINUTE`, `AI_TIMEOUT_MS`, `AI_PRICING_JSON`, `AI_IN_DEMOS` | optional | Approved fallback (needs its own evidence), rate limit (6), timeout (20000 ms), prices for cost estimates, demo companies (off) |
 | `TEST_DATABASE_URL` | for `npm run test:db` | Superuser URL of a **local/disposable** database |
 
 ## 2. Supabase project (hosted)

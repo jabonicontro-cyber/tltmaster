@@ -7,6 +7,8 @@ import { addDays, formatDateLong, isIsoDate } from "@/lib/dates";
 import { PRESETS, PRIORITY_KEYS, PRIORITY_LABELS, parsePriorities } from "@/lib/optimization/plan";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
+import { GATE_LABELS } from "@/lib/ai/capabilities";
+import { capabilityGate } from "@/server/ai/gates";
 import { getOptimizationPlan } from "@/server/data/optimization";
 import { businessToday } from "@/server/data/settings";
 
@@ -21,7 +23,11 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
   const date = params.date && isIsoDate(params.date) && params.date >= today && params.date <= addDays(today, 14) ? params.date : addDays(today, 1);
   const preset = params.preset && params.preset in PRESETS ? params.preset : PRIORITY_KEYS.some((k) => params[k] !== undefined) ? null : "balanced";
   const priorities = parsePriorities(params, PRESETS[preset ?? "balanced"].priorities);
-  const plan = await getOptimizationPlan(date, priorities, preset).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The optimizer is unavailable." }));
+  const [plan, gate] = await Promise.all([
+    getOptimizationPlan(date, priorities, preset).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The optimizer is unavailable." })),
+    capabilityGate("plan_explanation", access),
+  ]);
+  const ai = { state: gate.state, label: GATE_LABELS[gate.state], canRun: gate.canRun, reasons: can(access, "settings.manage") ? gate.reasons : null };
 
   return (
     <>
@@ -74,6 +80,9 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           revenueCents={plan.input.revenueCents}
           result={plan.result}
           canEdit={can(access, "dispatch.edit")}
+          ai={ai}
+          preset={preset}
+          priorities={{ ...priorities }}
         />
       )}
     </>

@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { approvePlanAssignments, type ApprovalOutcome } from "@/app/(app)/dispatch/plan/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PlanExplanation, type PlanAiState } from "@/components/dispatch/plan-explanation";
 import type { SmartLoad } from "@/lib/dispatch/smart";
 import type { Optimization, Plan } from "@/lib/optimization/plan";
 
@@ -42,8 +43,9 @@ function Metrics({ plan }: { plan: Plan }) {
  * priorities with its alternatives, review each assignment and approve a selection. Approval re-checks every
  * assignment against current data and assigns through public.assign_load; nothing else is changed.
  */
-export function OptimizationPlanner({ date, timezone, loads, revenueCents, result, canEdit }: {
+export function OptimizationPlanner({ date, timezone, loads, revenueCents, result, canEdit, ai, preset, priorities }: {
   date: string; timezone: string; loads: SmartLoad[]; revenueCents: Record<string, number | null>; result: Optimization; canEdit: boolean;
+  ai: PlanAiState; preset: string | null; priorities: Record<string, number>;
 }) {
   const router = useRouter();
   const [active, setActive] = useState(0);
@@ -114,6 +116,8 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
           )}
         </div>
       </section>
+
+      <PlanExplanation ai={ai} date={date} preset={preset} priorities={priorities} planKey={plan.key} planLabel={plan.label} />
 
       <section aria-labelledby="assign-title" className="rounded-lg border border-line bg-card">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">

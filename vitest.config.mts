@@ -38,6 +38,15 @@ export default defineConfig({
           hookTimeout: 60000,
         },
       },
+      {
+        extends: true,
+        test: {
+          // Live AI evaluation (docs/AI.md §5): opt-in only (`npm run ai:eval`), needs a key; never in the core suite.
+          name: "live",
+          include: process.env.AI_LIVE_EVAL === "1" ? ["tests/live/**/*.test.ts"] : [],
+          testTimeout: 180000,
+        },
+      },
     ],
   },
 });
