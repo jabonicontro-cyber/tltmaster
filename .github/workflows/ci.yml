@@ -113,8 +113,9 @@ jobs:
         if: ${{ !inputs.full_browser_suite }}
         run: |
           set -a && . ./.env.local && set +a
-          npx playwright test tests/e2e/auth.spec.ts tests/e2e/permissions.spec.ts tests/e2e/tenancy.spec.ts \
-            tests/e2e/roles.spec.ts tests/e2e/navigation.spec.ts tests/e2e/demo-experience.spec.ts
+          # quotes.spec runs before tenancy.spec (files run in name order) and creates the quote tenancy.spec needs.
+          npx playwright test tests/e2e/auth.spec.ts tests/e2e/permissions.spec.ts tests/e2e/quotes.spec.ts \
+            tests/e2e/tenancy.spec.ts tests/e2e/roles.spec.ts tests/e2e/navigation.spec.ts tests/e2e/demo-experience.spec.ts
       - name: Full browser suite
         if: ${{ inputs.full_browser_suite }}
         run: set -a && . ./.env.local && set +a && npx playwright test

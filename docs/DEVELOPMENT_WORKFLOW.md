@@ -66,7 +66,7 @@ limitation), say exactly what is needed and why, and continue with other ready w
 | --- | --- | --- |
 | Lint, typecheck, unit tests, production build | CI `checks` (every push) | |
 | Database tests (RLS, tenancy, `SECURITY DEFINER` review, migrations from scratch) | CI `database` (every push) | Migrations are applied only to the throwaway CI database. |
-| Critical browser workflows (sign-in, permissions, tenancy, roles, navigation, demo experience) on a production build | CI `e2e` (every push) | Full browser suite on demand: Actions → CI → Run workflow → *full_browser_suite*. |
+| Critical browser workflows (sign-in, permissions, quotes, tenancy, roles, navigation, demo experience) on a production build | CI `e2e` (every push) | Full browser suite on demand: Actions → CI → Run workflow → *full_browser_suite*. Some specs use records earlier specs create (files run in name order: `quotes` before `tenancy`); keep that in mind when choosing a subset. |
 | Early-access gate and public site; `check-deployment.mjs` against the local production build | CI `e2e` | |
 | Release risk report | CI `release-risk` | Informational; approvals are given by the owner, not by CI. |
 | Full browser suite, DB tests with the API stack (e.g. demo samples), hosted-state check, demo parity in every mode | Claude session, locally (SETUP §6) | Required by RELEASE_CHECKLIST before promotion. |
