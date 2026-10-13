@@ -3,6 +3,12 @@ name: CI
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      full_browser_suite:
+        description: "Run the full browser suite (slow) instead of the critical specs"
+        type: boolean
+        default: false
 
 jobs:
   checks:
@@ -45,3 +51,87 @@ jobs:
       - name: Migrate and seed (Supabase Auth schema + app migrations)
         run: bash scripts/dev-stack/stack.sh db-reset
       - run: npm run test:db
+
+  # Release risk tier of everything not yet on Production (docs/DEVELOPMENT_WORKFLOW.md §3). Informational: it never
+  # deploys or applies anything; it tells the release report which approvals and extra checks a promotion needs.
+  release-risk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Classify changes against Production
+        run: |
+          git fetch --no-tags origin claude/top-line-trucking-manager-vmw04i
+          node scripts/release/risk.mjs origin/claude/top-line-trucking-manager-vmw04i HEAD | tee -a "$GITHUB_STEP_SUMMARY"
+
+  # Critical browser workflows against a production build on the local backend (Postgres + Supabase Auth + PostgREST,
+  # scripts/dev-stack). The full suite runs on demand (workflow_dispatch → full_browser_suite).
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DEV_PG_URL: postgres://postgres@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Local backend
+        run: |
+          bash scripts/dev-stack/stack.sh db-reset
+          bash scripts/dev-stack/stack.sh up
+          bash scripts/dev-stack/stack.sh env > .env.local
+          echo "E2E_GATE_PASSWORD=$(openssl rand -hex 12)" >> "$GITHUB_ENV"
+          echo "E2E_SITE_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: npx playwright install --with-deps chromium
+      - name: Production build
+        run: set -a && . ./.env.local && set +a && npm run build
+      - name: Start the app (gate off on 3000, gate on with the public site on 3001)
+        run: |
+          set -a && . ./.env.local && set +a
+          EARLY_ACCESS_GATE=off nohup npx next start -p 3000 > app-3000.log 2>&1 &
+          EARLY_ACCESS_GATE=on PUBLIC_SITE=on SITE_ACCESS_SECRET="$E2E_SITE_SECRET" EARLY_ACCESS_RECHECK_SECONDS=0 \
+            EARLY_ACCESS_PASSWORD="$E2E_GATE_PASSWORD" nohup npx next start -p 3001 > app-3001.log 2>&1 &
+          for port in 3000 3001; do
+            for i in $(seq 1 60); do curl -s -o /dev/null "http://localhost:$port/login" && break; sleep 2; done
+          done
+      - name: Critical browser workflows
+        if: ${{ !inputs.full_browser_suite }}
+        run: |
+          set -a && . ./.env.local && set +a
+          npx playwright test tests/e2e/auth.spec.ts tests/e2e/permissions.spec.ts tests/e2e/tenancy.spec.ts \
+            tests/e2e/roles.spec.ts tests/e2e/navigation.spec.ts tests/e2e/demo-experience.spec.ts
+      - name: Full browser suite
+        if: ${{ inputs.full_browser_suite }}
+        run: set -a && . ./.env.local && set +a && npx playwright test
+      - name: Early-access gate and public site
+        run: |
+          set -a && . ./.env.local && set +a
+          E2E_BASE_URL=http://localhost:3001 E2E_GATE=on E2E_PUBLIC_SITE=on E2E_EARLY_ACCESS_PASSWORD="$E2E_GATE_PASSWORD" \
+            npx playwright test tests/e2e/gate.spec.ts
+          node scripts/check-deployment.mjs http://localhost:3001
+      - name: Keep failure evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            test-results/
+            app-3000.log
+            app-3001.log
+            .dev-stack/*.log
+          retention-days: 7

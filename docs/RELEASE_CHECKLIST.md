@@ -12,6 +12,14 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
 - [ ] `npm run build` succeeds, and the gate spec passes against the production build (SETUP §5).
 - [ ] New `SECURITY DEFINER` functions pin `search_path = ''` and are in the reviewed list in `tests/db/tenancy.test.ts`; new business tables have `company_id` and RLS.
 
+## 1b. Risk and report (docs/DEVELOPMENT_WORKFLOW.md)
+
+- [ ] `node scripts/release/risk.mjs` run against the Production branch; every approval-tier item has the owner's
+      approval or is isolated so the release works without it; review-tier items have their extra checks done.
+- [ ] CI is green on the candidate commit (`checks`, `database`, `e2e`); the `release-risk` summary matches the report.
+- [ ] The release report follows DEVELOPMENT_WORKFLOW §6 and keeps implemented / tested / deployed / verified apart.
+- [ ] The master plan §12 backlog row is updated (status, commit, approvals outstanding).
+
 ## 1a. Demo tenants (docs/DEMO_TENANTS.md)
 
 - [ ] Each new feature or UI change is available in demo companies, or its exception is documented in DEMO_TENANTS §2.

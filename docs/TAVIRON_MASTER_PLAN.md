@@ -411,3 +411,26 @@ billing code may be written without explicit authorization.
 6. **Invoice approval/issue and accounting export** (after §9 Q9–Q10), QuickBooks verified with a test company.
 7. **Payroll** (after pay rules), **customer portal**, **driver mobile**, **subscription billing** (after legal,
    tax and processor decisions).
+
+## 12. Feature backlog (living; process in docs/DEVELOPMENT_WORKFLOW.md)
+
+One row per independently deliverable feature. Status follows DEVELOPMENT_WORKFLOW §2 (requested → specified →
+implemented → tested → committed → pushed → deployed → verified). Risk tier from §3 there. New requests are added
+here without replacing earlier requirements; open questions go to §9. Last updated 2026-10-13.
+
+| # | Feature | Status | Depends on / blockers | Risk tier · approvals | Acceptance and tests |
+| --- | --- | --- | --- | --- | --- |
+| B1 | Demo feature parity in every demo mode (shared idempotent samples) | committed (`df87ddb`), local checks pass; not yet pushed | Hosted `20261107000100`, `20261108000100` (owner) for Communications samples | review · owner applies migrations, runs Refresh on hosted prospect demos | DEMO_TENANTS §3/§5; `tests/db/demo-samples.test.ts`, `tests/e2e/demo-parity.spec.ts` |
+| B2 | Demo experience: own photo in header, one-time welcome, Change view, presentation mode | committed (`f67009a`); focused browser tests pass | Hosted `20261109000100` (owner) for per-account memory; cookie fallback until then | review · migration apply | IMPLEMENTATION_PLAN §5ae; `tests/e2e/demo-experience.spec.ts` |
+| B3 | Continuous development foundation: workflow, risk classifier, CI browser job, backlog, release reports | implemented; CI job unverified until it runs on GitHub | — | review (CI change) | DEVELOPMENT_WORKFLOW; `tests/unit/release-risk.test.ts`; CI run green |
+| B4 | Premium 3D public website (truck hero, scroll story, real screenshots, release highlights) | requested | Truck model: procedural or licence-verified free asset (no paid asset without approval); claims only from `src/lib/site/capabilities.ts` | auto (public site); new 3D dependency → review | Desktop/phone, reduced motion and static fallback, accessibility, asset size, existing site tests |
+| B5 | AI Optimization Core, first slice: multi-load plan across trucks and drivers with hard constraints, configurable priorities, explanations, review and approve through `assign_load` | requested | Builds on Smart Dispatch Stage 1 (`src/lib/dispatch/smart.ts`); costs per §9 Q17 unknown (shown as missing); no routing provider (distances estimated and labelled) | review (dispatch workflow); nothing is assigned without a dispatcher | Deterministic tests: infeasible pairs blocked, confirmed work preserved, revalidation before commit; demo data in every dispatch mode |
+| B6 | Shared AI platform (server-side model provider, tool registry, audit, global assistant) | requested; **no AI provider integrated yet** | Provider choice and API key are an owner decision (secret + paid service → approval) | approval (secret, paid service) | Role-aware tools, read/propose/commit separation, audit log |
+| B7 | Smart Dispatch Stage 2: whole-plan proposals, disruption repair, new-load evaluation, decision history | requested | B5 | review | §6.1 |
+| B8 | Load profitability and pre-acceptance | requested | Cost inputs (§9 Q17); B5 | review (financial) | Missing costs never assumed; estimates vs actuals kept apart |
+| B9 | Customer operating intelligence (driver notes → proposed profile changes, freshness review) | requested | Driver notes capture; B6 for AI classification (deterministic rules first) | review | Human approval for every profile change; version history |
+| B10 | Truck-aware route planner and GPS/ELD adapters | requested | Commercial truck-routing provider (paid → approval); never passenger routing | approval (paid service) | Provider-independent adapters; unverified restrictions flagged |
+| B11 | Company onboarding and CSV import (mapping, validation, duplicates, preview, history, reversal) | requested; platform-operator imports exist (N13, IMPLEMENTATION_PLAN §5m) | Audit of N13 imports first | review (bulk data writes) | Malformed files, duplicates, invalid references, unauthorized access, partial failure tests |
+| B12 | Scheduling views (calendar, timeline, board, map, coverage) on one data model | requested | Truck locations source (§9 Q20) for the map | review | Shared filters, validated drag-and-drop |
+| B13 | Maintenance ticket board, tasks, notifications centre, adaptive dashboards, load entry from email/documents | requested | Notification delivery channels need a provider (approval) | review | Per feature |
+| B14 | Customer self-service portal | **unresolved product decision** — do not build until scope is confirmed | §9 | — | — |

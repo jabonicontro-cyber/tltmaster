@@ -17,6 +17,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/ARCHITECTURE.md` | Request flow and the security model. |
 | `docs/SCHEMA.md` | Database tables and rules. |
 | `docs/RELEASE_CHECKLIST.md` | What to check before a release is called done. |
+| `docs/DEVELOPMENT_WORKFLOW.md` | Feature lifecycle, release risk tiers (`scripts/release/risk.mjs`), which gates CI runs, the release report template, and what is automated vs needs a session or the owner. |
 | `docs/SCREENSHOTS.md` | How to capture product screenshots for the website. |
 | `docs/DEMO_TENANTS.md` | Demo tenants (presenter demo, prospect demos such as Prairie Lantern Freight): how they stay in sync with the product, the documented intentional differences, sample data, and the per-feature demo checklist. |
 | `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
@@ -129,6 +130,10 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Still explicit owner approval, each time, for: remote migrations or database changes (never applied just
     because code is ready), environment variables or secrets, domains, account/role changes, anything
     destructive, force-pushes or history rewrites. Approval for one operation never covers another.
+- **Feature by feature (docs/DEVELOPMENT_WORKFLOW.md):** every request becomes a row in the master plan §12 backlog
+  with acceptance criteria, dependencies, risk tier and status; run `node scripts/release/risk.mjs` before promoting
+  and put its tier and outstanding approvals in the release report (template in DEVELOPMENT_WORKFLOW §6). Approval-tier
+  steps wait for the owner while unrelated ready work continues. Never claim Claude runs in the background.
 - **Commits** end with the session's co-author trailer. Don't open a PR unless asked.
 - **Dates:** use `DateInput` (`src/components/ui/date-input.tsx`) for every date field and
   `isOperationalDate` on the server.
