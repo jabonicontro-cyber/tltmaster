@@ -187,7 +187,14 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
     for (const role of PREVIEW_ROLES) {
       await ownerContext.addCookies([{ name: PREVIEW_COOKIE, value: role, url: owner.url() }]);
       await visit(owner, "/command-center");
-      const nav = (await owner.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))).filter((h, i, all) => all.indexOf(h) === i);
+      // Read the navigation once the page has settled (the dev server can reload a page it has just compiled, which
+      // destroys the page mid-read); the pages themselves are still checked one by one below.
+      let nav: string[] = [];
+      await expect(async () => {
+        await owner.waitForLoadState("networkidle");
+        nav = (await owner.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))).filter((h, i, all) => all.indexOf(h) === i);
+        expect(nav.length).toBeGreaterThan(0);
+      }).toPass({ timeout: 30_000 });
       for (const href of nav) {
         await visit(owner, href);
         await expect(owner.getByText("This page could not be loaded"), `${role} ${href}`).toHaveCount(0);
