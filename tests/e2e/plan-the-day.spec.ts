@@ -46,9 +46,12 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   await expect(plans.getByRole("tab").first()).toContainText("Service first (your priorities)");
 
   // Approve only the first proposal: it is re-checked and assigned; the rest stay open.
+  // Count again: the service-first plan may cover a different number of loads than the balanced one.
+  await expect(assignments.first()).toBeVisible();
+  const now = await assignments.count();
   const first = assignments.first();
   const label = (await first.locator("p").first().textContent())!.split(" · ")[0];
-  for (let i = 1; i < count; i++) await assignments.nth(i).getByRole("checkbox").uncheck();
+  for (let i = 1; i < now; i++) await assignments.nth(i).getByRole("checkbox").uncheck();
   await page.getByRole("button", { name: "Approve 1 selected" }).click();
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: "1 assignment(s) approved." })).toBeVisible();
   await page.reload();
