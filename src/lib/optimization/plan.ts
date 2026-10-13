@@ -302,30 +302,31 @@ function bookedIndex(input: OptimizationInput): BookedIndex {
  * The score of one pair given what came before it that day: whether its truck already has a planned stop that day
  * (and at this site) and how many loads its driver already has. Bookings are added here.
  */
-function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boolean, plannedHere: boolean, plannedDriverLoads: number, input: OptimizationInput): { score: number; reasons: string[] } {
+function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boolean, plannedHere: boolean, plannedDriverLoads: number, input: OptimizationInput, withReasons = true): { score: number; reasons: string[] } {
+  // Reasons are text for the final plan only; the search needs the score, so it skips building them.
   const reasons: string[] = [];
   let score = 0;
   const cap = capacity(pair.truck, load.unit_code, pair.trailer);
   if (cap && load.planned_quantity) {
     const fill = Math.min(load.planned_quantity / cap, 1);
     score += 6 * p.utilization * fill;
-    if (fill >= 0.8) reasons.push(`uses ${Math.round(fill * 100)}% of the capacity of ${equipmentLabel(pair.truck, pair.trailer)}`);
+    if (withReasons && fill >= 0.8) reasons.push(`uses ${Math.round(fill * 100)}% of the capacity of ${equipmentLabel(pair.truck, pair.trailer)}`);
   }
   const booked = bookedIndex(input);
   const bookedSites = booked.truckSites.get(dayKey(pair.truck.id, load.load_date));
   const anySite = plannedAny || Boolean(bookedSites?.length);
-  if (anySite && (plannedHere || bookedSites?.includes(load.site))) { score += 6 * p.efficiency; reasons.push(`truck ${pair.truck.unit_number} is already at this site that day`); }
+  if (anySite && (plannedHere || bookedSites?.includes(load.site))) { score += 6 * p.efficiency; if (withReasons) reasons.push(`truck ${pair.truck.unit_number} is already at this site that day`); }
   else if (anySite) score -= 3 * p.efficiency; // a site change: an empty repositioning trip
   const driverLoads = plannedDriverLoads + (booked.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0);
   score -= 2 * p.balance * driverLoads;
-  if (driverLoads === 0 && p.balance > 0) reasons.push(`${pair.driverLabel} has no other load that day`);
+  if (withReasons && driverLoads === 0 && p.balance > 0) reasons.push(`${pair.driverLabel} has no other load that day`);
   score -= pair.review.length - (input.hoursOfServiceVerified ? 0 : 1); // prefer pairs with complete data
   return { score, reasons };
 }
 
-function pairScore(load: SmartLoad, pair: Pair, p: Priorities, idx: PlanIndex, input: OptimizationInput): { score: number; reasons: string[] } {
+function pairScore(load: SmartLoad, pair: Pair, p: Priorities, idx: PlanIndex, input: OptimizationInput, withReasons = true): { score: number; reasons: string[] } {
   const planned = idx.truckSites.get(dayKey(pair.truck.id, load.load_date));
-  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0, input);
+  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0, input, withReasons);
 }
 
 const conflicts = (idx: PlanIndex, load: SmartLoad, pair: Pair) =>
@@ -409,7 +410,7 @@ function scorePlan(input: OptimizationInput, assignments: PlannedAssignment[], l
     const l = loads.get(a.loadId)!;
     const planned = done.truckSites.get(dayKey(a.truckId, l.load_date));
     const any = Boolean(planned?.size), here = Boolean(planned?.has(l.site)), driver = done.driverLoads.get(dayKey(a.driverId, l.load_date)) ?? 0;
-    const c = ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input).score;
+    const c = ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false).score;
     score += c;
     slot.set(a.loadId, { any, here, driver, c });
     addToIndex(done, a, l);
@@ -449,7 +450,7 @@ function scoreMove(base: Scored, prep: MovePrep, moved: PlannedAssignment, input
     const any = isTruck(a.truckId) ? Boolean(tracked?.size) : cached!.any;
     const here = isTruck(a.truckId) ? Boolean(tracked?.has(l.site)) : cached!.here;
     const driver = isDriver(a.driverId) ? counts.get(a.driverId) ?? 0 : cached!.driver;
-    return ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input).score;
+    return ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false).score;
   };
   let score = 0;
   for (let i = 0; i < at; i++) {
@@ -476,7 +477,7 @@ function planScore(input: OptimizationInput, assignments: PlannedAssignment[], l
   for (const a of [...assignments].sort(byTime(loads))) {
     const l = loads.get(a.loadId)!;
     const pair: Pair = { truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review };
-    score += ctx.value.get(l.id)! + pairScore(l, pair, p, done, input).score;
+    score += ctx.value.get(l.id)! + pairScore(l, pair, p, done, input, false).score;
     addToIndex(done, a, l);
   }
   return Math.round(score * 100) / 100;
@@ -509,7 +510,7 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
     let top: { pair: Pair; score: number } | null = null;
     for (const pair of pairs.get(load.id) ?? []) {
       if (conflicts(idx, load, pair)) continue;
-      const s = pairScore(load, pair, priorities, idx, input).score;
+      const s = pairScore(load, pair, priorities, idx, input, false).score;
       if (!top || s > top.score || (s === top.score && pairKey(pair) < pairKey(top.pair))) top = { pair, score: s };
     }
     return top?.pair ?? null;
@@ -540,9 +541,10 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
       for (const pair of pairs.get(load.id) ?? []) {
         if (conflicts(withoutIdx, load, pair)) continue;
         if (current && current.truckId === pair.truck.id && current.driverId === pair.driverId && current.trailerId === (pair.trailer?.id ?? null)) continue;
-        const moved = build(load, pair, withoutIdx);
-        const s = scoreMove(base, prep, moved, input, loads, priorities, ctx);
-        if (s > score + 1e-9) { plan = [...without, moved]; base = scorePlan(input, plan, loads, priorities, ctx); score = s; improved = true; break; }
+        // Scored as a bare assignment; the full one (with its reasons) is built only when the move is taken.
+        const probe = { loadId: load.id, truckId: pair.truck.id, trailerId: pair.trailer?.id ?? null, driverId: pair.driverId, driverLabel: pair.driverLabel, review: pair.review } as PlannedAssignment;
+        const s = scoreMove(base, prep, probe, input, loads, priorities, ctx);
+        if (s > score + 1e-9) { plan = [...without, build(load, pair, withoutIdx)]; base = scorePlan(input, plan, loads, priorities, ctx); score = s; improved = true; break; }
       }
       if (!plan.some((a) => a.loadId === load.id)) {
         // An uncovered load: try freeing one conflicting assignment of lower value.
