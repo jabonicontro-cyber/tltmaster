@@ -270,6 +270,13 @@ persona, e.g. Daniel Mitchell) instead of the login's account name. Same columns
 unchanged. Safe to skip: until it is applied, demo lists show the presenter's own name next to the persona. Rollback:
 `supabase/rollbacks/20261111000100_demo_driver_names.down.sql` (tested locally 2026-10-13).
 
+**Demo people names in the Command Center (`20261111000200_demo_people_names.sql`, after `20261111000100`).**
+Redefines `command_center_exceptions`, `exception_assignee_options` and `assign_exception` with only the name
+expression changed to `private.comm_user_name` (needs `20261108000100`, already applied): the persona in demo
+companies; elsewhere the person's display name, then full name. Safe to skip (demos then show the presenter's login
+name as an item's assignee). Rollback: `supabase/rollbacks/20261111000200_demo_people_names.down.sql` (tested locally
+2026-10-13).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

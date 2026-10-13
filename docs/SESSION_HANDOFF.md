@@ -47,8 +47,8 @@ is open decision §9 Q20 (recommend a soft preference for keeping a driver on th
 1. **Promote to Production?** Preview runs `7eba5e4` (deploy record: success, not verified live). Check it on the
    iPad; if good, say "promote" and Production is fast-forwarded to it. The commits made after `7eba5e4` need a
    separate "push" (they are local only, by instruction).
-2. **Hosted migration `20261111000100_demo_driver_names`** (optional, reversible, tested rollback): makes driver lists in
-   demos show the persona. Without it, hosted demos show the presenter's own login name in Plan the day, Dispatch and
+2. **Hosted migrations `20261111000100_demo_driver_names` and `20261111000200_demo_people_names`** (optional,
+   reversible, tested rollbacks): driver lists and the Command Center's assignee names in demos show the persona. Without it, hosted demos show the presenter's own login name in Plan the day, Dispatch and
    Tickets. Recommended: apply with the next release (DEPLOYMENT §2a).
 3. **JIT on hosted Postgres.** Locally, JIT compilation cost 4.9 s per billing/Command Center query (the query runs in
    0.16 s). Check hosted with `show jit;` in the Supabase SQL editor. If it says `on`, recommended: a small migration

@@ -344,14 +344,15 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
 }
 
 /**
- * Command Center: "Assigned to you" is empty until someone assigns an item. One open ticket to review (or, failing
- * that, the first open item) is assigned to the person viewing the demo through the real assignment path, which checks
+ * Command Center: "Assigned to you" is empty until someone assigns an item. One open item that stays open in a demo
+ * (a ticket to review, a blocked billing order, equipment out of service; failing those, the first open item) is assigned to the person viewing the demo through the real assignment path, which checks
  * that their role can resolve it. Added only while the demo has never had an assignment.
  */
 async function assignedItem(db: Db, me: string): Promise<number> {
   const existing = await count(db, "exception_assignments");
   if (existing === null || existing > 0) return 0;
-  for (const kind of ["ticket_review", null]) {
+  // Kinds that stay open in a demo first (a load without a truck may be assigned by another sample).
+  for (const kind of ["ticket_review", "billing_blocked", "equipment_out_of_service", "missing_ticket", null]) {
     const page = await db.rpc("command_center_exceptions", { p_kind: kind, p_mine: false, p_limit: 5, p_offset: 0, p_hidden: false });
     if (missing(page.error)) return 0;
     for (const item of ((page.data as { items?: Array<{ exception_key: string }> } | null)?.items ?? [])) {

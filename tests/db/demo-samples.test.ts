@@ -123,6 +123,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(driver).toHaveLength(1);
     const linked = (await q("select 1 from public.employees where company_id = $1 and user_id = $2 and driver_id = $3", [w.company, w.owner, driver[0].id])).rowCount;
     expect(linked).toBe(1);
+    // The Command Center names the viewer by their demo employee record, never their account name (20261111000200).
+    const persona = (await q<{ full_name: string }>("select full_name from public.employees where company_id = $1 and user_id = $2", [w.company, w.owner])).rows[0].full_name;
+    const open = (await as(w.owner).rpc("command_center_exceptions", { p_kind: null, p_mine: false, p_limit: 1, p_offset: 0, p_hidden: false })).data as { items: Array<{ exception_key: string }> };
+    const assigned = await as(w.owner).rpc("assign_exception", { p_key: open.items[0].exception_key, p_user_id: w.owner, p_note: "" });
+    if (!assigned.error) expect((assigned.data as { assignee: string }).assignee).toBe(persona); // (already mine is fine)
+    const mineNow = (await as(w.owner).rpc("command_center_exceptions", { p_kind: null, p_mine: true, p_limit: 5, p_offset: 0, p_hidden: false })).data as { items: Array<{ assignee_name: string | null }> };
+    expect(mineNow.items.length).toBeGreaterThan(0);
+    expect(mineNow.items.every((x) => x.assignee_name === persona)).toBe(true);
+    const options = (await as(w.owner).rpc("exception_assignee_options")).data as Array<{ user_id: string; name: string }>;
+    expect(options.find((o) => o.user_id === w.owner)?.name).toBe(persona);
 
     const before = await counts(w.company);
     expect((await ensureFeatureSamples(as(w.owner), today)).added).toBe(0);
