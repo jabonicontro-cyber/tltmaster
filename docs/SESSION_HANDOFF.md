@@ -30,6 +30,18 @@ migrations: everything below is **committed locally only** on top of `7eba5e4`.
 §9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
 is open decision §9 Q20 (recommend a soft preference for keeping a driver on their primary truck).
 
+**Verification on `69e9ba5` (code identical at the handoff commits), local, 2026-10-13:**
+- Lint and typecheck clean. `npx vitest run`: **642 / 642** (84 files) — after `jit = off` on the local database; before
+  it, 18 DB tests timed out (JIT compile, see `69e9ba5`).
+- Full browser suite: **128 passed, 1 failed, 9 skipped** (conditional). The failure was `ERR_CONNECTION_REFUSED` to
+  the dev server during `communications.spec.ts:130` (server momentarily unreachable, no assertion failed); the
+  spec re-run passed **9 / 9**. An earlier full run today (before this session's changes landed) had one sidebar hover
+  failure under load; the test now retries the first hover (`1202869`) and passed 3/3 on repeat.
+- `npm run build` passes. Gate spec on a gated production build: **8 passed, 1 skipped**. `check-deployment.mjs`
+  against it: **all checks passed**. `risk.mjs 651c37b`: tier **REVIEW**; hosted migrations in range:
+  `20261110000100_ai_usage` (optional while AI is off) and `20261111000100_demo_driver_names` (optional).
+- Not verified live: Preview `7eba5e4` (sandbox cannot reach `*.vercel.app`).
+
 ### Decisions for James (current, with recommendations)
 
 1. **Promote to Production?** Preview runs `7eba5e4` (deploy record: success, not verified live). Check it on the
