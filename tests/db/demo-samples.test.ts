@@ -109,6 +109,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     // The Command Center's "Assigned to you" has one item for the person viewing the demo.
     const mine = await q<{ n: string }>("select count(*) n from public.exception_assignments where company_id = $1 and assigned_to = $2 and ended_at is null", [w.company, w.owner]);
     expect(Number(mine.rows[0].n)).toBe(1);
+    // Dispatch's "Needs scheduling" queue has a confirmed order without a date.
+    const waiting = await q<{ n: string }>("select count(*) n from public.orders where company_id = $1 and status = 'confirmed' and scheduled_start is null", [w.company]);
+    expect(Number(waiting.rows[0].n)).toBeGreaterThanOrEqual(1);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

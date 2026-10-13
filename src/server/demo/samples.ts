@@ -65,6 +65,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("issued quote", await issuedQuote(db, today));
   note("operational workspace", await workspace(db, today, userId));
   note("assigned attention item", await assignedItem(db, userId));
+  note("order waiting for a date", await needsScheduling(db, today));
   note("planning day", await planningDay(db, today));
   note("billing: ready and handed off", await billing(db, today));
   return result;
@@ -133,6 +134,31 @@ async function billing(db: Db, today: string): Promise<number> {
     }
   }
   return n;
+}
+
+/**
+ * Dispatch's "Needs scheduling" queue lists confirmed orders without a delivery date; demos had none. One is added
+ * through the real path (draft → confirmed), copying a per-unit line and its rate from the demo's own orders. Added
+ * only while no confirmed order is waiting for a date.
+ */
+async function needsScheduling(db: Db, today: string): Promise<number> {
+  const waiting = await must("waiting", db.from("orders").select("id").eq("status", "confirmed").is("scheduled_start", null).limit(1));
+  if ((waiting as unknown[]).length) return 0;
+  type Line = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
+  type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; order_lines: Line[] };
+  const candidates = (await must("template", db.from("orders")
+    .select("customer_id, site_label, site_line1, site_city, order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
+    .not("site_line1", "is", null).order("order_number", { ascending: false }).limit(20))) as unknown as Tmpl[];
+  const tmpl = candidates.find((o) => o.order_lines.some((l) => l.calc_method === "per_unit" && l.unit_code));
+  if (!tmpl) return 0;
+  const src = tmpl.order_lines.find((l) => l.calc_method === "per_unit" && l.unit_code)!;
+  const o = (await must("waiting order", db.rpc("save_order_draft", { p_payload: {
+    customer_id: tmpl.customer_id, order_date: today, project_name: `${tmpl.site_label ?? "Site"} — next phase`,
+    job_instructions: "Demo: the customer will call with a start date.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+    lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "40", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
+  } }))) as { order_id: string };
+  await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "Demo: waiting for the customer's start date." }));
+  return 1;
 }
 
 /**

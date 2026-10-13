@@ -97,7 +97,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | Feature | Sample data | Owner | Dispatcher | Drives too | Office | Driver | Mechanic |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Command Center | Orders and loads for recent days, today and tomorrow (Refresh fills empty days); one open review item assigned to the person viewing the demo, so "Assigned to you" is not empty (2026-10-13) | ✓ | ✓ | ✓ | ✓ | — (opens My Day) | ✓ |
-| Orders, Dispatch, Smart Dispatch | Same loads; trucks, trailers and drivers | ✓ | ✓ | ✓ | ✓ | — | — |
+| Orders, Dispatch, Smart Dispatch | Same loads; trucks, trailers and drivers; a confirmed order waiting for a delivery date (Needs scheduling, 2026-10-13) | ✓ | ✓ | ✓ | ✓ | — | — |
 | My Day | The demo owner's own driver record (linked employee), qualifications and a load today or tomorrow | ✓ | — | ✓ | — | ✓ | — |
 | Delivery tickets | Tickets on delivered loads | ✓ | ✓ | ✓ | ✓ | — | — |
 | Billing readiness | Every state: missing tickets, tickets to review, exceptions (presenter scenario 1), one order **Ready to bill** and one **Handed off** in an internal batch (`samples.ts` `billing()`, 2026-10-13: before it no demo showed either). Nothing is sent, exported or invoiced | ✓ | — | — | ✓ | — | — |
