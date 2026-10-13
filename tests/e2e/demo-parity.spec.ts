@@ -42,10 +42,23 @@ const visit = async (page: Page, href: string) => {
   try { await page.goto(href); } catch (e) { if (!String(e).includes("ERR_ABORTED")) throw e; await page.goto(href); }
 };
 
+/**
+ * The sidebar's destinations, read once the page has settled: the dev server can reload a page it has just compiled,
+ * which destroys the page mid-read. The pages themselves are still opened and checked one by one by each test.
+ */
+const sidebarHrefs = async (page: Page): Promise<string[]> => {
+  let hrefs: string[] = [];
+  await expect(async () => {
+    await page.waitForLoadState("networkidle");
+    hrefs = (await page.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? "")))
+      .filter((h, i, all) => all.indexOf(h) === i);
+    expect(hrefs.length).toBeGreaterThan(0);
+  }).toPass({ timeout: 30_000 });
+  return hrefs;
+};
+
 const navHrefs = async (page: Page) =>
-  (await page.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? "")))
-    .filter((h, i, all) => all.indexOf(h) === i && h !== "/driver") // My Day depends on being a driver, not on being a demo
-    .sort();
+  (await sidebarHrefs(page)).filter((h) => h !== "/driver").sort(); // My Day depends on being a driver, not on being a demo
 
 test("a demo company's owner has the same navigation and working pages as a standard company's owner", async ({ page, browser }) => {
   await signIn(page, "owner");
@@ -113,7 +126,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
     for (const role of PREVIEW_ROLES) {
       await context.addCookies([{ name: PREVIEW_COOKIE, value: role, url: page.url() }]);
       await visit(page, "/command-center");
-      const nav = (await page.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))).filter((h, i, all) => all.indexOf(h) === i);
+      const nav = await sidebarHrefs(page);
       expect(nav.length, role).toBeGreaterThan(2);
       for (const href of nav) {
         await visit(page, href);
@@ -187,14 +200,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
     for (const role of PREVIEW_ROLES) {
       await ownerContext.addCookies([{ name: PREVIEW_COOKIE, value: role, url: owner.url() }]);
       await visit(owner, "/command-center");
-      // Read the navigation once the page has settled (the dev server can reload a page it has just compiled, which
-      // destroys the page mid-read); the pages themselves are still checked one by one below.
-      let nav: string[] = [];
-      await expect(async () => {
-        await owner.waitForLoadState("networkidle");
-        nav = (await owner.getByRole("complementary", { name: "Sidebar" }).locator("a[href^='/']").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))).filter((h, i, all) => all.indexOf(h) === i);
-        expect(nav.length).toBeGreaterThan(0);
-      }).toPass({ timeout: 30_000 });
+      const nav = await sidebarHrefs(owner);
       for (const href of nav) {
         await visit(owner, href);
         await expect(owner.getByText("This page could not be loaded"), `${role} ${href}`).toHaveCount(0);
