@@ -48,6 +48,13 @@ explain plans and help explore alternatives, but it will call this core rather t
    byte-identical. `tests/unit/optimization-feasibility.test.ts` checks the per-part result against `checkAssignment`
    for every combination and keeps 20 × 220 × 150 under 10 s (30 s before).
 
+7. **Keep crews together** (2026-10-13, owner: optional, off by default; master plan §9 Q20): a sixth priority, 0 in
+   every preset. At 0 its scoring is skipped entirely, so plans are byte-identical to before (checked on the synthetic
+   golden set and the Top Line input). Raised, a pair earns 4 × weight when the driver already has a load that day on
+   that truck, otherwise 2 × weight when it is the driver's primary truck (`drivers.primary_truck_id`). A preference
+   only: hard rules (service, safety, capacity, leave, conflicts) always win. The explanation names it ("keeps Avery on
+   truck 101", "truck 102 is Blake's primary truck").
+
 ## 3. Statuses and honesty rules
 
 - **Verified feasible** only when every check passed *and* hours of service are verified. No ELD or driver-log data

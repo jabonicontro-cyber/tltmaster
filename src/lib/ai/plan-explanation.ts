@@ -261,7 +261,7 @@ export function relabel(text: string, labels: Record<string, string>): string {
 
 // ---- Evaluation set (fictional; docs/AI.md §5) --------------------------------------------------------------------
 
-const P: Priorities = { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3 };
+const P: Priorities = { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3, crews: 0 };
 
 function facts(over: Omit<Partial<PlanFacts>, "metrics"> & { metrics?: Partial<PlanFacts["metrics"]> }): PlanFacts {
   return {
@@ -310,7 +310,7 @@ export const EVAL_CASES: Array<{ name: string; facts: PlanFacts }> = [
     name: "short on drivers, overdue load left open",
     facts: facts({
       plan: "Service first",
-      priorities: { service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2 },
+      priorities: { service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2, crews: 0 },
       metrics: { loads: 5, covered: 3, urgentTotal: 2, urgentCovered: 2, overdueTotal: 2, overdueCovered: 1, revenueCoveredDollars: 4120, loadsWithoutRate: 0, trucksUsed: 2, driversUsed: 2, averageFillPercent: null, siteChanges: 2, workloadSpread: 1, needsReview: 3 },
       assignments: [
         { load: "L1", customer: "C1", site: "S1", truck: "T1", trailer: null, driver: "D1", status: "needs_review", reasons: ["urgent order", "customer asked for 2030-04-01"], review },

@@ -16,7 +16,7 @@ export interface PlanToolData {
 
 const loadArg = z.object({ load: z.string().regex(/^L\d{1,4}$/) }).strict();
 const weight = z.number().int().min(0).max(5);
-const prioritiesArg = z.object({ service: weight, revenue: weight, utilization: weight, efficiency: weight, balance: weight, reason: z.string().min(1).max(240) }).strict();
+const prioritiesArg = z.object({ service: weight, revenue: weight, utilization: weight, efficiency: weight, balance: weight, crews: weight, reason: z.string().min(1).max(240) }).strict();
 
 export const PLAN_TOOLS: Tool<PlanToolData>[] = [
   {

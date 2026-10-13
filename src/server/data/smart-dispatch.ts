@@ -29,7 +29,7 @@ const site = (o: LoadRow["orders"]) => (o ? (o.site_line1 || o.site_label || "")
 export async function getSmartDispatchInput(from: string, to: string): Promise<SmartInput> {
   const supabase = await createClient();
   const { today } = await businessToday();
-  const [loads, trucks, drivers, quals, reports, urgencies, onLeave] = await Promise.all([
+  const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries] = await Promise.all([
     supabase
       .from("order_loads")
       .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customers(name))")
@@ -43,7 +43,10 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     supabase.from("order_urgencies").select("order_id, needed_by").is("closed_at", null),
     // Employee status "On leave" (HR record): a warning only. Visible with employees.view; empty without it.
     supabase.from("employees").select("driver_id").eq("status", "on_leave").not("driver_id", "is", null),
+    // Each driver's primary truck, for Keep crews together (a preference; nothing blocks on it).
+    supabase.from("drivers").select("id, primary_truck_id").eq("active", true).not("primary_truck_id", "is", null),
   ]);
+  const primaryOf = new Map(((primaries.data ?? []) as Array<{ id: string; primary_truck_id: string }>).map((d) => [d.id, d.primary_truck_id]));
   for (const r of [loads, trucks, drivers, quals, reports, urgencies]) {
     if (r.error) throw new Error(`Smart Dispatch could not read the data it needs: ${r.error.message}`);
   }
@@ -109,7 +112,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
       weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),
       volume_capacity: t.volume_capacity === null ? null : Number(t.volume_capacity),
     })),
-    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [] })),
+    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [], primary_truck_id: primaryOf.get(d.id) ?? null })),
     truckReports: ((reports.data ?? []) as Array<{ truck_id: string | null; kind: string }>).filter((r) => r.truck_id).map((r) => ({ truck_id: r.truck_id as string, kind: r.kind })),
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
     shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),

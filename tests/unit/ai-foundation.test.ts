@@ -28,7 +28,7 @@ const load = (n: number, over: Partial<SmartLoad> = {}): SmartLoad => ({
 });
 const LOADS = [load(1), load(2), load(3)];
 const PLAN: Plan = {
-  key: "main", label: "Balanced", priorities: { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3 }, score: 1,
+  key: "main", label: "Balanced", priorities: { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3, crews: 0 }, score: 1,
   assignments: [
     { loadId: ID(1), truckId: ID(201), truckLabel: "Unit 12", trailerId: null, trailerLabel: null, driverId: ID(301), driverLabel: "Maria Okafor", status: "needs_review", reasons: ["urgent order", "Maria Okafor has no other load that day"], review: ["Hours of service not verified"] },
     { loadId: ID(2), truckId: ID(202), truckLabel: "Unit 12A", trailerId: ID(401), trailerLabel: "Trailer 7", driverId: ID(302), driverLabel: "Sam Lee", status: "needs_review", reasons: ["truck Unit 12A is already at this site that day"], review: ["Hours of service not verified"] },
@@ -378,11 +378,11 @@ describe("approved tools", () => {
   });
 
   it("propose tools record a suggestion only, and are refused under a read-only ceiling", async () => {
-    const args = JSON.stringify({ service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2, reason: "L3 is open." });
+    const args = JSON.stringify({ service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2, crews: 0, reason: "L3 is open." });
     const r = await runToolCall(PLAN_TOOLS, { name: "propose_priorities", arguments: args }, ctx(), "propose");
     expect(r).toMatchObject({ status: "ok", proposal: { tool: "propose_priorities" } });
     expect(await runToolCall(PLAN_TOOLS, { name: "propose_priorities", arguments: args }, ctx(), "read")).toMatchObject({ status: "refused", reason: "kind" });
-    expect(await runToolCall(PLAN_TOOLS, { name: "propose_priorities", arguments: JSON.stringify({ service: 9, revenue: 1, utilization: 2, efficiency: 2, balance: 2, reason: "x" }) }, ctx(), "propose")).toMatchObject({ status: "refused", reason: "invalid" });
+    expect(await runToolCall(PLAN_TOOLS, { name: "propose_priorities", arguments: JSON.stringify({ service: 9, revenue: 1, utilization: 2, efficiency: 2, balance: 2, crews: 0, reason: "x" }) }, ctx(), "propose")).toMatchObject({ status: "refused", reason: "invalid" });
   });
 
   it("execute tools never run from the model loop; they need a person's approval with permission and fresh validation", async () => {

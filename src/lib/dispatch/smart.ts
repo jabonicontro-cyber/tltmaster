@@ -71,6 +71,8 @@ export interface SmartDriver {
   name: string;
   active: boolean;
   qualifications: EligibilityQualification[];
+  /** The driver's primary truck (drivers.primary_truck_id), for Keep crews together; optional. */
+  primary_truck_id?: string | null;
 }
 
 export interface SmartReport {

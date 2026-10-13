@@ -57,7 +57,7 @@ describe("optimization core", () => {
     const ctx = input({ loads, trucks, drivers: [driver("Avery"), driver("Blake")] });
     // Without a utilization preference the first pass puts A on 101 (tie → first unit) and leaves B uncovered;
     // the improvement step frees 101 for B and moves A to 102.
-    const plan = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 0, balance: 0 });
+    const plan = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 0, balance: 0, crews: 0 });
     expect(plan.metrics.covered).toBe(2);
     expect(plan.assignments.find((a) => a.loadId === "B")?.truckLabel).toBe("101");
     expect(plan.assignments.find((a) => a.loadId === "A")?.truckLabel).toBe("102");
@@ -76,7 +76,7 @@ describe("optimization core", () => {
     const loads = [load("U", { urgent: true }), load("R")];
     const base = input({ loads, revenueCents: { U: 300_00, R: 2_000_00 } });
     const service = optimize(base, PRESETS.service.priorities);
-    const revenue = optimize(base, { service: 0, revenue: 5, utilization: 0, efficiency: 0, balance: 0 });
+    const revenue = optimize(base, { service: 0, revenue: 5, utilization: 0, efficiency: 0, balance: 0, crews: 0 });
     expect(service.assignments.map((a) => a.loadId)).toEqual(["U"]);
     expect(revenue.assignments.map((a) => a.loadId)).toEqual(["R"]);
     expect(tradeoffs(service, revenue)).toEqual(expect.arrayContaining(["1 fewer urgent load(s) covered", "+$1,700 estimated revenue covered"]));
@@ -105,9 +105,9 @@ describe("optimization core", () => {
       load("B", { site: "north pit", starts_at: at("10:00"), ends_at: at("11:00") }),
     ];
     const ctx = input({ loads, trucks: [truck("101"), truck("102")], drivers: [driver("Avery"), driver("Blake")] });
-    const eff = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 5, balance: 0 });
+    const eff = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 5, balance: 0, crews: 0 });
     expect(new Set(eff.assignments.map((a) => a.truckId)).size).toBe(1);
-    const bal = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 0, balance: 5 });
+    const bal = optimize(ctx, { service: 0, revenue: 0, utilization: 0, efficiency: 0, balance: 5, crews: 0 });
     expect(new Set(bal.assignments.map((a) => a.driverId)).size).toBe(2);
     expect(bal.metrics.workloadSpread).toBe(0);
   });
@@ -161,6 +161,31 @@ describe("optimization core", () => {
   });
 
   it("parses priorities safely", () => {
-    expect(parsePriorities({ service: "9", revenue: "-2", utilization: "x" })).toEqual({ service: 5, revenue: 0, utilization: 3, efficiency: 3, balance: 3 });
+    expect(parsePriorities({ service: "9", revenue: "-2", utilization: "x" })).toEqual({ service: 5, revenue: 0, utilization: 3, efficiency: 3, balance: 3, crews: 0 });
+  });
+
+  // Keep crews together (master plan §9 Q20, owner 2026-10-13: optional, off by default). Two sequential loads, one
+  // truck and two drivers: balancing splits the day between the drivers; raising the setting keeps one driver on the
+  // truck, and a driver's primary truck is preferred. It never overrides a hard rule.
+  it("keep crews together is off in every preset and, when raised, keeps a driver on one truck and on their primary truck", () => {
+    for (const p of Object.values(PRESETS)) expect(p.priorities.crews).toBe(0);
+    const loads = [load("A", { starts_at: at("07:00"), ends_at: at("08:00") }), load("B", { starts_at: at("09:00"), ends_at: at("10:00") })];
+    const ctx = input({ loads, trucks: [truck("101")], drivers: [driver("Avery"), driver("Blake")] });
+    const split = optimize(ctx, { ...PRESETS.balanced.priorities, crews: 0 });
+    expect(new Set(split.assignments.map((a) => a.driverLabel)).size).toBe(2); // balance: one load each
+    const kept = optimize(ctx, { ...PRESETS.balanced.priorities, crews: 5 });
+    expect(new Set(kept.assignments.map((a) => a.driverLabel)).size).toBe(1);
+    expect(kept.assignments.flatMap((a) => a.reasons).join(" ")).toMatch(/keeps (Avery|Blake) on truck 101/);
+
+    // Primary truck: with two trucks and one load, Blake's primary truck 102 wins once the setting is raised.
+    const one = input({ loads: [load("C")], trucks: [truck("101"), truck("102")], drivers: [driver("Blake", { primary_truck_id: "t-102" })] });
+    expect(optimize(one, { ...PRESETS.balanced.priorities, crews: 0 }).assignments[0].truckLabel).toBe("101"); // tie → first unit
+    const prim = optimize(one, { ...PRESETS.balanced.priorities, crews: 3 }).assignments[0];
+    expect(prim.truckLabel).toBe("102");
+    expect(prim.reasons.join(" ")).toMatch(/truck 102 is Blake's primary truck/);
+
+    // A hard rule still wins: the primary truck out of service is never used.
+    const broken = input({ loads: [load("C")], trucks: [truck("101"), truck("102", { service_status: "out_of_service" })], drivers: [driver("Blake", { primary_truck_id: "t-102" })] });
+    expect(optimize(broken, { ...PRESETS.balanced.priorities, crews: 5 }).assignments[0].truckLabel).toBe("101");
   });
 });

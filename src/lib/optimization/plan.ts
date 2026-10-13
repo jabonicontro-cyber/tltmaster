@@ -28,9 +28,10 @@ export interface Priorities {
   utilization: number; // use of each truck's recorded capacity
   efficiency: number; // keeping a truck and driver on one site or job (fewer empty repositioning trips — proxy)
   balance: number; // spreading loads evenly across drivers
+  crews: number; // keeping a driver on one truck through the day, and on their primary truck (0 = off; master plan §9 Q20)
 }
 
-export const PRIORITY_KEYS = ["service", "revenue", "utilization", "efficiency", "balance"] as const;
+export const PRIORITY_KEYS = ["service", "revenue", "utilization", "efficiency", "balance", "crews"] as const;
 
 export const PRIORITY_LABELS: Record<keyof Priorities, string> = {
   service: "Service reliability",
@@ -38,13 +39,15 @@ export const PRIORITY_LABELS: Record<keyof Priorities, string> = {
   utilization: "Truck utilization",
   efficiency: "Fewer empty trips",
   balance: "Driver workload balance",
+  crews: "Keep crews together",
 };
 
 export const PRESETS: Record<string, { label: string; priorities: Priorities }> = {
-  balanced: { label: "Balanced", priorities: { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3 } },
-  service: { label: "Service first", priorities: { service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2 } },
-  revenue: { label: "Revenue first", priorities: { service: 2, revenue: 5, utilization: 3, efficiency: 2, balance: 1 } },
-  efficiency: { label: "Efficiency first", priorities: { service: 2, revenue: 2, utilization: 5, efficiency: 5, balance: 1 } },
+  // Keep crews together is off (0) in every preset: plans are unchanged until a dispatcher turns it up.
+  balanced: { label: "Balanced", priorities: { service: 3, revenue: 3, utilization: 3, efficiency: 3, balance: 3, crews: 0 } },
+  service: { label: "Service first", priorities: { service: 5, revenue: 1, utilization: 2, efficiency: 2, balance: 2, crews: 0 } },
+  revenue: { label: "Revenue first", priorities: { service: 2, revenue: 5, utilization: 3, efficiency: 2, balance: 1, crews: 0 } },
+  efficiency: { label: "Efficiency first", priorities: { service: 2, revenue: 2, utilization: 5, efficiency: 5, balance: 1, crews: 0 } },
 };
 
 export interface OptTrailer {
@@ -142,7 +145,7 @@ export interface Optimization {
 
 type Pair = { truck: SmartTruck; trailer: OptTrailer | null; driverId: string; driverLabel: string; review: string[]; fixed?: PairFixed };
 /** The parts of a pair's score for its load that never change while plans are built (computed on first use). */
-interface PairFixed { fill: number | null; bookedSites: string[] | undefined; bookedDriverLoads: number; penalty: number; truckDay: string; driverDay: string }
+interface PairFixed { fill: number | null; bookedSites: string[] | undefined; bookedDriverLoads: number; penalty: number; truckDay: string; driverDay: string; pairDay: string; primary: boolean }
 
 const overlaps = (a: { starts_at: string; ends_at: string }, b: { starts_at: string; ends_at: string }) => a.starts_at < b.ends_at && b.starts_at < a.ends_at;
 
@@ -286,12 +289,15 @@ function loadValue(load: SmartLoad, input: OptimizationInput, p: Priorities, max
 interface PlanIndex {
   truckSites: Map<string, Set<string>>;
   driverLoads: Map<string, number>;
+  /** Loads per truck + driver + day (Keep crews together). */
+  pairLoads: Map<string, number>;
   byTruck: Map<string, SmartLoad[]>;
   byDriver: Map<string, SmartLoad[]>;
   byTrailer: Map<string, SmartLoad[]>;
 }
 const dayKey = (id: string, date: string) => `${id}|${date}`;
-const emptyIndex = (): PlanIndex => ({ truckSites: new Map(), driverLoads: new Map(), byTruck: new Map(), byDriver: new Map(), byTrailer: new Map() });
+const emptyIndex = (): PlanIndex => ({ truckSites: new Map(), driverLoads: new Map(), pairLoads: new Map(), byTruck: new Map(), byDriver: new Map(), byTrailer: new Map() });
+const crewKey = (truckId: string, driverId: string, date: string) => `${truckId}|${driverId}|${date}`;
 const push = <K, V>(m: Map<K, V[]>, k: K, v: V) => { const list = m.get(k); if (list) list.push(v); else m.set(k, [v]); };
 function addToIndex(idx: PlanIndex, a: { truckId: string; driverId: string; trailerId: string | null }, l: SmartLoad) {
   const tk = dayKey(a.truckId, l.load_date);
@@ -299,6 +305,8 @@ function addToIndex(idx: PlanIndex, a: { truckId: string; driverId: string; trai
   if (sites) sites.add(l.site); else idx.truckSites.set(tk, new Set([l.site]));
   const dk = dayKey(a.driverId, l.load_date);
   idx.driverLoads.set(dk, (idx.driverLoads.get(dk) ?? 0) + 1);
+  const pk = crewKey(a.truckId, a.driverId, l.load_date);
+  idx.pairLoads.set(pk, (idx.pairLoads.get(pk) ?? 0) + 1);
   push(idx.byTruck, a.truckId, l);
   push(idx.byDriver, a.driverId, l);
   if (a.trailerId) push(idx.byTrailer, a.trailerId, l);
@@ -329,7 +337,7 @@ function bookedIndex(input: OptimizationInput): BookedIndex {
  * The score of one pair given what came before it that day: whether its truck already has a planned stop that day
  * (and at this site) and how many loads its driver already has. Bookings are added here.
  */
-function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boolean, plannedHere: boolean, plannedDriverLoads: number, input: OptimizationInput, withReasons = true): { score: number; reasons: string[] } {
+function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boolean, plannedHere: boolean, plannedDriverLoads: number, input: OptimizationInput, withReasons = true, plannedPair = 0): { score: number; reasons: string[] } {
   // Reasons are text for the final plan only; the search needs the score, so it skips building them.
   const reasons: string[] = [];
   let score = 0;
@@ -345,8 +353,24 @@ function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boole
   const driverLoads = plannedDriverLoads + fixed.bookedDriverLoads;
   score -= 2 * p.balance * driverLoads;
   if (withReasons && driverLoads === 0 && p.balance > 0) reasons.push(`${pair.driverLabel} has no other load that day`);
+  // Keep crews together (off unless raised; skipped entirely at 0 so plans stay identical): the driver stays on the
+  // truck of their earlier load that day, or, failing that, on their primary truck. A preference only, never a rule.
+  if (p.crews) {
+    if (plannedPair > 0) { score += 4 * p.crews; if (withReasons) reasons.push(`keeps ${pair.driverLabel} on truck ${pair.truck.unit_number}`); }
+    else if (fixed.primary) { score += 2 * p.crews; if (withReasons) reasons.push(`truck ${pair.truck.unit_number} is ${pair.driverLabel}'s primary truck`); }
+  }
   score -= fixed.penalty; // prefer pairs with complete data
   return { score, reasons };
+}
+/** Each driver's primary truck (drivers.primary_truck_id), once per input. */
+const primaryCache = new WeakMap<OptimizationInput, Map<string, string>>();
+function primaryTrucks(input: OptimizationInput): Map<string, string> {
+  let m = primaryCache.get(input);
+  if (!m) {
+    m = new Map(input.drivers.filter((d) => d.primary_truck_id).map((d) => [d.id, d.primary_truck_id as string]));
+    primaryCache.set(input, m);
+  }
+  return m;
 }
 /** A pair object belongs to one load (feasiblePairs builds them per load), so its fixed parts are cached on it. */
 function fixedOf(load: SmartLoad, pair: Pair, input: OptimizationInput): PairFixed {
@@ -361,13 +385,15 @@ function fixedOf(load: SmartLoad, pair: Pair, input: OptimizationInput): PairFix
     penalty: pair.review.length - (input.hoursOfServiceVerified ? 0 : 1),
     truckDay,
     driverDay,
+    pairDay: crewKey(pair.truck.id, pair.driverId, load.load_date),
+    primary: primaryTrucks(input).get(pair.driverId) === pair.truck.id,
   });
 }
 
 function pairScore(load: SmartLoad, pair: Pair, p: Priorities, idx: PlanIndex, input: OptimizationInput, withReasons = true): { score: number; reasons: string[] } {
   const fixed = fixedOf(load, pair, input);
   const planned = idx.truckSites.get(fixed.truckDay);
-  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(fixed.driverDay) ?? 0, input, withReasons);
+  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(fixed.driverDay) ?? 0, input, withReasons, idx.pairLoads.get(fixed.pairDay) ?? 0);
 }
 
 const conflicts = (idx: PlanIndex, load: SmartLoad, pair: Pair) =>
@@ -438,7 +464,7 @@ const byTime = (loads: Map<string, SmartLoad>) => (x: PlannedAssignment, y: Plan
   loads.get(x.loadId)!.starts_at.localeCompare(loads.get(y.loadId)!.starts_at) || x.loadId.localeCompare(y.loadId);
 
 /** A scored plan: assignments in time order with what each saw before it and what it contributed. */
-interface Scored { sorted: PlannedAssignment[]; slot: Map<string, { any: boolean; here: boolean; driver: number; c: number }>; total: number }
+interface Scored { sorted: PlannedAssignment[]; slot: Map<string, { any: boolean; here: boolean; driver: number; pair: number; c: number }>; total: number }
 /** The pair behind each assignment (one load each), so its fixed score parts are computed once. */
 const assignmentPairs = new WeakMap<PlannedAssignment, Pair>();
 const pairOf = (a: PlannedAssignment, ctx: ScoreContext): Pair => {
@@ -456,9 +482,10 @@ function scorePlan(input: OptimizationInput, assignments: PlannedAssignment[], l
     const l = loads.get(a.loadId)!;
     const planned = done.truckSites.get(dayKey(a.truckId, l.load_date));
     const any = Boolean(planned?.size), here = Boolean(planned?.has(l.site)), driver = done.driverLoads.get(dayKey(a.driverId, l.load_date)) ?? 0;
-    const c = ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false).score;
+    const pair = done.pairLoads.get(crewKey(a.truckId, a.driverId, l.load_date)) ?? 0;
+    const c = ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false, pair).score;
     score += c;
-    slot.set(a.loadId, { any, here, driver, c });
+    slot.set(a.loadId, { any, here, driver, pair, c });
     addToIndex(done, a, l);
   }
   return { sorted, slot, total: Math.round(score * 100) / 100 };
@@ -512,9 +539,12 @@ function scoreMove(base: Scored, prep: MovePrep, pair: Pair, input: Optimization
   const isDriver = (id: string) => id === moved.driverId || id === oldDriver;
   const sites = new Map<string, Set<string>>();
   const counts = new Map<string, number>();
+  const pairs = new Map<string, number>();
   const track = (a: PlannedAssignment, l: SmartLoad) => {
     if (isTruck(a.truckId)) { const t = sites.get(a.truckId); if (t) t.add(l.site); else sites.set(a.truckId, new Set([l.site])); }
     if (isDriver(a.driverId)) counts.set(a.driverId, (counts.get(a.driverId) ?? 0) + 1);
+    // A pair's earlier loads share its truck and driver, so they are tracked whenever the pair is recomputed.
+    if (isTruck(a.truckId) || isDriver(a.driverId)) { const k = crewKey(a.truckId, a.driverId, l.load_date); pairs.set(k, (pairs.get(k) ?? 0) + 1); }
   };
   const recompute = (a: PlannedAssignment, l: SmartLoad) => {
     const cached = base.slot.get(a.loadId);
@@ -522,7 +552,8 @@ function scoreMove(base: Scored, prep: MovePrep, pair: Pair, input: Optimization
     const any = isTruck(a.truckId) ? Boolean(tracked?.size) : cached!.any;
     const here = isTruck(a.truckId) ? Boolean(tracked?.has(l.site)) : cached!.here;
     const driver = isDriver(a.driverId) ? counts.get(a.driverId) ?? 0 : cached!.driver;
-    return ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false).score;
+    const pair = isTruck(a.truckId) || isDriver(a.driverId) ? pairs.get(crewKey(a.truckId, a.driverId, l.load_date)) ?? 0 : cached!.pair;
+    return ctx.value.get(l.id)! + scoreCore(l, pairOf(a, ctx), p, any, here, driver, input, false, pair).score;
   };
   let score = 0;
   for (let i = 0; i < at; i++) {
