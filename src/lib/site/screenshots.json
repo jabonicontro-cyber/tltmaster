@@ -1,0 +1,86 @@
+{
+  "$comment": "Website screenshots (docs/SCREENSHOTS.md). Captured by scripts/capture-screenshots.mjs from the live demo company in presentation mode, production build. Each shot waits for its 'ready' text and passes the quality gate before it is written. 'feature' links to src/lib/site/features.ts.",
+  "shots": [
+    {
+      "id": "command-center",
+      "file": "command-center.png",
+      "feature": "command-center",
+      "path": "/command-center",
+      "viewport": "desktop",
+      "ready": "Command Center",
+      "alt": "The Taviron Command Center for a demo company: the items that need attention, urgent ones first, with today's work",
+      "caption": "Command Center — the live demo company, fictional data."
+    },
+    {
+      "id": "plan-the-day",
+      "file": "plan-the-day.png",
+      "feature": "plan-the-day",
+      "path": "/dispatch/plan",
+      "viewport": "desktop",
+      "ready": "Proposed assignments",
+      "alt": "Plan the day in a demo company: plans compared by loads covered, urgent loads and estimated revenue, with each proposed truck and driver and what still needs review",
+      "caption": "Plan the day — demo company, fictional data. Nothing is assigned until a dispatcher approves."
+    },
+    {
+      "id": "dispatch",
+      "file": "dispatch.png",
+      "feature": "smart-dispatch",
+      "path": "/dispatch",
+      "viewport": "desktop",
+      "ready": "Smart Dispatch",
+      "alt": "The dispatch board for a demo company: urgent orders, orders waiting for a date, Smart Dispatch suggestions and the day's loads",
+      "caption": "Dispatch — demo company, fictional data."
+    },
+    {
+      "id": "order",
+      "file": "order.png",
+      "feature": "orders",
+      "path": "/orders",
+      "open": "^O-\\d{4}-0002$",
+      "viewport": "desktop",
+      "ready": "History",
+      "alt": "An order in a demo company with its progress across dispatch, delivery tickets and billing readiness, and its history",
+      "caption": "Order detail — demo company, fictional data."
+    },
+    {
+      "id": "tickets",
+      "file": "tickets.png",
+      "feature": "delivery-tickets",
+      "path": "/tickets",
+      "viewport": "desktop",
+      "ready": "Delivery Tickets",
+      "alt": "Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided",
+      "caption": "Delivery tickets — demo company, fictional data."
+    },
+    {
+      "id": "driver",
+      "file": "driver.png",
+      "feature": "driver-portal",
+      "path": "/driver",
+      "viewport": "phone",
+      "ready": "My Day",
+      "alt": "The driver's My Day on a phone: today's load with site, truck and planned tons, and buttons to enter the ticket or report a problem",
+      "caption": "Driver portal on a phone — demo company, fictional data."
+    },
+    {
+      "id": "maintenance",
+      "file": "maintenance.png",
+      "feature": "maintenance",
+      "path": "/maintenance",
+      "viewport": "desktop",
+      "ready": "Work orders",
+      "alt": "Maintenance in a demo company: open work orders with urgency, a safety-critical brake defect holding a truck out of dispatch, and preventive schedules coming due",
+      "caption": "Maintenance — demo company, fictional data."
+    },
+    {
+      "id": "fleet",
+      "file": "fleet.png",
+      "feature": "fleet",
+      "path": "/fleet",
+      "viewport": "desktop",
+      "ready": "Fleet",
+      "alt": "The fleet overview for a demo company: trucks and trailers with service status, documents expiring soon and equipment needing attention",
+      "caption": "Fleet — demo company, fictional data."
+    }
+  ]
+}

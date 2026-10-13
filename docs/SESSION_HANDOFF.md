@@ -45,6 +45,17 @@ project credentials. Read it together with:
 4. **After any deployment (owner action, not a decision):** run **Refresh demo data** on Prairie Lantern Freight, so
    tomorrow has plannable loads and the new blocked and unavailable views have sample data.
 
+### Briefings (phone notifications, owner 2026-10-13)
+
+- **Mechanism:** the session's push tool. It returns "push requested" and gives no delivery receipt, so delivery is
+  unconfirmed.
+- **Schedule:** a two-hour self check-in (`send_later`, trigger `trig_01QaKLuk3YtDQpnCoH5StF8R`, 05:33 UTC).
+- **Rule:** one alert per issue; repeat only when its severity changes.
+
+| UTC | Kind | Sent |
+| --- | --- | --- |
+| 03:32 | progress | Plan the day fixes, iPad sidebar toggle, homepage 3D done (633 tests pass; browser suite running). Next: marketing feature catalog. Push awaits OK. |
+
 ### Queued, not started (owner instructions)
 
 - **B42:** Order-to-Cash Control Center.

@@ -30,9 +30,16 @@ Presentation mode does nothing outside a demo company.
 
 ## Procedure
 
-Automated: `scripts/capture-screenshots.mjs` signs in, turns on presentation mode and captures the five
-screens used on the website at 1440 × 900 (phone 390 × 844), 2× scale. Credentials come from environment
-variables only. The signed-in person's name appears in the screens (header, greeting, and as a driver in the
+Automated: `scripts/capture-screenshots.mjs` reads the shot list in `src/lib/site/screenshots.json` (the feature
+catalog's screenshots, docs/MARKETING.md).
+
+- It signs in, closes the demo welcome and turns on presentation mode from the profile menu.
+- It captures at 1440 × 900 (phone 390 × 844), 2× scale.
+- Each shot must pass the quality gate (docs/MARKETING.md §4) before it is written. A rejected shot is reported and
+  not saved.
+- `public/site/manifest.json` records each accepted capture.
+- `--only id,id` captures a subset.
+- Credentials come from environment variables only. The signed-in person's name appears in the screens (header, greeting, and as a driver in the
 demo), so capture with an account whose display name is a plain person's name — not a test label such as
 "Platform" or "e2e".
 
