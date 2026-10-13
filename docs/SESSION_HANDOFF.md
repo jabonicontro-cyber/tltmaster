@@ -18,7 +18,23 @@ project credentials. Read it together with:
 | `46b01f4` | Plan the day: blocked-load reasons, resources unavailable all day, Show plan button, loading and empty states; Order-to-Cash queued as B42 |
 | `c9f25bf` | Plan the day: freight revenue from hauling lines; expired vehicle documents as review notes; touch sidebar tests |
 | `e80b9b7` | Homepage 3D: one scene per chapter in step with the text; phone stacking and tablet overflow fixed |
-| (this commit) | Handoff, master plan statuses, pending decisions |
+| `b699785` | Handoff, master plan statuses, pending decisions |
+| `6b1a3b6`, `f853b16` | Marketing: feature catalog (`src/lib/site/features.ts`), screenshot list with a quality gate, capture script fixed, `/platform` generated from the catalog, 8 verified screenshots (3 new), catalog and marketing tests (docs/MARKETING.md) |
+| `bf7bc63` | Demo parity e2e: read the sidebar once the page has settled (dev-server reload) |
+
+**Verification on this bundle (local, 2026-10-13):**
+- **Lint and typecheck:** clean.
+- **vitest:** 639 / 639.
+- **Production build:** passes.
+- **Gate spec on the production build:** 8 passed, 1 skipped (public-site case).
+- **`check-deployment.mjs`:** all checks passed.
+- **Full browser suite, first run:** 126 passed, 1 failed, 9 skipped. The failure was a test-side race (dev-server reload during a read); fixed, and the test re-run passed.
+- **Second full run:** see the end of this section.
+- **Local database:** the gate spec failed only because the bloated local database made the Command Center take 12 s. The database was backed up (`/var/lib/tlt-backups/pre-release-reset-20261013040157.dump`) and reset, as SETUP §5 prescribes. The whole migration chain re-applied cleanly, and the gate spec then passed.
+
+**Found, not fixed (next):** in the presenter demo the header shows the persona name, for example "Daniel Mitchell", but
+lists that name the presenter as a driver show the login's own name (Plan the day proposals, Delivery Tickets). Small
+demo-consistency gap; the screenshots use a plain-named local capture account, so they are unaffected.
 
 ### Pending decisions (owner) — one list, kept current
 
