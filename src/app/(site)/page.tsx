@@ -144,7 +144,7 @@ export default function HomePage() {
       </section>
 
       {/* The real product: screens from the live demo company (fictional data). */}
-      <section aria-labelledby="product-title" className="border-t border-silver/10">
+      <section aria-labelledby="product-title" className="overflow-x-clip border-t border-silver/10">
         <Container className="py-16 sm:py-20">
           <SectionHeading id="product-title" eyebrow="The real product" title="This is the app, not a mock-up.">
             <p>Every screen on this page is Taviron itself, captured from the live demo company with fictional data.</p>
