@@ -45,7 +45,8 @@ handoff notes (`docs/SESSION_HANDOFF.md`) for the release.
 
 ## 3. Public website
 
-- [ ] Every feature described on the website is in `src/lib/site/capabilities.ts` under `AVAILABLE`, with the app pages that show it (`tests/unit/site-capabilities.test.ts` checks the pages exist).
+- [ ] Every feature described on the website is `published` in the catalog `src/lib/site/features.ts` (status `available`), with the app pages that show it; `tests/unit/feature-catalog.test.ts` and `tests/unit/site-capabilities.test.ts` pass (pages exist, screenshots exist, nothing unbuilt published, every app page covered or deliberately not marketed).
+- [ ] New or changed features have updated catalog entries; screens that changed visibly were recaptured with `scripts/capture-screenshots.mjs` (quality gate passed, `public/site/manifest.json` updated) and looked at; `/platform` checked at desktop and phone (`tests/e2e/marketing.spec.ts`).
 - [ ] Anything not built, not verified or waiting on a business decision is under `PLANNED` ("Not yet") — never described as available.
 - [ ] No invented customers, testimonials, logos, metrics, prices, phone numbers, addresses or company history.
 - [ ] Screenshots show the demo company with fictional data, and say so.

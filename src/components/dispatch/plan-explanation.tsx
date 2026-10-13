@@ -11,7 +11,7 @@ export interface PlanAiState {
   state: GateState;
   label: string;
   canRun: boolean;
-  /** Reasons are shown to people who manage settings; others see a short line. */
+  /** Present for people who manage settings: the panel points them to Company setup, where the reasons are listed. */
   reasons: string[] | null;
 }
 
@@ -54,14 +54,12 @@ export function PlanExplanation({ ai, date, preset, priorities, planKey, planLab
         )}
       </div>
       {!ai.canRun && (
-        <div className="mt-2 text-sm text-muted">
-          <p>AI explanations are not available for this company yet. The plan above is complete without them.</p>
+        <p className="mt-2 text-sm text-muted">
+          AI explanations are not available for this company yet. The plan above is complete without them.
           {ai.reasons && ai.reasons.length > 0 && (
-            <ul className="mt-2 list-disc space-y-0.5 pl-5 text-xs">
-              {ai.reasons.map((r) => <li key={r}>{r}</li>)}
-            </ul>
+            <> Administrators can see what is missing in <Link href="/setup" className="font-semibold text-brand-fg hover:underline">Company setup</Link>.</>
           )}
-        </div>
+        </p>
       )}
       {error && <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-950">{error}</p>}
       {shown && (

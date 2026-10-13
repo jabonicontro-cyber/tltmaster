@@ -27,6 +27,10 @@ export interface Screenshot {
   feature: string;
   path: string;
   open?: string;
+  /** Scroll this text to the top before capturing (the screen's strongest part may be below the fold). */
+  scroll?: string;
+  /** Open the tab with this name before capturing. */
+  tab?: string;
   viewport: "desktop" | "phone";
   /** Text that must be on screen before the capture (the page has finished loading its data). */
   ready: string;
@@ -91,7 +95,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true,
     routes: ["/dispatch/plan"],
-    screenshots: [], // "plan-the-day" once captured (screenshots.json)
+    screenshots: ["plan-the-day"],
     related: ["smart-dispatch", "fleet", "maintenance"],
     verified: "2026-10-13",
   },
@@ -187,7 +191,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true,
     routes: ["/maintenance"],
-    screenshots: [], // "maintenance" once captured (screenshots.json)
+    screenshots: ["maintenance"],
     related: ["fleet", "plan-the-day"],
     verified: "2026-10-13",
   },
@@ -203,7 +207,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true,
     routes: ["/fleet"],
-    screenshots: [], // "fleet" once captured (screenshots.json)
+    screenshots: ["fleet"],
     related: ["maintenance", "smart-dispatch"],
     verified: "2026-10-13",
   },

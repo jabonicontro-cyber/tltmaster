@@ -40,6 +40,7 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   const explain = page.getByRole("region", { name: "Explain this plan" });
   await expect(explain).toContainText("AI explanations are not available for this company yet.");
   await expect(explain).toContainText("AI: Blocked");
+  await expect(explain.getByRole("link", { name: "Company setup" })).toHaveAttribute("href", "/setup"); // reasons live there
   await expect(explain.getByRole("button")).toHaveCount(0);
   const assignments = page.getByRole("region", { name: /Proposed assignments/ }).getByRole("listitem").filter({ has: page.getByRole("checkbox") });
   const count = await assignments.count();

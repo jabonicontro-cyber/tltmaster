@@ -1,83 +1,78 @@
 import type { Metadata } from "next";
-import { Check, Clock } from "lucide-react";
-import { Container, FinalCta, PageIntro, Screenshot, SectionHeading } from "@/components/site/ui";
-import { AVAILABLE, PLANNED } from "@/lib/site/capabilities";
+import { Clock, ShieldCheck } from "lucide-react";
+import { FeatureBrief, FeatureStory, featureAnchor } from "@/components/site/feature-story";
+import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
+import { NOT_YET, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: "Platform",
-  description: "What Taviron does today: Command Center, quotes and pricing, orders, dispatch with Smart Dispatch suggestions, driver portal, delivery tickets, billing readiness, reports, fleet and security.",
+  description: "What Taviron does today, feature by feature: Command Center, Plan the day, dispatch with Smart Dispatch, quotes and orders, the driver portal, delivery tickets, maintenance, fleet, billing readiness, communications and security — and what it does not do yet.",
 };
 
-const MODULES = AVAILABLE;
-const NOT_YET = PLANNED;
-
+// Generated from the feature catalog (src/lib/site/features.ts; docs/MARKETING.md). Features with a screen get a full
+// story section; the rest get a compact brief, so no section shows an empty frame.
 export default function PlatformPage() {
+  const features = publishedFeatures();
+  const stories = features.filter((f) => f.screenshots.length > 0);
+  const briefs = features.filter((f) => f.screenshots.length === 0);
   return (
     <>
       <PageIntro eyebrow="Platform" title="Everything the hauling day touches, connected.">
-        <p>One system of record for the office, dispatch and the trucks. Here is what it does today — and, just as plainly, what it does not do yet.</p>
+        <p>One system of record for the office, dispatch, the shop and the trucks. Every screen below is the real app, with the demo company&apos;s fictional data — and, just as plainly, each capability says what it does not do yet.</p>
       </PageIntro>
 
-      <section>
-        <Container className="py-16">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {MODULES.map((m) => (
-              <div key={m.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
-                <h2 className="text-lg font-bold text-white">{m.title}</h2>
-                <ul className="mt-3 space-y-2">
-                  {m.points.map((p) => (
-                    <li key={p} className="flex gap-2 text-sm text-white/65">
-                      <Check className="mt-0.5 size-4 shrink-0 text-brand" aria-hidden />
-                      <span>{p}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+      <nav aria-label="Capabilities" className="sticky top-16 z-20 border-b border-silver/10 bg-navy/90 backdrop-blur">
+        <Container>
+          <ul className="flex gap-2 overflow-x-auto py-3 text-sm [scrollbar-width:none]">
+            {features.map((f) => (
+              <li key={f.id} className="shrink-0">
+                <a href={`#${featureAnchor(f.id)}`} className="inline-flex min-h-9 items-center rounded-full border border-silver/15 px-3.5 text-silver hover:border-electric/60 hover:text-cloud">
+                  {f.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </Container>
+      </nav>
+
+      <Container>
+        {stories.map((f, i) => (
+          <FeatureStory key={f.id} feature={f} flip={i % 2 === 1} />
+        ))}
+      </Container>
+
+      <section aria-labelledby="more-title" className="border-t border-silver/10 bg-navy-2/40">
+        <Container className="py-16 sm:py-20">
+          <SectionHeading id="more-title" eyebrow="Also in the platform" title="The rest of the day, in the same records." />
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {briefs.map((f) => (
+              <FeatureBrief key={f.id} feature={f} />
             ))}
           </div>
         </Container>
       </section>
 
-      <section className="border-t border-white/10 bg-[#0f1012]">
-        <Container className="grid items-center gap-12 py-20 lg:grid-cols-2">
-          <SectionHeading eyebrow="Tickets to billing" title="Quantities you can stand behind.">
-            <p>
-              A ticket is reviewed against its order before it counts. Corrections create a new revision with the reason, so the history is never lost — and only
-              verified deliveries make an order ready for billing.
-            </p>
-          </SectionHeading>
-          <Screenshot src="/site/tickets.png" alt="Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided" width={2880} height={1800} caption="Delivery tickets — demo company, fictional data." />
-        </Container>
-      </section>
-
-      <section>
-        <Container className="grid items-center gap-12 py-20 lg:grid-cols-2">
-          <Screenshot className="lg:order-first" src="/site/order.png" alt="An order in a demo company with its progress across dispatch, delivery tickets and billing readiness, and its history" width={2880} height={1800} caption="Order detail — demo company, fictional data." />
-          <SectionHeading eyebrow="Orders" title="Every order shows where it really stands.">
-            <p>Planned loads, assignments, delivered quantities from accepted tickets, and billing state — from the same shared records, not a separate spreadsheet.</p>
-          </SectionHeading>
-        </Container>
-      </section>
-
-      <section className="border-t border-white/10 bg-[#0f1012]">
-        <Container className="grid gap-10 py-20 lg:grid-cols-2">
+      <section className="border-t border-silver/10">
+        <Container className="grid gap-12 py-20 lg:grid-cols-2">
           <SectionHeading eyebrow="Security" title="Separation you do not have to take on trust.">
-            <ul className="mt-2 space-y-2 text-sm">
-              <li>Every company&apos;s records are separated by row-level security in the database.</li>
-              <li>Permissions are checked on the server and again in the database for every action.</li>
-              <li>Changes to key records are kept in an audit trail.</li>
-              <li>Sign-in with email verification; access by invitation.</li>
+            <ul className="mt-2 space-y-3 text-[15px]">
+              {[
+                "Every company's records are separated by row-level security in the database.",
+                "Permissions are checked on the server and again in the database for every action.",
+                "Changes to key records are kept in an audit trail.",
+                "Sign-in with email verification; access by invitation.",
+              ].map((t) => (
+                <li key={t} className="flex gap-2.5"><ShieldCheck className="mt-0.5 size-4 shrink-0 text-electric" aria-hidden /><span>{t}</span></li>
+              ))}
             </ul>
           </SectionHeading>
           <div>
-            <h2 className="flex items-center gap-2 text-xl font-bold text-white">
-              <Clock className="size-5 text-brand" aria-hidden /> Not yet — and we will say so
+            <h2 className="flex items-center gap-2 text-xl font-bold text-cloud">
+              <Clock className="size-5 text-electric" aria-hidden /> Not yet — and we will say so
             </h2>
             <ul className="mt-4 space-y-2">
               {NOT_YET.map((n) => (
-                <li key={n} className="rounded-md border border-white/10 bg-white/[0.03] px-4 py-2.5 text-sm text-white/65">
-                  {n}
-                </li>
+                <li key={n} className="rounded-md border border-silver/10 bg-navy-2 px-4 py-2.5 text-sm text-silver">{n}</li>
               ))}
             </ul>
           </div>

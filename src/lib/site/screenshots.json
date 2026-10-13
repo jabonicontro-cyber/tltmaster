@@ -19,7 +19,8 @@
       "viewport": "desktop",
       "ready": "Proposed assignments",
       "alt": "Plan the day in a demo company: plans compared by loads covered, urgent loads and estimated revenue, with each proposed truck and driver and what still needs review",
-      "caption": "Plan the day — demo company, fictional data. Nothing is assigned until a dispatcher approves."
+      "caption": "Plan the day — demo company, fictional data. Nothing is assigned until a dispatcher approves.",
+      "scroll": "Plans"
     },
     {
       "id": "dispatch",
@@ -46,10 +47,10 @@
       "id": "tickets",
       "file": "tickets.png",
       "feature": "delivery-tickets",
-      "path": "/tickets",
+      "path": "/tickets?view=review",
       "viewport": "desktop",
       "ready": "Delivery Tickets",
-      "alt": "Delivery Tickets for a demo company: loads awaiting a ticket, with tabs for tickets needing review, submitted, accepted and voided",
+      "alt": "Delivery Tickets in a demo company, filtered to tickets that need review: each with its paper ticket number, order and customer, delivered quantity, truck and driver",
       "caption": "Delivery tickets — demo company, fictional data."
     },
     {

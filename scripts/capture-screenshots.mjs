@@ -43,6 +43,8 @@ await page.getByRole("button", { name: "Sign in" }).click();
 await page.waitForURL((u) => !u.pathname.startsWith("/login"));
 await page.goto(`${base}/command-center`, { waitUntil: "networkidle" });
 
+// Keep the mouse off the navigation rail: it expands on hover and would cover what is clicked or captured.
+await page.mouse.move(1100, 600);
 // Inside the demo company only; then presentation mode (no badge, no welcome) for the whole session.
 const welcome = page.getByRole("button", { name: "Explore the demo" });
 if (await welcome.isVisible().catch(() => false)) await welcome.click();
@@ -57,13 +59,16 @@ if (!label.includes("(demo company)")) {
 } else {
   await account.click();
   await page.getByRole("menuitemcheckbox", { name: "Presentation mode" }).click();
-  await page.waitForLoadState("networkidle");
+  // The switch is saved by a server action; wait until the page shows it (no demo badge) before capturing anything.
+  await page.waitForFunction(() => !/\(demo company\)/.test(document.querySelector("[aria-label^='Account menu']")?.getAttribute("aria-label") ?? "(demo company)"), null, { timeout: 20_000 })
+    .catch(() => { throw new Error("Presentation mode did not turn on."); });
 }
 
 /** The quality gate (docs/MARKETING.md §Screenshots). Returns the failed checks. */
 async function gate(shot) {
   const failed = [];
-  await page.getByText(shot.ready, { exact: false }).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => failed.push(`ready text "${shot.ready}" not shown`));
+  // The page's own content, not the navigation (which repeats page names).
+  await page.locator("main").getByText(shot.ready, { exact: false }).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => failed.push(`ready text "${shot.ready}" not shown`));
   await page.waitForFunction(() => !document.querySelector(".animate-spin") && ![...document.querySelectorAll("[role=status]")].some((e) => /loading|planning/i.test(e.textContent ?? "")), null, { timeout: 30_000 }).catch(() => failed.push("still loading"));
   await page.evaluate(() => document.fonts.ready);
   const facts = await page.evaluate(() => ({
@@ -91,7 +96,17 @@ for (const s of selected) {
     await page.getByRole("link", { name: new RegExp(s.open) }).first().click();
     await page.waitForLoadState("networkidle");
   }
-  await page.mouse.move(0, 0);
+  if (s.tab) {
+    await page.locator("main").getByRole("tab", { name: new RegExp(`^${s.tab}`) }).or(page.locator("main").getByRole("link", { name: new RegExp(`^${s.tab}`) })).first().click();
+    await page.waitForLoadState("networkidle");
+  }
+  if (s.scroll) {
+    await page.locator("main").getByText(s.scroll, { exact: true }).first().evaluate((el) => {
+      const top = el.getBoundingClientRect().top + window.scrollY - 72; // below the sticky header
+      window.scrollTo(0, top);
+    });
+  }
+  await page.mouse.move(VIEWPORTS[s.viewport].width - 40, VIEWPORTS[s.viewport].height - 40); // no hover on the rail
   const failed = await gate(s);
   if (failed.length) {
     failures++;

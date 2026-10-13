@@ -21,6 +21,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/SCREENSHOTS.md` | How to capture product screenshots for the website. |
 | `docs/DEMO_TENANTS.md` | Demo tenants (presenter demo, prospect demos such as Prairie Lantern Freight): how they stay in sync with the product, the documented intentional differences, sample data, and the per-feature demo checklist. |
 | `docs/AI.md` | AI runtime: provider interface, OpenAI adapter, configuration, readiness gates, evaluations, usage ledger and budgets, tools and approvals, demo behaviour, owner steps to turn a capability on. |
+| `docs/MARKETING.md` | Feature catalog, publication status, screenshot pipeline and quality gate, the feature-to-website workflow and its checks. |
 | `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
 
 ## Rules that always apply
@@ -73,8 +74,10 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   in dark mode for legibility; critical fills stay the fixed red.
 - **Screenshots of the app:** follow `docs/SCREENSHOTS.md` (demo company, presentation mode, production build).
   Company workspaces use the company's own branding (`src/lib/branding.ts`).
-- **Public website claims:** only what `src/lib/site/capabilities.ts` lists as available; run
-  `docs/RELEASE_CHECKLIST.md` before calling a release done.
+- **Public website claims:** only features the catalog `src/lib/site/features.ts` marks `published` (status
+  `available`; docs/MARKETING.md); `capabilities.ts` is derived from it. Every shipped feature updates the catalog and,
+  where it deserves a screen, `screenshots.json` plus a capture through `scripts/capture-screenshots.mjs` (quality gate);
+  publishing stays a person's decision. Run `docs/RELEASE_CHECKLIST.md` before calling a release done.
 - **Honest data:**
   - Never invent business rules (pay formulas, pricing), contacts, customers, testimonials or metrics.
   - Missing data is shown as missing; estimates are labelled.
