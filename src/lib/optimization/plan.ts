@@ -78,8 +78,6 @@ export interface OptimizationInput extends SmartInput {
   expiredDocuments?: Array<{ truck_id: string | null; trailer_id: string | null; kind: string; expires_on: string }>;
   /** False when vehicle documents could not be read (for example without fleet access). */
   documentsChecked?: boolean;
-  /** Drivers whose employee record says On leave (an HR status, separate from dated time off). Review note only. */
-  driversOnLeave?: string[];
 }
 
 export interface PlannedAssignment {

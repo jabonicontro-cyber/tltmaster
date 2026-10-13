@@ -96,6 +96,8 @@ export interface SmartInput {
   timeOff?: SmartTimeOff[];
   /** False when time off could not be read (database update not installed). */
   timeOffChecked?: boolean;
+  /** Drivers whose employee record says On leave (an HR status, separate from dated time off): a warning, never a block. */
+  driversOnLeave?: string[];
 }
 
 export interface SmartTimeOff {
@@ -219,7 +221,7 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserve
   return out;
 }
 
-function driverExclusions(d: SmartDriver, l: SmartLoad, reserved: Reservation[], bookings: SmartBooking[], timeOff: SmartTimeOff[] = []): { blockers: string[]; warnings: string[] } {
+function driverExclusions(d: SmartDriver, l: SmartLoad, reserved: Reservation[], bookings: SmartBooking[], timeOff: SmartTimeOff[] = [], onLeave: string[] = []): { blockers: string[]; warnings: string[] } {
   const checks = driverChecks({ active: d.active, qualifications: d.qualifications }, false, l.load_date);
   const blockers = checks.blockers.map(eligibilityMessage);
   const leave = timeOff.filter((t) => t.driver_id === d.id && overlaps(t, l));
@@ -230,6 +232,7 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, reserved: Reservation[],
   if (r) blockers.push(`Proposed for ${r.load.order_number} load ${r.load.load_number}, which is more urgent or earlier.`);
   const warnings = checks.warnings.map(eligibilityMessage);
   if (pendingLeave) warnings.push("Has a pending time-off request for this time — confirm before relying on them.");
+  if (onLeave.includes(d.id)) warnings.push("Their employee record says On leave — confirm they are working that day.");
   return { blockers, warnings };
 }
 
@@ -326,7 +329,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
     const excludedDrivers: Exclusion[] = [];
     const okDrivers: Scored[] = [];
     for (const d of input.drivers) {
-      const x = driverExclusions(d, load, reserved, input.bookings, input.timeOff);
+      const x = driverExclusions(d, load, reserved, input.bookings, input.timeOff, input.driversOnLeave);
       if (x.blockers.length) excludedDrivers.push({ id: d.id, label: d.name, reasons: x.blockers });
       else okDrivers.push(scoreDriver(d, load, x.warnings, dayWork));
     }
@@ -387,7 +390,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
         const shift = (iso: string) => new Date(new Date(iso).getTime() + i * 86400_000).toISOString();
         const moved = { ...load, load_date: day, starts_at: shift(load.starts_at), ends_at: shift(load.ends_at) };
         const anyTruck = input.trucks.some((t) => truckExclusions(t, moved, input, [], input.bookings).length === 0);
-        const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, [], input.bookings, input.timeOff).blockers.length === 0);
+        const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, [], input.bookings, input.timeOff, input.driversOnLeave).blockers.length === 0);
         if (anyTruck && anyDriver) {
           const late = load.requested_date !== null && day > load.requested_date;
           options.push(`A truck and a driver are available on ${day} at the same time${late ? ` — later than the customer's requested date (${load.requested_date}); confirm with the customer first` : ""}.`);
@@ -434,7 +437,7 @@ export function resourceExclusions(input: SmartInput, loadId: string): { trucks:
     if (r.length) trucks.set(t.id, r);
   }
   for (const d of input.drivers) {
-    const r = driverExclusions(d, load, [], input.bookings, input.timeOff).blockers;
+    const r = driverExclusions(d, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers;
     if (r.length) drivers.set(d.id, r);
   }
   return { trucks, drivers };
@@ -449,7 +452,7 @@ export function checkPair(input: SmartInput, loadId: string, truckId: string, dr
   if (!truck) reasons.push("The truck is no longer active.");
   else reasons.push(...truckExclusions(truck, load, input, [], input.bookings).map((r) => `Truck ${truck.unit_number}: ${r}`));
   if (!driver) reasons.push("The driver is no longer active.");
-  else reasons.push(...driverExclusions(driver, load, [], input.bookings, input.timeOff).blockers.map((r) => `${driver.name}: ${r}`));
+  else reasons.push(...driverExclusions(driver, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers.map((r) => `${driver.name}: ${r}`));
   if (input.rejections.some((r) => r.load_id === loadId && r.truck_id === truckId && r.driver_id === driverId)) reasons.push("This pair was rejected by a dispatcher.");
   return { ok: reasons.length === 0, reasons };
 }

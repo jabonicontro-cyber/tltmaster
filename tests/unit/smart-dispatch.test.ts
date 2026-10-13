@@ -193,4 +193,9 @@ describe("Smart Dispatch and time off", () => {
     expect(p.proposal!.warnings.join(" ")).toMatch(/pending time-off request/);
     expect(recommend(input({ loads: [load("A")], timeOffChecked: false }))[0].notes.join(" ")).toMatch(/Driver time off was not checked/);
   });
+  it("a driver whose employee record says On leave is still proposed, with a warning (no invented block)", () => {
+    const [p] = recommend(input({ loads: [load("A")], driversOnLeave: ["d-avery"] }));
+    expect(p.proposal?.driverLabel).toBe("Avery");
+    expect(p.proposal!.warnings.join(" ")).toMatch(/employee record says On leave/);
+  });
 });

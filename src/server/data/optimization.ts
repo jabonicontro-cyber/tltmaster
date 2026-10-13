@@ -34,12 +34,11 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
   const supabase = await createClient();
   const dayStart = `${addDays(date, -1)}T00:00:00Z`;
   const dayEnd = `${addDays(date, 2)}T00:00:00Z`;
-  const [trailers, booked, reports, documents, onLeave] = await Promise.all([
+  const [trailers, booked, reports, documents] = await Promise.all([
     supabase.from("trailers").select("id, unit_number, active, service_status, weight_capacity, weight_unit, volume_capacity, capacity_verified_at, compatible_truck_types").eq("active", true),
     supabase.from("dispatch_assignments").select("trailer_id, load_id, starts_at, ends_at").eq("status", "active").not("trailer_id", "is", null).lt("starts_at", dayEnd).gt("ends_at", dayStart),
     supabase.from("field_reports").select("trailer_id, kind").eq("equipment", "trailer").in("status", ["open", "acknowledged"]),
     supabase.from("vehicle_documents").select("truck_id, trailer_id, kind, expires_on").is("archived_at", null).in("kind", ["registration", "insurance", "inspection", "permit"]).not("expires_on", "is", null),
-    supabase.from("employees").select("driver_id").eq("status", "on_leave").not("driver_id", "is", null),
   ]);
   // The latest document of each kind per vehicle decides; an expired one that was renewed is not flagged.
   const latest = new Map<string, { truck_id: string | null; trailer_id: string | null; kind: string; expires_on: string }>();
@@ -55,8 +54,6 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     hoursOfServiceVerified: false,
     expiredDocuments: documents.error ? [] : expiredDocuments,
     documentsChecked: !documents.error,
-    // Employee status "On leave" is shown as a review note; without the employees table it is simply not checked.
-    driversOnLeave: onLeave.error ? [] : ((onLeave.data ?? []) as Array<{ driver_id: string }>).map((e) => e.driver_id),
     trailers: ((trailers.data ?? []) as Array<OptTrailer & { weight_capacity: number | string | null; volume_capacity: number | string | null; compatible_truck_types: string[] | null }>).map((t) => ({
       ...t,
       weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),

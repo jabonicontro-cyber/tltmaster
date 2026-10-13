@@ -76,7 +76,8 @@ explain plans and help explore alternatives, but it will call this core rather t
   says so.
 - **Employee status "On leave"** (2026-10-13): a driver whose employee record says On leave gets a review note ("The
   driver's employee record says On leave — confirm they are working that day"). This HR status is separate from dated
-  time off (which blocks for approved leave); nothing decides that On leave blocks dispatch, so it never does. Read with
+  time off (which blocks for approved leave); nothing decides that On leave blocks dispatch, so it never does. Smart
+  Dispatch shows the same as a warning on its proposal. Read with
   the viewer's `employees.view` permission (owner, office, dispatcher by default): without it the note does not appear.
 - **Planning window:** a day outside today … 14 days ahead in the link is replaced by tomorrow, with a notice. A failed
   plan shows a plain message; the details go to the server log.

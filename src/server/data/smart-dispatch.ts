@@ -29,7 +29,7 @@ const site = (o: LoadRow["orders"]) => (o ? (o.site_line1 || o.site_label || "")
 export async function getSmartDispatchInput(from: string, to: string): Promise<SmartInput> {
   const supabase = await createClient();
   const { today } = await businessToday();
-  const [loads, trucks, drivers, quals, reports, urgencies] = await Promise.all([
+  const [loads, trucks, drivers, quals, reports, urgencies, onLeave] = await Promise.all([
     supabase
       .from("order_loads")
       .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customers(name))")
@@ -41,6 +41,8 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     supabase.from("driver_qualifications").select("driver_id, kind, cdl_class, expires_on, verified_at"),
     supabase.from("field_reports").select("truck_id, kind, equipment, status").eq("equipment", "truck").in("status", ["open", "acknowledged"]),
     supabase.from("order_urgencies").select("order_id, needed_by").is("closed_at", null),
+    // Employee status "On leave" (HR record): a warning only. Visible with employees.view; empty without it.
+    supabase.from("employees").select("driver_id").eq("status", "on_leave").not("driver_id", "is", null),
   ]);
   for (const r of [loads, trucks, drivers, quals, reports, urgencies]) {
     if (r.error) throw new Error(`Smart Dispatch could not read the data it needs: ${r.error.message}`);
@@ -114,6 +116,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     maintenanceChecked: !shopMissing,
     timeOff: leaveMissing ? [] : ((leave.data ?? []) as SmartTimeOff[]),
     timeOffChecked: !leaveMissing,
+    driversOnLeave: onLeave.error ? [] : ((onLeave.data ?? []) as Array<{ driver_id: string }>).map((e) => e.driver_id),
   };
 }
 
