@@ -36,6 +36,11 @@ explain plans and help explore alternatives, but it will call this core rather t
    deterministic (ties break by unit number and name).
 5. **Alternatives:** the same search with each preset (Balanced, Service first, Revenue first, Efficiency first);
    identical plans are shown once. Trade-offs are listed against the plan for the chosen priorities.
+6. **Speed** (2026-10-13): a candidate move is scored incrementally — only the moved load and the later same-day
+   assignments on its old or new truck or driver are re-scored, and the total is summed in the same order as a full
+   re-score, so plans are identical (checked byte-for-byte against the previous implementation on 20 plan/preset
+   combinations). Measured: 40 loads × 20 trucks × 20 drivers 3.7 s → 0.6 s; 60 × 30 × 30 28 s → 2.5 s;
+   80 × 40 × 40 84 s → about 4 s (`tests/unit/optimization-scale.test.ts` keeps 80 × 40 × 40 under 20 s).
 
 ## 3. Statuses and honesty rules
 
