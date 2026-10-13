@@ -26,7 +26,11 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     getDispatchDay(date),
     listOpenUrgencies(),
     listUnscheduledOrders(),
-    getSmartDispatchPlan(today, horizon).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "Smart Dispatch is unavailable." })),
+    getSmartDispatchPlan(today, horizon).catch((e: unknown) => {
+      // Details go to the server log; the board shows a plain message (no table or query names).
+      console.error("Smart Dispatch failed", e);
+      return { error: "Smart Dispatch suggestions are unavailable right now. The board below still works; try again in a moment." };
+    }),
   ]);
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 

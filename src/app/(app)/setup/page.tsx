@@ -21,7 +21,10 @@ const GATE_TONE: Record<GateState, string> = { ready: "text-green-700", limited:
 export default async function SetupPage() {
   const access = await requirePagePermission("settings.manage");
   const [readiness, gates] = await Promise.all([
-    getCompanyReadiness(access.companyId!).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The checklist is unavailable." })),
+    getCompanyReadiness(access.companyId!).catch((e: unknown) => {
+      console.error("Company setup checklist failed", e);
+      return { error: "The checklist could not be loaded right now. Nothing was changed; try again in a moment." };
+    }),
     allCapabilityGates(access),
   ]);
   return (
