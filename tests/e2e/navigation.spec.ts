@@ -8,6 +8,8 @@ import { signIn } from "./helpers";
 test("the breadcrumb returns to the filtered list you came from; opened directly it goes to the plain list", async ({ page }) => {
   await signIn(page, "office");
   await page.goto("/customers?q=Prairie");
+  // The view is recorded once the page is interactive; a click before that is a plain page load (nothing to remember).
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("taviron:list-view:/customers"))).toBe("/customers?q=Prairie");
   await page.getByRole("link", { name: /Prairie View Landscaping/ }).first().click();
   await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
   const crumb = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Customers" });
