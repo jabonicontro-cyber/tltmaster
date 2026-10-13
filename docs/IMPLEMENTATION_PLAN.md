@@ -2335,6 +2335,15 @@ into. Migration `20261112000100_pto_balances.sql` (rollback tested):
 - **Tests**: `tests/db/pto-balances.test.ts` (6), tenancy and permission catalog, `tests/db/demo-samples.test.ts`,
   `tests/e2e/pto-balances.spec.ts` (2), `time-off.spec.ts`, `demo-parity.spec.ts` (owner balances).
 
+**PTO accruals** — migration `20261112000300_pto_accruals.sql` (rollback tested; refuses while accrual entries
+exist): policies per bank and employment type with all three methods (annual grant on a date, hours worked from
+entered hours, fixed per pay period), optional balance cap, plan-year carryover (unlimited, capped, or 0 =
+use-it-or-lose-it — forfeiture only after the company confirms it was reviewed for its jurisdictions), waiting periods
+from the hire date, 0.01 h half-up rounding, and an idempotent run (period keys; a second run adds nothing). Banks and
+balances page: Accrual policies (list, turn off, new/replacement), Record hours worked, Run accruals through today.
+Demo: a fictional every-two-weeks policy with accrued history. Tests: `tests/db/pto-accruals.test.ts` (5),
+`tests/e2e/pto-balances.spec.ts` (hours-worked policy end to end), demo samples.
+
 **Expired vehicle documents policy** (owner directive 2026-10-13; master plan §9 Q23) — migration
 `20261112000200_document_policy.sql` (rollback tested): a rule per kind (insurance and registration block, inspection
 and permit warn by default; Settings → Dispatch rules), document verification in Fleet ("Mark verified"; cleared when

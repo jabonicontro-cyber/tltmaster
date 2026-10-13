@@ -300,6 +300,13 @@ unverified after the update, so nothing is blocked until someone marks a record 
 expired documents stay review notes. Rollback: `supabase/rollbacks/20261112000200_document_policy.down.sql` (tested
 locally 2026-10-13: apply → rollback → dispatch tests pass → re-apply).
 
+**PTO accruals (`20261112000300_pto_accruals.sql`, after `20261112000100`).** Adds `pto_policies` (annual grant,
+hours worked, per pay period; per bank and employment type; caps and plan-year carryover), the append-only
+`pto_hours_worked`, ledger kinds `accrual`/`forfeiture` with a unique period key, and `pto_run_accruals` (a person runs
+it; nothing is scheduled). Nothing accrues until a company saves a policy. Rollback:
+`supabase/rollbacks/20261112000300_pto_accruals.down.sql` (refuses while accrual or forfeiture entries exist, so a
+balance is never changed silently; tested locally 2026-10-13).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

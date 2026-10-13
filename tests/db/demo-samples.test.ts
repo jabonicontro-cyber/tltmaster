@@ -103,6 +103,8 @@ describe.skipIf(!available)("demo feature samples", () => {
     const grants = await q<{ n: string; note: string }>("select count(*) n, min(note) note from public.pto_ledger where company_id = $1 and kind = 'grant'", [w.company]);
     expect(Number(grants.rows[0].n)).toBeGreaterThanOrEqual(3);
     expect(grants.rows[0].note).toMatch(/^Demo:/);
+    const accrued = await q<{ n: string }>("select count(*) n from public.pto_ledger where company_id = $1 and kind = 'accrual'", [w.company]);
+    expect(Number(accrued.rows[0].n)).toBeGreaterThan(0); // the demo policy's pay periods so far
     // Billing shows every state: an order delivered exactly as ordered (ready) and one handed off (internal batch).
     const readiness = ((await as(w.owner).from("billing_order_status").select("readiness")).data ?? []).map((r) => (r as { readiness: string }).readiness);
     expect(readiness).toContain("ready");

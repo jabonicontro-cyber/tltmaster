@@ -1,5 +1,5 @@
 import "server-only";
-import type { LedgerKind, PtoBalance, PtoBank } from "@/lib/pto";
+import type { LedgerKind, PtoBalance, PtoBank, PtoPolicy } from "@/lib/pto";
 import { createClient } from "@/server/supabase/server";
 
 // PTO banks and balances (migration 20261112000100). The database decides who sees what: bank definitions are visible
@@ -83,4 +83,18 @@ export async function ledger(f: { employee?: string; limit?: number } = {}): Pro
     throw new Error(`Could not load balance history: ${error.message}`);
   }
   return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({ ...(r as unknown as LedgerRow), hours: num(r.hours) }));
+}
+
+/** Active accrual policies (20261112000300); [] when not installed. */
+export async function listPolicies(): Promise<PtoPolicy[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("pto_policies").select("*").eq("active", true).order("created_at");
+  if (error) return missing(error.code) ? null : [];
+  return ((data ?? []) as Array<Record<string, unknown>>).map((r) => ({
+    ...(r as unknown as PtoPolicy),
+    amount: num(r.amount),
+    per_hours: r.per_hours === null ? null : num(r.per_hours),
+    max_balance: r.max_balance === null ? null : num(r.max_balance),
+    carryover_cap: r.carryover_cap === null ? null : num(r.carryover_cap),
+  }));
 }

@@ -14,7 +14,7 @@ const TENANT_TABLES = [
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "ai_usage_events",
   "employees", "employee_compensation",
-  "time_off_requests", "time_off_events", "pto_banks", "pto_ledger",
+  "time_off_requests", "time_off_events", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
   "vehicle_documents", "truck_assignment_events", "vehicle_document_rules",
   "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
@@ -83,6 +83,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // PTO balances (20261112000100): bank_save and adjust need time_off.balances in the caller's company; balances
   // returns the caller's own, or another employee's only with time_off.balances; overview needs time_off.balances.
   "public.pto_bank_save", "public.pto_adjust", "public.pto_balances", "public.pto_balance_overview",
+  // PTO accruals (20261112000300): policy_save/end, record_hours and run_accruals need time_off.balances and act only
+  // on the caller's company.
+  "public.pto_policy_save", "public.pto_policy_end", "public.pto_record_hours", "public.pto_run_accruals",
   // Vehicle document policy (20261112000200): document_rule and expired_vehicle_documents are internal (not executable
   // by API roles) and called with the caller's company by eligibility checks; verify needs fleet.edit, set_document_rule
   // settings.manage, dispatch_document_issues dispatch.view (no document details), document_rules the caller's company.

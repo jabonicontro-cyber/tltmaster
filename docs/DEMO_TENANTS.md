@@ -107,7 +107,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | Fleet and documents | Registrations (one expiring), an inspection due, an expired trailer registration | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Maintenance | A safety-critical brake work order on an idle truck, tire and electrical work orders, oil and annual inspection schedules | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Time off | An approved vacation, a pending personal day, and a pending request for the viewer's own employee record | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Time-off balances | One "Paid time off" bank (vacation + personal; full- and part-time) and a fictional opening grant per current employee ("Demo: opening balance"); sample requests use hours | ✓ (Banks and balances) | My balances | My balances | My balances | My balances | My balances |
+| Time-off balances | One "Paid time off" bank (vacation + personal; full- and part-time) and a fictional opening grant per current employee ("Demo: opening balance"); sample requests use hours; an every-two-weeks accrual policy for full-time employees with accrued history | ✓ (Banks and balances) | My balances | My balances | My balances | My balances | My balances |
 | Communications | "Dispatch desk" channel with pinned sample notes; an operation workspace for a scheduled order (needs `20261108000100`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Employees | Fictional employees with departments and qualifications | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Explain this plan (AI, docs/AI.md) | None needed (uses the planning-day samples). Blocked in demos unless `AI_IN_DEMOS=on` — the page shows the normal "not available" state; Company setup shows the gate | ✓ (state) | ✓ (state) | ✓ (state) | ✓ (state) | — | — |

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { uuid } from "@/lib/schemas/common";
-import { adjustSchema, bankSchema } from "@/lib/pto";
+import { adjustSchema, bankSchema, hoursSchema, policySchema } from "@/lib/pto";
 import { timeOffSchema } from "@/lib/time-off";
 import { requireAccess } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -103,5 +103,55 @@ export async function adjustBalance(formData: FormData): Promise<ActionResult<{ 
     const r = data as { duplicate: boolean; balance: number | null };
     revalidatePath("/time-off", "layout");
     return ok({ balance: r.balance === null ? null : Number(r.balance) }, r.duplicate ? "This entry was already recorded." : parsed.data.kind === "grant" ? "Hours granted." : "Balance adjusted.");
+  });
+}
+
+export async function savePolicy(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await requireAccess();
+    const parsed = policySchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("pto_policy_save", { p: parsed.data });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/time-off", "layout");
+    return ok(undefined, "Policy saved. Run accruals to post the hours earned so far.");
+  });
+}
+
+export async function endPolicy(id: string): Promise<ActionResult> {
+  return guard(async () => {
+    await requireAccess();
+    if (!uuid.safeParse(id).success) return fail("Invalid policy.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("pto_policy_end", { p_id: id });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/time-off", "layout");
+    return ok(undefined, "Policy turned off. Hours already earned stay.");
+  });
+}
+
+export async function recordHours(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await requireAccess();
+    const parsed = hoursSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("pto_record_hours", { p: parsed.data });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/time-off", "layout");
+    return ok(undefined, (data as { duplicate: boolean }).duplicate ? "These hours were already recorded." : "Hours recorded.");
+  });
+}
+
+export async function runAccruals(): Promise<ActionResult<{ entries: number; hours: number; forfeitures: number }>> {
+  return guard(async () => {
+    await requireAccess();
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("pto_run_accruals", { p_through: null });
+    if (error) return fail(dbErrorMessage(error));
+    const r = data as { entries: number; hours: number; forfeitures: number };
+    revalidatePath("/time-off", "layout");
+    return ok(r, r.entries || r.forfeitures ? `Posted ${r.entries} accrual${r.entries === 1 ? "" : "s"} (${Number(Number(r.hours).toFixed(2))} h)${r.forfeitures ? ` and ${r.forfeitures} plan-year forfeiture${r.forfeitures === 1 ? "" : "s"}` : ""}.` : "Nothing new to post — accruals are up to date.");
   });
 }

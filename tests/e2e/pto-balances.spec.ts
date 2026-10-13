@@ -83,6 +83,48 @@ test("an owner sets up a bank and grants hours; requests are checked against the
   }
 });
 
+test("an hours-worked accrual policy earns hours from recorded hours; running again adds nothing", async ({ page }) => {
+  await driverEmployee();
+  const bankName = `Bereavement e2e ${unique()}`;
+  try {
+    await signIn(page, "owner");
+    await page.goto("/time-off/balances");
+    const create = page.locator("form").filter({ has: page.getByRole("button", { name: "Create bank" }) });
+    await create.getByLabel("Bank name").fill(bankName);
+    await create.getByLabel("Bereavement").check();
+    await create.getByLabel("Full-time").check();
+    await create.getByRole("button", { name: "Create bank" }).click();
+    await expectToast(page, "Bank created.");
+
+    const policy = page.locator("form").filter({ has: page.getByRole("button", { name: "Save policy" }) });
+    await policy.getByLabel("Bank").selectOption({ label: bankName });
+    await policy.getByLabel("How hours are earned").selectOption("hours_worked");
+    await policy.getByLabel("Hours earned").fill("1");
+    await policy.getByLabel("Per hours worked").fill("30");
+    await policy.getByLabel("Policy starts").fill("2026-01-01");
+    await policy.getByRole("button", { name: "Save policy" }).click();
+    await expectToast(page, /Policy saved/);
+    await expect(page.getByRole("list", { name: "Accrual policies" })).toContainText(`${bankName} · Full-time`);
+    await expect(page.getByRole("list", { name: "Accrual policies" })).toContainText("1 h per 30 h worked");
+
+    const hours = page.locator("form").filter({ has: page.getByRole("button", { name: "Record hours" }) });
+    await hours.getByLabel("Employee").selectOption({ label: "Drew Driver" });
+    await hours.getByLabel("From").fill("2026-02-02");
+    await hours.getByLabel("To").fill("2026-02-13");
+    await hours.getByLabel("Hours worked").fill("60");
+    await hours.getByRole("button", { name: "Record hours" }).click();
+    await expectToast(page, "Hours recorded.");
+
+    await page.getByRole("button", { name: "Run accruals through today" }).click();
+    await expectToast(page, /Posted \d+ accrual/);
+    await expect(page.getByRole("row", { name: /Drew Driver/ }).filter({ hasText: "Accrued" }).first()).toContainText("+2 h");
+    await page.getByRole("button", { name: "Run accruals through today" }).click();
+    await expectToast(page, /Nothing new to post|Posted/);
+  } finally {
+    await driverEmployee();
+  }
+});
+
 test("only people with time_off.balances open Banks and balances", async ({ page }) => {
   await signIn(page, "dispatcher");
   await page.goto("/time-off/balances");

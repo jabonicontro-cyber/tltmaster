@@ -61,7 +61,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Balances first: once a bank covers vacation and personal time, requests on it need hours and a balance.
-  note("time-off balances", await ptoBalances(db));
+  note("time-off balances", await ptoBalances(db, today));
   note("time off", await timeOff(db, today));
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
@@ -272,7 +272,7 @@ async function timeOff(db: Db, today: string): Promise<number> {
  * balances and the request form show real numbers. Grants go through pto_adjust (owner's time_off.balances); amounts
  * are demo data, labelled as such in the history, never a policy.
  */
-async function ptoBalances(db: Db): Promise<number> {
+async function ptoBalances(db: Db, today: string): Promise<number> {
   const banks = await db.from("pto_banks").select("id, active");
   if (missing(banks.error)) return 0;
   if (banks.error) throw new Error(`Demo samples (time-off banks): ${banks.error.message}`);
@@ -290,6 +290,15 @@ async function ptoBalances(db: Db): Promise<number> {
     const hours = p.employment_type === "part_time" ? 16 : 40 + (i % 3) * 8;
     await must("time-off grant", db.rpc("pto_adjust", { p: { employee_id: p.id, bank_id: bankId, kind: "grant", hours, note: "Demo: opening balance (fictional)" } }));
     n++;
+  }
+  // Accruals (20261112000300): a fictional every-two-weeks policy for full-time employees, started eight weeks ago,
+  // and one run so the history shows accrued hours. A demo with a policy already keeps it.
+  const policies = await db.from("pto_policies").select("id").eq("bank_id", bankId).eq("active", true).limit(1);
+  if (!missing(policies.error) && !policies.error && !(policies.data ?? []).length) {
+    const start = addDays(today, -56);
+    await must("time-off policy", db.rpc("pto_policy_save", { p: { bank_id: bankId, employment_type: "full_time", method: "per_pay_period", amount: 3.08, pay_period: "biweekly", anchor_date: start, effective_from: start } }));
+    const run = (await must("time-off accruals", db.rpc("pto_run_accruals", { p_through: today }))) as { entries: number };
+    n += 1 + run.entries;
   }
   return n;
 }
