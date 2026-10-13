@@ -133,6 +133,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(mineNow.items.every((x) => x.assignee_name === persona)).toBe(true);
     const options = (await as(w.owner).rpc("exception_assignee_options")).data as Array<{ user_id: string; name: string }>;
     expect(options.find((o) => o.user_id === w.owner)?.name).toBe(persona);
+    // History lines ("by …") name people through user_directory: the persona in a demo company (20261111000300) …
+    const dir = (await as(w.owner).rpc("user_directory")).data as Array<{ id: string; full_name: string }>;
+    expect(dir.find((u) => u.id === w.owner)?.full_name).toBe(persona);
+    // … and the account's own name, unchanged, in a real company.
+    const real = (await as(w.realOwner).rpc("user_directory")).data as Array<{ id: string; full_name: string }>;
+    const profile = (await q<{ full_name: string }>("select full_name from public.profiles where id = $1", [w.realOwner])).rows[0].full_name;
+    expect(real.find((u) => u.id === w.realOwner)?.full_name).toBe(profile);
+    // My Day names the demo owner's driver record by the persona too.
+    const home = (await as(w.owner).rpc("driver_portal_home")).data as { driver?: { name: string } } | null;
+    if (home?.driver) expect(home.driver.name).toBe(persona);
 
     const before = await counts(w.company);
     expect((await ensureFeatureSamples(as(w.owner), today)).added).toBe(0);

@@ -277,6 +277,12 @@ companies; elsewhere the person's display name, then full name. Safe to skip (de
 name as an item's assignee). Rollback: `supabase/rollbacks/20261111000200_demo_people_names.down.sql` (tested locally
 2026-10-13).
 
+**Demo person names in history (`20261111000300_demo_history_names.sql`, after `20261111000200`).** Adds
+`private.demo_person_name(company, user)` (security definer, demo companies only) and uses it first in
+`user_directory`, `driver_submit_field_report`, `driver_portal_home`, `private.operational_exceptions` (urgent-order
+names) and `private.assignment_label`; real companies get identical values. Safe to skip. Rollback:
+`supabase/rollbacks/20261111000300_demo_history_names.down.sql` (tested locally 2026-10-13).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging
