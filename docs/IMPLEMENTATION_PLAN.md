@@ -2255,6 +2255,31 @@ path), while every other page uses `personPhoto` (own profile photo, else the av
   - e2e: `plan-the-day.spec.ts` (extended), `sidebar.spec.ts` (touch, tablet, keyboard),
     `home-story.spec.ts` (new), `demo-parity.spec.ts` (Prairie Lantern truck 207 unavailable).
 
+## 5ag. Marketing: feature catalog, governed screenshots, catalog-driven pages (2026-10-13)
+
+- **Catalog:** `src/lib/site/features.ts`, plus `screenshots.json`. Status and publication are kept apart.
+  `capabilities.ts` is derived from it.
+- **Screenshot pipeline:** `scripts/capture-screenshots.mjs`, rewritten:
+  - **Fixes:** the old script no longer worked with the current sign-in label or the demo welcome and
+    presentation-mode menu.
+  - **Quality gate per shot:**
+    - ready text visible in the page itself;
+    - nothing loading; fonts and images loaded;
+    - no overflow, no demo badge, no dev overlay;
+    - no error page, no console errors.
+  - **Record:** `public/site/manifest.json`.
+- **Screens:** 10 captured from a local production build of the demo company, in presentation mode, with a
+  plain-named local capture account. New: Plan the day, Maintenance, Fleet, Billing readiness, Communications.
+  Recaptured: Command Center, Dispatch, Order, Tickets (needs-review view), Driver.
+- **`/platform`:** generated from the catalog. Story sections for features with screens, compact briefs for the rest,
+  capability jump links, security, and "Not yet".
+- **Homepage:** a capability index linking to the platform sections. Homepage screens take their alt text and captions
+  from the catalog.
+- **Checks:** `tests/unit/feature-catalog.test.ts` covers nav coverage, published means available, app pages and
+  screenshots exist, no orphans, claim words, and verification age. Browser coverage: `tests/e2e/marketing.spec.ts`.
+- **Plan the day:** the AI panel's setup reasons moved to Company setup. They listed configuration names on a
+  customer-facing screen.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
