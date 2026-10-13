@@ -30,6 +30,35 @@ migrations: everything below is **committed locally only** on top of `7eba5e4`.
 §9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
 is open decision §9 Q20 (recommend a soft preference for keeping a driver on their primary truck).
 
+### Decisions for James (current, with recommendations)
+
+1. **Promote to Production?** Preview runs `7eba5e4` (deploy record: success, not verified live). Check it on the
+   iPad; if good, say "promote" and Production is fast-forwarded to it. The commits made after `7eba5e4` need a
+   separate "push" (they are local only, by instruction).
+2. **Hosted migration `20261111000100_demo_driver_names`** (optional, reversible, tested rollback): makes driver lists in
+   demos show the persona. Without it, hosted demos show the presenter's own login name in Plan the day, Dispatch and
+   Tickets. Recommended: apply with the next release (DEPLOYMENT §2a).
+3. **JIT on hosted Postgres.** Locally, JIT compilation cost 4.9 s per billing/Command Center query (the query runs in
+   0.16 s). Check hosted with `show jit;` in the Supabase SQL editor. If it says `on`, recommended: a small migration
+   `alter role authenticated set jit = off;` (reversible; OLTP queries do not benefit from JIT). Not done: it is a
+   hosted database setting.
+4. **Expired vehicle documents** (master plan §9 Q23): recommended — block expired insurance and registration once
+   verified, warn for inspections and permits. Nothing blocks today.
+5. **Driver–truck pairing** (§9 Q20): the planner can give one truck a different driver per load in one day.
+   Recommended: a soft preference for keeping a driver on their primary truck (scoring only, no block).
+6. **AI** (unchanged): hosted migration `20261110000100_ai_usage`, a model with a passing eval, Vercel variables.
+
+### Release checklist for this bundle (Preview → Production)
+
+Local, before any push (all must pass on the final commit): `npm run lint`, `npx tsc --noEmit`, `npx vitest run`,
+`npx playwright test`, `npm run build`, gate spec on a production build, `node scripts/check-deployment.mjs
+<local prod URL>`, `node scripts/release/risk.mjs`. Then, only with the owner's "push": push the Preview branch
+(fast-forward), confirm the GitHub deployment record for the commit is `success`, have the owner check Preview on the
+iPad (this sandbox cannot open `*.vercel.app`), and only on "promote" fast-forward the Production branch and confirm
+its deployment record. After Production: owner applies the hosted migrations they approve (backup first,
+DEPLOYMENT §2a) and runs **Refresh demo data** on Prairie Lantern Freight so the new samples (billing states, sent
+quote, assigned item, order waiting for a date, planning day) appear.
+
 ## 0. Previous checkpoint (2026-10-13, overnight sprint)
 
 **Local commits on `claude/ui-and-signin-checkpoint`, not pushed** (Preview and Production both run `651c37b`):
