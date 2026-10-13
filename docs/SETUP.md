@@ -275,6 +275,12 @@ need the `storage` schema.
 releases) against a PostgreSQL you provide on `127.0.0.1:54322`, with a small gateway on
 `:54321` that behaves like the Supabase API. CI uses it for database tests.
 
+**JIT is off for the local database** (`db-reset` sets `jit = off` on it). PostgreSQL's default JIT compiler spent
+~4.9 s compiling the billing-readiness view for a 0.16 s query once test data had accumulated (2026-10-13), which
+made the Command Center slow and DB tests time out. On an existing local database run
+`psql -h 127.0.0.1 -p 54322 -U postgres -c "alter database postgres set jit = off"` once. Whether hosted databases
+need the same is an owner decision (SESSION_HANDOFF §0).
+
 **Email.** The stack also runs a development-only mail catcher (`scripts/dev-stack/mailbox.mjs`,
 SMTP on `127.0.0.1:54325`). Supabase Auth requires email confirmation and sends verification,
 invitation and reset emails with the repository templates to it; each message is saved as

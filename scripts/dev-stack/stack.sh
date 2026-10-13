@@ -201,6 +201,9 @@ cmd_db_reset() {
   ensure_binaries
   ensure_keys
   psql_admin <<'SQL'
+-- JIT compilation costs seconds per query on the large billing/Command Center views (measured 2026-10-13:
+-- 4.9 s JIT for a 0.16 s query) and made DB tests time out; OLTP queries here never benefit from it.
+do $$ begin execute format('alter database %I set jit = off', current_database()); end $$;
 drop schema if exists public cascade;
 drop schema if exists private cascade;
 drop schema if exists auth cascade;
