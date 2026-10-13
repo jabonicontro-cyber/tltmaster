@@ -64,6 +64,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
   note("operational workspace", await workspace(db, today, userId));
+  note("assigned attention item", await assignedItem(db, userId));
   note("planning day", await planningDay(db, today));
   note("billing: ready and handed off", await billing(db, today));
   return result;
@@ -314,6 +315,25 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
     }
   }
   return n;
+}
+
+/**
+ * Command Center: "Assigned to you" is empty until someone assigns an item. One open ticket to review (or, failing
+ * that, the first open item) is assigned to the person viewing the demo through the real assignment path, which checks
+ * that their role can resolve it. Added only while the demo has never had an assignment.
+ */
+async function assignedItem(db: Db, me: string): Promise<number> {
+  const existing = await count(db, "exception_assignments");
+  if (existing === null || existing > 0) return 0;
+  for (const kind of ["ticket_review", null]) {
+    const page = await db.rpc("command_center_exceptions", { p_kind: kind, p_mine: false, p_limit: 5, p_offset: 0, p_hidden: false });
+    if (missing(page.error)) return 0;
+    for (const item of ((page.data as { items?: Array<{ exception_key: string }> } | null)?.items ?? [])) {
+      const r = await db.rpc("assign_exception", { p_key: item.exception_key, p_user_id: me, p_note: "Demo: please take this one today." });
+      if (!r.error) return 1;
+    }
+  }
+  return 0;
 }
 
 /** An operational workspace for an upcoming scheduled order, created through the real feature (members follow dispatch). */

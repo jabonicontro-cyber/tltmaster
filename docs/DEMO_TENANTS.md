@@ -96,7 +96,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 
 | Feature | Sample data | Owner | Dispatcher | Drives too | Office | Driver | Mechanic |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Command Center | Orders and loads for recent days, today and tomorrow (Refresh fills empty days) | ✓ | ✓ | ✓ | ✓ | — (opens My Day) | ✓ |
+| Command Center | Orders and loads for recent days, today and tomorrow (Refresh fills empty days); one open review item assigned to the person viewing the demo, so "Assigned to you" is not empty (2026-10-13) | ✓ | ✓ | ✓ | ✓ | — (opens My Day) | ✓ |
 | Orders, Dispatch, Smart Dispatch | Same loads; trucks, trailers and drivers | ✓ | ✓ | ✓ | ✓ | — | — |
 | My Day | The demo owner's own driver record (linked employee), qualifications and a load today or tomorrow | ✓ | — | ✓ | — | ✓ | — |
 | Delivery tickets | Tickets on delivered loads | ✓ | ✓ | ✓ | ✓ | — | — |
