@@ -2224,6 +2224,37 @@ path), while every other page uses `personPhoto` (own profile photo, else the av
   (welcome remembered per person, refused for real companies); `dismiss_demo_welcome` in the reviewed
   `SECURITY DEFINER` list.
 
+## 5af. AI foundation, Plan the day completion, touch navigation, homepage story (2026-10-13)
+
+- **AI runtime foundation** (docs/AI.md): a provider interface with an OpenAI adapter, readiness gates, a tool
+  registry, a usage ledger (migration `20261110000100`, applied locally only) and "Explain this plan". It is inert
+  until the owner configures it.
+- **Plan the day, after iPad testing** (docs/OPTIMIZATION.md §3a):
+  - **Root cause:** the planner itself worked, but the page around it was incomplete. There was no way to apply a
+    changed date except a preset button, and no loading feedback. Blocked loads said only "no pair passes". Unavailable
+    resources were not listed. An empty day was a dead end. Freight revenue showed $0 because hauling lines were
+    ignored. Planning-day demo data covered only the day after the last Refresh, and the hosted Prairie Lantern demo
+    was refreshed before those samples shipped.
+  - **Fixed:**
+    - a Show plan button and a loading state;
+    - per-load reasons for every truck, trailer and driver (Smart Dispatch's own rules, via `resourceExclusions`);
+    - resources unavailable all day;
+    - an empty state linking to the next days with open loads;
+    - revenue from hauling lines;
+    - expired vehicle documents as review notes;
+    - mechanic and driver views have no access (tests).
+- **Touch navigation:** at 1024 px and wider (iPad in landscape) the icon rail has an explicit "Expand navigation"
+  toggle. Tapping outside, Escape or choosing a page closes it. Mouse hover and keyboard focus work as before; narrower
+  screens keep the menu button.
+- **Homepage story** (docs/WEBSITE_3D.md):
+  - one scene per chapter, in step with the text;
+  - the phone stacking fix (the truck above the text layer);
+  - the 1024–1300 px sideways-scroll fix (product showcase decorations).
+- **Tests:**
+  - `tests/unit/plan-availability.test.ts`;
+  - e2e: `plan-the-day.spec.ts` (extended), `sidebar.spec.ts` (touch, tablet, keyboard),
+    `home-story.spec.ts` (new), `demo-parity.spec.ts` (Prairie Lantern truck 207 unavailable).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):

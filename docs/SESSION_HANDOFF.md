@@ -7,7 +7,51 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 0. Latest checkpoint (2026-10-12) — read first
+## 0. Latest checkpoint (2026-10-13, overnight sprint) — read first
+
+**Local commits on `claude/ui-and-signin-checkpoint`, not pushed** (Preview and Production both run `651c37b`):
+
+| Commit | What |
+| --- | --- |
+| `e78615c`, `79f5aac` | AI runtime foundation, inactive (every capability Blocked); release-risk rule for AI code |
+| `040b701` | Sidebar: expand/collapse toggle for touch screens (iPad in landscape) |
+| `46b01f4` | Plan the day: blocked-load reasons, resources unavailable all day, Show plan button, loading and empty states; Order-to-Cash queued as B42 |
+| `c9f25bf` | Plan the day: freight revenue from hauling lines; expired vehicle documents as review notes; touch sidebar tests |
+| `e80b9b7` | Homepage 3D: one scene per chapter in step with the text; phone stacking and tablet overflow fixed |
+| (this commit) | Handoff, master plan statuses, pending decisions |
+
+### Pending decisions (owner) — one list, kept current
+
+1. **Push this bundle to Preview, then Production?**
+   - **Recommended:** push all of it once the full browser suite is green, check Preview on the iPad, then promote.
+   - **Why it is a decision:** the AI-foundation request said it was "not authorization to deploy", and those commits
+     sit in this branch.
+   - **Why it is safe:** with no AI settings, the AI code is inert (Blocked, verified in a browser), and it works
+     without its migration (hosted-state check, 2026-10-13).
+   - **Options:**
+     - (a) push everything (recommended);
+     - (b) hold everything until you have looked;
+     - (c) rebuild the branch without the AI commits. This is a local history rewrite; not recommended.
+2. **Expired vehicle documents.**
+   - Today an expired registration, insurance, inspection or permit on record is only a **review note** in Plan the
+     day. No assignment rule checks documents, in the planner or in the database.
+   - Should expired registration or insurance **block** assignment? That is a business rule, so it is your call.
+   - **Recommended:** block expired insurance and registration in `assign_load`, keep inspections and permits as
+     warnings.
+   - Until you decide, nothing blocks.
+3. **AI (when you want it):** the hosted migration `20261110000100_ai_usage.sql`, a model choice with a passing
+   `npm run ai:eval`, and the AI variables in Vercel (docs/AI.md §12). Until then AI stays off. Nothing is waiting on
+   it.
+4. **After any deployment (owner action, not a decision):** run **Refresh demo data** on Prairie Lantern Freight, so
+   tomorrow has plannable loads and the new blocked and unavailable views have sample data.
+
+### Queued, not started (owner instructions)
+
+- **B42:** Order-to-Cash Control Center.
+- **EDI Decisions 61–70 and 71–80:** backlog only, with no repository changes allowed. Recorded in the session task
+  list and the session scratchpad. They go into the master plan only when you allow it.
+
+## 0a. Earlier checkpoint (2026-10-12)
 
 - **2026-10-13, AI runtime foundation (docs/AI.md, master plan B6):**
   - Built: provider-independent interface, OpenAI adapter (Responses API, `store: false`), server-only configuration,
