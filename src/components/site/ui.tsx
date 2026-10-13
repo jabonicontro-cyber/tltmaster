@@ -57,11 +57,11 @@ export function Screenshot({ src, alt, width, height, caption, className, priori
   );
 }
 
-export function SectionHeading({ eyebrow, title, children, className }: { eyebrow?: string; title: string; children?: ReactNode; className?: string }) {
+export function SectionHeading({ eyebrow, title, children, className, id }: { eyebrow?: string; title: string; children?: ReactNode; className?: string; /** The heading's id, for aria-labelledby. */ id?: string }) {
   return (
     <div className={cn("max-w-2xl", className)}>
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 className="mt-3 text-3xl font-bold tracking-tight text-balance text-cloud sm:text-[2.5rem] sm:leading-[1.15]">{title}</h2>
+      <h2 id={id} className="mt-3 text-3xl font-bold tracking-tight text-balance text-cloud sm:text-[2.5rem] sm:leading-[1.15]">{title}</h2>
       {children ? <div className="mt-4 text-[17px] leading-relaxed text-silver">{children}</div> : null}
     </div>
   );

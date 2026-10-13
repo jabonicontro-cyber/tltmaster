@@ -37,6 +37,14 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState(0);
   const onReady = useCallback(() => setReady(true), []);
+  const [wide, setWide] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
 
   useEffect(() => {
     if (!webglAvailable()) return;
@@ -75,16 +83,20 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
   return (
     <div ref={section} className="truck-story relative" data-mode={mode} data-ready={ready ? "yes" : "no"}>
       <div className="grid lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-10">
+        {/* On wide screens the scene spans the whole section behind the text (the truck is framed to the right), so the
+            rig is never cropped by a column; the text keeps its own column on top. */}
         {/* The visual stays in view: beside the text on wide screens, pinned above it on phones. */}
-        <div className="truck-visual pointer-events-none sticky top-14 z-10 order-first h-[38vh] min-h-[240px] lg:top-16 lg:order-last lg:h-[calc(100vh-4rem)]" aria-hidden>
+        <div className="truck-visual pointer-events-none sticky top-14 z-10 order-first h-[38vh] min-h-[240px] bg-navy/90 backdrop-blur-sm lg:z-0 lg:col-span-2 lg:col-start-1 lg:row-start-1 lg:mx-[calc(50%-50vw)] lg:self-start lg:bg-transparent lg:backdrop-blur-none lg:top-16 lg:h-[calc(100vh-4rem)]" aria-hidden>
           <div className="truck-stage absolute inset-0">
-            <DumpTruck className={`absolute inset-x-[4%] bottom-[12%] w-[92%] transition-opacity duration-700 ${ready ? "opacity-0" : "opacity-100"}`} />
+            {/* Keeps the text legible where it overlaps the scene on wide screens. */}
+            <div className="absolute inset-y-0 left-0 z-10 hidden w-[48%] bg-gradient-to-r from-navy via-navy/80 to-transparent lg:block" />
+            <DumpTruck className={`absolute inset-x-[4%] bottom-[12%] w-[92%] lg:left-auto lg:right-0 lg:w-[52%] transition-opacity duration-700 ${ready ? "opacity-0" : "opacity-100"}`} />
             {mode !== "static" && (
-              <TruckScene progress={progress} onReady={onReady} className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`} />
+              <TruckScene progress={progress} onReady={onReady} frameRight={wide ? 0.24 : 0} className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`} />
             )}
           </div>
         </div>
-        <div className="relative">
+        <div className="relative z-10 lg:col-start-1 lg:row-start-1">
           <div className="flex min-h-[70vh] flex-col justify-center py-10 lg:min-h-[calc(100vh-4rem)]">{intro}</div>
           {chapters.map((c, i) => (
             <section key={c.id} id={c.id} aria-labelledby={`${c.id}-title`} className="flex min-h-[60vh] flex-col justify-center py-12 lg:min-h-[85vh]">

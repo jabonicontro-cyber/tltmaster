@@ -55,7 +55,7 @@ test("the public website is open to everyone, works on a phone, and shows the pr
 test("the homepage: one heading, demo calls to action lead to the form, and keyboard focus is visible", async ({ page }) => {
   await page.goto("/");
   await expect(page.locator("h1")).toHaveCount(1);
-  await expect(page.locator("h1")).toHaveText("Every load, from quote to billing, in one record.");
+  await expect(page.locator("h1")).toHaveText("A smarter way to run a fleet.");
   const demoLinks = page.getByRole("link", { name: /Request a demo/ });
   expect(await demoLinks.count()).toBeGreaterThanOrEqual(2);
   for (const href of await demoLinks.evaluateAll((els) => els.map((e) => e.getAttribute("href")))) expect(href).toBe("/demo");

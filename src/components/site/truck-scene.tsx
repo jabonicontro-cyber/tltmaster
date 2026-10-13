@@ -16,6 +16,8 @@ import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeom
 export interface TruckSceneProps {
   /** Scroll position through the story, 0–1. Read on every animation frame from this ref. */
   progress: { current: number };
+  /** Shift the framed truck right by this fraction of the canvas width (the text sits on the left). */
+  frameRight?: number;
   className?: string;
   onReady?: () => void;
 }
@@ -28,11 +30,11 @@ const ELECTRIC = 0x168bff;
 
 /** Camera shots along the story; positions are interpolated with an ease. [camera x,y,z], [look-at x,y,z], truck yaw. */
 const SHOTS: Array<{ at: number; cam: [number, number, number]; look: [number, number, number]; yaw: number }> = [
-  { at: 0.0, cam: [9.5, 2.6, 10.5], look: [0.6, 1.3, 0], yaw: 0 }, // opening: front three-quarter
-  { at: 0.25, cam: [0.4, 2.2, 13.5], look: [-1.5, 1.4, 0], yaw: 0 }, // the whole rig in profile
-  { at: 0.5, cam: [-11, 3.4, 8], look: [-3.5, 1.2, 0], yaw: 0 }, // rear three-quarter: the trailer and its load
-  { at: 0.75, cam: [-2, 9.5, 9.5], look: [-1.5, 0.6, 0], yaw: 0 }, // high view: the operation from above
-  { at: 1.0, cam: [8.5, 1.5, 6.5], look: [1.6, 1.4, 0], yaw: 0 }, // close: cab and headlights
+  { at: 0.0, cam: [13.5, 3.4, 15.5], look: [-1.2, 1.3, 0], yaw: 0 }, // opening: front three-quarter, the whole rig
+  { at: 0.25, cam: [-1, 2.8, 21.5], look: [-2, 1.5, 0], yaw: 0 }, // the whole rig in profile
+  { at: 0.5, cam: [-16.5, 4.4, 12], look: [-3, 1.3, 0], yaw: 0 }, // rear three-quarter: the trailer and its load
+  { at: 0.75, cam: [-2.5, 14.5, 13.5], look: [-2, 0.6, 0], yaw: 0 }, // high view: the operation from above
+  { at: 1.0, cam: [11, 2, 9.5], look: [1.2, 1.4, 0], yaw: 0 }, // closer: cab and headlights
 ];
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -208,8 +210,10 @@ function buildTruck(): { group: THREE.Group; wheels: THREE.Object3D[]; dispose: 
   return { group: g, wheels, dispose: () => disposables.forEach((d) => d.dispose()) };
 }
 
-export function TruckScene({ progress, className, onReady }: TruckSceneProps) {
+export function TruckScene({ progress, className, onReady, frameRight = 0 }: TruckSceneProps) {
   const host = useRef<HTMLDivElement>(null);
+  const shift = useRef(frameRight);
+  useEffect(() => { shift.current = frameRight; }, [frameRight]);
 
   useEffect(() => {
     const el = host.current;
@@ -272,8 +276,10 @@ export function TruckScene({ progress, className, onReady }: TruckSceneProps) {
       const h = el.clientHeight || 1;
       renderer.setSize(w, h, false);
       camera.aspect = w / h;
-      // Narrow screens: pull back so the whole rig stays in frame.
-      camera.fov = w / h < 0.9 ? 46 : 32;
+      // Narrow screens: widen the lens so the whole rig stays in frame.
+      camera.fov = w / h < 0.9 ? 50 : w / h < 1.3 ? 40 : 32;
+      if (shift.current) camera.setViewOffset(w, h, -w * shift.current, 0, w, h);
+      else camera.clearViewOffset();
       camera.updateProjectionMatrix();
     };
     resize();
@@ -285,6 +291,7 @@ export function TruckScene({ progress, className, onReady }: TruckSceneProps) {
     io.observe(el);
 
     let shown = -1;
+    let lastShift = shift.current;
     let eased = progress.current;
     let frame = 0;
     let ready = false;
@@ -294,6 +301,7 @@ export function TruckScene({ progress, className, onReady }: TruckSceneProps) {
       // Ease towards the scroll position; render only while something changes.
       eased += (progress.current - eased) * 0.12;
       if (Math.abs(eased - progress.current) < 0.0004) eased = progress.current;
+      if (lastShift !== shift.current) { lastShift = shift.current; resize(); shown = -1; }
       if (eased === shown && ready) return;
       shown = eased;
       const s = shotAt(eased);

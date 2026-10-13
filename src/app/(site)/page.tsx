@@ -2,15 +2,75 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { ProductShowcase } from "@/components/site/product-showcase";
+import { TruckStory, type StoryChapter } from "@/components/site/truck-story";
 import { Container, CtaLink, Eyebrow, FinalCta, Screenshot, SectionHeading } from "@/components/site/ui";
 
 export const metadata: Metadata = {
-  title: { absolute: "Taviron — hauling operations software" },
-  description: "Quotes, orders, dispatch, drivers, delivery tickets and billing readiness for aggregate and material hauling companies, in one place.",
+  title: { absolute: "Taviron — plan the whole hauling operation" },
+  description: "Taviron plans loads, trucks, trailers and drivers together under your safety and capacity rules — quotes, dispatch, tickets and billing readiness in one place for aggregate and material haulers.",
 };
 
 // Every statement on this page matches a capability listed as available in
 // src/lib/site/capabilities.ts. Screens are the real app with fictional demo data.
+
+// The story beside the truck. Each chapter describes what works today; what is still being built says so.
+const STORY: StoryChapter[] = [
+  {
+    id: "intelligence",
+    eyebrow: "The whole operation",
+    title: "Every load, truck and driver — planned together.",
+    body: (
+      <>
+        <p>Most dispatch tools fill one load at a time. Taviron&apos;s Plan the day weighs every unassigned load against the whole fleet at once, so a truck isn&apos;t spent on an easy load when a harder one needed it.</p>
+        <p>Maintenance, time off, qualifications, trailers and existing commitments are part of the same picture.</p>
+      </>
+    ),
+  },
+  {
+    id: "profitability",
+    eyebrow: "Profitability",
+    title: "Revenue in view — honestly estimated.",
+    body: (
+      <>
+        <p>Each plan shows the revenue it covers, estimated from your own order rates and labelled as an estimate.</p>
+        <p>Margin needs your costs — fuel, wages, maintenance. Until they are recorded, Taviron says so instead of guessing.</p>
+      </>
+    ),
+  },
+  {
+    id: "reliability",
+    eyebrow: "Reliability",
+    title: "Promises you can keep.",
+    body: (
+      <>
+        <p>Choose service first and urgent orders and overdue requested dates lead the plan.</p>
+        <p>Recorded capacity, driver qualifications, shop dates and open safety reports are checked before anything is proposed — and again when a dispatcher approves.</p>
+      </>
+    ),
+  },
+  {
+    id: "utilization",
+    eyebrow: "Fleet utilization",
+    title: "Compare plans, not guesses.",
+    body: (
+      <>
+        <p>See the same day planned for service, revenue, truck utilization, fewer empty trips or an even driver workload — with the trade-offs between them spelled out.</p>
+        <p>Where data is missing — hours of service, travel distance, unverified capacity — the plan says &ldquo;needs review&rdquo; rather than pretending.</p>
+      </>
+    ),
+  },
+  {
+    id: "automation",
+    eyebrow: "Less paperwork",
+    title: "The office work follows the truck.",
+    body: (
+      <>
+        <p>Tickets start on the driver&apos;s phone, are reviewed beside their order, and only verified deliveries reach billing — with invoice drafts prepared, never sent on their own.</p>
+        <p className="text-sm text-silver/80">In development: AI assistance for office work, built on the same checked records. People will still approve every consequential step.</p>
+      </>
+    ),
+  },
+];
 
 const FLOW = [
   { icon: FileText, title: "Quote", text: "Customer-specific rates, versioned PDF quotes." },
@@ -51,30 +111,44 @@ function Points({ items }: { items: string[] }) {
 export default function HomePage() {
   return (
     <>
-      {/* Hero */}
-      <section className="relative overflow-hidden">
+      {/* Opening and story: the truck stays in view while the chapters scroll (src/components/site/truck-story.tsx). */}
+      <section className="relative overflow-x-clip" aria-label="Introduction">
         <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgb(22_139_255/0.14),transparent)]" aria-hidden />
-        <Container className="relative pt-16 pb-14 sm:pt-24 sm:pb-20 md:pb-28">
-          <div className="max-w-3xl">
-            <Eyebrow>For aggregate and material haulers</Eyebrow>
-            <h1 className="mt-5 text-[2.5rem] leading-[1.08] font-bold tracking-tight text-balance text-cloud sm:text-6xl">
-              Every load, from quote to billing, in one record.
-            </h1>
-            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-silver sm:text-xl">
-              Taviron connects quotes, orders, dispatch, drivers, delivery tickets and billing readiness — so the office, dispatch and the trucks work from the same
-              information instead of whiteboards, group texts and re-keyed spreadsheets.
-            </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <CtaLink href="/demo">
-                Request a demo <ArrowRight className="size-4" aria-hidden />
-              </CtaLink>
-              <CtaLink href="/platform" variant="ghost">
-                See what it does today
-              </CtaLink>
-            </div>
-            <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(60%_60%_at_60%_0%,rgb(22_139_255/0.16),transparent)]" aria-hidden />
+        <Container className="relative">
+          <TruckStory
+            intro={
+              <div className="max-w-2xl">
+                <Eyebrow>Whole-operation planning for haulers</Eyebrow>
+                <h1 className="mt-5 text-[2.6rem] leading-[1.05] font-bold tracking-tight text-balance text-cloud sm:text-6xl">
+                  A smarter way to run a fleet.
+                </h1>
+                <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
+                  Taviron plans the whole operation at once — loads, trucks, trailers, drivers and the rules that bind them — and shows you the
+                  best plan for the priorities you choose. Safety, qualification and capacity rules come first. Nothing moves until a person approves it.
+                </p>
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <CtaLink href="/demo">
+                    Request a demo <ArrowRight className="size-4" aria-hidden />
+                  </CtaLink>
+                  <CtaLink href="/platform" variant="ghost">
+                    See what it does today
+                  </CtaLink>
+                </div>
+                <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
+              </div>
+            }
+            chapters={STORY}
+          />
+        </Container>
+      </section>
+
+      {/* The real product: screens from the live demo company (fictional data). */}
+      <section aria-labelledby="product-title" className="border-t border-silver/10">
+        <Container className="py-16 sm:py-20">
+          <SectionHeading id="product-title" eyebrow="The real product" title="This is the app, not a mock-up.">
+            <p>Every screen on this page is Taviron itself, captured from the live demo company with fictional data.</p>
+          </SectionHeading>
           <ProductShowcase />
         </Container>
       </section>

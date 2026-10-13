@@ -34,8 +34,8 @@ export const AVAILABLE: Capability[] = [
   },
   {
     title: "Dispatch",
-    points: ["Loads planned per order and day; a queue of confirmed orders waiting to be scheduled", "Smart Dispatch suggests a truck and driver for each open load, several days ahead, with its reasons and alternatives — nothing is assigned until a dispatcher approves", "Assignments checked for service status, open safety reports, recorded capacity, driver qualifications and expirations, and time conflicts — with the reason shown when one is refused"],
-    evidence: ["/dispatch"],
+    points: ["Loads planned per order and day; a queue of confirmed orders waiting to be scheduled", "Plan the day: every unassigned load planned across the whole fleet at once, ranked by the priorities you choose (service, revenue estimate, utilization, fewer empty trips, workload balance), with the trade-offs between plans spelled out — nothing is assigned until a dispatcher approves", "Smart Dispatch suggests a truck and driver for each open load, several days ahead, with its reasons and alternatives — nothing is assigned until a dispatcher approves", "Assignments checked for service status, open safety reports, recorded capacity, driver qualifications and expirations, and time conflicts — with the reason shown when one is refused"],
+    evidence: ["/dispatch", "/dispatch/plan"],
   },
   {
     title: "Driver portal",
@@ -53,6 +53,11 @@ export const AVAILABLE: Capability[] = [
     evidence: ["/billing"],
   },
   {
+    title: "Maintenance",
+    points: ["Work orders with urgency and safety-critical defects; a safety-critical defect takes the truck out of dispatch until it is cleared", "Preventive schedules by time and mileage, with items coming due", "Shop visits and restrictions are checked before any assignment"],
+    evidence: ["/maintenance"],
+  },
+  {
     title: "Reports and fleet",
     points: ["Operations and revenue report from recorded loads, tickets and orders", "Trucks and trailers with capacities and service status history; drivers with qualifications and expirations", "Users by role; each company controls its own role permissions and its logo and colors in the app"],
     evidence: ["/reports", "/fleet", "/settings"],
@@ -63,7 +68,7 @@ export const PLANNED: string[] = [
   "Driver pay calculations — waiting on each company's written pay rules",
   "Issuing or sending invoices, and accounting or payroll integrations (QuickBooks Online is the first target, to be verified with a test company)",
   "Travel distance and drive time in dispatch suggestions — truck locations are not recorded yet",
-  "Maintenance work orders, preventive schedules and parts",
+  "Parts inventory and purchasing for maintenance",
   "GPS tracking, offline mode and route or weather intelligence",
   "Automatic reading (OCR) of paper tickets",
   "Online payments and self-service subscriptions",
