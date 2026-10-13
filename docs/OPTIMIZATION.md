@@ -41,6 +41,12 @@ explain plans and help explore alternatives, but it will call this core rather t
    re-score, so plans are identical (checked byte-for-byte against the previous implementation on 20 plan/preset
    combinations). Measured: 40 loads × 20 trucks × 20 drivers 3.7 s → 0.6 s; 60 × 30 × 30 28 s → 2.5 s;
    80 × 40 × 40 84 s → about 4 s (`tests/unit/optimization-scale.test.ts` keeps 80 × 40 × 40 under 20 s).
+   Large fleets: the hard rules are checked per part (the truck's, the driver's, the trailer's and the pair's own),
+   once per load, instead of once per truck × driver; the parts of a pair's score that never change are cached; and a
+   candidate whose truck and driver have no other load that day reuses the rest of the plan's (identical)
+   contributions. The Top Line test company (20 loads × 227 trucks × 149 drivers) went 13.4 s → about 2.7 s, plans
+   byte-identical. `tests/unit/optimization-feasibility.test.ts` checks the per-part result against `checkAssignment`
+   for every combination and keeps 20 × 220 × 150 under 10 s (30 s before).
 
 ## 3. Statuses and honesty rules
 

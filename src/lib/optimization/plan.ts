@@ -16,7 +16,7 @@
 // recorded (site continuity is used as the efficiency proxy, and said so); hours of service are not verified
 // because no ELD data is connected — so no assignment is ever "Verified feasible" yet, only "Needs review".
 
-import { checkPair, HOS_NOTE, orderLoads, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { checkPair, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 
 export type FeasibilityStatus = "verified" | "needs_review" | "blocked";
@@ -140,7 +140,9 @@ export interface Optimization {
   blocked: UncoveredLoad[];
 }
 
-type Pair = { truck: SmartTruck; trailer: OptTrailer | null; driverId: string; driverLabel: string; review: string[] };
+type Pair = { truck: SmartTruck; trailer: OptTrailer | null; driverId: string; driverLabel: string; review: string[]; fixed?: PairFixed };
+/** The parts of a pair's score for its load that never change while plans are built (computed on first use). */
+interface PairFixed { fill: number | null; bookedSites: string[] | undefined; bookedDriverLoads: number; penalty: number; truckDay: string; driverDay: string }
 
 const overlaps = (a: { starts_at: string; ends_at: string }, b: { starts_at: string; ends_at: string }) => a.starts_at < b.ends_at && b.starts_at < a.ends_at;
 
@@ -160,6 +162,15 @@ const equipmentLabel = (truck: SmartTruck, trailer: OptTrailer | null) => `truck
 
 /** Hard trailer rules for a tractor pulling `trailer` on `load` (beyond the tractor's own checks). */
 function trailerBlockers(input: OptimizationInput, load: SmartLoad, truck: SmartTruck, trailer: OptTrailer, driverId: string): string[] {
+  const out = trailerEquipmentBlockers(input, load, truck, trailer);
+  const driver = input.drivers.find((d) => d.id === driverId);
+  if (driver) out.push(...trailerDriverBlockers(load, driver).map((b) => `${driver.name}: ${eligibilityMessage(b)}`));
+  return out;
+}
+/** The driver's part of the trailer rules (a licence for a combination vehicle). */
+const trailerDriverBlockers = (load: SmartLoad, driver: SmartDriver) => driverChecks({ active: driver.active, qualifications: driver.qualifications }, true, load.load_date).blockers;
+/** The trailer's own part: its state, its bookings, compatibility with the tractor and the combined capacity. */
+function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, truck: SmartTruck, trailer: OptTrailer): string[] {
   const out: string[] = [];
   if (!trailer.active) out.push(`Trailer ${trailer.unit_number} is deactivated.`);
   if (trailer.service_status === "out_of_service") out.push(`Trailer ${trailer.unit_number} is out of service.`);
@@ -168,8 +179,6 @@ function trailerBlockers(input: OptimizationInput, load: SmartLoad, truck: Smart
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === trailer.id && b.load_id !== load.id && overlaps(b, load))) out.push(`Trailer ${trailer.unit_number} is already booked at an overlapping time.`);
   const cap = capacity(truck, load.unit_code, trailer);
   if (load.planned_quantity !== null && cap !== null && load.planned_quantity > cap) out.push(`Planned ${load.planned_quantity} ${load.unit_code ?? ""} exceeds the recorded capacity of ${equipmentLabel(truck, trailer)}.`);
-  const driver = input.drivers.find((d) => d.id === driverId);
-  if (driver) out.push(...driverChecks({ active: driver.active, qualifications: driver.qualifications }, true, load.load_date).blockers.map((b) => `${driver.name}: ${eligibilityMessage(b)}`));
   return out;
 }
 
@@ -187,27 +196,45 @@ export function checkAssignment(input: OptimizationInput, loadId: string, truckI
   if (truck.truck_type === "tractor" && !trailer) return { ok: false, reasons: [`Truck ${truck.unit_number} is a tractor: it needs a trailer.`] };
   // The tractor's own checks (service, safety, shop, reports, bookings, driver) without the "needs a trailer" rule and
   // with the combined capacity checked below instead of the tractor's alone.
-  const asCarrier: OptimizationInput = { ...input, trucks: input.trucks.map((t) => (t.id === truckId ? { ...t, truck_type: "tractor (with trailer)", weight_capacity: null, volume_capacity: null } : t)) };
+  const asCarrier: OptimizationInput = { ...input, trucks: input.trucks.map((t) => (t.id === truckId ? asTrailerCarrier(t) : t)) };
   const own = checkPair(asCarrier, loadId, truckId, driverId);
   const reasons = [...own.reasons, ...trailerBlockers(input, load, truck, trailer!, driverId)];
   return { ok: reasons.length === 0, reasons };
 }
 
-/** Feasible truck(-and-trailer)-and-driver pairs for each load (hard constraints only, against existing bookings). */
+/** A tractor checked as the carrier of a trailer: no "needs a trailer" rule, capacity checked with the trailer. */
+const asTrailerCarrier = (t: SmartTruck): SmartTruck => ({ ...t, truck_type: "tractor (with trailer)", weight_capacity: null, volume_capacity: null });
+
+/**
+ * Feasible truck(-and-trailer)-and-driver pairs for each load (hard constraints only, against existing bookings).
+ * The same rules as checkAssignment, split into the truck's, the driver's, the trailer's and the pair's own part so
+ * each part is checked once per load rather than once per truck × driver (200+ trucks × 150 drivers is 30 000 pairs).
+ */
 export function feasiblePairs(input: OptimizationInput): Map<string, Pair[]> {
   const out = new Map<string, Pair[]>();
+  const rejected = new Set(input.rejections.map((r) => `${r.load_id}|${r.truck_id}|${r.driver_id}`));
   for (const load of input.loads) {
     const pairs: Pair[] = [];
+    const driverOk = new Map(input.drivers.map((d) => [d.id, driverBlockers(input, load, d).length === 0]));
+    const combinationOk = new Map<string, boolean>();
     for (const truck of input.trucks) {
+      const tractor = truck.truck_type === "tractor";
+      if (truckBlockers(input, load, tractor ? asTrailerCarrier(truck) : truck).length) continue;
       // A tractor is tried with each usable trailer, best capacity fit first (at most three per tractor and driver).
-      const trailers: Array<OptTrailer | null> = truck.truck_type === "tractor"
+      const trailers: Array<OptTrailer | null> = tractor
         ? [...(input.trailers ?? [])].sort((a, b) => (capacity(truck, load.unit_code, a) ?? Infinity) - (capacity(truck, load.unit_code, b) ?? Infinity) || a.unit_number.localeCompare(b.unit_number))
         : [null];
+      const trailerOk = new Map(trailers.map((t) => [t?.id ?? "", t === null || trailerEquipmentBlockers(input, load, truck, t).length === 0]));
       for (const driver of input.drivers) {
+        if (!driverOk.get(driver.id) || rejected.has(`${load.id}|${truck.id}|${driver.id}`)) continue;
+        if (tractor) {
+          if (!combinationOk.has(driver.id)) combinationOk.set(driver.id, trailerDriverBlockers(load, driver).length === 0);
+          if (!combinationOk.get(driver.id)) continue;
+        }
         let found = 0;
         for (const trailer of trailers) {
           if (found >= 3) break;
-          if (!checkAssignment(input, load.id, truck.id, trailer?.id ?? null, driver.id).ok) continue;
+          if (!trailerOk.get(trailer?.id ?? "")) continue;
           found++;
           pairs.push({ truck, trailer, driverId: driver.id, driverLabel: driver.name, review: reviewReasons(input, load, truck, trailer, driver.id) });
         }
@@ -306,27 +333,41 @@ function scoreCore(load: SmartLoad, pair: Pair, p: Priorities, plannedAny: boole
   // Reasons are text for the final plan only; the search needs the score, so it skips building them.
   const reasons: string[] = [];
   let score = 0;
-  const cap = capacity(pair.truck, load.unit_code, pair.trailer);
-  if (cap && load.planned_quantity) {
-    const fill = Math.min(load.planned_quantity / cap, 1);
-    score += 6 * p.utilization * fill;
-    if (withReasons && fill >= 0.8) reasons.push(`uses ${Math.round(fill * 100)}% of the capacity of ${equipmentLabel(pair.truck, pair.trailer)}`);
+  const fixed = fixedOf(load, pair, input);
+  if (fixed.fill !== null) {
+    score += 6 * p.utilization * fixed.fill;
+    if (withReasons && fixed.fill >= 0.8) reasons.push(`uses ${Math.round(fixed.fill * 100)}% of the capacity of ${equipmentLabel(pair.truck, pair.trailer)}`);
   }
-  const booked = bookedIndex(input);
-  const bookedSites = booked.truckSites.get(dayKey(pair.truck.id, load.load_date));
+  const bookedSites = fixed.bookedSites;
   const anySite = plannedAny || Boolean(bookedSites?.length);
   if (anySite && (plannedHere || bookedSites?.includes(load.site))) { score += 6 * p.efficiency; if (withReasons) reasons.push(`truck ${pair.truck.unit_number} is already at this site that day`); }
   else if (anySite) score -= 3 * p.efficiency; // a site change: an empty repositioning trip
-  const driverLoads = plannedDriverLoads + (booked.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0);
+  const driverLoads = plannedDriverLoads + fixed.bookedDriverLoads;
   score -= 2 * p.balance * driverLoads;
   if (withReasons && driverLoads === 0 && p.balance > 0) reasons.push(`${pair.driverLabel} has no other load that day`);
-  score -= pair.review.length - (input.hoursOfServiceVerified ? 0 : 1); // prefer pairs with complete data
+  score -= fixed.penalty; // prefer pairs with complete data
   return { score, reasons };
+}
+/** A pair object belongs to one load (feasiblePairs builds them per load), so its fixed parts are cached on it. */
+function fixedOf(load: SmartLoad, pair: Pair, input: OptimizationInput): PairFixed {
+  if (pair.fixed) return pair.fixed;
+  const cap = capacity(pair.truck, load.unit_code, pair.trailer);
+  const booked = bookedIndex(input);
+  const truckDay = dayKey(pair.truck.id, load.load_date), driverDay = dayKey(pair.driverId, load.load_date);
+  return (pair.fixed = {
+    fill: cap && load.planned_quantity ? Math.min(load.planned_quantity / cap, 1) : null,
+    bookedSites: booked.truckSites.get(truckDay),
+    bookedDriverLoads: booked.driverLoads.get(driverDay) ?? 0,
+    penalty: pair.review.length - (input.hoursOfServiceVerified ? 0 : 1),
+    truckDay,
+    driverDay,
+  });
 }
 
 function pairScore(load: SmartLoad, pair: Pair, p: Priorities, idx: PlanIndex, input: OptimizationInput, withReasons = true): { score: number; reasons: string[] } {
-  const planned = idx.truckSites.get(dayKey(pair.truck.id, load.load_date));
-  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(dayKey(pair.driverId, load.load_date)) ?? 0, input, withReasons);
+  const fixed = fixedOf(load, pair, input);
+  const planned = idx.truckSites.get(fixed.truckDay);
+  return scoreCore(load, pair, p, Boolean(planned?.size), Boolean(planned?.has(load.site)), idx.driverLoads.get(fixed.driverDay) ?? 0, input, withReasons);
 }
 
 const conflicts = (idx: PlanIndex, load: SmartLoad, pair: Pair) =>
@@ -398,8 +439,13 @@ const byTime = (loads: Map<string, SmartLoad>) => (x: PlannedAssignment, y: Plan
 
 /** A scored plan: assignments in time order with what each saw before it and what it contributed. */
 interface Scored { sorted: PlannedAssignment[]; slot: Map<string, { any: boolean; here: boolean; driver: number; c: number }>; total: number }
-const pairOf = (a: PlannedAssignment, ctx: ScoreContext): Pair =>
-  ({ truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review });
+/** The pair behind each assignment (one load each), so its fixed score parts are computed once. */
+const assignmentPairs = new WeakMap<PlannedAssignment, Pair>();
+const pairOf = (a: PlannedAssignment, ctx: ScoreContext): Pair => {
+  let pair = assignmentPairs.get(a);
+  if (!pair) assignmentPairs.set(a, (pair = { truck: ctx.trucks.get(a.truckId)!, trailer: a.trailerId ? ctx.trailers.get(a.trailerId) ?? null : null, driverId: a.driverId, driverLabel: a.driverLabel, review: a.review }));
+  return pair;
+};
 
 function scorePlan(input: OptimizationInput, assignments: PlannedAssignment[], loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): Scored {
   let score = 0;
@@ -418,14 +464,28 @@ function scorePlan(input: OptimizationInput, assignments: PlannedAssignment[], l
   return { sorted, slot, total: Math.round(score * 100) / 100 };
 }
 
-/** What every candidate move of one load shares: the plan without that load, in time order, and where it goes back in. */
-interface MovePrep { load: SmartLoad; before: PlannedAssignment | undefined; list: PlannedAssignment[]; at: number; sameDay: boolean[] }
+/**
+ * What every candidate move of one load shares: the plan without that load, in time order, and where it goes back in;
+ * the trucks and drivers that have other loads that day; and the prefix sum and later contributions that are the
+ * same for every "free" candidate (a truck and a driver with no other load that day).
+ */
+interface MovePrep {
+  load: SmartLoad; before: PlannedAssignment | undefined; list: PlannedAssignment[]; at: number; sameDay: boolean[];
+  busyTrucks: Set<string>; busyDrivers: Set<string>; prefix: number; freeSuffix: number[] | null;
+}
 function prepareMove(base: Scored, load: SmartLoad, loads: Map<string, SmartLoad>, rank: Map<string, number>): MovePrep {
   const list = base.sorted.filter((a) => a.loadId !== load.id);
   const r = rank.get(load.id)!;
   let at = list.findIndex((a) => rank.get(a.loadId)! > r);
   if (at < 0) at = list.length;
-  return { load, before: base.sorted.find((a) => a.loadId === load.id), list, at, sameDay: list.map((a) => loads.get(a.loadId)!.load_date === load.load_date) };
+  const sameDay = list.map((a) => loads.get(a.loadId)!.load_date === load.load_date);
+  let prefix = 0;
+  for (let i = 0; i < at; i++) prefix += base.slot.get(list[i].loadId)!.c;
+  return {
+    load, before: base.sorted.find((a) => a.loadId === load.id), list, at, sameDay, prefix, freeSuffix: null,
+    busyTrucks: new Set(list.filter((_, i) => sameDay[i]).map((a) => a.truckId)),
+    busyDrivers: new Set(list.filter((_, i) => sameDay[i]).map((a) => a.driverId)),
+  };
 }
 
 /**
@@ -433,8 +493,20 @@ function prepareMove(base: Scored, load: SmartLoad, loads: Map<string, SmartLoad
  * the moved load and the later assignments that day on its old or new truck or driver can change. The sum runs in
  * the same order over the same contributions as scorePlan, so the result is identical to re-scoring the whole plan.
  */
-function scoreMove(base: Scored, prep: MovePrep, moved: PlannedAssignment, input: OptimizationInput, loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): number {
+function scoreMove(base: Scored, prep: MovePrep, pair: Pair, input: OptimizationInput, loads: Map<string, SmartLoad>, p: Priorities, ctx: ScoreContext): number {
   const { load, before, list, at, sameDay } = prep;
+  const free = !prep.busyTrucks.has(pair.truck.id) && !prep.busyDrivers.has(pair.driverId);
+  if (free && prep.freeSuffix) {
+    // A free pair starts the day fresh and changes no later assignment except through the load's old truck and
+    // driver, which is the same for every free pair: the same sum as below, with the shared terms reused.
+    let score = prep.prefix;
+    score += ctx.value.get(load.id)! + scoreCore(load, pair, p, false, false, 0, input, false).score;
+    for (const c of prep.freeSuffix) score += c;
+    return Math.round(score * 100) / 100;
+  }
+  const moved = { loadId: load.id, truckId: pair.truck.id, trailerId: pair.trailer?.id ?? null, driverId: pair.driverId, driverLabel: pair.driverLabel, review: pair.review } as PlannedAssignment;
+  assignmentPairs.set(moved, pair);
+  const suffix: number[] | null = free ? [] : null;
   const oldTruck = before?.truckId, oldDriver = before?.driverId;
   const isTruck = (id: string) => id === moved.truckId || id === oldTruck;
   const isDriver = (id: string) => id === moved.driverId || id === oldDriver;
@@ -462,12 +534,16 @@ function scoreMove(base: Scored, prep: MovePrep, moved: PlannedAssignment, input
   track(moved, load);
   for (let i = at; i < list.length; i++) {
     const a = list[i];
+    let c: number;
     if (sameDay[i] && (isTruck(a.truckId) || isDriver(a.driverId))) {
       const l = loads.get(a.loadId)!;
-      score += recompute(a, l);
+      c = recompute(a, l);
       track(a, l);
-    } else score += base.slot.get(a.loadId)!.c;
+    } else c = base.slot.get(a.loadId)!.c;
+    score += c;
+    suffix?.push(c);
   }
+  if (suffix) prep.freeSuffix = suffix;
   return Math.round(score * 100) / 100;
 }
 
@@ -541,9 +617,8 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
       for (const pair of pairs.get(load.id) ?? []) {
         if (conflicts(withoutIdx, load, pair)) continue;
         if (current && current.truckId === pair.truck.id && current.driverId === pair.driverId && current.trailerId === (pair.trailer?.id ?? null)) continue;
-        // Scored as a bare assignment; the full one (with its reasons) is built only when the move is taken.
-        const probe = { loadId: load.id, truckId: pair.truck.id, trailerId: pair.trailer?.id ?? null, driverId: pair.driverId, driverLabel: pair.driverLabel, review: pair.review } as PlannedAssignment;
-        const s = scoreMove(base, prep, probe, input, loads, priorities, ctx);
+        // Scored as a bare pair; the full assignment (with its reasons) is built only when the move is taken.
+        const s = scoreMove(base, prep, pair, input, loads, priorities, ctx);
         if (s > score + 1e-9) { plan = [...without, build(load, pair, withoutIdx)]; base = scorePlan(input, plan, loads, priorities, ctx); score = s; improved = true; break; }
       }
       if (!plan.some((a) => a.loadId === load.id)) {

@@ -443,6 +443,14 @@ export function resourceExclusions(input: SmartInput, loadId: string): { trucks:
   return { trucks, drivers };
 }
 
+/**
+ * checkPair's halves for one load, for callers that test every truck against every driver (Plan the day): a pair is
+ * feasible exactly when the truck has no blocker, the driver has none, and a dispatcher has not rejected the pair.
+ */
+export const truckBlockers = (input: SmartInput, load: SmartLoad, truck: SmartTruck): string[] => truckExclusions(truck, load, input, [], input.bookings);
+export const driverBlockers = (input: SmartInput, load: SmartLoad, driver: SmartDriver): string[] =>
+  driverExclusions(driver, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers;
+
 export function checkPair(input: SmartInput, loadId: string, truckId: string, driverId: string): { ok: boolean; reasons: string[] } {
   const load = input.loads.find((l) => l.id === loadId);
   if (!load) return { ok: false, reasons: ["The load is no longer waiting for a truck (it was assigned, canceled or rescheduled)."] };

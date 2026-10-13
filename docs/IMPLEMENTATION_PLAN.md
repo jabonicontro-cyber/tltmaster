@@ -2293,7 +2293,8 @@ Local commits only (owner instruction: no push, deploy or hosted migration). Det
 - **Planner speed** — the improvement search now uses a plan index, cached load values and exact incremental scoring
   of candidate moves (only the moved load and later same-day assignments on its old/new truck or driver are
   re-scored, summed in the same order). Identical plans, checked byte-for-byte against the previous implementation.
-  80 loads × 40 trucks × 40 drivers: 84 s → ~3.5 s (scale test added).
+  80 loads × 40 trucks × 40 drivers: 84 s → ~3.5 s (scale test added). Large fleets: hard rules checked per part
+  and fixed score parts cached; 20 loads × 227 trucks × 149 drivers 13.4 s → ~2.7 s, identical plans.
 - **Demo samples** (`src/server/demo/samples.ts`, every demo, via Refresh): an order Ready to bill and one Handed off;
   a quote marked handed over (locked v1, Sent); an attention item assigned to the viewer; a confirmed order waiting
   for a date. DB test `tests/db/demo-samples.test.ts`, browser check in `demo-parity.spec.ts`.

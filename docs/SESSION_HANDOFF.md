@@ -66,8 +66,7 @@ decision 2. Migrations re-applied afterwards; demo-samples, tenancy, ai-usage, q
    `20261111000300_demo_history_names`** (optional, reversible, tested rollbacks; apply in order): every demo page
    then names the presenter as the persona (driver lists, Command Center, history, field reports, My Day, urgent
    orders). Without them hosted demos show the presenter's login name in those places. Real companies unchanged
-   (except the Command Center preferring a person's own display name, as Communications does). Without it, hosted demos show the presenter's own login name in Plan the day, Dispatch and
-   Tickets. Recommended: apply with the next release (DEPLOYMENT §2a).
+   (except the Command Center preferring a person's own display name, as Communications does). Recommended: apply with the next release (DEPLOYMENT §2a).
 3. **JIT on hosted Postgres.** Locally, JIT compilation cost 4.9 s per billing/Command Center query (the query runs in
    0.16 s). Read-only check, exact SQL and rollback: `docs/proposals/hosted-jit.md`. Recommended: check; if `jit` is
    on, turn it off for the app's roles. Not done: it is a hosted database setting.
