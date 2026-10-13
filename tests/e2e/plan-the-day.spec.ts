@@ -101,6 +101,12 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
     await expect(page.getByRole("tablist", { name: "Plans" }).getByRole("tab").first()).toContainText("Service first");
   }
 
+  // A day outside the planning window (an old link) is replaced by tomorrow, and the page says so.
+  await page.goto("/dispatch/plan?date=2000-01-01");
+  await expect(page.getByRole("status").filter({ hasText: "Plans cover today through 14 days ahead" })).toBeVisible();
+  await page.goto("/dispatch/plan");
+  await expect(page.getByText("Plans cover today through 14 days ahead")).toHaveCount(0);
+
   // Demo modes: the dispatcher view plans and approves; the driver and mechanic views have no dispatch access.
   await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: page.url() }]);
   await page.goto("/dispatch/plan");

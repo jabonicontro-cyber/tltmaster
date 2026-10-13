@@ -54,6 +54,15 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
     .filter((d) => !q || d.name.toLowerCase().includes(q) || (d.primaryTruck?.unit ?? "").toLowerCase().includes(q))
     .filter((d) => show === "" || (show === "available" ? d.qualification.eligible && !onLeave(d) : !d.qualification.eligible || onLeave(d)));
   const readyTrucks = r.trucks.filter((t) => t.availability.ready && !t.shopToday).length;
+  // A driver keeps their primary truck through a repair; on a day it cannot run, say so next to it so dispatch
+  // pairs them with another truck (the truck's own row has the details).
+  const primaryNote = (truckId: string | undefined) => {
+    const t = truckId ? r.trucks.find((x) => x.id === truckId) : undefined;
+    if (!t) return null;
+    if (!t.availability.ready) return `${t.availability.label} this day — pair with another truck.`;
+    if (t.shopToday) return "In the shop this day — pair with another truck.";
+    return null;
+  };
   const onLeave = (d: (typeof r.drivers)[number]) => d.timeOff.some((t) => t.status === "approved" && t.full_day);
   const qualifiedDrivers = r.drivers.filter((d) => d.qualification.eligible && !onLeave(d)).length;
   const leaveConflicts = r.drivers.flatMap((d) => d.leaveConflicts.map((b) => ({ driver: d, booking: b })));
@@ -159,7 +168,10 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                   </Td>
                   <Td className="text-sm"><Bookings items={d.bookings} timezone={r.timezone} date={date} /></Td>
                   <Td className="hidden md:table-cell"><Badge tone="gray">Not verified</Badge></Td>
-                  <Td className="hidden text-sm lg:table-cell">{d.primaryTruck ? <Link href={`/fleet/trucks/${d.primaryTruck.id}`} className="tabular hover:underline">{d.primaryTruck.unit}</Link> : <span className="text-muted">—</span>}</Td>
+                  <Td className="hidden text-sm lg:table-cell">
+                    {d.primaryTruck ? <Link href={`/fleet/trucks/${d.primaryTruck.id}`} className="tabular hover:underline">{d.primaryTruck.unit}</Link> : <span className="text-muted">—</span>}
+                    {primaryNote(d.primaryTruck?.id) && <div className="mt-1 max-w-48 text-xs text-muted" data-testid="primary-truck-note">{primaryNote(d.primaryTruck?.id)}</div>}
+                  </Td>
                 </Tr>
               ))}
               {drivers.length === 0 && <Tr><Td className="text-muted" colSpan={6}>No drivers match.</Td></Tr>}

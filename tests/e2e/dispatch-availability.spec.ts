@@ -16,6 +16,9 @@ test("availability shows shop visits, safety restrictions and unverified hours o
     await q("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump')", [`AV-OK-${tag}`]);
     await q("select public.maintenance_create_work_order($1::jsonb)", [JSON.stringify({ truck_id: shop, title: `Annual inspection ${tag}`, category: "inspection", scheduled_for: d })]);
     await q("select public.maintenance_create_work_order($1::jsonb)", [JSON.stringify({ truck_id: safe, title: `Steering ${tag}`, safety_critical: true })]);
+    // A driver keeps their primary truck while it is restricted; the availability page says to pair them with another.
+    const driver = (await q("insert into public.drivers (name) values ($1) returning id", [`AV-Driver ${tag}`])).rows[0].id;
+    await q("select public.set_driver_primary_truck($1, $2)", [driver, safe]);
     return d;
   });
 
@@ -28,14 +31,15 @@ test("availability shows shop visits, safety restrictions and unverified hours o
   await expect(page.getByRole("note").first()).toContainText("Hours of service are not checked");
 
   await page.goto(`/dispatch/resources?date=${today}&q=AV-`);
-  await expect(page.getByRole("row", { name: new RegExp(`AV-SHOP-${tag}`) })).toContainText("In the shop this day");
-  await expect(page.getByRole("row", { name: new RegExp(`AV-SAFE-${tag}`) })).toContainText("Safety restricted");
-  await expect(page.getByRole("row", { name: new RegExp(`AV-OK-${tag}`) })).toContainText("Available");
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-SHOP-${tag}`) })).toContainText("In the shop this day");
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-SAFE-${tag}`) })).toContainText("Safety restricted");
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-OK-${tag}`) })).toContainText("Available");
+  await expect(page.getByRole("row", { name: new RegExp(`AV-Driver ${tag}`) }).getByTestId("primary-truck-note")).toHaveText("Safety restricted this day — pair with another truck.");
 
   await page.goto(`/dispatch/resources?date=${today}&q=AV-&show=available`);
-  await expect(page.getByRole("row", { name: new RegExp(`AV-OK-${tag}`) })).toBeVisible();
-  await expect(page.getByRole("row", { name: new RegExp(`AV-SHOP-${tag}`) })).toHaveCount(0);
-  await expect(page.getByRole("row", { name: new RegExp(`AV-SAFE-${tag}`) })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-OK-${tag}`) })).toBeVisible();
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-SHOP-${tag}`) })).toHaveCount(0);
+  await expect(page.getByRole("row", { name: new RegExp(`^AV-SAFE-${tag}`) })).toHaveCount(0);
 
   // Drivers: hours of service are never shown as verified.
   await page.goto(`/dispatch/resources?date=${today}`);

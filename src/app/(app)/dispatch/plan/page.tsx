@@ -21,10 +21,16 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
   const params = await searchParams;
   const { today, timezone } = await businessToday();
   const date = params.date && isIsoDate(params.date) && params.date >= today && params.date <= addDays(today, 14) ? params.date : addDays(today, 1);
+  // A day outside today … 14 days ahead (an old link, a typed URL) is replaced by tomorrow — and the page says so.
+  const dateReplaced = Boolean(params.date) && params.date !== date;
   const preset = params.preset && params.preset in PRESETS ? params.preset : PRIORITY_KEYS.some((k) => params[k] !== undefined) ? null : "balanced";
   const priorities = parsePriorities(params, PRESETS[preset ?? "balanced"].priorities);
   const [plan, gate] = await Promise.all([
-    getOptimizationPlan(date, priorities, preset).catch((e: unknown) => ({ error: e instanceof Error ? e.message : "The optimizer is unavailable." })),
+    getOptimizationPlan(date, priorities, preset).catch((e: unknown) => {
+      // The details stay in the server log; the dispatcher gets a plain message (no table or query names).
+      console.error("Plan the day failed", e);
+      return { error: "The plan could not be built right now. Nothing was changed; try again in a moment, or use the Dispatch board." };
+    }),
     capabilityGate("plan_explanation", access),
   ]);
   // Empty day: point to the days that do have open loads instead of a dead end.
@@ -77,6 +83,11 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           </button>
         </details>
       </form>
+      {dateReplaced && (
+        <p role="status" className="mb-4 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
+          Plans cover today through 14 days ahead, so this shows {formatDateLong(date)} instead of the day in the link.
+        </p>
+      )}
       {"error" in plan ? (
         <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-950">{plan.error}</p>
       ) : (
