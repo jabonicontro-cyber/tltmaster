@@ -134,6 +134,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   with acceptance criteria, dependencies, risk tier and status; run `node scripts/release/risk.mjs` before promoting
   and put its tier and outstanding approvals in the release report (template in DEVELOPMENT_WORKFLOW §6). Approval-tier
   steps wait for the owner while unrelated ready work continues. Never claim Claude runs in the background.
+- **Deployment budget (owner, 2026-10-13):** each push deploys and the daily deployment limit is shared; push and
+  promote only noticeable bundles of changes, never single small fixes or docs (DEVELOPMENT_WORKFLOW §4a).
 - **Commits** end with the session's co-author trailer. Don't open a PR unless asked.
 - **Dates:** use `DateInput` (`src/components/ui/date-input.tsx`) for every date field and
   `isOperationalDate` on the server.

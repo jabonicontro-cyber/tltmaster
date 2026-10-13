@@ -63,7 +63,40 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("time off", await timeOff(db, today));
   note("quotes", await quotes(db, today));
   note("operational workspace", await workspace(db, today, userId));
+  note("planning day", await planningDay(db, today));
   return result;
+}
+
+/**
+ * Plan the day (docs/OPTIMIZATION.md) needs open loads on an upcoming day. When tomorrow has fewer than four
+ * unassigned loads, add planned loads to orders already scheduled for tomorrow (same unit and quantity as their
+ * other loads), at staggered times. Nothing is assigned; a second run adds nothing while four stay open.
+ */
+async function planningDay(db: Db, today: string): Promise<number> {
+  const day = addDays(today, 1);
+  const loads = ((await must("loads", db.from("order_loads").select("id, order_id, planned_quantity, unit_code").eq("load_date", day).eq("status", "planned"))) as Array<{ id: string; order_id: string; planned_quantity: number | null; unit_code: string | null }>);
+  const assigned = loads.length
+    ? new Set((((await must("assignments", db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", loads.map((l) => l.id)))) as Array<{ load_id: string }>)).map((a) => a.load_id))
+    : new Set<string>();
+  const open = loads.filter((l) => !assigned.has(l.id)).length;
+  if (open >= 4) return 0;
+  const orders = ((await must("orders", db.from("orders").select("id, scheduled_start, scheduled_end").in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).lte("scheduled_start", day).order("order_number"))) as Array<{ id: string; scheduled_start: string; scheduled_end: string | null }>)
+    .filter((o) => (o.scheduled_end ?? o.scheduled_start) >= day)
+    .slice(0, 3);
+  if (!orders.length) return 0;
+  const slots = [["07:00", "08:30"], ["09:00", "10:30"], ["11:00", "12:30"], ["13:00", "14:30"], ["15:00", "16:30"]];
+  let n = 0;
+  for (let i = 0; i < 4 - open; i++) {
+    const order = orders[i % orders.length];
+    const like = loads.find((l) => l.order_id === order.id) ?? (((await db.from("order_loads").select("planned_quantity, unit_code").eq("order_id", order.id).limit(1)).data ?? [])[0] as { planned_quantity: number | null; unit_code: string | null } | undefined);
+    const [start, end] = slots[(i + loads.length) % slots.length];
+    await must("planning load", db.rpc("save_order_load", { p_payload: {
+      order_id: order.id, load_date: day, start_time: start, end_time: end,
+      planned_quantity: like?.planned_quantity != null ? String(like.planned_quantity) : "", unit_code: like?.planned_quantity != null ? like.unit_code ?? "" : "",
+    } }));
+    n++;
+  }
+  return n;
 }
 
 /** Open work orders (one safety-critical on an idle truck) and preventive schedules (one coming due). */

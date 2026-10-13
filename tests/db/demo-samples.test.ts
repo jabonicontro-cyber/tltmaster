@@ -89,6 +89,12 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(c.timeOff).toBe(2);
     expect(c.quotes).toBeGreaterThanOrEqual(1);
     expect(c.workspaces).toBe(1);
+    // Plan the day has open loads to plan tomorrow (docs/OPTIMIZATION.md §4).
+    const open = await q<{ n: string }>(
+      "select count(*) n from public.order_loads l where l.company_id = $1 and l.load_date = ($2::date + 1) and l.status = 'planned' and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')",
+      [w.company, todayIn(TZ)],
+    );
+    expect(Number(open.rows[0].n)).toBeGreaterThanOrEqual(4);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

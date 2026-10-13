@@ -2,7 +2,7 @@
 
 import { DropdownMenu as M } from "radix-ui";
 import Link from "next/link";
-import { Building2, Check, ChevronDown, CircleUserRound, Info, LogOut, MonitorPlay, Plus, ShieldCheck, UsersRound } from "lucide-react";
+import { Building2, Check, ChevronDown, CircleUserRound, Info, ListChecks, LogOut, MonitorPlay, Plus, ShieldCheck, UsersRound } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { PresenceDot } from "@/components/communications/status";
 import type { Presence } from "@/lib/communications";
@@ -19,7 +19,7 @@ import { switchCompany } from "@/app/account/actions";
 
 type CompanyItem = { id: string; name: string; current: boolean; role: string };
 
-export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabel, companies = [], canCreateCompany = false, demo = null, platformAdmin = false, presence }: { name: string; email: string; photo?: string; /** Shown when there is no photo or it fails (the employee record's illustrated avatar). */ fallbackPhoto?: string; /** Undefined: Communications not available to this user (no dot). */ presence?: Presence | null; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; /** In a demo company: presentation mode and the current role preview (null = own view). */ demo?: { presentation: boolean; preview: string | null } | null; platformAdmin?: boolean }) {
+export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabel, companies = [], canCreateCompany = false, canManageSettings = false, demo = null, platformAdmin = false, presence }: { name: string; email: string; photo?: string; /** Shown when there is no photo or it fails (the employee record's illustrated avatar). */ fallbackPhoto?: string; /** Undefined: Communications not available to this user (no dot). */ presence?: Presence | null; roleLabel: string; companies?: CompanyItem[]; canCreateCompany?: boolean; /** Company setup checklist (settings.manage; the page checks it again). */ canManageSettings?: boolean; /** In a demo company: presentation mode and the current role preview (null = own view). */ demo?: { presentation: boolean; preview: string | null } | null; platformAdmin?: boolean }) {
   const [signingOut, startSignOut] = useTransition();
   const [toggling, startToggle] = useTransition();
   const pathname = usePathname();
@@ -69,6 +69,11 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
             <M.Item asChild className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">
               <Link href="/profile"><CircleUserRound className="size-4" aria-hidden /> My profile</Link>
             </M.Item>
+            {canManageSettings && (
+              <M.Item asChild className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface">
+                <Link href="/setup"><ListChecks className="size-4" aria-hidden /> Company setup</Link>
+              </M.Item>
+            )}
             {demo && (
               <M.Item
                 onSelect={() => setViewOpen(true)}

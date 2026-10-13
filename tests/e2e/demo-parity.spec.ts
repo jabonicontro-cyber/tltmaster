@@ -176,6 +176,9 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await owner.getByRole("button", { name: "Sign in" }).click();
   await owner.waitForURL(/command-center/);
   await closeDemoWelcome(owner);
+  // Plan the day works for a tractor fleet: each tractor is planned with a trailer.
+  await visit(owner, "/dispatch/plan");
+  await expect(owner.getByRole("region", { name: /Proposed assignments/ })).toContainText("+ trailer");
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {

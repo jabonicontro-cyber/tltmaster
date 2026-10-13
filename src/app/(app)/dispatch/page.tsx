@@ -5,7 +5,7 @@ import { SmartDispatch } from "@/components/dispatch/smart-dispatch";
 import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { ButtonLink } from "@/components/ui/button";
-import { Users } from "lucide-react";
+import { Sparkles, Users } from "lucide-react";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDateLong, isIsoDate } from "@/lib/dates";
@@ -36,7 +36,12 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       <PageHeader
         title="Dispatch"
         description={`${weekday}, ${formatDateLong(date)}${date === today ? " — today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`}
-        actions={<ButtonLink href={`/dispatch/resources?date=${date}`} variant="secondary" icon={<Users className="size-4" />}>Driver &amp; truck availability</ButtonLink>}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <ButtonLink href={`/dispatch/plan?back=${encodeURIComponent(`/dispatch?date=${date}`)}`} icon={<Sparkles className="size-4" />}>Plan the day</ButtonLink>
+            <ButtonLink href={`/dispatch/resources?date=${date}`} variant="secondary" icon={<Users className="size-4" />}>Driver &amp; truck availability</ButtonLink>
+          </div>
+        }
       />
       {urgent === null ? (
         <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Urgent orders could not be loaded. Check the Command Center before planning.</p>

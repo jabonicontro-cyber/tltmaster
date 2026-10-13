@@ -60,6 +60,15 @@ limitation), say exactly what is needed and why, and continue with other ready w
   in sequence.
 - Re-check which branch Production tracks (GitHub deployment records) before any push.
 
+## 4a. Deployment budget (owner, 2026-10-13)
+
+Every push to any branch creates a Vercel deployment, and the plan has a daily deployment limit. So:
+
+- Commit locally as often as useful; **push only bundles** that change the product noticeably (several features or a
+  visible website change together), not single fixes, docs or test-only commits.
+- Promote to Production once per bundle, after every gate has passed for that bundle — not per feature.
+- CI-only fixes ride with the next bundle unless CI is blocking a release.
+
 ## 5. Quality gates
 
 | Gate | Automated where | Notes |

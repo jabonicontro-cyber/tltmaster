@@ -52,6 +52,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
           roleLabel={`${access.role ? ROLE_LABELS[access.role] : "No role"}${access.companyName ? ` · ${access.companyName}` : ""}`}
           companies={companies.map((c) => ({ id: c.company_id, name: c.name, current: c.current, role: ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] ?? c.role }))}
           canCreateCompany={access.role === "owner"}
+          canManageSettings={access.permissions.includes("settings.manage")}
           demo={access.isDemo ? { presentation, preview: access.preview ?? null } : null}
           platformAdmin={platformAdmin}
         />
