@@ -59,7 +59,8 @@ is open decision §9 Q20 (recommend a soft preference for keeping a driver on th
 4. **Expired vehicle documents** (master plan §9 Q23): recommended — block expired insurance and registration once
    verified, warn for inspections and permits. Nothing blocks today.
 5. **Driver–truck pairing** (§9 Q20): the planner can give one truck a different driver per load in one day.
-   Recommended: a soft preference for keeping a driver on their primary truck (scoring only, no block).
+   Recommended: an opt-in priority "Keep crews together" (default 0, so plans are unchanged until turned up);
+   design in `docs/proposals/crew-continuity.md`.
 6. **AI** (unchanged): hosted migration `20261110000100_ai_usage`, a model with a passing eval, Vercel variables.
 
 ### Release checklist for this bundle (Preview → Production)
