@@ -25,6 +25,14 @@ migrations: everything below is **committed locally only** on top of `7eba5e4`.
 | `40cd70a`, `73801f6` | Plan the day and Smart Dispatch: a driver whose employee record says On leave gets a review note / warning (never a block) |
 | `c445593` | All 13 website screenshots re-captured from the current build (quality gate passed) |
 | `d2dd2e8`, `b9d4ea1`, `c92db1c`, `4df6ab3` | Demo samples (every demo, via Refresh): an order Ready to bill and one Handed off; a sent quote with a locked v1; an attention item assigned to the viewer; a confirmed order waiting for a date |
+| `69e9ba5` | Local stack: `jit = off` for the dev database (JIT compile 4.9 s on a 0.16 s billing query) |
+| `4e1099c`, `5b82500`, `c475ea0` | Plan the day about 20× faster on larger fleets (exact incremental move scoring; plans byte-identical to before) |
+| `e808488` | Dispatch and Company setup: plain error messages instead of raw database text |
+| `93963a1`, `36e4241` | Migrations `20261111000200_demo_people_names` and `20261111000300_demo_history_names` (+ tested rollbacks): the demo persona name in the Command Center, Reassign list, history, field reports, My Day, urgent orders and assignment history |
+| `31082f7` | All 13 website screenshots re-captured from a fresh demo |
+| `4ff8ec3`, `4d22ebc` | Phone layout: a very long customer name no longer widens Billing and the Command Center (525 px); e2e `long-names.spec.ts` |
+| `f8b349f`, `4fbd8a9` | Dark mode: three warning alerts had near-black text; theme test fixed to read the dark palette block (the earlier commit message wrongly said the old test failed on the old code — it passed vacuously; `4fbd8a9` makes it fail when an unmapped shade is restored) |
+| `6dbb159`, `67d2110` | Proposals: hosted JIT check (`docs/proposals/hosted-jit.md`), "Keep crews together" (`docs/proposals/crew-continuity.md`) |
 
 **Findings recorded, not changed (decisions):** expired vehicle documents block nothing (recommendation in master plan
 §9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
@@ -41,6 +49,13 @@ is open decision §9 Q20 (recommend a soft preference for keeping a driver on th
   against it: **all checks passed**. `risk.mjs 651c37b`: tier **REVIEW**; hosted migrations in range:
   `20261110000100_ai_usage` (optional while AI is off) and `20261111000100_demo_driver_names` (optional).
 - Not verified live: Preview `7eba5e4` (sandbox cannot reach `*.vercel.app`).
+
+**Hosted-state check (2026-10-13, local).** Hosted databases do not have `20261110000100_ai_usage` or the three
+demo-name migrations yet. With those four rolled back locally (backup
+`/var/lib/tlt-backups/pre-hosted-state-20261013145827.dump`), the affected browser specs (demo-parity, plan-the-day,
+dispatch, smart-dispatch, dispatch-availability, coordination, billing, long-names, demo-experience) passed
+**26 / 26** — the code works without them; demos then show the presenter's login name in the places listed in
+decision 2. Migrations re-applied afterwards; demo-samples, tenancy, ai-usage, quotes and fleet DB tests **48 / 48**.
 
 ### Decisions for James (current, with recommendations)
 

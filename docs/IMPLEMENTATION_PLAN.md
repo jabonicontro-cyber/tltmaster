@@ -2297,11 +2297,22 @@ Local commits only (owner instruction: no push, deploy or hosted migration). Det
 - **Demo samples** (`src/server/demo/samples.ts`, every demo, via Refresh): an order Ready to bill and one Handed off;
   a quote marked handed over (locked v1, Sent); an attention item assigned to the viewer; a confirmed order waiting
   for a date. DB test `tests/db/demo-samples.test.ts`, browser check in `demo-parity.spec.ts`.
+- **Demo persona everywhere** — migrations `20261111000200_demo_people_names` (Command Center assignee, Reassign
+  options and confirmation use `private.comm_user_name`) and `20261111000300_demo_history_names` (new
+  `private.demo_person_name`, demo companies only: user directory, field reports, My Day, operational exceptions,
+  assignment labels), each with a tested rollback. Real companies unchanged. Code works without them (hosted-state
+  check, SESSION_HANDOFF §0).
+- **Phone and dark mode** — filter dropdowns shrink to the space they have (a long customer name widened Billing and
+  the Command Center by 525 px; `long-names.spec.ts`); three warning alerts keep legible text in dark mode, and the
+  theme test now actually reads the dark palette block.
+- **Plain errors** — Dispatch and Company setup no longer show raw database text (details logged server-side).
 - **Website** — opening 3D shot keeps the whole truck in frame (1024–1920 px); all 13 screenshots re-captured.
+  Screenshots re-captured again after the persona migrations.
 - **Local stack** — `jit = off` for the dev database (JIT compiled for 4.9 s on a 0.16 s billing query; DB tests timed
   out). Hosted is an owner decision.
 - **Prepared, not built** — B42 readiness map (`docs/proposals/B42_ORDER_TO_CASH_READINESS.md`); expired-document
-  enforcement recommendation (master plan §9 Q23).
+  enforcement recommendation (master plan §9 Q23); hosted JIT check (`docs/proposals/hosted-jit.md`); "Keep crews
+  together" priority (`docs/proposals/crew-continuity.md`).
 
 ## Recommended next task
 
