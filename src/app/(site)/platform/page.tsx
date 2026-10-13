@@ -41,7 +41,7 @@ export default function PlatformPage() {
         ))}
       </Container>
 
-      <section aria-labelledby="more-title" className="border-t border-silver/10 bg-navy-2/40">
+      {briefs.length > 0 && <section aria-labelledby="more-title" className="border-t border-silver/10 bg-navy-2/40">
         <Container className="py-16 sm:py-20">
           <SectionHeading id="more-title" eyebrow="Also in the platform" title="The rest of the day, in the same records." />
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -50,7 +50,7 @@ export default function PlatformPage() {
             ))}
           </div>
         </Container>
-      </section>
+      </section>}
 
       <section className="border-t border-silver/10">
         <Container className="grid gap-12 py-20 lg:grid-cols-2">

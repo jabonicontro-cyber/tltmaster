@@ -89,6 +89,33 @@
       "capturedAt": "2026-10-13T04:42:22.725Z",
       "source": "local production build",
       "checks": "passed"
+    },
+    "employees": {
+      "file": "employees.png",
+      "feature": "people",
+      "path": "/employees",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-13T05:22:27.399Z",
+      "source": "localhost:3002",
+      "checks": "passed"
+    },
+    "reports": {
+      "file": "reports.png",
+      "feature": "reports",
+      "path": "/reports",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-13T05:22:28.694Z",
+      "source": "localhost:3002",
+      "checks": "passed"
+    },
+    "setup": {
+      "file": "setup.png",
+      "feature": "company-controls",
+      "path": "/setup",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-13T05:22:29.838Z",
+      "source": "localhost:3002",
+      "checks": "passed"
     }
   }
 }

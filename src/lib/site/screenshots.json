@@ -102,6 +102,36 @@
       "ready": "Communications",
       "alt": "Communications in a demo company: the workspace for an order in dispatch, and notifications for expiring truck registrations and inspections, time-off requests and a critical truck restriction",
       "caption": "Communications — demo company, fictional data."
+    },
+    {
+      "id": "employees",
+      "file": "employees.png",
+      "feature": "people",
+      "path": "/employees",
+      "viewport": "desktop",
+      "ready": "Showing 1–",
+      "alt": "The employee directory in a demo company: drivers, dispatch, office and shop staff with their role, department, primary truck and status, including a driver on leave",
+      "caption": "Employees — demo company, fictional data."
+    },
+    {
+      "id": "reports",
+      "file": "reports.png",
+      "feature": "reports",
+      "path": "/reports",
+      "viewport": "desktop",
+      "ready": "Verified delivered value",
+      "alt": "The Reports page in a demo company for the last 30 days: delivery tickets and review times, verified delivered value from accepted tickets, and totals by customer, material and truck",
+      "caption": "Reports — demo company, fictional data. Measured from recorded tickets and orders; nothing is estimated."
+    },
+    {
+      "id": "setup",
+      "file": "setup.png",
+      "feature": "company-controls",
+      "path": "/setup",
+      "viewport": "desktop",
+      "ready": "steps complete",
+      "alt": "Company setup in a demo company: a checklist of what Taviron needs before its checks and plans can rely on the data — company profile, people and roles, customers, materials and rates, trucks and drivers — with what is still missing",
+      "caption": "Company setup — demo company, fictional data."
     }
   ]
 }
