@@ -78,6 +78,8 @@ export interface OptimizationInput extends SmartInput {
   expiredDocuments?: Array<{ truck_id: string | null; trailer_id: string | null; kind: string; expires_on: string }>;
   /** False when vehicle documents could not be read (for example without fleet access). */
   documentsChecked?: boolean;
+  /** Drivers whose employee record says On leave (an HR status, separate from dated time off). Review note only. */
+  driversOnLeave?: string[];
 }
 
 export interface PlannedAssignment {
@@ -228,6 +230,7 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
+  if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave — confirm they are working that day.");
   for (const d of input.expiredDocuments ?? []) {
     if (d.expires_on >= load.load_date) continue;
     const kind = d.kind.replace(/_/g, " ");

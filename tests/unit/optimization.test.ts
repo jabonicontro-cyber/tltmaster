@@ -92,6 +92,13 @@ describe("optimization core", () => {
     expect(verified.assignments[0].status).toBe("verified");
   });
 
+  it("a driver whose employee record says On leave is a review note, never a silent pass or an invented block", () => {
+    const plan = optimize(input({ loads: [load("A")], hoursOfServiceVerified: true, driversOnLeave: ["d-Avery"] }), PRESETS.balanced.priorities);
+    expect(plan.assignments).toHaveLength(1);
+    expect(plan.assignments[0].status).toBe("needs_review");
+    expect(plan.assignments[0].review).toContain("The driver's employee record says On leave — confirm they are working that day.");
+  });
+
   it("keeps a truck on one site when efficiency matters, and spreads work when balance matters", () => {
     const loads = [
       load("A", { site: "north pit", starts_at: at("08:00"), ends_at: at("09:00") }),
