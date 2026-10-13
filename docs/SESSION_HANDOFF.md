@@ -7,7 +7,30 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 0. Latest checkpoint (2026-10-13, overnight sprint) — read first
+## 0. Current checkpoint (2026-10-13 daytime sprint, until 5 PM America/Chicago) — read first
+
+**Deployment state.** The owner said "push it" after the overnight sprint: `651c37b..7eba5e4` was pushed to the Preview
+branch `claude/ui-and-signin-checkpoint` (fast-forward) and Vercel's Preview deployment for `7eba5e4` reports
+**success** (GitHub deployment record). It was **not verified live** (this sandbox cannot reach `*.vercel.app`).
+**Production still runs `651c37b`.** This sprint's instruction forbids pushing, deploying, promoting or hosted
+migrations: everything below is **committed locally only** on top of `7eba5e4`.
+
+| Commit | What |
+| --- | --- |
+| `b490f97` | Migration `20261111000100_demo_driver_names` (+ tested rollback): in demo companies driver lists show the persona (Daniel Mitchell), not the presenter's login name |
+| `965db0f` | Plans: B42 readiness map (`docs/proposals/B42_ORDER_TO_CASH_READINESS.md`), expired-document recommendation (§9 Q23), backlog row B44 |
+| `754f537` | Resources: note when a driver's primary truck cannot run that day; Plan the day: plain error message, notice when the requested day is replaced |
+| `9b1b047` | Homepage: opening shot keeps the whole truck in frame (nose was cut at 1280–1440 px) |
+| `1202869` | Sidebar e2e: first hover retried until hydrated (failed once under full-suite load) |
+| `40cd70a`, `73801f6` | Plan the day and Smart Dispatch: a driver whose employee record says On leave gets a review note / warning (never a block) |
+| `c445593` | All 13 website screenshots re-captured from the current build (quality gate passed) |
+| `d2dd2e8`, `b9d4ea1`, `c92db1c`, `4df6ab3` | Demo samples (every demo, via Refresh): an order Ready to bill and one Handed off; a sent quote with a locked v1; an attention item assigned to the viewer; a confirmed order waiting for a date |
+
+**Findings recorded, not changed (decisions):** expired vehicle documents block nothing (recommendation in master plan
+§9 Q23); the planner may put one truck through a day with a different driver per load, because driver–truck pairing
+is open decision §9 Q20 (recommend a soft preference for keeping a driver on their primary truck).
+
+## 0. Previous checkpoint (2026-10-13, overnight sprint)
 
 **Local commits on `claude/ui-and-signin-checkpoint`, not pushed** (Preview and Production both run `651c37b`):
 
