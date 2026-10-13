@@ -191,6 +191,21 @@ describe("drivers and qualifications", () => {
     });
   });
 
+  it("names a login-linked driver by the login in a real company, and by the driver record in a demo company", async () => {
+    await withSession(async (s) => {
+      const office = await s.createUser("office");
+      const driverUser = await s.createUser("driver");
+      await s.as(office);
+      const persona = await insertDriver(s, { user_id: driverUser, name: "Daniel Mitchell" });
+      const shown = async () => (await s.query("select display_name from public.driver_list where id = $1", [persona])).rows[0].display_name;
+      expect(await shown()).toBe("Test driver"); // real company: the person's own account name
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'presenter' where id = (select company_id from public.drivers where id = $1)", [persona]);
+      await s.as(office);
+      expect(await shown()).toBe("Daniel Mitchell"); // demo company: the fictional persona on the driver record
+    });
+  });
+
   it("qualifications need a class for CDLs; verification is stamped by the database and cleared on request", async () => {
     await withSession(async (s) => {
       const office = await s.createUser("office");

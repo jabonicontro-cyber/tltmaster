@@ -264,6 +264,12 @@ timings and outcomes per AI call; no prompts or answers), `public.record_ai_usag
 applied every AI capability is Blocked ("usage ledger not available") and nothing is sent to a model. Rollback:
 `supabase/rollbacks/20261110000100_ai_usage.down.sql`.
 
+**Demo driver names (`20261111000100_demo_driver_names.sql`, independent of the AI ledger).** Redefines the
+`public.driver_list` view so that, in a demo company only, a driver linked to a login is named by the driver record (the
+persona, e.g. Daniel Mitchell) instead of the login's account name. Same columns and grants; real companies are
+unchanged. Safe to skip: until it is applied, demo lists show the presenter's own name next to the persona. Rollback:
+`supabase/rollbacks/20261111000100_demo_driver_names.down.sql` (tested locally 2026-10-13).
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging
