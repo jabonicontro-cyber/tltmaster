@@ -2280,6 +2280,29 @@ path), while every other page uses `personPhoto` (own profile photo, else the av
 - **Plan the day:** the AI panel's setup reasons moved to Company setup. They listed configuration names on a
   customer-facing screen.
 
+## 5ah. Release-readiness sprint: demo truth, dispatch edges, planner speed (2026-10-13, daytime)
+
+Local commits only (owner instruction: no push, deploy or hosted migration). Details and decisions: SESSION_HANDOFF §0.
+
+- **Demo persona in driver lists** — migration `20261111000100_demo_driver_names` (+ tested rollback): in a demo company
+  `driver_list` names a login-linked driver by the driver record (Daniel Mitchell), not the presenter's account name.
+  DB test in `tests/db/fleet.test.ts`; DEMO_TENANTS §2 row.
+- **Dispatch edges** — Resources notes when a driver's primary truck cannot run that day; Plan the day shows a plain
+  error (details logged) and says when a requested day outside today…14 days was replaced; Plan the day and Smart
+  Dispatch flag a driver whose employee record says On leave (warning only; `driversOnLeave` in `SmartInput`).
+- **Planner speed** — the improvement search now uses a plan index, cached load values and exact incremental scoring
+  of candidate moves (only the moved load and later same-day assignments on its old/new truck or driver are
+  re-scored, summed in the same order). Identical plans, checked byte-for-byte against the previous implementation.
+  80 loads × 40 trucks × 40 drivers: 84 s → ~3.5 s (scale test added).
+- **Demo samples** (`src/server/demo/samples.ts`, every demo, via Refresh): an order Ready to bill and one Handed off;
+  a quote marked handed over (locked v1, Sent); an attention item assigned to the viewer; a confirmed order waiting
+  for a date. DB test `tests/db/demo-samples.test.ts`, browser check in `demo-parity.spec.ts`.
+- **Website** — opening 3D shot keeps the whole truck in frame (1024–1920 px); all 13 screenshots re-captured.
+- **Local stack** — `jit = off` for the dev database (JIT compiled for 4.9 s on a 0.16 s billing query; DB tests timed
+  out). Hosted is an owner decision.
+- **Prepared, not built** — B42 readiness map (`docs/proposals/B42_ORDER_TO_CASH_READINESS.md`); expired-document
+  enforcement recommendation (master plan §9 Q23).
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
