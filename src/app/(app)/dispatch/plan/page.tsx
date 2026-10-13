@@ -89,7 +89,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
         </p>
       )}
       {"error" in plan ? (
-        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-950">{plan.error}</p>
+        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{plan.error}</p>
       ) : (
         <OptimizationPlanner
           key={`${date}|${JSON.stringify(priorities)}`}

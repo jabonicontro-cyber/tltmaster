@@ -16,4 +16,19 @@ describe("theme", () => {
     const offenders = files(join(ROOT, "src")).filter((f) => /(["'`\s])dark:[a-z]/.test(readFileSync(f, "utf8"))).map((f) => relative(ROOT, f));
     expect(offenders).toEqual([]);
   });
+
+  it("app UI uses only palette shades the dark theme remaps (an unmapped shade keeps its light-mode colour in dark mode)", () => {
+    const css = readFileSync(join(ROOT, "src", "app", "globals.css"), "utf8");
+    const dark = css.slice(css.indexOf('html[data-theme="dark"] {'));
+    const remapped = new Set([...dark.slice(0, dark.indexOf("}")).matchAll(/--color-([a-z]+-\d+)/g)].map((m) => m[1]));
+    const families = new Set([...remapped].map((c) => c.split("-")[0]));
+    const app = [...files(join(ROOT, "src", "app", "(app)")), ...files(join(ROOT, "src", "components"))].filter((f) => !f.includes(join("components", "site")));
+    const offenders: string[] = [];
+    for (const f of app) {
+      for (const m of readFileSync(f, "utf8").matchAll(/\b(?:bg|text|border|ring)-([a-z]+-\d{2,3})\b/g)) {
+        if (families.has(m[1].split("-")[0]) && !remapped.has(m[1])) offenders.push(`${relative(ROOT, f)}: ${m[0]}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });

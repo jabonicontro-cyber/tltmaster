@@ -34,7 +34,7 @@ export default async function SetupPage() {
         description="What Taviron needs before its checks, dispatch suggestions and plans can rely on your data. Nothing here changes a record; each step links to where you add or fix it."
       />
       {"error" in readiness ? (
-        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-950">{readiness.error}</p>
+        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{readiness.error}</p>
       ) : (
         <>
           <p className="mb-4 text-sm text-ink" aria-live="polite">

@@ -61,7 +61,7 @@ export function PlanExplanation({ ai, date, preset, priorities, planKey, planLab
           )}
         </p>
       )}
-      {error && <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-gray-950">{error}</p>}
+      {error && <p role="alert" className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{error}</p>}
       {shown && (
         <div className="mt-3 space-y-3 text-sm text-ink" aria-live="polite">
           <p className="text-xs font-semibold text-muted">AI-generated summary · checked against Taviron&apos;s figures · it does not change the plan</p>
