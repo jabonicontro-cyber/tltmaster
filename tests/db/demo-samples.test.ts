@@ -159,6 +159,32 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(r1.added).toBeGreaterThanOrEqual(0);
   }, 240_000);
 
+  // Late in the day the seed's own same-day orders are delivered and become ready by themselves; the Handed off example
+  // must still be added (it was skipped whenever any order was ready). Recreated here on this fictional demo company by
+  // removing its handoff (fixture only: the guard triggers are bypassed inside this one transaction).
+  it("adds the Handed off example when an order is already ready, and only once", async () => {
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("set local session_replication_role = replica");
+      await client.query("delete from public.billing_handoff_orders where handoff_id in (select id from public.billing_handoffs where company_id = $1)", [w.company]);
+      await client.query("delete from public.billing_handoffs where company_id = $1", [w.company]);
+      await client.query("commit");
+    } finally {
+      client.release();
+    }
+    const states = async () => ((await as(w.owner).from("billing_order_status").select("readiness")).data ?? []).map((r) => (r as { readiness: string }).readiness);
+    expect(await states()).toContain("ready");
+    expect(await states()).not.toContain("handed_off");
+    const today = todayIn(TZ);
+    const first = await ensureFeatureSamples(as(w.owner), today);
+    expect(first.features).toContain("billing: ready and handed off");
+    expect(await states()).toContain("handed_off");
+    expect((await counts(w.company)).handoffs).toBe(1);
+    await ensureFeatureSamples(as(w.owner), today);
+    expect((await counts(w.company)).handoffs).toBe(1); // a second run adds nothing
+  }, 180_000);
+
   it("remembers the demo welcome per person in a demo company only", async () => {
     const seen = () => as(w.owner).from("user_preferences").select("key").eq("key", "demo_welcome").maybeSingle();
     expect((await seen()).data).toBeNull();

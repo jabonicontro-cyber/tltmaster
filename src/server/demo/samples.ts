@@ -76,13 +76,17 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
  * ordered. When the demo has neither, two small past orders are created through the real paths — order, schedule,
  * loads, assignment, tickets entered and accepted — copying a per-unit line (rate included) from the demo's own
  * orders, for a customer that needs no PO. The second is handed off to billing (an internal batch: nothing is sent,
- * exported or invoiced). A second run adds nothing while any order is ready or handed off.
+ * exported or invoiced). Each state is checked on its own: late in the day the seed's own same-day orders become
+ * ready by themselves, and the Handed off example must still be added. A second run adds nothing.
  */
 async function billing(db: Db, today: string): Promise<number> {
-  const status = await db.from("billing_order_status").select("readiness").in("readiness", ["ready", "handed_off"]).limit(1);
-  if (missing(status.error)) return 0;
-  if (status.error) throw new Error(`Demo samples (billing): ${status.error.message}`);
-  if ((status.data ?? []).length) return 0;
+  const [ready, handed] = await Promise.all(["ready", "handed_off"].map((r) => db.from("billing_order_status").select("readiness").eq("readiness", r).limit(1)));
+  for (const q of [ready, handed]) {
+    if (missing(q.error)) return 0;
+    if (q.error) throw new Error(`Demo samples (billing): ${q.error.message}`);
+  }
+  const needed = [!(ready.data ?? []).length, !(handed.data ?? []).length]; // [a ready order, a handed-off order]
+  if (!needed.some(Boolean)) return 0;
   type Line = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
   type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null; order_lines: Line[] };
   const candidates = ((await must("billing template", db.from("orders")
@@ -97,6 +101,7 @@ async function billing(db: Db, today: string): Promise<number> {
   const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
   let n = 0;
   for (const [i, back] of [4, 6].entries()) {
+    if (!needed[i]) continue;
     let day = addDays(today, -back);
     while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, -1); // a weekday
     const o = (await must("billing order", db.rpc("save_order_draft", { p_payload: {
@@ -123,7 +128,7 @@ async function billing(db: Db, today: string): Promise<number> {
         if (ok) break;
       }
       if (!ok) break;
-      const ticket = ((await must("billing ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: String(qty), unit_code: src.unit_code, external_reference: `DEMO-B${i + 1}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
+      const ticket = ((await must("billing ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: String(qty), unit_code: src.unit_code, external_reference: `DEMO-${o.order_number}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
       await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
       delivered++;
     }
