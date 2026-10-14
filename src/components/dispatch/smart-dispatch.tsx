@@ -23,6 +23,8 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
   const [error, setError] = useState<string | null>(null);
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState("");
+  // Hidden as soon as the approval succeeds; the board's recompute (router.refresh) can take a few seconds.
+  const [assigned, setAssigned] = useState(false);
   const chosen: Candidate | undefined = options[choice];
   const l = plan.load;
 
@@ -38,6 +40,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
       return;
     }
     toast.success(`${l.order_number} load ${l.load_number}: assigned to truck ${chosen.truckLabel} and ${chosen.driverLabel}.`);
+    setAssigned(true);
     router.refresh();
   }
   async function reject() {
@@ -61,6 +64,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
 
   const time2 = `${formatDate(l.load_date)} · ${time(l.starts_at, timezone)}–${time(l.ends_at, timezone)}`;
   const urgentRank = plan.priority.rank;
+  if (assigned) return null;
   return (
     <li className="px-4 py-3 sm:px-5" aria-label={`${l.order_number} load ${l.load_number}`}>
       {/* One line per load: what, when, for whom, and how urgent. */}

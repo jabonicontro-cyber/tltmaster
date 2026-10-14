@@ -93,6 +93,22 @@
       "skillPath": "SKILL.md",
       "commit": "c8de7c8e9279648a2cbeb4021508b874e88d41f1",
       "computedHash": "943eda24411f7ba0187e0f4e2553514fe20a76379e8952fa8df987ff8528a9a5"
+    },
+    "impeccable": {
+      "source": "pbakaus/impeccable",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/impeccable/SKILL.md",
+      "commit": "2f98774f86bc05563876643db37e6c37c322850f",
+      "modified": true,
+      "computedHash": "3c416ae216df9e9e10cd45a331eda49a441f1898ad06033ce8df71f600097341"
+    },
+    "taste-skill": {
+      "source": "Leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "commit": "a60a36dc2bb3bb77ccf17f2f62041f5ca8a458b9",
+      "modified": true,
+      "computedHash": "58731316e36eaa0519da8c967048354229ff1d8f53a2dedf0f0d52c877afaab7"
     }
   }
 }
