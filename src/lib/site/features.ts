@@ -307,7 +307,22 @@ export const FEATURES: Feature[] = [
     related: ["plan-the-day"],
     verified: "2026-10-13",
   },
-  { id: "route-planner", name: "Route planning", category: "dispatch", problem: "", how: "", value: "", points: [], limitations: [], status: "planned", published: false, routes: [], screenshots: [], related: [], verified: "2026-10-13" },
+  {
+    id: "route-planner",
+    name: "Route planning",
+    category: "dispatch",
+    problem: "Nobody can see a truck's whole day — where it goes, in what order and how far — without redrawing it from the board.",
+    how: "Each truck's assigned loads become a route from the yard to every delivery site in load order and back, with distances per leg. With a truck-routing provider connected, legs get road miles, driving time and the provider's restriction notices.",
+    value: "Dispatch sees the day's driving at a glance, and missing site locations show up before they cause a wrong estimate.",
+    points: ["One route per truck from the dispatch board", "Distances per leg; road miles and driving time with truck routing connected", "Sites without a location are listed to fix"],
+    limitations: ["Without a routing key, distances are straight lines (labelled)", "Truck dimensions are not recorded yet, so routing uses a standard truck profile", "Routes follow the board's load order; no automatic re-sequencing"],
+    status: "available",
+    published: false,
+    routes: ["/route-planner"],
+    screenshots: [],
+    related: ["plan-the-day", "smart-dispatch"],
+    verified: "2026-10-14",
+  },
 ];
 
 /** Planned or unreleased work, said plainly on the website ("Not yet — and we will say so"). */

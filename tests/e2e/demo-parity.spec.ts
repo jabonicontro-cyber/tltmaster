@@ -134,6 +134,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
     "/time-off": /No requests yet/,
     "/quotes": /No quotes yet/,
     "/communications": /No conversations yet/,
+    "/route-planner": /No assigned loads on this day/,
   };
   try {
     for (const role of PREVIEW_ROLES) {
@@ -228,7 +229,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByText("Southfield Crossing Distribution").first()).toBeVisible();
   await visit(owner, "/employees?q=Cam");
   await expect(owner.getByText("Cam Webster").first()).toBeVisible();
-  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
+  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/, "/route-planner": /No assigned loads on this day/ };
   const ownerContext = owner.context();
   try {
     for (const role of PREVIEW_ROLES) {

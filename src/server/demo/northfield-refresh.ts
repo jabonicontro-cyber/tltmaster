@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { seedCommunicationSamples } from "./prairie-lantern";
+import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { AVATARS, CAPACITY, CHARGE_ITEMS, CUSTOMERS, DRIVER_TITLES, DRIVERS, MATERIALS, STAFF, TRAILERS, TRUCKS } from "./seed";
 
@@ -179,6 +180,7 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
     }
   }
   added += await seedCommunicationSamples(db);
+  added += await ensureDemoLocations(db, NORTHFIELD_LOCATIONS);
   added += (await ensureFeatureSamples(db, today)).added;
   return { added, loads };
 }

@@ -147,8 +147,9 @@ test("keyboard: the toggle is reachable, labelled and works with Enter", async (
   await expect(toggle).toHaveAttribute("aria-expanded", "true");
 });
 
-// Unfinished modules are labelled "Coming soon" (owner 2026-10-13), never shown as working features.
-test("unfinished modules say Coming soon in the sidebar and on their page", async ({ page }) => {
+// Unfinished modules are labelled "Coming soon" (owner 2026-10-13). Route Planner was the last one; it went live
+// 2026-10-14 (straight-line distances until the owner adds a HERE key), so the sidebar has no Coming soon label now.
+test("Route Planner is live: no Coming soon label; without a routing key it says distances are straight lines", async ({ page }) => {
   await signIn(page, "owner");
   await page.goto("/command-center");
   const sidebar = page.getByRole("complementary", { name: "Sidebar" });
@@ -157,8 +158,8 @@ test("unfinished modules say Coming soon in the sidebar and on their page", asyn
     await sidebar.hover();
     await expect(sidebar).toHaveAttribute("data-expanded", "true", { timeout: 1_500 });
   }).toPass({ timeout: 15_000 });
-  await expect(sidebar.getByRole("link", { name: /Route Planner/ })).toContainText("Coming soon");
+  await expect(sidebar.getByRole("link", { name: /Route Planner/ })).not.toContainText("Coming soon");
   await page.goto("/route-planner");
-  await expect(page.getByText(/^Coming soon — scheduled for/)).toBeVisible();
-  await expect(page.getByText("Nothing on this page is live.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Route Planner", level: 1 })).toBeVisible();
+  await expect(page.getByText("Straight-line distances")).toBeVisible();
 });

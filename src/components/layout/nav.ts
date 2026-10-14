@@ -31,7 +31,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view", group: "Sales" },
   { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.view", group: "Operations" },
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, permission: "dispatch.view", group: "Operations" },
-  { href: "/route-planner", label: "Route Planner", icon: Map, planned: true, group: "Operations" },
+  { href: "/route-planner", label: "Route Planner", icon: Map, permission: "dispatch.view", group: "Operations" },
   { href: "/tickets", label: "Delivery Tickets", icon: Ticket, permission: "tickets.view", group: "Operations" },
   { href: "/field-reports", label: "Driver Reports", icon: MessageSquareWarning, permission: "field_reports.view", group: "Operations" },
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view", group: "Operations" },

@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { NORTHFIELD_LOGO_PNG_BASE64 } from "./northfield-logo";
 import { seedCommunicationSamples } from "./prairie-lantern";
+import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 
 /**
@@ -232,6 +233,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   await seedPeople(db, { userId, today, drivers: drv, truck, primary: { [avery]: "101", [marco]: "102", [me]: "103", [theo]: "104", [priya]: "105", [nia]: "107", [grace]: "108", [isaac]: "109", [talia]: "110" } });
   await seedCommunicationSamples(db);
+  await ensureDemoLocations(db, NORTHFIELD_LOCATIONS);
   // Every released feature has sample data in every demo mode (maintenance, documents, time off, workspaces, …).
   await ensureFeatureSamples(db, today);
 }

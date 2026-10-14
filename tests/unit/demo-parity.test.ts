@@ -21,6 +21,7 @@ const ALLOWED = new Set([
   "src/app/admin/demo/page.tsx",
   "src/lib/ai/capabilities.ts",
   "src/server/ai/gates.ts",
+  "src/server/routing/service.ts",
   "src/lib/permissions.ts", // the Access type's isDemo field
 ]);
 
