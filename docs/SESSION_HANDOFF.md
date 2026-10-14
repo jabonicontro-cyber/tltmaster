@@ -14,7 +14,10 @@ project credentials. Read it together with:
   Preview, state **success**. Pushed after the full release suite passed on that exact commit (lint, typecheck,
   vitest 647/647, browser 130 passed / 0 failed / 9 skipped (gate, run separately: 8 passed / 1 skipped), production
   build, deployment check all passed). Not verified live: this sandbox's network policy blocks `*.vercel.app`.
-- **Production** (`claude/top-line-trucking-manager-vmw04i`) still runs **`651c37b`**. Promotion of `95320c4`
+- **Update 2026-10-14:** `54f3f2c` (full release suite passed: vitest 669/669, browser 139 passed / 0 failed / 9
+  skipped, gate 8/8, build, lint, typecheck) was pushed to Preview (record `7054264731`, success) and, at James's
+  explicit request, fast-forwarded to **Production** (record `7055955005`, success). Not verified live from the sandbox.
+- **Production** (`claude/top-line-trucking-manager-vmw04i`) previously ran **`651c37b`**. Promotion of `95320c4`
   (a fast-forward, risk tier REVIEW) was attempted under the owner's release authorization and **denied by this
   session's permission system** ("Production Deploy"). It needs the owner to promote, or to allow the action.
 - **Hosted database:** cannot be reached from this sandbox. **James applied `20261110000100`–`20261111000300` on
