@@ -59,6 +59,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Audit before rebuilding; verify earlier reports instead of trusting them.
   - During requirements discovery ask one concise question at a time; never re-ask what the master plan answers.
   - Keep code written / tested / committed / pushed / deployed / verified as separate statuses.
+  - **Show every visible change (owner 2026-10-14):** with each update, send screenshots of what changed in the chat
+    (before/after where useful), taken from the running app or site; say when a screenshot is local and not the deployed site.
 - **Pricing and offers:** the founder's tier prices (master plan §5.1) are on the gated pricing page, from
   `src/lib/site/pricing.ts` only; founding-customer discounts are private and never shown publicly or put in site code; no checkout, billing or payment code without explicit authorization.
 - **Brand:** Taviron navy/blue/silver palette (master plan §4); red only for genuine critical alerts. Public
