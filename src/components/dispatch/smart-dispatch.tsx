@@ -183,6 +183,10 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
  */
 export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back }: { plans: LoadPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string }) {
   const feasible = plans.filter((p) => p.proposal).length;
+  // The most urgent few first; the rest one click away, so the board below stays reachable.
+  const [all, setAll] = useState(false);
+  const FIRST = 6;
+  const shown = all ? plans : plans.slice(0, FIRST);
   return (
     <details open className="mb-4 rounded-lg border border-line bg-card" aria-label="Smart Dispatch">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 border-b border-line px-4 py-2">
@@ -211,7 +215,14 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
           {plans.length === 0 && <li>{HOS_NOTE}</li>}
         </ul>
       </details>
-      {plans.length > 0 ? <ul className="divide-y divide-line">{plans.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} />)}</ul> : null}
+      {plans.length > 0 ? <ul className="divide-y divide-line">{shown.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} />)}</ul> : null}
+      {plans.length > FIRST && (
+        <div className="border-t border-line px-4 py-2.5 text-center sm:px-5">
+          <button type="button" onClick={() => setAll((v) => !v)} className="text-sm font-medium text-brand-fg hover:underline">
+            {all ? "Show fewer" : `Show all ${plans.length} loads`}
+          </button>
+        </div>
+      )}
     </details>
   );
 }

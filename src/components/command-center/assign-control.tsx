@@ -26,7 +26,7 @@ export function AssignControl({ itemKey, kind, title, assignedTo, people }: { it
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="secondary" icon={<UserRoundPlus className="size-4" />} onClick={() => { setUserId(""); setNote(""); setOpen(true); }}>
+      <Button size="sm" variant="ghost" icon={<UserRoundPlus className="size-4" />} onClick={() => { setUserId(""); setNote(""); setOpen(true); }}>
         {assignedTo ? "Reassign" : "Assign"}
       </Button>
       {assignedTo && (

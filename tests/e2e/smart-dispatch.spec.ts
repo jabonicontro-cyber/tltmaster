@@ -64,11 +64,17 @@ async function fixture(): Promise<Fixture> {
 }
 
 const card = (page: Page, f: Fixture) => page.getByRole("listitem", { name: `${f.orderNumber} load 1` });
+/** Smart Dispatch shows the most urgent few loads first; open the full list so the fixture's load is on the page. */
+async function showAll(page: Page) {
+  const more = page.getByRole("button", { name: /^Show all \d+ loads$/ });
+  if (await more.isVisible().catch(() => false)) await more.click();
+}
 
 test("a dispatcher approves a proposal: it is assigned with an audit note, and nothing is assigned before approval", async ({ page }) => {
   const f = await fixture();
   await signIn(page, "dispatcher");
   await page.goto("/dispatch?horizon=3");
+  await showAll(page);
   const c = card(page, f);
   await expect(c.getByText("Proposed:")).toBeVisible();
   // Showing a proposal assigns nothing.
@@ -86,6 +92,7 @@ test("rejecting a proposal moves to the next option; reconsidering brings it bac
   const f = await fixture();
   await signIn(page, "dispatcher");
   await page.goto("/dispatch?horizon=3");
+  await showAll(page);
   const c = card(page, f);
   const first = (await c.locator("p", { hasText: "Proposed:" }).textContent())!;
   await c.getByRole("button", { name: "Reject…" }).click();
@@ -102,6 +109,7 @@ test("a proposal that went stale is refused with an explanation instead of being
   const f = await fixture();
   await signIn(page, "dispatcher");
   await page.goto("/dispatch?horizon=3");
+  await showAll(page);
   const c = card(page, f);
   await expect(c.getByRole("button", { name: "Approve and assign" })).toBeVisible();
   // Meanwhile someone else assigns the load on the board.
