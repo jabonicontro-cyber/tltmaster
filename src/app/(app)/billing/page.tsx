@@ -131,7 +131,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                           <Link href={`/billing/orders/${o.order_id}`} className="font-semibold tabular hover:underline">{o.order_number}</Link>
                           <div className="text-sm text-muted">{o.customer_name}{o.project_name ? ` · ${o.project_name}` : ""}</div>
                         </Td>
-                        <Td className="hidden sm:table-cell tabular">{serviceDates(o.service_start, o.service_end)}</Td>
+                        <Td className="hidden whitespace-nowrap sm:table-cell tabular">{serviceDates(o.service_start, o.service_end)}</Td>
                         <Td>
                           <ReadinessBadge readiness={o.readiness} />
                           <div className="mt-1 text-xs text-muted md:hidden">{e.why}</div>
