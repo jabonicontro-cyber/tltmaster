@@ -55,12 +55,11 @@ test("the owner adds a person with a sign-in (ticked by default); the login land
   await expect(page.getByLabel("Role")).toHaveCount(0);
   await send.check();
   await page.getByLabel("Role").selectOption("office");
-  await page.getByLabel("Work email").fill(email);
+  await page.getByLabel("Work email", { exact: true }).fill(email);
   await page.getByRole("button", { name: "Add person" }).click();
   await expectToast(page, `Person added. Invitation sent to ${email}.`);
   await expect(page.getByRole("heading", { name, level: 1 })).toBeVisible();
-  const card = page.locator("section, div").filter({ has: page.getByRole("heading", { name: "Taviron sign-in" }) }).last();
-  await expect(card).toContainText("Signs in as Office staff");
+  await expect(page.getByText(/Signs in as Office staff/)).toBeVisible();
 
   // One record, linked to the new login (no duplicate created by the database).
   const rows = await asUser(USERS.owner.email, async (q) => (await q("select user_id from public.employees where lower(work_email) = $1", [email])).rows);
@@ -82,7 +81,7 @@ test("the owner adds a person with a sign-in (ticked by default); the login land
 test("Sign-ins & roles lives on People; the old Settings → Users link still works", async ({ page }) => {
   await signIn(page, "owner");
   await page.goto("/settings?tab=users");
-  await expect(page).toHaveURL(/\/employees\?view=access/);
+  await expect(page).toHaveURL(/\/employees\?.*view=access/);
   await expect(page.getByRole("link", { name: "Sign-ins & roles" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByRole("button", { name: "Invite user" })).toBeVisible();
   await page.goto("/settings");

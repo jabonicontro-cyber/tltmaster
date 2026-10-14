@@ -28,6 +28,13 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // Settings → Users moved to People, and My account to My profile (2026-10-14): real HTTP redirects for old links.
+  async redirects() {
+    return [
+      { source: "/settings", has: [{ type: "query", key: "tab", value: "users" }], destination: "/employees?view=access", permanent: false },
+      { source: "/settings", has: [{ type: "query", key: "tab", value: "account" }], destination: "/profile", permanent: false },
+    ];
+  },
   async headers() {
     return [{ source: "/:path*", headers: securityHeaders }, ...siteIndexHeaders];
   },

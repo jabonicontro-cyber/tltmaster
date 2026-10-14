@@ -153,7 +153,8 @@ test("a new customer signs up with an access code, verifies the email, creates a
     await page.goto(`/orders/${tlOrder}`);
     await expect(page.getByText("Not found", { exact: true })).toHaveCount(0);
   } finally {
-    // Leave the shared e2e dispatcher as it was.
+    // Leave the shared e2e dispatcher as it was (the person record created when they were added goes first).
+    await sql("delete from public.employees where company_id = $1 and user_id = (select id from public.profiles where email = $2)", [companyId, USERS.dispatcher.email]);
     await sql("delete from public.company_memberships where company_id = $1 and user_id = (select id from public.profiles where email = $2)", [companyId, USERS.dispatcher.email]);
     await sql("update public.profiles set active_company_id = null where email = $1", [USERS.dispatcher.email]);
   }
