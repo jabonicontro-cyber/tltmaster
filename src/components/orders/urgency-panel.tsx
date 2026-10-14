@@ -56,7 +56,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
           can("orders.edit") && !orderClosed ? (
             <Button
               size="sm"
-              variant={open ? "secondary" : "primary"}
+              variant="secondary"
               icon={<Siren className="size-4" />}
               onClick={() => { setReason(open?.reason ?? ""); setDate(""); setTime(""); setFlagOpen(true); }}
             >

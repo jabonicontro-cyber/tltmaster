@@ -89,6 +89,10 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
     setTarget(t);
   }
 
+  // One filled button: the first forward step. Everything else is outlined, so the next move is obvious.
+  const forward = (t: OrderStatus) => FORWARD.includes(t) && !(status === "scheduled" && t === "confirmed") && !(status === "dispatched" && t === "scheduled");
+  const primaryStep = allowed.find(forward);
+
   return (
     <div className="flex flex-wrap gap-2">
       {canEdit && (
@@ -104,7 +108,7 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
       {allowed.map((t) => (
         <Button
           key={t}
-          variant={t === "canceled" ? "danger" : FORWARD.includes(t) && !(status === "scheduled" && t === "confirmed") && !(status === "dispatched" && t === "scheduled") ? "primary" : "secondary"}
+          variant={t === "canceled" ? "danger" : t === primaryStep ? "primary" : "secondary"}
           icon={iconFor(t)}
           disabled={t === "confirmed" && status === "draft" && lineCount === 0}
           title={t === "confirmed" && status === "draft" && lineCount === 0 ? "Add at least one line first" : undefined}
