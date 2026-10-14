@@ -30,16 +30,16 @@ test("an owner links an existing login to an employee record and can unlink it",
   const f = await fixture();
   await signIn(page, "owner");
   await page.goto(`/employees/${f.empId}`);
-  await expect(page.getByText("No login linked.")).toBeVisible();
+  await expect(page.getByText(/^No sign-in\./)).toBeVisible();
   await page.getByLabel("Link an existing login").selectOption({ label: `Linky ${f.tag} — e2e-link-${f.tag}@toplinetest.example` });
   await page.getByRole("button", { name: "Link login" }).click();
   await expectToast(page, "Login linked.");
-  await expect(page.getByText(/Has a login · role/)).toBeVisible();
+  await expect(page.getByText(/Signs in as Office staff/)).toBeVisible();
   // The same login is no longer offered for another employee.
   await page.getByRole("button", { name: "Unlink login" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Unlink" }).click();
   await expectToast(page, "Login unlinked.");
-  await expect(page.getByText("No login linked.")).toBeVisible();
+  await expect(page.getByText(/^No sign-in\./)).toBeVisible();
 });
 
 test("people without user management cannot link logins", async ({ page }) => {
