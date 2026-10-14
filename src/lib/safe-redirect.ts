@@ -32,5 +32,9 @@ export function returnTarget(back: string | string[] | null | undefined): { href
 
 /** A link to `path` that remembers the page the user is on now (see returnTarget). */
 export function withReturn(path: string, back: string): string {
-  return `${path}${path.includes("?") ? "&" : "?"}back=${encodeURIComponent(back)}`;
+  // The query goes before any #fragment ("/dispatch#needs-scheduling" → "/dispatch?back=…#needs-scheduling").
+  const at = path.indexOf("#");
+  const base = at === -1 ? path : path.slice(0, at);
+  const hash = at === -1 ? "" : path.slice(at);
+  return `${base}${base.includes("?") ? "&" : "?"}back=${encodeURIComponent(back)}${hash}`;
 }

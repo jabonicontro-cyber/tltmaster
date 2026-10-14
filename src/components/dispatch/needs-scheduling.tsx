@@ -36,8 +36,9 @@ export function NeedsScheduling({ items, canSchedule, today, back }: { items: Un
       return;
     }
     toast.success(`${o.order_number}: ${r.message ?? "Scheduled."}`);
+    // Same page, another day: the push loads fresh data (the action revalidated the board). A refresh() right after
+    // it would cancel the push and stay on the current day.
     router.push(`/dispatch?date=${r.data.date}`);
-    router.refresh();
   }
 
   return (

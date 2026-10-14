@@ -57,6 +57,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test("office sees prioritized items, opens the right workflow, assigns a person, and the item clears when fixed", async ({ page }) => {
+  test.setTimeout(150_000); // several queues, each paged through on the shared test database
   const f = await fixture();
   await signIn(page, "office");
   await page.goto("/command-center");
@@ -89,8 +90,12 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   await expect(missing).toBeVisible();
 
   // Today's load without a truck is urgent and opens dispatch on that load.
-  await page.goto("/command-center?kind=unassigned_load");
+  // The shared test database collects many of today's unassigned loads; the queue shows 20 per page.
   const late = page.getByRole("listitem", { name: `${f.orderNumber} · load 2 today has no truck` });
+  for (let p = 1; p <= 10; p++) {
+    await page.goto(`/command-center?kind=unassigned_load&page=${p}`);
+    if (await late.count()) break;
+  }
   await expect(late.getByText("Urgent", { exact: true })).toBeVisible();
   await late.getByRole("link", { name: "Assign a truck" }).click();
   await expect(page).toHaveURL(new RegExp(`/dispatch\\?date=${f.today}&load=${f.lateLoad}`));

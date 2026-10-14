@@ -35,7 +35,7 @@ test("a confirmed order without a date waits in Needs scheduling, then lands on 
   await expect(item).toBeVisible();
   await expect(item).toContainText("The customer asked for delivery by tomorrow or today.");
   await item.getByRole("link", { name: "Schedule it" }).click();
-  await expect(page).toHaveURL(/\/dispatch#needs-scheduling/);
+  await expect(page).toHaveURL(/\/dispatch(\?[^#]*)?#needs-scheduling$/);
 
   const queue = page.getByRole("region", { name: "Needs scheduling" });
   const row = queue.getByRole("listitem").filter({ hasText: o.order_number });

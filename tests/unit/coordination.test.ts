@@ -66,6 +66,7 @@ describe("returning to the queue", () => {
       expect(returnTarget(bad), String(bad)).toBeNull();
     }
     expect(withReturn("/tickets/1?queue=review", "/command-center?mine=1#attention")).toBe("/tickets/1?queue=review&back=%2Fcommand-center%3Fmine%3D1%23attention");
+    expect(withReturn("/dispatch#needs-scheduling", "/command-center")).toBe("/dispatch?back=%2Fcommand-center#needs-scheduling");
   });
 });
 
