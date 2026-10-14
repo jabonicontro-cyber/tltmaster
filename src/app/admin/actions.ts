@@ -10,6 +10,7 @@ import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
 import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { seedDemoCompany } from "@/server/demo/seed";
+import { refreshNorthfield } from "@/server/demo/northfield-refresh";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
@@ -201,6 +202,24 @@ export async function refreshProspectDemo(formData: FormData) {
   let r: { added: number; loads: number } = { added: 0, loads: 0 };
   try {
     r = await refreshPrairieLantern(supabase);
+  } catch (e) {
+    back("/admin/demo", e instanceof Error ? e.message : "The demo could not be refreshed.");
+  }
+  revalidatePath("/", "layout");
+  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
+}
+
+/**
+ * Refresh the presenter demo (Northfield Aggregates) the same way as a prospect demo: additive, inside the demo as its
+ * owner (northfield-refresh.ts). Existing presenter demos get new samples without a Reset.
+ */
+export async function refreshPresenterDemo() {
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_demo_enter");
+  if (error) back("/admin/demo", dbErrorMessage(error));
+  let r: { added: number; loads: number } = { added: 0, loads: 0 };
+  try {
+    r = await refreshNorthfield(supabase);
   } catch (e) {
     back("/admin/demo", e instanceof Error ? e.message : "The demo could not be refreshed.");
   }

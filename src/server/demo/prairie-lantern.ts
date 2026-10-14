@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { PRAIRIE_LANTERN_LOGO_PNG_BASE64 } from "./prairie-lantern-logo";
+import { ensureColbySamples } from "./prairie-lantern-colby";
 import { ensureFeatureSamples } from "./samples";
 
 /**
@@ -239,6 +240,8 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
     ]));
   }
 
+  // Colby Chapman's own touches (his places, basketball, his friend Cam Webster as a driver).
+  await ensureColbySamples(db, today);
   await seedCommunicationSamples(db);
   // Features this seed does not curate (quotes, the owner's driver day, a workspace, …): shared samples.
   await ensureFeatureSamples(db, today);

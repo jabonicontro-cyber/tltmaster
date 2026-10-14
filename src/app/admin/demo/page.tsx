@@ -8,7 +8,7 @@ import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
-import { createProspectDemo, enterDemo, refreshProspectDemo, retireProspectDemo, startDemo } from "../actions";
+import { createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, startDemo } from "../actions";
 
 export const metadata = { title: "Live demo" };
 // Starting a demo seeds a few hundred records through the normal app functions.
@@ -33,9 +33,15 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
           <CardHeader title={demo ? demo.name : "No demo company yet"} description={demo ? `Started ${formatDateTime(demo.created_at)}` : "Start one to begin."} />
           <CardBody className="space-y-4">
             {demo ? (
-              <form action={enterDemo}>
-                <SubmitButton pendingLabel="Opening…">Open the demo</SubmitButton>
-              </form>
+              <div className="space-y-3">
+                <form action={enterDemo}>
+                  <SubmitButton pendingLabel="Opening…">Open the demo</SubmitButton>
+                </form>
+                <form action={refreshPresenterDemo} className="flex flex-wrap items-center gap-3">
+                  <SubmitButton variant="secondary" size="sm" pendingLabel="Refreshing…">Refresh demo data</SubmitButton>
+                  <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty, and any missing sample records. Changes and deletes nothing.</span>
+                </form>
+              </div>
             ) : null}
             <form action={startDemo} className="space-y-3 border-t border-line pt-4">
               <Field label="Time zone for the demo" htmlFor="tz" hint="Today's loads are created in this time zone.">

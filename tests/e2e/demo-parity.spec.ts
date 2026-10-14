@@ -113,7 +113,20 @@ test("every demo mode opens its pages and each feature shows sample data", async
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();
   await page.waitForURL(/command-center/, { timeout: 240_000 });
+  // The presenter demo refreshes like a prospect demo (northfield-refresh.ts): additive, and a second run adds no loads.
+  await page.goto("/admin/demo");
+  await page.getByRole("button", { name: "Refresh demo data" }).first().click();
+  await page.waitForURL(/saved=refreshed/, { timeout: 240_000 });
+  // A second run adds nothing.
+  await page.getByRole("button", { name: "Refresh demo data" }).first().click();
+  await page.waitForURL(/saved=refreshed&loads=0&added=0/, { timeout: 240_000 });
+  await expect(page.getByText(/already up to date/)).toBeVisible();
+  await page.goto("/command-center");
   await closeDemoWelcome(page);
+  // Northfield matches Prairie Lantern's fleet: tractors with end-dump and belly-dump trailers.
+  await visit(page, "/fleet/trailers");
+  await expect(page.getByRole("link", { name: /E-21/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /B-31/ }).first()).toBeVisible();
 
   // Feature pages that must not be empty, for the modes whose role can open them.
   const filled: Record<string, RegExp> = {
@@ -210,6 +223,11 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   const views = owner.getByRole("navigation", { name: "Billing views" });
   await expect(views.getByRole("link", { name: /Ready to bill\s*\d/ })).toBeVisible();
   await expect(views.getByRole("link", { name: /Handed off\s*\d/ })).toBeVisible();
+  // Colby's own touches (prairie-lantern-colby.ts): the Southfield lane and his friend Cam Webster as a driver.
+  await visit(owner, `/orders?q=${encodeURIComponent("Southfield Crossing")}`);
+  await expect(owner.getByText("Southfield Crossing Distribution").first()).toBeVisible();
+  await visit(owner, "/employees?q=Cam");
+  await expect(owner.getByText("Cam Webster").first()).toBeVisible();
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {

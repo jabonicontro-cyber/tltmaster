@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
+import { ensureColbySamples } from "./prairie-lantern-colby";
 import { ensureFeatureSamples } from "./samples";
 import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
 
@@ -166,6 +167,7 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
       if (!t.error) await db.rpc("review_delivery_ticket", { p_ticket_id: (t.data as { ticket_id: string }).ticket_id, p_action: "accept", p_note: "" });
     }
   }
+  added += await ensureColbySamples(db, today);
   added += await seedCommunicationSamples(db);
   // Existing demos receive every released feature's samples (only those the demo has none of yet).
   added += (await ensureFeatureSamples(db, today)).added;

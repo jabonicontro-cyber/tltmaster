@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
 import { NORTHFIELD_LOGO_PNG_BASE64 } from "./northfield-logo";
+import { seedCommunicationSamples } from "./prairie-lantern";
 import { ensureFeatureSamples } from "./samples";
 
 /**
@@ -22,7 +23,7 @@ async function must<T>(label: string, p: PromiseLike<{ data: T; error: { message
   return data;
 }
 
-const MATERIALS = [
+export const MATERIALS = [
   { code: "LS-53", name: "#53 limestone base", unit: "ton", rate: 1450 },
   { code: "ST-8", name: "#8 washed stone", unit: "ton", rate: 1825 },
   { code: "SND-F", name: "Fill sand", unit: "ton", rate: 975 },
@@ -31,7 +32,7 @@ const MATERIALS = [
   { code: "HAUL-HR", name: "Hourly hauling", unit: "hour", rate: 11500 },
 ];
 
-const CUSTOMERS = [
+export const CUSTOMERS = [
   { name: "Cedar Ridge Builders (demo)", city: "Maple Falls", site: "Cedar Ridge phase 3, lot 14–22", line1: "100 Demo Ridge Rd" },
   { name: "Kestrel Paving Co. (demo)", city: "Ashford", site: "County Rd 9 widening", line1: "9 Example Pkwy" },
   { name: "Brightwater Landscapes (demo)", city: "Linden Grove", site: "Brightwater office park", line1: "45 Sample Ave" },
@@ -46,7 +47,7 @@ const CUSTOMERS = [
 export const DEMO_PERSONA = { name: "Daniel Mitchell", title: "Operations Manager (also drives relief)" };
 
 /** Office, dispatch and shop staff without Taviron logins — directory entries only. */
-const STAFF = [
+export const STAFF = [
   { full_name: "Rachel Ortiz", job_title: "Dispatcher", department: "dispatch", hire: -1400, pay: { pay_type: "hourly", rate_cents: 3150 } },
   { full_name: "Sam Kowalski", job_title: "Lead mechanic", department: "shop", hire: -2100, pay: { pay_type: "hourly", rate_cents: 3600 } },
   { full_name: "Jordan Feld", job_title: "Mechanic", department: "shop", hire: -500, pay: { pay_type: "hourly", rate_cents: 2900 } },
@@ -54,7 +55,7 @@ const STAFF = [
   { full_name: "Owen Brooks", job_title: "Seasonal yard hand", department: "operations", hire: -120, pay: { pay_type: "hourly", rate_cents: 2100 }, type: "seasonal" },
 ];
 
-const TRUCKS = [
+export const TRUCKS = [
   { unit: "101", type: "tri_axle_dump", make: "Western Star", model: "47X" },
   { unit: "102", type: "tri_axle_dump", make: "Kenworth", model: "T880" },
   { unit: "103", type: "tandem_axle_dump", make: "Mack", model: "Granite" },
@@ -62,9 +63,29 @@ const TRUCKS = [
   { unit: "105", type: "quad_axle_dump", make: "Kenworth", model: "T880" },
   { unit: "106", type: "tri_axle_dump", make: "International", model: "HX" },
   { unit: "107", type: "single_axle_dump", make: "Freightliner", model: "M2 106" },
+  // Tractors pull the end-dump and belly-dump trailers; 110 is a spare tri-axle.
+  { unit: "108", type: "tractor", make: "Peterbilt", model: "389" },
+  { unit: "109", type: "tractor", make: "Kenworth", model: "W900" },
+  { unit: "110", type: "tri_axle_dump", make: "Mack", model: "Granite" },
 ];
 
-const DRIVERS = ["Avery Lindqvist", "Marco Delgado", "Priya Raman", "Theo Brandt", "Nia Okafor"];
+/** Recorded capacity (tons) per truck type; assigning more than a truck's capacity is refused. */
+export const CAPACITY: Record<string, number> = { single_axle_dump: 8, tandem_axle_dump: 15, tri_axle_dump: 22, quad_axle_dump: 22, tractor: 22 };
+
+/** Trailers (no VINs or plates; fictional fleet). */
+export const TRAILERS = [
+  { unit: "E-21", type: "end_dump", capacity: 22, compatible: ["tractor"], notes: "Frameless end dump" },
+  { unit: "B-31", type: "belly_dump", capacity: 22, compatible: ["tractor"], notes: "Belly dump for windrowed base" },
+  { unit: "P-11", type: "pup", capacity: 12, compatible: ["tri_axle_dump"], notes: "Pup trailer for the tri-axles" },
+];
+
+/** Charge items for work billed by the hour (rates are set on each order line, never here). */
+export const CHARGE_ITEMS = [
+  { code: "HAUL-HR", name: "Hourly hauling", kind: "hauling", calc_method: "per_unit", default_unit_code: "hour", description: "" },
+  { code: "WAIT-HR", name: "Wait time", kind: "surcharge", calc_method: "per_unit", default_unit_code: "hour", description: "Time waiting at the scale or on site." },
+];
+
+export const DRIVERS = ["Avery Lindqvist", "Marco Delgado", "Priya Raman", "Theo Brandt", "Nia Okafor", "Grace Whitfield", "Isaac Moreno", "Talia Novak", "Ruben Castillo"];
 
 export async function seedDemoCompany(db: Db, userId: string, timeZone: string): Promise<void> {
   const today = todayIn(timeZone);
@@ -87,6 +108,8 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     MATERIALS.filter((m) => mat[m.code]).map((m) => ({ price_list_id: (list as { id: string }).id, material_id: mat[m.code], unit_code: m.unit, rate_cents: m.rate, effective_from: addDays(today, -60), notes: "Demo rate (fictional)" })),
   ));
 
+  await must("charge items", db.from("charge_items").insert(CHARGE_ITEMS));
+
   // Customers with a job site each.
   const customers = await must("customers", db.from("customers").insert(CUSTOMERS.map((c, i) => ({
     name: c.name, email: `office${i + 1}@demo.example`, phone: `555-010${i}`, billing_line1: c.line1, billing_city: c.city, billing_state: "", payment_terms: "Net 30", po_required: i === 1,
@@ -96,8 +119,9 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   // Fleet and drivers. The platform admin is linked to one driver record so the
   // driver preview shows a real portal.
-  const trucks = await must("trucks", db.from("trucks").insert(TRUCKS.map((t) => ({ unit_number: t.unit, truck_type: t.type, make: t.make, model: t.model, weight_capacity: t.type === "single_axle_dump" ? 8 : t.type === "tandem_axle_dump" ? 15 : 22, weight_unit: "ton", capacity_verified_at: new Date().toISOString() }))).select("id, unit_number"));
+  const trucks = await must("trucks", db.from("trucks").insert(TRUCKS.map((t) => ({ unit_number: t.unit, truck_type: t.type, make: t.make, model: t.model, weight_capacity: CAPACITY[t.type], weight_unit: "ton", capacity_verified_at: new Date().toISOString() }))).select("id, unit_number"));
   const truck = Object.fromEntries((trucks as Array<{ id: string; unit_number: string }>).map((t) => [t.unit_number, t.id]));
+  await must("trailers", db.from("trailers").insert(TRAILERS.map((t) => ({ unit_number: t.unit, trailer_type: t.type, weight_capacity: t.capacity, weight_unit: "ton", compatible_truck_types: t.compatible, notes: t.notes }))));
   const drivers = await must("drivers", db.from("drivers").insert([
     // Every row has the same keys: a bulk insert fills missing keys with null.
     ...DRIVERS.map((name, i) => ({ name, employee_number: `D-${201 + i}`, phone: `555-020${i}`, hire_date: addDays(today, -400 - i * 90), user_id: null, notes: "" })),
@@ -111,7 +135,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     { driver_id: d.id, kind: "medical_card", expires_on: addDays(today, i === 2 ? 12 : 300 + i * 20), verified_at: verified },
   ])));
   const me = drv.find((d) => d.name === DEMO_PERSONA.name)!.id;
-  const [avery, marco, priya, theo, nia] = drv.map((d) => d.id);
+  const [avery, marco, priya, theo, nia, grace, isaac, talia] = drv.map((d) => d.id);
   await must("out of service", db.rpc("set_equipment_service_status", { p_kind: "truck", p_id: truck["106"], p_status: "out_of_service", p_reason: "Brake inspection (demo)", p_expected_return: tomorrow }));
 
   // Orders.
@@ -206,30 +230,37 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     lines: [line("LS-53", "220"), line("TS-SC", "80")],
   } }));
 
-  await seedPeople(db, { userId, today, drivers: drv, truck, primary: { [avery]: "101", [marco]: "102", [me]: "103", [theo]: "104", [priya]: "105", [nia]: "107" } });
+  await seedPeople(db, { userId, today, drivers: drv, truck, primary: { [avery]: "101", [marco]: "102", [me]: "103", [theo]: "104", [priya]: "105", [nia]: "107", [grace]: "108", [isaac]: "109", [talia]: "110" } });
+  await seedCommunicationSamples(db);
   // Every released feature has sample data in every demo mode (maintenance, documents, time off, workspaces, …).
   await ensureFeatureSamples(db, today);
 }
+
+/** Job titles of the demo drivers (their employee records). */
+export const DRIVER_TITLES: Record<string, string> = {
+  "Avery Lindqvist": "Driver — tri-axle", "Marco Delgado": "Driver — tri-axle", "Priya Raman": "Driver — quad-axle", "Theo Brandt": "Driver — tandem", "Nia Okafor": "Driver — single-axle",
+  "Grace Whitfield": "Driver — end dump", "Isaac Moreno": "Driver — belly dump", "Talia Novak": "Driver — tri-axle", "Ruben Castillo": "Driver — relief",
+};
+
+/** Which illustrated avatar (public/avatars) each demo person uses — matched to their job. */
+export const AVATARS: Record<string, string> = {
+  "Daniel Mitchell": "avatar-08", "Avery Lindqvist": "avatar-01", "Marco Delgado": "avatar-12", "Priya Raman": "avatar-03",
+  "Theo Brandt": "avatar-19", "Nia Okafor": "avatar-15", "Rachel Ortiz": "avatar-07", "Sam Kowalski": "avatar-04",
+  "Jordan Feld": "avatar-13", "Lena Park": "avatar-09", "Owen Brooks": "avatar-10",
+  "Grace Whitfield": "avatar-05", "Isaac Moreno": "avatar-14", "Talia Novak": "avatar-17", "Ruben Castillo": "avatar-18",
+};
 
 /**
  * Employees, primary trucks and (confidential) pay for the demo. Needs the
  * employees migration (20261031000100); on a database without it the rest of
  * the demo still works and this step is skipped.
  */
-/** Which illustrated avatar (public/avatars) each demo person uses — matched to their job. */
-const AVATARS: Record<string, string> = {
-  "Daniel Mitchell": "avatar-08", "Avery Lindqvist": "avatar-01", "Marco Delgado": "avatar-12", "Priya Raman": "avatar-03",
-  "Theo Brandt": "avatar-19", "Nia Okafor": "avatar-15", "Rachel Ortiz": "avatar-07", "Sam Kowalski": "avatar-04",
-  "Jordan Feld": "avatar-13", "Lena Park": "avatar-09", "Owen Brooks": "avatar-10",
-};
-
 async function seedPeople(db: Db, p: { userId: string; today: string; drivers: Array<{ id: string; name: string }>; truck: Record<string, string>; primary: Record<string, string> }) {
   const probe = await db.from("employees").select("id").limit(1);
   if (probe.error) return; // not migrated yet
-  const titles: Record<string, string> = { "Avery Lindqvist": "Driver — tri-axle", "Marco Delgado": "Driver — tri-axle", "Priya Raman": "Driver — quad-axle", "Theo Brandt": "Driver — tandem", "Nia Okafor": "Driver — single-axle" };
   const rows = p.drivers.map((d, i) => d.name === DEMO_PERSONA.name
     ? { full_name: d.name, job_title: DEMO_PERSONA.title, department: "management", employment_type: "full_time", status: "active", hire_date: addDays(p.today, -2600), driver_id: d.id, user_id: p.userId, work_email: "daniel.mitchell@northfield.demo.example", work_phone: "(555) 010-0299" }
-    : { full_name: d.name, job_title: titles[d.name] ?? "Driver", department: "operations", employment_type: "full_time", status: i === 4 ? "on_leave" : "active", hire_date: addDays(p.today, -400 - i * 90), driver_id: d.id, user_id: null, work_email: "", work_phone: `(555) 010-020${i}` });
+    : { full_name: d.name, job_title: DRIVER_TITLES[d.name] ?? "Driver", department: "operations", employment_type: "full_time", status: i === 4 ? "on_leave" : "active", hire_date: addDays(p.today, -400 - i * 90), driver_id: d.id, user_id: null, work_email: "", work_phone: `(555) 010-020${i}` });
   const staff = STAFF.map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: s.type ?? "full_time", status: "active", hire_date: addDays(p.today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" }));
   // Avatars need migration 20261031000300; without it the people are added without one.
   const withAvatars = !(await db.from("employees").select("avatar_key").limit(1)).error;

@@ -16,6 +16,14 @@ Demo compatibility is part of the definition of done for every feature and UI ch
   `src/server/demo/prairie-lantern.ts` for Prairie Lantern Freight) and kept current by **Refresh demo data**
   (`src/server/demo/prairie-lantern-refresh.ts`, `/admin/demo`): additive only, it fills empty recent days,
   today and tomorrow with loads and re-adds missing sample records, never changing or deleting the prospect's work.
+  The presenter demo (Northfield Aggregates) has the same **Refresh demo data** (`src/server/demo/northfield-refresh.ts`,
+  owner 2026-10-14) and the same shape as Prairie Lantern: 10 trucks including tractors with end-dump and belly-dump
+  trailers, 10 drivers, hourly charge items and Communications samples, so the two demos match.
+- **Colby Chapman's demo** (Prairie Lantern Freight is his own view, owner 2026-10-14): `src/server/demo/prairie-lantern-colby.ts`
+  adds touches from his life to the fictional company — a Rensselaer → Southfield, MI lane (where he studies), a
+  seasonal Sarasota, FL run (where he lived), a hardwood-court customer (he plays basketball) and his friend
+  **Cam Webster as a driver**. Cam Webster is the only real person's name in any demo, added at the owner's explicit
+  request; customers stay invented businesses (real towns as locations only). Seed and Refresh both call it.
 - **Feature samples shared by every demo** live in `src/server/demo/samples.ts` (`ensureFeatureSamples`): both seeds
   and Refresh call it, every step checks before it adds, and it refuses any company that is not a demo. A release
   that adds samples there reaches existing demos at their next Refresh (presenter demo: next Start/Reset), without
