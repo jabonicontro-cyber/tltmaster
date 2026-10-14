@@ -17,7 +17,7 @@ import { ApproveLoadBuild } from "./approve-load-build";
 
 export const metadata: Metadata = { title: "Build loads" };
 
-const unitLabel = (u: string | null) => (u === "cu_yd" ? "yd³" : "t");
+const unitLabel = (u: string | null) => (u === "cu_yd" ? "yd³" : u === "load" ? "load" : "t");
 
 export default async function LoadBuildPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | undefined>> }) {
   await requirePagePermission("dispatch.edit");
@@ -70,12 +70,17 @@ export default async function LoadBuildPage({ params, searchParams }: { params: 
             </Card>
 
             <Card>
-              <CardHeader title="Draft settings" description={`${usable.length} truck${usable.length === 1 ? "" : "s"} can carry this material${excluded ? `; ${excluded} not counted (out of service, open safety report or no recorded capacity in ${ctx.unit === "ton" ? "tons" : "cubic yards"})` : ""}.`} />
+              <CardHeader title="Draft settings" description={`${usable.length} truck${usable.length === 1 ? "" : "s"} can carry this material${excluded ? `; ${excluded} not counted (out of service, open safety report${ctx.unit === "load" ? "" : ` or no recorded capacity in ${ctx.unit === "ton" ? "tons" : "cubic yards"}`})` : ""}.`} />
               <CardBody>
                 <form method="get" className="space-y-4">
-                  <Field label={`Quantity per load (${u})`} htmlFor="payload" hint={ctx.payloads.length ? `Recorded truck capacities: ${ctx.payloads.map((c) => trimNumber(c)).join(", ")} ${u}. A load can go only on a truck that holds at least this much.` : undefined}>
-                    <Input id="payload" name="payload" type="number" inputMode="decimal" step="0.001" min="0.001" defaultValue={p.payload ?? ""} required className="tabular" />
-                  </Field>
+                  {ctx.unit === "load" ? (
+                    // Freight priced per load: one trip is one load; there is no payload to choose.
+                    <input type="hidden" name="payload" value="1" />
+                  ) : (
+                    <Field label={`Quantity per load (${u})`} htmlFor="payload" hint={ctx.payloads.length ? `Recorded truck capacities: ${ctx.payloads.map((c) => trimNumber(c)).join(", ")} ${u}. A load can go only on a truck that holds at least this much.` : undefined}>
+                      <Input id="payload" name="payload" type="number" inputMode="decimal" step="0.001" min="0.001" defaultValue={p.payload ?? ""} required className="tabular" />
+                    </Field>
+                  )}
                   <Field label="Loads per day" htmlFor="perDay" hint="How many loads your crew can run on one of these days. Trip times are not calculated yet, so this comes from you.">
                     <Input id="perDay" name="perDay" type="number" inputMode="numeric" min="1" max="200" step="1" defaultValue={p.perDay ?? ""} required className="tabular" />
                   </Field>

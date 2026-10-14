@@ -70,6 +70,37 @@ test("93 t becomes three 25 t loads and one 18 t load, spread over the order's d
   await expect(page.getByText("Nothing left to plan")).toBeVisible();
 });
 
+// Freight priced per load (hauling line, unit "load"): one trip is one load, so there is no payload to choose.
+test("a freight order of 3 loads becomes three one-load trips; the quantity per load is not asked", async ({ page }) => {
+  const id = unique();
+  const orderId = await asUser(USERS.owner.email, async (q) => {
+    const cust = await q("select id from public.customers where name = 'Prairie View Landscaping' and company_id = '00000000-0000-4000-8000-000000000001'");
+    const charge = await q("select id from public.charge_items where code = 'HAUL-LOAD' and company_id = '00000000-0000-4000-8000-000000000001'");
+    const r = await q("select public.save_order_draft($1::jsonb) as r", [
+      JSON.stringify({
+        customer_id: cust.rows[0].id, project_name: `Freight build e2e ${id}`, site_line1: `${id} Depot Rd`, site_city: "Crown Point",
+        lines: [{ kind: "hauling", calc_method: "per_unit", charge_item_id: charge.rows[0].id, description: "Linehaul (per load)", unit_code: "load", quantity: "3", unit_rate_cents: 65000 }],
+      }),
+    ]);
+    const orderId = r.rows[0].r.order_id as string;
+    await q("select public.set_order_status($1, 'confirmed', '')", [orderId]);
+    await q("select public.update_order_schedule($1, null, $2::jsonb)", [orderId, JSON.stringify({ scheduled_start: plusDays(1), scheduled_end: plusDays(2) })]);
+    await q("select public.set_order_status($1, 'scheduled', '')", [orderId]);
+    return orderId;
+  });
+  await signIn(page, "dispatcher");
+  await page.goto(`/orders/${orderId}/load-build`);
+  await expect(page.getByRole("heading", { name: "Build loads", level: 1 })).toBeVisible();
+  await expect(page.getByLabel(/Quantity per load/)).toHaveCount(0);
+  await page.getByLabel("Loads per day").fill("2");
+  await page.getByRole("button", { name: "Show draft" }).click();
+  await expect(page.getByRole("table", { name: "Draft loads" }).getByRole("row")).toHaveCount(5); // header, three loads, total
+  await page.getByRole("button", { name: "Approve and add 3 planned loads" }).click();
+  await expectToast(page, "3 planned loads added.");
+  const loads = await loadsOf(orderId);
+  expect(loads.map((l) => [Number(l.qty), l.unit_code])).toEqual([[1, "load"], [1, "load"], [1, "load"]]);
+});
+
 test("an approval is refused when the order's loads changed after the draft was reviewed", async ({ page }) => {
   const { orderId } = await fixture();
   await signIn(page, "dispatcher");

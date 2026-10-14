@@ -14,8 +14,11 @@ export const QTY_SCALE = 1000;
 export const toMilli = (n: number): number => Math.round(n * QTY_SCALE);
 export const fromMilli = (m: number): number => m / QTY_SCALE;
 
-/** Units a truck capacity can be compared with (trucks record tons/lb and cubic yards). */
-export const BUILD_UNITS = ["ton", "cu_yd"] as const;
+/**
+ * Units a load can be built in: tons and cubic yards are compared with each truck's recorded capacity; "load" (freight
+ * priced per trip) is one trip per truck, so every usable truck carries exactly one.
+ */
+export const BUILD_UNITS = ["ton", "cu_yd", "load"] as const;
 export type BuildUnit = (typeof BUILD_UNITS)[number];
 
 export interface BuildTruck {
@@ -33,6 +36,7 @@ export interface BuildTruck {
 
 /** The truck's recorded capacity in the build unit, or null when unknown. */
 export function truckCapacity(t: BuildTruck, unit: BuildUnit): number | null {
+  if (unit === "load") return 1;
   if (unit === "ton" && t.weight_capacity !== null) return t.weight_unit === "lb" ? Number(t.weight_capacity) / 2000 : Number(t.weight_capacity);
   if (unit === "cu_yd" && t.volume_capacity !== null) return Number(t.volume_capacity);
   return null;
@@ -128,6 +132,8 @@ export interface BuildResult {
 }
 
 const fmt = (n: number) => String(Number(n.toFixed(3)));
+/** Short unit for messages and tables: t, yd³, or load(s). */
+export const unitShort = (u: BuildUnit | null) => (u === "cu_yd" ? "yd³" : u === "load" ? "load" : "t");
 
 /** Distinct capacities of trucks that could be used, largest first: the payload choices offered. */
 export function payloadOptions(trucks: BuildTruck[], unit: BuildUnit): number[] {
@@ -139,7 +145,7 @@ export function payloadOptions(trucks: BuildTruck[], unit: BuildUnit): number[] 
 export function buildLoads(input: BuildInput): BuildResult {
   const blockers: string[] = [];
   const warnings: string[] = [];
-  const unit = input.unit === "ton" ? "t" : "yd³";
+  const unit = unitShort(input.unit);
   const remainingMilli = toMilli(input.orderedQty) - toMilli(input.plannedQty);
   const remaining = fromMilli(Math.max(remainingMilli, 0));
   const payloadMilli = toMilli(input.payload);
@@ -154,7 +160,9 @@ export function buildLoads(input: BuildInput): BuildResult {
   else if (carriers.length === 0) {
     blockers.push(usable.length
       ? `No in-service truck has a recorded capacity of ${fmt(input.payload)} ${unit} or more. Choose a smaller quantity per load.`
-      : `No active, in-service truck without an open safety report has a recorded capacity in ${input.unit === "ton" ? "tons" : "cubic yards"}.`);
+      : input.unit === "load"
+        ? "No active, in-service truck without an open safety report."
+        : `No active, in-service truck without an open safety report has a recorded capacity in ${input.unit === "ton" ? "tons" : "cubic yards"}.`);
   }
   if (!Number.isInteger(input.loadsPerDay) || input.loadsPerDay < 1) blockers.push("Enter how many loads can run per day.");
   if (input.days.length === 0) blockers.push("The order has no scheduled dates from today on. Schedule the order first.");

@@ -101,3 +101,16 @@ describe("spreading loads over the order's dates", () => {
     expect(buildLoads({ ...base, loadsPerDay: 0 }).blockers.join(" ")).toMatch(/loads can run per day/);
   });
 });
+
+describe("freight priced per load", () => {
+  it("one trip per load: 5 loads ordered, 2 planned → 3 one-load trips, any usable truck (capacity not compared)", () => {
+    const tractor = { id: "t1", unit_number: "201", active: true, service_status: "in_service" as const, weight_capacity: null, weight_unit: null, volume_capacity: null, capacity_verified_at: null, safety_report: false };
+    const shop = { ...tractor, id: "t2", unit_number: "207", service_status: "out_of_service" as const };
+    const r = buildLoads({ unit: "load", orderedQty: 5, plannedQty: 2, payload: 1, loadsPerDay: 2, mode: "even", days: ["2026-10-20", "2026-10-21"], trucks: [tractor, shop] });
+    expect(r.ok).toBe(true);
+    expect(r.loads.map((l) => l.quantity)).toEqual([1, 1, 1]);
+    expect(r.eligibleTrucks).toBe(1);
+    expect(payloadOptions([tractor, shop], "load")).toEqual([1]);
+  });
+});
+

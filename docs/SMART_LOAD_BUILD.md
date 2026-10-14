@@ -50,9 +50,11 @@ decisions still with the founder; the dependent feature must not ship before the
   then one partial load; the sum equals what is left to plan exactly (asserted). Left to plan = ordered quantity of
   the single material line − planned (non-canceled) loads in the same unit. Loads without a quantity are listed as
   not counted. Planned more than ordered → no draft, with a warning.
-- **Scope of increment 1:** one material line in tons or cubic yards. Several material lines → refused with a
-  message (per-material loads need a material on the load **[open: one material per load, or mixed?]**). Charge
-  lines (hauling per ton etc.) are never split into loads.
+- **Scope:** one material **or hauling** line in tons, cubic yards or **loads** (2026-10-14). Freight priced per load
+  (a hauling line in `load`) is one trip per load: the quantity per load is fixed at 1 and any usable truck counts (no
+  capacity comparison). Several such lines → refused with a clear message (plan them on the dispatch board).
+- **AI (proposal, not built):** an "Explain this draft" summary like Plan the day's, through `src/server/ai/` with
+  pseudonyms, its own evaluation cases and evidence before it can turn on. The draft itself stays deterministic.
 - **Payload:** chosen by the dispatcher; the offered choices are the recorded capacities of usable trucks. A draft
   is refused when no usable truck can carry the payload. Unverified capacities → warning.
 - **Eligibility (increment 1):** active, in service, no open breakdown/inspection report, capacity recorded in the

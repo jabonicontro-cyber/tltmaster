@@ -66,12 +66,13 @@ export async function getLoadBuildContext(orderId: string): Promise<LoadBuildCon
     window_start: o.window_start as string | null,
     window_end: o.window_end as string | null,
   };
-  const materialLines = (lines.data ?? []).filter((l) => l.material_id && l.quantity !== null && BUILD_UNITS.includes(l.unit_code as BuildUnit));
+  // A material line, or a hauling line (haul-only work and freight priced per load), in a buildable unit.
+  const materialLines = (lines.data ?? []).filter((l) => (l.material_id || l.kind === "hauling") && l.quantity !== null && BUILD_UNITS.includes(l.unit_code as BuildUnit));
   let unavailable: string | null = null;
   if (!DISPATCHABLE.includes(order.status)) unavailable = `The order is ${order.status.replace(/_/g, " ")}. Loads can be built once it is scheduled.`;
   else if (!order.scheduled_start) unavailable = "The order has no scheduled dates yet.";
-  else if (materialLines.length === 0) unavailable = "The order has no material line in tons or cubic yards, so there is no quantity to split into loads.";
-  else if (materialLines.length > 1) unavailable = "The order has more than one material line. Building loads per material is not supported yet; plan these loads on the dispatch board.";
+  else if (materialLines.length === 0) unavailable = "The order has no material or hauling line in tons, cubic yards or loads, so there is no quantity to split into loads.";
+  else if (materialLines.length > 1) unavailable = "The order has more than one material or hauling line. Building loads per line is not supported yet; plan these loads on the dispatch board.";
 
   const line = materialLines.length === 1 ? materialLines[0] : null;
   const unit = (line?.unit_code as BuildUnit | undefined) ?? null;
