@@ -22,7 +22,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/DEMO_TENANTS.md` | Demo tenants (presenter demo, prospect demos such as Prairie Lantern Freight): how they stay in sync with the product, the documented intentional differences, sample data, and the per-feature demo checklist. |
 | `docs/AI.md` | AI runtime: provider interface, OpenAI adapter, configuration, readiness gates, evaluations, usage ledger and budgets, tools and approvals, demo behaviour, owner steps to turn a capability on. |
 | `docs/MARKETING.md` | Feature catalog, publication status, screenshot pipeline and quality gate, the feature-to-website workflow and its checks. |
-| `.claude/skills/` | Design skills from `emilkowalski/skills` (MIT; `skills-lock.json`). Use `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design` and `ask-sonner` for UI work; they never override the rules below. |
+| `.claude/skills/` | Design skills (`skills-lock.json`): `emilkowalski/skills` (MIT: `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design`, `ask-sonner`), `frontend-design` (Anthropic, Apache-2.0), `ui-ux-pro-max` and `ckw-design` (MIT). Provenance and project overrides in `.claude/skills/TAVIRON-NOTES.md`. They never override the rules below. |
 
 ## Rules that always apply
 

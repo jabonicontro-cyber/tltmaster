@@ -72,6 +72,27 @@
       "sourceType": "github",
       "skillPath": "skills/review-animations/SKILL.md",
       "computedHash": "b4e5f0f4fe3e2743c85bf7354108f48a0b9d502cb20ef5c4a9c195da91f93736"
+    },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "commit": "dbd4588f9e1033efb41dad4bef2f7947c8993d44",
+      "computedHash": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+    },
+    "ui-ux-pro-max": {
+      "source": "nextlevelbuilder/ui-ux-pro-max-skill",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "commit": "7246805992a42b7bba37d4cac83b01416f0c6c44",
+      "computedHash": "ea087c341bfb5b23195c7302027268ede86da802554c18a5c4896a6017b439f9"
+    },
+    "ckw-design": {
+      "source": "connerkward/ckw-design-skill",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "commit": "c8de7c8e9279648a2cbeb4021508b874e88d41f1",
+      "computedHash": "943eda24411f7ba0187e0f4e2553514fe20a76379e8952fa8df987ff8528a9a5"
     }
   }
 }
