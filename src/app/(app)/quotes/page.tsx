@@ -52,11 +52,11 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
             options={[{ value: "", label: "All statuses" }, { value: "open", label: "Open (draft + sent)" }, ...QUOTE_STATUSES.map((s) => ({ value: s, label: QUOTE_STATUS_LABELS[s] }))]}
           />
           <div>
-            <label htmlFor="from" className="mb-1 block text-xs font-semibold text-muted uppercase">From</label>
+            <label htmlFor="from" className="mb-1 block text-xs font-medium text-muted">From</label>
             <DateInput id="from" name="from" defaultValue={sp.from} className="w-40" />
           </div>
           <div>
-            <label htmlFor="to" className="mb-1 block text-xs font-semibold text-muted uppercase">To</label>
+            <label htmlFor="to" className="mb-1 block text-xs font-medium text-muted">To</label>
             <DateInput id="to" name="to" defaultValue={sp.to} className="w-40" />
           </div>
         </FilterBar>

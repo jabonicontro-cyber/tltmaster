@@ -62,11 +62,11 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
     <div className="space-y-4">
       <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card px-4 py-3" aria-label="Sales period">
         <div>
-          <label htmlFor="from" className="mb-1 block text-xs font-semibold text-muted uppercase">Decisions from</label>
+          <label htmlFor="from" className="mb-1 block text-xs font-medium text-muted">Decisions from</label>
           <DateInput id="from" name="from" defaultValue={from} className="w-40" />
         </div>
         <div>
-          <label htmlFor="to" className="mb-1 block text-xs font-semibold text-muted uppercase">To</label>
+          <label htmlFor="to" className="mb-1 block text-xs font-medium text-muted">To</label>
           <DateInput id="to" name="to" defaultValue={to} className="w-40" />
         </div>
         <FilterSelect name="customer" label="Customer" value={customer} options={[{ value: "", label: "All customers" }, ...customers.map((c) => ({ value: c.id, label: c.name }))]} />

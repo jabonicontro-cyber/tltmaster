@@ -62,7 +62,7 @@ export function MembersPanel(props: {
     <div className="space-y-4">
       {props.isMember && (
         <div className="space-y-1">
-          <p className="text-xs font-bold tracking-wide text-muted uppercase">Notifications</p>
+          <p className="text-xs font-semibold text-muted">Notifications</p>
           {muted ? (
             <div className="flex items-center justify-between gap-2 text-sm">
               <span className="inline-flex items-center gap-1.5 text-muted"><BellOff className="size-4" aria-hidden />{muteLabel(props.myMutedUntil, new Date(), DEFAULT_TIMEZONE)}</span>
@@ -95,7 +95,7 @@ export function MembersPanel(props: {
 
       <div>
         <div className="mb-1 flex items-center justify-between">
-          <p className="text-xs font-bold tracking-wide text-muted uppercase">Members ({props.members.length})</p>
+          <p className="text-xs font-semibold text-muted">Members ({props.members.length})</p>
           {props.canAdd && props.active && props.kind !== "direct" && (
             <Button size="sm" variant="ghost" icon={<UserPlus className="size-4" />} onClick={() => { setAdding(true); setChosen([]); setShare(false); setError(null); }}>Add</Button>
           )}

@@ -47,8 +47,8 @@ export function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
 export function SampleBadge({ show = true }: { show?: boolean }) {
   if (!show) return null;
   return (
-    <Badge tone="gray" className="bg-transparent text-[11px] tracking-wide text-muted">
-      SAMPLE
+    <Badge tone="gray" className="bg-transparent text-[11px] text-muted">
+      Sample
     </Badge>
   );
 }

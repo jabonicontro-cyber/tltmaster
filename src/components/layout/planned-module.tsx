@@ -22,7 +22,7 @@ export function PlannedModule({ title, phase, summary, features, dependsOn }: { 
             </div>
           </div>
           <div>
-            <h2 className="mb-2 text-sm font-bold tracking-wide text-muted uppercase">What it will do</h2>
+            <h2 className="mb-2 text-[15px] font-semibold text-ink">What it will do</h2>
             <ul className="list-disc space-y-1 pl-5 text-[15px]">
               {features.map((f) => (
                 <li key={f}>{f}</li>
@@ -31,7 +31,7 @@ export function PlannedModule({ title, phase, summary, features, dependsOn }: { 
           </div>
           {dependsOn && (
             <div>
-              <h2 className="mb-1 text-sm font-bold tracking-wide text-muted uppercase">Depends on</h2>
+              <h2 className="mb-1 text-[15px] font-semibold text-ink">Depends on</h2>
               <div className="text-[15px]">{dependsOn}</div>
             </div>
           )}

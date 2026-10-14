@@ -71,7 +71,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
       {mode === "edit" && <input type="hidden" name="edit_seq" value={initial.edit_seq} />}
       {initial.field_report_id && <input type="hidden" name="field_report_id" value={initial.field_report_id} />}
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">The job</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">The job</legend>
         {mode === "create" ? (
           <Field label="Truck" htmlFor="truck_id" required error={fieldError("truck_id")} className="sm:col-span-2">
             <Select {...f("truck_id")} value={truckId} onChange={(e) => {
@@ -114,7 +114,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
         </div>
       </fieldset>
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Shop</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Shop</legend>
         <Field label="Mechanic" htmlFor="assigned_to" error={fieldError("assigned_to")} className="sm:col-span-2">
           <Select {...f("assigned_to")} defaultValue={initial.assigned_to}>
             <option value="">Unassigned</option>
@@ -130,7 +130,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
       </fieldset>
       {mode === "edit" && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-          <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Findings and labor</legend>
+          <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Findings and labor</legend>
           <Field label="Findings" htmlFor="findings" error={fieldError("findings")} className="sm:col-span-6">
             <Textarea {...f("findings")} defaultValue={initial.findings} rows={3} maxLength={4000} />
           </Field>

@@ -151,7 +151,7 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             </Field>
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-            <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Quote defaults</legend>
+            <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Quote defaults</legend>
             <Field label="Business timezone" htmlFor="timezone" error={fe("timezone")} className="sm:col-span-3" hint="Decides what “today” means for loads, tickets and the Command Center.">
               <Select {...ctl("timezone", fe("timezone"))} defaultValue={settings.timezone}>
                 {TIMEZONE_OPTIONS.map((t) => (
@@ -176,14 +176,14 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             </Field>
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-2 sm:grid-cols-6">
-            <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Delivery tickets</legend>
+            <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Delivery tickets</legend>
             <div className="sm:col-span-6">
               <Checkbox name="ticket_reference_required" defaultChecked={settings.ticket_reference_required} label="Require the paper or scale ticket number" />
               <p className="mt-1 text-sm text-muted">When on, a ticket entered without that number is flagged for review. Turn it off if your tickets do not carry one. Applies to tickets entered from now on.</p>
             </div>
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-            <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Urgent orders</legend>
+            <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Urgent orders</legend>
             <Field
               label="Escalate when not acknowledged within (minutes)"
               htmlFor="urgent_ack_minutes"
@@ -472,7 +472,7 @@ export function SampleDataPanel({ counts }: { counts: Record<string, number> }) 
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   return (
     <>
-      <CardHeader title="Sample data" description="Fictional records for training, shown with a SAMPLE badge. Remove them before go-live." />
+      <CardHeader title="Sample data" description="Fictional records for training, shown with a Sample badge. Remove them before go-live." />
       <CardBody className="space-y-4">
         <ul className="grid grid-cols-2 gap-2 text-[15px] sm:grid-cols-5">
           {Object.entries(counts).map(([k, v]) => (

@@ -66,7 +66,7 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
                 className="flex min-w-0 items-center gap-1.5 text-left"
               >
                 {isCollapsed ? <ChevronRight className="size-3.5 shrink-0 text-muted" aria-hidden /> : <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />}
-                <h2 id={`section-${id}`} className="text-xs font-semibold tracking-[0.08em] text-muted uppercase">{s.title}</h2>
+                <h2 id={`section-${id}`} className="text-sm font-semibold text-ink">{s.title}</h2>
               </button>
               {isCollapsed && s.collapsedSummary && <span className="truncate text-sm text-muted">{s.collapsedSummary}</span>}
               <span className="ml-auto flex items-center gap-1">

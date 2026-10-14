@@ -36,7 +36,7 @@ export function FilterSelect({ name, label, value, options }: { name: string; la
   return (
     // A long option (a customer's full name) must never widen the page: the select shrinks to the space it has.
     <div className="min-w-0 max-w-full">
-      <label htmlFor={`f-${name}`} className="mb-1 block text-xs font-semibold text-muted uppercase">
+      <label htmlFor={`f-${name}`} className="mb-1 block text-xs font-medium text-muted">
         {label}
       </label>
       <select

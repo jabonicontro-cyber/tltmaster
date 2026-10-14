@@ -626,7 +626,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
 
                     {/* Item */}
                     <div className="col-span-12 lg:col-span-4">
-                      <label htmlFor={`line-${l.key}-item`} className="mb-1 block text-xs font-bold text-muted uppercase">
+                      <label htmlFor={`line-${l.key}-item`} className="mb-1 block text-xs font-medium text-muted">
                         {l.kind === "material" ? "Material" : "Charge"}
                       </label>
                       {l.kind === "material" ? (
@@ -679,7 +679,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                     {l.calcMethod === "per_unit" ? (
                       <>
                         <div className="col-span-4 sm:col-span-3 lg:col-span-2">
-                          <label htmlFor={`line-${l.key}-qty`} className="mb-1 block text-xs font-bold text-muted uppercase">Quantity</label>
+                          <label htmlFor={`line-${l.key}-qty`} className="mb-1 block text-xs font-medium text-muted">Quantity</label>
                           <Input
                             id={`line-${l.key}-qty`}
                             inputMode="decimal"
@@ -691,7 +691,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                           {lineError(i, "quantity") && <p className="mt-1 text-sm text-red-700">{lineError(i, "quantity")}</p>}
                         </div>
                         <div className="col-span-8 sm:col-span-3 lg:col-span-2">
-                          <label htmlFor={`line-${l.key}-unit`} className="mb-1 block text-xs font-bold text-muted uppercase">Unit</label>
+                          <label htmlFor={`line-${l.key}-unit`} className="mb-1 block text-xs font-medium text-muted">Unit</label>
                           <Select id={`line-${l.key}-unit`} value={l.unitCode ?? ""} onChange={(e) => changeUnit(l, e.target.value)} aria-invalid={Boolean(lineError(i, "unitCode")) || undefined}>
                             <option value="">Unit…</option>
                             {units.map((u) => (
@@ -701,7 +701,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                           {lineError(i, "unitCode") && <p className="mt-1 text-sm text-red-700">{lineError(i, "unitCode")}</p>}
                         </div>
                         <div className="col-span-6 sm:col-span-3 lg:col-span-2">
-                          <label htmlFor={`line-${l.key}-rate`} className="mb-1 block text-xs font-bold text-muted uppercase">
+                          <label htmlFor={`line-${l.key}-rate`} className="mb-1 block text-xs font-medium text-muted">
                             {l.kind === "discount" ? "Discount" : "Rate"} ($/{unitLabel(l.unitCode).toLowerCase() || "unit"})
                           </label>
                           <Input
@@ -717,7 +717,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                       </>
                     ) : (
                       <div className="col-span-6 sm:col-span-4 lg:col-span-6">
-                        <label htmlFor={`line-${l.key}-pct`} className="mb-1 block text-xs font-bold text-muted uppercase">Percent of subtotal</label>
+                        <label htmlFor={`line-${l.key}-pct`} className="mb-1 block text-xs font-medium text-muted">Percent of subtotal</label>
                         <div className="flex items-center gap-2">
                           <Input
                             id={`line-${l.key}-pct`}
@@ -734,7 +734,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                     )}
 
                     <div className="col-span-6 flex flex-col items-end sm:col-span-3 lg:col-span-2">
-                      <span className="mb-1 block text-xs font-bold text-muted uppercase">Amount</span>
+                      <span className="mb-1 block text-xs font-medium text-muted">Amount</span>
                       <span className={cn("flex h-10 items-center text-lg font-bold tabular", amount < 0 && "text-green-800")}>{formatCents(amount)}</span>
                     </div>
 

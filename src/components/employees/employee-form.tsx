@@ -53,7 +53,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
     <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
       <FormError message={formError} />
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Person</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Person</legend>
         <Field label="Full name" htmlFor="full_name" required error={fieldError("full_name")} className="sm:col-span-3">
           <Input {...f("full_name")} defaultValue={initial.full_name} maxLength={120} autoComplete="off" />
         </Field>
@@ -87,7 +87,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
         </fieldset>
       )}
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Employment</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Employment</legend>
         <Field label="Department" htmlFor="department" error={fieldError("department")} className="sm:col-span-2">
           <Select {...f("department")} defaultValue={initial.department}>{Object.entries(DEPARTMENTS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
         </Field>
@@ -105,7 +105,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
         </Field>
       </fieldset>
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Emergency contact</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Emergency contact</legend>
         <Field label="Name" htmlFor="emergency_contact_name" error={fieldError("emergency_contact_name")} className="sm:col-span-3">
           <Input {...f("emergency_contact_name")} defaultValue={initial.emergency_contact_name} maxLength={120} autoComplete="off" />
         </Field>
@@ -117,7 +117,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
         </Field>
       </fieldset>
       <fieldset>
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase">Avatar</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink">Avatar</legend>
         <p className="mb-2 text-sm text-muted">Shown in the directory when the person has no photo of their own. People with a login can also choose one on their profile.</p>
         <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Avatar">
           <label className="flex size-12 cursor-pointer items-center justify-center rounded-full border border-line text-xs text-muted has-[:checked]:ring-2 has-[:checked]:ring-strong">

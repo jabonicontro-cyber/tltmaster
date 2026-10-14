@@ -42,7 +42,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
       <FormError message={formError} />
 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">{kind === "truck" ? "Truck" : "Trailer"}</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">{kind === "truck" ? "Truck" : "Trailer"}</legend>
         <Field label="Unit number" htmlFor="unit_number" required error={fieldError("unit_number")} className="sm:col-span-2" hint="As painted on the equipment">
           <Input {...f("unit_number")} defaultValue={initial.unit_number} maxLength={20} required autoFocus />
         </Field>
@@ -75,7 +75,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
       </fieldset>
 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-        <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Capacity</legend>
+        <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Capacity</legend>
         <div className="sm:col-span-6">
           <Notice title="Only enter capacities you have confirmed">
             Leave a capacity blank if it is not known — it will show as <strong>Unknown</strong>. Never estimate. Mark it verified only after checking a scale ticket,
@@ -115,7 +115,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
 
       {kind === "trailer" && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-          <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Compatibility</legend>
+          <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Compatibility</legend>
           <div className="sm:col-span-6">
             <p className="mb-2 text-sm font-semibold text-ink">Truck types that can pull this trailer</p>
             <div className="flex flex-wrap gap-x-5 gap-y-2">

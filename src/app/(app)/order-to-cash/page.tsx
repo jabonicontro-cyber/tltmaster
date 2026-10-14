@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState, Notice } from "@/components/ui/states";
+import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatCents } from "@/lib/money";
 import { lifecycle, OWNERS, STAGE_LABELS, STAGES, summarize, waitingDays, type Stage } from "@/lib/order-to-cash";
@@ -37,12 +37,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
         title="Order to cash"
         description="Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing — nothing here changes an order."
       />
-      <Notice title="Coming soon">
-        Invoices and payments. Taviron hands orders off for billing; issuing invoices, tracking what customers owe and
-        recording payments are not built yet, so this view ends at Handed off.
-      </Notice>
-
-      <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7" aria-label="Stages">
+      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7" aria-label="Stages">
         {summary.map((s) => (
           <li key={s.stage}>
             <Link
@@ -50,13 +45,18 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
               aria-current={stage === s.stage ? "true" : undefined}
               className="block rounded-lg border border-line bg-card px-3 py-2.5 hover:border-strong aria-[current=true]:border-strong"
             >
-              <span className="block text-xs font-semibold text-muted uppercase">{STAGE_LABELS[s.stage]}</span>
+              <span className="block text-xs font-medium text-muted">{STAGE_LABELS[s.stage]}</span>
               <span className="mt-0.5 block text-2xl font-semibold tabular">{s.total}</span>
               <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {formatCents(s.cents)}</span>
             </Link>
           </li>
         ))}
       </ul>
+      {/* A limit, stated once and quietly: the view ends at Handed off. */}
+      <p className="mt-2.5 text-sm text-muted">
+        <span className="font-medium text-ink">Coming soon:</span> invoices and payments. Taviron hands orders off for billing; issuing
+        invoices, tracking what customers owe and recording payments are not built yet, so this view ends at Handed off.
+      </p>
 
       <Card className="mt-5">
         <CardHeader

@@ -76,7 +76,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             )}
           >
             {BILLING_VIEWS[k]}
-            {board.counts[k] ? <Badge tone={k === "ready" ? "green" : k === "missing" ? "red" : k === "review" || k === "exceptions" ? "amber" : "gray"}>{board.counts[k]}</Badge> : null}
+            {board.counts[k] ? <Badge tone="gray">{board.counts[k]}</Badge> : null}
           </Link>
         ))}
       </nav>
@@ -85,11 +85,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         <FilterBar action="/billing" query={sp.q} placeholder="Search order #, customer, PO, project…" clearHref={`/billing?view=${view}`}>
           <input type="hidden" name="view" value={view} />
           <div>
-            <label htmlFor="f-from" className="mb-1 block text-xs font-semibold text-muted uppercase">Service from</label>
+            <label htmlFor="f-from" className="mb-1 block text-xs font-medium text-muted">Service from</label>
             <DateInput id="f-from" name="from" defaultValue={filters.from} className="w-40" />
           </div>
           <div>
-            <label htmlFor="f-to" className="mb-1 block text-xs font-semibold text-muted uppercase">to</label>
+            <label htmlFor="f-to" className="mb-1 block text-xs font-medium text-muted">To</label>
             <DateInput id="f-to" name="to" defaultValue={filters.to} className="w-40" />
           </div>
           <FilterSelect name="customer" label="Customer" value={filters.customer} options={[{ value: "", label: "All customers" }, ...board.customers.map((c) => ({ value: c.id, label: c.name }))]} />

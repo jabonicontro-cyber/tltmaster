@@ -118,17 +118,17 @@ export function WorkspaceForm(props: {
         <section aria-label="Recipient preview" className="space-y-3 rounded-md border border-line bg-surface/60 p-4 text-sm">
           <p className="font-semibold text-ink">Who will be in this workspace now</p>
           <div>
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Drivers from dispatch ({preview.drivers.length})</p>
+            <p className="text-xs font-semibold text-muted">Drivers from dispatch ({preview.drivers.length})</p>
             {preview.drivers.length === 0 ? <p className="text-muted">No assigned drivers with a Taviron login yet. They join automatically when assigned.</p>
               : <ul className="list-inside list-disc text-ink">{preview.drivers.map((d) => <li key={d.user_id}>{d.name}</li>)}</ul>}
             {preview.drivers_without_login > 0 && <p className="mt-1 text-amber-900">{preview.drivers_without_login} assigned driver{preview.drivers_without_login === 1 ? " has" : "s have"} no Taviron login and cannot be included.</p>}
           </div>
           <div>
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Staff ({staff.length + 1})</p>
+            <p className="text-xs font-semibold text-muted">Staff ({staff.length + 1})</p>
             <p className="text-ink">You{staff.length ? `, ${props.staff.filter((p) => staff.includes(p.user_id)).map((p) => p.name).join(", ")}` : ""}</p>
           </div>
           <div>
-            <p className="text-xs font-bold tracking-wide text-muted uppercase">Loads in scope ({preview.loads.length})</p>
+            <p className="text-xs font-semibold text-muted">Loads in scope ({preview.loads.length})</p>
             {preview.loads.length === 0 ? <p className="text-muted">No open loads in this scope.</p>
               : <ul className="max-h-40 list-inside list-disc overflow-y-auto text-ink">{preview.loads.map((l) => <li key={l.load_id}>{l.label} · {formatDate(l.date)}</li>)}</ul>}
           </div>
