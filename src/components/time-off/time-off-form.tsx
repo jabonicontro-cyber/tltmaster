@@ -75,8 +75,8 @@ export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
         </>
       )}
       {bank && kind === "full" && (
-        <Field label={`Hours of ${bank.name}`} htmlFor="to-hours" required error={fieldError("hours")} className="sm:col-span-2"
-          hint={bank.available !== null && !employees ? `${Number(bank.available.toFixed(2))} h of your ${bank.name} available.` : `Draws from ${bank.name}; a request above the available hours is refused.`}>
+        <Field label={`Hours of ${bank.name}`} htmlFor="to-hours" error={fieldError("hours")} className="sm:col-span-3"
+          hint={`${bank.available !== null && !employees ? `${Number(bank.available.toFixed(2))} h of your ${bank.name} available. ` : `Draws from ${bank.name}. `}With a work schedule the scheduled hours of these days are used${employees ? " (enter hours only to correct them)" : ""}; without one, enter the hours.`}>
           <Input {...f("hours")} inputMode="decimal" placeholder="8" />
         </Field>
       )}

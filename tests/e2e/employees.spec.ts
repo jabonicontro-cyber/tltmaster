@@ -159,3 +159,26 @@ test("employee pages request only profile photos that exist (no failed image req
   await page.waitForLoadState("load");
   expect(failed).toEqual([]);
 });
+
+test("the owner records a work schedule; a full-day request then counts the scheduled hours", async ({ page }) => {
+  const name = `Schedule Person ${unique()}`;
+  const id = await asUser(USERS.owner.email, async (q) => (await q("insert into public.employees (full_name, hire_date) values ($1, '2020-01-01') returning id", [name])).rows[0].id as string);
+  await signIn(page, "owner");
+  await page.goto(`/employees/${id}`);
+  const form = page.getByRole("form", { name: "Work schedule" });
+  for (const d of ["Mon", "Tue", "Wed", "Thu"]) await form.getByLabel(`${d} hours`).fill("10");
+  await form.getByLabel("Fri hours").fill("25");
+  await form.getByRole("button", { name: "Save schedule" }).click();
+  await expect(form.getByText("0–24 hours.")).toBeVisible(); // refused, explained, input kept
+  await form.getByLabel("Fri hours").fill("");
+  await form.getByRole("button", { name: "Save schedule" }).click();
+  await expectToast(page, "Work schedule saved (40 h a week). Full-day time off now counts these hours.");
+
+  // A full-day request for a Monday, entered by the owner without hours, counts the scheduled 10 h.
+  const requestHours = await asUser(USERS.owner.email, async (q) => {
+    const mon = (await q("select (current_date + 14 - extract(isodow from current_date + 14)::int + 1)::text as d")).rows[0].d as string;
+    const r = (await q("select public.time_off_save($1::jsonb) as r", [JSON.stringify({ employee_id: id, category: "vacation", start_date: mon, end_date: mon })])).rows[0].r as { id: string };
+    return (await q("select hours from public.time_off_requests where id = $1", [r.id])).rows[0].hours;
+  });
+  expect(Number(requestHours)).toBe(10);
+});

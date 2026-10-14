@@ -60,6 +60,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("maintenance", await maintenance(db, today, trucks));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
+  // Schedules first: full-day requests then count scheduled hours (20261114000300).
+  note("work schedules", await workSchedules(db));
   // Balances first: once a bank covers vacation and personal time, requests on it need hours and a balance.
   note("time-off balances", await ptoBalances(db, today));
   note("time off", await timeOff(db, today));
@@ -272,6 +274,28 @@ async function timeOff(db: Db, today: string): Promise<number> {
  * balances and the request form show real numbers. Grants go through pto_adjust (owner's time_off.balances); amounts
  * are demo data, labelled as such in the history, never a policy.
  */
+/**
+ * Work schedules (migration 20261114000300): fictional weekly hours for current full- and part-time people without
+ * one — full-time Monday–Friday 8 h (every third person 10 h days Monday–Thursday), part-time Monday, Wednesday and
+ * Friday 6 h — so full-day time off counts scheduled hours in the demo. Existing schedules are kept; a second run adds
+ * nothing. Skipped on a database without the table.
+ */
+async function workSchedules(db: Db): Promise<number> {
+  const existing = await db.from("employee_work_schedules").select("employee_id");
+  if (existing.error) return 0; // not installed yet
+  const have = new Set(((existing.data ?? []) as Array<{ employee_id: string }>).map((r) => r.employee_id));
+  const people = (await must("employees", db.from("employees").select("id, employment_type").in("status", ["active", "on_leave"]).in("employment_type", ["full_time", "part_time"]).order("full_name"))) as Array<{ id: string; employment_type: string }>;
+  const rows = people.filter((p) => !have.has(p.id)).map((p, i) =>
+    p.employment_type === "part_time"
+      ? { employee_id: p.id, mon_hours: 6, tue_hours: 0, wed_hours: 6, thu_hours: 0, fri_hours: 6, sat_hours: 0, sun_hours: 0 }
+      : i % 3 === 2
+        ? { employee_id: p.id, mon_hours: 10, tue_hours: 10, wed_hours: 10, thu_hours: 10, fri_hours: 0, sat_hours: 0, sun_hours: 0 }
+        : { employee_id: p.id, mon_hours: 8, tue_hours: 8, wed_hours: 8, thu_hours: 8, fri_hours: 8, sat_hours: 0, sun_hours: 0 });
+  if (!rows.length) return 0;
+  await must("work schedules", db.from("employee_work_schedules").insert(rows));
+  return rows.length;
+}
+
 async function ptoBalances(db: Db, today: string): Promise<number> {
   const banks = await db.from("pto_banks").select("id, active");
   if (missing(banks.error)) return 0;

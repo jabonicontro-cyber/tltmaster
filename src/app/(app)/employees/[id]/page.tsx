@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Lock, Pencil } from "lucide-react";
 import { CompensationForm } from "@/components/employees/compensation-form";
+import { WorkScheduleForm, type WorkSchedule } from "@/components/employees/work-schedule-form";
+import { createClient } from "@/server/supabase/server";
 import { EmployeeLoginLink } from "@/components/employees/login-link";
 import { SendSignIn } from "@/components/employees/send-sign-in";
 import { AccessEditButton } from "@/components/settings/settings-client";
@@ -48,6 +50,9 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const manageUsers = can(access, "users.manage");
   const member = manageUsers && e.user_id ? (await listSignIns(access.companyId!)).find((u) => u.id === e.user_id) : undefined;
   const today = new Date().toISOString().slice(0, 10);
+  // Work schedule (migration 20261114000300); read separately so the page works before that update is installed.
+  const sched = await (await createClient()).from("employee_work_schedules").select("mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours").eq("employee_id", id).maybeSingle();
+  const scheduleInstalled = !sched.error;
 
   return (
     <>
@@ -106,6 +111,15 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
               </div>
             </Card>
           )}
+
+          <Card>
+            <CardHeader title="Work schedule" description="Hours per weekday. Full-day time off counts the scheduled hours of the days requested." />
+            <div className="px-4 pb-5 sm:px-5">
+              {scheduleInstalled
+                ? <WorkScheduleForm employeeId={id} initial={(sched.data as WorkSchedule | null) ?? null} canEdit={can(access, "employees.edit")} />
+                : <p className="text-sm text-muted">Work schedules need a database update that has not been installed yet. Until then full-day time off asks for its hours.</p>}
+            </div>
+          </Card>
 
           {showPay && (
             <Card>

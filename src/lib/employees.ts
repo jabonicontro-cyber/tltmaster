@@ -80,3 +80,16 @@ export function formatPay(c: { pay_type: PayType; rate_cents: number | null; rat
   const unit = { hourly: " / hour", salary: " / year", per_load: " / load", other: "" }[c.pay_type];
   return `${amount}${unit}`;
 }
+
+/** Weekly work schedule: hours per weekday (0–24, quarter hours). Used for full-day time off. */
+export const WEEKDAYS = [["mon", "Mon"], ["tue", "Tue"], ["wed", "Wed"], ["thu", "Thu"], ["fri", "Fri"], ["sat", "Sat"], ["sun", "Sun"]] as const;
+const dayHours = z.string().trim().transform((v, ctx) => {
+  if (v === "") return 0;
+  const n = Number(v);
+  if (!/^\d{1,2}(\.\d{1,2})?$/.test(v) || n < 0 || n > 24) {
+    ctx.addIssue({ code: "custom", message: "0–24 hours." });
+    return z.NEVER;
+  }
+  return n;
+});
+export const workScheduleSchema = z.object(Object.fromEntries(WEEKDAYS.map(([d]) => [`${d}_hours`, dayHours])) as Record<`${(typeof WEEKDAYS)[number][0]}_hours`, typeof dayHours>);

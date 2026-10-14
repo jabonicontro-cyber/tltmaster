@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { compensationSchema, employeeSchema } from "@/lib/employees";
+import { compensationSchema, employeeSchema, workScheduleSchema } from "@/lib/employees";
 import { uuid } from "@/lib/schemas/common";
 import { can, ROLES, type AppRole } from "@/lib/permissions";
 import { isUsernameEmail } from "@/lib/usernames";
@@ -145,5 +145,24 @@ export async function inviteEmployee(employeeId: string, role: string): Promise<
     if (!invite.ok) return invite;
     revalidatePath("/employees", "layout");
     return ok(undefined, invite.message);
+  });
+}
+
+/** A person's weekly work schedule (employees.edit; enforced again by RLS). Full-day time off counts these hours. */
+export async function saveWorkSchedule(employeeId: string, formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("employees.edit");
+    if (!uuid.safeParse(employeeId).success) return fail("Invalid person.");
+    const parsed = workScheduleSchema.safeParse(Object.fromEntries(formData));
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { error } = await supabase.from("employee_work_schedules").upsert({ employee_id: employeeId, ...parsed.data, updated_at: new Date().toISOString() });
+    if (error) {
+      if (error.code === "42P01" || /employee_work_schedules/.test(error.message ?? "")) return fail("Work schedules need a database update that has not been installed yet.");
+      return fail(dbErrorMessage(error));
+    }
+    revalidatePath(`/employees/${employeeId}`);
+    const week = Object.values(parsed.data).reduce((a, b) => a + b, 0);
+    return ok(undefined, `Work schedule saved (${Number(week.toFixed(2))} h a week). Full-day time off now counts these hours.`);
   });
 }

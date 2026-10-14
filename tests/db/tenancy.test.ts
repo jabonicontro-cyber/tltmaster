@@ -13,7 +13,7 @@ const TENANT_TABLES = [
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "ai_usage_events",
-  "employees", "employee_compensation",
+  "employees", "employee_compensation", "employee_work_schedules",
   "time_off_requests", "time_off_events", "time_off_approval_steps", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
   "vehicle_documents", "truck_assignment_events", "vehicle_document_rules",
   "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
