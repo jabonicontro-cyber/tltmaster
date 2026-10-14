@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Privacy", description: "How Taviron 
 
 export default function PrivacyPage() {
   return (
-    <LegalPage eyebrow="Legal" title="Privacy notice">
+    <LegalPage title="Privacy notice">
       <h2>This website</h2>
       <p>When you send the demo request or contact form, we store what you enter — name, email, and optionally company, phone, role, fleet size and message — so the Taviron team can reply and keep track of the conversation.</p>
       <ul>

@@ -56,7 +56,7 @@ const FAQ = [
 export default function PricingPage() {
   return (
     <>
-      <PageIntro eyebrow="Pricing" title="Priced by the size of your operation.">
+      <PageIntro title="Priced by the size of your operation.">
         <p>
           One monthly price per company, set by your number of hauling trucks and dispatch bases. Every tier includes the whole platform. Prices are in US dollars, before
           applicable taxes.
@@ -71,7 +71,7 @@ export default function PricingPage() {
               <li key={t.key} aria-label={t.name} className="flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
                 <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
                 <p className="mt-1 text-sm text-silver/85">
-                  Up to {t.trucks} hauling trucks · {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
+                  Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
                 </p>
                 <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5">
                   {t.from ? <span className="w-full text-sm text-silver">From</span> : null}

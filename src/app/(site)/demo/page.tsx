@@ -17,7 +17,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
   const sp = await searchParams;
   return (
     <>
-      <PageIntro eyebrow="Request a demo" title="See Taviron run a hauling day.">
+      <PageIntro title="See Taviron run a hauling day.">
         <p>No sales script and no commitment. A walkthrough of the real product with fictional demo data.</p>
       </PageIntro>
       <section>
@@ -25,10 +25,10 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
           <ol className="space-y-6">
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-4">
-                <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-brand/60 text-sm font-bold text-brand">{i + 1}</span>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-full border border-electric/60 text-sm font-bold text-electric">{i + 1}</span>
                 <div>
-                  <h2 className="font-bold text-white">{s.title}</h2>
-                  <p className="mt-1 text-sm text-white/65">{s.text}</p>
+                  <h2 className="font-bold text-cloud">{s.title}</h2>
+                  <p className="mt-1 text-sm text-silver">{s.text}</p>
                 </div>
               </li>
             ))}

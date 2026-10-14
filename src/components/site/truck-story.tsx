@@ -10,7 +10,6 @@ const TruckScene = dynamic(() => import("./truck-scene").then((m) => m.TruckScen
 
 export interface StoryChapter {
   id: string;
-  eyebrow: string;
   title: ReactNode;
   body: ReactNode;
 }
@@ -35,7 +34,6 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
   const progress = useRef(0);
   const [mode, setMode] = useState<"static" | "3d" | "3d-still">("static");
   const [ready, setReady] = useState(false);
-  const [active, setActive] = useState(0);
   const [scene, setScene] = useState(0);
   const onReady = useCallback(() => setReady(true), []);
   const [wide, setWide] = useState(false);
@@ -83,7 +81,6 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
       const f = raw - k;
       const held = k + Math.min(1, Math.max(0, (f - 0.3) / 0.4));
       progress.current = held / (steps.length - 1);
-      setActive(Math.round(raw));
       setScene(Math.round(held));
     };
     const onScroll = () => { if (!raf) raf = requestAnimationFrame(measure); };
@@ -116,10 +113,9 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
         </div>
         <div className="relative z-10 lg:col-start-1 lg:row-start-1">
           <div data-story-step className="flex min-h-[70vh] flex-col justify-center py-10 lg:min-h-[calc(100vh-4rem)]">{intro}</div>
-          {chapters.map((c, i) => (
+          {chapters.map((c) => (
             <section key={c.id} id={c.id} data-story-step aria-labelledby={`${c.id}-title`} className="flex min-h-[60vh] flex-col justify-center py-12 lg:min-h-[85vh]">
-              <p className={`text-sm font-semibold tracking-wide text-electric uppercase transition-opacity duration-500 ${mode === "3d" && active !== i + 1 ? "lg:opacity-60" : ""}`}>{c.eyebrow}</p>
-              <h2 id={`${c.id}-title`} className="mt-3 max-w-xl site-title text-3xl font-bold text-cloud sm:text-4xl">{c.title}</h2>
+              <h2 id={`${c.id}-title`} className="max-w-xl site-title text-3xl font-bold text-cloud sm:text-4xl">{c.title}</h2>
               <div className="mt-4 max-w-xl space-y-3 text-[17px] leading-relaxed text-silver">{c.body}</div>
             </section>
           ))}

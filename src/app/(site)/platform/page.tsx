@@ -17,7 +17,7 @@ export default function PlatformPage() {
   const briefs = features.filter((f) => f.screenshots.length === 0);
   return (
     <>
-      <PageIntro eyebrow="Platform" title="Everything the hauling day touches, connected.">
+      <PageIntro title="Everything the hauling day touches, connected.">
         <p>One system of record for the office, dispatch, the shop and the trucks. Every screen below is the real app, with the demo company&apos;s fictional data — and, just as plainly, each capability says what it does not do yet.</p>
       </PageIntro>
 
@@ -43,7 +43,7 @@ export default function PlatformPage() {
 
       {briefs.length > 0 && <section aria-labelledby="more-title" className="border-t border-silver/10 bg-navy-2/40">
         <Container className="py-16 sm:py-20">
-          <SectionHeading id="more-title" eyebrow="Also in the platform" title="The rest of the day, in the same records." />
+          <SectionHeading id="more-title" title="The rest of the day, in the same records." />
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {briefs.map((f) => (
               <FeatureBrief key={f.id} feature={f} />
@@ -54,7 +54,7 @@ export default function PlatformPage() {
 
       <section className="border-t border-silver/10">
         <Container className="grid gap-12 py-20 lg:grid-cols-2">
-          <SectionHeading eyebrow="Security" title="Separation you do not have to take on trust.">
+          <SectionHeading title="Separation you do not have to take on trust.">
             <ul className="mt-2 space-y-3 text-[15px]">
               {[
                 "Every company's records are separated by row-level security in the database.",
@@ -68,7 +68,7 @@ export default function PlatformPage() {
           </SectionHeading>
           <div>
             <h2 className="flex items-center gap-2 text-xl font-bold text-cloud">
-              <Clock className="size-5 text-electric" aria-hidden /> Not yet — and we will say so
+              <Clock className="size-5 text-electric" aria-hidden /> Not yet, and we will say so
             </h2>
             <ul className="mt-4 space-y-2">
               {NOT_YET.map((n) => (

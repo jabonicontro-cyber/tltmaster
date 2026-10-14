@@ -1,8 +1,8 @@
 import Image from "next/image";
-import { ArrowRight, Check, CircleDashed } from "lucide-react";
+import { Check, CircleDashed } from "lucide-react";
 import type { Feature, Screenshot as Shot } from "@/lib/site/features";
 import { FEATURES, screenshotById } from "@/lib/site/features";
-import { Eyebrow, Screenshot } from "./ui";
+import { Screenshot } from "./ui";
 
 // One capability on the platform page, from the feature catalog (src/lib/site/features.ts): the problem, how Taviron
 // handles it, why it matters, what you can check in the demo, what it does not do yet, and the real screen. Desktop
@@ -44,7 +44,8 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
     <section id={featureAnchor(feature.id)} aria-labelledby={titleId} className="scroll-mt-24 border-t border-silver/10 py-16 sm:py-20">
       <div className={`grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14 ${flip ? "lg:[&>*:first-child]:order-last" : ""}`}>
         <div>
-          <Eyebrow>{CATEGORY[feature.category]}</Eyebrow>
+          {/* The category is information (where the capability sits in the day), so it stays, in sentence case. */}
+          <p className="text-sm font-medium text-silver/75">{CATEGORY[feature.category]}</p>
           <h2 id={titleId} className="mt-3 site-title text-3xl font-bold text-cloud sm:text-4xl">{feature.name}</h2>
           <p className="mt-5 text-[15px] leading-relaxed text-silver/80"><span className="font-semibold text-cloud">The problem. </span>{feature.problem}</p>
           <p className="mt-3 text-[17px] leading-relaxed text-silver">{feature.how}</p>
@@ -71,8 +72,8 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
             <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
               <span className="text-silver/60">Works with</span>
               {related.map((r) => (
-                <a key={r.id} href={`#${featureAnchor(r.id)}`} className="inline-flex items-center gap-1 font-semibold text-electric hover:underline">
-                  {r.name} <ArrowRight className="size-3.5" aria-hidden />
+                <a key={r.id} href={`#${featureAnchor(r.id)}`} className="font-semibold text-electric hover:underline">
+                  {r.name}
                 </a>
               ))}
             </p>
@@ -88,7 +89,7 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
 export function FeatureBrief({ feature }: { feature: Feature }) {
   return (
     <article id={featureAnchor(feature.id)} className="scroll-mt-24 rounded-xl border border-silver/10 bg-navy-2 p-6" aria-labelledby={`${featureAnchor(feature.id)}-title`}>
-      <Eyebrow className="text-[11px]">{CATEGORY[feature.category]}</Eyebrow>
+      <p className="text-sm font-medium text-silver/75">{CATEGORY[feature.category]}</p>
       <h3 id={`${featureAnchor(feature.id)}-title`} className="mt-2 text-xl font-bold text-cloud">{feature.name}</h3>
       <p className="mt-3 text-sm leading-relaxed text-silver/80">{feature.problem}</p>
       <p className="mt-2 text-sm leading-relaxed text-silver">{feature.how}</p>

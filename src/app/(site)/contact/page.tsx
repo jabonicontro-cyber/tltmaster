@@ -11,7 +11,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   return (
     <>
-      <PageIntro eyebrow="Contact" title="Talk to the Taviron team.">
+      <PageIntro title="Talk to the Taviron team.">
         <p>Questions about the product, pricing or early access — send a message and the team will reply by email.</p>
       </PageIntro>
       <section>

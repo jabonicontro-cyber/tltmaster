@@ -52,9 +52,9 @@ interface Scene {
 export const SCENES: Scene[] = [
   // Intro — the rig, front three-quarter, framed so the whole nose stays inside the window from 1024 to 1920 px wide.
   { cam: [15.6, 3.9, 18.4], look: [-0.3, 1.3, 0], fleet: 0, links: 0, checks: 0, plans: 0, dump: 0, travel: 0 },
-  // Every load, truck and driver planned together — the fleet in the yard, lines to each load.
+  // Every load, truck and driver, planned together: the fleet in the yard, lines to each load.
   { cam: [13, 19, 31], look: [-1, 0, 0], fleet: 1, links: 1, checks: 0, plans: 0, dump: 0, travel: 0 },
-  // Revenue in view — on the way to the delivery: profile, the road moving under the truck.
+  // Revenue in view, honestly estimated: on the way to the delivery, in profile, the road moving under the truck.
   { cam: [-1, 2.8, 21.5], look: [-2, 1.5, 0], fleet: 0, links: 0, checks: 0, plans: 0, dump: 0, travel: 26 },
   // Promises you can keep — every rule checked: the rig on the inspection pad, rear three-quarter.
   { cam: [-17, 4.2, 12.5], look: [-3, 1.3, 0], fleet: 0, links: 0, checks: 1, plans: 0, dump: 0, travel: 34 },
