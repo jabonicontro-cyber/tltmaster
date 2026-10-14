@@ -36,6 +36,11 @@ project credentials. Read it together with:
 Checks for `e044947`: lint, typecheck, 684 unit/DB tests, full browser suite (140 passed; the 2 failures fixed and their
 specs plus every return-link spec re-run green), production build, gate spec. Risk tier: REVIEW.
 
+**Later release `e8c09a1` (owner approved the approval-tier promotion, 2026-10-14):** sentence-case labels app-wide,
+neutral Billing tab counts, Order to cash limit as one line, one filled action on the order page, role label "Driver".
+Checks: 684 unit/DB, full browser suite 144 passed, build, gate. Production deployment record: success (not verified
+live: vercel.app is blocked from the sandbox). Command Center speed recorded as master plan §8 P7.
+
 **Waiting for the owner:**
 1. `npx supabase db push` for `20261112000500_routing` and `20261113000100_people`, then **Refresh demo data** in both demos.
 2. AI: rerun `npm run ai:eval` (test set v2) with the credits; paste only the evidence block.
