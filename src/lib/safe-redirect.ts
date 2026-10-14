@@ -12,6 +12,7 @@ const RETURN_TARGETS: Array<{ prefix: string; label: string }> = [
   { prefix: "/command-center", label: "Back to the Command Center" },
   { prefix: "/tickets", label: "Back to the ticket queue" },
   { prefix: "/billing", label: "Back to billing" },
+  { prefix: "/order-to-cash", label: "Back to order to cash" },
   { prefix: "/dispatch", label: "Back to the dispatch board" },
   { prefix: "/orders", label: "Back to orders" },
 ];

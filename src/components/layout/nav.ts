@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare,
+  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -37,6 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view", group: "Operations" },
   { href: "/maintenance", label: "Maintenance", icon: Wrench, permission: "maintenance.view", group: "Operations" },
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance" },
+  { href: "/order-to-cash", label: "Order to Cash", icon: Workflow, permission: "billing.view", group: "Finance" },
   { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance" },
   { href: "/employees", label: "Employees", icon: IdCard, permission: "employees.view", group: "Company" },
   // Everyone may request their own time off; the page shows more with time_off.view / time_off.approve.

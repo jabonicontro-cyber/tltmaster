@@ -19,6 +19,11 @@ export default defineConfig({
   use: {
     baseURL,
     trace: "retain-on-failure",
+    // Bounded waits: without these a navigation or click lost to a dev-server restart (it restarts itself near its
+    // memory threshold after long runs) hangs until the whole test times out — up to 15 minutes — and says nothing
+    // about where. Steps that are slow on purpose (creating a demo) pass their own longer timeout.
+    navigationTimeout: 120_000,
+    actionTimeout: 60_000,
     screenshot: "only-on-failure",
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : undefined,
   },
