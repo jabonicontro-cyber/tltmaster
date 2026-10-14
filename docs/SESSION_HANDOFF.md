@@ -11,10 +11,10 @@ project credentials. Read it together with:
 
 | Commit | What | Migration (local / pushed / hosted) |
 | --- | --- | --- |
-| `900d773` | **Command Center ~4× faster** (root cause, not timeouts): billing views scoped per company, one line-status scan instead of four, visibility checked once per kind. Exceptions 1 251 → 326 ms, summary 1 859 → 479 ms locally (~3 800 orders); plan-shape test guards it | `20261114000100`, `20261114000200`: applied locally, in the repo, **not applied hosted** |
-| `871bb69` | **PTO work schedules** (B46): hours per weekday on the person page; full-day time off counts scheduled hours; demos get fictional schedules on Refresh | `20261114000300`: same |
-| `1389c61` | Hosted DB runbook (`docs/runbooks/2026-10-14-hosted-db.md`); a customer who creates a company gets their own person record | `20261114000400`: same |
-| `f54e2bd`, next | **Driver schedule notices** (B47): in-app alert to the assigned driver when a load is assigned or its date/time changes; repeat edits merge | `20261114000500`: same |
+| `900d773` | **Command Center ~4× faster** (root cause, not timeouts): billing views scoped per company, one line-status scan instead of four, visibility checked once per kind. Exceptions 1 251 → 326 ms, summary 1 859 → 479 ms locally (~3 800 orders); plan-shape test guards it | `20261114000100`, `20261114000200`: applied locally and **hosted (verified 2026-10-14)** |
+| `871bb69` | **PTO work schedules** (B46): hours per weekday on the person page; full-day time off counts scheduled hours; demos get fictional schedules on Refresh | `20261114000300`: same (hosted, verified) |
+| `1389c61` | Hosted DB runbook (`docs/runbooks/2026-10-14-hosted-db.md`); a customer who creates a company gets their own person record | `20261114000400`: same (hosted, verified) |
+| `f54e2bd`, next | **Driver schedule notices** (B47): in-app alert to the assigned driver when a load is assigned or its date/time changes; repeat edits merge | `20261114000500`: same (hosted, verified) |
 
 Every migration has a rollback tested apply → rollback → re-apply. **Hosted-state check:** all five rolled back
 locally, then Command Center, People, time off and demo parity specs run (16 passed; the one failure is the work-schedule
@@ -25,8 +25,11 @@ skipped — the failure (load builder freight approval waited > 10 s for its toa
 re-run alone; recorded, not a change in this bundle. Production build ok; gate spec 8 passed / 1 skipped. Risk tier
 **REVIEW** (five hosted migrations listed as owner actions).
 
-**Waiting for the owner** (exact steps in the runbook): `npx supabase db push` for the eleven pending migrations, the
-verification SQL, then Refresh demo data in both demos; `npm run ai:eval` on your computer (this sandbox cannot reach
+**Hosted database (owner, 2026-10-14 ~17:40 CDT):** `npx supabase db push` applied all pending migrations through
+`20261114000500`; the runbook verification SQL returned all 11 checks `true`. Still to confirm: Refresh demo data in both
+demos, Work schedule card and Command Center on the live site.
+
+**Still waiting for the owner:** `npm run ai:eval` on your computer (this sandbox cannot reach
 OpenAI, and no key is set here); HERE key in Vercel; choose an ELD/log source before any HOS rule (item 20).
 
 ## 00. Overnight session 2026-10-14 (owner asleep; working until 5 PM per the owner)
