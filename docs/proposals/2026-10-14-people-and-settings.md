@@ -1,6 +1,9 @@
 # Proposal: one People list (merge Users into Employees) and a simpler Settings
 
-Status: **waiting for the owner's approval** (2026-10-14). Nothing here is built yet.
+Status: **approved 2026-10-14** (ticked by default; backfill yes; regroup yes) and built (master plan B45). One change
+from the draft: new sign-ins get their record from the app when the sign-in is sent, not from a database trigger, so
+demo seeds and imports that create a login and its record together keep working. Department for backfilled records
+follows the role (there is no "Unassigned" department).
 
 ## Why
 
