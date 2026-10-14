@@ -62,7 +62,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   office: "Office staff",
   dispatcher: "Dispatcher",
   mechanic: "Mechanic",
-  driver: "Driver (future)",
+  driver: "Driver",
 };
 
 export interface Access {
