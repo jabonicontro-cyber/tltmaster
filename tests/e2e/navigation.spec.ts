@@ -7,32 +7,29 @@ import { signIn } from "./helpers";
 
 test("the breadcrumb returns to the filtered list you came from; opened directly it goes to the plain list", async ({ page }) => {
   await signIn(page, "office");
-  await page.goto("/customers?q=Prairie");
+  await page.goto("/customers?q=Prairie+View");
   // The view is recorded once the page is interactive; a click before that is a plain page load (nothing to remember).
-  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("taviron:list-view:/customers"))).toBe("/customers?q=Prairie");
+  await expect.poll(() => page.evaluate(() => sessionStorage.getItem("taviron:list-view:/customers"))).toBe("/customers?q=Prairie+View");
   await page.getByRole("link", { name: /Prairie View Landscaping/ }).first().click();
   await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}$/);
+  const customerUrl = page.url();
   const crumb = page.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Customers" });
-  await expect(crumb).toHaveAttribute("href", "/customers?q=Prairie");
+  await expect(crumb).toHaveAttribute("href", "/customers?q=Prairie+View");
   await crumb.click();
-  await expect(page).toHaveURL(/\/customers\?q=Prairie$/);
+  await expect(page).toHaveURL(/\/customers\?q=Prairie\+View$/);
 
   // A fresh tab (bookmark or email link) has no remembered view: the plain list.
   const fresh = await page.context().newPage();
-  await fresh.goto(page.url().replace(/\/customers.*$/, "/customers"));
-  await fresh.getByRole("link", { name: /Prairie View Landscaping/ }).first().click();
-  await fresh.waitForURL(/\/customers\/[0-9a-f-]{36}$/);
-  const fresh2 = await page.context().newPage();
-  await fresh2.goto(fresh.url());
-  await expect(fresh2.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Customers" })).toHaveAttribute("href", "/customers");
+  await fresh.goto(customerUrl);
+  await expect(fresh.getByRole("navigation", { name: "Breadcrumb" }).getByRole("link", { name: "Customers" })).toHaveAttribute("href", "/customers");
   await fresh.close();
-  await fresh2.close();
 });
 
 test("phones get a single back link instead of the breadcrumb trail", async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await signIn(page, "office");
-  await page.goto("/customers");
+  // Searched, so leftover test customers never push the seed customer off the first page.
+  await page.goto("/customers?q=Prairie+View");
   await page.getByRole("link", { name: /Prairie View Landscaping/ }).first().click();
   await expect(page.getByRole("navigation", { name: "Breadcrumb" })).toBeHidden();
   const back = page.getByRole("link", { name: "Customers", exact: true }).filter({ hasText: "Customers" }).last();
@@ -40,7 +37,7 @@ test("phones get a single back link instead of the breadcrumb trail", async ({ p
   const box = await back.boundingBox();
   expect(box?.height ?? 0).toBeGreaterThanOrEqual(44); // touch target
   await back.click();
-  await expect(page).toHaveURL(/\/customers$/);
+  await expect(page).toHaveURL(/\/customers(\?q=Prairie\+View)?$/);
 });
 
 test("leaving a form with unsaved edits asks first; saving clears the warning", async ({ page }) => {

@@ -102,7 +102,8 @@ test("rejecting a proposal moves to the next option; reconsidering brings it bac
   await expect(c.getByText("1 option rejected.")).toBeVisible({ timeout: 20_000 });
   await expect(c.locator("p", { hasText: "Proposed:" })).not.toHaveText(first);
   await c.getByRole("button", { name: "Reconsider" }).click();
-  await expect(c.getByText("1 option rejected.")).toHaveCount(0);
+  // Reconsider triggers the same full recompute as a rejection (about 8 s on the test database; master plan §8 P8).
+  await expect(c.getByText("1 option rejected.")).toHaveCount(0, { timeout: 20_000 });
 });
 
 test("a proposal that went stale is refused with an explanation instead of being assigned", async ({ page }) => {
