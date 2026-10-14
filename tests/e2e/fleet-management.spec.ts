@@ -34,6 +34,9 @@ test("an expired registration is flagged on the profile, the directory filter an
   await page.goto(`/fleet/trucks?documents=expired&q=${unit}`);
   await expect(page.getByRole("link", { name: unit })).toBeVisible();
   await page.goto("/fleet");
+  // Long lists show their first rows; the rest is one click away (CappedList).
+  const docs = page.locator("details", { has: page.locator(`a:text-is("Truck ${unit}")`) });
+  if (await docs.count()) await docs.first().locator("summary").click();
   await expect(page.getByRole("link", { name: `Truck ${unit}` })).toBeVisible();
 
   // Ownership is recorded separately and shown in the details.

@@ -13,6 +13,8 @@ import { qualificationName, TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS } from "@/lib
 import { requirePagePermission } from "@/server/auth";
 import { driverOptions, fleetContext, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
 import { documentAttention } from "@/lib/fleet/availability";
+import { CappedList } from "@/components/ui/capped-list";
+import { Badge } from "@/components/ui/badge";
 import { can } from "@/lib/permissions";
 
 export const metadata = { title: "Fleet" };
@@ -22,11 +24,11 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label: string; value: ReactNode; sub?: ReactNode; href: string; warn?: boolean }) {
   return (
     <Link href={href} className="block h-full">
-      <div className={cn("flex h-full items-start gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors hover:border-strong/40", warn ? "border-amber-300" : "border-line")}>
+      <div className="flex h-full items-start gap-3 rounded-lg border border-line bg-card p-4 transition-colors hover:border-strong/40">
         <div className={cn("rounded-md p-2", warn ? "bg-amber-50 text-amber-800" : "bg-surface text-ink")}>{icon}</div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-muted">{label}</p>
-          <p className="text-2xl font-black text-ink tabular">{value}</p>
+          <p className="flex items-center gap-1.5 text-sm font-medium text-muted">{warn && <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />}{label}</p>
+          <p className="text-2xl font-semibold tracking-tight text-ink tabular">{value}</p>
           {sub && <p className="text-sm text-muted">{sub}</p>}
         </div>
       </div>
@@ -93,15 +95,16 @@ export default async function FleetPage() {
       {docAttention.length > 0 && (
         <Card className="mt-5">
           <CardHeader title="Vehicle documents needing renewal" description="Expired, or expiring within 30 days. No reminders are sent — this list is the reminder." />
-          <ul className="divide-y divide-line">
-            {docAttention.map(({ kind, v, att }) => (
-              <li key={v.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
-                <Link href={`/fleet/${kind}s/${v.id}`} className="font-semibold hover:underline">{kind === "truck" ? "Truck" : "Trailer"} {v.unit_number}</Link>
-                {att.expired.map((d) => <span key={d.id} className="font-medium text-critical">{att.label(d.kind)} expired {formatDate(d.expires_on)}</span>)}
-                {att.expiring.map((d) => <span key={d.id} className="text-amber-800">{att.label(d.kind)} expires {formatDate(d.expires_on)}</span>)}
+          <CappedList
+            label="Vehicle documents needing renewal"
+            items={docAttention.map(({ kind, v, att }) => (
+              <li key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm sm:px-5">
+                <Link href={`/fleet/${kind}s/${v.id}`} className="font-medium text-ink hover:underline">{kind === "truck" ? "Truck" : "Trailer"} {v.unit_number}</Link>
+                {att.expired.map((d) => <span key={d.id} className="inline-flex items-center gap-1.5 text-muted"><Badge tone="red">Expired</Badge>{att.label(d.kind)} · {formatDate(d.expires_on)}</span>)}
+                {att.expiring.map((d) => <span key={d.id} className="inline-flex items-center gap-1.5 text-muted"><Badge tone="amber">Due</Badge>{att.label(d.kind)} · {formatDate(d.expires_on)}</span>)}
               </li>
             ))}
-          </ul>
+          />
         </Card>
       )}
 
@@ -111,8 +114,9 @@ export default async function FleetPage() {
           {down.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted sm:px-5">All active equipment is in service.</p>
           ) : (
-            <ul className="divide-y divide-line">
-              {down.map((e) => (
+            <CappedList
+              label="Out of service"
+              items={down.map((e) => (
                 <li key={e.id} className="px-4 py-2.5 sm:px-5">
                   <Link href={`/fleet/${e.kind}s/${e.id}`} className="font-semibold hover:underline">
                     {e.kind === "truck" ? "Truck" : "Trailer"} {e.unit_number}
@@ -124,7 +128,7 @@ export default async function FleetPage() {
                   </div>
                 </li>
               ))}
-            </ul>
+            />
           )}
         </Card>
         <Card>
@@ -132,17 +136,19 @@ export default async function FleetPage() {
           {o.drivers.notReady.length === 0 && o.expiring.length === 0 ? (
             <p className="px-4 py-6 text-sm text-muted sm:px-5">Nothing needs attention.</p>
           ) : (
-            <ul className="divide-y divide-line">
-              {o.drivers.notReady.map((d) => (
+            <CappedList
+              label="Drivers needing attention"
+              items={[
+              ...o.drivers.notReady.map((d) => (
                 <li key={d.id} className="px-4 py-2.5 sm:px-5">
-                  <Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:underline">{d.display_name}</Link>
-                  <div className="text-sm text-red-800">
-                    <AlertTriangle className="mr-1 inline size-3.5" aria-hidden />
+                  <Link href={`/fleet/drivers/${d.id}`} className="font-medium text-ink hover:underline">{d.display_name}</Link>
+                  <div className="text-sm text-muted">
+                    <AlertTriangle className="mr-1 inline size-3.5 text-amber-600" aria-hidden />
                     {d.readiness.blockers.map(eligibilityMessage).join(" ")}
                   </div>
                 </li>
-              ))}
-              {o.expiring
+              )),
+              ...o.expiring
                 .filter(({ driver }) => driver.readiness.eligible)
                 .map(({ driver, qualification }) => (
                   <li key={qualification.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 sm:px-5">
@@ -150,8 +156,9 @@ export default async function FleetPage() {
                     <span className="text-sm">{qualificationName(qualification)}</span>
                     <QualificationBadge q={qualification} today={o.today} soon={soon} />
                   </li>
-                ))}
-            </ul>
+                )),
+              ]}
+            />
           )}
         </Card>
       </div>
