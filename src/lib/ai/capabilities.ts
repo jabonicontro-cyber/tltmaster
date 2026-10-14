@@ -30,7 +30,7 @@ export const AI_CAPABILITIES: AiCapability[] = [
     description: "A short plain-language summary of a Plan the day result: what it covers, what it leaves open and what a dispatcher should check. Uses only the figures Taviron computed; it never changes the plan or assigns anything.",
     permission: "dispatch.view",
     maxToolKind: "propose",
-    evalVersion: 1,
+    evalVersion: 2, // 2: dates and short figures are no longer mistaken for phone numbers
     minPassRate: 0.9,
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,

@@ -201,6 +201,14 @@ export interface Finding {
 
 const REF = /\b[LCSTRD]\d{1,4}\b/g;
 
+/**
+ * A phone number: a run of digits and separators holding at least 10 digits (a full North American number). Dates
+ * (2026-10-14: 8 digits), times and short figures are not phone numbers; flagging them blocked valid answers.
+ */
+export function hasPhoneNumber(text: string): boolean {
+  return (text.match(/\+?\d[\d\s().-]{6,}\d/g) ?? []).some((m) => m.replace(/\D/g, "").length >= 10);
+}
+
 /** Numbers as written ("1,250", "$3,400", "85%", "2.5") → normalized values; codes like L12 are not numbers. */
 export function numbersIn(text: string): number[] {
   const stripped = text.replace(REF, " ").replace(/\b\d{4}-\d{2}-\d{2}\b/g, (d) => d.replace(/-/g, " "));
@@ -245,7 +253,7 @@ export function checkExplanation(facts: PlanFacts, raw: unknown, secrets: string
 
   const lower = all.toLowerCase();
   for (const s of secrets) if (s.length >= 3 && lower.includes(s.toLowerCase())) findings.push({ rule: "sensitive_data", critical: true, detail: "The answer contains a real name or number instead of a code." });
-  if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(all) || /\+?\d[\d\s().-]{8,}\d/.test(all.replace(REF, ""))) findings.push({ rule: "sensitive_data", critical: true, detail: "The answer contains an email address or phone number." });
+  if (/[\w.+-]+@[\w-]+\.[\w.]+/.test(all) || hasPhoneNumber(all.replace(REF, ""))) findings.push({ rule: "sensitive_data", critical: true, detail: "The answer contains an email address or phone number." });
 
   if (!facts.hoursOfServiceVerified && !out.checks.some((c) => /hours of service|\bHOS\b/i.test(c))) {
     findings.push({ rule: "hos_caution", critical: false, detail: "Hours of service are not verified, but the checks do not say so." });

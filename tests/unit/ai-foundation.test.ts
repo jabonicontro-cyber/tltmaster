@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { capability, evaluateGate, type EvalEvidence, type GateInput } from "@/lib/ai/capabilities";
 import { EVAL_EVIDENCE } from "@/lib/ai/evidence";
-import { EVAL_CASES, buildPlanFacts, checkExplanation, numbersIn, relabel } from "@/lib/ai/plan-explanation";
+import { EVAL_CASES, buildPlanFacts, checkExplanation, hasPhoneNumber, numbersIn, relabel } from "@/lib/ai/plan-explanation";
 import type { SmartLoad } from "@/lib/dispatch/smart";
 import type { Plan } from "@/lib/optimization/plan";
 import { parseAiConfig } from "@/server/ai/config";
@@ -78,7 +78,7 @@ function memoryLedger(summary: { tokensThisMonth: number; callsLastMinute: numbe
   return { events, summary: async () => summary, record: async (e) => void events.push(e) };
 }
 
-const EVIDENCE: EvalEvidence = { capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: 1, ranAt: "2030-03-30T00:00:00Z", cases: 3, passed: 3, criticalFailures: 0 };
+const EVIDENCE: EvalEvidence = { capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: capability("plan_explanation").evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 3, passed: 3, criticalFailures: 0 };
 
 function gateInput(over: Omit<Partial<GateInput>, "config"> & { config?: Partial<GateInput["config"]> } = {}): GateInput {
   return {
@@ -321,6 +321,7 @@ describe("Explain this plan: facts and checks", () => {
     ["profit", { ...GOOD, highlights: ["Good profit today."] }, "forbidden_claim"],
     ["leaked name", { ...GOOD, highlights: ["Maria Okafor takes L1."] }, "sensitive_data"],
     ["email", { ...GOOD, highlights: ["Email dispatch@example.com about L3."] }, "sensitive_data"],
+    ["phone", { ...GOOD, highlights: ["Call (555) 010-0140 about L3."] }, "sensitive_data"],
     ["extra field", { ...GOOD, assign: true }, "schema"],
     ["too many highlights", { ...GOOD, highlights: ["a", "b", "c", "d", "e"] }, "schema"],
   ])("rejects: %s", (_n, raw, rule) => {
@@ -328,6 +329,11 @@ describe("Explain this plan: facts and checks", () => {
     const findings = checkExplanation(facts, raw, pseudonyms.secrets);
     expect(findings.map((f) => f.rule)).toContain(rule);
     expect(findings.find((f) => f.rule === rule)!.critical).toBe(true);
+  });
+
+  it("phone numbers need at least 10 digits: dates, times and short figures are not phone numbers", () => {
+    for (const p of ["(555) 010-0140", "555-010-0140", "+1 555 010 0140"]) expect(hasPhoneNumber(`Call ${p} today`), p).toBe(true);
+    for (const t of ["Loads on 2026-10-14 and 2026-10-15", "06:30-09:30", "3 of 4 (75%)", "555-0101", "1 2 3 4 5"]) expect(hasPhoneNumber(t), t).toBe(false);
   });
 
   it("requires the hours-of-service caution (non-critical) while HOS is unverified; negated 'verified' is allowed", () => {
@@ -498,7 +504,7 @@ describe("evaluation runner", () => {
       return text({ summary: `The ${f.plan} plan covers ${f.metrics.covered} of ${f.metrics.loads} loads.`, highlights: [], checks: ["Confirm each driver's hours of service."], loadsToReview: [] });
     };
     const ok = await runPlanExplanationEval(scripted(EVAL_CASES.map((_, i) => good(i))), "test-model-2030", new Date("2030-04-01T00:00:00Z"));
-    expect(ok.evidence).toMatchObject({ capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: 1, cases: EVAL_CASES.length, passed: EVAL_CASES.length, criticalFailures: 0 });
+    expect(ok.evidence).toMatchObject({ capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: capability("plan_explanation").evalVersion, cases: EVAL_CASES.length, passed: EVAL_CASES.length, criticalFailures: 0 });
     expect(evaluateGate(gateInput({ evidence: [ok.evidence] })).state).toBe("ready");
 
     const steps: Array<CompletionResponse | AiError> = EVAL_CASES.map((_, i) => good(i));
