@@ -12,7 +12,7 @@ export const metadata = { title: "My profile" };
 /**
  * Self-service: every signed-in person can change their photo, the name they
  * are shown by and their phone. Employment details, company membership, role
- * and permissions are managed by the company (Settings → Users) and only shown.
+ * and permissions are managed by the company (People → Sign-ins & roles) and only shown.
  */
 export default async function ProfilePage() {
   const access = await requireAccess();

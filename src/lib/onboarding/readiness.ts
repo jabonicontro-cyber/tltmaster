@@ -55,7 +55,7 @@ export function assessReadiness(c: ReadinessCounts): Readiness {
   const roles = new Set(c.users.roles);
   const missingRoles = ["dispatcher", "office"].filter((r) => !roles.has(r) && !roles.has("owner"));
   add({
-    id: "users", title: "People and roles", href: "/settings?tab=users",
+    id: "users", title: "People and roles", href: "/employees?view=access",
     status: c.users.active <= 1 ? "missing" : missingRoles.length ? "incomplete" : "done",
     detail: c.users.active <= 1 ? "Only one person has access. Invite the people who dispatch, review tickets and bill." : `${plural(c.users.active, "person", "people")} with access (${[...roles].sort().join(", ")}).`,
     why: "Each person sees what their role allows; work is assigned to people, not shared logins.",

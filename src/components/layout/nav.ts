@@ -39,7 +39,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance" },
   { href: "/order-to-cash", label: "Order to Cash", icon: Workflow, permission: "billing.view", group: "Finance" },
   { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance" },
-  { href: "/employees", label: "Employees", icon: IdCard, permission: "employees.view", group: "Company" },
+  { href: "/employees", label: "People", icon: IdCard, permission: "employees.view", group: "Company" },
   // Everyone may request their own time off; the page shows more with time_off.view / time_off.approve.
   { href: "/time-off", label: "Time Off", icon: CalendarOff, group: "Company" },
   { href: "/settings", label: "Settings", icon: Settings, group: "Company" },

@@ -309,7 +309,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {sp.welcome === "1" && (
         <div className="mb-5">
           <Notice title={`${access.companyName ?? "Your company"} is ready`}>
-            Next: check <Link href="/settings" className="font-semibold underline">Settings → Company</Link> (address, time zone, numbering), invite your team in Settings → Users, then add trucks and drivers in Fleet. Nothing from any other company was copied in.
+            Next: check <Link href="/settings" className="font-semibold underline">Settings → Company</Link> (address, time zone, numbering), add your team in People, then add trucks and drivers in Fleet. Nothing from any other company was copied in.
           </Notice>
         </div>
       )}

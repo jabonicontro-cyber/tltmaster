@@ -4,25 +4,49 @@ import { revalidatePath } from "next/cache";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { compensationSchema, employeeSchema } from "@/lib/employees";
 import { uuid } from "@/lib/schemas/common";
+import { can, ROLES, type AppRole } from "@/lib/permissions";
+import { isUsernameEmail } from "@/lib/usernames";
 import { assertPermission } from "@/server/auth";
+import { inviteMember } from "@/server/people/invite";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
-/** Add or edit an employee record (employees.edit). Roles and sign-in access are not touched here. */
+/**
+ * Add or edit an employee record (employees.edit). When adding, "Send them a Taviron sign-in" (users.manage) also
+ * gives the person a login with the chosen role, linked to this record.
+ * The record is saved even when the sign-in cannot be sent (for example in a demo company); the message says why.
+ */
 export async function saveEmployee(id: string | null, formData: FormData): Promise<ActionResult<{ id: string }>> {
   return guard(async () => {
-    await assertPermission("employees.edit");
+    const access = await assertPermission("employees.edit");
     if (id && !uuid.safeParse(id).success) return fail("Invalid employee.");
     const parsed = employeeSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
+    const wantsSignIn = !id && formData.get("send_signin") === "on";
+    let role: AppRole | null = null;
+    if (wantsSignIn) {
+      if (!can(access, "users.manage")) return fail("Only people who manage users can send a sign-in. Untick it to add the record only.");
+      const r = String(formData.get("role") ?? "");
+      if (!(ROLES as readonly string[]).includes(r)) return fail("Choose a role.", { role: "Choose a role." });
+      role = r as AppRole;
+      if (role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.", { role: "Only an owner can add another owner." });
+      if (!parsed.data.work_email) return fail("Enter a work email to send a sign-in, or untick it.", { work_email: "Enter a work email to send a sign-in, or untick it." });
+      if (isUsernameEmail(parsed.data.work_email)) return fail("This address cannot receive an invitation.", { work_email: "This address cannot receive an invitation." });
+    }
     const supabase = await createClient();
     const res = id
       ? await supabase.from("employees").update(parsed.data).eq("id", id).select("id")
       : await supabase.from("employees").insert(parsed.data).select("id");
     if (res.error) return fail(dbErrorMessage(res.error));
     if (!res.data?.length) return fail("The employee could not be saved (not found or not permitted).");
+    const savedId = res.data[0].id as string;
     revalidatePath("/employees");
-    return ok({ id: res.data[0].id as string }, id ? "Employee saved." : "Employee added.");
+    if (!wantsSignIn || !role) return ok({ id: savedId }, id ? "Employee saved." : "Person added.");
+
+    const invite = await inviteMember(access, { email: parsed.data.work_email, full_name: parsed.data.full_name, role, employeeId: savedId });
+    if (!invite.ok) return ok({ id: savedId }, `Person added. No sign-in was sent: ${invite.error}`);
+    revalidatePath("/employees", "layout");
+    return ok({ id: savedId }, `Person added. ${invite.message ?? ""}`.trim());
   });
 }
 
@@ -98,5 +122,28 @@ export async function linkEmployeeLogin(employeeId: string, userId: string | nul
     }
     revalidatePath("/employees", "layout");
     return ok(undefined, (userId ? "Login linked." : "Login unlinked.") + note);
+  });
+}
+
+/**
+ * Send a sign-in to an existing person (users.manage and employees.edit): uses the record's work email and name,
+ * and the new login is linked to this record. Demo companies never send (the message says so).
+ */
+export async function inviteEmployee(employeeId: string, role: string): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("users.manage");
+    if (!can(access, "employees.edit")) return fail("You need permission to edit people.");
+    if (!uuid.safeParse(employeeId).success) return fail("Invalid person.");
+    if (!(ROLES as readonly string[]).includes(role)) return fail("Choose a role.");
+    const supabase = await createClient();
+    const { data: e } = await supabase.from("employees").select("full_name, work_email, user_id").eq("id", employeeId).maybeSingle();
+    if (!e) return fail("Person not found.");
+    const person = e as { full_name: string; work_email: string; user_id: string | null };
+    if (person.user_id) return fail("This person already has a sign-in.");
+    if (!person.work_email || isUsernameEmail(person.work_email)) return fail("Add a work email to this person first (Edit), then send the sign-in.");
+    const invite = await inviteMember(access, { email: person.work_email, full_name: person.full_name, role: role as AppRole, employeeId });
+    if (!invite.ok) return invite;
+    revalidatePath("/employees", "layout");
+    return ok(undefined, invite.message);
   });
 }

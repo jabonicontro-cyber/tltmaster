@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
@@ -10,6 +11,7 @@ import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, EMPLOYMENT_TYPES } from "@/lib/employees";
 import { AVATAR_KEYS, avatarUrl } from "@/lib/people/avatars";
+import { ROLE_LABELS, ROLES } from "@/lib/permissions";
 
 export interface EmployeeFormValues {
   full_name: string;
@@ -32,9 +34,14 @@ export const EMPTY_EMPLOYEE: EmployeeFormValues = {
   hire_date: "", end_date: "", work_email: "", work_phone: "", emergency_contact_name: "", emergency_contact_phone: "", notes: "", avatar_key: "",
 };
 
-/** Employment details only. Roles and sign-in access are managed in Settings → Users. */
-export function EmployeeForm({ initial, action, cancelHref, submitLabel }: { initial: EmployeeFormValues; action: (fd: FormData) => Promise<ActionResult<{ id: string }>>; cancelHref: string; submitLabel: string }) {
+/**
+ * Employment details. When adding a person, `signIn` (for people who manage users) also offers "Send them a Taviron
+ * sign-in", ticked by default (owner 2026-10-14), with the role it gives. Editing never changes access; the person's
+ * page has the Access section for that.
+ */
+export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn }: { initial: EmployeeFormValues; action: (fd: FormData) => Promise<ActionResult<{ id: string }>>; cancelHref: string; submitLabel: string; signIn?: { isOwner: boolean } }) {
   const router = useRouter();
+  const [sendSignIn, setSendSignIn] = useState(Boolean(signIn));
   const { pending, onSubmit, fieldError, formError } = useFormAction(action, {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved.");
@@ -50,7 +57,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel }: { ini
         <Field label="Full name" htmlFor="full_name" required error={fieldError("full_name")} className="sm:col-span-3">
           <Input {...f("full_name")} defaultValue={initial.full_name} maxLength={120} autoComplete="off" />
         </Field>
-        <Field label="Job title" htmlFor="job_title" error={fieldError("job_title")} className="sm:col-span-3" hint="Describes the job only. Permissions come from the person's role in Settings → Users.">
+        <Field label="Job title" htmlFor="job_title" error={fieldError("job_title")} className="sm:col-span-3" hint="Describes the job only. What the person can do in Taviron comes from their role.">
           <Input {...f("job_title")} defaultValue={initial.job_title} maxLength={80} />
         </Field>
         <Field label="Work email" htmlFor="work_email" error={fieldError("work_email")} className="sm:col-span-3">
@@ -60,6 +67,25 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel }: { ini
           <PhoneInput {...f("work_phone")} defaultValue={initial.work_phone} autoComplete="off" />
         </Field>
       </fieldset>
+      {signIn && (
+        <fieldset className="space-y-3 rounded-lg border border-line bg-surface p-4">
+          <legend className="sr-only">Taviron sign-in</legend>
+          <label className="flex items-start gap-3">
+            <input type="checkbox" name="send_signin" checked={sendSignIn} onChange={(e) => setSendSignIn(e.target.checked)} className="mt-1 size-4 rounded border-line accent-brand" />
+            <span>
+              <span className="block font-semibold text-ink">Send them a Taviron sign-in</span>
+              <span className="block text-sm text-muted">They get an email to set a password, sent to the work email. Untick for people who never use Taviron; you can invite them later.</span>
+            </span>
+          </label>
+          {sendSignIn && (
+            <Field label="Role" htmlFor="role" error={fieldError("role")} hint="Decides what they can see and do. Change it later on their page." className="max-w-xs">
+              <Select {...f("role")} defaultValue="driver">
+                {ROLES.filter((r) => r !== "owner" || signIn.isOwner).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
+              </Select>
+            </Field>
+          )}
+        </fieldset>
+      )}
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
         <legend className="mb-2 text-sm font-bold tracking-wide text-muted uppercase sm:col-span-6">Employment</legend>
         <Field label="Department" htmlFor="department" error={fieldError("department")} className="sm:col-span-2">

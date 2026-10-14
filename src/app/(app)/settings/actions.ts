@@ -8,10 +8,8 @@ import { uuid } from "@/lib/schemas/common";
 import { PERMISSIONS, ROLES, type AppRole } from "@/lib/permissions";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
-import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
-import { env } from "@/server/env";
-import { getEmailMode } from "@/server/email/provider";
+import { inviteMember } from "@/server/people/invite";
 
 export async function saveCompanySettings(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
@@ -63,59 +61,12 @@ export async function updateUserAccess(userId: string, formData: FormData): Prom
 export async function inviteUser(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     const access = await assertPermission("users.manage");
-    if (access.isDemo) return fail("Invitations are turned off in the demo company: it never sends email to anyone.");
     const parsed = inviteSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
-    if (parsed.data.role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.");
-    const supabase = await createClient();
-
-    // Someone who already has an account (for example in another company) is
-    // added to this company directly — no second account, no new password.
-    const existing = await supabase.rpc("add_existing_member", {
-      p_email: parsed.data.email,
-      p_role: parsed.data.role,
-      p_full_name: parsed.data.full_name,
-    });
-    if (existing.error) return fail(dbErrorMessage(existing.error));
-    const found = existing.data as { found: boolean; already?: boolean };
-    if (found.found) {
-      revalidatePath("/settings");
-      return ok(
-        undefined,
-        found.already
-          ? `${parsed.data.email} is already a member of your company.`
-          : `${parsed.data.email} already has an account and was added to your company. They can switch to it from the account menu after signing in.`,
-      );
-    }
-
-    // Invitations are emailed by Supabase Auth, not by Resend, so EMAIL_TEST_RECIPIENT cannot
-    // redirect them. While test mode is on they may only go to the test inbox itself.
-    const mode = getEmailMode();
-    if (mode.mode === "test" && parsed.data.email.toLowerCase() !== mode.testRecipient.toLowerCase()) {
-      return fail(`Email test mode is on: invitations can only be sent to the test inbox (${mode.testRecipient}) until EMAIL_TEST_RECIPIENT is removed.`);
-    }
-    if (!adminAvailable()) {
-      return fail("Inviting users needs SUPABASE_SERVICE_ROLE_KEY on the server. Until then, add users in the Supabase dashboard (Authentication → Users) and assign their role here.");
-    }
-    const admin = createAdminClient();
-    const { data, error } = await admin.auth.admin.inviteUserByEmail(parsed.data.email, {
-      data: { full_name: parsed.data.full_name },
-      redirectTo: `${env().APP_BASE_URL}/auth/confirm?next=/update-password`,
-    });
-    if (error) {
-      return fail(/already/i.test(error.message) ? "An account with this email was just created. Try the invitation again." : `The invitation could not be sent: ${error.message}`);
-    }
-    // Membership in the inviter's company is created by the permission-checked
-    // database function, running as the inviting user (never the service role).
-    const { error: roleErr } = await supabase.rpc("add_company_member", {
-      p_user_id: data.user.id,
-      p_role: parsed.data.role,
-      p_full_name: parsed.data.full_name,
-    });
+    const r = await inviteMember(access, parsed.data);
     revalidatePath("/settings");
-    if (roleErr) return fail(`Invitation sent, but the user could not be added to your company: ${dbErrorMessage(roleErr)}`);
-    console.info("User invited", { by: access.userId, user: data.user.id });
-    return ok(undefined, `Invitation sent to ${parsed.data.email}.`);
+    revalidatePath("/employees", "layout");
+    return r.ok ? ok(undefined, r.message) : r;
   });
 }
 

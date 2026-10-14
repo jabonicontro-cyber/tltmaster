@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     ".dev-stack/**",
+    // Vendored design skills (reviewed copies; .claude/skills/TAVIRON-NOTES.md).
+    ".claude/**",
   ]),
 ]);
 

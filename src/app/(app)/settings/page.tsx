@@ -1,14 +1,12 @@
 import Link from "next/link";
-import { displayLogin } from "@/lib/usernames";
+import { redirect } from "next/navigation";
 import {
   BrandingForm,
   CompanySettingsForm,
   PermissionsMatrix,
   SampleDataPanel,
   SequencesPanel,
-  UsersPanel,
   type SequenceRow,
-  type UserRow,
 } from "@/components/settings/settings-client";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
@@ -24,8 +22,6 @@ import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
-import { photoUrl } from "@/server/data/profile";
-import { adminAvailable } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
@@ -40,7 +36,6 @@ const TABS: Array<{ key: string; label: string; visible: (a: Access) => boolean 
   { key: "numbering", label: "Numbering", visible: (a) => can(a, "settings.manage") },
   { key: "dispatch", label: "Dispatch rules", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", visible: (a) => can(a, "settings.manage") },
-  { key: "users", label: "Users", visible: (a) => can(a, "users.manage") },
   { key: "permissions", label: "Permissions", visible: (a) => can(a, "users.manage") },
   { key: "email", label: "Email", visible: () => true },
   { key: "sample", label: "Sample data", visible: (a) => can(a, "settings.manage") },
@@ -50,6 +45,8 @@ const TABS: Array<{ key: string; label: string; visible: (a: Access) => boolean 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const access = await requireAccess();
   const { tab: rawTab } = await searchParams;
+  // Sign-ins and roles live on People now (owner 2026-10-14); old links keep working.
+  if (rawTab === "users") redirect("/employees?view=access");
   const tabs = TABS.filter((t) => t.visible(access));
   const tab = tabs.find((t) => t.key === rawTab)?.key ?? "account";
   const supabase = await createClient();
@@ -114,33 +111,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   } else if (tab === "numbering") {
     const { data } = await supabase.from("document_sequences").select("*").order("key");
     content = <SequencesPanel rows={(data ?? []) as SequenceRow[]} year={Number(today.slice(0, 4))} />;
-  } else if (tab === "users") {
-    const { data } = await supabase
-      .from("company_memberships")
-      .select("user_id, role, active, created_at, profiles(email, full_name)")
-      .eq("company_id", access.companyId!)
-      .order("created_at");
-    const users: UserRow[] = ((data ?? []) as unknown as Array<{ user_id: string; role: UserRow["role"]; active: boolean; created_at: string; profiles: { email: string; full_name: string } | null }>).map((m) => ({
-      id: m.user_id,
-      email: displayLogin(m.profiles?.email ?? ""),
-      full_name: m.profiles?.full_name ?? "",
-      role: m.role,
-      active: m.active,
-      created_at: m.created_at,
-      photo: "",
-      phone: "",
-    }));
-    // Photos and phone numbers people set themselves (migration 20261030000100). Read
-    // separately so the list still works on a database without those columns.
-    const { data: extras } = await supabase.from("profiles").select("id, phone, photo_updated_at").in("id", users.map((u) => u.id));
-    for (const e of (extras ?? []) as Array<{ id: string; phone: string; photo_updated_at: string | null }>) {
-      const u = users.find((x) => x.id === e.id);
-      if (u) {
-        u.photo = photoUrl(e.id, e.photo_updated_at);
-        u.phone = e.phone;
-      }
-    }
-    content = <UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} isOwner={access.role === "owner"} />;
   } else if (tab === "permissions") {
     const [{ data: perms }, { data: grants }] = await Promise.all([
       supabase.from("permissions").select("*").order("category").order("code"),

@@ -29,7 +29,7 @@ export default async function NoAccessPage({ searchParams }: { searchParams: Pro
             <h1 className="text-lg font-bold">Your account is waiting for access</h1>
             <p className="mt-2 text-sm text-muted">
               You are signed in as <strong>{access.email}</strong>, but an owner has not assigned you a role yet
-              {access.active ? "" : " or your account has been deactivated"}. Ask the business owner to grant access in Settings → Users.
+              {access.active ? "" : " or your account has been deactivated"}. Ask the business owner to grant access in People → Sign-ins &amp; roles.
             </p>
             <p className="mt-2 text-sm text-muted">
               Setting up your own company? <Link href="/onboarding" className="font-semibold text-ink underline">Create a company with an access code</Link>.

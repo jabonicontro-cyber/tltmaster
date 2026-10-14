@@ -34,7 +34,7 @@ export function EmployeeLoginLink({ employeeId, linked, candidates }: { employee
     );
   }
   if (candidates.length === 0) {
-    return <p className="text-muted">Every login in this company is already linked to an employee. Invite the person from Settings → Users first.</p>;
+    return <p className="text-muted">Every sign-in in this company already belongs to a person.</p>;
   }
   return (
     <form className="space-y-2" onSubmit={async (e) => {

@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { Lock, Pencil } from "lucide-react";
 import { CompensationForm } from "@/components/employees/compensation-form";
 import { EmployeeLoginLink } from "@/components/employees/login-link";
+import { SendSignIn } from "@/components/employees/send-sign-in";
+import { AccessEditButton } from "@/components/settings/settings-client";
 import { PrimaryTruckPicker } from "@/components/employees/primary-truck";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -17,8 +19,9 @@ import { avatarUrl, employeePhotoSrc } from "@/lib/people/avatars";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { getEmployee, linkableLogins, photoVersions } from "@/server/data/employees";
+import { listSignIns } from "@/server/data/people";
 
-export const metadata = { title: "Employee" };
+export const metadata = { title: "Person" };
 
 function Item({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -42,13 +45,15 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   // Linking needs employees.edit, and reading the company's logins needs users.manage (owners by default).
   const canLink = can(access, "employees.edit") && can(access, "users.manage");
   const candidates = canLink && !e.user_id ? await linkableLogins(access.companyId!) : [];
+  const manageUsers = can(access, "users.manage");
+  const member = manageUsers && e.user_id ? (await listSignIns(access.companyId!)).find((u) => u.id === e.user_id) : undefined;
   const today = new Date().toISOString().slice(0, 10);
 
   return (
     <>
       <PageHeader
         title={e.full_name}
-        crumbs={[{ label: "Employees", href: "/employees" }, { label: e.full_name }]}
+        crumbs={[{ label: "People", href: "/employees" }, { label: e.full_name }]}
         badges={<Badge tone={e.status === "active" ? "green" : e.status === "on_leave" ? "amber" : "gray"}>{EMPLOYEE_STATUSES[e.status]}</Badge>}
         actions={can(access, "employees.edit") && <ButtonLink href={`/employees/${id}/edit`} variant="secondary" icon={<Pencil className="size-4" />}>Edit</ButtonLink>}
       />
@@ -123,18 +128,25 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         </div>
 
         <Card className="h-fit">
-          <CardHeader title="Taviron access" />
-          <div className="space-y-2 px-4 pb-5 text-sm sm:px-5">
+          <CardHeader title="Taviron sign-in" />
+          <div className="space-y-3 px-4 pb-5 text-sm sm:px-5">
             {!e.user_id ? (
               <>
-                <p className="text-muted">No login linked. If the person already has a Taviron login, link it here; otherwise invite them from Settings → Users first.</p>
-                {canLink ? <EmployeeLoginLink employeeId={e.id} linked={false} candidates={candidates} /> : <p className="text-muted">An owner can link a login.</p>}
+                <p className="text-muted">No sign-in. {manageUsers ? "Send one to their work email, or link a sign-in they already have." : "Someone who manages users can give them one."}</p>
+                {manageUsers && can(access, "employees.edit") && (e.work_email
+                  ? <SendSignIn employeeId={e.id} email={e.work_email} isOwner={access.role === "owner"} />
+                  : <p className="text-muted">Add a work email (Edit) to send a sign-in.</p>)}
+                {canLink && candidates.length > 0 && <div className="border-t border-line pt-3"><EmployeeLoginLink employeeId={e.id} linked={false} candidates={candidates} /></div>}
               </>
             ) : (
               <>
-                <p>Has a login{role ? <> · role <strong>{ROLE_LABELS[role as AppRole] ?? role}</strong></> : null}.</p>
-                <p className="flex items-center gap-1.5 text-muted"><Lock className="size-4" aria-hidden /> Roles and access are changed in Settings → Users{can(access, "users.manage") ? "" : " by an administrator"}.</p>
-                {can(access, "users.manage") && <Link href="/settings?tab=users" className="font-medium text-brand-fg hover:underline">Open Settings → Users</Link>}
+                <p>
+                  {member ? (member.active ? "Signs in" : "Sign-in turned off") : "Signs in"}
+                  {role ? <> as <strong>{ROLE_LABELS[role as AppRole] ?? role}</strong></> : null}.
+                </p>
+                {member ? <AccessEditButton user={member} /> : (
+                  <p className="flex items-center gap-1.5 text-muted"><Lock className="size-4" aria-hidden /> Role and access are changed by someone who manages users.</p>
+                )}
                 {canLink && <EmployeeLoginLink employeeId={e.id} linked candidates={[]} />}
               </>
             )}

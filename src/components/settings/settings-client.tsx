@@ -297,8 +297,8 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
   return (
     <>
       <CardHeader
-        title="Users"
-        description="People in your company. Accounts without a role cannot see any data until you assign one."
+        title="Sign-ins & roles"
+        description="Everyone who can sign in to this company, and their role. Each sign-in also has a record in the Directory. Accounts without a role see no data until you assign one."
         actions={<Button size="sm" icon={<UserPlus className="size-4" />} onClick={() => setInviting(true)}>Invite user</Button>}
       />
       {!inviteAvailable && (
@@ -335,6 +335,18 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
       </TableWrap>
       {editing && <UserDialog user={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); router.refresh(); }} />}
       {inviting && <InviteDialog isOwner={isOwner} onClose={() => setInviting(false)} onSaved={() => { setInviting(false); router.refresh(); }} />}
+    </>
+  );
+}
+
+/** "Change role or access" on a person's page: the same editor as in Sign-ins & roles. */
+export function AccessEditButton({ user }: { user: UserRow }) {
+  const [open, setOpen] = useState(false);
+  const router = useRouter();
+  return (
+    <>
+      <Button size="sm" variant="secondary" icon={<Pencil className="size-4" />} onClick={() => setOpen(true)}>Change role or access</Button>
+      {open && <UserDialog user={user} onClose={() => setOpen(false)} onSaved={() => { setOpen(false); router.refresh(); }} />}
     </>
   );
 }
