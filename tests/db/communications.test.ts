@@ -238,7 +238,10 @@ describe("notifications, mutes, quiet hours and drivers on delivery", () => {
       await s.as(dispatcher);
       const dm = (await s.query<{ id: string }>("select public.comm_open_direct($1) as id", [driverUser])).rows[0].id;
       for (const t of ["One", "Two", "Three"]) await send(s, dm, t);
-      expect((await notes(s, driverUser)).map((n) => n.deferred_reason)).toEqual(["active_delivery", "active_delivery", "active_delivery"]);
+      const held = await notes(s, driverUser);
+      expect(held.filter((n) => n.category === "direct").map((n) => n.deferred_reason)).toEqual(["active_delivery", "active_delivery", "active_delivery"]);
+      // The assignment notice is an alert, not a message: alerts are never held back by a delivery.
+      expect(held.filter((n) => n.category === "alert").map((n) => [n.state, n.title.slice(0, 10)])).toEqual([["visible", "New load: "]]);
       await s.as(driverUser);
       expect((await s.query<{ n: number }>("select public.comm_release_deferred() as n")).rows[0].n).toBe(0); // still delivering
       expect(await visible(s, dm)).toEqual(["One", "Two", "Three"]); // the messages themselves are never held back
