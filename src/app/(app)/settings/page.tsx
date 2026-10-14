@@ -9,15 +9,13 @@ import {
   type SequenceRow,
 } from "@/components/settings/settings-client";
 import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { DescriptionList } from "@/components/ui/description-list";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
-import { can, ROLE_LABELS, type Access } from "@/lib/permissions";
+import { can, type Access } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
@@ -30,49 +28,39 @@ import { approvalChain } from "@/server/data/time-off";
 
 export const metadata = { title: "Settings" };
 
-const TABS: Array<{ key: string; label: string; visible: (a: Access) => boolean }> = [
-  { key: "account", label: "My account", visible: () => true },
-  { key: "company", label: "Company", visible: () => true },
-  { key: "numbering", label: "Numbering", visible: (a) => can(a, "settings.manage") },
-  { key: "dispatch", label: "Dispatch rules", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
-  { key: "time-off", label: "Time off", visible: (a) => can(a, "settings.manage") },
-  { key: "permissions", label: "Permissions", visible: (a) => can(a, "users.manage") },
-  { key: "email", label: "Email", visible: () => true },
-  { key: "sample", label: "Sample data", visible: (a) => can(a, "settings.manage") },
-  { key: "audit", label: "Audit log", visible: (a) => can(a, "audit.view") },
+type Group = "Company" | "Operations" | "Access" | "System";
+
+/** Four groups (owner 2026-10-14); the tab keys stay the same so existing links keep working. */
+const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Access) => boolean }> = [
+  { key: "company", label: "Company and branding", group: "Company", visible: () => true },
+  { key: "numbering", label: "Numbering", group: "Company", visible: (a) => can(a, "settings.manage") },
+  { key: "email", label: "Email", group: "Company", visible: () => true },
+  { key: "dispatch", label: "Dispatch rules", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
+  { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
+  { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
+  { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
+  { key: "audit", label: "Audit log", group: "System", visible: (a) => can(a, "audit.view") },
 ];
+const GROUPS: Group[] = ["Company", "Operations", "Access", "System"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const access = await requireAccess();
   const { tab: rawTab } = await searchParams;
   // Sign-ins and roles live on People now (owner 2026-10-14); old links keep working.
   if (rawTab === "users") redirect("/employees?view=access");
+  // My account is the profile page now (the profile menu's My profile).
+  if (rawTab === "account") redirect("/profile");
   const tabs = TABS.filter((t) => t.visible(access));
-  const tab = tabs.find((t) => t.key === rawTab)?.key ?? "account";
+  const tab = tabs.find((t) => t.key === rawTab)?.key ?? "company";
+  const group = TABS.find((t) => t.key === tab)!.group;
+  const groups = GROUPS.map((g) => ({ g, first: tabs.find((t) => t.group === g) })).filter((x) => x.first);
+  const inGroup = tabs.filter((t) => t.group === group);
   const supabase = await createClient();
   const { timezone, today } = await businessToday();
 
   let content: React.ReactNode = null;
 
-  if (tab === "account") {
-    content = (
-      <>
-        <CardHeader title="My account" />
-        <CardBody className="space-y-4">
-          <DescriptionList
-            items={[
-              { label: "Name", value: access.fullName },
-              { label: "Sign-in", value: access.email },
-              { label: "Company", value: access.companyName ?? "" },
-              { label: "Role", value: access.role ? ROLE_LABELS[access.role] : "None" },
-              { label: "Permissions", value: access.permissions.join(", "), wide: true },
-            ]}
-          />
-          <Link href="/forgot-password" className={buttonClasses("secondary")}>Change password (sends a reset link)</Link>
-        </CardBody>
-      </>
-    );
-  } else if (tab === "company") {
+  if (tab === "company") {
     const settings = await getSettings();
     content = (
       <>
@@ -181,18 +169,32 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader title="Settings" />
-      <nav aria-label="Settings sections" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
-        {tabs.map((t) => (
+      <nav aria-label="Settings groups" className="mb-3 flex gap-1 overflow-x-auto border-b border-line">
+        {groups.map(({ g, first }) => (
           <Link
-            key={t.key}
-            href={`/settings?tab=${t.key}`}
-            aria-current={tab === t.key ? "page" : undefined}
-            className={cn("-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap", tab === t.key ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink")}
+            key={g}
+            href={`/settings?tab=${first!.key}`}
+            aria-current={group === g ? "page" : undefined}
+            className={cn("-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap", group === g ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink")}
           >
-            {t.label}
+            {g}
           </Link>
         ))}
       </nav>
+      {inGroup.length > 1 && (
+        <nav aria-label="Settings sections" className="mb-4 flex flex-wrap gap-1.5">
+          {inGroup.map((t) => (
+            <Link
+              key={t.key}
+              href={`/settings?tab=${t.key}`}
+              aria-current={tab === t.key ? "page" : undefined}
+              className={cn("rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap", tab === t.key ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink")}
+            >
+              {t.label}
+            </Link>
+          ))}
+        </nav>
+      )}
       <Card>{content}</Card>
     </>
   );

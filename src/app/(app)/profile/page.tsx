@@ -1,3 +1,5 @@
+import Link from "next/link";
+import { buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
@@ -49,6 +51,9 @@ export default async function ProfilePage() {
           <div><dt className="text-muted">Company</dt><dd className="font-medium">{access.companyName ?? "—"}</dd></div>
           <div><dt className="text-muted">Role</dt><dd className="font-medium">{access.role ? ROLE_LABELS[access.role] : "—"}</dd></div>
         </dl>
+        <div className="border-t border-line px-4 py-4 sm:px-5">
+          <Link href="/forgot-password" className={buttonClasses("secondary")}>Change password (sends a reset link)</Link>
+        </div>
       </Card>
     </div>
   );
