@@ -1,11 +1,33 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-11, after N15. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-14, afternoon round. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 000. Afternoon round 2026-10-14 (owner away; "resume full implementation")
+
+| Commit | What | Migration (local / pushed / hosted) |
+| --- | --- | --- |
+| `900d773` | **Command Center ~4× faster** (root cause, not timeouts): billing views scoped per company, one line-status scan instead of four, visibility checked once per kind. Exceptions 1 251 → 326 ms, summary 1 859 → 479 ms locally (~3 800 orders); plan-shape test guards it | `20261114000100`, `20261114000200`: applied locally, in the repo, **not applied hosted** |
+| `871bb69` | **PTO work schedules** (B46): hours per weekday on the person page; full-day time off counts scheduled hours; demos get fictional schedules on Refresh | `20261114000300`: same |
+| `1389c61` | Hosted DB runbook (`docs/runbooks/2026-10-14-hosted-db.md`); a customer who creates a company gets their own person record | `20261114000400`: same |
+| `f54e2bd`, next | **Driver schedule notices** (B47): in-app alert to the assigned driver when a load is assigned or its date/time changes; repeat edits merge | `20261114000500`: same |
+
+Every migration has a rollback tested apply → rollback → re-apply. **Hosted-state check:** all five rolled back
+locally, then Command Center, People, time off and demo parity specs run (16 passed; the one failure is the work-schedule
+spec, which correctly showed "needs a database update" instead of the form) and demo-samples DB tests 5/5; re-applied.
+
+Checks on this bundle: lint, typecheck, vitest 692/692 (with storage), full browser suite 144 passed / 1 failed / 9
+skipped — the failure (load builder freight approval waited > 10 s for its toast during the full run) passed 4/4 when
+re-run alone; recorded, not a change in this bundle. Production build ok; gate spec 8 passed / 1 skipped. Risk tier
+**REVIEW** (five hosted migrations listed as owner actions).
+
+**Waiting for the owner** (exact steps in the runbook): `npx supabase db push` for the eleven pending migrations, the
+verification SQL, then Refresh demo data in both demos; `npm run ai:eval` on your computer (this sandbox cannot reach
+OpenAI, and no key is set here); HERE key in Vercel; choose an ELD/log source before any HOS rule (item 20).
 
 ## 00. Overnight session 2026-10-14 (owner asleep; working until 5 PM per the owner)
 
