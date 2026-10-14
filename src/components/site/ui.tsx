@@ -20,7 +20,7 @@ export function PageIntro({ eyebrow, title, children }: { eyebrow: string; title
       <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
       <Container className="relative py-16 sm:py-20">
         <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="mt-3 max-w-3xl text-4xl font-bold tracking-tight text-cloud sm:text-5xl">{title}</h1>
+        <h1 className="site-display mt-3 max-w-3xl text-4xl font-bold text-cloud sm:text-5xl">{title}</h1>
         {children ? <div className="mt-5 max-w-2xl text-lg leading-relaxed text-silver">{children}</div> : null}
       </Container>
     </section>
@@ -61,7 +61,7 @@ export function SectionHeading({ eyebrow, title, children, className, id }: { ey
   return (
     <div className={cn("max-w-2xl", className)}>
       {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 id={id} className="mt-3 text-3xl font-bold tracking-tight text-balance text-cloud sm:text-[2.5rem] sm:leading-[1.15]">{title}</h2>
+      <h2 id={id} className="site-title mt-3 text-3xl font-bold text-cloud sm:text-[2.5rem]">{title}</h2>
       {children ? <div className="mt-4 text-[17px] leading-relaxed text-silver">{children}</div> : null}
     </div>
   );
@@ -72,7 +72,7 @@ export function FinalCta() {
     <section className="border-t border-silver/10 bg-navy-2">
       <Container className="flex flex-col items-start justify-between gap-6 py-16 md:flex-row md:items-center">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight text-cloud">See it with your own operation in mind.</h2>
+          <h2 className="site-title text-3xl font-bold text-cloud">See it with your own operation in mind.</h2>
           <p className="mt-2 max-w-xl text-silver">A free walkthrough of the live demo company, with fictional data, led by the Taviron team.</p>
         </div>
         <div className="flex flex-wrap gap-3">

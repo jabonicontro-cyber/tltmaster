@@ -122,7 +122,7 @@ export default function HomePage() {
             intro={
               <div className="max-w-2xl">
                 <Eyebrow>Whole-operation planning for haulers</Eyebrow>
-                <h1 className="mt-5 text-[2.6rem] leading-[1.05] font-bold tracking-tight text-balance text-cloud sm:text-6xl">
+                <h1 className="site-display mt-5 text-[2.6rem] font-bold text-cloud sm:text-6xl">
                   A smarter way to run a fleet.
                 </h1>
                 <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
@@ -268,7 +268,7 @@ export default function HomePage() {
         <Container className="grid gap-12 py-20 sm:py-24 lg:grid-cols-[0.8fr_1.2fr]">
           <div>
             <ShieldCheck className="size-8 text-electric" aria-hidden />
-            <h2 className="mt-5 text-3xl font-bold tracking-tight text-balance text-cloud">Your company&apos;s data stays your company&apos;s.</h2>
+            <h2 className="mt-5 site-title text-3xl font-bold text-cloud">Your company&apos;s data stays your company&apos;s.</h2>
             <p className="mt-4 text-[17px] leading-relaxed text-silver">Taviron recommends; people decide.</p>
             <Link href="/platform" className="mt-6 inline-flex items-center gap-1.5 rounded text-[15px] font-semibold text-electric hover:underline">
               What is available today, and what is planned <ArrowRight className="size-4" aria-hidden />

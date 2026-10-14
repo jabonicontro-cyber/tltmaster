@@ -32,10 +32,10 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
             {item.priority === 1 && <span className="text-xs font-semibold text-critical">{PRIORITY_LABELS[1] ?? "Urgent"}</span>}
             {item.customer_name && <span className="text-sm text-muted">{item.customer_name}</span>}
           </p>
-          <p className="mt-0.5 truncate text-sm text-muted" title={reasons.join(" ")}>
+          {/* Every reason is kept (joined, at most two lines); none is hidden behind a count. */}
+          <p className="mt-0.5 line-clamp-2 text-sm text-muted" title={reasons.join(" ")}>
             <span className="font-medium text-ink/70">{KIND_LABELS[item.kind]}</span>
-            {reasons[0] ? ` · ${reasons[0]}` : ""}
-            {reasons.length > 1 ? ` (+${reasons.length - 1} more)` : ""}
+            {reasons.length ? ` · ${reasons.join(" · ")}` : ""}
             {" · "}
             {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : <span>{exceptionOwner(item)}</span>}
             {item.assignment_note ? ` — ${item.assignment_note}` : ""}

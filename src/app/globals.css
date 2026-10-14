@@ -268,6 +268,90 @@
 .site-press:active {
   transform: scale(0.97);
 }
+/* Apple-principles pass (2026-10-14; .claude/skills/apple-design) ------------------------------------------
+   Header: no permanent divider. A soft edge appears only once content scrolls under the translucent header (a
+   scroll-edge effect), driven by the scroll position itself where the browser supports it. */
+.site-header {
+  border-bottom: 1px solid transparent;
+}
+@supports (animation-timeline: scroll()) {
+  .site-header {
+    animation: site-header-edge linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 72px;
+  }
+  @keyframes site-header-edge {
+    to {
+      border-bottom-color: rgb(199 209 222 / 0.1);
+      box-shadow: 0 10px 28px -18px rgb(0 0 0 / 0.65);
+    }
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .site-header {
+    border-bottom-color: rgb(199 209 222 / 0.1);
+  }
+}
+/* The mobile menu materializes from the button that opened it (origin top right), never from nowhere. */
+.site-menu[open] > nav {
+  transform-origin: top right;
+  animation: site-menu-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes site-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+  }
+}
+/* Text links answer the press instantly (on pointer-down), like the buttons. */
+.site-link {
+  transition: color 160ms ease, opacity 100ms ease;
+}
+.site-link:active {
+  opacity: 0.6;
+}
+/* Keyboard focus is always visible on the website. */
+.site :is(a, button, summary, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-electric);
+  outline-offset: 2px;
+}
+/* Display type: tighter tracking and leading as size grows; body stays at 0. */
+.site-display {
+  letter-spacing: -0.03em;
+  line-height: 1.04;
+  text-wrap: balance;
+}
+.site-title {
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  text-wrap: balance;
+}
+@media (prefers-reduced-motion: reduce) {
+  .site-menu[open] > nav {
+    animation: site-fade-in 120ms ease;
+  }
+  @keyframes site-fade-in {
+    from {
+      opacity: 0;
+    }
+  }
+}
+/* Reduced transparency: solid header and menu instead of blur. Increased contrast: defined borders, brighter text. */
+@media (prefers-reduced-transparency: reduce) {
+  .site-header {
+    background-color: var(--color-navy) !important;
+    backdrop-filter: none !important;
+  }
+}
+@media (prefers-contrast: more) {
+  .site-header {
+    border-bottom-color: rgb(199 209 222 / 0.5) !important;
+  }
+  .site .text-silver {
+    color: var(--color-cloud);
+  }
+}
+
 /* Homepage product showcase: layered CSS perspective, static (no ongoing motion). */
 .showcase-stage {
   perspective: 2400px;

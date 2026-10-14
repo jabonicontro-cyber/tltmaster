@@ -24,6 +24,31 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
     startedAt.current ??= Date.now();
   };
 
+  /**
+   * Inline validation (Apple: validate as you go, not only on submit): when a field is left, its own rules are checked
+   * and a plain message appears under it; correcting the field clears the message as you type. Server checks still run.
+   */
+  const fieldMessage = (el: HTMLInputElement | HTMLTextAreaElement): string => {
+    const v = el.validity;
+    if (v.valid) return "";
+    if (v.valueMissing) return "This is needed.";
+    if (v.typeMismatch && el.type === "email") return "Enter an email address like name@company.com.";
+    if (v.rangeUnderflow || v.rangeOverflow || v.badInput || v.stepMismatch) return "Enter a whole number in range.";
+    if (v.tooLong) return "This is too long.";
+    return "Check this field.";
+  };
+  const onFieldBlur = (e: React.FocusEvent<HTMLFormElement>) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) || !el.name || el.type === "hidden") return;
+    const message = fieldMessage(el);
+    setFields((f) => (message ? { ...f, [el.name]: message } : Object.fromEntries(Object.entries(f).filter(([k]) => k !== el.name))));
+  };
+  const onFieldInput = (e: React.FormEvent<HTMLFormElement>) => {
+    const el = e.target;
+    if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) || !fields[el.name]) return;
+    if (!fieldMessage(el)) setFields((f) => Object.fromEntries(Object.entries(f).filter(([k]) => k !== el.name)));
+  };
+
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setPending(true);
@@ -69,7 +94,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
   const aria = (name: string) => ({ "aria-invalid": Boolean(fields[name]) || undefined, "aria-describedby": fields[name] ? `${name}-error` : undefined });
 
   return (
-    <form action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} className="space-y-5 rounded-xl border border-white/10 bg-white/[0.03] p-6 sm:p-8" noValidate>
+    <form action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} onBlur={onFieldBlur} onInput={onFieldInput} className="space-y-5 rounded-xl border border-white/10 bg-white/[0.03] p-6 sm:p-8" noValidate>
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="source_path" value={kind === "demo" ? "/demo" : "/contact"} />
       {/* Left empty by people; filled in by form-filling bots. */}

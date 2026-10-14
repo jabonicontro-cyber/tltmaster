@@ -119,7 +119,7 @@ export function TruckStory({ intro, chapters }: { intro: ReactNode; chapters: St
           {chapters.map((c, i) => (
             <section key={c.id} id={c.id} data-story-step aria-labelledby={`${c.id}-title`} className="flex min-h-[60vh] flex-col justify-center py-12 lg:min-h-[85vh]">
               <p className={`text-sm font-semibold tracking-wide text-electric uppercase transition-opacity duration-500 ${mode === "3d" && active !== i + 1 ? "lg:opacity-60" : ""}`}>{c.eyebrow}</p>
-              <h2 id={`${c.id}-title`} className="mt-3 max-w-xl text-3xl font-bold tracking-tight text-balance text-cloud sm:text-4xl">{c.title}</h2>
+              <h2 id={`${c.id}-title`} className="mt-3 max-w-xl site-title text-3xl font-bold text-cloud sm:text-4xl">{c.title}</h2>
               <div className="mt-4 max-w-xl space-y-3 text-[17px] leading-relaxed text-silver">{c.body}</div>
             </section>
           ))}

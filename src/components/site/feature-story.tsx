@@ -45,7 +45,7 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
       <div className={`grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14 ${flip ? "lg:[&>*:first-child]:order-last" : ""}`}>
         <div>
           <Eyebrow>{CATEGORY[feature.category]}</Eyebrow>
-          <h2 id={titleId} className="mt-3 text-3xl font-bold tracking-tight text-balance text-cloud sm:text-4xl">{feature.name}</h2>
+          <h2 id={titleId} className="mt-3 site-title text-3xl font-bold text-cloud sm:text-4xl">{feature.name}</h2>
           <p className="mt-5 text-[15px] leading-relaxed text-silver/80"><span className="font-semibold text-cloud">The problem. </span>{feature.problem}</p>
           <p className="mt-3 text-[17px] leading-relaxed text-silver">{feature.how}</p>
           <p className="mt-3 text-[17px] leading-relaxed font-medium text-cloud">{feature.value}</p>
