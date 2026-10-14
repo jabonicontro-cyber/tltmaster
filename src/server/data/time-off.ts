@@ -20,6 +20,8 @@ export interface TimeOffRow {
   decision_note: string;
   edit_seq: number;
   created_at: string;
+  /** The approval step a pending request waits for (20261112000400); absent before that migration. */
+  approval_step?: number | null;
 }
 
 /** null = the time-off tables are not installed yet (migration pending). */
@@ -70,4 +72,12 @@ export async function currentEmployees(): Promise<Array<{ id: string; full_name:
   const supabase = await createClient();
   const { data } = await supabase.from("employees").select("id, full_name").in("status", ["active", "on_leave"]).order("full_name");
   return (data ?? []) as Array<{ id: string; full_name: string }>;
+}
+
+/** The company's time-off approval chain in order; [] = one approval decides; null = not installed yet (20261112000400). */
+export async function approvalChain(): Promise<Array<{ step_no: number; role: string; label: string }> | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("time_off_approval_steps").select("step_no, role, label").order("step_no");
+  if (error) return null;
+  return (data ?? []) as Array<{ step_no: number; role: string; label: string }>;
 }

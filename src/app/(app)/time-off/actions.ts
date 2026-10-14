@@ -44,8 +44,9 @@ export async function decideTimeOff(input: z.input<typeof decision>): Promise<Ac
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("time_off_decide", { p_id: parsed.data.id, p_decision: parsed.data.decision, p_note: parsed.data.note });
     if (error) return fail(dbErrorMessage(error));
-    const r = data as { conflicts: unknown[] };
+    const r = data as { status: string; step?: number; conflicts: unknown[] };
     refresh(parsed.data.id);
+    if (r.status === "pending") return ok({ conflicts: 0 }, `Step approved. The request now waits for step ${r.step}.`);
     const n = r.conflicts?.length ?? 0;
     return ok({ conflicts: n }, parsed.data.decision === "denied" ? "Request denied." : n ? `Approved. ${n} assignment${n === 1 ? "" : "s"} overlap this leave — review them in Dispatch.` : "Request approved.");
   });

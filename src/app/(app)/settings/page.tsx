@@ -29,6 +29,8 @@ import { adminAvailable } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
+import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
+import { approvalChain } from "@/server/data/time-off";
 
 export const metadata = { title: "Settings" };
 
@@ -37,6 +39,7 @@ const TABS: Array<{ key: string; label: string; visible: (a: Access) => boolean 
   { key: "company", label: "Company", visible: () => true },
   { key: "numbering", label: "Numbering", visible: (a) => can(a, "settings.manage") },
   { key: "dispatch", label: "Dispatch rules", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
+  { key: "time-off", label: "Time off", visible: (a) => can(a, "settings.manage") },
   { key: "users", label: "Users", visible: (a) => can(a, "users.manage") },
   { key: "permissions", label: "Permissions", visible: (a) => can(a, "users.manage") },
   { key: "email", label: "Email", visible: () => true },
@@ -92,6 +95,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
         <CardBody>
           {rules ? <DocumentRulesForm rules={rules} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Document rules need a database update that has not been installed yet. Until then expired documents are review notes only.</p>}
+        </CardBody>
+      </>
+    );
+  } else if (tab === "time-off") {
+    const chain = await approvalChain();
+    content = (
+      <>
+        <CardHeader
+          title="Time-off approval chain"
+          description="Who decides a time-off request, in order. Each step is decided by someone in that role who also has the time-off approval permission; only the last step approves and uses hours from the balance; a denial at any step ends the request. Nobody decides their own request. Saving a new chain restarts pending requests at step 1."
+        />
+        <CardBody>
+          {chain ? <ApprovalChainForm steps={chain.map((c) => ({ role: c.role, label: c.label }))} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Approval chains need a database update that has not been installed yet. Until then one approval decides each request.</p>}
         </CardBody>
       </>
     );

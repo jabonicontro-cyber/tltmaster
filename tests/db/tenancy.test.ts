@@ -14,7 +14,7 @@ const TENANT_TABLES = [
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "ai_usage_events",
   "employees", "employee_compensation",
-  "time_off_requests", "time_off_events", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
+  "time_off_requests", "time_off_events", "time_off_approval_steps", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
   "vehicle_documents", "truck_assignment_events", "vehicle_document_rules",
   "truck_readings", "maintenance_schedules", "work_orders", "work_order_events", "work_order_costs",
   "company_settings", "document_sequences", "role_permissions", "audit_events", "units_of_measure",
@@ -79,7 +79,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // the caller's company, own record or time_off.approve, and never let anyone decide their own request;
   // dispatch_time_off needs dispatch.view and returns no category or reason.
   "private.is_own_employee", "private.driver_time_off_conflict", "private.time_off_assignment_conflicts",
-  "public.time_off_save", "public.time_off_decide", "public.time_off_cancel", "public.dispatch_time_off",
+  "public.time_off_save", "public.time_off_decide", "public.time_off_cancel", "public.time_off_set_chain", "public.dispatch_time_off",
   // PTO balances (20261112000100): bank_save and adjust need time_off.balances in the caller's company; balances
   // returns the caller's own, or another employee's only with time_off.balances; overview needs time_off.balances.
   "public.pto_bank_save", "public.pto_adjust", "public.pto_balances", "public.pto_balance_overview",

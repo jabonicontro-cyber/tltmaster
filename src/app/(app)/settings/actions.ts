@@ -197,3 +197,27 @@ export async function saveDocumentRules(formData: FormData): Promise<ActionResul
     return ok(undefined, "Document rules saved. Dispatch checks use them from now on.");
   });
 }
+
+/** Replace the time-off approval chain (settings.manage; checked again by the database). */
+export async function saveApprovalChain(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("settings.manage");
+    let steps: Array<{ role: string; label: string }>;
+    try {
+      steps = JSON.parse(String(formData.get("steps") ?? "[]"));
+    } catch {
+      return fail("Invalid approval steps.");
+    }
+    if (!Array.isArray(steps) || steps.length > 5) return fail("An approval chain has at most five steps.");
+    for (const s of steps) {
+      if (!ROLES.includes(s?.role as AppRole)) return fail("Choose who decides each step.");
+      if (typeof s.label !== "string" || !s.label.trim() || s.label.length > 60) return fail("Give each step a short name (up to 60 characters).");
+    }
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("time_off_set_chain", { p: steps.map((s) => ({ role: s.role, label: s.label.trim() })) });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/settings");
+    revalidatePath("/time-off", "layout");
+    return ok(undefined, steps.length ? "Approval chain saved. Pending requests start again at step 1." : "Approval chain removed: one approval decides.");
+  });
+}

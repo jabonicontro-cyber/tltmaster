@@ -7,16 +7,16 @@ import { DescriptionList } from "@/components/ui/description-list";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
-import { can } from "@/lib/permissions";
+import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { calendarDays, STATUS_TONE, TIME_OFF_CATEGORIES, TIME_OFF_STATUSES } from "@/lib/time-off";
 import { requireAccess } from "@/server/auth";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
-import { employeeNames, getTimeOff, myEmployee } from "@/server/data/time-off";
+import { approvalChain, employeeNames, getTimeOff, myEmployee } from "@/server/data/time-off";
 
 export const metadata = { title: "Time-off request" };
 
-const EVENT_LABELS: Record<string, string> = { submitted: "Requested", updated: "Changed", approved: "Approved", denied: "Denied", canceled: "Canceled" };
+const EVENT_LABELS: Record<string, string> = { submitted: "Requested", updated: "Changed", step_approved: "Step approved", approved: "Approved", denied: "Denied", canceled: "Canceled" };
 
 export default async function TimeOffRequestPage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requireAccess();
@@ -24,11 +24,13 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
   const detail = await getTimeOff(id).catch(() => null);
   if (!detail) notFound();
   const { request: r, events } = detail;
-  const [people, names, me, { timezone, today }] = await Promise.all([getUserNames(), employeeNames(), myEmployee(access.userId), businessToday()]);
+  const [people, names, me, { timezone, today }, chain] = await Promise.all([getUserNames(), employeeNames(), myEmployee(access.userId), businessToday(), approvalChain()]);
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const own = me?.id === r.employee_id;
   const approver = can(access, "time_off.approve");
-  const canDecide = approver && !own && r.status === "pending";
+  // With an approval chain, the pending request waits for one step; only that step's role decides (checked again by the database).
+  const step = r.status === "pending" && chain?.length ? chain.find((c) => c.step_no === (r.approval_step ?? 1)) ?? null : null;
+  const canDecide = approver && !own && r.status === "pending" && (!step || access.role === step.role);
   const canCancel = r.status === "pending" ? own || approver : r.status === "approved" && (approver || (own && r.start_date > today));
   const approvedEvent = [...events].reverse().find((e) => e.kind === "approved");
   const conflicts = approvedEvent?.details.conflicting_assignments ?? [];
@@ -41,6 +43,12 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
         badges={<Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge>}
         actions={<TimeOffActions id={r.id} canDecide={canDecide} canCancel={canCancel} />}
       />
+      {step && chain && (
+        <p className="mb-4 text-sm">
+          <span className="font-medium">Waiting for step {step.step_no} of {chain.length}: {step.label}</span>
+          <span className="text-muted"> — decided by {ROLE_LABELS[step.role as AppRole] ?? step.role}{step.step_no < chain.length ? ". Approving passes it to the next step." : "."}</span>
+        </p>
+      )}
       {approver && own && r.status === "pending" && <p className="mb-4 text-sm text-muted">This is your own request: another approver must decide it.</p>}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="space-y-5">
