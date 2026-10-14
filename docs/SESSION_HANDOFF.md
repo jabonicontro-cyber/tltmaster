@@ -7,7 +7,52 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 0. Current checkpoint (2026-10-13 daytime sprint, until 5 PM America/Chicago) — read first
+## 0. Current checkpoint (2026-10-13 evening: Preview release, then the authorized product backlog) — read first
+
+**Deployment state (verified from GitHub's deployment records, 2026-10-13 22:48 UTC):**
+- **Preview** (`claude/ui-and-signin-checkpoint`) runs **`95320c4`** — deployment record `7051985355`, environment
+  Preview, state **success**. Pushed after the full release suite passed on that exact commit (lint, typecheck,
+  vitest 647/647, browser 130 passed / 0 failed / 9 skipped (gate, run separately: 8 passed / 1 skipped), production
+  build, deployment check all passed). Not verified live: this sandbox's network policy blocks `*.vercel.app`.
+- **Production** (`claude/top-line-trucking-manager-vmw04i`) still runs **`651c37b`**. Promotion of `95320c4`
+  (a fast-forward, risk tier REVIEW) was attempted under the owner's release authorization and **denied by this
+  session's permission system** ("Production Deploy"). It needs the owner to promote, or to allow the action.
+- **Hosted database:** cannot be reached from this sandbox. **James applied `20261110000100`–`20261111000300` on
+  2026-10-13 (his `migration list` shows them on both sides).** Still pending, all optional and reversible:
+  `20261112000100_pto_balances`, `20261112000200_document_policy`, `20261112000300_pto_accruals`,
+  `20261112000400_time_off_approval_chain`. Code works without
+  them (hosted-state check: all six earlier ones rolled back locally, 39/40 affected browser tests passed; the 40th
+  needed the PTO update and now accepts the documented "not available yet" state).
+
+**Built after `95320c4` (local commits, in order):**
+
+| Commit | What users can do |
+| --- | --- |
+| `7363766` | Plan the day: optional **Keep crews together** priority (off by default; plans unchanged at 0) |
+| `8409507` | **PTO banks and balances**: banks (separate/combined, eligible employment types, waiting period), append-only ledger, grants/adjustments, requests refused beyond available hours, approval posts usage, cancel returns it; My balances; Banks and balances page |
+| `2449777` | **Expired vehicle documents policy**: per-kind block/warn rules (Settings → Dispatch rules), "Mark verified" in Fleet, enforced in the database and mirrored in Smart Dispatch and Plan the day |
+| `db08901` | Unfinished modules say **Coming soon** (Route Planner) |
+| `855f97b` | Demo-parity test accepts the "not available yet" state before the hosted update |
+| `3abbc40` | **PTO accruals**: annual grant / hours worked / per pay period per bank and employment type, caps, plan-year carryover (forfeiture only after the company confirms legal review), record hours, idempotent run |
+| `499e5e7` | **Time-off approval chains** (Settings → Time off): ordered steps by role; only the last step approves; denial at any step ends it |
+| `09a682c` | **Order to Cash** control center (B42 increment 1, read-only lifecycle; invoices/payments labelled Coming soon) |
+| `1b1a47e` | **Demos:** Northfield matches Prairie Lantern (fleet, trailers, charges, its own Refresh); Prairie Lantern personalised for Colby Chapman (Southfield/Sarasota lanes, a hardwood-court customer, his friend Cam Webster as a driver — the one real name, owner request) |
+
+**Verification on `3abbc40`:** lint and typecheck clean; vitest **664 / 664** (88 files). Full browser suite: see
+the release record below (updated when it finishes).
+
+**Feature catalog:** public claims for balances, accruals and the document policy are not added yet — they depend on
+hosted migrations that are not applied (never call a feature operational before that).
+
+**Decisions for James:**
+1. **Production:** promote `95320c4` (or a later verified Preview) — the session could not (permission denied).
+2. **Hosted migrations** (in order, backup first, DEPLOYMENT §2a): the four earlier optional ones, then
+   `20261112000100` → `000200` → `000300`; then Refresh demo data. Or add `SUPABASE_ACCESS_TOKEN` and
+   `SUPABASE_DB_PASSWORD` to the environment so a future session can run them with your approval.
+3. **Still open (not invented):** payroll/ELD hours
+   integration source, invoicing/payments scope for B42 (§9 Q9, Q10, Q15).
+
+## 0b. Earlier checkpoint (2026-10-13 daytime sprint, until 5 PM America/Chicago)
 
 **Deployment state.** The owner said "push it" after the overnight sprint: `651c37b..7eba5e4` was pushed to the Preview
 branch `claude/ui-and-signin-checkpoint` (fast-forward) and Vercel's Preview deployment for `7eba5e4` reports

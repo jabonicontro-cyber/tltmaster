@@ -2356,6 +2356,26 @@ truck or trailer; others are warnings. Tests: `tests/db/document-policy.test.ts`
 Also this evening: **Keep crews together** (OPTIMIZATION §2 item 7) and **demo billing samples** fixed for late-day
 seeds (`95320c4`).
 
+## 5aj. B42 Order-to-Cash Control Center, increment 1 (2026-10-13, owner authorization)
+
+`/order-to-cash` (billing.view; Finance navigation): every open order on one lifecycle — Needs scheduling, Needs
+loads, In delivery, Tickets, Billing review, Ready to bill, Handed off — with why, the next step (a link to where it is
+resolved), the team whose permission covers it, and how many days it has waited (from recorded dates only). Stage
+cards show counts, how many need attention and the order value per stage; filters by stage, attention and search.
+Read-only and rule-free: positions come from `billing_order_status` (the database's own readiness and fulfillment) plus
+confirmed orders without a date; reasons and next steps reuse `src/lib/billing/rules.ts`. Invoices, receivables and
+payments are labelled Coming soon (master plan §9 Q9, Q10, Q15 open). Files: `src/lib/order-to-cash.ts`,
+`src/server/data/order-to-cash.ts`, `src/app/(app)/order-to-cash/page.tsx`. Tests: `tests/unit/order-to-cash.test.ts`,
+`tests/e2e/order-to-cash.spec.ts`.
+
+## 5ak. Time-off approval chains (2026-10-13)
+
+Migration `20261112000400_time_off_approval_chain.sql` (rollback refuses while step history exists): a company's
+ordered approval steps (1–5), each decided by a role with `time_off.approve`; only the last step approves and uses PTO
+hours; a denial at any step ends the request; each passed step is a `step_approved` event; changing the chain restarts
+pending requests at step 1; no chain = one approval as before. Settings → Time-off approvals (settings.manage).
+Tests: `tests/db/time-off-chain.test.ts`.
+
 ## Recommended next task
 
 **Finish B3 — staging deployment, now including N13, N14 and N15** (state in docs/SESSION_HANDOFF.md):
