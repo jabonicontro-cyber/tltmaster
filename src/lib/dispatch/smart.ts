@@ -106,6 +106,11 @@ export interface SmartInput {
   timeOffChecked?: boolean;
   /** Drivers whose employee record says On leave (an HR status, separate from dated time off): a warning, never a block. */
   driversOnLeave?: string[];
+  /**
+   * Chooses a usable trailer for a tractor (the trailer rules of Plan the day; null = none usable). Without it a tractor
+   * is excluded with "choose a trailer on the board", as before.
+   */
+  pickTrailer?: (truck: SmartTruck, load: SmartLoad, driver: SmartDriver | null, busy: string[]) => { id: string; unit_number: string } | null;
 }
 
 export interface SmartDocumentIssue {
@@ -142,6 +147,9 @@ export const HOS_NOTE = "Hours of service are not checked: no ELD or driver-log 
 export interface Candidate {
   truckId: string;
   truckLabel: string;
+  /** The trailer a tractor pulls (chosen by the trailer rules); null for trucks that carry the load themselves. */
+  trailerId?: string | null;
+  trailerLabel?: string | null;
   driverId: string;
   driverLabel: string;
   score: number;
@@ -217,7 +225,11 @@ interface Reservation {
   load: SmartLoad;
   truckId: string;
   driverId: string;
+  trailerId?: string | null;
 }
+
+/** Trailers already proposed for loads overlapping `l` (not offered again for it). */
+const busyTrailers = (reserved: Reservation[], l: SmartLoad) => reserved.filter((r) => r.trailerId && overlaps(r.load, l)).map((r) => r.trailerId as string);
 
 function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserved: Reservation[], bookingsById: SmartBooking[]): string[] {
   const out: string[] = [];
@@ -230,11 +242,14 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserve
   if (visit) out.push(`In the shop on this date (${visit.number}).`);
   const safety = input.truckReports.filter((r) => r.truck_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"));
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
-  if (t.truck_type === "tractor") out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
+  const tractor = t.truck_type === "tractor";
+  if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
+  else if (tractor && !input.pickTrailer!(t, l, null, busyTrailers(reserved, l))) out.push("No usable trailer is free at this time (compatible, in service, not booked, enough combined capacity).");
   for (const d of (input.documentIssues ?? []).filter((x) => x.truck_id === t.id && x.blocks && x.expires_on < l.load_date)) {
     out.push(`Its ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
   }
-  if (l.planned_quantity !== null && comparableUnit(l.unit_code)) {
+  // A tractor's capacity is checked together with its trailer (pickTrailer).
+  if (!(tractor && input.pickTrailer) && l.planned_quantity !== null && comparableUnit(l.unit_code)) {
     const cap = capacityIn(t, l.unit_code);
     if (cap !== null && l.planned_quantity > cap) out.push(`Planned ${fmt(l.planned_quantity)} ${unitLabel(l.unit_code)} exceeds its recorded capacity of ${fmt(cap)} ${unitLabel(l.unit_code)}.`);
   }
@@ -368,9 +383,16 @@ export function recommend(input: SmartInput): LoadPlan[] {
     const rejected = input.rejections.filter((r) => r.load_id === load.id);
     const pairs: Candidate[] = [];
     for (const t of okTrucks.slice(0, 4)) {
+      const truck = input.trucks.find((x) => x.id === t.id)!;
       for (const d of okDrivers.slice(0, 4)) {
         if (rejected.some((r) => r.truck_id === t.id && r.driver_id === d.id)) continue;
-        pairs.push({ truckId: t.id, truckLabel: t.label, driverId: d.id, driverLabel: d.label, score: t.score + d.score, reasons: [...t.reasons, ...d.reasons], warnings: [...t.warnings, ...d.warnings] });
+        // A tractor needs a trailer the driver may pull (combination licence); otherwise the pair is not offered.
+        const trailer = truck.truck_type === "tractor" && input.pickTrailer ? input.pickTrailer(truck, load, input.drivers.find((x) => x.id === d.id) ?? null, busyTrailers(reserved, load)) : null;
+        if (truck.truck_type === "tractor" && !trailer) continue;
+        pairs.push({
+          truckId: t.id, truckLabel: trailer ? `${t.label} + ${trailer.unit_number}` : t.label, trailerId: trailer?.id ?? null, trailerLabel: trailer?.unit_number ?? null,
+          driverId: d.id, driverLabel: d.label, score: t.score + d.score, reasons: [...t.reasons, ...d.reasons], warnings: [...t.warnings, ...d.warnings],
+        });
       }
     }
     pairs.sort((a, b) => b.score - a.score || a.truckLabel.localeCompare(b.truckLabel) || a.driverLabel.localeCompare(b.driverLabel) || a.truckId.localeCompare(b.truckId) || a.driverId.localeCompare(b.driverId));
@@ -426,7 +448,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
       }
       blocked = { why, options };
     } else {
-      reserved.push({ load, truckId: proposal.truckId, driverId: proposal.driverId });
+      reserved.push({ load, truckId: proposal.truckId, driverId: proposal.driverId, trailerId: proposal.trailerId ?? null });
     }
 
     plans.push({

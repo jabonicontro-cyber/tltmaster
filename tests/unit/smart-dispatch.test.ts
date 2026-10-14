@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { recommend, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { pickTrailer, type OptimizationInput, type OptTrailer } from "@/lib/optimization/plan";
 
 // Smart Dispatch scenarios (engine level). The approval path and its database
 // re-checks are covered in tests/db/smart-dispatch.test.ts and the browser test.
@@ -216,5 +217,27 @@ describe("Smart Dispatch and time off", () => {
     // A document that expires after the load date changes nothing.
     const later = recommend(input({ loads: [load("A")], documentIssues: [issue({ expires_on: "2026-12-31" })] }))[0];
     expect(later.proposal?.truckLabel).toBe("101");
+  });
+
+  it("tractor fleets: with the trailer rules each tractor is proposed with a free trailer; two overlapping loads get two trailers", () => {
+    const trailer = (unit: string, extra: Partial<OptTrailer> = {}): OptTrailer => ({
+      id: "tr-" + unit, unit_number: unit, active: true, service_status: "in_service", weight_capacity: 22, weight_unit: "ton", volume_capacity: null, capacity_verified_at: null, compatible_truck_types: ["tractor"], ...extra,
+    });
+    const base = input({
+      trucks: [truck("201", { truck_type: "tractor" }), truck("202", { truck_type: "tractor" })],
+      drivers: [qualified({ id: "d-a", name: "A" }), qualified({ id: "d-b", name: "B" })],
+      loads: [load("X"), load("Y", { order_number: "O-Y" })],
+    });
+    const full: OptimizationInput = { ...base, revenueCents: {}, trailers: [trailer("T-51"), trailer("T-52", { service_status: "out_of_service" }), trailer("T-53")] };
+    const plans = recommend({ ...base, pickTrailer: (t, l, d, busy) => pickTrailer(full, l, t, d, busy) });
+    expect(plans.every((p) => p.proposal)).toBe(true);
+    const used = plans.map((p) => p.proposal!.trailerId);
+    expect(new Set(used).size).toBe(2); // never the same trailer twice at the same time
+    expect(used).not.toContain("tr-T-52"); // out of service
+    expect(plans[0].proposal!.truckLabel).toMatch(/^20[12] \+ T-5[13]$/);
+    // No usable trailer: the tractor is excluded with the reason.
+    const none = recommend({ ...base, loads: [load("Z")], pickTrailer: () => null });
+    expect(none[0].proposal).toBeNull();
+    expect(none[0].excludedTrucks[0].reasons.join(" ")).toMatch(/No usable trailer is free/);
   });
 });

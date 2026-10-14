@@ -30,7 +30,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
     if (!chosen) return;
     setBusy("approve");
     setError(null);
-    const r = await approveRecommendation({ loadId: l.id, truckId: chosen.truckId, driverId: chosen.driverId, loadDate: l.load_date });
+    const r = await approveRecommendation({ loadId: l.id, truckId: chosen.truckId, trailerId: chosen.trailerId ?? null, driverId: chosen.driverId, loadDate: l.load_date });
     setBusy(null);
     if (!r.ok) {
       setError(r.error);
@@ -59,87 +59,116 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
     router.refresh();
   }
 
+  const time2 = `${formatDate(l.load_date)} · ${time(l.starts_at, timezone)}–${time(l.ends_at, timezone)}`;
+  const urgentRank = plan.priority.rank;
   return (
-    <li className="space-y-2 px-4 py-3" aria-label={`${l.order_number} load ${l.load_number}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Link href={withReturn(`/orders/${l.order_id}`, back)} className="font-bold tabular hover:underline">{l.order_number}</Link>
-        <span className="text-sm">load {l.load_number} · {formatDate(l.load_date)} {time(l.starts_at, timezone)}–{time(l.ends_at, timezone)}</span>
-        <span className="text-sm text-muted">{l.customer_name}{l.planned_quantity !== null ? ` · ${l.planned_quantity} ${l.unit_code === "cu_yd" ? "cu yd" : l.unit_code ?? ""}` : ""}</span>
-        {plan.priority.reasons.map((r) => (
-          <Badge key={r} tone={plan.priority.rank === 0 ? "red" : plan.priority.rank === 1 ? "amber" : "gray"}>{r}</Badge>
+    <li className="px-4 py-3 sm:px-5" aria-label={`${l.order_number} load ${l.load_number}`}>
+      {/* One line per load: what, when, for whom, and how urgent. */}
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <Link href={withReturn(`/orders/${l.order_id}`, back)} className="font-semibold tabular text-ink hover:underline">{l.order_number}</Link>
+        <span className="text-sm text-ink">Load {l.load_number}</span>
+        <span className="text-sm text-muted tabular">{time2}</span>
+        <span className="min-w-0 truncate text-sm text-muted">{l.customer_name}{l.planned_quantity !== null ? ` · ${l.planned_quantity} ${l.unit_code === "cu_yd" ? "cu yd" : l.unit_code ?? ""}` : ""}</span>
+        {plan.priority.reasons.slice(0, 1).map((r) => (
+          <Badge key={r} tone={urgentRank === 0 ? "red" : urgentRank === 1 ? "amber" : "gray"}>{r}</Badge>
         ))}
       </div>
 
       {plan.proposal ? (
-        <div className="rounded-md border border-blue-200 bg-blue-50/60 p-3">
-          <p className="flex flex-wrap items-center gap-2 text-sm">
-            <Badge tone="blue">Proposed — not assigned</Badge>
-            <span>
-              Truck <strong>{chosen?.truckLabel}</strong> with <strong>{chosen?.driverLabel}</strong>
-            </span>
-          </p>
-          <ul className="mt-2 list-disc space-y-0.5 pl-5 text-sm">
-            {chosen?.reasons.map((r) => <li key={r}>{r}</li>)}
-            {chosen?.warnings.map((w) => <li key={w} className="text-amber-900">Warning: {w}</li>)}
-          </ul>
-          {options.length > 1 ? (
-            <fieldset className="mt-2 text-sm">
-              <legend className="font-semibold">Feasible options</legend>
-              {options.map((o, i) => (
-                <label key={`${o.truckId}-${o.driverId}`} className="mr-4 inline-flex items-center gap-1">
-                  <input type="radio" name={`opt-${l.id}`} checked={choice === i} onChange={() => setChoice(i)} className="accent-brand" />
-                  {o.truckLabel} · {o.driverLabel}{i === 0 ? " (best)" : ""}
-                </label>
-              ))}
-            </fieldset>
-          ) : null}
-          {canEdit ? (
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button size="sm" loading={busy === "approve"} onClick={approve}>Approve and assign</Button>
-              {rejecting ? (
-                <>
-                  <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Why not? (optional)" aria-label="Reason for rejecting" className="h-8 rounded-md border border-line px-2 text-sm" />
-                  <Button size="sm" variant="secondary" loading={busy === "reject"} onClick={reject}>Reject this option</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setRejecting(false)}>Cancel</Button>
-                </>
-              ) : (
-                <Button size="sm" variant="secondary" onClick={() => setRejecting(true)}>Reject…</Button>
-              )}
-            </div>
-          ) : (
-            <p className="mt-2 text-xs text-muted">Approving needs the dispatch.edit permission.</p>
+        <div className="mt-2.5 rounded-lg border border-line bg-surface/60 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm">
+              <span className="text-muted">Proposed: </span>
+              <span className="font-semibold text-ink">Truck {chosen?.truckLabel}</span>
+              <span className="text-muted"> with </span>
+              <span className="font-semibold text-ink">{chosen?.driverLabel}</span>
+            </p>
+            {canEdit ? (
+              <div className="flex flex-wrap items-center gap-2">
+                {rejecting ? (
+                  <>
+                    <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Why not? (optional)" aria-label="Reason for rejecting" className="h-8 rounded-md border border-line bg-card px-2 text-sm" />
+                    <Button size="sm" variant="secondary" loading={busy === "reject"} onClick={reject}>Reject this option</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setRejecting(false)}>Cancel</Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => setRejecting(true)}>Reject…</Button>
+                    <Button size="sm" loading={busy === "approve"} onClick={approve}>Approve and assign</Button>
+                  </>
+                )}
+              </div>
+            ) : (
+              <span className="text-xs text-muted">Approving needs dispatch edit access</span>
+            )}
+          </div>
+          {chosen && chosen.warnings.length > 0 && (
+            <ul className="mt-2 space-y-0.5 text-sm text-amber-900">
+              {chosen.warnings.map((w) => <li key={w}>{w}</li>)}
+            </ul>
           )}
+          <details className="mt-1.5 text-sm">
+            <summary className="cursor-pointer text-xs font-medium text-muted hover:text-ink">Why this option{options.length > 1 ? ` · ${options.length - 1} other option${options.length === 2 ? "" : "s"}` : ""}</summary>
+            <ul className="mt-1.5 list-disc space-y-0.5 pl-5 text-muted">
+              {chosen?.reasons.map((r) => <li key={r}>{r}</li>)}
+            </ul>
+            {options.length > 1 ? (
+              <fieldset className="mt-2">
+                <legend className="text-xs font-semibold text-ink">Choose another option</legend>
+                {options.map((o, i) => (
+                  <label key={`${o.truckId}-${o.driverId}`} className="mr-4 inline-flex items-center gap-1.5 text-sm">
+                    <input type="radio" name={`opt-${l.id}`} checked={choice === i} onChange={() => setChoice(i)} className="accent-brand" />
+                    {o.truckLabel} · {o.driverLabel}{i === 0 ? " (best)" : ""}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+          </details>
         </div>
       ) : (
-        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm">
-          <p className="font-semibold text-red-900">No feasible assignment</p>
-          <ul className="mt-1 list-disc pl-5">
-            {plan.blocked?.why.map((w) => <li key={w}>{w}</li>)}
-          </ul>
-          {plan.blocked && plan.blocked.options.length > 0 ? (
-            <>
-              <p className="mt-2 font-semibold">Options — each needs a dispatcher&apos;s decision; none is applied automatically</p>
-              <ul className="list-disc pl-5">
-                {plan.blocked.options.map((o) => <li key={o}>{o}</li>)}
-              </ul>
-            </>
-          ) : null}
-        </div>
+        <details className="group mt-2 rounded-lg border border-line p-3 text-sm">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
+            <Badge tone="amber">No option</Badge>
+            <span className="text-ink">{plan.blocked?.why[0] ?? "No feasible truck and driver."}</span>
+            {plan.blocked && plan.blocked.options.length > 0 && <span className="text-xs text-muted">· {plan.blocked.options.length} idea{plan.blocked.options.length === 1 ? "" : "s"}</span>}
+            <span className="ml-auto text-xs font-medium text-muted group-open:hidden">Details</span>
+          </summary>
+          <div className="mt-2 space-y-2 border-t border-line pt-2">
+            {plan.blocked && plan.blocked.why.length > 1 && (
+              <ul className="list-disc pl-5 text-ink">{plan.blocked.why.slice(1).map((w) => <li key={w}>{w}</li>)}</ul>
+            )}
+            {plan.blocked && plan.blocked.options.length > 0 ? (
+              <div>
+                <p className="text-xs font-semibold text-ink">Ideas — each needs your decision; nothing is changed automatically</p>
+                <ul className="list-disc pl-5 text-muted">{plan.blocked.options.map((o) => <li key={o}>{o}</li>)}</ul>
+              </div>
+            ) : null}
+            {plan.excludedTrucks.length + plan.excludedDrivers.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-ink">Why each truck and driver was ruled out</p>
+                <ul className="mt-0.5 space-y-0.5 text-muted">
+                  {plan.excludedTrucks.map((t) => <li key={t.id}><span className="font-medium text-ink">Truck {t.label}:</span> {t.reasons.join(" ")}</li>)}
+                  {plan.excludedDrivers.map((d) => <li key={d.id}><span className="font-medium text-ink">{d.label}:</span> {d.reasons.join(" ")}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+        </details>
       )}
 
-      {error ? <p role="alert" className="text-sm text-red-700">{error}</p> : null}
+      {error ? <p role="alert" className="mt-2 text-sm text-critical">{error}</p> : null}
       {plan.rejectedPairs > 0 && canEdit ? (
-        <p className="text-xs text-muted">
-          {plan.rejectedPairs} option{plan.rejectedPairs === 1 ? "" : "s"} rejected for this load.{" "}
-          <button type="button" className="font-semibold underline" onClick={reconsider} disabled={busy === "reconsider"}>Reconsider them</button>
+        <p className="mt-1.5 text-xs text-muted">
+          {plan.rejectedPairs} option{plan.rejectedPairs === 1 ? "" : "s"} rejected.{" "}
+          <button type="button" className="font-semibold underline" onClick={reconsider} disabled={busy === "reconsider"}>Reconsider</button>
         </p>
       ) : null}
-      {plan.excludedTrucks.length + plan.excludedDrivers.length > 0 ? (
-        <details className="text-sm">
-          <summary className="cursor-pointer text-muted">Why not the others ({plan.excludedTrucks.length} trucks, {plan.excludedDrivers.length} drivers)</summary>
-          <ul className="mt-1 space-y-0.5 pl-4">
-            {plan.excludedTrucks.map((t) => <li key={t.id}><strong>Truck {t.label}:</strong> {t.reasons.join(" ")}</li>)}
-            {plan.excludedDrivers.map((d) => <li key={d.id}><strong>{d.label}:</strong> {d.reasons.join(" ")}</li>)}
+      {plan.proposal && plan.excludedTrucks.length + plan.excludedDrivers.length > 0 ? (
+        <details className="mt-1.5 text-sm">
+          <summary className="cursor-pointer text-xs text-muted hover:text-ink">Why not the others ({plan.excludedTrucks.length} trucks, {plan.excludedDrivers.length} drivers)</summary>
+          <ul className="mt-1 space-y-0.5 pl-4 text-muted">
+            {plan.excludedTrucks.map((t) => <li key={t.id}><span className="font-medium text-ink">Truck {t.label}:</span> {t.reasons.join(" ")}</li>)}
+            {plan.excludedDrivers.map((d) => <li key={d.id}><span className="font-medium text-ink">{d.label}:</span> {d.reasons.join(" ")}</li>)}
           </ul>
         </details>
       ) : null}
@@ -172,13 +201,16 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
           </Link>
         ))}
       </nav>
-      <p className="border-b border-line px-4 py-2 text-xs text-muted">
-        Proposals only — nothing is assigned until you approve, and every approval is checked again against current availability, qualifications, capacity, bookings and the shop schedule. {plans[0]?.notes[0]}
-      </p>
-      <ul className="border-b border-line px-4 py-2 text-xs" aria-label="Limits of these proposals">
-        <li className="font-medium text-amber-900">{HOS_NOTE}</li>
-        {(plans[0]?.notes ?? []).slice(1).filter((n) => n !== HOS_NOTE).map((n) => <li key={n} className="text-muted">{n}</li>)}
-      </ul>
+      <details className="border-b border-line px-4 py-2 text-xs text-muted sm:px-5">
+        <summary className="cursor-pointer">
+          Proposals only — nothing is assigned until you approve. <span className="font-medium text-amber-900">Hours of service are not checked.</span> <span className="underline">About these proposals</span>
+        </summary>
+        <ul className="mt-1.5 list-disc space-y-0.5 pl-5" aria-label="Limits of these proposals">
+          <li>Every approval is checked again against current availability, qualifications, capacity, bookings and the shop schedule.</li>
+          {(plans[0]?.notes ?? []).map((n) => <li key={n}>{n}</li>)}
+          {plans.length === 0 && <li>{HOS_NOTE}</li>}
+        </ul>
+      </details>
       {plans.length > 0 ? <ul className="divide-y divide-line">{plans.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} />)}</ul> : null}
     </details>
   );

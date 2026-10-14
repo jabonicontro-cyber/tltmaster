@@ -8,6 +8,8 @@ import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { checkPair } from "@/lib/dispatch/smart";
+import { checkAssignment } from "@/lib/optimization/plan";
+import { getOptimizationInput } from "@/server/data/optimization";
 import { getSmartDispatchInput } from "@/server/data/smart-dispatch";
 
 const optionalUuid = z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable());
@@ -165,7 +167,7 @@ export async function scheduleOrderFromQueue(input: z.input<typeof scheduleInput
   });
 }
 
-const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), loadDate: z.string().refine(isIsoDate) });
+const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), trailerId: z.uuid().nullish(), loadDate: z.string().refine(isIsoDate) });
 
 /**
  * Approve a Smart Dispatch proposal. Re-checks the pair against current data,
@@ -180,14 +182,18 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
     const parsed = pairInput.safeParse(input);
     if (!parsed.success) return fail("Invalid proposal.");
     const { loadId, truckId, driverId, loadDate } = parsed.data;
-    const check = checkPair(await getSmartDispatchInput(loadDate, loadDate), loadId, truckId, driverId);
+    const trailerId = parsed.data.trailerId ?? null;
+    // A tractor's proposal carries its trailer: checked with the trailer rules (the same as Plan the day).
+    const check = trailerId
+      ? checkAssignment(await getOptimizationInput(loadDate), loadId, truckId, trailerId, driverId)
+      : checkPair(await getSmartDispatchInput(loadDate, loadDate), loadId, truckId, driverId);
     if (!check.ok) {
       revalidateBoard();
       return fail(`This proposal is no longer valid — ${check.reasons.join(" ")} The proposals have been refreshed; review them again.`);
     }
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("assign_load", {
-      p_load_id: loadId, p_truck_id: truckId, p_trailer_id: null, p_driver_id: driverId, p_note: "Approved Smart Dispatch proposal", p_replace_assignment_id: null,
+      p_load_id: loadId, p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_note: "Approved Smart Dispatch proposal", p_replace_assignment_id: null,
     });
     revalidateBoard();
     if (error) return fail(`Not assigned: ${dbErrorMessage(error)} Review the refreshed proposals.`);

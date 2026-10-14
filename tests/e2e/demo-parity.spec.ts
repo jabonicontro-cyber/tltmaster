@@ -219,6 +219,10 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByRole("region", { name: /Proposed assignments/ })).toContainText("+ trailer");
   // Truck 207 is out of service in the Prairie Lantern sample fleet: listed as unavailable all day, with the reason.
   await expect(owner.getByRole("region", { name: /Not available for any open load/ })).toContainText(/Truck 207 — Out of service/);
+  // Smart Dispatch proposes tractors with a trailer (all-tractor fleet; the 2026-10-14 fix).
+  await visit(owner, "/dispatch?horizon=7");
+  const smart = owner.getByRole("group", { name: "Smart Dispatch" }).or(owner.locator('[aria-label="Smart Dispatch"]'));
+  if (await smart.getByText(/unassigned load/).count()) await expect(smart.getByText(/Proposed:/).first()).toBeVisible();
   // Billing shows every state in a demo: an order ready to bill and one handed off (samples.ts billing()).
   await visit(owner, "/billing");
   const views = owner.getByRole("navigation", { name: "Billing views" });

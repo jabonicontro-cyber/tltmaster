@@ -70,7 +70,7 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   await signIn(page, "dispatcher");
   await page.goto("/dispatch?horizon=3");
   const c = card(page, f);
-  await expect(c.getByText("Proposed — not assigned")).toBeVisible();
+  await expect(c.getByText("Proposed:")).toBeVisible();
   // Showing a proposal assigns nothing.
   const before = await asUser(USERS.office.email, (q) => q("select count(*)::int as n from public.dispatch_assignments where load_id = $1", [f.loadId]));
   expect(before.rows[0].n).toBe(0);
@@ -87,15 +87,15 @@ test("rejecting a proposal moves to the next option; reconsidering brings it bac
   await signIn(page, "dispatcher");
   await page.goto("/dispatch?horizon=3");
   const c = card(page, f);
-  const first = (await c.locator("p", { hasText: "Proposed — not assigned" }).textContent())!;
+  const first = (await c.locator("p", { hasText: "Proposed:" }).textContent())!;
   await c.getByRole("button", { name: "Reject…" }).click();
   await c.getByLabel("Reason for rejecting").fill("Driver prefers the north route (e2e)");
   await c.getByRole("button", { name: "Reject this option" }).click();
   // The board recomputes every proposal after a rejection; slow on the dev server with the test database's many trucks.
-  await expect(c.getByText("1 option rejected for this load.")).toBeVisible({ timeout: 20_000 });
-  await expect(c.locator("p", { hasText: "Proposed — not assigned" })).not.toHaveText(first);
-  await c.getByRole("button", { name: "Reconsider them" }).click();
-  await expect(c.getByText("1 option rejected for this load.")).toHaveCount(0);
+  await expect(c.getByText("1 option rejected.")).toBeVisible({ timeout: 20_000 });
+  await expect(c.locator("p", { hasText: "Proposed:" })).not.toHaveText(first);
+  await c.getByRole("button", { name: "Reconsider" }).click();
+  await expect(c.getByText("1 option rejected.")).toHaveCount(0);
 });
 
 test("a proposal that went stale is refused with an explanation instead of being assigned", async ({ page }) => {

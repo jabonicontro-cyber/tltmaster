@@ -192,6 +192,19 @@ function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, tru
  * Every hard constraint for one assignment, against existing bookings (not other proposals). Used to build plans and
  * again with fresh data right before an approved assignment is made.
  */
+/**
+ * The best usable trailer for a tractor on a load (Smart Dispatch uses it so tractor fleets get proposals): every
+ * trailer rule above, the driver's combination licence when a driver is given, not one of `busy` (trailers already
+ * proposed at an overlapping time), best capacity fit first. Null when none is usable.
+ */
+export function pickTrailer(input: OptimizationInput, load: SmartLoad, truck: SmartTruck, driver: SmartDriver | null, busy: string[] = []): OptTrailer | null {
+  if (driver && trailerDriverBlockers(load, driver).length) return null;
+  const options = [...(input.trailers ?? [])]
+    .filter((t) => !busy.includes(t.id))
+    .sort((a, b) => (capacity(truck, load.unit_code, a) ?? Infinity) - (capacity(truck, load.unit_code, b) ?? Infinity) || a.unit_number.localeCompare(b.unit_number));
+  return options.find((t) => trailerEquipmentBlockers(input, load, truck, t).length === 0) ?? null;
+}
+
 export function checkAssignment(input: OptimizationInput, loadId: string, truckId: string, trailerId: string | null, driverId: string): { ok: boolean; reasons: string[] } {
   const truck = input.trucks.find((t) => t.id === truckId);
   const load = input.loads.find((l) => l.id === loadId);

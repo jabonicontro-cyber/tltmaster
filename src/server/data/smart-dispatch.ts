@@ -1,4 +1,6 @@
 import "server-only";
+import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
+import { getTrailerInput } from "./trailer-input";
 import { addDays } from "@/lib/dates";
 import { recommend, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
@@ -133,5 +135,10 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
 /** Proposals for every unassigned load from `from`, `days` days ahead (1–7). */
 export async function getSmartDispatchPlan(from: string, days: number) {
   const to = addDays(from, Math.min(Math.max(days, 1), 7) - 1);
-  return { from, to, plans: recommend(await getSmartDispatchInput(from, to)) };
+  const [smart, trailers] = await Promise.all([getSmartDispatchInput(from, to), getTrailerInput(from, to)]);
+  // Tractors get a trailer by Plan the day's trailer rules (compatible, in service, not booked, combined capacity,
+  // the driver's combination licence).
+  const full: OptimizationInput = { ...smart, ...trailers, revenueCents: {} };
+  const input: SmartInput = { ...smart, pickTrailer: (truck, load, driver, busy) => pickTrailer(full, load, truck, driver, busy) };
+  return { from, to, plans: recommend(input) };
 }

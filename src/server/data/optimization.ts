@@ -1,9 +1,9 @@
 import "server-only";
-import { addDays } from "@/lib/dates";
 import { explainLoad, unavailableResources } from "@/lib/optimization/availability";
-import { optimizeWithAlternatives, type OptimizationInput, type OptTrailer, type Priorities } from "@/lib/optimization/plan";
+import { optimizeWithAlternatives, type OptimizationInput, type Priorities } from "@/lib/optimization/plan";
 import { createClient } from "@/server/supabase/server";
 import { DISPATCHABLE, getSmartDispatchInput } from "./smart-dispatch";
+import { getTrailerInput } from "./trailer-input";
 
 /**
  * Everything the optimization core reads for one day, from the caller's own company (RLS): the Smart Dispatch input
@@ -30,14 +30,10 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
       revenueCents[l.id] = priced.length && l.planned_quantity !== null ? Math.round(priced.reduce((sum, x) => sum + Number(x.unit_rate_cents), 0) * l.planned_quantity) : null;
     }
   }
-  // Trailers for tractors: active trailers, their bookings around the day, and unresolved trailer reports.
+  // Trailers for tractors (shared with Smart Dispatch) and vehicle documents.
   const supabase = await createClient();
-  const dayStart = `${addDays(date, -1)}T00:00:00Z`;
-  const dayEnd = `${addDays(date, 2)}T00:00:00Z`;
-  const [trailers, booked, reports, documents] = await Promise.all([
-    supabase.from("trailers").select("id, unit_number, active, service_status, weight_capacity, weight_unit, volume_capacity, capacity_verified_at, compatible_truck_types").eq("active", true),
-    supabase.from("dispatch_assignments").select("trailer_id, load_id, starts_at, ends_at").eq("status", "active").not("trailer_id", "is", null).lt("starts_at", dayEnd).gt("ends_at", dayStart),
-    supabase.from("field_reports").select("trailer_id, kind").eq("equipment", "trailer").in("status", ["open", "acknowledged"]),
+  const [trailerInput, documents] = await Promise.all([
+    getTrailerInput(date, date),
     supabase.from("vehicle_documents").select("truck_id, trailer_id, kind, expires_on").is("archived_at", null).in("kind", ["registration", "insurance", "inspection", "permit"]).not("expires_on", "is", null),
   ]);
   // The latest document of each kind per vehicle decides; an expired one that was renewed is not flagged.
@@ -47,7 +43,6 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     if (!latest.has(k) || latest.get(k)!.expires_on < d.expires_on) latest.set(k, d);
   }
   const expiredDocuments = [...latest.values()].filter((d) => d.expires_on < date);
-  for (const r of [trailers, booked, reports]) if (r.error) throw new Error(`The optimizer could not read trailers: ${r.error.message}`);
   return {
     ...smart,
     revenueCents,
@@ -56,14 +51,7 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     // Before that, the latest documents read directly (fleet.view) give review notes only.
     expiredDocuments: smart.documentIssues ?? (documents.error ? [] : expiredDocuments),
     documentsChecked: smart.documentIssues !== undefined || !documents.error,
-    trailers: ((trailers.data ?? []) as Array<OptTrailer & { weight_capacity: number | string | null; volume_capacity: number | string | null; compatible_truck_types: string[] | null }>).map((t) => ({
-      ...t,
-      weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),
-      volume_capacity: t.volume_capacity === null ? null : Number(t.volume_capacity),
-      compatible_truck_types: t.compatible_truck_types ?? [],
-    })),
-    trailerBookings: (booked.data ?? []) as OptimizationInput["trailerBookings"],
-    trailerReports: ((reports.data ?? []) as Array<{ trailer_id: string | null; kind: string }>).filter((r) => r.trailer_id).map((r) => ({ trailer_id: r.trailer_id as string, kind: r.kind })),
+    ...trailerInput,
   };
 }
 
