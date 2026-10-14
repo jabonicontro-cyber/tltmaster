@@ -5,7 +5,7 @@ export const metadata: Metadata = { title: "Terms", description: "Terms for usin
 
 export default function TermsPage() {
   return (
-    <LegalPage eyebrow="Legal" title="Terms of use">
+    <LegalPage title="Terms of use">
       <h2>Early access</h2>
       <p>Taviron is in early access. Features may change, and some described as planned may not be built. Access to the app is by invitation and may be withdrawn.</p>
       <h2>Pricing</h2>

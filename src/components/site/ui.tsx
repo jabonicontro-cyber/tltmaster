@@ -10,17 +10,14 @@ export function Container({ className, children }: { className?: string; childre
   return <div className={cn("mx-auto w-full max-w-6xl px-4 sm:px-6", className)}>{children}</div>;
 }
 
-export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
-  return <p className={cn("text-[13px] font-semibold tracking-[0.14em] text-electric uppercase", className)}>{children}</p>;
-}
-
-export function PageIntro({ eyebrow, title, children }: { eyebrow: string; title: string; children?: ReactNode }) {
+// No tracked-out ALL-CAPS eyebrow labels above headings (.claude/skills/frontend-design): the heading carries the
+// section, and the page's own name is already in the navigation.
+export function PageIntro({ title, children }: { title: string; children?: ReactNode }) {
   return (
     <section className="relative overflow-hidden border-b border-silver/10">
       <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
       <Container className="relative py-16 sm:py-20">
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h1 className="site-display mt-3 max-w-3xl text-4xl font-bold text-cloud sm:text-5xl">{title}</h1>
+        <h1 className="site-display max-w-3xl text-4xl font-bold text-cloud sm:text-5xl">{title}</h1>
         {children ? <div className="mt-5 max-w-2xl text-lg leading-relaxed text-silver">{children}</div> : null}
       </Container>
     </section>
@@ -57,11 +54,10 @@ export function Screenshot({ src, alt, width, height, caption, className, priori
   );
 }
 
-export function SectionHeading({ eyebrow, title, children, className, id }: { eyebrow?: string; title: string; children?: ReactNode; className?: string; /** The heading's id, for aria-labelledby. */ id?: string }) {
+export function SectionHeading({ title, children, className, id }: { title: string; children?: ReactNode; className?: string; /** The heading's id, for aria-labelledby. */ id?: string }) {
   return (
     <div className={cn("max-w-2xl", className)}>
-      {eyebrow ? <Eyebrow>{eyebrow}</Eyebrow> : null}
-      <h2 id={id} className="site-title mt-3 text-3xl font-bold text-cloud sm:text-[2.5rem]">{title}</h2>
+      <h2 id={id} className="site-title text-3xl font-bold text-cloud sm:text-[2.5rem]">{title}</h2>
       {children ? <div className="mt-4 text-[17px] leading-relaxed text-silver">{children}</div> : null}
     </div>
   );

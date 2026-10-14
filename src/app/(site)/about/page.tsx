@@ -17,7 +17,7 @@ const PRINCIPLES = [
 export default function AboutPage() {
   return (
     <>
-      <PageIntro eyebrow="About" title="Software for the work between the quarry and the job site.">
+      <PageIntro title="Software for the work between the quarry and the job site.">
         <p>
           Hauling runs on phone calls, group texts, whiteboards and paper tickets. Taviron exists to put that work in one place — so a load, a ticket and an invoice all
           tell the same story.
@@ -25,16 +25,16 @@ export default function AboutPage() {
       </PageIntro>
       <section>
         <Container className="py-16">
-          <h2 className="text-2xl font-black text-white">What we hold ourselves to</h2>
+          <h2 className="text-2xl font-black text-cloud">What we hold ourselves to</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {PRINCIPLES.map((p) => (
-              <div key={p.title} className="rounded-lg border border-white/10 bg-white/[0.03] p-6">
-                <h3 className="font-bold text-white">{p.title}</h3>
-                <p className="mt-2 text-sm text-white/65">{p.text}</p>
+              <div key={p.title} className="rounded-lg border border-silver/10 bg-navy-2 p-6">
+                <h3 className="font-bold text-cloud">{p.title}</h3>
+                <p className="mt-2 text-sm text-silver">{p.text}</p>
               </div>
             ))}
           </div>
-          <p className="mt-10 max-w-3xl text-white/65">
+          <p className="mt-10 max-w-3xl text-silver">
             Taviron is in early access: companies join by invitation and are set up with the Taviron team. If that sounds like your operation, we would like to hear
             from you.
           </p>

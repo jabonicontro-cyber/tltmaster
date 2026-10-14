@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
+import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { CatalogShot } from "@/components/site/feature-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
 import { TruckStory, type StoryChapter } from "@/components/site/truck-story";
-import { Container, CtaLink, Eyebrow, FinalCta, SectionHeading } from "@/components/site/ui";
+import { Container, CtaLink, FinalCta, SectionHeading } from "@/components/site/ui";
 import { publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
@@ -19,8 +19,7 @@ export const metadata: Metadata = {
 const STORY: StoryChapter[] = [
   {
     id: "intelligence",
-    eyebrow: "The whole operation",
-    title: "Every load, truck and driver — planned together.",
+    title: "Every load, truck and driver, planned together.",
     body: (
       <>
         <p>Most dispatch tools fill one load at a time. Taviron&apos;s Plan the day weighs every unassigned load against the whole fleet at once, so a truck isn&apos;t spent on an easy load when a harder one needed it.</p>
@@ -30,8 +29,7 @@ const STORY: StoryChapter[] = [
   },
   {
     id: "profitability",
-    eyebrow: "Profitability",
-    title: "Revenue in view — honestly estimated.",
+    title: "Revenue in view, honestly estimated.",
     body: (
       <>
         <p>Each plan shows the revenue it covers, estimated from your own order rates and labelled as an estimate.</p>
@@ -41,7 +39,6 @@ const STORY: StoryChapter[] = [
   },
   {
     id: "reliability",
-    eyebrow: "Reliability",
     title: "Promises you can keep.",
     body: (
       <>
@@ -52,7 +49,6 @@ const STORY: StoryChapter[] = [
   },
   {
     id: "utilization",
-    eyebrow: "Fleet utilization",
     title: "Compare plans, not guesses.",
     body: (
       <>
@@ -63,7 +59,6 @@ const STORY: StoryChapter[] = [
   },
   {
     id: "automation",
-    eyebrow: "Less paperwork",
     title: "The office work follows the truck.",
     body: (
       <>
@@ -121,8 +116,7 @@ export default function HomePage() {
           <TruckStory
             intro={
               <div className="max-w-2xl">
-                <Eyebrow>Whole-operation planning for haulers</Eyebrow>
-                <h1 className="site-display mt-5 text-[2.6rem] font-bold text-cloud sm:text-6xl">
+                <h1 className="site-display text-[2.6rem] font-bold text-cloud sm:text-6xl">
                   A smarter way to run a fleet.
                 </h1>
                 <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
@@ -130,9 +124,7 @@ export default function HomePage() {
                   best plan for the priorities you choose. Safety, qualification and capacity rules come first. Nothing moves until a person approves it.
                 </p>
                 <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <CtaLink href="/demo">
-                    Request a demo <ArrowRight className="size-4" aria-hidden />
-                  </CtaLink>
+                  <CtaLink href="/demo">Request a demo</CtaLink>
                   <CtaLink href="/platform" variant="ghost">
                     See what it does today
                   </CtaLink>
@@ -148,7 +140,7 @@ export default function HomePage() {
       {/* The real product: screens from the live demo company (fictional data). */}
       <section aria-labelledby="product-title" className="overflow-x-clip border-t border-silver/10">
         <Container className="py-16 sm:py-20">
-          <SectionHeading id="product-title" eyebrow="The real product" title="This is the app, not a mock-up.">
+          <SectionHeading id="product-title" title="This is the app, not a mock-up.">
             <p>Every screen on this page is Taviron itself, captured from the live demo company with fictional data.</p>
           </SectionHeading>
           <ProductShowcase />
@@ -166,7 +158,7 @@ export default function HomePage() {
               <li key={f.title} className="bg-navy-2 p-5">
                 <div className="flex items-center justify-between">
                   <f.icon className="size-5 text-electric" aria-hidden />
-                  <span className="font-mono text-xs text-silver/60">{String(i + 1).padStart(2, "0")}</span>
+                  <span className="text-xs text-silver/60 tabular-nums">{i + 1}</span>
                 </div>
                 <h3 className="mt-4 font-semibold text-cloud">{f.title}</h3>
                 <p className="mt-1 text-sm leading-relaxed text-silver/90">{f.text}</p>
@@ -180,7 +172,7 @@ export default function HomePage() {
       <section>
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
-            <SectionHeading eyebrow="Dispatch" title="Assign with the rules already checked.">
+            <SectionHeading title="Assign with the rules already checked.">
               <p>Loads are planned against each order and checked before a truck or driver is committed — and when something does not fit, Taviron says why.</p>
             </SectionHeading>
             <Points
@@ -200,7 +192,7 @@ export default function HomePage() {
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
           <CatalogShot id="tickets" className="lg:order-first" />
           <div>
-            <SectionHeading eyebrow="Tickets to billing" title="Quantities you can stand behind.">
+            <SectionHeading title="Quantities you can stand behind.">
               <p>The ticket starts in the truck, not in a shoebox — and an order reaches billing only when its deliveries are verified.</p>
             </SectionHeading>
             <Points
@@ -217,17 +209,14 @@ export default function HomePage() {
       {/* Every capability, from the feature catalog: one line each, linking to its section on the platform page. */}
       <section aria-labelledby="capabilities-title" className="border-t border-silver/10">
         <Container className="py-20 sm:py-24">
-          <SectionHeading id="capabilities-title" eyebrow="The whole platform" title="One system for the office, dispatch, the shop and the trucks.">
+          <SectionHeading id="capabilities-title" title="One system for the office, dispatch, the shop and the trucks.">
             <p>Each of these is in the app today, shown with the demo company&apos;s fictional data on the platform page.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-3">
             {publishedFeatures().map((f) => (
               <li key={f.id} className="bg-navy">
                 <Link href={`/platform#feature-${f.id}`} className="group flex h-full flex-col p-5 hover:bg-navy-2 focus-visible:bg-navy-2">
-                  <span className="flex items-center justify-between gap-3 font-semibold text-cloud">
-                    {f.name}
-                    <ArrowRight className="size-4 shrink-0 text-silver/40 transition-transform group-hover:translate-x-0.5 group-hover:text-electric motion-reduce:transition-none" aria-hidden />
-                  </span>
+                  <span className="font-semibold text-cloud group-hover:text-electric">{f.name}</span>
                   <span className="mt-1.5 text-sm leading-relaxed text-silver/85">{f.value}</span>
                 </Link>
               </li>
@@ -235,9 +224,7 @@ export default function HomePage() {
             {/* Closes the grid evenly whatever the number of capabilities: it fills the rest of the last row. */}
             <li className={`bg-navy-2 ${publishedFeatures().length % 2 === 0 ? "sm:col-span-2" : "sm:col-span-1"} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][publishedFeatures().length % 3]}`}>
               <Link href="/platform" className="group flex h-full flex-col justify-center p-5 hover:bg-navy">
-                <span className="flex items-center gap-2 font-semibold text-electric">
-                  See every capability on the real app <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none" aria-hidden />
-                </span>
+                <span className="font-semibold text-electric group-hover:underline">See every capability on the real app</span>
                 <span className="mt-1.5 text-sm text-silver/85">Screens from the demo company, what each one does — and what it does not do yet.</span>
               </Link>
             </li>
@@ -248,7 +235,7 @@ export default function HomePage() {
       {/* Roles */}
       <section>
         <Container className="py-20 sm:py-24">
-          <SectionHeading eyebrow="Every role" title="Built around the people who move the material.">
+          <SectionHeading title="Built around the people who move the material.">
             <p>Each person sees what their role allows. Permissions are enforced on the server and in the database.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
@@ -270,8 +257,8 @@ export default function HomePage() {
             <ShieldCheck className="size-8 text-electric" aria-hidden />
             <h2 className="mt-5 site-title text-3xl font-bold text-cloud">Your company&apos;s data stays your company&apos;s.</h2>
             <p className="mt-4 text-[17px] leading-relaxed text-silver">Taviron recommends; people decide.</p>
-            <Link href="/platform" className="mt-6 inline-flex items-center gap-1.5 rounded text-[15px] font-semibold text-electric hover:underline">
-              What is available today, and what is planned <ArrowRight className="size-4" aria-hidden />
+            <Link href="/platform" className="mt-6 inline-block rounded text-[15px] font-semibold text-electric hover:underline">
+              What is available today, and what is planned
             </Link>
           </div>
           <dl className="grid gap-8 sm:grid-cols-3 lg:gap-6">

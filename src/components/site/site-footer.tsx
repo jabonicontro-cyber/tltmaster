@@ -18,7 +18,7 @@ export function SiteFooter() {
         </div>
         {COLUMNS.map((c) => (
           <div key={c.title}>
-            <h2 className="text-xs font-bold tracking-[0.2em] text-silver/60 uppercase">{c.title}</h2>
+            <h2 className="text-sm font-semibold text-cloud">{c.title}</h2>
             <ul className="mt-3 space-y-2">
               {c.links.map((l) => (
                 <li key={l.href}>
