@@ -100,7 +100,7 @@ describe("exception classification and deduplication", () => {
       expect(mineOnly(await queue(s), ids)).toEqual([]);
       for (const i of [unassigned]) for (const r of i.reasons) expect(knowsReason(r), r).toBe(true);
     });
-  });
+  }, 60_000); // the queue functions read every open item; the shared test database grows with each run
 
   it("flags equipment out of service once per unit, and the upcoming assignments on it once each", async () => {
     await withSession(async (s) => {
@@ -127,7 +127,7 @@ describe("exception classification and deduplication", () => {
       await s.query("select public.update_order_schedule($1, null, $2::jsonb)", [w.order.id, JSON.stringify({ scheduled_start: addDays(w.today, -2), scheduled_end: w.today })]);
       expect(mineOnly(await queue(s), [a])).toEqual([expect.objectContaining({ kind: "assignment_problem", reasons: ["load_outside_schedule"] })]);
     });
-  });
+  }, 60_000); // the queue functions read every open item; the shared test database grows with each run
 });
 
 describe("visibility by role and company", () => {
