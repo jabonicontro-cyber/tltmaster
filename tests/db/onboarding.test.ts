@@ -190,6 +190,9 @@ describe("creating a company", () => {
       expect((await s.query("select 1 from public.customers where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
       const companies = (await s.query<{ company_id: string; role: string; current: boolean }>("select * from public.my_companies()")).rows;
       expect(companies.map((c) => [c.company_id, c.role, c.current]).sort()).toEqual([[TOP_LINE, "office", false], [r.company_id, "owner", true]].sort());
+      // The new owner is a person in their company (People), exactly once even when the request is repeated.
+      const people = (await s.query<{ department: string }>("select department from public.employees where company_id = $1", [r.company_id])).rows;
+      expect(people).toEqual([{ department: "management" }]);
 
       // Switch back: Top Line again, as office.
       await s.query("select public.switch_company($1)", [TOP_LINE]);

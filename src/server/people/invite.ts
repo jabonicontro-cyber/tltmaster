@@ -25,7 +25,7 @@ async function ensurePersonRecord(access: Access, userId: string, input: InviteI
     const r = await supabase.from("employees").update({ user_id: userId }).eq("id", input.employeeId).is("user_id", null).select("id");
     if (r.data?.length) return;
   }
-  const { data: same } = await supabase.from("employees").select("id").is("user_id", null).ilike("work_email", input.email.replace(/[\\%_]/g, (c) => `\\${c}`)).order("created_at").limit(1);
+  const { data: same } = !input.email ? { data: [] } : await supabase.from("employees").select("id").is("user_id", null).ilike("work_email", input.email.replace(/[\\%_]/g, (c) => `\\${c}`)).order("created_at").limit(1);
   if (same?.length) {
     await supabase.from("employees").update({ user_id: userId }).eq("id", (same[0] as { id: string }).id).is("user_id", null);
     return;
@@ -92,3 +92,4 @@ export async function inviteMember(access: Access, input: InviteInput): Promise<
   console.info("User invited", { by: access.userId, user: data.user.id });
   return ok({ userId: data.user.id }, `Invitation sent to ${input.email}.`);
 }
+
