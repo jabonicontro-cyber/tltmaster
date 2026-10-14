@@ -7,6 +7,28 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00. Overnight session 2026-10-14 (owner asleep; working until 5 PM per the owner)
+
+**Built and committed (local, then released as one bundle after the full checks):**
+
+| Commit | What |
+| --- | --- |
+| `6ac1c51` | AI check fix: ISO dates were mistaken for phone numbers and blocked a valid answer in the owner's live eval (eval test set v2; earlier evidence no longer counts) |
+| `5512a14` | **Route Planner** live (B10 first slice): per-truck routes from the board, straight lines until a HERE key is set, site/yard locations, migration `20261112000500_routing` (docs/ROUTING.md) |
+| `fb051f7` | **Smart Dispatch tractors get a trailer** (Prairie Lantern showed "no feasible assignment" for every load); calmer proposal cards |
+| `0ae3dcf` | Command Center queue as compact rows, neutral tiles; Smart Dispatch shows six loads then "Show all" |
+| `db7cc0f` | Filter bars: search + actions on one line |
+| `f526398` | **Load builder works for freight (per-load) and haul-only orders** |
+| `31da587` | Fleet overview: capped lists, status labels (page 10 349 px → 1 765 px) |
+| `a71eb9e` | Maintenance/tickets: neutral tiles, outlined row actions |
+
+**Waiting for the owner:**
+1. Proposal `docs/proposals/2026-10-14-people-and-settings.md` (merge Users into Employees; Settings in four groups) —
+   three questions; nothing built until approved.
+2. `npx supabase db push` for `20261112000500_routing` (and the four earlier 2026-11-12 ones if not yet applied).
+3. AI: rerun `npm run ai:eval` (now test set v2) after adding OpenAI credits; paste only the evidence block.
+4. HERE key for road routing (docs/ROUTING.md §4).
+
 ## 0. Current checkpoint (2026-10-13 evening: Preview release, then the authorized product backlog) — read first
 
 **Deployment state (verified from GitHub's deployment records, 2026-10-13 22:48 UTC):**
