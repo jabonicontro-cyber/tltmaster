@@ -27,12 +27,11 @@ export function StatCard({ href, label, value, hint, alert }: { href: string; la
     <Link
       href={href}
       className={cn(
-        "group block rounded-lg border bg-card p-4 transition-colors hover:border-strong focus-visible:ring-2 focus-visible:ring-strong focus-visible:outline-none",
-        alert ? "border-critical/50" : "border-line",
+        "group block rounded-lg border border-line bg-card p-4 transition-colors hover:border-strong/40 focus-visible:ring-2 focus-visible:ring-strong focus-visible:outline-none",
       )}
     >
-      <div className="text-sm font-medium text-muted">{label}</div>
-      <div className={cn("mt-1 text-3xl font-bold tabular", alert ? "text-critical" : "text-ink")}>{value}</div>
+      <div className="flex items-center gap-1.5 text-sm font-medium text-muted">{alert && <span className="size-1.5 rounded-full bg-critical" aria-hidden />}{label}</div>
+      <div className={cn("mt-1 text-2xl font-semibold tracking-tight tabular", alert ? "text-critical" : "text-ink")}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </Link>
   );

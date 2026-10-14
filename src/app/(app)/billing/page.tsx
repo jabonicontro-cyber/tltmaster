@@ -185,7 +185,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                       </Td>
                       <Td align="right">
                         {l.assignment_id && canEnterTickets ? (
-                          <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
+                          <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
                         ) : (
                           <ButtonLink href={`/dispatch?date=${l.load_date}`} size="sm" variant="secondary" icon={<CalendarRange className="size-4" />}>Dispatch</ButtonLink>
                         )}

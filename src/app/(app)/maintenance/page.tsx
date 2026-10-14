@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Bot, CalendarClock, Plus, Wrench } from "lucide-react";
+import { CalendarClock, Plus, Wrench } from "lucide-react";
 import { StatCard, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
 import { MaintenanceTabs } from "@/components/maintenance/tabs";
 import { ButtonLink } from "@/components/ui/button";
@@ -78,7 +78,7 @@ export default async function MaintenancePage() {
           <Card>
             <CardHeader
               title="Suggested shop order"
-              description="Ranked by fixed rules: safety, urgency, downtime, due dates and parts. It only suggests — nothing is assigned or scheduled automatically."
+              description={<>Ranked by fixed rules: safety, urgency, downtime, due dates and parts. It only suggests — nothing is assigned or scheduled automatically. <span className="whitespace-nowrap">No AI service is connected.</span></>}
             />
             {ranked.length === 0 ? (
               <EmptyState title="No open work orders" description="New work orders and due preventive services appear here." icon={<Wrench className="size-6" />} />
@@ -184,16 +184,6 @@ export default async function MaintenancePage() {
             </CardBody>
           </Card>
 
-          <Card>
-            <CardHeader title="AI recommendations" />
-            <CardBody className="flex gap-3 text-sm">
-              <Bot className="mt-0.5 size-5 shrink-0 text-muted" aria-hidden />
-              <p className="text-muted">
-                <strong className="text-ink">No AI service is connected.</strong> Taviron does not produce AI diagnoses, part
-                availability or savings estimates. The shop order above comes from the fixed rules it lists.
-              </p>
-            </CardBody>
-          </Card>
         </div>
       </div>
     </>
