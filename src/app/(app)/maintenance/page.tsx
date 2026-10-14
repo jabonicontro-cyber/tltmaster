@@ -8,10 +8,10 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { addDays, formatDate } from "@/lib/dates";
-import { rankWorkOrders } from "@/lib/maintenance";
+import { rankWorkOrders, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { listAssignees, listDriverOptions, listOpenWorkOrders, listPmStatus, listTrucks } from "@/server/data/maintenance";
+import { listAssignees, listDriverOptions, listOpenWorkOrders, listPmStatus, listTrailers, listTrucks } from "@/server/data/maintenance";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Maintenance" };
@@ -22,12 +22,19 @@ function daysBetween(fromIso: string, today: string) {
 
 export default async function MaintenancePage() {
   const access = await requirePagePermission("maintenance.view");
-  const [{ today }, open, pm, trucks, drivers, assignees] = await Promise.all([
-    businessToday(), listOpenWorkOrders(), listPmStatus(), listTrucks(), listDriverOptions(), listAssignees(),
+  const [{ today }, open, pm, trucks, trailers, drivers, assignees] = await Promise.all([
+    businessToday(), listOpenWorkOrders(), listPmStatus(), listTrucks(), listTrailers(), listDriverOptions(), listAssignees(),
   ]);
   const truckById = new Map(trucks.map((t) => [t.id, t]));
+  const trailerById = new Map(trailers.map((t) => [t.id, t]));
+  const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
+  const trailerUnits = new Map(trailers.map((t) => [t.id, t.unit_number]));
   const heldTrucks = new Set(drivers.map((d) => d.primary_truck_id).filter(Boolean));
-  const outOfService = trucks.filter((t) => t.active && t.service_status === "out_of_service");
+  // Trucks first, then trailers; a trailer links to its own work orders.
+  const outOfService = [
+    ...trucks.filter((t) => t.active && t.service_status === "out_of_service").map((t) => ({ ...t, label: `Truck ${t.unit_number}`, href: `/maintenance/work-orders?truck=${t.id}&view=all`, expected_return_date: t.expected_return_date })),
+    ...trailers.filter((t) => t.active && t.service_status === "out_of_service").map((t) => ({ ...t, label: `Trailer ${t.unit_number}`, href: `/maintenance/work-orders?trailer=${t.id}&view=all`, expected_return_date: null as string | null })),
+  ];
   const immediate = open.filter((w) => w.urgency === "immediate" || w.safety_critical);
   const awaiting = open.filter((w) => w.status === "awaiting_inspection");
   const overdue = pm.filter((p) => p.state === "overdue");
@@ -35,7 +42,12 @@ export default async function MaintenancePage() {
   const unknownPm = pm.filter((p) => p.state === "unknown" || p.readings_stale);
 
   const ranked = rankWorkOrders(
-    open.map((w) => ({ ...w, truck_out_of_service: truckById.get(w.truck_id)?.service_status === "out_of_service", truck_has_driver: heldTrucks.has(w.truck_id) })),
+    open.map((w) => {
+      const trailer = w.trailer_id ? trailerById.get(w.trailer_id) : undefined;
+      const unit = trailer ?? (w.truck_id ? truckById.get(w.truck_id) : undefined);
+      const pulledBy = trailer ? trailer.default_truck_id : w.truck_id;
+      return { ...w, truck_out_of_service: unit?.service_status === "out_of_service", truck_has_driver: Boolean(pulledBy && heldTrucks.has(pulledBy)) };
+    }),
     today,
   ).slice(0, 8);
 
@@ -94,7 +106,7 @@ export default async function MaintenancePage() {
                         <UrgencyBadge urgency={w.urgency} />
                         <WoStatusBadge status={w.status} />
                       </div>
-                      <div className="text-sm text-muted">Truck {truckById.get(w.truck_id)?.unit_number ?? "—"} · {reasons.join(" · ")}</div>
+                      <div className="text-sm text-muted">{workOrderUnit(w, truckUnits, trailerUnits)} · {reasons.join(" · ")}</div>
                     </div>
                   </li>
                 ))}
@@ -104,17 +116,17 @@ export default async function MaintenancePage() {
 
           <Card>
             <div id="out-of-service" className="scroll-mt-20" />
-            <CardHeader title="Out of service" description="Downtime counts from when the truck was taken out of service." />
+            <CardHeader title="Out of service" description="Downtime counts from when the unit was taken out of service." />
             {outOfService.length === 0 ? (
-              <CardBody><p className="text-sm text-muted">Every active truck is in service.</p></CardBody>
+              <CardBody><p className="text-sm text-muted">Every active truck and trailer is in service.</p></CardBody>
             ) : (
               <TableWrap>
                 <Table>
-                  <thead><tr><Th>Truck</Th><Th>Reason</Th><Th>Down</Th><Th className="hidden sm:table-cell">Expected back</Th></tr></thead>
+                  <thead><tr><Th>Unit</Th><Th>Reason</Th><Th>Down</Th><Th className="hidden sm:table-cell">Expected back</Th></tr></thead>
                   <tbody>
                     {outOfService.map((t) => (
                       <Tr key={t.id}>
-                        <Td><Link href={`/maintenance/work-orders?truck=${t.id}&view=all`} className="font-semibold text-ink hover:underline">{t.unit_number}</Link></Td>
+                        <Td><Link href={t.href} className="font-semibold text-ink hover:underline">{t.label}</Link></Td>
                         <Td className="text-sm">{t.out_of_service_reason || "—"}</Td>
                         <Td className="tabular">{t.out_of_service_since ? `${daysBetween(t.out_of_service_since, today)} d` : "—"}</Td>
                         <Td className="hidden sm:table-cell">{t.expected_return_date ? formatDate(t.expected_return_date) : "Not set"}</Td>
@@ -134,7 +146,7 @@ export default async function MaintenancePage() {
           </Card>
 
           <Card>
-            <CardHeader title="Scheduled in the next 7 days" description="Drivers of these trucks see the appointment on My Day." />
+            <CardHeader title="Scheduled in the next 7 days" description="Drivers of these trucks (and of the trucks that usually pull these trailers) see the appointment on My Day." />
             {upcoming.length === 0 ? (
               <CardBody><p className="text-sm text-muted">Nothing scheduled.</p></CardBody>
             ) : (
@@ -144,7 +156,7 @@ export default async function MaintenancePage() {
                     <CalendarClock className="size-4 text-muted" aria-hidden />
                     <span className="font-medium tabular">{formatDate(w.scheduled_for)}</span>
                     <Link href={`/maintenance/work-orders/${w.id}`} className="text-ink hover:underline">{w.number} · {w.title}</Link>
-                    <span className="text-sm text-muted">Truck {truckById.get(w.truck_id)?.unit_number ?? "—"}</span>
+                    <span className="text-sm text-muted">{workOrderUnit(w, truckUnits, trailerUnits)}</span>
                   </li>
                 ))}
               </ul>

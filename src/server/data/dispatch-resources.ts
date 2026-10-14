@@ -64,9 +64,10 @@ export async function getDispatchResources(date: string) {
     return { ...a, order_id: l.order_id, order_number: l.orders?.order_number ?? "", load_number: l.load_number, starts_at: l.starts_at, ends_at: l.ends_at };
   }).sort((a, b) => a.starts_at.localeCompare(b.starts_at));
 
-  const shopRows = (shopMissing ? [] : (shop.data ?? [])) as Array<OpenWorkOrder & { truck_id: string; work_order_id: string }>;
+  const shopRows = (shopMissing ? [] : (shop.data ?? [])) as Array<OpenWorkOrder & { truck_id: string | null; work_order_id: string }>;
   const open = new Map<string, OpenWorkOrder[]>();
-  for (const w of shopRows) open.set(w.truck_id, [...(open.get(w.truck_id) ?? []), { ...w, id: w.work_order_id, clearance_status: null }]);
+  // Trucks only here; trailer shop work (truck_id null) is checked when a trailer is chosen.
+  for (const w of shopRows) if (w.truck_id) open.set(w.truck_id, [...(open.get(w.truck_id) ?? []), { ...w, id: w.work_order_id, clearance_status: null }]);
 
   const truckUnit = new Map(((trucks.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => [t.id, t.unit_number]));
   const names = new Map(((drivers.data ?? []) as Array<{ id: string; display_name: string }>).map((d) => [d.id, d.display_name]));

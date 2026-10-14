@@ -12,6 +12,7 @@ import { WO_CATEGORIES, WO_URGENCIES } from "@/lib/maintenance";
 
 export interface WorkOrderFormValues {
   truck_id: string;
+  trailer_id?: string;
   title: string;
   description: string;
   category: string;
@@ -32,14 +33,16 @@ export interface WorkOrderFormValues {
 
 interface Options {
   trucks: Array<{ id: string; unit_number: string; out_of_service: boolean }>;
+  /** Null when trailer work orders are not available yet (migration not applied). */
+  trailers?: Array<{ id: string; unit_number: string; out_of_service: boolean; default_truck_id: string | null }> | null;
   drivers: Array<{ id: string; name: string; primary_truck_id: string | null }>;
   assignees: Array<{ id: string; name: string }>;
 }
 
 /**
- * Create or edit a work order. Marking it safety-critical takes the truck out
- * of service until an authorized inspection clears it (the form says so
- * before saving).
+ * Create or edit a work order for a truck or a trailer. Marking it
+ * safety-critical takes that unit out of service until an authorized
+ * inspection clears it (the form says so before saving).
  */
 export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
   mode: "create" | "edit";
@@ -51,7 +54,10 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
   const router = useRouter();
   // One key per form instance: a double click or a retry after a lost response never creates two work orders.
   const [submissionKey] = useState(() => crypto.randomUUID());
+  const trailers = options.trailers ?? null;
+  const [equipment, setEquipment] = useState<"truck" | "trailer">(initial.trailer_id ? "trailer" : "truck");
   const [truckId, setTruckId] = useState(initial.truck_id);
+  const [trailerId, setTrailerId] = useState(initial.trailer_id ?? "");
   const [driverId, setDriverId] = useState(initial.driver_id);
   const [safety, setSafety] = useState(initial.safety_critical);
   const { pending, onSubmit, fieldError, formError } = useFormAction(action, {
@@ -62,7 +68,13 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
     },
   });
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
-  const primaryDriver = options.drivers.find((d) => d.primary_truck_id && d.primary_truck_id === truckId);
+  const pullingTruck = equipment === "trailer" ? trailers?.find((t) => t.id === trailerId)?.default_truck_id ?? null : truckId;
+  const primaryDriver = options.drivers.find((d) => d.primary_truck_id && d.primary_truck_id === pullingTruck);
+  const pickDriverFor = (truck: string | null) => {
+    const d = truck ? options.drivers.find((x) => x.primary_truck_id === truck) : undefined;
+    if (d && !driverId) setDriverId(d.id);
+  };
+  const unitWord = equipment === "trailer" ? "trailer" : "truck";
 
   return (
     <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
@@ -72,19 +84,34 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
       {initial.field_report_id && <input type="hidden" name="field_report_id" value={initial.field_report_id} />}
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
         <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">The job</legend>
-        {mode === "create" ? (
-          <Field label="Truck" htmlFor="truck_id" required error={fieldError("truck_id")} className="sm:col-span-2">
-            <Select {...f("truck_id")} value={truckId} onChange={(e) => {
-              setTruckId(e.target.value);
-              const d = options.drivers.find((x) => x.primary_truck_id === e.target.value);
-              if (d && !driverId) setDriverId(d.id);
-            }}>
+        {mode === "create" && trailers && (
+          <Field label="Equipment" htmlFor="equipment" className="sm:col-span-2">
+            <Select id="equipment" value={equipment} onChange={(e) => setEquipment(e.target.value === "trailer" ? "trailer" : "truck")}>
+              <option value="truck">Truck</option>
+              <option value="trailer">Trailer</option>
+            </Select>
+          </Field>
+        )}
+        {mode === "create" && equipment === "truck" && (
+          <Field label="Truck" htmlFor="truck_id" required error={fieldError("truck_id") ?? fieldError("unit")} className="sm:col-span-2">
+            <Select {...f("truck_id")} value={truckId} onChange={(e) => { setTruckId(e.target.value); pickDriverFor(e.target.value); }}>
               <option value="">Choose a truck…</option>
               {options.trucks.map((t) => <option key={t.id} value={t.id}>{t.unit_number}{t.out_of_service ? " (out of service)" : ""}</option>)}
             </Select>
           </Field>
-        ) : null}
-        <Field label="Title" htmlFor="title" required error={fieldError("title")} className={mode === "create" ? "sm:col-span-4" : "sm:col-span-6"} hint="A few words, for example “Air leak at rear axle”.">
+        )}
+        {mode === "create" && equipment === "trailer" && trailers && (
+          <Field label="Trailer" htmlFor="trailer_id" required error={fieldError("trailer_id") ?? fieldError("unit")} className="sm:col-span-2">
+            <Select {...f("trailer_id")} value={trailerId} onChange={(e) => {
+              setTrailerId(e.target.value);
+              pickDriverFor(trailers.find((t) => t.id === e.target.value)?.default_truck_id ?? null);
+            }}>
+              <option value="">Choose a trailer…</option>
+              {trailers.map((t) => <option key={t.id} value={t.id}>{t.unit_number}{t.out_of_service ? " (out of service)" : ""}</option>)}
+            </Select>
+          </Field>
+        )}
+        <Field label="Title" htmlFor="title" required error={fieldError("title")} className={mode === "create" ? (trailers ? "sm:col-span-6" : "sm:col-span-4") : "sm:col-span-6"} hint="A few words, for example “Air leak at rear axle”.">
           <Input {...f("title")} defaultValue={initial.title} maxLength={120} autoComplete="off" />
         </Field>
         <Field label="Description" htmlFor="description" error={fieldError("description")} className="sm:col-span-6">
@@ -97,7 +124,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
           <Select {...f("urgency")} defaultValue={initial.urgency}>{Object.entries(WO_URGENCIES).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
         </Field>
         <Field label="Driver (optional)" htmlFor="driver_id" error={fieldError("driver_id")} className="sm:col-span-2"
-          hint={mode === "create" && primaryDriver ? `Primary truck of ${primaryDriver.name}.` : undefined}>
+          hint={mode === "create" && primaryDriver ? (equipment === "trailer" ? `Usually pulled by ${primaryDriver.name}'s truck.` : `Primary truck of ${primaryDriver.name}.`) : undefined}>
           <Select {...f("driver_id")} value={driverId} onChange={(e) => setDriverId(e.target.value)}>
             <option value="">No driver</option>
             {options.drivers.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -108,7 +135,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
             label="Safety-critical defect (brakes, steering, tires, lights, load securement…)" />
           {safety && (
             <p role="note" className="mt-2 rounded-md border border-critical/40 bg-critical/5 px-3 py-2 text-sm text-ink">
-              Saving takes the truck <strong>out of service</strong>. It returns to service only after someone authorized records a passed inspection.
+              Saving takes the {unitWord} <strong>out of service</strong>. It returns to service only after someone authorized records a passed inspection.
             </p>
           )}
         </div>
@@ -121,7 +148,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
             {options.assignees.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </Select>
         </Field>
-        <Field label="Scheduled for" htmlFor="scheduled_for" error={fieldError("scheduled_for")} className="sm:col-span-2" hint="The driver of this truck sees it on My Day.">
+        <Field label="Scheduled for" htmlFor="scheduled_for" error={fieldError("scheduled_for")} className="sm:col-span-2" hint={equipment === "trailer" ? "The driver whose truck usually pulls this trailer sees it on My Day." : "The driver of this truck sees it on My Day."}>
           <DateInput {...f("scheduled_for")} defaultValue={initial.scheduled_for} />
         </Field>
         <Field label="Due by" htmlFor="due_on" error={fieldError("due_on")} className="sm:col-span-2">

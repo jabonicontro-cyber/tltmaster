@@ -86,7 +86,7 @@ export async function startInspection(id: string): Promise<ActionResult> {
 
 const clearanceInput = z.object({ id: uuid, outcome: z.enum(["passed", "failed"]), notes: z.string().trim().max(2000).default("") });
 
-/** Record the inspection result (maintenance.clear). Passed completes the repair and may return the truck to service. */
+/** Record the inspection result (maintenance.clear). Passed completes the repair and may return the truck or trailer to service. */
 export async function recordClearance(input: z.input<typeof clearanceInput>): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("maintenance.clear");
@@ -98,9 +98,11 @@ export async function recordClearance(input: z.input<typeof clearanceInput>): Pr
     refresh(parsed.data.id);
     revalidatePath("/fleet", "layout");
     const r = data as { returned_to_service: boolean };
+    const { data: wo } = await supabase.from("work_orders").select("*").eq("id", parsed.data.id).maybeSingle();
+    const unit = (wo as { trailer_id?: string | null } | null)?.trailer_id ? "trailer" : "truck";
     return ok(undefined, parsed.data.outcome === "failed"
       ? "Inspection failed — the work order is back in progress."
-      : r.returned_to_service ? "Cleared. The truck is back in service." : "Cleared. The truck stays out of service (another restriction remains).");
+      : r.returned_to_service ? `Cleared. The ${unit} is back in service.` : `Cleared. The ${unit} stays out of service (another restriction remains).`);
   });
 }
 

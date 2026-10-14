@@ -12,7 +12,7 @@ import { COST_KINDS, nextStatuses, STATUS_ACTION_LABELS, type WoStatus } from "@
 import { addCost, generateDueWorkOrders, recordClearance, removeCost, setWorkOrderStatus, startInspection } from "@/app/(app)/maintenance/actions";
 
 /** Lifecycle buttons: only the moves the database allows from here. Cancel asks for a reason. */
-export function StatusActions({ id, status, safetyCritical, editSeq, canClear }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean }) {
+export function StatusActions({ id, status, safetyCritical, editSeq, canClear, unit = "truck" }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean; unit?: "truck" | "trailer" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState<WoStatus | null>(null);
@@ -51,15 +51,15 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear }:
         </Button>
       ))}
       {safetyCritical && status === "in_progress" && (
-        <p className="basis-full text-sm text-muted">Safety-critical: completing goes through an inspection by someone authorized to clear the truck.</p>
+        <p className="basis-full text-sm text-muted">Safety-critical: completing goes through an inspection by someone authorized to clear the {unit}.</p>
       )}
       <ConfirmDialog
         open={Boolean(confirm)}
         onOpenChange={(o) => !o && setConfirm(null)}
         title={confirm === "canceled" ? "Cancel the work order" : "Reopen the work order"}
         description={confirm === "canceled"
-          ? "The driver of this truck sees the cancellation on My Day if it was scheduled."
-          : safetyCritical ? "The truck goes out of service again until a new inspection clears it." : "The work order goes back to in progress."}
+          ? (unit === "trailer" ? "The driver whose truck usually pulls this trailer sees the cancellation on My Day if it was scheduled." : "The driver of this truck sees the cancellation on My Day if it was scheduled.")
+          : safetyCritical ? `The ${unit} goes out of service again until a new inspection clears it.` : "The work order goes back to in progress."}
         confirmLabel={confirm === "canceled" ? "Cancel work order" : "Reopen"}
         tone={confirm === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
@@ -77,7 +77,7 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear }:
 }
 
 /** Inspection and clearance (maintenance.clear). */
-export function ClearanceActions({ id, clearance }: { id: string; clearance: "awaiting" | "in_progress" }) {
+export function ClearanceActions({ id, clearance, unit = "truck" }: { id: string; clearance: "awaiting" | "in_progress"; unit?: "truck" | "trailer" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [outcome, setOutcome] = useState<"passed" | "failed" | null>(null);
@@ -98,8 +98,8 @@ export function ClearanceActions({ id, clearance }: { id: string; clearance: "aw
         onOpenChange={(o) => !o && setOutcome(null)}
         title={outcome === "passed" ? "Record a passed inspection" : "Record a failed inspection"}
         description={outcome === "passed"
-          ? "Completes the repair under your name. If this work order restricted the truck and nothing else does, the truck returns to service."
-          : "The work order goes back to in progress and the truck stays out of service."}
+          ? `Completes the repair under your name. If this work order restricted the ${unit} and nothing else does, the ${unit} returns to service.`
+          : `The work order goes back to in progress and the ${unit} stays out of service.`}
         confirmLabel={outcome === "passed" ? "Clear for service" : "Record failure"}
         onConfirm={async () => {
           if (!outcome) return;

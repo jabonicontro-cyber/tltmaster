@@ -10,15 +10,15 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
-import { WO_CATEGORIES, WO_STATUSES, WO_URGENCIES } from "@/lib/maintenance";
+import { WO_CATEGORIES, WO_STATUSES, WO_URGENCIES, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { listAssignees, listTrucks, listWorkOrders } from "@/server/data/maintenance";
+import { listAssignees, listTrailers, listTrucks, listWorkOrders } from "@/server/data/maintenance";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 
 export const metadata = { title: "Work orders" };
 
-type Search = { q?: string; view?: string; status?: string; urgency?: string; category?: string; truck?: string; assigned?: string; page?: string };
+type Search = { q?: string; view?: string; status?: string; urgency?: string; category?: string; truck?: string; trailer?: string; assigned?: string; page?: string };
 
 const VIEWS = [
   { value: "open", label: "Open" },
@@ -32,15 +32,16 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
   const access = await requirePagePermission("maintenance.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const [{ rows, total }, trucks, assignees] = await Promise.all([
-    listWorkOrders({ ...sp, page }), listTrucks(), listAssignees(),
+  const [{ rows, total }, trucks, trailers, assignees] = await Promise.all([
+    listWorkOrders({ ...sp, page }), listTrucks(), listTrailers(), listAssignees(),
   ]);
-  const unit = new Map(trucks.map((t) => [t.id, t.unit_number]));
+  const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
+  const trailerUnits = new Map(trailers.map((t) => [t.id, t.unit_number]));
   const names = new Map(assignees.map((a) => [a.id, a.name]));
-  const filtered = Boolean(sp.q || sp.status || sp.urgency || sp.category || sp.truck || sp.assigned || (sp.view && sp.view !== "open"));
+  const filtered = Boolean(sp.q || sp.status || sp.urgency || sp.category || sp.truck || sp.trailer || sp.assigned || (sp.view && sp.view !== "open"));
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
-    for (const k of ["q", "view", "status", "urgency", "category", "truck", "assigned"] as const) if (sp[k]) params.set(k, sp[k]!);
+    for (const k of ["q", "view", "status", "urgency", "category", "truck", "trailer", "assigned"] as const) if (sp[k]) params.set(k, sp[k]!);
     params.set("page", String(p));
     return `/maintenance/work-orders?${params}`;
   };
@@ -54,7 +55,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
       />
       <MaintenanceTabs active="work-orders" />
       <Card>
-        <FilterBar action="/maintenance/work-orders" query={sp.q} placeholder="Search number, title or truck…" clearHref="/maintenance/work-orders">
+        <FilterBar action="/maintenance/work-orders" query={sp.q} placeholder="Search number, title or unit…" clearHref="/maintenance/work-orders">
           <FilterSelect name="view" label="Show" value={sp.view ?? "open"} options={VIEWS} />
           <FilterSelect name="status" label="Status" value={sp.status ?? ""} options={[{ value: "", label: "Any status" }, ...Object.entries(WO_STATUSES).map(([value, label]) => ({ value, label }))]} />
           <FilterSelect name="urgency" label="Urgency" value={sp.urgency ?? ""} options={[{ value: "", label: "Any urgency" }, ...Object.entries(WO_URGENCIES).map(([value, label]) => ({ value, label }))]} />
@@ -75,7 +76,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                 <thead>
                   <tr>
                     <Th>Work order</Th>
-                    <Th>Truck</Th>
+                    <Th>Unit</Th>
                     <Th className="hidden md:table-cell">Urgency</Th>
                     <Th className="hidden lg:table-cell">Mechanic</Th>
                     <Th className="hidden lg:table-cell">Scheduled</Th>
@@ -90,7 +91,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                         <div className="text-sm text-muted">{w.title}</div>
                         {w.safety_critical && <div className="mt-1"><SafetyBadge /></div>}
                       </Td>
-                      <Td className="tabular">{unit.get(w.truck_id) ?? "—"}</Td>
+                      <Td className="tabular">{workOrderUnit(w, truckUnits, trailerUnits)}</Td>
                       <Td className="hidden md:table-cell"><UrgencyBadge urgency={w.urgency} /></Td>
                       <Td className="hidden text-sm lg:table-cell">{w.assigned_to ? names.get(w.assigned_to) ?? "Former member" : <span className="text-muted">Unassigned</span>}</Td>
                       <Td className="hidden text-sm lg:table-cell">{w.scheduled_for ? formatDate(w.scheduled_for) : "—"}</Td>

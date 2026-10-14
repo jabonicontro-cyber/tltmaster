@@ -1,5 +1,5 @@
 import { resourceExclusions } from "@/lib/dispatch/smart";
-import type { OptimizationInput, OptTrailer } from "./plan";
+import { trailerShopBlockers, type OptimizationInput, type OptTrailer } from "./plan";
 
 // Why loads cannot be covered and which trucks, trailers and drivers cannot work (docs/OPTIMIZATION.md). Explains the
 // hard rules the optimizer already applies (Smart Dispatch's per-resource checks and the trailer rules); it never adds
@@ -27,12 +27,13 @@ const overlaps = (a: { starts_at: string; ends_at: string }, b: { starts_at: str
 const TRACTOR_HANDLED = [/^A tractor needs a trailer/, /exceeds its recorded capacity/];
 
 /** A trailer's own blockers for one load (state, reports, bookings): the rules of plan.ts that do not depend on the tractor. */
-function trailerOwn(input: OptimizationInput, load: { id: string; starts_at: string; ends_at: string }, t: OptTrailer): string[] {
+function trailerOwn(input: OptimizationInput, load: { id: string; load_date: string; starts_at: string; ends_at: string }, t: OptTrailer): string[] {
   const out: string[] = [];
   if (!t.active) out.push("Deactivated.");
   if (t.service_status === "out_of_service") out.push("Out of service.");
   if ((input.trailerReports ?? []).some((r) => r.trailer_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"))) out.push("A driver reported a breakdown or inspection problem that is not resolved.");
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === t.id && b.load_id !== load.id && overlaps(b, load))) out.push("Already booked at an overlapping time.");
+  out.push(...trailerShopBlockers(input, load.load_date, t).map((m) => m.replace(`Trailer ${t.unit_number} `, "").replace(/^./, (c) => c.toUpperCase())));
   return out;
 }
 

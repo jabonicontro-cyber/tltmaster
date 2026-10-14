@@ -109,8 +109,10 @@ const optionalNumber = (max: number, label: string) =>
     return n;
   });
 
-export const workOrderSchema = z.object({
-  truck_id: z.uuid("Choose a truck."),
+const workOrderFields = z.object({
+  // Exactly one: a work order belongs to one truck or one trailer.
+  truck_id: optionalUuid,
+  trailer_id: optionalUuid,
   title: z.string().trim().min(3, "Describe the job in a few words.").max(120, "Use at most 120 characters."),
   description: z.string().trim().max(4000, "Use at most 4000 characters.").default(""),
   category: z.enum(keys(WO_CATEGORIES)),
@@ -123,9 +125,13 @@ export const workOrderSchema = z.object({
   field_report_id: optionalUuid,
   submission_key: z.uuid().optional(),
 });
+export const workOrderSchema = workOrderFields.superRefine((v, ctx) => {
+  if (v.truck_id && v.trailer_id) ctx.addIssue({ code: "custom", path: ["trailer_id"], message: "Choose either a truck or a trailer, not both." });
+  else if (!v.truck_id && !v.trailer_id) ctx.addIssue({ code: "custom", path: ["unit"], message: "Choose a truck or a trailer." });
+});
 export type WorkOrderInput = z.infer<typeof workOrderSchema>;
 
-export const workOrderEditSchema = workOrderSchema.omit({ truck_id: true, field_report_id: true, submission_key: true }).extend({
+export const workOrderEditSchema = workOrderFields.omit({ truck_id: true, trailer_id: true, field_report_id: true, submission_key: true }).extend({
   findings: z.string().trim().max(4000, "Use at most 4000 characters.").default(""),
   labor_hours: optionalNumber(10000, "hours"),
   odometer_at_service: optionalNumber(9999999, "miles"),
@@ -249,4 +255,14 @@ export function rankWorkOrders<T extends PriorityInput>(items: T[], today: strin
       return { item: w, score, reasons };
     })
     .sort((a, b) => b.score - a.score || a.item.created_at.localeCompare(b.item.created_at));
+}
+
+/** "Truck 12" or "Trailer T-4" for a work order; "—" when the unit is not visible. */
+export function workOrderUnit(
+  w: { truck_id: string | null; trailer_id?: string | null },
+  trucks: Map<string, string>,
+  trailers: Map<string, string>,
+): string {
+  if (w.trailer_id) return `Trailer ${trailers.get(w.trailer_id) ?? "—"}`;
+  return `Truck ${(w.truck_id && trucks.get(w.truck_id)) ?? "—"}`;
 }

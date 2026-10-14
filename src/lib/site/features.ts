@@ -200,7 +200,7 @@ export const FEATURES: Feature[] = [
     name: "Maintenance",
     category: "fleet",
     problem: "A truck with a known safety defect gets dispatched because the shop and dispatch use different lists.",
-    how: "Work orders with urgency and safety-critical defects; a safety-critical defect takes the truck out of dispatch until it is cleared. Preventive schedules by time and mileage show what is coming due, and shop visits are checked before any assignment.",
+    how: "Work orders with urgency and safety-critical defects; a safety-critical defect takes the truck or trailer out of dispatch until it is cleared. Preventive schedules by time and mileage show what is coming due, and shop visits are checked before any assignment.",
     value: "The shop's knowledge reaches dispatch automatically, before a truck leaves the yard.",
     points: ["Safety-critical defects block dispatch until cleared", "Preventive schedules by days and miles", "Shop dates checked by dispatch and Plan the day"],
     limitations: ["Parts inventory and purchasing are not built yet"],

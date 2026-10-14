@@ -70,6 +70,8 @@ export interface OptimizationInput extends SmartInput {
   trailerBookings?: Array<{ trailer_id: string; load_id: string; starts_at: string; ends_at: string }>;
   /** Unresolved driver reports about trailers. */
   trailerReports?: Array<{ trailer_id: string; kind: string }>;
+  /** Open trailer work orders from Maintenance (shop visits, safety restrictions); empty before trailer work orders exist. */
+  trailerShopVisits?: TrailerShopVisit[];
   /** Estimated revenue per load in cents (order line rate × planned quantity); null when it cannot be estimated. */
   revenueCents: Record<string, number | null>;
   /** Hours of service from an ELD or driver logs. Not connected yet: always false. */
@@ -179,6 +181,7 @@ function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, tru
   if (trailer.service_status === "out_of_service") out.push(`Trailer ${trailer.unit_number} is out of service.`);
   if (trailer.compatible_truck_types.length && !trailer.compatible_truck_types.includes(truck.truck_type)) out.push(`Trailer ${trailer.unit_number} is not compatible with a ${truck.truck_type.replace(/_/g, " ")}.`);
   if ((input.trailerReports ?? []).some((r) => r.trailer_id === trailer.id && (r.kind === "breakdown" || r.kind === "inspection_issue"))) out.push(`A driver reported a breakdown or inspection problem on trailer ${trailer.unit_number} that is not resolved.`);
+  out.push(...trailerShopBlockers(input, load.load_date, trailer));
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === trailer.id && b.load_id !== load.id && overlaps(b, load))) out.push(`Trailer ${trailer.unit_number} is already booked at an overlapping time.`);
   const cap = capacity(truck, load.unit_code, trailer);
   if (load.planned_quantity !== null && cap !== null && load.planned_quantity > cap) out.push(`Planned ${load.planned_quantity} ${load.unit_code ?? ""} exceeds the recorded capacity of ${equipmentLabel(truck, trailer)}.`);
@@ -272,6 +275,7 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   else if (load.planned_quantity !== null && (trailer ? !trailer.capacity_verified_at : !truck.capacity_verified_at)) r.push(`${trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck.unit_number}`}'s capacity is not verified.`);
   if (trailer && !trailer.compatible_truck_types.length) r.push(`Trailer ${trailer.unit_number}'s compatible truck types are not recorded.`);
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
+  if (trailer && (input.trailerShopVisits ?? []).some((v) => v.trailer_id === trailer.id && (v.status === "in_progress" || v.status === "awaiting_parts"))) r.push(`Trailer ${trailer.unit_number} has shop work in progress or waiting for parts — check with the shop.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
   if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave — confirm they are working that day.");
@@ -759,5 +763,21 @@ export function parsePriorities(values: Partial<Record<keyof Priorities, string 
     const v = Number.parseInt(values[k] ?? "", 10);
     if (Number.isFinite(v)) out[k] = Math.min(Math.max(v, 0), 5);
   }
+  return out;
+}
+
+export interface TrailerShopVisit { trailer_id: string; number: string; scheduled_for: string | null; status: string; safety_critical: boolean }
+
+/**
+ * Maintenance blockers for a trailer on a day, the same rules as the database (trailer_safety_restricted,
+ * trailer_shop_scheduled): an open safety-critical work order, or a shop visit scheduled that day.
+ */
+export function trailerShopBlockers(input: Pick<OptimizationInput, "trailerShopVisits">, day: string, trailer: { id: string; unit_number: string }): string[] {
+  const out: string[] = [];
+  const visits = (input.trailerShopVisits ?? []).filter((v) => v.trailer_id === trailer.id);
+  const restricted = visits.find((v) => v.safety_critical);
+  if (restricted) out.push(`Trailer ${trailer.unit_number} has an open safety-critical work order (${restricted.number}); it returns only through clearance in Maintenance.`);
+  const visit = visits.find((v) => v.scheduled_for === day && v.status !== "awaiting_inspection");
+  if (visit) out.push(`Trailer ${trailer.unit_number} is in the shop on this date (${visit.number}).`);
   return out;
 }

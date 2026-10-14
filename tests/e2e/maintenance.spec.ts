@@ -198,3 +198,33 @@ test("dispatchers read only; drivers and other companies get no access", async (
   await expect(other.getByText("Not found", { exact: true })).toBeVisible();
   await other.close();
 });
+
+test("a trailer defect gets its own work order: the trailer is restricted, named everywhere and shown on its profile", async ({ page }) => {
+  const tag = unique();
+  const trailerId = await asUser(USERS.owner.email, async (q) =>
+    (await q("insert into public.trailers (unit_number, trailer_type) values ($1, 'end_dump') returning id", [`TX-${tag}`])).rows[0].id as string);
+  const trailerStatus = () =>
+    asUser(USERS.owner.email, async (q) => (await q("select service_status::text as s from public.trailers where id = $1", [trailerId])).rows[0].s as string);
+
+  await signIn(page, "owner");
+  await page.goto("/maintenance/work-orders/new");
+  await page.getByLabel("Equipment").selectOption("trailer");
+  await expect(page.getByRole("combobox", { name: "Truck", exact: true })).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Trailer", exact: true }).selectOption({ label: `TX-${tag}` });
+  await page.getByLabel("Title").fill(`Landing gear bent ${tag}`);
+  await page.getByLabel("Category").selectOption("body");
+  await page.getByLabel(/Safety-critical defect/).check();
+  await expect(page.getByText("Saving takes the trailer out of service")).toBeVisible();
+  await page.getByRole("button", { name: "Create work order" }).click();
+  await expectToast(page, /Work order WO-\d{4}-\d{4} created/);
+  await expect(page.getByText(`Trailer TX-${tag} is out of service and cannot be dispatched`)).toBeVisible();
+  expect(await trailerStatus()).toBe("out_of_service");
+  const number = (await page.getByRole("heading", { level: 1 }).textContent())!.split(" · ")[0];
+
+  await page.goto(`/maintenance/work-orders?q=TX-${tag}`);
+  await expect(page.getByRole("row", { name: new RegExp(number) })).toContainText(`Trailer TX-${tag}`);
+
+  await page.goto(`/fleet/trailers/${trailerId}`);
+  await expect(page.getByRole("link", { name: number })).toBeVisible();
+  await expect(page.getByRole("link", { name: "New work order" })).toHaveAttribute("href", `/maintenance/work-orders/new?trailer=${trailerId}`);
+});

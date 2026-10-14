@@ -110,6 +110,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(readiness).toContain("ready");
     expect(readiness).toContain("handed_off");
     expect(c.handoffs).toBe(1);
+    // Trailer work orders (20261115000100): one scheduled trailer inspection, nothing taken out of service.
+    const trailerWo = await q<{ n: string; down: string }>(
+      "select count(*) n, count(*) filter (where t.service_status = 'out_of_service') down from public.work_orders w join public.trailers t on t.id = w.trailer_id where w.company_id = $1", [w.company]);
+    expect([Number(trailerWo.rows[0].n), Number(trailerWo.rows[0].down)]).toEqual([1, 0]);
     // Quotes show an issued, locked version: one quote marked handed over outside Taviron (nothing sent).
     const sent = await q<{ n: string }>("select count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and q.status = 'sent' and v.sent_at is not null", [w.company]);
     expect(Number(sent.rows[0].n)).toBe(1);

@@ -61,6 +61,8 @@ export async function loadAssignmentForm(assignmentId: string): Promise<DriverRe
 export interface MaintenanceNotice {
   number: string;
   unit_number: string;
+  /** "trailer" for a trailer usually pulled by the driver's truck; absent before trailer work orders exist. */
+  equipment?: "truck" | "trailer";
   title: string;
   status: string;
   scheduled_for: string | null;

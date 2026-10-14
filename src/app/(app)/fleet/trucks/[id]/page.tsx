@@ -77,7 +77,7 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
           <AvailabilityCard a={availability} timezone={timezone} />
           <ServiceCard e={t} timezone={timezone} />
           <AssignmentCard truckId={t.id} current={ctx.driverByTruck.get(t.id) ?? null} drivers={drivers} history={records.assignments} names={records.driverNames} canAssign={can(access, "fleet.assign") && t.active} restricted={restricted} timezone={timezone} who={who} />
-          <MaintenanceCard truckId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} timezone={timezone} />
+          <MaintenanceCard vehicleId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} timezone={timezone} />
           <DocumentsCard vehicle={{ kind: "truck", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
           <CostsCard records={records} downtime90={downtimeDays(events, t, new Date(), 90)} canSeeCosts={can(access, "maintenance.costs")} />
           <CapacityCard e={t} timezone={timezone} who={who} />

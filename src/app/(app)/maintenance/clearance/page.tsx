@@ -7,10 +7,10 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
-import { CLEARANCE_STATUSES, type ClearanceStatus } from "@/lib/maintenance";
+import { CLEARANCE_STATUSES, type ClearanceStatus, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { listOpenWorkOrders, listRecentClearances, listTrucks, type WorkOrderRow } from "@/server/data/maintenance";
+import { listOpenWorkOrders, listRecentClearances, listTrailers, listTrucks, type WorkOrderRow } from "@/server/data/maintenance";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -20,10 +20,11 @@ const TONE: Record<ClearanceStatus, "amber" | "blue" | "red" | "green"> = { awai
 
 export default async function ClearancePage() {
   const access = await requirePagePermission("maintenance.view");
-  const [open, recent, trucks, people, { timezone }] = await Promise.all([
-    listOpenWorkOrders(), listRecentClearances(), listTrucks(), getUserNames(), businessToday(),
+  const [open, recent, trucks, trailers, people, { timezone }] = await Promise.all([
+    listOpenWorkOrders(), listRecentClearances(), listTrucks(), listTrailers(), getUserNames(), businessToday(),
   ]);
-  const unit = new Map(trucks.map((t) => [t.id, t.unit_number]));
+  const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
+  const trailerUnits = new Map(trailers.map((t) => [t.id, t.unit_number]));
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const waiting = open.filter((w) => w.status === "awaiting_inspection");
   const groups: Array<{ key: ClearanceStatus; title: string; rows: WorkOrderRow[]; empty: string }> = [
@@ -58,7 +59,7 @@ export default async function ClearancePage() {
                       {w.safety_critical && <SafetyBadge />}
                     </div>
                     <div className="text-sm text-muted">
-                      Truck {unit.get(w.truck_id) ?? "—"}
+                      {workOrderUnit(w, truckUnits, trailerUnits)}
                       {g.key === "in_progress" && ` · inspector ${who(w.inspector_id)}`}
                       {g.key === "cleared" && w.cleared_at && ` · ${who(w.cleared_by)}, ${formatDateTime(w.cleared_at, timezone)}`}
                       {g.key === "failed" && ` · ${who(w.inspector_id)}: ${w.clearance_notes}`}

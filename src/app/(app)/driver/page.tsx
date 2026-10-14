@@ -138,20 +138,20 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       )}
 
       {shop.length > 0 && (
-        <section aria-label="Truck maintenance" className="space-y-2">
-          <h2 className="text-lg font-bold">Truck maintenance</h2>
+        <section aria-label={shop.some((n) => n.equipment === "trailer") ? "Truck and trailer maintenance" : "Truck maintenance"} className="space-y-2">
+          <h2 className="text-lg font-bold">{shop.some((n) => n.equipment === "trailer") ? "Truck and trailer maintenance" : "Truck maintenance"}</h2>
           {shop.map((n) => (
             <p key={n.number} className={cn("flex gap-3 rounded-md px-4 py-3 text-sm ring-1", n.notice === "canceled" ? "bg-surface text-ink ring-line" : "bg-amber-50 text-amber-950 ring-amber-200")}>
               <Wrench className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
-                <strong>Truck {n.unit_number}: {n.title}</strong>
+                <strong>{n.equipment === "trailer" ? "Trailer" : "Truck"} {n.unit_number}: {n.title}</strong>
                 {" — "}
                 {n.notice === "canceled"
                   ? `the shop appointment${n.scheduled_for ? ` on ${formatDate(n.scheduled_for)}` : ""} was canceled.`
                   : n.notice === "rescheduled"
                     ? `moved to ${formatDate(n.scheduled_for)}${n.previous_date ? ` (was ${formatDate(n.previous_date)})` : ""}.`
                     : `in the shop on ${formatDate(n.scheduled_for)}.`}
-                {n.safety_critical && n.notice !== "canceled" ? " The truck is out of service until it is cleared." : ""}
+                {n.safety_critical && n.notice !== "canceled" ? ` The ${n.equipment === "trailer" ? "trailer" : "truck"} is out of service until it is cleared.` : ""}
               </span>
             </p>
           ))}

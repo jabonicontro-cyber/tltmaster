@@ -284,7 +284,7 @@ export async function fleetContext(opts: { maintenance: boolean }): Promise<Flee
     optionalRows<{ id: string; name: string; primary_truck_id: string | null }>(() =>
       supabase.from("drivers").select("id, name, primary_truck_id").eq("active", true).not("primary_truck_id", "is", null)),
     opts.maintenance
-      ? optionalRows<OpenWorkOrder & { truck_id: string }>(() =>
+      ? optionalRows<OpenWorkOrder & { truck_id: string | null }>(() =>
           supabase.from("work_orders").select("id, number, title, status, safety_critical, scheduled_for, clearance_status, truck_id")
             .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(1000))
       : Promise.resolve({ available: false, rows: [] }),
@@ -295,7 +295,8 @@ export async function fleetContext(opts: { maintenance: boolean }): Promise<Flee
   ]);
   const driverByTruck = new Map(drivers.rows.map((d) => [d.primary_truck_id!, { id: d.id, name: d.name }]));
   const openByTruck = new Map<string, OpenWorkOrder[]>();
-  for (const w of open.rows) openByTruck.set(w.truck_id, [...(openByTruck.get(w.truck_id) ?? []), w]);
+  // Truck work orders only; a trailer's open work orders are read on its own profile.
+  for (const w of open.rows) if (w.truck_id) openByTruck.set(w.truck_id, [...(openByTruck.get(w.truck_id) ?? []), w]);
   const pmByTruck = new Map<string, { overdue: number; dueSoon: number; unknown: number }>();
   for (const p of pm.rows) {
     const cur = pmByTruck.get(p.truck_id) ?? { overdue: 0, dueSoon: 0, unknown: 0 };
@@ -336,14 +337,15 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
   const [documents, assignments, workOrders, schedules, readings] = await Promise.all([
     optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").eq(column, id).order("archived_at", { ascending: false, nullsFirst: true }).order("expires_on", { ascending: true, nullsFirst: false })),
     isTruck ? optionalRows<VehicleRecords["assignments"]["rows"][number]>(() => supabase.from("truck_assignment_events").select("id, driver_id, action, actor_id, created_at").eq("truck_id", id).order("created_at", { ascending: false }).limit(50)) : none,
-    isTruck && opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => supabase.from("work_orders").select("id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at").eq("truck_id", id).order("created_at", { ascending: false }).limit(100)) : none,
+    // Trailer work orders need 20261115000100; before it the query fails and the card says history is unavailable.
+    opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => supabase.from("work_orders").select("id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at").eq(column, id).order("created_at", { ascending: false }).limit(100)) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["schedules"]["rows"][number]>(() => supabase.rpc("maintenance_pm_status")) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("id, odometer_miles, engine_hours, read_at, recorded_by").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
   ]);
   const woIds = workOrders.rows.map((w) => w.id);
-  const costs = isTruck && opts.costs && woIds.length
+  const costs = opts.costs && woIds.length
     ? await optionalRows<VehicleRecords["costs"]["rows"][number]>(() => supabase.from("work_order_costs").select("work_order_id, quantity, unit_cost_cents").in("work_order_id", woIds))
-    : { available: isTruck && opts.costs && workOrders.available, rows: [] };
+    : { available: opts.costs && workOrders.available, rows: [] };
   const driverIds = [...new Set(assignments.rows.map((a) => a.driver_id))];
   const names = driverIds.length ? await supabase.from("drivers").select("id, name").in("id", driverIds) : { data: [] };
   return {

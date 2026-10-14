@@ -13,7 +13,8 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { documentRules, getTrailer, vehicleRecords } from "@/server/data/fleet";
 import { downtimeDays, vehicleAvailability } from "@/lib/fleet/availability";
-import { AvailabilityCard, DocumentsCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
+import { AvailabilityCard, DocumentsCard, MaintenanceCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
+import { OPEN_STATUSES } from "@/lib/maintenance";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Trailer" };
@@ -26,8 +27,9 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
   if (!detail) notFound();
   const { trailer: t, events, audit, defaultTruck, names } = detail;
   const { timezone, today } = await businessToday();
-  const [records, rules] = await Promise.all([vehicleRecords("trailer", t.id, { maintenance: false, costs: false }), documentRules()]);
-  const availability = vehicleAvailability(t, [], today);
+  const seeMaintenance = can(access, "maintenance.view");
+  const [records, rules] = await Promise.all([vehicleRecords("trailer", t.id, { maintenance: seeMaintenance, costs: false }), documentRules()]);
+  const availability = vehicleAvailability(t, records.workOrders.rows.filter((w) => (OPEN_STATUSES as string[]).includes(w.status)), today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
 
   return (
@@ -63,7 +65,8 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
           <AvailabilityCard a={availability} timezone={timezone} />
           <ServiceCard e={t} timezone={timezone} />
           <DocumentsCard vehicle={{ kind: "trailer", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
-          <p className="text-sm text-muted">Out of service for {downtimeDays(events, t, new Date(), 90)} days in the last 90 (recorded status changes). Work orders cover trucks only for now.</p>
+          <MaintenanceCard kind="trailer" vehicleId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} timezone={timezone} />
+          <p className="text-sm text-muted">Out of service for {downtimeDays(events, t, new Date(), 90)} days in the last 90 (recorded status changes).</p>
           <CapacityCard e={t} timezone={timezone} who={who} />
           <EquipmentDetails
             e={t}

@@ -7,7 +7,9 @@ import { OPEN_STATUSES } from "@/lib/maintenance";
 export interface WorkOrderRow {
   id: string;
   number: string;
-  truck_id: string;
+  truck_id: string | null;
+  /** Absent until migration 20261115000100 (trailer work orders) is applied. */
+  trailer_id?: string | null;
   driver_id: string | null;
   field_report_id: string | null;
   schedule_id: string | null;
@@ -93,6 +95,32 @@ export async function listTrucks(): Promise<TruckOption[]> {
   return (data ?? []) as TruckOption[];
 }
 
+export interface TrailerOption {
+  id: string;
+  unit_number: string;
+  active: boolean;
+  service_status: "in_service" | "out_of_service";
+  out_of_service_reason: string;
+  out_of_service_since: string | null;
+  default_truck_id: string | null;
+}
+
+/** Trailers of the company (fleet registry; visible with fleet.view). */
+export async function listTrailers(): Promise<TrailerOption[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("trailers")
+    .select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, default_truck_id").order("unit_number");
+  if (error) throw new Error(`Could not load trailers: ${error.message}`);
+  return (data ?? []) as TrailerOption[];
+}
+
+/** Whether work orders can belong to a trailer here (migration 20261115000100 applied). */
+export async function trailerWorkOrdersAvailable(): Promise<boolean> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("work_orders").select("trailer_id").limit(0);
+  return !error;
+}
+
 /** Drivers (id, name, primary truck) for linking a work order to a driver. */
 export async function listDriverOptions(): Promise<Array<{ id: string; name: string; primary_truck_id: string | null }>> {
   const supabase = await createClient();
@@ -116,6 +144,7 @@ export interface WorkOrderFilters {
   urgency?: string;
   category?: string;
   truck?: string;
+  trailer?: string;
   assigned?: string;
   page: number;
 }
@@ -125,10 +154,17 @@ export async function listWorkOrders(f: WorkOrderFilters) {
   let query = supabase.from("work_orders").select("*", { count: "exact" });
   const pattern = ilikePattern(f.q);
   if (pattern) {
-    // Search number, title and truck unit.
-    const { data: t } = await supabase.from("trucks").select("id").ilike("unit_number", pattern);
+    // Search number, title and truck or trailer unit.
+    const [{ data: t }, { data: tr }, trailersOk] = await Promise.all([
+      supabase.from("trucks").select("id").ilike("unit_number", pattern),
+      supabase.from("trailers").select("id").ilike("unit_number", pattern),
+      trailerWorkOrdersAvailable(),
+    ]);
     const truckIds = ((t ?? []) as Array<{ id: string }>).map((x) => x.id);
-    query = query.or([`number.ilike.${pattern}`, `title.ilike.${pattern}`, ...(truckIds.length ? [`truck_id.in.(${truckIds.join(",")})`] : [])].join(","));
+    const trailerIds = trailersOk ? ((tr ?? []) as Array<{ id: string }>).map((x) => x.id) : [];
+    query = query.or([`number.ilike.${pattern}`, `title.ilike.${pattern}`,
+      ...(truckIds.length ? [`truck_id.in.(${truckIds.join(",")})`] : []),
+      ...(trailerIds.length ? [`trailer_id.in.(${trailerIds.join(",")})`] : [])].join(","));
   }
   const view = f.view || "open";
   if (f.status && f.status in { reported: 1, triaged: 1, scheduled: 1, in_progress: 1, awaiting_parts: 1, awaiting_inspection: 1, completed: 1, closed: 1, canceled: 1 }) query = query.eq("status", f.status);
@@ -139,6 +175,7 @@ export async function listWorkOrders(f: WorkOrderFilters) {
   if (f.urgency) query = query.eq("urgency", f.urgency);
   if (f.category) query = query.eq("category", f.category);
   if (f.truck) query = query.eq("truck_id", f.truck);
+  if (f.trailer && (await trailerWorkOrdersAvailable())) query = query.eq("trailer_id", f.trailer);
   if (f.assigned === "none") query = query.is("assigned_to", null);
   else if (f.assigned) query = query.eq("assigned_to", f.assigned);
   const from = (f.page - 1) * PAGE_SIZE;
@@ -179,12 +216,17 @@ export async function getWorkOrder(id: string, opts: { costs: boolean }) {
   }
   if (!data) return null;
   const wo = toWorkOrder(data as Record<string, unknown>);
-  const [events, costs, truck, driver, schedule] = await Promise.all([
+  const [events, costs, truck, trailer, driver, schedule] = await Promise.all([
     supabase.from("work_order_events").select("id, kind, from_status, to_status, note, details, actor_id, created_at").eq("work_order_id", id).order("created_at"),
     opts.costs
       ? supabase.from("work_order_costs").select("id, kind, description, part_number, vendor_name, quantity, unit_cost_cents, created_at").eq("work_order_id", id).order("created_at")
       : Promise.resolve({ data: null, error: null }),
-    supabase.from("trucks").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date").eq("id", wo.truck_id).maybeSingle(),
+    wo.truck_id
+      ? supabase.from("trucks").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date").eq("id", wo.truck_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    wo.trailer_id
+      ? supabase.from("trailers").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, default_truck_id").eq("id", wo.trailer_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     wo.driver_id ? supabase.from("drivers").select("id, name").eq("id", wo.driver_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     wo.schedule_id ? supabase.from("maintenance_schedules").select("id, name").eq("id", wo.schedule_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
@@ -195,6 +237,7 @@ export async function getWorkOrder(id: string, opts: { costs: boolean }) {
     events: (events.data ?? []) as WoEvent[],
     costs: costs.data === null ? null : ((costs.data ?? []) as Array<Record<string, unknown>>).map((c) => ({ ...c, quantity: Number(c.quantity), unit_cost_cents: Number(c.unit_cost_cents) }) as WoCost),
     truck: (truck.data ?? null) as TruckOption | null,
+    trailer: (trailer.data ?? null) as TrailerOption | null,
     driver: (driver.data ?? null) as { id: string; name: string } | null,
     schedule: (schedule.data ?? null) as { id: string; name: string } | null,
   };

@@ -58,6 +58,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   const note = (feature: string, n: number) => { if (n > 0) { result.added += n; result.features.push(feature); } };
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   note("maintenance", await maintenance(db, today, trucks));
+  note("trailer maintenance", await trailerMaintenance(db, today));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
@@ -225,6 +226,25 @@ async function maintenance(db: Db, today: string, trucks: Array<{ id: string; un
     n++;
   }
   return n;
+}
+
+/**
+ * One trailer shop visit (annual inspection in three days), so the trailer side of Maintenance and its dispatch rule
+ * have data. Not safety-critical: no demo trailer is taken out of service. Skipped until trailer work orders exist
+ * (20261115000100) and once any trailer work order exists.
+ */
+async function trailerMaintenance(db: Db, today: string): Promise<number> {
+  const { data: existing, error } = await db.from("work_orders").select("id").not("trailer_id", "is", null).limit(1);
+  if (error && (missing(error) || error.code === "42703")) return 0;
+  if (error) throw new Error(`Demo samples (trailer work orders): ${error.message}`);
+  if ((existing ?? []).length) return 0;
+  const trailers = ((await db.from("trailers").select("id, unit_number").eq("active", true).eq("service_status", "in_service").order("unit_number").limit(1)).data ?? []) as Array<{ id: string }>;
+  if (!trailers.length) return 0;
+  await must("trailer work order", db.rpc("maintenance_create_work_order", { p: {
+    submission_key: randomUUID(), trailer_id: trailers[0].id, title: "Annual trailer inspection", category: "inspection",
+    urgency: "normal", safety_critical: false, scheduled_for: addDays(today, 3), description: "Brakes, lights, tires and landing gear.",
+  } }));
+  return 1;
 }
 
 /** Registrations (one expiring soon), an inspection due soon and an expired trailer registration. References are placeholders. */

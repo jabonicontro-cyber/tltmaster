@@ -12,6 +12,7 @@ import { REPORT_KIND_LABELS } from "@/lib/driver/rules";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getFieldReport } from "@/server/data/field-reports";
+import { trailerWorkOrdersAvailable } from "@/server/data/maintenance";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -24,6 +25,8 @@ export default async function FieldReportPage({ params, searchParams }: { params
   const access = await requirePagePermission("field_reports.view");
   const { id } = await params;
   const r = await getFieldReport(id);
+  // A trailer report becomes a trailer work order once trailer work orders are installed (20261115000100).
+  const trailerWorkOrders = Boolean(r?.trailer_id && r.equipment !== "truck" && can(access, "maintenance.manage") && (await trailerWorkOrdersAvailable()));
   if (!r) notFound();
   const [people, { timezone }] = await Promise.all([getUserNames(), businessToday()]);
   const who = (u: string | null) => people[u ?? ""] ?? "Someone";
@@ -59,6 +62,7 @@ export default async function FieldReportPage({ params, searchParams }: { params
             {can(access, "orders.view") && <ButtonLink href={`/orders/${r.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open the order</ButtonLink>}
             {can(access, "fleet.view") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/fleet/trucks/${r.truck_id}`} variant="secondary" icon={<Truck className="size-4" />}>Truck record and service status</ButtonLink>}
             {can(access, "maintenance.manage") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/maintenance/work-orders/new?truck=${r.truck_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
+            {trailerWorkOrders && <ButtonLink href={`/maintenance/work-orders/new?trailer=${r.trailer_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
             {can(access, "fleet.view") && r.trailer_id && r.equipment !== "truck" && <ButtonLink href={`/fleet/trailers/${r.trailer_id}`} variant="secondary" icon={<Truck className="size-4" />}>Trailer record and service status</ButtonLink>}
           </CardBody>
         </Card>

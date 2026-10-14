@@ -24,7 +24,7 @@ const EVENT_LABELS: Record<string, string> = {
   created: "Created", updated: "Details edited", status: "Status changed", assigned: "Mechanic assigned",
   scheduled: "Scheduled", rescheduled: "Rescheduled", unscheduled: "Schedule removed", canceled: "Canceled",
   inspection_started: "Inspection started", inspection_failed: "Inspection failed", cleared: "Cleared for service",
-  restricted: "Truck restricted", returned_to_service: "Truck returned to service",
+  restricted: "Unit restricted", returned_to_service: "Unit returned to service",
 };
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -33,7 +33,11 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
   const canCosts = can(access, "maintenance.costs");
   const detail = await getWorkOrder(id, { costs: canCosts });
   if (!detail) notFound();
-  const { wo, events, costs, truck, driver, schedule } = detail;
+  const { wo, events, costs, truck, trailer, driver, schedule } = detail;
+  // A work order belongs to one truck or one trailer.
+  const unit = trailer ?? truck;
+  const unitWord = trailer ? "Trailer" : "Truck";
+  const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
   const [people, { timezone }] = await Promise.all([getUserNames(), businessToday()]);
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const manage = can(access, "maintenance.manage");
@@ -46,7 +50,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Work orders", href: "/maintenance/work-orders" }, { label: wo.number }]}
         title={`${wo.number} · ${wo.title}`}
-        description={`Truck ${truck?.unit_number ?? "—"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
+        description={`${unitWord} ${unit?.unit_number ?? "—"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
         badges={<>
           <WoStatusBadge status={wo.status} />
           <UrgencyBadge urgency={wo.urgency} />
@@ -58,8 +62,8 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
 
       {wo.safety_critical && !["completed", "closed", "canceled"].includes(wo.status) && (
         <div className="mb-5">
-          <Notice tone="warning" title="Truck restricted">
-            Truck {truck?.unit_number} is out of service and cannot be dispatched until someone authorized records a passed inspection.
+          <Notice tone="warning" title={`${unitWord} restricted`}>
+            {unitWord} {unit?.unit_number} is out of service and cannot be dispatched until someone authorized records a passed inspection.
           </Notice>
         </div>
       )}
@@ -69,7 +73,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
           {manage && wo.status !== "closed" && wo.status !== "canceled" && (
             <Card>
               <CardHeader title="Next step" />
-              <CardBody><StatusActions id={wo.id} status={wo.status} safetyCritical={wo.safety_critical} editSeq={wo.edit_seq} canClear={canClear} /></CardBody>
+              <CardBody><StatusActions id={wo.id} status={wo.status} safetyCritical={wo.safety_critical} editSeq={wo.edit_seq} canClear={canClear} unit={trailer ? "trailer" : "truck"} /></CardBody>
             </Card>
           )}
           {wo.status === "awaiting_inspection" && (
@@ -77,7 +81,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
               <CardHeader title="Inspection and clearance" description={wo.clearance_status === "in_progress" ? `Inspection started by ${who(wo.inspector_id)}.` : "The repair is done and waits for an inspector."} />
               <CardBody>
                 {canClear
-                  ? <ClearanceActions id={wo.id} clearance={wo.clearance_status === "in_progress" ? "in_progress" : "awaiting"} />
+                  ? <ClearanceActions id={wo.id} clearance={wo.clearance_status === "in_progress" ? "in_progress" : "awaiting"} unit={trailer ? "trailer" : "truck"} />
                   : <p className="text-sm text-muted">Only people allowed to clear vehicles for service (Maintenance → clear) can record the inspection.</p>}
               </CardBody>
             </Card>
@@ -150,11 +154,11 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
 
         <div className="space-y-5">
           <Card>
-            <CardHeader title="Truck" />
+            <CardHeader title={unitWord} />
             <CardBody className="space-y-2 text-sm">
-              <p><strong className="text-ink">{truck?.unit_number ?? "—"}</strong> · {truck?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}</p>
-              {truck?.out_of_service_reason && <p className="text-muted">{truck.out_of_service_reason}</p>}
-              {can(access, "fleet.view") && truck && <Link href={`/fleet/trucks/${truck.id}`} className="font-medium text-ink underline">Truck record</Link>}
+              <p><strong className="text-ink">{unit?.unit_number ?? "—"}</strong> · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}</p>
+              {unit?.out_of_service_reason && <p className="text-muted">{unit.out_of_service_reason}</p>}
+              {can(access, "fleet.view") && unitHref && <Link href={unitHref} className="font-medium text-ink underline">{unitWord} record</Link>}
             </CardBody>
           </Card>
           <Card>

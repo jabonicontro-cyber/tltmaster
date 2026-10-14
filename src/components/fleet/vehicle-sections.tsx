@@ -179,19 +179,22 @@ const WO_STATUS: Record<string, string> = {
   awaiting_inspection: "Awaiting inspection", completed: "Completed", closed: "Closed", canceled: "Canceled",
 };
 
-export function MaintenanceCard({ truckId, records, canSee, canCreate, timezone }: {
-  truckId: string;
+export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, canCreate, timezone }: {
+  kind?: "truck" | "trailer";
+  vehicleId: string;
   records: VehicleRecords;
   canSee: boolean;
   canCreate: boolean;
   timezone: string;
 }) {
+  // Preventive schedules and readings are truck records; a trailer shows its work orders.
+  const isTruck = kind === "truck";
   return (
     <Card>
       <CardHeader
         title="Maintenance"
-        description="Work orders, preventive schedules and readings from Maintenance."
-        actions={canCreate && records.workOrders.available ? <ButtonLink href={`/maintenance/work-orders/new?truck=${truckId}`} size="sm" variant="secondary" icon={<Wrench className="size-4" />}>New work order</ButtonLink> : undefined}
+        description={isTruck ? "Work orders, preventive schedules and readings from Maintenance." : "Work orders from Maintenance."}
+        actions={canCreate && records.workOrders.available ? <ButtonLink href={`/maintenance/work-orders/new?${kind}=${vehicleId}`} size="sm" variant="secondary" icon={<Wrench className="size-4" />}>New work order</ButtonLink> : undefined}
       />
       <CardBody className="space-y-5">
         {!canSee ? <p className="text-sm text-muted">Your role cannot see maintenance records.</p> : !records.workOrders.available ? <Unavailable what="Maintenance history" /> : (
@@ -211,11 +214,11 @@ export function MaintenanceCard({ truckId, records, canSee, canCreate, timezone 
                   ))}
                 </ul>
               )}
-              {records.workOrders.rows.length > 15 && <Link href={`/maintenance/work-orders?truck=${truckId}&view=all`} className="text-sm underline">All {records.workOrders.rows.length} work orders</Link>}
+              {records.workOrders.rows.length > 15 && <Link href={`/maintenance/work-orders?${kind}=${vehicleId}&view=all`} className="text-sm underline">All {records.workOrders.rows.length} work orders</Link>}
             </div>
-            <div>
+            {isTruck && <div>
               <p className="text-sm font-semibold">Preventive schedules</p>
-              {records.schedules.rows.length === 0 ? <p className="text-sm text-muted">None. <Link href={`/maintenance/preventive?truck=${truckId}`} className="underline">Add one in Maintenance</Link>.</p> : (
+              {records.schedules.rows.length === 0 ? <p className="text-sm text-muted">None. <Link href={`/maintenance/preventive?truck=${vehicleId}`} className="underline">Add one in Maintenance</Link>.</p> : (
                 <ul className="mt-1 space-y-1 text-sm">
                   {records.schedules.rows.map((p) => (
                     <li key={p.schedule_id} className="flex flex-wrap items-center gap-2">
@@ -227,8 +230,8 @@ export function MaintenanceCard({ truckId, records, canSee, canCreate, timezone 
                   ))}
                 </ul>
               )}
-            </div>
-            <div>
+            </div>}
+            {isTruck && <div>
               <p className="flex items-center gap-1.5 text-sm font-semibold"><Gauge className="size-4 text-muted" aria-hidden />Readings</p>
               {records.readings.rows.length === 0 ? <p className="text-sm text-muted">No odometer or engine-hour readings recorded. <Link href="/maintenance/preventive" className="underline">Record one</Link>.</p> : (
                 <ul className="mt-1 space-y-0.5 text-sm">
@@ -240,7 +243,7 @@ export function MaintenanceCard({ truckId, records, canSee, canCreate, timezone 
                   ))}
                 </ul>
               )}
-            </div>
+            </div>}
           </>
         )}
       </CardBody>

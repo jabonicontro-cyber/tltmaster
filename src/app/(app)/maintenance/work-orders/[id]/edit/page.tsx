@@ -15,7 +15,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const detail = await getWorkOrder(id, { costs: false });
   if (!detail) notFound();
-  const { wo, truck } = detail;
+  const { wo, truck, trailer } = detail;
   if (wo.status === "closed" || wo.status === "canceled") redirect(`/maintenance/work-orders/${id}`);
   const [drivers, assignees] = await Promise.all([listDriverOptions(), listAssignees()]);
   return (
@@ -23,7 +23,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: wo.number, href: `/maintenance/work-orders/${id}` }, { label: "Edit" }]}
         title={`Edit ${wo.number}`}
-        description={`Truck ${truck?.unit_number ?? "—"}`}
+        description={trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck?.unit_number ?? "—"}`}
       />
       <Card>
         <CardBody>
@@ -33,7 +33,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
             cancelHref={`/maintenance/work-orders/${id}`}
             options={{ trucks: [], drivers, assignees }}
             initial={{
-              truck_id: wo.truck_id, title: wo.title, description: wo.description, category: wo.category, urgency: wo.urgency,
+              truck_id: wo.truck_id ?? "", trailer_id: wo.trailer_id ?? "", title: wo.title, description: wo.description, category: wo.category, urgency: wo.urgency,
               safety_critical: wo.safety_critical, driver_id: wo.driver_id ?? "", assigned_to: wo.assigned_to ?? "",
               scheduled_for: wo.scheduled_for ?? "", due_on: wo.due_on ?? "", field_report_id: "",
               findings: wo.findings, labor_hours: s(wo.labor_hours), odometer_at_service: s(wo.odometer_at_service),
