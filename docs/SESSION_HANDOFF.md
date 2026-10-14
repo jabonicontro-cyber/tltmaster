@@ -22,12 +22,25 @@ project credentials. Read it together with:
 | `31da587` | Fleet overview: capped lists, status labels (page 10 349 px → 1 765 px) |
 | `a71eb9e` | Maintenance/tickets: neutral tiles, outlined row actions |
 
+**Afternoon (owner's requests 2026-10-14), same bundle `54f3f2c..e044947`:**
+
+| Area | What |
+| --- | --- |
+| **People** (B45, approved) | Employees → People; Add person sends a sign-in (ticked by default) with a role; every sign-in sent links or creates the record; Sign-in column; person page sends a sign-in or changes role/access; Settings → Users redirects to People → Sign-ins & roles. Migration `20261113000100_people` (backfill only) |
+| **Settings** | Four groups (Company, Operations, Access, System); My account moved to My profile (change-password link there) |
+| **Website** | Apple principles pass; generated-page tells removed (28 caps eyebrows, 5 arrows, near-black fills → navy tokens) |
+| **Design skills** | frontend-design, ui-ux-pro-max, ckw-design, impeccable (modified), taste-skill: reviewed, markdown only; provenance and overrides in `.claude/skills/TAVIRON-NOTES.md`. better-ui and variant could not be fetched |
+| **Fixes** | Toasts top centre below the header (covered page actions); approved Smart Dispatch card hides at once; Command Center reasons kept (two lines); `withReturn` keeps `#section`; Needs scheduling opens the chosen day (push was cancelled by a refresh) |
+| **Owner rule** | Send screenshots of every visible change (CLAUDE.md) |
+
+Checks for `e044947`: lint, typecheck, 684 unit/DB tests, full browser suite (140 passed; the 2 failures fixed and their
+specs plus every return-link spec re-run green), production build, gate spec. Risk tier: REVIEW.
+
 **Waiting for the owner:**
-1. Proposal `docs/proposals/2026-10-14-people-and-settings.md` (merge Users into Employees; Settings in four groups) —
-   three questions; nothing built until approved.
-2. `npx supabase db push` for `20261112000500_routing` (and the four earlier 2026-11-12 ones if not yet applied).
-3. AI: rerun `npm run ai:eval` (now test set v2) after adding OpenAI credits; paste only the evidence block.
-4. HERE key for road routing (docs/ROUTING.md §4).
+1. `npx supabase db push` for `20261112000500_routing` and `20261113000100_people`, then **Refresh demo data** in both demos.
+2. AI: rerun `npm run ai:eval` (test set v2) with the credits; paste only the evidence block.
+3. HERE key for road routing (docs/ROUTING.md §4).
+4. Website: the hero lost its "for haulers" label; say if you want it back as a sentence.
 
 ## 0. Current checkpoint (2026-10-13 evening: Preview release, then the authorized product backlog) — read first
 
