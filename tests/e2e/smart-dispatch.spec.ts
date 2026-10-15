@@ -82,10 +82,14 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   expect(before.rows[0].n).toBe(0);
 
   await c.getByRole("button", { name: "Approve and assign" }).click();
+  // Hours of service are not in Taviron: the dispatcher confirms them before anything is assigned.
+  const confirm = page.getByRole("dialog", { name: "Confirm hours of service" });
+  await expect(confirm).toContainText("Taviron has no ELD or driver-log data");
+  await confirm.getByRole("button", { name: "I checked — assign" }).click();
   await expectToast(page, new RegExp(`${f.orderNumber} load 1: assigned to truck`));
   await expect(c).toHaveCount(0);
   const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
-  expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal" }]);
+  expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
 });
 
 test("rejecting a proposal moves to the next option; reconsidering brings it back", async ({ page }) => {
@@ -116,6 +120,7 @@ test("a proposal that went stale is refused with an explanation instead of being
   // Meanwhile someone else assigns the load on the board.
   await asUser(USERS.office.email, (q) => q("select public.assign_load($1, $2, null, $3, 'Assigned elsewhere (e2e)', null)", [f.loadId, f.truckId, f.driverId]));
   await c.getByRole("button", { name: "Approve and assign" }).click();
+  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked — assign" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "This proposal is no longer valid" })).toBeVisible();
   const rows = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
   expect(rows.rows).toEqual([{ note: "Assigned elsewhere (e2e)" }]);

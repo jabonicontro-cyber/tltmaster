@@ -6,6 +6,8 @@ import { toast } from "sonner";
 import { approvePlanAssignments, type ApprovalOutcome } from "@/app/(app)/dispatch/plan/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { HOS_CONFIRMATION } from "@/lib/hos";
 import { PlanExplanation, type PlanAiState } from "@/components/dispatch/plan-explanation";
 import type { SmartLoad } from "@/lib/dispatch/smart";
 import type { LoadExplanation, Unavailable } from "@/lib/optimization/availability";
@@ -75,6 +77,8 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
   const [selected, setSelected] = useState<Set<string>>(() => new Set(result.plans[0]?.assignments.map((a) => a.loadId) ?? []));
   const [busy, setBusy] = useState(false);
   const [outcomes, setOutcomes] = useState<ApprovalOutcome[] | null>(null);
+  // Hours of service are not in Taviron: approving asks the dispatcher to confirm them (lib/hos).
+  const [confirming, setConfirming] = useState(false);
 
   if (!loads.length) {
     return (
@@ -116,11 +120,11 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
     return n;
   });
 
-  async function approve() {
+  async function approve(): Promise<string | void> {
     const items = plan.assignments.filter((a) => selected.has(a.loadId)).map((a) => ({ loadId: a.loadId, truckId: a.truckId, trailerId: a.trailerId, driverId: a.driverId }));
     if (!items.length) return;
     setBusy(true);
-    const r = await approvePlanAssignments({ date, planLabel: plan.label, items });
+    const r = await approvePlanAssignments({ date, planLabel: plan.label, items, hosConfirmed: true });
     setBusy(false);
     if (!r.ok) {
       toast.error(r.error);
@@ -165,9 +169,14 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-4 py-3">
           <h2 id="assign-title" className="text-base font-bold text-ink">Proposed assignments · {plan.label}</h2>
           {canEdit ? (
-            <Button onClick={approve} loading={busy} disabled={busy || !plan.assignments.some((a) => selected.has(a.loadId))}>
-              Approve {plan.assignments.filter((a) => selected.has(a.loadId)).length} selected
-            </Button>
+            <>
+              <Button onClick={() => setConfirming(true)} loading={busy} disabled={busy || !plan.assignments.some((a) => selected.has(a.loadId))}>
+                Approve {plan.assignments.filter((a) => selected.has(a.loadId)).length} selected
+              </Button>
+              <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
+                description={`Assign ${plan.assignments.filter((a) => selected.has(a.loadId)).length} selected load(s) from ${plan.label}. ${HOS_CONFIRMATION}`}
+                confirmLabel="I checked — approve" onConfirm={approve} />
+            </>
           ) : (
             <span className="text-sm text-muted">Viewing only — approving needs dispatch edit access.</span>
           )}

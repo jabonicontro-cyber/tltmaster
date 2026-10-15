@@ -7,6 +7,8 @@ import { Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { HOS_CONFIRMATION } from "@/lib/hos";
 import { approveRecommendation, reconsiderRecommendations, rejectRecommendation } from "@/app/(app)/dispatch/actions";
 import type { Candidate, LoadPlan } from "@/lib/dispatch/smart";
 import { HOS_NOTE } from "@/lib/dispatch/smart";
@@ -25,14 +27,16 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
   const [reason, setReason] = useState("");
   // Hidden as soon as the approval succeeds; the board's recompute (router.refresh) can take a few seconds.
   const [assigned, setAssigned] = useState(false);
+  // Hours of service are not in Taviron: approving asks the dispatcher to confirm them (lib/hos).
+  const [confirming, setConfirming] = useState(false);
   const chosen: Candidate | undefined = options[choice];
   const l = plan.load;
 
-  async function approve() {
+  async function approve(): Promise<string | void> {
     if (!chosen) return;
     setBusy("approve");
     setError(null);
-    const r = await approveRecommendation({ loadId: l.id, truckId: chosen.truckId, trailerId: chosen.trailerId ?? null, driverId: chosen.driverId, loadDate: l.load_date });
+    const r = await approveRecommendation({ loadId: l.id, truckId: chosen.truckId, trailerId: chosen.trailerId ?? null, driverId: chosen.driverId, loadDate: l.load_date, hosConfirmed: true });
     setBusy(null);
     if (!r.ok) {
       setError(r.error);
@@ -98,8 +102,13 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
                 ) : (
                   <>
                     <Button size="sm" variant="ghost" onClick={() => setRejecting(true)}>Reject…</Button>
-                    <Button size="sm" loading={busy === "approve"} onClick={approve}>Approve and assign</Button>
+                    <Button size="sm" loading={busy === "approve"} onClick={() => setConfirming(true)}>Approve and assign</Button>
                   </>
+                )}
+                {chosen && (
+                  <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
+                    description={`Assign ${l.order_number} load ${l.load_number} to ${chosen.driverLabel} with truck ${chosen.truckLabel}. ${HOS_CONFIRMATION}`}
+                    confirmLabel="I checked — assign" onConfirm={approve} />
                 )}
               </div>
             ) : (

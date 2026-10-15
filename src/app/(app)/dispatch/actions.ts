@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { OPERATIONAL_DATE_MESSAGE, isIsoDate, isOperationalDate } from "@/lib/dates";
+import { HOS_REQUIRED_MESSAGE, approvalNote, hosApprovalAllowed, hosProvider } from "@/lib/hos";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
@@ -167,7 +168,7 @@ export async function scheduleOrderFromQueue(input: z.input<typeof scheduleInput
   });
 }
 
-const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), trailerId: z.uuid().nullish(), loadDate: z.string().refine(isIsoDate) });
+const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uuid(), trailerId: z.uuid().nullish(), loadDate: z.string().refine(isIsoDate), hosConfirmed: z.boolean().default(false) });
 
 /**
  * Approve a Smart Dispatch proposal. Re-checks the pair against current data,
@@ -181,8 +182,10 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
     await assertPermission("dispatch.edit");
     const parsed = pairInput.safeParse(input);
     if (!parsed.success) return fail("Invalid proposal.");
-    const { loadId, truckId, driverId, loadDate } = parsed.data;
+    const { loadId, truckId, driverId, loadDate, hosConfirmed } = parsed.data;
     const trailerId = parsed.data.trailerId ?? null;
+    // Hours of service are not in Taviron (lib/hos): the dispatcher confirms them, or nothing is assigned.
+    if (!hosApprovalAllowed(hosProvider(), [driverId], loadDate, hosConfirmed)) return fail(HOS_REQUIRED_MESSAGE);
     // A tractor's proposal carries its trailer: checked with the trailer rules (the same as Plan the day).
     const check = trailerId
       ? checkAssignment(await getOptimizationInput(loadDate), loadId, truckId, trailerId, driverId)
@@ -193,7 +196,7 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
     }
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("assign_load", {
-      p_load_id: loadId, p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_note: "Approved Smart Dispatch proposal", p_replace_assignment_id: null,
+      p_load_id: loadId, p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_note: approvalNote("Approved Smart Dispatch proposal", hosConfirmed), p_replace_assignment_id: null,
     });
     revalidateBoard();
     if (error) return fail(`Not assigned: ${dbErrorMessage(error)} Review the refreshed proposals.`);

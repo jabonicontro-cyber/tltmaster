@@ -11,6 +11,7 @@ import { capabilityGate, provider, sessionLedger } from "@/server/ai/gates";
 import { planExplanationRequest } from "@/server/ai/plan-explanation";
 import { runCapability } from "@/server/ai/run";
 import { AiError } from "@/server/ai/types";
+import { HOS_REQUIRED_MESSAGE, approvalNote, hosApprovalAllowed, hosProvider } from "@/lib/hos";
 import { assertPermission } from "@/server/auth";
 import { getOptimizationInput, getOptimizationPlan } from "@/server/data/optimization";
 import { businessToday } from "@/server/data/settings";
@@ -21,6 +22,7 @@ const approveInput = z.object({
   date: z.string().refine(isIsoDate),
   planLabel: z.string().trim().min(1).max(60),
   items: z.array(z.object({ loadId: z.uuid(), truckId: z.uuid(), trailerId: z.uuid().nullable(), driverId: z.uuid() })).min(1).max(100),
+  hosConfirmed: z.boolean().default(false),
 });
 
 export interface ApprovalOutcome {
@@ -42,7 +44,9 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     await assertPermission("dispatch.edit");
     const parsed = approveInput.safeParse(input);
     if (!parsed.success) return fail("Invalid plan selection.");
-    const { date, planLabel, items } = parsed.data;
+    const { date, planLabel, items, hosConfirmed } = parsed.data;
+    // Hours of service are not in Taviron (lib/hos): the dispatcher confirms them, or nothing is assigned.
+    if (!hosApprovalAllowed(hosProvider(), items.map((i) => i.driverId), date, hosConfirmed)) return fail(HOS_REQUIRED_MESSAGE);
     const supabase = await createClient();
     const outcomes: ApprovalOutcome[] = [];
     for (const item of items) {
@@ -53,7 +57,7 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
       }
       const { data, error } = await supabase.rpc("assign_load", {
         p_load_id: item.loadId, p_truck_id: item.truckId, p_trailer_id: item.trailerId, p_driver_id: item.driverId,
-        p_note: `Approved optimization plan (${planLabel})`, p_replace_assignment_id: null,
+        p_note: approvalNote(`Approved optimization plan (${planLabel})`, hosConfirmed), p_replace_assignment_id: null,
       });
       outcomes.push(error
         ? { loadId: item.loadId, assigned: false, message: `Not assigned: ${dbErrorMessage(error)}`, warnings: [] }

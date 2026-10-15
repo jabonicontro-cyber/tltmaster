@@ -60,6 +60,7 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   const label = (await first.locator("p").first().textContent())!.split(" · ")[0];
   for (let i = 1; i < now; i++) await assignments.nth(i).getByRole("checkbox").uncheck();
   await page.getByRole("button", { name: "Approve 1 selected" }).click();
+  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked — approve" }).click();
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: "1 assignment(s) approved." })).toBeVisible();
   await page.reload();
   await expect(page.getByText(label, { exact: false })).toHaveCount(0); // no longer unassigned
