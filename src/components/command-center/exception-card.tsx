@@ -23,8 +23,9 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
   const age = ageLabel(item.since, now);
   const reasons = exceptionReasons(item);
   return (
-    <li className="group grid gap-x-4 gap-y-2 px-4 py-3 hover:bg-surface/50 sm:grid-cols-[1fr_auto] sm:items-center sm:px-5" aria-label={title}>
-      <div className="flex min-w-0 gap-3">
+    <li className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-surface/50 sm:px-5" aria-label={title}>
+      {/* The text keeps at least 18rem; the actions move below it when the card is narrow (half-width cards, phones). */}
+      <div className="flex min-w-0 flex-[1_1_18rem] gap-3">
         <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", dotTone[item.priority] ?? dotTone[3])} aria-hidden />
         <div className="min-w-0">
           <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -48,7 +49,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
           {hiddenUntil && <p className="mt-0.5 text-xs font-semibold text-muted">Hidden from your view until {formatDateTime(hiddenUntil, timezone)} — still open.</p>}
         </div>
       </div>
-      <div className="flex flex-wrap items-center gap-1.5 pl-5 sm:justify-end sm:pl-0">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
         {item.priority > 1 && <HideControl itemKey={item.exception_key} hiddenUntil={hiddenUntil} />}
         {can.assign && <AssignControl itemKey={item.exception_key} kind={item.kind} title={title} assignedTo={item.assigned_to} people={people} />}
         <ButtonLink href={withReturn(action.href, back)} size="sm" variant="secondary" icon={<ArrowRight className="size-4" />}>{action.label}</ButtonLink>
