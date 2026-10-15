@@ -7,6 +7,21 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0000. Evening round 2026-10-14 — trailer work orders (B48)
+
+| Commit | What | Migration (local / pushed / hosted) |
+| --- | --- | --- |
+| `74d7e75` | **Trailer work orders**: a work order belongs to one truck or one trailer; a safety-critical trailer defect takes it out of service until cleared; trailer shop visits block dispatch on their day (DB codes + Plan the day + Smart Dispatch); trailer named across Maintenance, alerts, My Day; trailer profile shows its work orders; trailer driver reports offer Create a work order; demo Refresh adds one trailer inspection | `20261115000100`: applied locally, tested rollback, **not applied hosted** |
+| `4ada09f` | E2E fixes: navigation tests search for the seed customer (leftover test customers pushed it off page 1); Reconsider allows the same recompute time as Reject; board speed recorded as master plan §8 P8 (measured: not caused by this round) | — |
+
+Checks: lint, typecheck, vitest 700/700, full browser suite 143 passed / 3 failed / 9 skipped (all three fixed above and
+re-run green), build, gate 8 passed / 1 skipped. **Hosted-state check:** with `20261115000100` rolled back, Maintenance,
+Fleet, Dispatch, Plan the day, driver portal and demo parity specs pass (18), except the new trailer spec, which correctly
+finds no Equipment choice; demo seed runs and skips the trailer sample. Risk tier **REVIEW**.
+
+**Owner step:** runbook §6 (`docs/runbooks/2026-10-14-hosted-db.md`): `db push` for `20261115000100`, the two-line
+verification SQL, then Refresh demo data.
+
 ## 000. Afternoon round 2026-10-14 (owner away; "resume full implementation")
 
 | Commit | What | Migration (local / pushed / hosted) |
