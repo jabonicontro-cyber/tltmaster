@@ -7,6 +7,19 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000. Round 2026-10-15 — master directive: companion app, HOS confirmation, board speed
+
+| Commit | What | Migration |
+| --- | --- | --- |
+| `2d30c93` + next | **Companion app (B49)**: installable driver web app on the same backend (manifest, icons, service worker with offline page only, phone tabs for driver-only logins, Updated/stale/offline line on My Day, parked-only notice, dispatch updates with Got it / Got it for all). docs/COMPANION_APP.md | none |
+| `bfa2b25` | **Hours of service in approvals (B50)**: Smart Dispatch and Plan the day approvals need the dispatcher's explicit confirmation (dialog; server refuses without it; note records "confirmed by the dispatcher (not verified by Taviron)"); `src/lib/hos` provider interface, source "none" | none |
+| `0da3fce` | **Dispatch board 5–8 s → ~1.5 s (P8)**: page 10.7 MB → 2.2 MB (exclusions grouped by reason), Smart Dispatch lookups indexed (2.1 → 1.5 s at 143 loads, same rules), e2e setup cancels earlier runs' leftover fixture loads | none |
+| next | Master plan: B1–B3, B6 reconciled against code, tests and CI (GitHub Actions CI runs and passes on both branches) | — |
+
+Not built (decisions or credentials needed): invoice issuance/numbering (§9 Q10), driver pay (Q16), cost data (Q17), a
+verified HOS source (Q20), QuickBooks (credentials + authorization), push notifications and native store apps
+(COMPANION_APP §7), live HERE routing (key), AI evaluation (`npm run ai:eval` on the owner's computer).
+
 ## 0000. Evening round 2026-10-14 — trailer work orders (B48)
 
 | Commit | What | Migration (local / pushed / hosted) |
