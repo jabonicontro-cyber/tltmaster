@@ -24,7 +24,10 @@ export function DispatchUpdates({ items, timeZone }: { items: Array<{ id: string
   });
   return (
     <section aria-label="Updates from dispatch" className="space-y-2">
-      <h2 className="text-lg font-bold">Updates from dispatch</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-bold">Updates from dispatch</h2>
+        {items.length > 1 && <Button size="sm" variant="ghost" className="min-h-11" disabled={pending} onClick={() => dismiss(items.map((n) => n.id))}>Got it for all</Button>}
+      </div>
       <ul className="space-y-2">
         {items.map((n) => (
           <li key={n.id} className="flex items-start gap-3 rounded-md bg-card px-4 py-3 text-sm ring-1 ring-line">
