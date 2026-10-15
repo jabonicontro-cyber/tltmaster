@@ -1,6 +1,6 @@
 # Taviron companion app
 
-Tracked separately from the main platform (master plan §12 row B49). Last updated 2026-10-15.
+Tracked separately from the main platform (master plan §12 row B49). Last updated 2026-10-15 (site directions status added).
 
 ## 1. What existed before
 
@@ -33,6 +33,7 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 | Agreed item | State in the companion app |
 | --- | --- |
 | Assignments, schedule, load instructions | Working (My Day: today, earlier, later; instructions, directions, site contact) |
+| Whether the site's directions were checked (B51) | Working once `20261115000200` is applied: "Not checked by the office yet" / "Last checked by the office …" under the directions; unverified safety or access directions, and overdue ones, show a red line on the load ("Confirm them with dispatch before relying on them"). The phone never shows who checked them |
 | Dispatch updates (new load, changed date/time) | Working: in-app notices on My Day with **Got it** (20261114000500 triggers; Communications notifications) |
 | Acknowledgments | **Got it** marks the notice read on that account. It is *not* proof the driver read or understood it, and the screen says dispatch still confirms what matters |
 | Photos and digital tickets | Working (existing ticket form with photos; paper tickets supported) |
