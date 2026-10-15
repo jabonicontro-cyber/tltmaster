@@ -5,6 +5,10 @@ import { DesktopSidebar } from "./desktop-sidebar";
 import { ListViewRecorder } from "@/components/nav/nav-memory";
 import { UnsavedChangesGuard } from "@/components/nav/unsaved-guard";
 import { MobileNav } from "./mobile-nav";
+import { cn } from "@/lib/cn";
+import { DriverTabBar } from "@/components/companion/driver-tab-bar";
+import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
+import { isDriverOnly } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
@@ -29,10 +33,13 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
   const logoUrl = branding?.logoUrl ?? "";
   // Navigation only (pages still check real permissions): no My Day entry for people who do not drive.
   const navPermissions = hideMyDay ? access.permissions.filter((p) => p !== "driver.portal") : access.permissions;
+  // Companion app (docs/COMPANION_APP.md): a driver-only login gets bottom tabs on a phone.
+  const driverOnly = isDriverOnly(navPermissions);
   return (
     <div className="app-root min-h-dvh lg:pl-[4.5rem] lg:data-[sidebar=pinned]:pl-64" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
       <UnsavedChangesGuard />
+      <ServiceWorkerRegistration />
       <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
 
       {access.isDemo ? <DemoWelcome initiallyOpen={welcome} companyName={access.companyName} /> : null}
@@ -58,9 +65,10 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
         />
       </header>
 
-      <main id="main" tabIndex={-1} className="outline-none mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main id="main" tabIndex={-1} className={cn("outline-none mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8", driverOnly && "pb-24 md:pb-6")}>
         {children}
       </main>
+      {driverOnly && <DriverTabBar permissions={navPermissions} />}
     </div>
   );
 }

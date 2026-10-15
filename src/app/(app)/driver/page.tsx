@@ -16,9 +16,14 @@ import { formatTime } from "@/lib/orders/schedule";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { can } from "@/lib/permissions";
-import { loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
+import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
+import { DispatchUpdates } from "@/components/companion/dispatch-updates";
+import { Freshness } from "@/components/companion/freshness";
 
 export const metadata = { title: "My Day" };
+
+/** The moment this page's data was read (server time). */
+const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
@@ -115,7 +120,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const shop = await loadMaintenanceNotices();
+  const [shop, updates] = await Promise.all([loadMaintenanceNotices(), loadDispatchUpdates()]);
+  // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
+  const renderedAt = readTime();
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -124,7 +131,10 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         <h1 className="text-2xl font-black">My Day</h1>
         <p className="text-muted">{access.isDemo && shown ? shown : h.driver.name} · {formatDate(h.today)}</p>
         <Link href="/time-off" className="mt-1 inline-block text-sm font-semibold underline">Request time off</Link>
+        <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
+        <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
       </div>
+      <DispatchUpdates items={updates} timeZone={h.timezone} />
       {sp.sent && (
         <p role="status" className="rounded-md bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
       )}

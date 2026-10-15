@@ -83,3 +83,28 @@ export async function loadMaintenanceNotices(): Promise<MaintenanceNotice[]> {
   if (error || !Array.isArray(data)) return [];
   return data as MaintenanceNotice[];
 }
+
+export interface DispatchUpdate { id: string; title: string; created_at: string }
+
+const DISPATCH_EVENTS = ["dispatch.assignment_new", "dispatch.assignment_changed"];
+
+/**
+ * Unread notices from dispatch about the driver's own loads (new load, date or time changed; 20261114000500): the
+ * driver's own in-app notifications whose alert is one of those types (row-level security on both), last 7 days,
+ * newest first. Empty when Communications is not installed.
+ */
+export async function loadDispatchUpdates(): Promise<DispatchUpdate[]> {
+  const supabase = await createClient();
+  const since = new Date(Date.now() - 7 * 86400_000).toISOString();
+  const { data, error } = await supabase.from("comm_notifications").select("id, title, created_at, source_id")
+    .eq("category", "alert").eq("state", "visible").is("read_at", null).gte("created_at", since)
+    .order("created_at", { ascending: false }).limit(50);
+  if (error || !data?.length) return [];
+  const rows = data as Array<DispatchUpdate & { source_id: string | null }>;
+  const sources = [...new Set(rows.map((r) => r.source_id).filter((x): x is string => Boolean(x)))];
+  if (!sources.length) return [];
+  const alerts = await supabase.from("alerts").select("id").in("id", sources).in("event_type", DISPATCH_EVENTS);
+  if (alerts.error) return [];
+  const ours = new Set(((alerts.data ?? []) as Array<{ id: string }>).map((a) => a.id));
+  return rows.filter((r) => r.source_id && ours.has(r.source_id)).slice(0, 5).map(({ id, title, created_at }) => ({ id, title, created_at }));
+}

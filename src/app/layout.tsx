@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   title: { default: PRODUCT_NAME, template: `%s · ${PRODUCT_NAME}` },
   description: "Operations management for hauling companies.",
   robots: { index: false, follow: false, nocache: true },
+  // Companion app (docs/COMPANION_APP.md): installable from the phone's browser; the manifest is src/app/manifest.ts.
+  appleWebApp: { capable: true, title: PRODUCT_NAME, statusBarStyle: "default" },
+  icons: { apple: "/app-icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

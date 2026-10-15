@@ -5,7 +5,9 @@ import { isPublicSiteRequest } from "@/lib/site/paths";
 import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnabled, revalidateGrant, revalidateSeconds, siteGate } from "@/server/site-access";
 
 // "/api/cron": scheduled jobs authenticate with CRON_SECRET, not a session.
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron"];
+// The companion app's manifest, service worker and offline page hold no company data; browsers fetch the first two
+// without cookies (docs/COMPANION_APP.md).
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline"];
 
 const isHttps = (request: NextRequest) =>
   request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";

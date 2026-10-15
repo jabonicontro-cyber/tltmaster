@@ -72,6 +72,12 @@ test("without early access nothing is reachable except the public website, the g
   expect((await request.get("/early-access")).status()).toBe(200);
   const confirm = await request.get("/auth/confirm?token_hash=invalid&type=email", { maxRedirects: 0 });
   expect(confirm.headers().location ?? "").not.toMatch(/early-access/);
+  // The companion app's manifest, service worker and offline page install without access; none carries company data.
+  const manifest = await request.get("/manifest.webmanifest", { maxRedirects: 0 });
+  expect(manifest.status()).toBe(200);
+  expect(await manifest.text()).not.toMatch(/Top Line|company_id/);
+  expect((await request.get("/sw.js", { maxRedirects: 0 })).status()).toBe(200);
+  expect((await request.get("/offline", { maxRedirects: 0 })).status()).toBe(200);
   // A forged cookie does not help.
   const forged = await request.get("/login", { headers: { accept: "text/html", cookie: "taviron-access=v1.eyJnIjoiMTExMTExMTEtMTExMS00MTExLTgxMTEtMTExMTExMTExMTExIiwieCI6OTk5OTk5OTk5OSwiYyI6OTk5OTk5OTk5OX0.AAAA" }, maxRedirects: 0 });
   expect(forged.status()).toBe(307);

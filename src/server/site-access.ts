@@ -62,9 +62,10 @@ export function publicSiteEnabled(): boolean {
 
 /**
  * Paths reachable without early access: the gate itself, Supabase Auth email links (one-time tokens) and the
- * scheduled jobs (each checks CRON_SECRET itself and refuses everything without it).
+ * scheduled jobs (each checks CRON_SECRET itself and refuses everything without it), and the companion app's manifest,
+ * service worker and offline page (no company data; browsers fetch the manifest without cookies).
  */
-const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron"];
+const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }
