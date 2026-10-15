@@ -2,7 +2,7 @@ import "server-only";
 import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
 import { getTrailerInput } from "./trailer-input";
 import { addDays } from "@/lib/dates";
-import { recommend, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { recommend, toBoardPlan, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
@@ -140,5 +140,6 @@ export async function getSmartDispatchPlan(from: string, days: number) {
   // the driver's combination licence).
   const full: OptimizationInput = { ...smart, ...trailers, revenueCents: {} };
   const input: SmartInput = { ...smart, pickTrailer: (truck, load, driver, busy) => pickTrailer(full, load, truck, driver, busy) };
-  return { from, to, plans: recommend(input) };
+  // The browser gets exclusions grouped by reason, not one row per truck and driver per load (10.7 MB → see P8).
+  return { from, to, plans: recommend(input).map((p) => toBoardPlan(p)) };
 }

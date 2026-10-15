@@ -25,6 +25,20 @@ export default async function globalSetup() {
       "select private.create_company($1, $2) where not exists (select 1 from public.companies where slug = $2)",
       [OTHER_COMPANY.name, OTHER_COMPANY.slug],
     );
+    // Test isolation (master plan §8 P8): loads left unassigned by earlier runs' fixtures (marked "e2e" or a "(test)"
+    // site) are canceled, so Smart Dispatch on the board computes this run's loads instead of an ever-growing backlog
+    // (190 loads after a day of runs made every board refresh take over 10 s). Only fixture orders, only unassigned
+    // planned loads, only rows older than 10 minutes; seed and demo data are untouched.
+    const swept = await db.query(
+      `update public.order_loads l set status = 'canceled', canceled_at = now(), cancel_reason = 'Leftover from an earlier e2e run'
+         from public.orders o
+        where o.id = l.order_id and o.company_id = '00000000-0000-4000-8000-000000000001' and l.status = 'planned'
+          and (o.project_name ilike '%e2e%' or o.site_line1 like '%(test)%')
+          and l.created_at < now() - interval '10 minutes'
+          and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')
+          and not exists (select 1 from public.delivery_tickets t where t.load_id = l.id)`,
+    );
+    if (swept.rowCount) console.log(`e2e setup: canceled ${swept.rowCount} leftover fixture loads`);
   } finally {
     await db.end();
   }

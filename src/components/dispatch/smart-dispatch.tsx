@@ -10,14 +10,28 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { HOS_CONFIRMATION } from "@/lib/hos";
 import { approveRecommendation, reconsiderRecommendations, rejectRecommendation } from "@/app/(app)/dispatch/actions";
-import type { Candidate, LoadPlan } from "@/lib/dispatch/smart";
+import type { BoardPlan, Candidate, ExclusionGroup } from "@/lib/dispatch/smart";
 import { HOS_NOTE } from "@/lib/dispatch/smart";
 import { formatDate } from "@/lib/dates";
 import { withReturn } from "@/lib/safe-redirect";
 
 const time = (iso: string, tz: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(new Date(iso));
 
-function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: boolean; timezone: string; back: string }) {
+/** One line per reason: how many trucks or drivers it rules out, with a few of them named. */
+function ExclusionList({ groups, className }: { groups: ExclusionGroup[]; className?: string }) {
+  return (
+    <ul className={className}>
+      {groups.map((g) => (
+        <li key={`${g.kind}:${g.reason}`}>
+          <span className="font-medium text-ink">{g.count} {g.kind === "truck" ? (g.count === 1 ? "truck" : "trucks") : (g.count === 1 ? "driver" : "drivers")}:</span> {g.reason}{" "}
+          <span className="text-xs">({g.kind === "truck" ? "truck " : ""}{g.examples.join(", ")}{g.count > g.examples.length ? `, and ${g.count - g.examples.length} more` : ""})</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string }) {
   const router = useRouter();
   const options = plan.proposal ? [plan.proposal, ...plan.alternatives] : [];
   const [choice, setChoice] = useState(0);
@@ -156,13 +170,10 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
                 <ul className="list-disc pl-5 text-muted">{plan.blocked.options.map((o) => <li key={o}>{o}</li>)}</ul>
               </div>
             ) : null}
-            {plan.excludedTrucks.length + plan.excludedDrivers.length > 0 && (
+            {plan.excluded.groups.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-ink">Why each truck and driver was ruled out</p>
-                <ul className="mt-0.5 space-y-0.5 text-muted">
-                  {plan.excludedTrucks.map((t) => <li key={t.id}><span className="font-medium text-ink">Truck {t.label}:</span> {t.reasons.join(" ")}</li>)}
-                  {plan.excludedDrivers.map((d) => <li key={d.id}><span className="font-medium text-ink">{d.label}:</span> {d.reasons.join(" ")}</li>)}
-                </ul>
+                <p className="text-xs font-semibold text-ink">Why trucks and drivers were ruled out</p>
+                <ExclusionList groups={plan.excluded.groups} className="mt-0.5 space-y-0.5 text-muted" />
               </div>
             )}
           </div>
@@ -176,13 +187,10 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
           <button type="button" className="font-semibold underline" onClick={reconsider} disabled={busy === "reconsider"}>Reconsider</button>
         </p>
       ) : null}
-      {plan.proposal && plan.excludedTrucks.length + plan.excludedDrivers.length > 0 ? (
+      {plan.proposal && plan.excluded.trucks + plan.excluded.drivers > 0 ? (
         <details className="mt-1.5 text-sm">
-          <summary className="cursor-pointer text-xs text-muted hover:text-ink">Why not the others ({plan.excludedTrucks.length} trucks, {plan.excludedDrivers.length} drivers)</summary>
-          <ul className="mt-1 space-y-0.5 pl-4 text-muted">
-            {plan.excludedTrucks.map((t) => <li key={t.id}><span className="font-medium text-ink">Truck {t.label}:</span> {t.reasons.join(" ")}</li>)}
-            {plan.excludedDrivers.map((d) => <li key={d.id}><span className="font-medium text-ink">{d.label}:</span> {d.reasons.join(" ")}</li>)}
-          </ul>
+          <summary className="cursor-pointer text-xs text-muted hover:text-ink">Why not the others ({plan.excluded.trucks} trucks, {plan.excluded.drivers} drivers)</summary>
+          <ExclusionList groups={plan.excluded.groups} className="mt-1 space-y-0.5 pl-4 text-muted" />
         </details>
       ) : null}
     </li>
@@ -194,7 +202,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: LoadPlan; canEdit: 
  * the next few days, most urgent first. Proposals are suggestions only; each
  * one is assigned only when a dispatcher approves it.
  */
-export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back }: { plans: LoadPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string }) {
+export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string }) {
   const feasible = plans.filter((p) => p.proposal).length;
   // The most urgent few first; the rest one click away, so the board below stays reachable.
   const [all, setAll] = useState(false);

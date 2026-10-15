@@ -228,24 +228,71 @@ interface Reservation {
   trailerId?: string | null;
 }
 
+/**
+ * Lookups by truck and driver, built once per input (P8: scanning every list for every truck and driver of every load
+ * was the board's main cost with large fleets). Same data and rules as the plain filters it replaces.
+ */
+interface InputIndex {
+  shopByTruck: Map<string, NonNullable<SmartInput["shopVisits"]>>;
+  reportsByTruck: Map<string, SmartInput["truckReports"]>;
+  docsByTruck: Map<string, NonNullable<SmartInput["documentIssues"]>>;
+  bookingsByTruck: Map<string, SmartBooking[]>;
+  bookingsByDriver: Map<string, SmartBooking[]>;
+  timeOffByDriver: Map<string, SmartTimeOff[]>;
+  onLeave: Set<string>;
+  trucksById: Map<string, SmartTruck>;
+  driversById: Map<string, SmartDriver>;
+}
+const INDEXES = new WeakMap<SmartInput, InputIndex>();
+function groupBy<T>(rows: readonly T[], key: (r: T) => string | null | undefined): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const r of rows) {
+    const k = key(r);
+    if (k == null) continue;
+    const list = m.get(k);
+    if (list) list.push(r); else m.set(k, [r]);
+  }
+  return m;
+}
+function indexOf(input: SmartInput): InputIndex {
+  let ix = INDEXES.get(input);
+  if (!ix) {
+    ix = {
+      shopByTruck: groupBy(input.shopVisits ?? [], (v) => v.truck_id),
+      reportsByTruck: groupBy(input.truckReports, (r) => r.truck_id),
+      docsByTruck: groupBy(input.documentIssues ?? [], (d) => d.truck_id),
+      bookingsByTruck: groupBy(input.bookings, (b) => b.truck_id),
+      bookingsByDriver: groupBy(input.bookings, (b) => b.driver_id),
+      timeOffByDriver: groupBy(input.timeOff ?? [], (t) => t.driver_id),
+      onLeave: new Set(input.driversOnLeave ?? []),
+      trucksById: new Map(input.trucks.map((t) => [t.id, t])),
+      driversById: new Map(input.drivers.map((d) => [d.id, d])),
+    };
+    INDEXES.set(input, ix);
+  }
+  return ix;
+}
+const NONE: never[] = [];
+
 /** Trailers already proposed for loads overlapping `l` (not offered again for it). */
 const busyTrailers = (reserved: Reservation[], l: SmartLoad) => reserved.filter((r) => r.trailerId && overlaps(r.load, l)).map((r) => r.trailerId as string);
 
-function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserved: Reservation[], bookingsById: SmartBooking[]): string[] {
+function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserved: Reservation[]): string[] {
+  const ix = indexOf(input);
   const out: string[] = [];
   if (!t.active) out.push(eligibilityMessage("truck_inactive"));
   if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${t.expected_return_date})` : ""}.`);
-  const shop = (input.shopVisits ?? []).filter((v) => v.truck_id === t.id);
+  const shop = ix.shopByTruck.get(t.id) ?? NONE;
   const restricted = shop.find((v) => v.safety_critical);
   if (restricted) out.push(`Safety-critical work order ${restricted.number} is open — the truck returns only through clearance in Maintenance.`);
   const visit = shop.find((v) => v.scheduled_for === l.load_date && v.status !== "awaiting_inspection");
   if (visit) out.push(`In the shop on this date (${visit.number}).`);
-  const safety = input.truckReports.filter((r) => r.truck_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"));
+  const safety = (ix.reportsByTruck.get(t.id) ?? NONE).filter((r) => r.kind === "breakdown" || r.kind === "inspection_issue");
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
   const tractor = t.truck_type === "tractor";
   if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
   else if (tractor && !input.pickTrailer!(t, l, null, busyTrailers(reserved, l))) out.push("No usable trailer is free at this time (compatible, in service, not booked, enough combined capacity).");
-  for (const d of (input.documentIssues ?? []).filter((x) => x.truck_id === t.id && x.blocks && x.expires_on < l.load_date)) {
+  for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => x.blocks && x.expires_on < l.load_date)) {
     out.push(`Its ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
   }
   // A tractor's capacity is checked together with its trailer (pickTrailer).
@@ -253,25 +300,26 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, reserve
     const cap = capacityIn(t, l.unit_code);
     if (cap !== null && l.planned_quantity > cap) out.push(`Planned ${fmt(l.planned_quantity)} ${unitLabel(l.unit_code)} exceeds its recorded capacity of ${fmt(cap)} ${unitLabel(l.unit_code)}.`);
   }
-  const clash = bookingsById.find((b) => b.truck_id === t.id && b.load_id !== l.id && overlaps(b, l));
+  const clash = (ix.bookingsByTruck.get(t.id) ?? NONE).find((b) => b.load_id !== l.id && overlaps(b, l));
   if (clash) out.push("Already booked at an overlapping time.");
   const r = reserved.find((x) => x.truckId === t.id && overlaps(x.load, l));
   if (r) out.push(`Proposed for ${r.load.order_number} load ${r.load.load_number}, which is more urgent or earlier.`);
   return out;
 }
 
-function driverExclusions(d: SmartDriver, l: SmartLoad, reserved: Reservation[], bookings: SmartBooking[], timeOff: SmartTimeOff[] = [], onLeave: string[] = []): { blockers: string[]; warnings: string[] } {
+function driverExclusions(d: SmartDriver, l: SmartLoad, reserved: Reservation[], input: SmartInput): { blockers: string[]; warnings: string[] } {
+  const ix = indexOf(input);
   const checks = driverChecks({ active: d.active, qualifications: d.qualifications }, false, l.load_date);
   const blockers = checks.blockers.map(eligibilityMessage);
-  const leave = timeOff.filter((t) => t.driver_id === d.id && overlaps(t, l));
+  const leave = (ix.timeOffByDriver.get(d.id) ?? NONE).filter((t) => overlaps(t, l));
   if (leave.some((t) => t.status === "approved")) blockers.push("Approved time off covers this load's time.");
   const pendingLeave = leave.some((t) => t.status === "pending");
-  if (bookings.find((b) => b.driver_id === d.id && b.load_id !== l.id && overlaps(b, l))) blockers.push("Already booked at an overlapping time.");
+  if ((ix.bookingsByDriver.get(d.id) ?? NONE).find((b) => b.load_id !== l.id && overlaps(b, l))) blockers.push("Already booked at an overlapping time.");
   const r = reserved.find((x) => x.driverId === d.id && overlaps(x.load, l));
   if (r) blockers.push(`Proposed for ${r.load.order_number} load ${r.load.load_number}, which is more urgent or earlier.`);
   const warnings = checks.warnings.map(eligibilityMessage);
   if (pendingLeave) warnings.push("Has a pending time-off request for this time — confirm before relying on them.");
-  if (onLeave.includes(d.id)) warnings.push("Their employee record says On leave — confirm they are working that day.");
+  if (ix.onLeave.has(d.id)) warnings.push("Their employee record says On leave — confirm they are working that day.");
   return { blockers, warnings };
 }
 
@@ -310,15 +358,16 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
     score -= 3;
     warnings.push(eligibilityMessage("truck_capacity_unverified"));
   }
-  for (const d of (input.documentIssues ?? []).filter((x) => x.truck_id === t.id && !x.blocks && x.expires_on < l.load_date)) {
+  const ix = indexOf(input);
+  for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => !x.blocks && x.expires_on < l.load_date)) {
     warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"} — confirm it was renewed.`);
   }
-  const inShop = (input.shopVisits ?? []).find((v) => v.truck_id === t.id && (v.status === "in_progress" || v.status === "awaiting_parts"));
+  const inShop = (ix.shopByTruck.get(t.id) ?? NONE).find((v) => v.status === "in_progress" || v.status === "awaiting_parts");
   if (inShop) {
     score -= 10;
     warnings.push(`Shop work ${inShop.number} is ${inShop.status.replace("_", " ")} — check with the shop.`);
   }
-  if (input.truckReports.some((r) => r.truck_id === t.id && r.kind === "equipment_issue")) {
+  if ((ix.reportsByTruck.get(t.id) ?? NONE).some((r) => r.kind === "equipment_issue")) {
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));
   }
@@ -361,19 +410,22 @@ export function recommend(input: SmartInput): LoadPlan[] {
       ...reserved.map((r) => ({ truck_id: r.truckId, driver_id: r.driverId, order_id: r.load.order_id, site: r.load.site, load_date: r.load.load_date })),
     ];
 
+    // Same work, grouped once per load: each truck and driver only looks at its own.
+    const workByTruck = groupBy(dayWork, (w) => w.truck_id);
+    const workByDriver = groupBy(dayWork, (w) => w.driver_id);
     const excludedTrucks: Exclusion[] = [];
     const okTrucks: Scored[] = [];
     for (const t of input.trucks) {
-      const why = truckExclusions(t, load, input, reserved, input.bookings);
+      const why = truckExclusions(t, load, input, reserved);
       if (why.length) excludedTrucks.push({ id: t.id, label: t.unit_number, reasons: why });
-      else okTrucks.push(scoreTruck(t, load, input, dayWork));
+      else okTrucks.push(scoreTruck(t, load, input, workByTruck.get(t.id) ?? NONE));
     }
     const excludedDrivers: Exclusion[] = [];
     const okDrivers: Scored[] = [];
     for (const d of input.drivers) {
-      const x = driverExclusions(d, load, reserved, input.bookings, input.timeOff, input.driversOnLeave);
+      const x = driverExclusions(d, load, reserved, input);
       if (x.blockers.length) excludedDrivers.push({ id: d.id, label: d.name, reasons: x.blockers });
-      else okDrivers.push(scoreDriver(d, load, x.warnings, dayWork));
+      else okDrivers.push(scoreDriver(d, load, x.warnings, workByDriver.get(d.id) ?? NONE));
     }
     okTrucks.sort(byScore);
     okDrivers.sort(byScore);
@@ -383,11 +435,11 @@ export function recommend(input: SmartInput): LoadPlan[] {
     const rejected = input.rejections.filter((r) => r.load_id === load.id);
     const pairs: Candidate[] = [];
     for (const t of okTrucks.slice(0, 4)) {
-      const truck = input.trucks.find((x) => x.id === t.id)!;
+      const truck = indexOf(input).trucksById.get(t.id)!;
       for (const d of okDrivers.slice(0, 4)) {
         if (rejected.some((r) => r.truck_id === t.id && r.driver_id === d.id)) continue;
         // A tractor needs a trailer the driver may pull (combination licence); otherwise the pair is not offered.
-        const trailer = truck.truck_type === "tractor" && input.pickTrailer ? input.pickTrailer(truck, load, input.drivers.find((x) => x.id === d.id) ?? null, busyTrailers(reserved, load)) : null;
+        const trailer = truck.truck_type === "tractor" && input.pickTrailer ? input.pickTrailer(truck, load, indexOf(input).driversById.get(d.id) ?? null, busyTrailers(reserved, load)) : null;
         if (truck.truck_type === "tractor" && !trailer) continue;
         pairs.push({
           truckId: t.id, truckLabel: trailer ? `${t.label} + ${trailer.unit_number}` : t.label, trailerId: trailer?.id ?? null, trailerLabel: trailer?.unit_number ?? null,
@@ -438,8 +490,8 @@ export function recommend(input: SmartInput): LoadPlan[] {
         const day = addDays(load.load_date, i);
         const shift = (iso: string) => new Date(new Date(iso).getTime() + i * 86400_000).toISOString();
         const moved = { ...load, load_date: day, starts_at: shift(load.starts_at), ends_at: shift(load.ends_at) };
-        const anyTruck = input.trucks.some((t) => truckExclusions(t, moved, input, [], input.bookings).length === 0);
-        const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, [], input.bookings, input.timeOff, input.driversOnLeave).blockers.length === 0);
+        const anyTruck = input.trucks.some((t) => truckExclusions(t, moved, input, []).length === 0);
+        const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, [], input).blockers.length === 0);
         if (anyTruck && anyDriver) {
           const late = load.requested_date !== null && day > load.requested_date;
           options.push(`A truck and a driver are available on ${day} at the same time${late ? ` — later than the customer's requested date (${load.requested_date}); confirm with the customer first` : ""}.`);
@@ -482,11 +534,11 @@ export function resourceExclusions(input: SmartInput, loadId: string): { trucks:
   const drivers = new Map<string, string[]>();
   if (!load) return { trucks, drivers };
   for (const t of input.trucks) {
-    const r = truckExclusions(t, load, input, [], input.bookings);
+    const r = truckExclusions(t, load, input, []);
     if (r.length) trucks.set(t.id, r);
   }
   for (const d of input.drivers) {
-    const r = driverExclusions(d, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers;
+    const r = driverExclusions(d, load, [], input).blockers;
     if (r.length) drivers.set(d.id, r);
   }
   return { trucks, drivers };
@@ -496,9 +548,9 @@ export function resourceExclusions(input: SmartInput, loadId: string): { trucks:
  * checkPair's halves for one load, for callers that test every truck against every driver (Plan the day): a pair is
  * feasible exactly when the truck has no blocker, the driver has none, and a dispatcher has not rejected the pair.
  */
-export const truckBlockers = (input: SmartInput, load: SmartLoad, truck: SmartTruck): string[] => truckExclusions(truck, load, input, [], input.bookings);
+export const truckBlockers = (input: SmartInput, load: SmartLoad, truck: SmartTruck): string[] => truckExclusions(truck, load, input, []);
 export const driverBlockers = (input: SmartInput, load: SmartLoad, driver: SmartDriver): string[] =>
-  driverExclusions(driver, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers;
+  driverExclusions(driver, load, [], input).blockers;
 
 export function checkPair(input: SmartInput, loadId: string, truckId: string, driverId: string): { ok: boolean; reasons: string[] } {
   const load = input.loads.find((l) => l.id === loadId);
@@ -507,9 +559,56 @@ export function checkPair(input: SmartInput, loadId: string, truckId: string, dr
   const driver = input.drivers.find((d) => d.id === driverId);
   const reasons: string[] = [];
   if (!truck) reasons.push("The truck is no longer active.");
-  else reasons.push(...truckExclusions(truck, load, input, [], input.bookings).map((r) => `Truck ${truck.unit_number}: ${r}`));
+  else reasons.push(...truckExclusions(truck, load, input, []).map((r) => `Truck ${truck.unit_number}: ${r}`));
   if (!driver) reasons.push("The driver is no longer active.");
-  else reasons.push(...driverExclusions(driver, load, [], input.bookings, input.timeOff, input.driversOnLeave).blockers.map((r) => `${driver.name}: ${r}`));
+  else reasons.push(...driverExclusions(driver, load, [], input).blockers.map((r) => `${driver.name}: ${r}`));
   if (input.rejections.some((r) => r.load_id === loadId && r.truck_id === truckId && r.driver_id === driverId)) reasons.push("This pair was rejected by a dispatcher.");
   return { ok: reasons.length === 0, reasons };
+}
+
+/** Exclusions grouped by reason for the board: how many units each reason rules out, with a few examples. */
+export interface ExclusionGroup { kind: "truck" | "driver"; reason: string; count: number; examples: string[] }
+
+/** What the board sends to the browser per load: the plan without one row per excluded unit (P8, docs/OPTIMIZATION.md). */
+export type BoardPlan = Omit<LoadPlan, "excludedTrucks" | "excludedDrivers"> & {
+  excluded: { trucks: number; drivers: number; groups: ExclusionGroup[] };
+};
+
+/**
+ * Groups a plan's exclusions by reason (a unit with two reasons counts under both), most common first, with up to
+ * `examples` unit labels each. Keeps every reason visible while the page stays small with large fleets.
+ */
+/**
+ * The reason without unit-specific details (work order numbers, dates), so units ruled out for the same cause share
+ * one line; the examples still name the units. Unit pages show the details.
+ */
+export function reasonKey(reason: string): string {
+  return reason
+    .replace(/\s*\((?:expected back|WO-)[^)]*\)/g, "")
+    .replace(/ (?:work order )?WO-\d{4}-\d+/g, (m) => (m.startsWith(" work order") ? " work order" : ""))
+    .replace(/ expired \d{4}-\d{2}-\d{2}/g, " has expired")
+    .replace(/^Proposed for \S+ load \d+, which is more urgent or earlier\.$/, "Proposed for a more urgent or earlier load.")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+export function toBoardPlan(plan: LoadPlan, examples = 6): BoardPlan {
+  const { excludedTrucks, excludedDrivers, ...rest } = plan;
+  const groups = new Map<string, ExclusionGroup>();
+  const add = (kind: "truck" | "driver", list: Exclusion[]) => {
+    for (const e of list) {
+      for (const raw of e.reasons) {
+        const reason = reasonKey(raw);
+        const key = `${kind}\u0000${reason}`;
+        const g = groups.get(key) ?? { kind, reason, count: 0, examples: [] };
+        g.count += 1;
+        if (g.examples.length < examples) g.examples.push(e.label);
+        groups.set(key, g);
+      }
+    }
+  };
+  add("truck", excludedTrucks);
+  add("driver", excludedDrivers);
+  const sorted = [...groups.values()].sort((a, b) => (a.kind === b.kind ? b.count - a.count : a.kind === "truck" ? -1 : 1));
+  return { ...rest, excluded: { trucks: excludedTrucks.length, drivers: excludedDrivers.length, groups: sorted } };
 }
