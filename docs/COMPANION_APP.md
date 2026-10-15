@@ -76,7 +76,12 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
   - A driver gets the tabs, the freshness line, the parked-only notice and a real "New load" update from an
     assignment. **Got it** removes it, and going offline shows "No connection".
   - Office staff get no driver tabs.
-  - With no connection, the service worker shows the offline page and no company data.
+  - The service worker controls the app, and `/offline` holds no company data.
+- Offline fallback: `tests/unit/service-worker.test.ts` runs `public/sw.js` against stand-ins for the browser APIs. It
+  checks that only the offline page and an icon are stored, that a failed page load returns the offline page, and that
+  data, actions and POSTs are never handled or stored. A browser test can't prove this reliably here: in the full suite,
+  Playwright's offline mode let the service worker's own page request through while blocking the page's CSS. The
+  result was an unstyled live page, which can't happen on a real phone with no signal.
 - Gate spec: the companion files are reachable with the gate on and carry no company data.
 - **Not tested on a real iPhone or Android device**, and not on iOS Safari (Playwright runs Chromium here).
 
