@@ -1,11 +1,26 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-14, afternoon round. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-15, night round. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 000000. Round 2026-10-15 (night) — job site directions verification (B51)
+
+| Commit | What | Migration (local / pushed / hosted) |
+| --- | --- | --- |
+| `6d1a151` | **Site directions verification (B51)**: kind (standard / safety or access critical), verified by whom and when (only `verify_site_directions`, customers.edit, audited; a trigger refuses forged values and clears the check when directions change), review intervals per kind in Settings (empty = none), status on the customer, order and My Day (red line for unverified critical or overdue directions; never the verifier's name on the phone); demo samples on three sites, upcoming demo orders linked through the normal order edit | `20261115000200`: applied locally, rollback tested, **not applied hosted** |
+| `01cb994`, next | Companion app doc, runbook §6 (both pending migrations + verification SQL), DEMO_TENANTS §5 row, master plan B51 row, feature catalog entry (`site-directions`, in development, not published) | — |
+
+Checks: lint, typecheck, vitest 720/720, full browser suite 152 passed / 0 failed / 9 skipped, production build, gate 8
+passed / 1 skipped. **Hosted-state check:** with `20261115000200` rolled back, customers, orders, driver portal,
+branding and the presenter demo-parity specs pass and Settings saves; nothing B51 appears. Only B51's own assertions fail
+there, as they should. Risk tier **REVIEW** (one hosted migration, owner action).
+
+**Owner step:** runbook §6 — one `db push` applies `20261115000100` and `20261115000200`; run the five-line verification;
+Refresh demo data in both demos.
 
 ## 00000. Round 2026-10-15 — master directive: companion app, HOS confirmation, board speed
 
