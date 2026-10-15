@@ -1,3 +1,4 @@
+import type { DirectionsRisk, DirectionsStatus } from "@/lib/sites";
 import "server-only";
 import type { DriverQualification, ReportKind } from "@/lib/driver/rules";
 import { uuid } from "@/lib/schemas/common";
@@ -9,7 +10,9 @@ export interface DriverAssignment {
   assignment_note: string;
   load: { id: string; number: number; date: string; start_time: string; end_time: string; planned_quantity: number | string | null; unit_code: string | null; notes: string };
   order: { number: string; status: string; customer_name: string | null; project_name: string; customer_po: string; contact_name: string; contact_phone: string; job_instructions: string };
-  site: { label: string; line1: string; line2: string; city: string; state: string; postal_code: string; directions: string | null };
+  site: { label: string; line1: string; line2: string; city: string; state: string; postal_code: string; directions: string | null;
+    /** Directions verification (20261115000200); absent before that update is installed. */
+    directions_status?: DirectionsStatus; directions_risk?: DirectionsRisk; directions_verified_at?: string | null };
   truck: string | null;
   trailer: string | null;
   tickets: Array<{ id: string; number: string; status: TicketStatus; quantity: number | string; unit_code: string }>;

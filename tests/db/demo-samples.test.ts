@@ -114,6 +114,17 @@ describe.skipIf(!available)("demo feature samples", () => {
     const trailerWo = await q<{ n: string; down: string }>(
       "select count(*) n, count(*) filter (where t.service_status = 'out_of_service') down from public.work_orders w join public.trailers t on t.id = w.trailer_id where w.company_id = $1", [w.company]);
     expect([Number(trailerWo.rows[0].n), Number(trailerWo.rows[0].down)]).toEqual([1, 0]);
+    // Site directions verification (20261115000200): a flagged critical site, a verified critical site (audited),
+    // and a standard unverified one.
+    const sites = await q<{ risk: string; verified: boolean }>(
+      "select directions_risk risk, directions_verified_at is not null verified from public.customer_sites where company_id = $1 and coalesce(directions, '') <> '' order by 1, 2", [w.company]);
+    expect(sites.rows).toEqual([{ risk: "safety_access", verified: false }, { risk: "safety_access", verified: true }, { risk: "standard", verified: false }]);
+    const verifiedAudit = await q<{ n: string }>("select count(*) n from public.audit_events where company_id = $1 and action = 'site_directions_verified'", [w.company]);
+    expect(Number(verifiedAudit.rows[0].n)).toBe(1);
+    // Upcoming orders at the sample sites are linked to them (normal order edit), so dispatch and My Day show the status.
+    const linkedOrders = await q<{ n: string }>(
+      "select count(*) n from public.orders o join public.customer_sites cs on cs.id = o.site_id where o.company_id = $1 and coalesce(cs.directions, '') <> ''", [w.company]);
+    expect(Number(linkedOrders.rows[0].n)).toBeGreaterThan(0);
     // Quotes show an issued, locked version: one quote marked handed over outside Taviron (nothing sent).
     const sent = await q<{ n: string }>("select count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and q.status = 'sent' and v.sent_at is not null", [w.company]);
     expect(Number(sent.rows[0].n)).toBe(1);

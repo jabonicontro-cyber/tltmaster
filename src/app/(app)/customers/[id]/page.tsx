@@ -14,7 +14,9 @@ import { formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getCustomerDetail } from "@/server/data/customers";
-import { businessToday } from "@/server/data/settings";
+import { businessToday, getSettings } from "@/server/data/settings";
+import { getUserNames } from "@/server/data/quotes";
+import { directionsStatus } from "@/lib/sites";
 
 export default async function CustomerPage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requirePagePermission("customers.view");
@@ -24,6 +26,22 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
   const { customer, contacts, sites, quotes } = detail;
   const { today, timezone } = await businessToday();
   const canEdit = can(access, "customers.edit");
+  // Directions verification (20261115000200): only once that update is installed.
+  const settings = await getSettings();
+  const verification = "site_review_days_standard" in settings;
+  const userNames = verification && sites.some((s) => s.directions_verified_by) ? await getUserNames() : {};
+  const intervals = { site_review_days_standard: settings.site_review_days_standard ?? null, site_review_days_safety: settings.site_review_days_safety ?? null };
+  const siteViews = sites.map((s) => ({
+    ...s,
+    verification: verification
+      ? {
+          risk: s.directions_risk ?? "standard",
+          status: directionsStatus({ directions: s.directions, directions_risk: s.directions_risk ?? "standard", directions_verified_at: s.directions_verified_at ?? null }, intervals),
+          verifiedAt: s.directions_verified_at ? formatDateTime(s.directions_verified_at, timezone) : null,
+          verifiedBy: s.directions_verified_by ? userNames[s.directions_verified_by] ?? "Former user" : null,
+        }
+      : null,
+  }));
   const billing = [
     customer.billing_line1,
     customer.billing_line2,
@@ -136,7 +154,7 @@ export default async function CustomerPage({ params }: { params: Promise<{ id: s
 
         <div className="space-y-5">
           <ContactsPanel customerId={customer.id} contacts={contacts} canEdit={canEdit} />
-          <SitesPanel customerId={customer.id} sites={sites} canEdit={canEdit} />
+          <SitesPanel customerId={customer.id} sites={siteViews} canEdit={canEdit} verification={verification} />
         </div>
       </div>
     </>

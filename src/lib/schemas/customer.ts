@@ -39,6 +39,8 @@ export const siteSchema = z.object({
   state: stateCode,
   postal_code: postalCode,
   directions: optionalText(2000),
+  /** Sent only once directions verification (20261115000200) is installed. */
+  directions_risk: z.enum(["standard", "safety_access"], { error: "Choose how critical these directions are." }).optional(),
 });
 
 export const PAYMENT_TERMS_SUGGESTIONS = ["Due on delivery", "Net 15", "Net 30", "Net 45", "Prepaid"];

@@ -18,6 +18,7 @@ import { requirePagePermission } from "@/server/auth";
 import { can } from "@/lib/permissions";
 import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
 import { DispatchUpdates } from "@/components/companion/dispatch-updates";
+import { directionsNeedAttention } from "@/lib/sites";
 import { Freshness } from "@/components/companion/freshness";
 
 export const metadata = { title: "My Day" };
@@ -27,9 +28,11 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
-function AssignmentCard({ a, today, past }: { a: DriverAssignment; today: string; past?: boolean }) {
+function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
+  const risk = a.site.directions_risk ?? "standard";
+  const checkDirections = directionsNeedAttention(a.site.directions_status, risk);
   return (
     <li className={cn("rounded-lg border bg-card shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
@@ -46,12 +49,30 @@ function AssignmentCard({ a, today, past }: { a: DriverAssignment; today: string
         <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "—"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
         {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {a.load.unit_code}</strong></p>}
         {a.order.customer_po && <p className="text-sm text-muted">Customer PO {a.order.customer_po}</p>}
+        {checkDirections && (
+          <p className="flex gap-2 text-sm font-semibold text-critical">
+            <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
+            <span>{a.site.directions_status === "due" ? "Site directions are due for a re-check." : "Safety or access directions not verified."} Confirm them with dispatch before relying on them.</span>
+          </p>
+        )}
         {(a.order.job_instructions || a.site.directions || a.load.notes || a.assignment_note || a.order.contact_name) && (
           <details className="rounded-md bg-surface px-3 py-2 text-sm">
             <summary className="cursor-pointer py-1 font-semibold">Instructions and directions</summary>
             <dl className="mt-1 space-y-1.5">
               {a.order.job_instructions && <div><dt className="font-semibold">Job</dt><dd className="whitespace-pre-line">{a.order.job_instructions}</dd></div>}
-              {a.site.directions && <div><dt className="font-semibold">Directions</dt><dd className="whitespace-pre-line">{a.site.directions}</dd></div>}
+              {a.site.directions && (
+                <div>
+                  <dt className="font-semibold">Directions</dt>
+                  <dd className="whitespace-pre-line">{a.site.directions}</dd>
+                  {a.site.directions_status ? (
+                    <dd className="mt-0.5 text-xs text-muted">
+                      {a.site.directions_status === "verified" || a.site.directions_status === "due"
+                        ? `Last checked by the office ${a.site.directions_verified_at ? formatDateTime(a.site.directions_verified_at, timeZone) : ""}`.trim()
+                        : "Not checked by the office yet"}
+                    </dd>
+                  ) : null}
+                </div>
+              )}
               {a.load.notes && <div><dt className="font-semibold">Load notes</dt><dd className="whitespace-pre-line">{a.load.notes}</dd></div>}
               {a.assignment_note && <div><dt className="font-semibold">From dispatch</dt><dd>{a.assignment_note}</dd></div>}
               {a.order.contact_name && <div><dt className="font-semibold">Site contact</dt><dd>{a.order.contact_name}{a.order.contact_phone ? <> · <a className="underline" href={`tel:${a.order.contact_phone}`}>{a.order.contact_phone}</a></> : null}</dd></div>}
@@ -171,7 +192,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} past />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past />)}</ul>
         </section>
       )}
 
@@ -180,14 +201,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} />)}</ul>
         )}
       </section>
 
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} />)}</ul>
         </section>
       )}
 

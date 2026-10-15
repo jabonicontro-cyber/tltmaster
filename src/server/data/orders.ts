@@ -6,7 +6,7 @@ import { uuid } from "@/lib/schemas/common";
 import { ilikePattern, PAGE_SIZE } from "./search";
 import { getUserNames } from "./quotes";
 import { businessToday } from "./settings";
-import type { AuditEventRow, CustomerRow, OrderLineRow, OrderListRow, OrderRow, OrderStatusEventRow, OrderStatus } from "./types";
+import type { AuditEventRow, CustomerRow, OrderLineRow, OrderListRow, OrderRow, OrderStatusEventRow, OrderStatus, SiteRow } from "./types";
 
 export const ORDER_SCHEDULE_FILTERS = {
   today: "Scheduled today",
@@ -75,7 +75,7 @@ export async function getOrderDetail(id: string) {
   if (error) throw new Error(`Could not load order: ${error.message}`);
   if (!order) return null;
   const o = order as OrderRow;
-  const [customer, lines, events, audit, quote, version, names] = await Promise.all([
+  const [customer, lines, events, audit, quote, version, names, site] = await Promise.all([
     supabase.from("customers").select("*").eq("id", o.customer_id).single(),
     supabase.from("order_lines").select("*").eq("order_id", id).order("line_no"),
     supabase.from("order_status_events").select("*").eq("order_id", id).order("occurred_at", { ascending: false }),
@@ -83,6 +83,7 @@ export async function getOrderDetail(id: string) {
     o.source_quote_id ? supabase.from("quotes").select("id, quote_number, accepted_at").eq("id", o.source_quote_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     o.source_quote_version_id ? supabase.from("quote_versions").select("id, version_no").eq("id", o.source_quote_version_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     getUserNames(),
+    o.site_id ? supabase.from("customer_sites").select("*").eq("id", o.site_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
   ]);
   for (const r of [customer, lines, events]) {
     if (r.error) throw new Error(`Could not load order: ${r.error.message}`);
@@ -98,5 +99,7 @@ export async function getOrderDetail(id: string) {
     sourceQuote: quote.data as { id: string; quote_number: string; accepted_at: string | null } | null,
     sourceVersion: version.data as { id: string; version_no: number } | null,
     names,
+    // The saved customer site, for its directions verification (B51); null for one-off addresses.
+    site: site.data as SiteRow | null,
   };
 }

@@ -73,7 +73,105 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("order waiting for a date", await needsScheduling(db, today));
   note("planning day", await planningDay(db, today));
   note("billing: ready and handed off", await billing(db, today));
+  // After the driver day, so the owner's own load can carry the flagged site.
+  note("site directions verification", await siteDirections(db, today, userId));
   return result;
+}
+
+/**
+ * Site directions verification (B51, 20261115000200): three job sites that have no directions get fictional ones —
+ * safety/access critical and not verified (flagged to dispatch and drivers), safety/access critical and verified
+ * through the real database function, and standard and not verified. Sites of loads assigned from today on come
+ * first (loads of drivers who sign in first, for My Day). Demo orders were created with the site's address
+ * but not linked to the saved site, so those upcoming orders are linked through the normal order edit
+ * (update_order_details, every other detail kept). The three samples are added only while nobody in the demo has used
+ * the feature (no verification, no critical site); directions someone already typed are never changed. On every run,
+ * a driver who signs in (an owner's relief load added by Refresh) whose upcoming loads have no site directions gets
+ * the flagged sample on their first load's site, if it has none, so My Day shows the check.
+ */
+async function siteDirections(db: Db, today: string, me: string): Promise<number> {
+  const used = await db.from("customer_sites").select("id").or("directions_verified_at.not.is.null,directions_risk.eq.safety_access").limit(1);
+  if (used.error && (missing(used.error) || used.error.code === "42703")) return 0;
+  if (used.error) throw new Error(`Demo samples (site directions): ${used.error.message}`);
+  type Site = { id: string; customer_id: string; line1: string; directions: string | null };
+  const sites = ((await db.from("customer_sites").select("id, customer_id, line1, directions").eq("active", true).order("label")).data ?? []) as Site[];
+  const blank = sites.filter((x) => !x.directions?.trim());
+
+  type Order = {
+    id: string; customer_id: string; status: string; site_id: string | null; site_label: string; site_line1: string; site_line2: string; site_city: string; site_state: string; site_postal_code: string;
+    contact_id: string | null; contact_name: string; contact_email: string; contact_phone: string; project_name: string; customer_po: string; job_instructions: string; internal_notes: string; requested_date: string | null;
+  };
+  // Drivers who sign in (the demo's owners who drive relief, and the viewer) see these loads on My Day.
+  const drivers = ((await db.from("drivers").select("id, user_id").not("user_id", "is", null)).data ?? []) as Array<{ id: string; user_id: string }>;
+  const own = new Set(drivers.filter((d) => d.user_id === me).map((d) => d.id));
+  const signIn = new Set(drivers.map((d) => d.id));
+  type Load = { orders: Order | null; dispatch_assignments: Array<{ driver_id: string | null }> };
+  const upcoming = (only: string[] | null) => {
+    let q = db.from("order_loads")
+      .select("orders(id, customer_id, status, site_id, site_label, site_line1, site_line2, site_city, site_state, site_postal_code, contact_id, contact_name, contact_email, contact_phone, project_name, customer_po, job_instructions, internal_notes, requested_date), dispatch_assignments!inner(status, driver_id)")
+      .gte("load_date", today).eq("status", "planned").eq("dispatch_assignments.status", "active");
+    if (only) q = q.in("dispatch_assignments.driver_id", only);
+    return q.order("starts_at").limit(200).then((r) => (r.data ?? []) as unknown as Load[]);
+  };
+  const loads = [...(signIn.size ? await upcoming([...signIn]) : []), ...(await upcoming(null))];
+  const by = (set: Set<string>) => (l: Load) => l.dispatch_assignments.some((a) => a.driver_id !== null && set.has(a.driver_id));
+  const siteOf = (o: Order, among: Site[] = sites) => among.find((x) => x.customer_id === o.customer_id && (o.site_id ? o.site_id === x.id : x.line1.trim() === o.site_line1.trim()));
+  const linked = new Set<string>();
+  // Upcoming orders at a saved site with directions are linked to it (normal order edit, every other detail kept).
+  const link = async (only: (o: Order) => boolean) => {
+    for (const l of loads) {
+      const o = l.orders;
+      if (!o || o.site_id || linked.has(o.id) || ["completed", "canceled"].includes(o.status) || !only(o)) continue;
+      const site = siteOf(o);
+      if (!site?.directions?.trim()) continue;
+      linked.add(o.id);
+      const payload: Record<string, unknown> = { ...o, site_id: site.id };
+      for (const k of ["id", "customer_id", "status"]) delete payload[k];
+      await must("link order to site", db.rpc("update_order_details", { p_order_id: o.id, p_expected_edit_seq: null, p_payload: payload }));
+    }
+  };
+  const samples = [
+    { risk: "safety_access", verify: false, directions: "Enter by the north gate only: the east entrance has a soft shoulder. Gate code from the site contact on arrival. Hard hat and vest past the scale house." },
+    { risk: "safety_access", verify: true, directions: "Low power line over the back lot: dump only at the marked pad by the fence. Call the site contact before raising the bed." },
+    { risk: "standard", verify: false, directions: "Dump at the north end of the lot, past the stockpiles. Turn around in the gravel area." },
+  ];
+  const give = async (site: Site, sample: (typeof samples)[number]) => {
+    await must("site directions", db.from("customer_sites").update({ directions: sample.directions, directions_risk: sample.risk }).eq("id", site.id));
+    if (sample.verify) await must("verify directions", db.rpc("verify_site_directions", { p_site: site.id }));
+    site.directions = sample.directions;
+  };
+  // Every driver who signs in sees the check on My Day: when none of their upcoming loads is at a site with directions,
+  // the site of their first one (if it has none) gets the flagged sample. Runs after Refresh adds an owner's relief load.
+  const forDrivers = async () => {
+    let added = 0;
+    for (const d of signIn) {
+      const theirs = loads.filter(by(new Set([d])));
+      if (!theirs.length || theirs.some((l) => l.orders && siteOf(l.orders)?.directions?.trim())) continue;
+      const site = theirs.map((l) => (l.orders ? siteOf(l.orders, blank) : undefined)).find(Boolean);
+      if (!site || site.directions?.trim()) continue;
+      await give(site, samples[0]);
+      added++;
+    }
+    const mine = new Set(loads.filter(by(signIn)).map((l) => l.orders?.id));
+    await link((o) => mine.has(o.id));
+    return added;
+  };
+  if ((used.data ?? []).length || !blank.length) return forDrivers();
+  const chosen: Site[] = [];
+  for (const l of [...loads.filter(by(own)), ...loads.filter(by(signIn)), ...loads]) {
+    const site = l.orders ? siteOf(l.orders, blank) : undefined;
+    if (site && !chosen.includes(site)) chosen.push(site);
+  }
+  for (const x of blank) if (!chosen.includes(x)) chosen.push(x);
+
+  let n = 0;
+  for (const [i, site] of chosen.slice(0, samples.length).entries()) {
+    await give(site, samples[i]);
+    n++;
+  }
+  const samplesAt = new Set(chosen.slice(0, samples.length).map((x) => x.id));
+  await link((o) => samplesAt.has(siteOf(o)?.id ?? ""));
+  return n + (await forDrivers());
 }
 
 /**
@@ -410,9 +508,13 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
     n += 2;
     // One open load today (or tomorrow), with a truck free at that time; refused assignments stay open.
     for (const day of [today, addDays(today, 1)]) {
-      const open = ((await db.from("order_loads").select("id, starts_at, ends_at").eq("load_date", day).eq("status", "planned").order("starts_at")).data ?? []) as Array<{ id: string }>;
+      const open = ((await db.from("order_loads").select("id, starts_at, ends_at, orders(customer_id, site_line1)").eq("load_date", day).eq("status", "planned").order("starts_at")).data ?? []) as unknown as Array<{ id: string; orders: { customer_id: string; site_line1: string } | null }>;
       const booked = new Set((((await db.from("dispatch_assignments").select("load_id").eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
-      const load = open.find((l) => !booked.has(l.id));
+      // A load at a site with directions first, so My Day shows the site directions check (B51).
+      const withDirections = (((await db.from("customer_sites").select("customer_id, line1").neq("directions", "")).data ?? []) as Array<{ customer_id: string; line1: string }>);
+      const atSite = (l: (typeof open)[number]) => withDirections.some((x) => x.customer_id === l.orders?.customer_id && x.line1.trim() === l.orders?.site_line1.trim());
+      const free = open.filter((l) => !booked.has(l.id));
+      const load = free.find(atSite) ?? free[0];
       if (!load) continue;
       const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
       // Tractors need a trailer: try without one, then each in-service trailer; the dispatch rules decide.

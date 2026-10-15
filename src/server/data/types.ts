@@ -1,5 +1,6 @@
 // Row shapes returned by the data-access layer. bigint columns (cents) arrive
 // from PostgREST as JSON numbers; values stay well within the safe-integer range.
+import type { DirectionsRisk } from "@/lib/sites";
 import type { CalcMethod, ChargeKind } from "@/lib/quotes/calc";
 import type { QuoteStatus } from "@/lib/quotes/status";
 
@@ -51,6 +52,10 @@ export interface SiteRow {
   postal_code: string;
   directions: string;
   active: boolean;
+  /** Directions verification (20261115000200); absent until that update is installed. */
+  directions_risk?: DirectionsRisk;
+  directions_verified_at?: string | null;
+  directions_verified_by?: string | null;
 }
 
 export interface UnitRow {
@@ -291,6 +296,9 @@ export interface CompanySettings {
   quote_footer_note: string;
   urgent_ack_minutes: number | null;
   ticket_reference_required: boolean;
+  /** Site directions review intervals in days (20261115000200); absent until installed, null = no interval. */
+  site_review_days_standard?: number | null;
+  site_review_days_safety?: number | null;
   brand_color: string;
   brand_sidebar_color: string;
   /** Whether a logo is stored; the image itself is served by /brand/logo, never sent with the settings. */

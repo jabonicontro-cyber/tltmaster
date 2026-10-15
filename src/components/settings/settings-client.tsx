@@ -194,6 +194,20 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
               <Input {...ctl("urgent_ack_minutes", fe("urgent_ack_minutes"))} type="number" min={5} max={1440} defaultValue={settings.urgent_ack_minutes ?? ""} />
             </Field>
           </fieldset>
+          {"site_review_days_standard" in settings ? (
+            <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
+              <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Job site directions</legend>
+              <p className="-mt-1 text-sm text-muted sm:col-span-6">
+                How often someone should re-check each job site&apos;s directions. When the time has passed, dispatch and drivers see that they are due for review. Leave empty for no interval. Changed directions always need a new check, and unverified safety or access directions are always flagged.
+              </p>
+              <Field label="Standard sites: review every (days)" htmlFor="site_review_days_standard" error={fe("site_review_days_standard")} className="sm:col-span-3">
+                <Input {...ctl("site_review_days_standard", fe("site_review_days_standard"))} type="number" min={1} max={3650} defaultValue={settings.site_review_days_standard ?? ""} />
+              </Field>
+              <Field label="Safety or access critical: review every (days)" htmlFor="site_review_days_safety" error={fe("site_review_days_safety")} className="sm:col-span-3">
+                <Input {...ctl("site_review_days_safety", fe("site_review_days_safety"))} type="number" min={1} max={3650} defaultValue={settings.site_review_days_safety ?? ""} />
+              </Field>
+            </fieldset>
+          ) : null}
           {canEdit ? (
             <div className="flex justify-end border-t border-line pt-4">
               <Button type="submit" loading={pending}>Save settings</Button>

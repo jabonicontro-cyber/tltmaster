@@ -19,6 +19,11 @@ export const TIMEZONE_OPTIONS = [
 export const TIMEZONES = TIMEZONE_OPTIONS.map((t) => t.value) as [string, ...string[]];
 export const timezoneSchema = z.enum(TIMEZONES, "Choose the time zone your business runs on.");
 
+const reviewDaysField = z.preprocess(
+  (v) => (v === undefined ? undefined : v === "" || v === null ? null : v),
+  z.coerce.number().int("Whole days.").min(1, "At least 1 day.").max(3650, "At most 3650 days.").nullable().optional(),
+);
+
 export const companySettingsSchema = z
   .object({
     company_name: requiredText(120, "Company name"),
@@ -41,6 +46,9 @@ export const companySettingsSchema = z
     default_tax_rate: z.string().trim().default("0"),
     quote_validity_days: z.coerce.number().int().min(1, "At least 1 day.").max(365),
     quote_followup_days: z.coerce.number().int().min(1).max(90),
+    /** Site directions review intervals (20261115000200): absent = field not shown (not installed), empty = none. */
+    site_review_days_standard: reviewDaysField,
+    site_review_days_safety: reviewDaysField,
     default_quote_terms: optionalText(8000),
     quote_footer_note: optionalText(300),
   })

@@ -115,6 +115,7 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | Quotes | A draft quote copied from a sample order line, and a second quote marked handed to the customer outside Taviron (locked v1, status Sent; nothing is sent — 2026-10-13) | ✓ | ✓ | ✓ | ✓ | — | — |
 | Fleet and documents | Registrations (one expiring), an inspection due, an expired trailer registration | ✓ | ✓ | ✓ | ✓ | — | ✓ |
 | Maintenance | A safety-critical brake work order on an idle truck, tire and electrical work orders, oil and annual inspection schedules, a trailer inspection scheduled in three days (trailer work orders; added on Refresh once `20261115000100` is applied) | ✓ | ✓ | ✓ | ✓ | — | ✓ |
+| Job site directions (B51) | Fictional directions on three job sites with upcoming loads: safety/access critical and **not verified** (flagged on the customer, the order and My Day), critical and verified (audited, through the real function), standard and not verified; their upcoming orders are linked to the saved site through the normal order edit. On later Refreshes, a driver who signs in (the owner's relief load) gets the flagged sample on their load's site if it has no directions. Needs `20261115000200` | ✓ | ✓ (sees, cannot verify) | ✓ | ✓ | ✓ (My Day) | — |
 | Time off | An approved vacation, a pending personal day, and a pending request for the viewer's own employee record | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Time-off balances | One "Paid time off" bank (vacation + personal; full- and part-time) and a fictional opening grant per current employee ("Demo: opening balance"); sample requests use hours; an every-two-weeks accrual policy for full-time employees with accrued history | ✓ (Banks and balances) | My balances | My balances | My balances | My balances | My balances |
 | Communications | "Dispatch desk" channel with pinned sample notes; an operation workspace for a scheduled order (needs `20261108000100`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
@@ -122,6 +123,6 @@ Samples come from the seed, Refresh and `src/server/demo/samples.ts`.
 | Explain this plan (AI, docs/AI.md) | None needed (uses the planning-day samples). Blocked in demos unless `AI_IN_DEMOS=on` — the page shows the normal "not available" state; Company setup shows the gate | ✓ (state) | ✓ (state) | ✓ (state) | ✓ (state) | — | — |
 
 Proof: `tests/e2e/demo-parity.spec.ts` opens every navigation page in every demo mode, for the presenter demo and for
-a prospect demo after **Refresh demo data**, and checks Maintenance, Time off, Quotes, Communications and My Day show
-sample data; `tests/db/demo-samples.test.ts` checks the samples, that a second run adds nothing and keeps every demo
+a prospect demo after **Refresh demo data**, and checks Maintenance, Time off, Quotes, Communications, My Day (including the site directions status) and a
+flagged job site show sample data; `tests/db/demo-samples.test.ts` checks the samples, that a second run adds nothing and keeps every demo
 user, and that a real company is refused.

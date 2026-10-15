@@ -169,6 +169,19 @@ export async function saveSite(customerId: string, siteId: string | null, formDa
   });
 }
 
+/** Record that the signed-in person checked this site's directions (database function; customers.edit, audited). */
+export async function verifySiteDirections(customerId: string, siteId: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("customers.edit");
+    if (!uuid.safeParse(customerId).success || !uuid.safeParse(siteId).success) return fail("Invalid record.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("verify_site_directions", { p_site: siteId });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/customers/${customerId}`);
+    return ok(undefined, "Directions marked as verified today.");
+  });
+}
+
 export async function setSiteActive(customerId: string, siteId: string, active: boolean): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("customers.edit");

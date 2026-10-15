@@ -26,7 +26,9 @@ import { OrderProgress } from "@/components/orders/order-progress";
 import { UrgencyPanel } from "@/components/orders/urgency-panel";
 import { ReturnLink } from "@/components/ui/return-link";
 import { orderProgress } from "@/lib/orders/progress";
-import { businessToday } from "@/server/data/settings";
+import { businessToday, getSettings } from "@/server/data/settings";
+import { DirectionsRiskBadge, DirectionsStatusBadge } from "@/components/sites/directions-status";
+import { directionsStatus } from "@/lib/sites";
 
 export const metadata = { title: "Order" };
 
@@ -36,7 +38,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const { back } = await searchParams;
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
-  const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names } = detail;
+  const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names, site: savedSite } = detail;
   const [{ timezone, today }, dispatch] = await Promise.all([businessToday(), getOrderDispatch(id)]);
   const [loadTickets, readiness, urgency] = await Promise.all([
     liveTicketsForLoads(dispatch.loads.map((l) => l.id)),
@@ -60,6 +62,15 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const site = [order.site_label, order.site_line1, order.site_line2, [order.site_city, order.site_state, order.site_postal_code].filter(Boolean).join(" ")]
     .filter(Boolean)
     .join("\n");
+  // Directions verification of the saved site (B51; absent before 20261115000200 is installed).
+  const settings = savedSite?.directions_risk ? await getSettings() : null;
+  const siteRisk = savedSite?.directions_risk ?? "standard";
+  const siteDirections = savedSite?.directions_risk && settings
+    ? directionsStatus(
+        { directions: savedSite.directions, directions_risk: siteRisk, directions_verified_at: savedSite.directions_verified_at ?? null },
+        { site_review_days_standard: settings.site_review_days_standard ?? null, site_review_days_safety: settings.site_review_days_safety ?? null },
+      )
+    : null;
   const timeline = buildOrderTimeline(events, audit);
   const linesEditable = canEditOrderLines(order.status, order.source_quote_id);
   const late = isPastRequested(order, today);
@@ -258,7 +269,20 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   { label: "Customer", value: <Link href={`/customers/${customer.id}`} className="hover:underline">{customer.name} ({customer.customer_number})</Link> },
                   { label: order.source_quote_id ? "Bill to (as accepted)" : "Bill to", value: billing },
                   { label: "Contact", value: [order.contact_name, order.contact_email, order.contact_phone].filter(Boolean).join("\n") },
-                  { label: "Job site", value: site },
+                  {
+                    label: "Job site",
+                    value: siteDirections && siteDirections !== "none" ? (
+                      <>
+                        {site}
+                        <span className="mt-1 flex flex-wrap gap-1.5">
+                          <DirectionsRiskBadge risk={siteRisk} />
+                          <DirectionsStatusBadge status={siteDirections} risk={siteRisk} />
+                        </span>
+                      </>
+                    ) : (
+                      site
+                    ),
+                  },
                   { label: "Project", value: order.project_name },
                   { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required — not entered</Badge> : "") },
                   { label: "Payment terms", value: billTo?.payment_terms ?? customer.payment_terms },

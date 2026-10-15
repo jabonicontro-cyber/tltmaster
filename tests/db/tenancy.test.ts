@@ -71,7 +71,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.alert_is_recipient", "private.alert_outstanding", "private.alert_policy", "private.alert_users_with",
   "private.alerts_from_announcement_receipts", "private.alerts_from_announcements", "private.alerts_from_assignments",
   // Driver schedule notices (20261114000500): triggers; recipients are the load's own drivers in the same company.
-  "private.alerts_from_new_assignments", "private.alerts_from_load_changes",
+  "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

@@ -2,15 +2,17 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { MapPin, Pencil, Plus, Star, UserRound } from "lucide-react";
+import { MapPin, Pencil, Plus, ShieldCheck, Star, UserRound } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
-import { Checkbox, Field, FormError, Input, Textarea, describedBy } from "@/components/ui/form";
+import { Checkbox, Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { EmptyState } from "@/components/ui/states";
 import { useFormAction } from "@/components/ui/use-form-action";
+import { DirectionsRiskBadge, DirectionsStatusBadge } from "@/components/sites/directions-status";
+import { DIRECTIONS_RISK_LABELS, type DirectionsRisk, type DirectionsStatus } from "@/lib/sites";
 import type { ContactRow, SiteRow } from "@/server/data/types";
 import {
   saveContact,
@@ -18,7 +20,13 @@ import {
   setContactActive,
   setCustomerActive,
   setSiteActive,
+  verifySiteDirections,
 } from "@/app/(app)/customers/actions";
+
+/** A job site with its directions verification, worked out on the server; null before 20261115000200 is installed. */
+export type SiteView = SiteRow & {
+  verification: { risk: DirectionsRisk; status: DirectionsStatus; verifiedAt: string | null; verifiedBy: string | null } | null;
+};
 
 export function ContactsPanel({ customerId, contacts, canEdit }: { customerId: string; contacts: ContactRow[]; canEdit: boolean }) {
   const [editing, setEditing] = useState<ContactRow | "new" | null>(null);
@@ -156,8 +164,9 @@ function ContactDialog({ customerId, contact, onClose, onSaved }: { customerId: 
   );
 }
 
-export function SitesPanel({ customerId, sites, canEdit }: { customerId: string; sites: SiteRow[]; canEdit: boolean }) {
-  const [editing, setEditing] = useState<SiteRow | "new" | null>(null);
+export function SitesPanel({ customerId, sites, canEdit, verification }: { customerId: string; sites: SiteView[]; canEdit: boolean; verification: boolean }) {
+  const [editing, setEditing] = useState<SiteView | "new" | null>(null);
+  const [verifying, setVerifying] = useState<SiteView | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -191,9 +200,26 @@ export function SitesPanel({ customerId, sites, canEdit }: { customerId: string;
                   {s.city ? `, ${s.city}` : ""} {s.state} {s.postal_code}
                 </p>
                 {s.directions && <p className="mt-0.5 text-sm text-muted">{s.directions}</p>}
+                {s.verification && (s.directions?.trim() || s.verification.risk === "safety_access") ? (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                    <DirectionsRiskBadge risk={s.verification.risk} />
+                    <DirectionsStatusBadge status={s.verification.status} risk={s.verification.risk} />
+                    {s.verification.verifiedAt ? (
+                      <span className="text-xs text-muted">
+                        Checked {s.verification.verifiedAt}
+                        {s.verification.verifiedBy ? ` by ${s.verification.verifiedBy}` : ""}
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
               {canEdit && (
-                <div className="flex gap-1">
+                <div className="flex flex-wrap gap-1">
+                  {s.verification && s.active && s.verification.status !== "none" && s.verification.status !== "verified" ? (
+                    <Button size="sm" variant="secondary" icon={<ShieldCheck className="size-4" />} onClick={() => setVerifying(s)}>
+                      Mark verified
+                    </Button>
+                  ) : null}
                   <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} onClick={() => setEditing(s)}>
                     Edit
                   </Button>
@@ -226,9 +252,24 @@ export function SitesPanel({ customerId, sites, canEdit }: { customerId: string;
           </button>
         </div>
       )}
+      <ConfirmDialog
+        open={verifying !== null}
+        onOpenChange={(o) => !o && setVerifying(null)}
+        title={`Verify directions for ${verifying?.label ?? "this site"}?`}
+        description="Confirm that you checked these directions are current today (gate codes, access, where to dump, hazards). Your name and the time are recorded. Changing the directions later clears the verification."
+        confirmLabel="Mark verified"
+        onConfirm={async () => {
+          if (!verifying) return;
+          const r = await verifySiteDirections(customerId, verifying.id);
+          if (!r.ok) return r.error;
+          toast.success(r.message ?? "Saved");
+          router.refresh();
+        }}
+      />
       {editing && (
         <SiteDialog
           customerId={customerId}
+          verification={verification}
           site={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
@@ -241,7 +282,7 @@ export function SitesPanel({ customerId, sites, canEdit }: { customerId: string;
   );
 }
 
-function SiteDialog({ customerId, site, onClose, onSaved }: { customerId: string; site: SiteRow | null; onClose: () => void; onSaved: () => void }) {
+function SiteDialog({ customerId, site, verification, onClose, onSaved }: { customerId: string; site: SiteView | null; verification: boolean; onClose: () => void; onSaved: () => void }) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(saveSite.bind(null, customerId, site?.id ?? null), {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved");
@@ -275,6 +316,21 @@ function SiteDialog({ customerId, site, onClose, onSaved }: { customerId: string
           <Field label="Directions / access notes" htmlFor="site-directions" error={fieldError("directions")} className="sm:col-span-6" hint="Gate codes, where to dump, access restrictions. Printed on driver tickets later.">
             <Textarea {...f("directions")} defaultValue={site?.directions} rows={3} />
           </Field>
+          {verification ? (
+            <Field
+              label="How critical are these directions?"
+              htmlFor="site-directions_risk"
+              error={fieldError("directions_risk")}
+              className="sm:col-span-6"
+              hint="Safety or access critical: wrong directions could put someone in danger or block the delivery (gate codes, weight limits, hazards). Saving changed directions clears their verification."
+            >
+              <Select {...f("directions_risk")} defaultValue={site?.verification?.risk ?? "standard"}>
+                {(Object.keys(DIRECTIONS_RISK_LABELS) as DirectionsRisk[]).map((r) => (
+                  <option key={r} value={r}>{DIRECTIONS_RISK_LABELS[r]}</option>
+                ))}
+              </Select>
+            </Field>
+          ) : null}
         </div>
         <div className="flex justify-end gap-2 border-t border-line pt-3">
           <Button variant="secondary" onClick={onClose} disabled={pending}>

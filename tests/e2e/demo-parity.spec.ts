@@ -228,6 +228,11 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   const views = owner.getByRole("navigation", { name: "Billing views" });
   await expect(views.getByRole("link", { name: /Ready to bill\s*\d/ })).toBeVisible();
   await expect(views.getByRole("link", { name: /Handed off\s*\d/ })).toBeVisible();
+  // Site directions verification (samples.ts siteDirections): a safety/access critical site nobody verified is flagged.
+  const { data: flagged } = await admin.from("customer_sites").select("customer_id").eq("company_id", co!.id).eq("directions_risk", "safety_access").is("directions_verified_at", null).limit(1).single();
+  await visit(owner, `/customers/${flagged!.customer_id}`);
+  await expect(owner.getByText("Directions not verified").first()).toBeVisible();
+  await expect(owner.getByText("Safety or access critical").first()).toBeVisible();
   // Colby's own touches (prairie-lantern-colby.ts): the Southfield lane and his friend Cam Webster as a driver.
   await visit(owner, `/orders?q=${encodeURIComponent("Southfield Crossing")}`);
   await expect(owner.getByText("Southfield Crossing Distribution").first()).toBeVisible();
@@ -249,6 +254,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
       if (role === "driver" || role === "multi") {
         await visit(owner, "/driver");
         await expect(owner.getByText(/\bload \d/i).first(), `${role} My Day has loads`).toBeVisible();
+        await expect(owner.getByText(/Last checked by the office|Not checked by the office yet/), `${role} My Day shows site directions status`).not.toHaveCount(0);
       }
     }
   } finally {
