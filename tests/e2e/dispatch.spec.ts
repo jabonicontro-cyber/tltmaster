@@ -85,7 +85,9 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await dialog.getByLabel("Unit").selectOption({ label: "Tons" });
   await dialog.getByRole("button", { name: "Add load" }).click();
   await expectToast(page, "Load 1 added.");
-  const load1 = page.getByRole("listitem", { name: "Load 1", exact: true }).filter({ hasText: "22 ton" });
+  // Scoped to this test's order (its card): earlier runs on the same date leave their own "Load 1" on the board.
+  const orderCard = page.locator("section").filter({ has: page.getByRole("link", { name: f.orderNumber, exact: true }) });
+  const load1 = orderCard.getByRole("listitem", { name: "Load 1", exact: true }).filter({ hasText: "22 ton" });
   await expect(load1.getByText("Needs a truck and driver")).toBeVisible();
 
   // Assign the dump truck and driver A.
@@ -106,7 +108,7 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await dialog.getByLabel("End").fill("10:00");
   await dialog.getByRole("button", { name: "Add load" }).click();
   await expectToast(page, "Load 2 added.");
-  const load2 = page.getByRole("listitem", { name: "Load 2", exact: true });
+  const load2 = orderCard.getByRole("listitem", { name: "Load 2", exact: true });
   await load2.getByRole("button", { name: "Assign", exact: true }).click();
   dialog = page.getByRole("dialog");
 
