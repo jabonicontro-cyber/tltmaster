@@ -6,7 +6,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { sniffImage } from "@/lib/branding";
 import { MAX_PHOTO_BYTES } from "@/lib/people/photo";
 import { isCompletePhone } from "@/lib/phone";
-import { requireAccess } from "@/server/auth";
+import { requireSignedIn } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
@@ -23,13 +23,14 @@ const profileSchema = z.object({
 /** The signed-in person's own display name and phone. Nothing else can be changed here. */
 export async function updateMyProfile(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
-    await requireAccess();
+    await requireSignedIn();
     const parsed = profileSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
     const { error } = await supabase.rpc("update_my_profile", { p_display_name: parsed.data.display_name, p_phone: parsed.data.phone });
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
     return ok(undefined, "Profile saved.");
   });
 }
@@ -41,7 +42,7 @@ export async function updateMyProfile(formData: FormData): Promise<ActionResult>
  */
 export async function uploadMyPhoto(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
-    await requireAccess();
+    await requireSignedIn();
     const file = formData.get("photo");
     if (!(file instanceof File) || file.size === 0) return fail("Choose a photo first.", { photo: "Choose a photo first." });
     if (file.size > MAX_PHOTO_BYTES) return fail("The photo is too large.", { photo: "Use a smaller photo (200 KB at most after resizing)." });
@@ -52,17 +53,19 @@ export async function uploadMyPhoto(formData: FormData): Promise<ActionResult> {
     const { error } = await supabase.rpc("set_my_photo", { p_mime_type: `image/${kind}`, p_data_base64: Buffer.from(bytes).toString("base64") });
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
     return ok(undefined, "Photo saved.");
   });
 }
 
 export async function removeMyPhoto(): Promise<ActionResult> {
   return guard(async () => {
-    await requireAccess();
+    await requireSignedIn();
     const supabase = await createClient();
     const { error } = await supabase.rpc("set_my_photo", { p_mime_type: null, p_data_base64: null });
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/", "layout");
+    revalidatePath("/admin", "layout");
     return ok(undefined, "Photo removed.");
   });
 }

@@ -28,7 +28,7 @@ export interface ShellBranding {
  * is a quiet "Powered by Taviron" line. Urgency colors are fixed ("critical")
  * and never follow a company's colors.
  */
-export function AppShell({ access, companies = [], platformAdmin = false, presentation = false, welcome = false, sidebarPinned = false, me = null, branding, hideMyDay = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; presentation?: boolean; /** Demo company: show the one-time welcome. */ welcome?: boolean; sidebarPinned?: boolean; /** Display name and picture (photo, else the illustrated avatar) of the signed-in person. */ me?: { name: string; photo: string; fallbackPhoto?: string; presence?: Presence | null } | null; branding?: ShellBranding; /** Hide My Day: the login is not a driver but has other work (owners, office). */ hideMyDay?: boolean; children: ReactNode }) {
+export function AppShell({ access, companies = [], platformAdmin = false, roleTitle, presentation = false, welcome = false, sidebarPinned = false, me = null, branding, hideMyDay = false, children }: { access: Access; companies?: MyCompany[]; platformAdmin?: boolean; /** Shown instead of the company role (the Taviron platform team). */ roleTitle?: string; presentation?: boolean; /** Demo company: show the one-time welcome. */ welcome?: boolean; sidebarPinned?: boolean; /** Display name and picture (photo, else the illustrated avatar) of the signed-in person. */ me?: { name: string; photo: string; fallbackPhoto?: string; presence?: Presence | null } | null; branding?: ShellBranding; /** Hide My Day: the login is not a driver but has other work (owners, office). */ hideMyDay?: boolean; children: ReactNode }) {
   const style = branding ? brandingStyle({ logo: "", color: branding.color, sidebarColor: branding.sidebarColor }) : {};
   const logoUrl = branding?.logoUrl ?? "";
   // Navigation only (pages still check real permissions): no My Day entry for people who do not drive.
@@ -56,7 +56,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, presen
           photo={me?.photo ?? ""}
           fallbackPhoto={me?.fallbackPhoto ?? ""}
           presence={me?.presence}
-          roleLabel={`${access.role ? ROLE_LABELS[access.role] : "No role"}${access.companyName ? ` · ${access.companyName}` : ""}`}
+          roleLabel={`${roleTitle ?? (access.role ? ROLE_LABELS[access.role] : "No role")}${access.companyName ? ` · ${access.companyName}` : ""}`}
           companies={companies.map((c) => ({ id: c.company_id, name: c.name, current: c.current, role: ROLE_LABELS[c.role as keyof typeof ROLE_LABELS] ?? c.role }))}
           canCreateCompany={access.role === "owner"}
           canManageSettings={access.permissions.includes("settings.manage")}

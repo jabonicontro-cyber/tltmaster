@@ -9,6 +9,7 @@ import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { greeting } from "@/lib/people/greeting";
 import { shownName } from "@/server/data/profile";
+import { isPlatformAdmin } from "@/server/platform";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { DRIVER_TICKET_STATUS, REPORT_KIND_LABELS, REPORT_STATUS_LABELS, qualificationReminders, siteAddress } from "@/lib/driver/rules";
 import { trimNumber } from "@/lib/fleet/labels";
@@ -112,7 +113,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const access = await requirePagePermission("driver.portal");
   const sp = await searchParams;
   const home = await loadDriverHome();
-  const shown = await shownName(access);
+  const [shown, platformAdmin] = await Promise.all([shownName(access), isPlatformAdmin()]);
   const hello = greeting(shown || (home.ok ? home.data.driver.name : ""));
 
   // An owner or office user who does not drive has no My Day: send them to their own home.
@@ -150,7 +151,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       <div>
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="text-2xl font-black">My Day</h1>
-        <p className="text-muted">{access.isDemo && shown ? shown : h.driver.name} · {formatDate(h.today)}</p>
+        {/* Whose day this is: the driver record (the platform team member previewing a demo keeps their own name only in the header and greeting). */}
+        <p className="text-muted">{access.isDemo && shown && !platformAdmin ? shown : h.driver.name} · {formatDate(h.today)}</p>
         <Link href="/time-off" className="mt-1 inline-block text-sm font-semibold underline">Request time off</Link>
         <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
         <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>

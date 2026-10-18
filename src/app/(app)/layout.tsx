@@ -6,7 +6,7 @@ import { SIDEBAR_COOKIE } from "@/components/layout/sidebar-cookie";
 import { requireAccess } from "@/server/auth";
 import { myCompanies } from "@/server/data/companies";
 import { getSettings } from "@/server/data/settings";
-import { getDemoPersona, getMyProfile } from "@/server/data/profile";
+import { PLATFORM_ROLE_TITLE, getDemoPersona, getMyProfile } from "@/server/data/profile";
 import { personPhoto } from "@/lib/people/avatars";
 import { effectivePresence } from "@/lib/communications";
 import { can } from "@/lib/permissions";
@@ -52,7 +52,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     !welcomedInCookie(jar.get(DEMO_WELCOME_COOKIE)?.value, welcomeToken(access.companyId, access.userId)));
   // The header picture follows the same order as every other page (personPhoto): the person's own profile photo,
   // else the illustrated avatar on their employee record, else initials. In a demo the persona supplies the name only.
-  const picture = personPhoto(access.userId, profile?.photoUpdatedAt, persona?.avatarKey || ownAvatarKey);
-  const me = persona || profile ? { name: persona?.name || profile?.displayName || profile?.fullName || "", photo: picture.src, fallbackPhoto: picture.fallbackSrc, presence } : null;
-  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}>{children}</AppShell>;
+  // The Taviron platform team is always shown as themselves — own photo (else initials) and own name, with the role
+  // "Taviron Administrator" — in every company and demo, never as a demo persona. Display only: permissions are unchanged.
+  const shownPersona = platformAdmin ? null : persona;
+  const picture = platformAdmin ? personPhoto(access.userId, profile?.photoUpdatedAt, "") : personPhoto(access.userId, profile?.photoUpdatedAt, persona?.avatarKey || ownAvatarKey);
+  const me = shownPersona || profile ? { name: shownPersona?.name || profile?.displayName || profile?.fullName || access.fullName || "", photo: picture.src, fallbackPhoto: picture.fallbackSrc, presence } : null;
+  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} roleTitle={platformAdmin ? PLATFORM_ROLE_TITLE : undefined} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}>{children}</AppShell>;
 }

@@ -3,8 +3,9 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/layout/brand";
 import { requirePlatformAdmin } from "@/server/platform";
-import { signOut } from "@/app/(auth)/actions";
 import { AdminNav } from "@/components/admin/admin-nav";
+import { AdminUserMenu } from "@/components/admin/admin-user-menu";
+import { PLATFORM_ROLE_TITLE, getMyProfile, photoUrl } from "@/server/data/profile";
 
 export const metadata: Metadata = { title: { default: "Platform", template: "%s · Platform · Taviron" } };
 
@@ -13,6 +14,7 @@ export const metadata: Metadata = { title: { default: "Platform", template: "%s 
 // is not a platform admin gets "not found".
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const me = await requirePlatformAdmin();
+  const profile = await getMyProfile();
   return (
     <div className="min-h-dvh bg-surface">
       <header className="bg-charcoal">
@@ -23,15 +25,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </Link>
             <span className="rounded bg-brand px-2 py-0.5 text-xs font-bold tracking-wide text-white">PLATFORM</span>
           </div>
-          <div className="flex items-center gap-3 text-sm text-white/70">
-            <span className="hidden sm:inline">{me.email}</span>
-            <Link href="/command-center" className="font-semibold text-white hover:underline">
-              Open the app
-            </Link>
-            <form action={signOut}>
-              <button className="font-semibold text-white/80 hover:text-white hover:underline">Sign out</button>
-            </form>
-          </div>
+          <AdminUserMenu name={profile?.displayName || profile?.fullName || ""} email={me.email} photo={profile ? photoUrl(profile.userId, profile.photoUpdatedAt) : ""} roleTitle={PLATFORM_ROLE_TITLE} />
         </div>
         <AdminNav />
       </header>

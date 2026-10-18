@@ -167,7 +167,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await expect(page.getByRole("dialog", { name: "Welcome to the Taviron demo" })).toContainText("fictional sample data");
   await closeDemoWelcome(page);
   await expect(page.getByRole("region", { name: "Demo company" })).toHaveCount(0);
-  const menu = () => page.getByRole("button", { name: /Daniel Mitchell/ });
+  const menu = () => page.getByRole("button", { name: new RegExp(`Account menu: ${PLATFORM_USER.name}`) });
   /** Change view in the profile menu: the existing role preview, which only narrows what is shown. */
   const changeView = async (label: RegExp) => {
     await menu().click();
@@ -175,10 +175,13 @@ test("live demo: a separate company with fictional data; role previews only narr
     await page.getByRole("dialog", { name: "Change view" }).getByRole("button", { name: label }).click();
   };
   await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
-  // A fictional persona and the company's own branding — the presenter's real account is untouched.
-  await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
-  await expect(page.getByRole("banner")).toContainText("Daniel Mitchell");
-  await expect(page.locator("header img[src='/avatars/avatar-08.png']")).toBeVisible();
+  // The platform team member is shown as themselves with the Taviron Administrator role (owner requirement
+  // 2026-10-18), never as the demo's fictional employee; the company's own branding stays. The demo's records keep the
+  // fictional persona (Daniel Mitchell) and the presenter's real account is untouched.
+  await expect(page.getByTestId("greeting")).toHaveText(`Hi, ${PLATFORM_USER.name.split(" ")[0]}!`);
+  await expect(page.getByRole("banner")).toContainText(PLATFORM_USER.name);
+  await expect(page.getByRole("banner")).toContainText("Taviron Administrator · Northfield Aggregates");
+  await expect(page.getByRole("banner")).not.toContainText("Daniel Mitchell");
   await expect(page.getByRole("img", { name: /Northfield Aggregates/ }).first()).toBeVisible();
   const realName = await asUser(PLATFORM_USER.email, async (q) => (await q("select full_name from public.profiles where id = auth.uid()")).rows[0].full_name);
   expect(realName).toBe(PLATFORM_USER.name);
@@ -209,7 +212,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await changeView(/^Driver [A-Z]/);
   await expect(page).toHaveURL(/\/driver/);
   await expect(page.getByText("4th St water main — bedding stone").first()).toBeVisible();
-  await expect(page.getByTestId("greeting")).toHaveText("Hi, Daniel!");
+  await expect(page.getByTestId("greeting")).toHaveText(`Hi, ${PLATFORM_USER.name.split(" ")[0]}!`);
   // Ticket history from earlier days, with different customers and statuses.
   await expect(page.getByText(/^Daniel Mitchell · /)).toBeVisible();
   const history = page.getByRole("list", { name: "My recent tickets" });
@@ -332,6 +335,7 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await page.goto("/admin/onboarding");
   await page.getByLabel("Company name").fill(name);
   await page.getByRole("button", { name: "Create company" }).click();
+  await page.waitForURL(/\/admin\/onboarding\/[0-9a-f-]{36}\?created=1/); // the company exists before moving on
   await page.goto(`/admin/companies?q=${encodeURIComponent(name)}&setup=incomplete`);
   await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Companies" })).toHaveAttribute("aria-current", "page");
   const row = page.getByRole("row").filter({ hasText: name });
@@ -346,4 +350,23 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await page.getByLabel("Company name").fill(name);
   await page.getByRole("button", { name: "Create company" }).click();
   await expect(page.getByText(/already exists/)).toBeVisible();
+});
+
+test("the platform team member appears as themselves (name, Taviron Administrator, initials or photo) in the console; a company user keeps their own identity", async ({ page, browser }) => {
+  await signInPlatform(page);
+  await page.goto("/admin");
+  const account = page.getByRole("button", { name: new RegExp(`Account menu: ${PLATFORM_USER.name}`) });
+  await expect(account).toContainText("Taviron Administrator");
+  await account.click();
+  await page.getByRole("menuitem", { name: "My profile" }).click();
+  await expect(page).toHaveURL(/\/admin\/profile$/);
+  await expect(page.getByText("Granted and revoked only by an operator")).toBeVisible();
+  // A company owner sees their own name and company role, never the administrator title.
+  const ctx = await browser.newContext();
+  const owner = await ctx.newPage();
+  await signIn(owner, "owner");
+  await owner.goto("/command-center");
+  await expect(owner.getByRole("banner")).toContainText("Erin Owner");
+  await expect(owner.getByRole("banner")).not.toContainText("Taviron Administrator");
+  await ctx.close();
 });

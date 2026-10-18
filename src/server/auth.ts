@@ -53,6 +53,16 @@ export const getAccess = cache(async (): Promise<Access | null> => {
   return applyPreview(access, preview, (perms as Array<{ role: string; permission: string }> | null) ?? []);
 });
 
+/**
+ * For a person's own account only (profile, photo): signed in is enough — a platform team member without a company
+ * can edit their own profile too. Nothing here can reach company data; the database limits it to the caller's row.
+ */
+export async function requireSignedIn(): Promise<Access> {
+  const access = await getAccess();
+  if (!access) redirect("/login");
+  return access;
+}
+
 /** For pages: redirect to sign-in when signed out, to the no-access page when the account has no role. */
 export async function requireAccess(): Promise<Access> {
   const access = await getAccess();

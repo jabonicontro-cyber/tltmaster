@@ -1,6 +1,7 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@/server/supabase/server";
+import { isPlatformAdmin } from "@/server/platform";
 
 export interface MyProfile {
   userId: string;
@@ -45,8 +46,16 @@ export const getDemoPersona = cache(async (isDemo: boolean, userId: string): Pro
 
 export const getDemoPersonaName = async (isDemo: boolean, userId: string) => (await getDemoPersona(isDemo, userId))?.name ?? null;
 
-/** The name to greet and show the signed-in person by: demo persona, own display name, then profile name. */
+/** The role title shown for the Taviron platform team everywhere (console, company workspaces, demos). */
+export const PLATFORM_ROLE_TITLE = "Taviron Administrator";
+
+/**
+ * The name to greet and show the signed-in person by: demo persona, own display name, then profile name. A platform
+ * team member is always shown as themselves (their own verified profile), never as a demo's fictional employee — the
+ * identity is display only and changes no permission.
+ */
 export async function shownName(access: { isDemo?: boolean; userId: string; fullName: string }): Promise<string> {
+  if (await isPlatformAdmin()) return (await getMyProfile())?.displayName || access.fullName;
   const persona = await getDemoPersonaName(Boolean(access.isDemo), access.userId);
   if (persona) return persona;
   return (await getMyProfile())?.displayName || access.fullName;
