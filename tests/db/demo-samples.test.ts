@@ -136,6 +136,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Dispatch's "Needs scheduling" queue has a confirmed order without a date.
     const waiting = await q<{ n: string }>("select count(*) n from public.orders where company_id = $1 and status = 'confirmed' and scheduled_start is null", [w.company]);
     expect(Number(waiting.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // Payroll: one open period over the last two weeks, and no pay rule (rules are never invented, docs/PAYROLL.md).
+    const periods = await q<{ status: string }>("select status from public.payroll_periods where company_id = $1", [w.company]);
+    expect(periods.rows).toEqual([{ status: "open" }]);
+    const rules = await q<{ n: string }>("select count(*) n from public.pay_rules where company_id = $1", [w.company]);
+    expect(Number(rules.rows[0].n)).toBe(0);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

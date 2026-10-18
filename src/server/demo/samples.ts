@@ -75,7 +75,21 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("billing: ready and handed off", await billing(db, today));
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
+  note("payroll period", await payrollPeriod(db, today));
   return result;
+}
+
+/**
+ * Driver payroll (B27, 20261118000200): one open period over the last two weeks, so the owner sees the demo's verified
+ * tickets waiting for payroll. No pay rule is added: pay rules are each company's own (docs/PAYROLL.md) and never
+ * invented, so calculation stays off until someone in the demo writes and activates one. Only while the demo has no
+ * payroll period.
+ */
+async function payrollPeriod(db: Db, today: string): Promise<number> {
+  const n = await count(db, "payroll_periods");
+  if (n === null || n > 0) return 0;
+  await must("payroll period", db.rpc("payroll_period_create", { p_starts: addDays(today, -14), p_ends: addDays(today, -1) }));
+  return 1;
 }
 
 /**

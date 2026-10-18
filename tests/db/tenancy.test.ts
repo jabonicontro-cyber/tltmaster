@@ -13,6 +13,7 @@ const TENANT_TABLES = [
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "ai_usage_events",
+  "payroll_settings", "pay_rules", "pay_rule_versions", "payroll_periods", "payroll_entries", "payroll_adjustments", "payroll_exports",
   "employees", "employee_compensation", "employee_work_schedules",
   "time_off_requests", "time_off_events", "time_off_approval_steps", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
   "vehicle_documents", "truck_assignment_events", "vehicle_document_rules",
@@ -71,7 +72,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.alert_is_recipient", "private.alert_outstanding", "private.alert_policy", "private.alert_users_with",
   "private.alerts_from_announcement_receipts", "private.alerts_from_announcements", "private.alerts_from_assignments",
   // Driver schedule notices (20261114000500): triggers; recipients are the load's own drivers in the same company.
-  "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions", "public.platform_launchpad", "public.platform_company", "public.platform_company_directory", "public.platform_record_demo_refresh",
+  "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions", "public.platform_launchpad", "public.platform_company", "public.platform_company_directory", "public.platform_record_demo_refresh", "public.payroll_settings_save", "public.payroll_rule_draft", "public.payroll_rule_activate", "public.payroll_rule_end", "public.payroll_period_create", "public.payroll_period_work", "public.payroll_record_entries", "public.payroll_entry_set", "public.payroll_adjust", "public.payroll_period_approve", "public.payroll_export_record", "public.payroll_export_outcome",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

@@ -192,9 +192,12 @@ test("the Command Center is arranged per person, hides only from your view, and 
     // Collapse a section and move the queue to the top; it stays that way after reload. The pinned summary stays.
     await page.goto("/command-center");
     await page.getByRole("button", { name: "Sales and quotes" }).click();
+    const before = await page.locator("main h2[id^=section-]").allTextContents();
     await page.getByRole("button", { name: "Arrange sections" }).click();
-    await page.getByRole("button", { name: "Move Attention queue up" }).click();
-    await page.waitForTimeout(500);
+    for (let i = before.indexOf("Attention queue"); i > 0; i--) {
+      await page.getByRole("button", { name: "Move Attention queue up" }).click();
+      await page.waitForTimeout(500);
+    }
     await page.reload();
     await expect(page.getByRole("button", { name: "Sales and quotes" })).toHaveAttribute("aria-expanded", "false");
     const headings = await page.locator("main h2[id^=section-]").allTextContents();
