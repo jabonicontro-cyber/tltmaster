@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { CheckCircle2, Plus, Route } from "lucide-react";
 import { ExceptionCard } from "@/components/command-center/exception-card";
+import { LiveOutlook } from "@/components/command-center/live-outlook";
 import { MetricGrid } from "@/components/command-center/metric-grid";
 import { RefreshButton } from "@/components/command-center/refresh-button";
 import { SalesSection } from "@/components/command-center/sales-section";
@@ -27,6 +28,8 @@ import { loadDriverHome } from "@/server/data/driver";
 import { fleetOverview } from "@/server/data/fleet";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
+import { loadOutlook } from "@/server/data/live";
+import { outlookTotals } from "@/lib/live/outlook";
 
 export const metadata = { title: "Command Center" };
 
@@ -73,7 +76,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const customer = sp.customer && /^[0-9a-f-]{36}$/i.test(sp.customer) ? sp.customer : undefined;
 
   const none = Promise.resolve(null);
-  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver] = await Promise.all([
+  // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
+  const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
+  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook] = await Promise.all([
     ops ? loadSummary() : none,
     ops ? loadQueue({ kind, mine, page, hidden }) : none,
     ops ? loadQueue({ mine: true, page: 1, limit: 5 }) : none,
@@ -85,6 +90,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("quotes.view") ? listCustomerOptions() : Promise.resolve([]),
     has("fleet.view") ? fleetOverview().catch(() => null) : none,
     has("driver.portal") ? loadDriverHome() : none,
+    outlookP,
   ]);
   const now = new Date();
 
@@ -111,6 +117,21 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Sections
   // ---------------------------------------------------------------------------
   const sections: Section[] = [];
+
+  // What is coming: the next 7 days, first for everyone who dispatches.
+  if (outlook) {
+    const t = outlook.ok ? outlookTotals(outlook.data.days) : null;
+    sections.push({
+      id: "outlook",
+      title: "Next 7 days",
+      collapsedSummary: t ? `${t.loads} loads · ${t.unassigned} without a truck${t.conflicts ? ` · ${t.conflicts} conflicts` : ""}` : "Could not be loaded",
+      content: outlook.ok ? (
+        <LiveOutlook outlook={outlook.data} today={today} />
+      ) : (
+        <ErrorState title="The next 7 days could not be loaded" description="No figures are shown rather than guessed. Open Dispatch directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
+      ),
+    });
+  }
 
   // Your work: what is assigned to you, and your own loads when you also drive.
   if (ops || linkedDriver) {

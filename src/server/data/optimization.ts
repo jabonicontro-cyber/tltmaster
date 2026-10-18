@@ -2,6 +2,7 @@ import "server-only";
 import { explainLoad, unavailableResources } from "@/lib/optimization/availability";
 import { optimizeWithAlternatives, type OptimizationInput, type Priorities } from "@/lib/optimization/plan";
 import { createClient } from "@/server/supabase/server";
+import { estimateLoadRevenueCents } from "@/lib/orders/load-revenue";
 import { DISPATCHABLE, getSmartDispatchInput } from "./smart-dispatch";
 import { getTrailerInput } from "./trailer-input";
 
@@ -23,12 +24,7 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
       .order("line_no");
     if (error) throw new Error(`The optimizer could not read order rates: ${error.message}`);
     const lines = (data ?? []) as Array<{ order_id: string; kind: string; calc_method: string; unit_code: string | null; unit_rate_cents: number | string | null }>;
-    for (const l of smart.loads) {
-      // Material and hauling lines priced per the load's unit (aggregate: per ton; freight: per load). Both are revenue
-      // for the load, so they add up; surcharges and lines in other units are not estimated per load.
-      const priced = lines.filter((x) => x.order_id === l.order_id && (x.kind === "material" || x.kind === "hauling") && x.calc_method === "per_unit" && x.unit_code === l.unit_code && x.unit_rate_cents !== null);
-      revenueCents[l.id] = priced.length && l.planned_quantity !== null ? Math.round(priced.reduce((sum, x) => sum + Number(x.unit_rate_cents), 0) * l.planned_quantity) : null;
-    }
+    for (const l of smart.loads) revenueCents[l.id] = estimateLoadRevenueCents(lines, l);
   }
   // Trailers for tractors (shared with Smart Dispatch) and vehicle documents.
   const supabase = await createClient();
