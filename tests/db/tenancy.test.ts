@@ -71,7 +71,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.alert_is_recipient", "private.alert_outstanding", "private.alert_policy", "private.alert_users_with",
   "private.alerts_from_announcement_receipts", "private.alerts_from_announcements", "private.alerts_from_assignments",
   // Driver schedule notices (20261114000500): triggers; recipients are the load's own drivers in the same company.
-  "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions",
+  "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions", "public.platform_launchpad", "public.platform_company", "public.platform_company_directory", "public.platform_record_demo_refresh",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",
@@ -172,7 +172,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire"];
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;

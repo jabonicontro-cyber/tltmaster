@@ -150,7 +150,7 @@ test("the platform area is not reachable without the platform role", async ({ pa
   expect(anon.headers().location).toMatch(/\/login/);
   // A company owner is not a platform admin: the area does not exist for them.
   await signIn(page, "owner");
-  for (const path of ["/admin", "/admin/leads", "/admin/demo", "/admin/onboarding", "/admin/platform"]) {
+  for (const path of ["/admin", "/admin/leads", "/admin/companies", `/admin/companies/${"0".repeat(8)}-0000-4000-8000-000000000001`, "/admin/demo", "/admin/onboarding", "/admin/platform"]) {
     const res = await page.goto(path);
     expect(res?.status(), path).toBe(404);
     await expect(page.getByText(/Pia Platform|Platform team|Launchpad/)).toHaveCount(0);
@@ -311,4 +311,39 @@ test("team-led onboarding: map a spreadsheet, review, approve, then revert witho
   // Every step is in the audit log.
   await page.goto("/admin/platform");
   for (const a of ["Company created", "Import staged", "Import approved", "Import reverted"]) await expect(page.getByText(a).first()).toBeVisible();
+});
+
+test("the Launchpad shows live platform work, links each item to its record, and the company directory filters and opens a company", async ({ page }) => {
+  await signInPlatform(page);
+  await page.goto("/admin");
+  await expect(page.getByRole("heading", { name: "Launchpad" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Launchpad" })).toHaveAttribute("aria-current", "page");
+  const overview = page.getByRole("list", { name: "Platform overview" });
+  await expect(overview.getByRole("listitem")).toHaveCount(6);
+  await expect(page.getByLabel("Platform status")).toContainText(/need attention|Nothing needs attention/);
+  // Every attention item links to a record page.
+  const items = page.getByRole("list", { name: "Needs attention" }).getByRole("link");
+  for (const href of await items.evaluateAll((els) => els.slice(0, 10).map((e) => e.getAttribute("href")))) {
+    expect(href).toMatch(/^\/admin\/(leads|companies|onboarding\/batch)\/[0-9a-f-]{36}$|^\/admin\/demo$/);
+  }
+
+  // A new company appears in the directory as "setup incomplete" and opens its detail page.
+  const name = `Directory Hauling ${unique()}`;
+  await page.goto("/admin/onboarding");
+  await page.getByLabel("Company name").fill(name);
+  await page.getByRole("button", { name: "Create company" }).click();
+  await page.goto(`/admin/companies?q=${encodeURIComponent(name)}&setup=incomplete`);
+  await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Companies" })).toHaveAttribute("aria-current", "page");
+  const row = page.getByRole("row").filter({ hasText: name });
+  await expect(row).toContainText("Missing owner login, customers, trucks, drivers");
+  await row.getByRole("link", { name }).click();
+  await expect(page.getByRole("heading", { name })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Setup steps" }).getByRole("listitem")).toHaveCount(4);
+  await expect(page.getByText("Nobody can sign in to this company yet.")).toBeVisible();
+  await expect(page.getByText(/Company created — Created company/)).toBeVisible();
+  // The same name is refused instead of creating a duplicate company.
+  await page.goto("/admin/onboarding");
+  await page.getByLabel("Company name").fill(name);
+  await page.getByRole("button", { name: "Create company" }).click();
+  await expect(page.getByText(/already exists/)).toBeVisible();
 });

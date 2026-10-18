@@ -4,16 +4,10 @@ import Link from "next/link";
 import { BrandMark } from "@/components/layout/brand";
 import { requirePlatformAdmin } from "@/server/platform";
 import { signOut } from "@/app/(auth)/actions";
+import { AdminNav } from "@/components/admin/admin-nav";
 
 export const metadata: Metadata = { title: { default: "Platform", template: "%s · Platform · Taviron" } };
 
-const NAV = [
-  { href: "/admin", label: "Launchpad" },
-  { href: "/admin/leads", label: "Leads" },
-  { href: "/admin/demo", label: "Live demo" },
-  { href: "/admin/onboarding", label: "Onboarding" },
-  { href: "/admin/platform", label: "Administration" },
-];
 
 // The Taviron team's private area. Not linked from the public site; anyone who
 // is not a platform admin gets "not found".
@@ -39,13 +33,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             </form>
           </div>
         </div>
-        <nav aria-label="Platform" className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 sm:px-4">
-          {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="rounded-t-md px-3 py-2 text-sm font-semibold whitespace-nowrap text-white/75 hover:bg-white/10 hover:text-white">
-              {n.label}
-            </Link>
-          ))}
-        </nav>
+        <AdminNav />
       </header>
       <main id="main" className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
         {children}

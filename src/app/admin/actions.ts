@@ -27,6 +27,15 @@ async function db() {
   return createClient();
 }
 
+/**
+ * Record a demo refresh in the platform audit (20261118000100) so the Launchpad shows the last refresh and any failure.
+ * Before that update is installed the refresh still works; it is just not recorded.
+ */
+async function recordRefresh(supabase: Awaited<ReturnType<typeof createClient>>, company: string | null, ok: boolean, summary: string) {
+  if (!company) return;
+  await supabase.rpc("platform_record_demo_refresh", { p_company: company, p_ok: ok, p_summary: summary });
+}
+
 export async function updateLead(formData: FormData) {
   const id = uuid.parse(formData.get("id"));
   const status = String(formData.get("status") ?? "");
@@ -203,8 +212,11 @@ export async function refreshProspectDemo(formData: FormData) {
   try {
     r = await refreshPrairieLantern(supabase);
   } catch (e) {
-    back("/admin/demo", e instanceof Error ? e.message : "The demo could not be refreshed.");
+    const message = e instanceof Error ? e.message : "The demo could not be refreshed.";
+    await recordRefresh(supabase, id.data ?? null, false, message);
+    back("/admin/demo", message);
   }
+  await recordRefresh(supabase, id.data ?? null, true, `${r.loads} loads and ${r.added} missing records added`);
   revalidatePath("/", "layout");
   redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
 }
@@ -217,12 +229,18 @@ export async function refreshPresenterDemo() {
   const supabase = await db();
   const { error } = await supabase.rpc("platform_demo_enter");
   if (error) back("/admin/demo", dbErrorMessage(error));
+  // The presenter demo the platform admin is now in (platform_demo_enter switched to it).
+  const { data: me } = await supabase.rpc("my_access");
+  const company = (me as { company_id?: string | null } | null)?.company_id ?? null;
   let r: { added: number; loads: number } = { added: 0, loads: 0 };
   try {
     r = await refreshNorthfield(supabase);
   } catch (e) {
-    back("/admin/demo", e instanceof Error ? e.message : "The demo could not be refreshed.");
+    const message = e instanceof Error ? e.message : "The demo could not be refreshed.";
+    await recordRefresh(supabase, company, false, message);
+    back("/admin/demo", message);
   }
+  await recordRefresh(supabase, company, true, `${r.loads} loads and ${r.added} missing records added`);
   revalidatePath("/", "layout");
   redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
 }
