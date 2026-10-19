@@ -1,6 +1,7 @@
 import { expect, test, type Browser } from "@playwright/test";
 import pg from "pg";
 import { signIn, unique } from "./helpers";
+import { latestMail } from "./mailbox";
 import { TOP_LINE_SLUG } from "./users";
 
 // Customer portal (20261120000700), end to end: the owner turns the portal on, invites a customer contact, the customer
@@ -60,9 +61,18 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
   try {
     await cust.goto(new URL(link).pathname + new URL(link).search);
     await expect(cust.getByText(CUSTOMER)).toBeVisible();
-    await cust.getByLabel("Choose a password").fill("Portal-Test-Passw0rd!");
-    await cust.getByLabel("Repeat the password").fill("Portal-Test-Passw0rd!");
-    await cust.getByRole("button", { name: "Create Account and Continue" }).click();
+    // Holding the link is not enough to get an account: the address must prove it is theirs (security review F1).
+    const sentAt = Date.now() - 1000;
+    await cust.getByRole("button", { name: "Email Me a Sign-In Link" }).click();
+    await expect(cust.getByRole("status")).toContainText(`We sent a sign-in link to ${email}`);
+    const mail = await latestMail(email, sentAt);
+    await cust.goto(mail.link.replace(/^https?:\/\/[^/]+/, ""));
+    await cust.getByLabel("New password", { exact: true }).fill("Portal-Test-Passw0rd!");
+    await cust.getByLabel("Confirm new password").fill("Portal-Test-Passw0rd!");
+    await cust.getByRole("button", { name: "Save password" }).click();
+    // Back to the invitation, now signed in as the invited address.
+    await cust.waitForURL(/\/portal\/accept\?token=/);
+    await cust.getByRole("button", { name: "Accept Invitation" }).click();
     await cust.waitForURL(new RegExp(`/portal/${TOP_LINE_SLUG}$`));
     await expect(cust.getByRole("heading", { name: `Welcome, ${CUSTOMER}` })).toBeVisible();
     await expect(cust.getByText("Welcome! Follow your loads here.")).toBeVisible();

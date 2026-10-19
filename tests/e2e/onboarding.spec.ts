@@ -1,32 +1,12 @@
 import { createHash, randomInt } from "node:crypto";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import path from "node:path";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import { normalizeAccessCode } from "../../src/lib/early-access";
 import { signIn, unique } from "./helpers";
+import { latestMail } from "./mailbox";
 import { USERS } from "./users";
 
-const MAILBOX = path.resolve(".dev-stack/mail");
 const TOP_LINE = "00000000-0000-4000-8000-000000000001";
-
-/** The newest email the local mail catcher received for an address (waits up to 10 s). */
-async function latestMail(to: string, after: number): Promise<{ subject: string; link: string }> {
-  for (let i = 0; i < 40; i++) {
-    if (existsSync(MAILBOX)) {
-      const files = readdirSync(MAILBOX).filter((f) => Number(f.split("-")[0]) >= after).sort().reverse();
-      for (const f of files) {
-        const m = JSON.parse(readFileSync(path.join(MAILBOX, f), "utf8")) as { to: string[]; subject: string; body: string };
-        if (m.to.some((t) => t.toLowerCase() === to.toLowerCase())) {
-          const link = (m.body.match(/href="([^"]+)"/) ?? [])[1]?.replace(/&amp;/g, "&");
-          if (link) return { subject: m.subject, link };
-        }
-      }
-    }
-    await new Promise((r) => setTimeout(r, 250));
-  }
-  throw new Error(`No email for ${to}. Is the dev mailbox running (scripts/dev-stack/stack.sh up)?`);
-}
 
 async function sql<T = Record<string, unknown>>(text: string, params: unknown[] = []) {
   const c = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });

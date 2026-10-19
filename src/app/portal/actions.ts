@@ -9,6 +9,9 @@ import { safeNextPath } from "@/lib/safe-redirect";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isPortalSlug, isPortalToken } from "@/lib/portal";
 import { portalError } from "@/server/portal";
+import { getEmailMode } from "@/server/email/provider";
+import { env } from "@/server/env";
+import { forgetPendingPortalInvite, rememberPendingPortalInvite } from "@/server/portal-invite";
 
 // Customer portal actions (B66). Each one passes only the slug and the record the customer chose; the database
 // functions decide whether this signed-in customer may act on it. A refusal returns the database's own message only
@@ -46,43 +49,47 @@ export async function signOutOfPortal(formData: FormData) {
   redirect(isPortalSlug(slug) ? `/portal/${slug}/login` : "/login");
 }
 
-const acceptSchema = z.object({
-  token: z.string(),
-  password: z.string().min(10, "Use at least 10 characters.").max(72, "Use at most 72 characters."),
-  confirm: z.string(),
-});
-
 /**
- * Accept an invitation. A new person sets a password and their account is created for the invited email only; an
- * existing account must sign in first (we never attach an invitation to an account that did not prove its password).
+ * A new person asks for their account. We never create a confirmed account for an address on the strength of the
+ * invitation link alone (whoever holds the link is not proven to own the address — security review 2026-10-19 F1):
+ * Supabase Auth emails the address its own invitation link; opening it proves ownership, the person chooses a password,
+ * and comes back here to accept. Demo companies never create accounts or send email.
  */
-export async function acceptPortalInvite(formData: FormData): Promise<ActionResult> {
+export async function requestPortalAccount(formData: FormData): Promise<ActionResult> {
   const token = String(formData.get("token") ?? "");
   if (!isPortalToken(token)) return fail("This invitation link is not valid.");
   const supabase = await createClient();
   const { data: peek } = await supabase.rpc("portal_invite_peek", { p_token: token });
-  const invite = peek as { email: string; slug: string; expired: boolean; open: boolean } | null;
+  const invite = peek as { email: string; expired: boolean; demo?: boolean } | null;
   if (!invite || invite.expired) return fail("This invitation is not valid any more. Ask for a new one.");
-
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims?.sub) {
-    const parsed = acceptSchema.safeParse(Object.fromEntries(formData));
-    if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the form.");
-    if (parsed.data.password !== parsed.data.confirm) return fail("The passwords do not match.", { confirm: "The passwords do not match." });
-    if (!adminAvailable()) return fail("Accounts cannot be created on this server yet. Please contact us.");
-    const admin = createAdminClient();
-    const { error: createError } = await admin.auth.admin.createUser({ email: invite.email, password: parsed.data.password, email_confirm: true });
-    if (createError) {
-      // An account already exists for this email: they must sign in with it (never reset or take it over here).
-      if (/already|registered|exists/i.test(createError.message)) return fail("You already have an account. Sign in first, then open this link again.");
-      console.warn("Portal account creation failed", { status: createError.status });
-      return fail("Your account could not be created. Please try again or contact us.");
-    }
-    const { error: signInError } = await supabase.auth.signInWithPassword({ email: invite.email, password: parsed.data.password });
-    if (signInError) return fail("Your account was created, but signing in failed. Sign in from the portal page.");
+  if (invite.demo) return fail("This is a demo company: its portal is previewed from the Testing Lab. No account is created and nothing is emailed.");
+  const mode = getEmailMode();
+  if (mode.mode === "test" && invite.email.toLowerCase() !== mode.testRecipient.toLowerCase()) {
+    return fail("Email test mode is on on this server: sign-in links go only to the test inbox. Please contact the company.");
   }
+  if (!adminAvailable()) return fail("Accounts cannot be created on this server yet. Please contact us.");
+  const admin = createAdminClient();
+  const { error } = await admin.auth.admin.inviteUserByEmail(invite.email, { redirectTo: `${env().APP_BASE_URL}/auth/confirm?next=/update-password` });
+  if (error) {
+    // An account already exists for this email: they sign in with it (never reset or take it over here).
+    if (/already|registered|exists/i.test(error.message)) return fail("You already have an account. Sign in first, then open this link again.");
+    console.warn("Portal account email failed", { status: error.status });
+    return fail("We could not send the email. Please try again or contact us.");
+  }
+  await rememberPendingPortalInvite(token);
+  return ok(undefined, `We sent a sign-in link to ${invite.email}. Open it in this browser, choose a password, and you will come back here to finish.`);
+}
+
+/** Accept an invitation as the signed-in person; the database requires the account's email to match the invitation. */
+export async function acceptPortalInvite(formData: FormData): Promise<ActionResult> {
+  const token = String(formData.get("token") ?? "");
+  if (!isPortalToken(token)) return fail("This invitation link is not valid.");
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  if (!claims?.claims?.sub) return fail("Sign in first, then open this link again.");
   const { data, error } = await supabase.rpc("portal_accept", { p_token: token });
   if (error) return fail(portalError(error));
+  await forgetPendingPortalInvite();
   redirect(`/portal/${(data as { slug: string }).slug}`);
 }
 

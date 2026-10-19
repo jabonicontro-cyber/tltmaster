@@ -10,7 +10,7 @@ export default async function AcceptInvitation({ searchParams }: { searchParams:
   const supabase = await createClient();
   const valid = isPortalToken(token);
   const { data } = valid ? await supabase.rpc("portal_invite_peek", { p_token: token }) : { data: null };
-  const invite = data as { email: string; company: string; customer: string; expired: boolean; open: boolean } | null;
+  const invite = data as { email: string; company: string; customer: string; slug: string; expired: boolean; open: boolean } | null;
   const { data: claims } = await supabase.auth.getClaims();
   const signedInAs = claims?.claims?.email ? String(claims.claims.email) : null;
 
@@ -29,6 +29,11 @@ export default async function AcceptInvitation({ searchParams }: { searchParams:
               You are invited to follow orders, deliveries and quotes for <strong className="text-ink">{invite.customer}</strong>.
             </p>
             {!invite.open ? <p className="mt-3 rounded-md bg-surface p-3 text-sm text-muted">The portal is not open yet. You can set up your account now and sign in once it opens.</p> : null}
+            {!signedInAs && invite.open ? (
+              <p className="mt-3 text-sm text-muted">
+                Already have an account? <a href={`/portal/${invite.slug}/login`} className="font-semibold text-brand-fg hover:underline">Sign in</a>, then open this link again.
+              </p>
+            ) : null}
             {signedInAs && signedInAs.toLowerCase() !== invite.email.toLowerCase() ? (
               <p className="mt-4 rounded-md bg-surface p-3 text-sm text-ink">
                 You are signed in as {signedInAs}, but this invitation is for {invite.email}. Sign out first, then open the link again.

@@ -43,7 +43,8 @@ describe("help center storage", () => {
       const outsider = await s.createUser("owner", { companyId: other });
       await s.as(outsider);
       expect((await pgError(s.query("insert into public.help_support_requests (company_id, message) values ('00000000-0000-4000-8000-000000000001', 'Writing into another company')"))).code).toBe("42501");
-      expect((await s.query<{ r: unknown }>("select public.platform_help_overview() r")).rows[0].r).toBeNull();
+      // Refused outright for anyone but the platform team (20261120001100: through require_platform_admin, with MFA).
+      expect((await pgError(s.query("select public.platform_help_overview()"))).code).toBe("42501");
       await s.query("insert into public.help_searches (query, results) values ('zzz nothing here', 0)");
       const admin = await platformAdmin(s);
       await s.as(admin);

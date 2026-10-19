@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
-import { acceptPortalInvite, createSupportRequest, replyToSupport, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
+import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
 export function PortalLoginForm({ slug, next }: { slug: string; next?: string }) {
   const { pending, onSubmit, formError } = useFormAction(signInToPortal);
@@ -30,29 +30,31 @@ export function PortalLoginForm({ slug, next }: { slug: string; next?: string })
 }
 
 export function AcceptInviteForm({ token, email, signedInAs }: { token: string; email: string; signedInAs: string | null }) {
-  const { pending, onSubmit, formError, fieldError } = useFormAction(acceptPortalInvite);
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <FormError message={formError} />
-      <input type="hidden" name="token" value={token} />
-      {signedInAs ? (
+  const accept = useFormAction(acceptPortalInvite);
+  const [sent, setSent] = useState<string | null>(null);
+  const request = useFormAction(requestPortalAccount, { onSuccess: (r) => setSent(r.message ?? "Check your email.") });
+  if (signedInAs) {
+    return (
+      <form onSubmit={accept.onSubmit} className="space-y-4">
+        <FormError message={accept.formError} />
+        <input type="hidden" name="token" value={token} />
         <p className="text-sm text-muted">You are signed in as <strong className="text-ink">{signedInAs}</strong>.</p>
-      ) : (
-        <>
-          <Field label="Email" htmlFor="invite-email" hint="The address this invitation was sent to.">
-            <Input id="invite-email" value={email} readOnly disabled />
-          </Field>
-          <Field label="Choose a password" htmlFor="password" hint="At least 10 characters." error={fieldError("password")}>
-            <Input id="password" name="password" type="password" autoComplete="new-password" minLength={10} maxLength={72} required />
-          </Field>
-          <Field label="Repeat the password" htmlFor="confirm" error={fieldError("confirm")}>
-            <Input id="confirm" name="confirm" type="password" autoComplete="new-password" required />
-          </Field>
-        </>
-      )}
-      <Button type="submit" className="w-full" size="lg" loading={pending}>
-        {signedInAs ? "Accept Invitation" : "Create Account and Continue"}
-      </Button>
+        <Button type="submit" className="w-full" size="lg" loading={accept.pending}>Accept Invitation</Button>
+      </form>
+    );
+  }
+  if (sent) {
+    return <p role="status" className="rounded-md border border-line bg-surface p-3 text-sm text-ink">{sent}</p>;
+  }
+  return (
+    <form onSubmit={request.onSubmit} className="space-y-4">
+      <FormError message={request.formError} />
+      <input type="hidden" name="token" value={token} />
+      <Field label="Email" htmlFor="invite-email" hint="We send a sign-in link to this address. Opening it confirms it is yours.">
+        <Input id="invite-email" value={email} readOnly disabled />
+      </Field>
+      <Button type="submit" className="w-full" size="lg" loading={request.pending}>Email Me a Sign-In Link</Button>
+      <p className="text-xs text-muted">Already have an account with this email? Sign in first, then open the invitation link again.</p>
     </form>
   );
 }

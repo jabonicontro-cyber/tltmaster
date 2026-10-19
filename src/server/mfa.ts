@@ -13,6 +13,8 @@ export type MfaPolicy = {
   recovery_codes: number;
   recent_failures: number;
   aal2: boolean;
+  /** A verified authenticator exists (from auth.mfa_factors; 20261120001100 and later). */
+  enrolled?: boolean;
 };
 
 export type MfaState = {
@@ -30,12 +32,20 @@ export const mfaState = cache(async (): Promise<MfaState> => {
   const supabase = await createClient();
   const { data: claims } = await supabase.auth.getClaims();
   const aal = claims?.claims?.aal === "aal2" ? "aal2" : "aal1";
-  // nextLevel comes from the session's own factor list (no network call); aal2 means a verified authenticator exists.
-  const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-  const enrolled = level?.nextLevel === "aal2";
   const { data, error } = await supabase.rpc("mfa_policy");
-  if (error || !data) return { installed: false, aal, required: false, enrolled, reason: null, policy: null };
+  if (error && ["PGRST202", "42883"].includes(error.code ?? "")) {
+    // Before 20261120000900: nothing is required. The session's own factor list still decides a self-enrolled person.
+    const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    return { installed: false, aal, required: false, enrolled: level?.nextLevel === "aal2", reason: null, policy: null };
+  }
+  if (error || !data) {
+    // Any other failure: fail closed (ask for the second factor) rather than skip a policy we could not read.
+    console.error("MFA policy check failed", { code: error?.code });
+    return { installed: true, aal, required: true, enrolled: false, reason: "Two-step verification could not be checked right now.", policy: null };
+  }
   const policy = data as MfaPolicy;
+  // The database's factor list when available (20261120001100); the browser's session copy is not trusted for it.
+  const enrolled = typeof policy.enrolled === "boolean" ? policy.enrolled : (await supabase.auth.mfa.getAuthenticatorAssuranceLevel()).data?.nextLevel === "aal2";
   const reason = policy.platform ? "Platform administrators must use two-step verification." : policy.current_company ? "Your company requires two-step verification." : null;
   return { installed: true, aal, required: Boolean(reason), enrolled, reason, policy };
 });
