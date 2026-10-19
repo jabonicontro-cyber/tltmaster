@@ -3,6 +3,7 @@ import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
 import { isPortalSlug, type PortalCompany, type PortalContext } from "@/lib/portal";
+import { setupRequired } from "@/server/setup";
 
 // Customer portal data (B66). Every read goes through a portal_* database function that derives the company and the
 // customer from the signed-in account; nothing here passes a company or customer id. Before the portal migration
@@ -31,7 +32,11 @@ export const portalGate = cache(async (slug: string): Promise<PortalGate> => {
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims?.sub) return { kind: "signed-out", company: await portalPublic(slug) };
   const { data, error } = await supabase.rpc("portal_context", { p_slug: slug });
-  if (error || !data) return { kind: "no-access", company: await portalPublic(slug) };
+  if (error || !data) {
+    // A new portal sign-in still on its temporary password goes to "Create your password" first (20261120001200).
+    if (await setupRequired()) redirect("/welcome");
+    return { kind: "no-access", company: await portalPublic(slug) };
+  }
   return { kind: "customer", context: data as PortalContext };
 });
 

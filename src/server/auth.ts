@@ -9,6 +9,7 @@ import { PREVIEW_COOKIE, applyPreview, parsePreviewRole } from "@/lib/platform/p
 import { isPlatformAdmin } from "@/server/platform";
 import { myPortals } from "@/server/portal";
 import { MfaRequiredError, mfaBlocks } from "@/server/mfa";
+import { setupRequired } from "@/server/setup";
 
 /** The signed-in user's access, loaded once per request from the database. */
 export const getAccess = cache(async (): Promise<Access | null> => {
@@ -62,6 +63,8 @@ export const getAccess = cache(async (): Promise<Access | null> => {
 export async function requireSignedIn(): Promise<Access> {
   const access = await getAccess();
   if (!access) redirect("/login");
+  // First sign-in with a temporary password: nothing else until the person chose their own (20261120001200).
+  if (!access.companyId && (await setupRequired())) redirect("/welcome");
   return access;
 }
 
@@ -70,6 +73,8 @@ export async function requireAccess(): Promise<Access> {
   const access = await getAccess();
   if (!access) redirect("/login");
   if (!access.active || !access.role || !access.companyId) {
+    // First sign-in with a temporary password: the database gives no company until setup is done (20261120001200).
+    if (await setupRequired()) redirect("/welcome");
     // A platform team member without a company of their own starts at the launchpad.
     if (await isPlatformAdmin()) redirect("/admin");
     // A trucking company's customer (portal account, not a membership) goes to their portal (B66).

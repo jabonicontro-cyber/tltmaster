@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Field, FormError, Input } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { requestPasswordReset, signIn, updatePassword } from "./actions";
 
@@ -15,19 +16,30 @@ export function LoginForm({ next, gate = false }: { next?: string; gate?: boolea
       {state && !state.ok && <FormError message={state.error} />}
       <input type="hidden" name="next" value={next ?? ""} />
       <Field label="Email or username" htmlFor="email">
-        <Input id="email" name="email" type="text" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" required autoFocus />
+        <Input id="email" name="email" type="text" inputMode="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} autoComplete="username" required autoFocus className="h-12 text-base" />
       </Field>
       <Field label="Password" htmlFor="password">
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 text-base" />
       </Field>
+      <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
+        <input type="checkbox" name="shared_device" className="size-5 rounded border-line accent-brand" />
+        This is a shared computer (sign me out when the browser closes)
+      </label>
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
       <p className="text-center text-sm">
-        <Link href="/forgot-password" className="text-muted hover:text-ink hover:underline">
+        <Link href="/forgot-password" className="inline-flex min-h-11 items-center font-semibold text-brand-fg hover:underline">
           Forgot your password?
         </Link>
       </p>
+      <details className="rounded-md bg-surface px-3 py-2 text-sm text-ink">
+        <summary className="cursor-pointer font-semibold">First time signing in?</summary>
+        <p className="mt-2">
+          Use the username and temporary password from the sheet or message your company gave you. Taviron then asks you to create
+          your own password — only you will know it. If the temporary password has expired, ask your company for a new sheet.
+        </p>
+      </details>
       <p className="border-t border-line pt-3 text-center text-sm">
         Have an access code? <Link href="/signup" className="font-semibold text-ink hover:underline">Create a company account</Link>
       </p>

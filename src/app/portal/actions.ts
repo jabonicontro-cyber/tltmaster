@@ -1,7 +1,9 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
 import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
@@ -46,6 +48,7 @@ export async function signOutOfPortal(formData: FormData) {
   const slug = String(formData.get("slug") ?? "");
   const supabase = await createClient();
   await supabase.auth.signOut();
+  (await cookies()).delete(SHARED_DEVICE_COOKIE);
   redirect(isPortalSlug(slug) ? `/portal/${slug}/login` : "/login");
 }
 

@@ -4,6 +4,8 @@ import { UsersPanel, type UserRow } from "@/components/settings/settings-client"
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
+import { signInStatus } from "@/lib/accounts";
+import { accountStates, type AccountState } from "@/server/accounts";
 import { Card } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,7 +38,12 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
       <PageHeader
         title="People"
         description="Everyone who works for the company. People who use Taviron have a sign-in and a role."
-        actions={can(access, "employees.edit") && <ButtonLink href="/employees/new" icon={<Plus className="size-4" />}>Add person</ButtonLink>}
+        actions={can(access, "employees.edit") && (
+          <div className="flex flex-wrap gap-2">
+            {manageUsers && !access.isDemo ? <ButtonLink href="/employees/new-sign-in" variant="secondary">Add with Username Sign-in</ButtonLink> : null}
+            <ButtonLink href="/employees/new" icon={<Plus className="size-4" />}>Add person</ButtonLink>
+          </div>
+        )}
       />
       {manageUsers && (
         <nav aria-label="People views" className="mb-4 flex gap-1 border-b border-line">
@@ -61,9 +68,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   }
   const page = pageParam(sp.page);
   const { rows, total } = await listEmployees({ q: sp.q, status: sp.status, department: sp.department, kind: sp.kind, page });
-  const [photos, signIns] = await Promise.all([
+  const [photos, signIns, accounts] = await Promise.all([
     photoVersions(rows.map((r) => r.user_id)),
     manageUsers ? listSignIns(access.companyId!) : Promise.resolve([]),
+    manageUsers ? accountStates("employee") : Promise.resolve(null),
   ]);
   const signInOf = new Map(signIns.map((u) => [u.id, u]));
   const filtered = Boolean(sp.q || sp.department || sp.kind || (sp.status && sp.status !== "current"));
@@ -133,7 +141,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                         <div className="whitespace-nowrap text-muted">{e.work_phone}</div>
                       </Td>
                       <Td className="hidden text-sm sm:table-cell">
-                        <SignIn userId={e.user_id} member={e.user_id ? signInOf.get(e.user_id) : undefined} />
+                        <SignIn userId={e.user_id} member={e.user_id ? signInOf.get(e.user_id) : undefined} account={e.user_id ? accounts?.get(e.user_id) : undefined} />
                       </Td>
                       <Td className="hidden xl:table-cell">
                         {e.driver_id ? (e.primary_truck ? <span>Truck <strong className="tabular">{e.primary_truck}</strong></span> : <span className="text-muted">No primary truck</span>) : <span className="text-muted">—</span>}
@@ -153,9 +161,13 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
 }
 
 /** Sign-in state: role and whether it is on (with users.manage), or just whether the person signs in. */
-function SignIn({ userId, member }: { userId: string | null; member?: UserRow }) {
+function SignIn({ userId, member, account }: { userId: string | null; member?: UserRow; account?: AccountState }) {
   if (!userId) return <span className="text-muted">No sign-in</span>;
   if (!member) return <span>Signs in</span>;
   if (!member.active) return <span className="text-muted">Sign-in turned off</span>;
-  return <span>{member.role ? ROLE_LABELS[member.role] : "No role"}</span>;
+  const role = <span>{member.role ? ROLE_LABELS[member.role] : "No role"}</span>;
+  if (!account) return role;
+  // Username sign-ins also show where setup stands (20261120001200).
+  const st = signInStatus({ status: account.status, expired: account.expired, active: member.active, banned: account.banned, lastSignInAt: account.last_sign_in_at, completedAt: account.completed_at });
+  return <span className="flex flex-wrap items-center gap-1.5">{role}<Badge tone={st.tone}>{st.label}</Badge></span>;
 }

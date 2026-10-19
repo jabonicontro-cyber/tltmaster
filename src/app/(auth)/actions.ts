@@ -1,6 +1,8 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
 import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
@@ -25,6 +27,10 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   }
   const address = signInAddress(parsed.data.email);
   if (!address.ok) return { ok: false, error: address.error };
+  // Shared computer: mark it first, so the session cookies written below expire with the browser.
+  const jar = await cookies();
+  if (formData.get("shared_device") === "on") jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  else jar.delete(SHARED_DEVICE_COOKIE);
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: address.email,
@@ -40,6 +46,8 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     if (error.code === "email_not_confirmed") {
       return { ok: false, error: "This email address has not been confirmed yet. Open the confirmation link sent when the account was created, or ask your Taviron administrator to confirm the account." };
     }
+    // Supabase reports a blocked sign-in only after the password matched, so this reveals nothing to a stranger.
+    if (error.code === "user_banned") return { ok: false, error: "This sign-in is turned off. Contact your company's administrator." };
     if (error.status === 400 || error.code === "invalid_credentials") {
       // Same message either way: do not reveal whether the account exists.
       return { ok: false, error: parsed.data.email.includes("@") ? "Email or password is incorrect." : "Username or password is incorrect." };
@@ -53,6 +61,7 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
+  (await cookies()).delete(SHARED_DEVICE_COOKIE);
   redirect("/login");
 }
 

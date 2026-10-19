@@ -22,6 +22,9 @@ import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { getEmployee, linkableLogins, photoVersions } from "@/server/data/employees";
 import { listSignIns } from "@/server/data/people";
+import { accountStates, emailServerStatus } from "@/server/accounts";
+import { SignInManager } from "@/components/accounts/sign-in-manager";
+import { isUsernameEmail } from "@/lib/usernames";
 
 export const metadata = { title: "Person" };
 
@@ -49,6 +52,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
   const candidates = canLink && !e.user_id ? await linkableLogins(access.companyId!) : [];
   const manageUsers = can(access, "users.manage");
   const member = manageUsers && e.user_id ? (await listSignIns(access.companyId!)).find((u) => u.id === e.user_id) : undefined;
+  // Username sign-in state (20261120001200): setup, expiry, last sign-in. Null before that update.
+  const account = manageUsers && e.user_id ? (await accountStates("employee"))?.get(e.user_id) : undefined;
+  const mail = emailServerStatus(Boolean(access.isDemo));
+  const personEmail = e.work_email && !isUsernameEmail(e.work_email) ? e.work_email : "";
   const today = new Date().toISOString().slice(0, 10);
   // Work schedule (migration 20261114000300); read separately so the page works before that update is installed.
   const sched = await (await createClient()).from("employee_work_schedules").select("mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours").eq("employee_id", id).maybeSingle();
@@ -146,7 +153,10 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           <div className="space-y-3 px-4 pb-5 text-sm sm:px-5">
             {!e.user_id ? (
               <>
-                <p className="text-muted">No sign-in. {manageUsers ? "Send one to their work email, or link a sign-in they already have." : "Someone who manages users can give them one."}</p>
+                <p className="text-muted">No sign-in. {manageUsers ? "Create a username sign-in (print or copy the instructions), send one to their work email, or link a sign-in they already have." : "Someone who manages users can give them one."}</p>
+                {manageUsers && can(access, "employees.edit") && !access.isDemo ? (
+                  <ButtonLink href={`/employees/new-sign-in?employee=${e.id}`} size="sm">Create Username Sign-in</ButtonLink>
+                ) : null}
                 {manageUsers && can(access, "employees.edit") && (e.work_email
                   ? <SendSignIn employeeId={e.id} email={e.work_email} isOwner={access.role === "owner"} />
                   : <p className="text-muted">Add a work email (Edit) to send a sign-in.</p>)}
@@ -158,6 +168,14 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                   {member ? (member.active ? "Signs in" : "Sign-in turned off") : "Signs in"}
                   {role ? <> as <strong>{ROLE_LABELS[role as AppRole] ?? role}</strong></> : null}.
                 </p>
+                {account && member ? (
+                  <SignInManager
+                    s={{ userId: account.user_id, username: account.username, status: account.status, expired: account.expired, issuedAt: account.issued_at, expiresAt: account.expires_at, completedAt: account.completed_at, lastSignInAt: account.last_sign_in_at, banned: account.banned, active: member.active }}
+                    personName={e.full_name}
+                    companyName={access.companyName ?? "Your company"}
+                    email={mail.configured && personEmail ? { available: true, to: personEmail } : { available: false, reason: mail.configured ? "Add their email (Edit) to send a setup link." : mail.reason }}
+                  />
+                ) : null}
                 {member ? <AccessEditButton user={member} /> : (
                   <p className="flex items-center gap-1.5 text-muted"><Lock className="size-4" aria-hidden /> Role and access are changed by someone who manages users.</p>
                 )}

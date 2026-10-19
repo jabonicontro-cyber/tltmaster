@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { cookiePersistence, SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
 import { NextResponse, type NextRequest } from "next/server";
 import { signSiteAccess, verifySiteAccess } from "@/lib/site-access-token";
 import { isPublicSiteRequest } from "@/lib/site/paths";
@@ -53,7 +54,9 @@ export async function proxy(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
         response = NextResponse.next({ request });
-        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+        // A shared computer keeps the session only until the browser closes (src/lib/shared-device.ts).
+        const shared = request.cookies.get(SHARED_DEVICE_COOKIE)?.value === "1";
+        cookiesToSet.forEach(({ name, value, options }) => response.cookies.set(name, value, cookiePersistence(options, shared)));
       },
     },
   });

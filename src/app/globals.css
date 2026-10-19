@@ -224,6 +224,19 @@
 }
 
 /* Printable documents ---------------------------------------------------- */
+/* A sign-in sheet prints alone: everything else on the page is hidden while body.print-login-sheet is set
+   (src/components/accounts/credential-delivery.tsx). */
+@media print {
+  body.print-login-sheet > :not(#login-sheet-root) {
+    display: none !important;
+  }
+  body.print-login-sheet #login-sheet-root {
+    position: static !important;
+    inset: auto !important;
+    background: #fff !important;
+    padding: 0 !important;
+  }
+}
 @media print {
   @page {
     size: letter;
