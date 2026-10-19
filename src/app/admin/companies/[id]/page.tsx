@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { FlashToast } from "@/components/ui/flash-toast";
-import { Notice } from "@/components/ui/states";
+import { ErrorState, Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
 import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
@@ -55,7 +55,19 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("platform_company", { p_id: id });
   if (error?.code === "P0002" || (!error && !data)) notFound();
-  if (error) throw new Error("The company could not be loaded.");
+  if (error) {
+    // Before 20261118000100 the company page's function does not exist: say so instead of the error screen.
+    const missing = ["PGRST202", "42883"].includes(error.code ?? "");
+    return (
+      <>
+        <PageHeader title="Company" crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: "Company" }]} />
+        <ErrorState
+          title={missing ? "Not available yet" : "The company could not be loaded"}
+          description={missing ? "The company page needs the database update 20261118000100, which is not installed yet." : "Nothing was changed. Try again in a moment."}
+        />
+      </>
+    );
+  }
   const c = data as CompanyDetail;
   // Subscription lifecycle (20261118000300); before that update is installed the card says so.
   const [life, plans] = c.is_demo ? [null, null] : await Promise.all([supabase.rpc("platform_lifecycle", { p_company: id }), supabase.rpc("platform_plans")]);

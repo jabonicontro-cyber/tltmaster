@@ -38,6 +38,17 @@ async function demoOwner() {
 }
 
 /** Go to a page; a navigation superseded by a redirect or a background refresh (ERR_ABORTED) is retried once. */
+/** Is the guided onboarding update (20261120001000) installed on this database? */
+async function onboardingInstalled(): Promise<boolean> {
+  const c = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await c.connect();
+  try {
+    return Boolean((await c.query<{ ok: boolean }>("select to_regclass('public.onboarding_tasks') is not null as ok")).rows[0]?.ok);
+  } finally {
+    await c.end();
+  }
+}
+
 const visit = async (page: Page, href: string) => {
   try { await page.goto(href); } catch (e) { if (!String(e).includes("ERR_ABORTED")) throw e; await page.goto(href); }
 };
@@ -155,10 +166,13 @@ test("every demo mode opens its pages and each feature shows sample data", async
           await expect(page.getByText("No balances to show"), "owner balances").toHaveCount(0);
         }
         // Guided onboarding (20261120001000, samples.ts guidedOnboarding): a mid-onboarding checklist in varied states.
+        // Before that database update the section is absent (the normal state, DEMO_TENANTS §2).
         await visit(page, "/setup");
-        await expect(page.getByRole("heading", { name: "Onboarding with Taviron" }), "owner onboarding checklist").toBeVisible();
-        for (const state of ["Changes requested", "Submitted for review", "Blocked", "Awaiting customer", "Approved"]) {
-          await expect(page.getByText(state, { exact: true }).first(), `onboarding state ${state}`).toBeVisible();
+        if (await onboardingInstalled()) {
+          await expect(page.getByRole("heading", { name: "Onboarding with Taviron" }), "owner onboarding checklist").toBeVisible();
+          for (const state of ["Changes requested", "Submitted for review", "Blocked", "Awaiting customer", "Approved"]) {
+            await expect(page.getByText(state, { exact: true }).first(), `onboarding state ${state}`).toBeVisible();
+          }
         }
       }
       // Modes that drive see a day with loads on My Day.
