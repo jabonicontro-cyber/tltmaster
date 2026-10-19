@@ -264,3 +264,18 @@ export async function enterDemo() {
   revalidatePath("/", "layout");
   redirect("/command-center");
 }
+
+/**
+ * Show a demo company as Essential, Growth or Professional (20261120000300): bases follow the plan and the demo's
+ * fictional records are spread across them once. Demo companies only; audited in the platform log.
+ */
+export async function setDemoPlan(formData: FormData) {
+  const id = uuid.safeParse(formData.get("id"));
+  const plan = String(formData.get("plan") ?? "");
+  if (!id.success || !["essential", "growth", "professional"].includes(plan)) back("/admin/demo", "Choose a demo and a plan.");
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_demo_set_plan", { p_company: id.data!, p_plan: plan });
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Plan demos need the database update 20261120000300." : error.message);
+  revalidatePath("/", "layout");
+  redirect(`/admin/demo?saved=plan&plan=${plan}`);
+}

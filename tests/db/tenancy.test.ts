@@ -81,7 +81,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
-  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "public.dispatch_base_allowance", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
+  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "public.dispatch_base_allowance", "public.platform_demo_set_plan", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",
@@ -182,7 +182,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel"];
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;

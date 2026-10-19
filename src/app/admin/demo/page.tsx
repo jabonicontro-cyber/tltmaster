@@ -9,13 +9,15 @@ import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
-import { createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, startDemo } from "../actions";
+import { createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, setDemoPlan, startDemo } from "../actions";
 
 export const metadata = { title: TERMS.demoManagement };
+
+const PLAN_LABELS: Record<string, string> = { essential: "Essential", growth: "Growth", professional: "Professional" };
 // Starting a demo seeds a few hundred records through the normal app functions.
 export const maxDuration = 60;
 
-export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; loads?: string; added?: string }> }) {
+export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; loads?: string; added?: string; plan?: string }> }) {
   const sp = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.rpc("platform_overview");
@@ -24,10 +26,14 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
   const prospects = await supabase.from("companies").select("id, name, slug, created_at").eq("demo_kind", "prospect").eq("active", true).order("created_at");
   const prospectsInstalled = !prospects.error;
   const prospectRows = (prospects.data ?? []) as Array<{ id: string; name: string; slug: string; created_at: string }>;
+  // Plan shown by each active demo (20261120000300): the presenter demo and every active prospect demo.
+  const planned = await supabase.from("companies").select("id, name, demo_kind, demo_plan").eq("is_demo", true).eq("active", true).in("demo_kind", ["presenter", "prospect"]).order("demo_kind").order("name");
+  const planRows = planned.error ? null : ((planned.data ?? []) as Array<{ id: string; name: string; demo_kind: string; demo_plan: string | null }>);
   return (
     <>
       <PageHeader title={TERMS.demoManagement} description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: TERMS.demoManagement }]} />
       <AdminFlash error={sp.error} saved={sp.saved} savedText={sp.saved === "retired" ? "Demo retired. You can create it again below."
+        : sp.saved === "plan" ? `Demo now shows the ${PLAN_LABELS[sp.plan ?? ""] ?? "chosen"} plan: its dispatch bases and sample records follow the plan.`
         : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.` : "Saved."} />
       <div className="grid gap-5 lg:grid-cols-2">
         <Card>
@@ -94,6 +100,32 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                   <code className="mx-1">scripts/platform-admin.mjs demo-owner</code>(docs/DEPLOYMENT.md §3c). No login is created here.
                 </p>
               </>
+            )}
+          </CardBody>
+        </Card>
+        <Card className="lg:col-span-2">
+          <CardHeader title="Plan Shown" description="Show a demo as Essential (1 dispatch base), Growth (2) or Professional (3). Its fictional trucks, drivers and orders are spread across the bases the first time; switching back to Essential returns them to the main base. Audited; real companies cannot be switched here." />
+          <CardBody>
+            {planRows === null ? (
+              <p className="text-sm text-muted">Not available yet: plan demos need the database update 20261120000300.</p>
+            ) : planRows.length === 0 ? (
+              <p className="text-sm text-muted">No active demo yet.</p>
+            ) : (
+              <ul className="divide-y divide-line" aria-label="Demo plans">
+                {planRows.map((d) => (
+                  <li key={d.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                    <span className="text-sm"><span className="font-semibold text-ink">{d.name}</span> <span className="text-muted">· {d.demo_kind === "presenter" ? "Live Demo" : "Prospect demo"} · now {PLAN_LABELS[d.demo_plan ?? "essential"]}</span></span>
+                    <form action={setDemoPlan} className="flex items-center gap-2">
+                      <input type="hidden" name="id" value={d.id} />
+                      <label className="sr-only" htmlFor={`plan-${d.id}`}>Plan for {d.name}</label>
+                      <select id={`plan-${d.id}`} name="plan" defaultValue={d.demo_plan ?? "essential"} className="h-9 rounded-md border border-line bg-card px-2 text-sm">
+                        {Object.entries(PLAN_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                      </select>
+                      <SubmitButton variant="secondary" size="sm" pendingLabel="Switching…">Show This Plan</SubmitButton>
+                    </form>
+                  </li>
+                ))}
+              </ul>
             )}
           </CardBody>
         </Card>
