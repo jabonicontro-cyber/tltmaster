@@ -8,7 +8,7 @@ import { isUsernameEmail } from "@/lib/usernames";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage } from "@/server/errors";
 import {
-  blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, unblock, type IssuedCredential,
+  blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, suggestUsername, unblock, type IssuedCredential,
 } from "@/server/accounts";
 import { createClient } from "@/server/supabase/server";
 
@@ -30,6 +30,12 @@ export async function checkUsername(username: string): Promise<{ valid: boolean;
   const { data, error } = await supabase.rpc("account_username_available", { p_username: username, p_kind: "employee" });
   if (error) return null;
   return data as { valid: boolean; available: boolean };
+}
+
+/** An available username made from the person's name (staff can still type their own). */
+export async function suggestEmployeeUsername(name: string): Promise<string | null> {
+  await staff();
+  return suggestUsername("employee", String(name).slice(0, 120));
 }
 
 const createSchema = z.object({

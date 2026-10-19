@@ -1,26 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { CheckCircle2, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import { PhoneInput } from "@/components/ui/phone-input";
 import type { RolePreset } from "@/lib/accounts";
 import type { AppRole } from "@/lib/permissions";
-import { isValidUsername, normalizeUsername } from "@/lib/usernames";
-import { checkUsername, createEmployeeSignIn, emailEmployeeSetup, recordInstructionsHandoff, type CreatedSignIn } from "@/app/(app)/employees/account-actions";
+import { isValidUsername } from "@/lib/usernames";
+import { checkUsername, createEmployeeSignIn, emailEmployeeSetup, recordInstructionsHandoff, suggestEmployeeUsername, type CreatedSignIn } from "@/app/(app)/employees/account-actions";
+import { useUsername } from "./use-username";
+import { UsernameField } from "./username-field";
 import { CredentialDelivery } from "./credential-delivery";
 
 type RoleOption = { role: AppRole; label: string; permissions: string[] };
-
-/** A username suggestion from a name: "Sam O'Neil" → "sam.oneil". */
-export function suggestUsername(name: string): string {
-  const parts = name.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s.-]/gu, "").replace(/[^a-z0-9\s.-]/g, "").trim().split(/\s+/).filter(Boolean);
-  const s = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : (parts[0] ?? "");
-  return s.slice(0, 32).replace(/^[.-]+|[.-]+$/g, "");
-}
 
 /**
  * Add a person with a username sign-in in three steps: details, review (role, permissions, bases, status), then the
@@ -40,40 +34,18 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
   const [requestKey] = useState(() => crypto.randomUUID());
   const [name, setName] = useState(employee?.full_name ?? "");
   const [jobTitle, setJobTitle] = useState(employee?.job_title ?? "");
-  const [username, setUsername] = useState(() => (employee ? suggestUsername(employee.full_name) : ""));
-  const [usernameTouched, setUsernameTouched] = useState(Boolean(employee));
   const [email, setEmail] = useState(employee?.work_email ?? "");
   const [phone, setPhone] = useState(employee?.work_phone ?? "");
   const [preset, setPreset] = useState<string>("driver");
   const [role, setRole] = useState<AppRole>("driver");
   const [chosenBases, setChosenBases] = useState<string[]>([]);
   const [status, setStatus] = useState<"active" | "inactive">("active");
-  const [checked, setChecked] = useState<{ for: string; valid: boolean; available: boolean } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<CreatedSignIn | null>(null);
-  const check = useRef(0);
-
-  const normalized = normalizeUsername(username);
-  const wellFormed = Boolean(normalized) && isValidUsername(normalized);
-  useEffect(() => {
-    if (!wellFormed) return;
-    const n = ++check.current;
-    const t = setTimeout(async () => {
-      const r = await checkUsername(normalized).catch(() => null);
-      if (n === check.current) setChecked(r ? { for: normalized, ...r } : null);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [normalized, wellFormed]);
-  // What the status line shows, derived from the last answer for exactly this username.
-  const availability: { checking: boolean; valid?: boolean; available?: boolean } = !normalized
-    ? { checking: false }
-    : !wellFormed
-      ? { checking: false, valid: false }
-      : checked?.for === normalized
-        ? { checking: false, valid: checked.valid, available: checked.available }
-        : { checking: true };
+  const u = useUsername({ name, check: checkUsername, suggest: suggestEmployeeUsername });
+  const { normalized, availability } = u;
 
   const roleOption = useMemo(() => roles.find((r) => r.role === role), [roles, role]);
   const presetInfo = presets.find((p) => p.id === preset);
@@ -170,22 +142,12 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
           </fieldset>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Name" htmlFor="full_name" required error={fieldErrors.full_name}>
-              <Input id="full_name" value={name} maxLength={120} onChange={(e) => { setName(e.target.value); if (!usernameTouched) setUsername(suggestUsername(e.target.value)); }} />
+              <Input id="full_name" value={name} maxLength={120} onChange={(e) => { setName(e.target.value); u.follow(e.target.value); }} />
             </Field>
             <Field label="Job title" htmlFor="job_title">
               <Input id="job_title" value={jobTitle} maxLength={80} onChange={(e) => setJobTitle(e.target.value)} />
             </Field>
-            <Field label="Username" htmlFor="username" required error={fieldErrors.username}
-              hint="What they type to sign in. Lowercase letters, digits, dots or hyphens (3–32).">
-              <Input id="username" value={username} maxLength={32} autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/\s/g, "")); setUsernameTouched(true); }} aria-describedby="username-status" />
-            </Field>
-            <p id="username-status" role="status" className="self-end pb-2 text-sm">
-              {!normalized ? null : availability.checking ? <span className="text-muted">Checking…</span>
-                : availability.valid === false ? <span className="text-critical">Not a valid username.</span>
-                : availability.available === true ? <span className="inline-flex items-center gap-1 text-ink"><CheckCircle2 className="size-4 text-brand-fg" aria-hidden /> {normalized} is available</span>
-                : availability.available === false ? <span className="inline-flex items-center gap-1 text-critical"><CircleAlert className="size-4" aria-hidden /> {normalized} is taken</span> : null}
-            </p>
+            <UsernameField u={u} id="username" error={fieldErrors.username} />
             <Field label="Email (optional)" htmlFor="email" error={fieldErrors.email} hint="Their own address, if they have one. Only used to email a setup link. Not needed to sign in.">
               <Input id="email" type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} />
             </Field>
@@ -219,7 +181,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
             </fieldset>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <Button onClick={toReview} disabled={availability.checking}>Review</Button>
+            <Button onClick={toReview} disabled={availability.checking || u.suggesting}>Review</Button>
             <Link href="/employees" className="inline-flex items-center px-3 text-sm font-semibold text-muted hover:text-ink">Cancel</Link>
           </div>
         </div>

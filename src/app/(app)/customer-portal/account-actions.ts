@@ -7,7 +7,7 @@ import { isUsernameEmail } from "@/lib/usernames";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage } from "@/server/errors";
 import {
-  blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, unblock, type IssuedCredential,
+  blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, suggestUsername, unblock, type IssuedCredential,
 } from "@/server/accounts";
 import { createClient } from "@/server/supabase/server";
 
@@ -32,6 +32,12 @@ export async function checkPortalUsername(username: string): Promise<{ valid: bo
   const { data, error } = await (await createClient()).rpc("account_username_available", { p_username: username, p_kind: "portal" });
   if (error) return null;
   return data as { valid: boolean; available: boolean };
+}
+
+/** An available username made from the contact's name (staff can still type their own). */
+export async function suggestPortalUsername(name: string): Promise<string | null> {
+  await staff();
+  return suggestUsername("portal", String(name).slice(0, 120));
 }
 
 const createSchema = z.object({

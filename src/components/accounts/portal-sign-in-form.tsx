@@ -1,16 +1,16 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { CheckCircle2, CircleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
-import { isValidUsername, normalizeUsername } from "@/lib/usernames";
+import { isValidUsername } from "@/lib/usernames";
 import {
-  checkPortalUsername, createPortalSignIn, emailPortalSetup, recordPortalHandoff, type CreatedPortalSignIn,
+  checkPortalUsername, createPortalSignIn, emailPortalSetup, recordPortalHandoff, suggestPortalUsername, type CreatedPortalSignIn,
 } from "@/app/(app)/customer-portal/account-actions";
 import { CredentialDelivery } from "./credential-delivery";
-import { suggestUsername } from "./sign-in-wizard";
+import { useUsername } from "./use-username";
+import { UsernameField } from "./username-field";
 
 type Contact = { id: string; customer_id: string; name: string; email: string };
 
@@ -35,40 +35,16 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
   const [contact, setContact] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
-  const [usernameTouched, setUsernameTouched] = useState(false);
-  const [checked, setChecked] = useState<{ for: string; valid: boolean; available: boolean } | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [created, setCreated] = useState<CreatedPortalSignIn | null>(null);
-  const check = useRef(0);
 
   const choices = contacts.filter((c) => c.customer_id === customer);
   const chosen = choices.find((c) => c.id === contact) ?? null;
   const personName = chosen?.name ?? name;
-  const normalized = normalizeUsername(username);
-  const wellFormed = Boolean(normalized) && isValidUsername(normalized);
-  useEffect(() => {
-    if (!wellFormed) return;
-    const n = ++check.current;
-    const t = setTimeout(async () => {
-      const r = await checkPortalUsername(normalized).catch(() => null);
-      if (n === check.current) setChecked(r ? { for: normalized, ...r } : null);
-    }, 350);
-    return () => clearTimeout(t);
-  }, [normalized, wellFormed]);
-  const availability: { checking: boolean; valid?: boolean; available?: boolean } = !normalized
-    ? { checking: false }
-    : !wellFormed
-      ? { checking: false, valid: false }
-      : checked?.for === normalized
-        ? { checking: false, valid: checked.valid, available: checked.available }
-        : { checking: true };
-
-  function suggestFrom(n: string) {
-    if (!usernameTouched) setUsername(suggestUsername(n));
-  }
+  const u = useUsername({ name: personName, check: checkPortalUsername, suggest: suggestPortalUsername });
+  const { normalized, availability } = u;
 
   function toReview() {
     const errs: Record<string, string> = {};
@@ -121,7 +97,7 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
         onDone={() => {
           setCreated(null);
           setStep("details");
-          setCustomer(""); setContact(""); setName(""); setEmail(""); setUsername(""); setUsernameTouched(false);
+          setCustomer(""); setContact(""); setName(""); setEmail(""); u.suggestAgain();
           setRequestKey(crypto.randomUUID());
           router.refresh();
         }}
@@ -165,7 +141,7 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
           <Select id="signin_contact" value={contact} disabled={!customer} onChange={(e) => {
             setContact(e.target.value);
             const c = choices.find((x) => x.id === e.target.value);
-            if (c) suggestFrom(c.name);
+            u.follow(c?.name ?? name);
           }}>
             <option value="">New contact</option>
             {choices.map((c) => <option key={c.id} value={c.id} disabled={taken.includes(c.id)}>{c.name}{taken.includes(c.id) ? " (has a sign-in)" : ""}</option>)}
@@ -174,25 +150,16 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
         {!contact ? (
           <>
             <Field label="Person's name" htmlFor="signin_name" required error={fieldErrors.contact_name}>
-              <Input id="signin_name" value={name} maxLength={120} onChange={(e) => { setName(e.target.value); suggestFrom(e.target.value); }} />
+              <Input id="signin_name" value={name} maxLength={120} onChange={(e) => { setName(e.target.value); u.follow(e.target.value); }} />
             </Field>
             <Field label="Their email (optional)" htmlFor="signin_email" error={fieldErrors.contact_email} hint="Only to email a setup link. Not needed to sign in.">
               <Input id="signin_email" type="email" value={email} maxLength={254} onChange={(e) => setEmail(e.target.value)} />
             </Field>
           </>
         ) : null}
-        <Field label="Username" htmlFor="signin_username" required error={fieldErrors.username} hint="What they type to sign in. Lowercase letters, digits, dots or hyphens (3–32).">
-          <Input id="signin_username" value={username} maxLength={32} autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-describedby="signin-username-status"
-            onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/\s/g, "")); setUsernameTouched(true); }} />
-        </Field>
-        <p id="signin-username-status" role="status" className="self-end pb-2 text-sm">
-          {!normalized ? null : availability.checking ? <span className="text-muted">Checking…</span>
-            : availability.valid === false ? <span className="text-critical">Not a valid username.</span>
-            : availability.available === true ? <span className="inline-flex items-center gap-1 text-ink"><CheckCircle2 className="size-4 text-brand-fg" aria-hidden /> {normalized} is available</span>
-            : availability.available === false ? <span className="inline-flex items-center gap-1 text-critical"><CircleAlert className="size-4" aria-hidden /> {normalized} is taken</span> : null}
-        </p>
+        <UsernameField u={u} id="signin_username" error={fieldErrors.username} />
       </div>
-      <Button onClick={toReview} disabled={availability.checking}>Review</Button>
+      <Button onClick={toReview} disabled={availability.checking || u.suggesting}>Review</Button>
     </div>
   );
 }

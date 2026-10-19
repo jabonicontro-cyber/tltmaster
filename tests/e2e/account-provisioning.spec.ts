@@ -41,6 +41,9 @@ test("an owner creates a driver sign-in; the driver sets a password on a phone a
   await page.goto("/employees/new-sign-in");
   await page.getByLabel("Driver").check();
   await page.getByRole("textbox", { name: /^Name/ }).fill(name);
+  // Generated from the name and confirmed free; staff can still type their own.
+  await expect(page.getByLabel("Username")).toHaveValue(/^e2e\.[a-z0-9]+$/);
+  await expect(page.locator("#username-status").getByText(/e2e\.[a-z0-9]+ is available/)).toBeVisible({ timeout: 30_000 });
   await page.getByLabel("Username").fill(username);
   await expect(page.getByText(`${username} is available`)).toBeVisible();
   await page.getByRole("button", { name: "Review" }).click();
@@ -52,7 +55,7 @@ test("an owner creates a driver sign-in; the driver sets a password on a phone a
   await expect(panel.getByText(username)).toBeVisible();
   await expect(panel.getByText("•••• •••• ••••")).toBeVisible();
   await panel.getByRole("button", { name: "Show", exact: true }).click();
-  const temp = (await panel.getByText(/^[A-Za-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/).textContent())!.trim();
+  const temp = (await panel.getByText(/^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/).textContent())!.trim();
   await expect(panel.getByText(/Email sending is not set up/)).toBeVisible();
   await panel.getByRole("button", { name: "Copy Without Password" }).click();
   const copied = await page.evaluate(() => navigator.clipboard.readText());

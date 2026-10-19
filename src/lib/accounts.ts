@@ -111,3 +111,21 @@ export function signInStatus(s: { status: "setup_required" | "complete"; expired
   return { label: "First sign-in completed", tone: "blue" };
 }
 
+
+/** A username from a name: "Sam O'Neil" → "sam.oneil"; one word stays one word. Empty when nothing usable. */
+export function usernameFromName(name: string): string {
+  const parts = name.toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9\s.-]/g, "").trim().split(/\s+/).filter(Boolean);
+  const s = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : (parts[0] ?? "");
+  return s.slice(0, 32).replace(/\.{2,}/g, ".").replace(/^[.-]+|[.-]+$/g, "");
+}
+
+/** Candidates for an auto-generated username, in order: base, base2 … base{max}; each 3–32 characters. */
+export function usernameCandidates(base: string, max = 20): string[] {
+  const b = base.length >= 3 ? base : `${base}${base ? "." : ""}user`.replace(/^\./, "");
+  const out: string[] = [b.slice(0, 32).replace(/[.-]+$/, "")];
+  for (let i = 2; i <= max; i++) {
+    const suffix = String(i);
+    out.push(`${b.slice(0, 32 - suffix.length).replace(/[.-]+$/, "")}${suffix}`);
+  }
+  return out;
+}

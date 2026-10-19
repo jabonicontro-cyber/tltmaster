@@ -29,7 +29,7 @@ test.beforeEach(async () => {
 
 // Audit history is append-only, so test sign-ins are kept and revoked rather than deleted.
 test.afterEach(async () => {
-  await sql("update public.portal_accounts set status = 'revoked', revoked_at = now() where company_id = $1 and email like 'e2e-portal-u-%' and status <> 'revoked'", [TOP_LINE]);
+  await sql("update public.portal_accounts set status = 'revoked', revoked_at = now() where company_id = $1 and email like 'e2e-pu-%' and status <> 'revoked'", [TOP_LINE]);
   await sql("update public.portal_settings set enabled = false where company_id = $1", [TOP_LINE]);
   await sql("delete from private.portal_entitlements where company_id = $1", [TOP_LINE]);
 });
@@ -37,7 +37,7 @@ test.afterEach(async () => {
 test("staff create a customer sign-in; the customer sets a password and lands in their portal; off and on again", async ({ page, browser }) => {
   test.setTimeout(180_000);
   const person = `E2E Portal Contact ${unique()}`;
-  const username = `e2e-portal-u-${unique()}`;
+  const username = `e2e-pu-${unique()}`;
 
   await signIn(page, "owner");
   await page.goto("/customer-portal?tab=access");
@@ -52,7 +52,7 @@ test("staff create a customer sign-in; the customer sets a password and lands in
   const panel = page.getByRole("region", { name: "Sign-in instructions" });
   await expect(panel.getByText(username)).toBeVisible();
   await panel.getByRole("button", { name: "Show", exact: true }).click();
-  const temp = (await panel.getByText(/^[A-Za-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/).textContent())!.trim();
+  const temp = (await panel.getByText(/^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/).textContent())!.trim();
   await panel.getByRole("button", { name: "Print Sign-in Sheet" }).click();
   const sheet = page.getByRole("article", { name: "Sign-in sheet" });
   await expect(sheet.getByRole("heading", { name: "Your customer portal sign-in" })).toBeVisible();
@@ -101,7 +101,7 @@ test("staff create a customer sign-in; the customer sets a password and lands in
     await row.getByRole("button", { name: "Turn On Sign-in" }).click();
     const again = page.getByRole("region", { name: "Sign-in instructions" });
     await again.getByRole("button", { name: "Show", exact: true }).click();
-    const temp2 = (await again.getByText(/^[A-Za-z0-9]{4}-[a-z0-9]{4}-[a-z0-9]{4}$/).textContent())!.trim();
+    const temp2 = (await again.getByText(/^[A-Za-z0-9]{4}-[A-Za-z0-9]{4}-[A-Za-z0-9]{4}$/).textContent())!.trim();
     expect(temp2).not.toBe(temp);
     await cust.getByLabel("Password", { exact: true }).fill(temp2);
     await cust.getByRole("button", { name: "Sign In" }).click();

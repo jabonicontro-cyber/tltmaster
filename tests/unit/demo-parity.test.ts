@@ -29,6 +29,14 @@ const ALLOWED = new Set([
   "src/server/ai/gates.ts",
   "src/server/routing/service.ts",
   "src/lib/permissions.ts", // the Access type's isDemo field
+  // Username sign-ins (20261120001200): never created, reset or emailed in a demo.
+  "src/server/accounts.ts",
+  "src/app/(app)/employees/account-actions.ts",
+  "src/app/(app)/employees/new-sign-in/page.tsx",
+  "src/app/(app)/employees/page.tsx",
+  "src/app/(app)/employees/[id]/page.tsx",
+  "src/app/(app)/customer-portal/account-actions.ts",
+  "src/app/(app)/customer-portal/page.tsx",
 ]);
 
 function files(dir: string): string[] {

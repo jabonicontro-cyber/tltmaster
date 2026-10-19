@@ -119,6 +119,13 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Security hardening (20261120001100): the caller's own company before the two-step check, the caller's own
   // factors, and the per-account duplicate guard on portal requests.
   "private.current_company_id_any", "private.mfa_enrolled", "private.portal_request_dedupe",
+  // Account provisioning (20261120001200): username sign-ins for employees and portal contacts, setup state as a
+  // password-hash fingerprint, permission and company checks, audit without secrets.
+  "private.password_fingerprint", "private.provision_staff", "private.account_audit", "private.account_issue_allowed", "private.setup_pending",
+  "public.account_username_available", "public.account_provision_begin", "public.account_provision_attach", "public.account_setup_check",
+  "public.account_setup_issue", "public.account_delivery_record", "public.my_account_setup", "public.account_setup_complete",
+  "public.company_account_states", "public.account_events", "public.account_block_allowed", "public.account_access_record",
+  "public.portal_create_login", "public.portal_reactivate", "public.account_employee_created",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.

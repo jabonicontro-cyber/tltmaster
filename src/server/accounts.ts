@@ -1,5 +1,5 @@
 import "server-only";
-import { generateTemporaryPassword } from "@/lib/accounts";
+import { generateTemporaryPassword, usernameCandidates, usernameFromName } from "@/lib/accounts";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { displayLogin, usernameEmail } from "@/lib/usernames";
 import { dbErrorMessage } from "@/server/errors";
@@ -71,6 +71,23 @@ export async function reserveAndCreate(kind: AccountKind, requestKey: string, us
     if (upd.error) return fail("The sign-in could not be updated. Try again in a moment.");
   }
   return ok({ userId, username: r.username, temporaryPassword });
+}
+
+/**
+ * An available username generated from a person's name (base, then base2, base3 …). The database answers each check
+ * with the caller's permission; null when none of the candidates is free or the check is unavailable.
+ */
+export async function suggestUsername(kind: AccountKind, name: string): Promise<string | null> {
+  const base = usernameFromName(name);
+  if (!base) return null;
+  const supabase = await createClient();
+  for (const candidate of usernameCandidates(base)) {
+    const { data, error } = await supabase.rpc("account_username_available", { p_username: candidate, p_kind: kind });
+    if (error) return null;
+    const r = data as { valid: boolean; available: boolean };
+    if (r.valid && r.available) return candidate;
+  }
+  return null;
 }
 
 /** Step 4: record that setup is required (fingerprint of the password just set, expiry, method). */
