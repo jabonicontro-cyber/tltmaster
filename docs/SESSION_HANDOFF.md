@@ -29,7 +29,14 @@ Production authorized by the owner on 2026-10-19 once gates pass.
 Hosted migrations `20261118000100`–`000400` are **not applied**; until the owner's `db push`, the Launchpad, payroll,
 lifecycle and plans show their "needs a database update" state and the daily lifecycle cron answers 503.
 
-Owner steps: runbook §6 + §7 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for six migrations; then Refresh
+| `6b8fab7` | **Company CRM slice 1 (B59)** — prospects, owner, tags, activity, follow-ups, opportunities, history, pipeline, export, duplicate check | `20261119000100` local / not hosted |
+| `8052e65` | **One urgent indicator** in the Command Center strip (no "N urgent" + "N urgent orders" double count) | `20261119000200` local / not hosted |
+| `b35b8a8` | Gap analysis (`docs/GAP_ANALYSIS_2026-10-19.md`) | — |
+
+Release checks for `8052e65`+docs (2026-10-19): lint + typecheck clean; vitest 764/764; full browser suite 163 passed / 1
+failed / 9 skipped (maintenance.spec:202 failed while a page was still navigating; 6/6 passed on rerun); build OK; gate 8/1.
+
+Owner steps: runbook §6 + §7 + §8 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for six migrations; then Refresh
 demo data in both demos. Payment provider choice (checkout, webhooks, 72-hour grace) is still yours (docs/PLATFORM_LIFECYCLE.md).
 
 ## 000000. Round 2026-10-15 (night) — job site directions verification (B51)
