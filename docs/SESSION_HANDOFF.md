@@ -7,19 +7,25 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 0000000000. 2026-10-19 — customer portal, Testing Lab, two-step verification; delete switch released to Preview
+## 0000000000. 2026-10-19 — customer portal, Testing Lab, two-step verification, static homepage hero
 
-- **Released to Preview only:** `8238483` (permanent company delete off by default, migration `20261120000600`,
-  runbook §11–§12). Preview deploy 7181493096 success. **Production promotion was refused by the session's permission
-  system**, so Production stays at `5881927`; promoting is the owner's decision. Gates for `8238483`: vitest 788/788,
-  e2e 173 passed + 9 skipped, build, gate spec 8 passed + 1 skipped. Not verified live (sandbox cannot reach the domains).
-- **Built locally (branch `wt/portal-batch` → merged into `claude/ui-and-signin-checkpoint` after gates; see git log):**
-  customer portal (B66, `20261120000700`), Testing Lab (`20261120000800`), MFA (B69, `20261120000900`). Applied to the
-  local database only (backups in /var/lib/tlt-backups). Hosted: nothing applied; runbook §12–§13 lists the expected
-  pending set (17 IDs since `20261114000500`) and the owner's exact steps, including setting up an authenticator
-  **before** the push (000900 makes platform functions require aal2).
-- **Not done this session:** guided customer onboarding portal (B68), homepage hero replacement, website/design audit
-  sweep, invoices/payments in the portal (no issued invoices, no provider), emailed invitations (no provider).
+- **Preview:** `73d7cbd` on `claude/ui-and-signin-checkpoint` (deploy 7183119850, success); earlier `8238483`
+  (deploy 7181493096, success). **Production is still `5881927`:** the session's permission system refused the
+  fast-forward of `8238483`, and the batch after it is **approval tier** (auth core: `src/proxy.ts`, `src/server/auth.ts`,
+  `src/server/platform.ts`, `src/server/site-access.ts`; three migrations). Promoting is the owner's decision.
+  Not verified live (the sandbox cannot reach the deployed domains).
+- **Gates:** `8238483`: vitest 788/788, e2e 173 passed / 9 skipped, build, gate spec. Batch (`8480ddb`): vitest 806/806
+  (121 files), e2e 176 passed / 9 skipped / 2 failed — both pass when re-run on port 3000 (sign-up email redirect allowed
+  only for :3000 locally; a 60 s timeout on the slow resources page); later commits re-ran their specs (portal ×2,
+  Testing Lab, MFA ×2, homepage, marketing, onboarding, dispatch availability), lint, typecheck, build, gate spec, and a
+  hosted-state check with `000700`–`000900` rolled back (every page loads, database-dependent pages say so).
+- **Built:** customer portal (B66, `20261120000700`), Testing Lab (`20261120000800`), two-step verification (B69,
+  `20261120000900`), homepage hero with the real product (3D story retired), portal demo samples. Applied to the
+  **local** database only (backups in /var/lib/tlt-backups). Hosted: nothing applied; runbook §12–§13 lists the expected
+  pending set and the owner's steps — including setting up an authenticator **before** the push. Docs:
+  `docs/CUSTOMER_PORTAL.md`.
+- **Not done:** guided customer onboarding portal (B68), full website/design audit sweep, invoices/payments in the
+  portal (no issued invoices, no provider), emailed invitations (no provider), custom portal domains.
 
 ## 000000000. 2026-10-20 (later) — Help Center and practice companies released `5881927`
 
