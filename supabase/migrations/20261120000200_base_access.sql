@@ -136,3 +136,19 @@ end;
 $$;
 revoke all on function public.set_order_base(uuid, uuid) from public, anon;
 grant execute on function public.set_order_base(uuid, uuid) to authenticated;
+
+-- What the plan allows, for the settings page: {"limit": n or null (no limit), "active": n}. Any member may read it.
+create or replace function public.dispatch_base_allowance()
+ returns jsonb
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $$
+  select jsonb_build_object(
+    'limit', private.base_limit(private.current_company_id()),
+    'active', (select count(*) from public.dispatch_bases b where b.company_id = private.current_company_id() and b.active))
+  where private.current_company_id() is not null;
+$$;
+revoke all on function public.dispatch_base_allowance() from public, anon;
+grant execute on function public.dispatch_base_allowance() to authenticated;

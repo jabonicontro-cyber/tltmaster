@@ -19,7 +19,7 @@ export default async function AdminProfilePage() {
   const profile = await getMyProfile();
   const name = profile?.displayName || profile?.fullName || me.email;
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-3xl">
       <PageHeader title="My profile" description="How you appear in the platform console, in customer companies you open and in demos." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "My profile" }]} />
       {!profile ? (
         <Notice tone="warning" title="Profile editing is not available yet">This server&apos;s database has not been updated for profile photos and display names.</Notice>

@@ -25,6 +25,18 @@ import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
 import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
+import { BasesPanel } from "@/components/settings/bases-panel";
+import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
+import { listSignIns } from "@/server/data/people";
+
+const BASE_SAVED: Record<string, string> = {
+  created: "Base added.",
+  updated: "Base saved.",
+  activated: "Base reactivated.",
+  deactivated: "Base deactivated. Its trucks, drivers and orders are unchanged.",
+  default: "Default base changed. New trucks, drivers and orders without a base go there.",
+  access: "Base access saved.",
+};
 
 export const metadata = { title: "Settings" };
 
@@ -36,6 +48,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "numbering", label: "Numbering", group: "Company", visible: (a) => can(a, "settings.manage") },
   { key: "email", label: "Email", group: "Company", visible: () => true },
   { key: "dispatch", label: "Dispatch rules", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
+  { key: "bases", label: "Dispatch Bases", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "users.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
@@ -43,9 +56,9 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
 ];
 const GROUPS: Group[] = ["Company", "Operations", "Access", "System"];
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string; saved?: string; error?: string }> }) {
   const access = await requireAccess();
-  const { tab: rawTab } = await searchParams;
+  const { tab: rawTab, saved, error: actionError } = await searchParams;
   // Sign-ins and roles live on People now (owner 2026-10-14); old links keep working.
   if (rawTab === "users") redirect("/employees?view=access");
   // My account is the profile page now (the profile menu's My profile).
@@ -83,6 +96,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </CardBody>
       </>
     );
+  } else if (tab === "bases") {
+    const bases = await listBases();
+    if (!bases) {
+      content = (
+        <CardBody>
+          <Notice title="Needs a database update">Dispatch bases need a database update that has not been installed yet. Until then the company works as one base.</Notice>
+        </CardBody>
+      );
+    } else {
+      const monthStart = `${today.slice(0, 8)}01`;
+      const [summary, allowance, members, people] = await Promise.all([
+        baseSummary(monthStart, today),
+        baseAllowance(),
+        can(access, "users.manage") ? baseMembers() : Promise.resolve(null),
+        can(access, "users.manage") ? listSignIns(access.companyId!) : Promise.resolve([]),
+      ]);
+      content = <BasesPanel bases={bases} summary={summary} allowance={allowance} people={people} access={members} canEdit={can(access, "settings.manage")} canManagePeople={can(access, "users.manage")} />;
+    }
   } else if (tab === "time-off") {
     const chain = await approvalChain();
     content = (
@@ -169,6 +200,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageHeader title="Settings" />
+      {saved && tab === "bases" ? <div className="mb-3"><Notice title="Saved">{BASE_SAVED[saved] ?? "Saved."}</Notice></div> : null}
+      {actionError ? <div className="mb-3"><Notice tone="warning" title="Not saved">{actionError}</Notice></div> : null}
       <nav aria-label="Settings groups" className="mb-3 flex gap-1 overflow-x-auto border-b border-line">
         {groups.map(({ g, first }) => (
           <Link

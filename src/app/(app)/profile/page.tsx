@@ -21,7 +21,7 @@ export default async function ProfilePage() {
   const profile = await getMyProfile();
   const name = profile?.displayName || access.fullName || access.email;
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="max-w-3xl">
       <PageHeader title="My profile" description="How you appear in Taviron. Your role and company access are managed by your company administrator." />
       {!profile ? (
         <Notice tone="warning" title="Profile editing is not available yet">

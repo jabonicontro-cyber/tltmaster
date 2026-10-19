@@ -1,8 +1,12 @@
 import type { ComponentProps, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
+/**
+ * Wide tables scroll inside this box on narrow screens. `relative` makes it the containing block for absolutely
+ * positioned children (sr-only column labels), which otherwise escape the scroll box and widen the whole page.
+ */
 export function TableWrap({ children, className }: { children: ReactNode; className?: string }) {
-  return <div className={cn("overflow-x-auto", className)}>{children}</div>;
+  return <div className={cn("relative overflow-x-auto", className)}>{children}</div>;
 }
 
 export function Table({ className, ...props }: ComponentProps<"table">) {
