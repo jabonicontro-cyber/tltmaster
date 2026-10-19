@@ -31,3 +31,7 @@ export function setupStatus(missing: readonly string[], totalChecks: number, pen
   if (missing.length === 0) return "complete";
   return missing.length >= totalChecks ? "incomplete" : "in_progress";
 }
+
+/** Company classification (B67), set only by the platform owner. Managed demos are identified separately (is_demo). */
+export type CompanyClass = "production" | "practice";
+export const COMPANY_CLASS_LABELS: Record<CompanyClass, string> = { production: "Production Customer", practice: "Practice / Test" };
