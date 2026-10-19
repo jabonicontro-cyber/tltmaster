@@ -23,7 +23,8 @@ async function acceptedTicket() {
     await ins("driver_qualifications", { driver_id: driver, kind: "cdl", cdl_class: "A", expires_on: "2099-01-01", verified_at: verified });
     await ins("driver_qualifications", { driver_id: driver, kind: "medical_card", expires_on: "2099-01-01", verified_at: verified });
     const truck = await ins("trucks", { unit_number: `PAY-${id}`, truck_type: "tri_axle_dump" });
-    const cust = await q("select id from public.customers where name = 'Prairie View Landscaping' and company_id = '00000000-0000-4000-8000-000000000001'");
+    // Its own (non-sample) customer: a sample customer's tickets would block Remove sample data once paid.
+    const cust = { rows: [{ id: await ins("customers", { name: `Payroll Customer ${id}` }) }] };
     const mats = await q("select id from public.materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
     const o = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       site_line1: "1 Payroll Pit Rd (test)", customer_id: cust.rows[0].id, order_date: day, project_name: `Payroll e2e ${id}`,

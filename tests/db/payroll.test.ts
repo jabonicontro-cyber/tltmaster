@@ -53,6 +53,13 @@ describe("driver payroll", () => {
   it("pays nothing until a confirmed rule is active and calculation is on; a verified ticket is paid once, retries add nothing", async () => {
     await withSession(async (s) => {
       const w = await world(s);
+      // The shared test company may already have payroll set up by the browser tests; start this test from none
+      // (inside the test transaction, which is rolled back).
+      await s.asAdmin();
+      const company = (await s.query<{ company_id: string }>("select company_id from public.delivery_tickets where id = $1", [w.ticket.ticket_id])).rows[0].company_id;
+      await s.query("update public.pay_rule_versions set status = 'retired' where company_id = $1 and status = 'active'", [company]);
+      await s.query("update public.payroll_settings set enabled = false where company_id = $1", [company]);
+      await s.query("delete from public.payroll_periods p where p.company_id = $1 and p.starts_on <= $3 and p.ends_on >= $2 and not exists (select 1 from public.payroll_entries e where e.period_id = p.id)", [company, w.yesterday, w.today]);
       await s.as(w.owner);
       const period = await call<string>(s, "public.payroll_period_create($1, $2)", [w.yesterday, w.today]);
       const work = await call<{ payable: Row[]; not_payable: Row[] }>(s, "public.payroll_period_work($1)", [period]);
@@ -171,6 +178,33 @@ describe("driver payroll", () => {
       expect((await s.query("select 1 from public.pay_rule_versions where id = $1", [rule])).rowCount).toBe(0);
       expect((await pgError(s.query("select public.payroll_rule_activate($1, '')", [rule]))).code).toBe("P0002");
       expect((await pgError(s.query("select public.payroll_rule_draft($1::jsonb)", [JSON.stringify({ name: "Cross (test)", formula: "tons * rate", rate: "4", effective_from: w.today, scope: { driver_id: w.f.d1 } })]))).message).toMatch(/not in this company/);
+    });
+  });
+  it("removing sample data releases a sample ticket from an open payroll period, but never from approved payroll", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      await s.asAdmin();
+      const company = (await s.query<{ company_id: string }>("select company_id from public.delivery_tickets where id = $1", [w.ticket.ticket_id])).rows[0].company_id;
+      await s.query("delete from public.payroll_periods p where p.company_id = $1 and p.starts_on <= $3 and p.ends_on >= $2 and not exists (select 1 from public.payroll_entries e where e.period_id = p.id)", [company, w.yesterday, w.today]);
+      await s.as(w.owner);
+      const period = await call<string>(s, "public.payroll_period_create($1, $2)", [w.yesterday, w.today]);
+      expect(await call(s, "public.payroll_record_entries($1, $2::jsonb)", [period, JSON.stringify([entry(w, null, null, "exception")])])).toEqual({ added: 1, already_recorded: 0 });
+      await s.asAdmin();
+      await s.query("update public.orders set is_sample = true where id = $1", [w.order.id]);
+      // A ticket in the ledger cannot be deleted outside sample removal.
+      expect(["23503", "42501"]).toContain((await pgError(s.query("delete from public.delivery_tickets where id = $1", [w.ticket.ticket_id]))).code);
+      // Approved payroll is never rewritten: sample removal stops with a reason.
+      await s.query("update public.payroll_periods set status = 'approved' where id = $1", [period]);
+      await s.as(w.owner);
+      expect((await pgError(s.query("select public.remove_sample_data()"))).message).toMatch(/approved payroll period/);
+      await s.asAdmin();
+      await s.query("update public.payroll_periods set status = 'open' where id = $1", [period]);
+      await s.as(w.owner);
+      await s.query("select public.remove_sample_data()");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.delivery_tickets where id = $1", [w.ticket.ticket_id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.payroll_entries where period_id = $1", [period])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.audit_events where action = 'payroll.sample_entries_removed' and entity_id = $1", [w.ticket.ticket_id])).rowCount).toBe(1);
     });
   });
 });

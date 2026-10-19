@@ -75,6 +75,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.alerts_from_new_assignments", "private.alerts_from_load_changes", "public.verify_site_directions", "public.platform_launchpad", "public.platform_company", "public.platform_company_directory", "public.platform_record_demo_refresh", "public.payroll_settings_save", "public.payroll_rule_draft", "public.payroll_rule_activate", "public.payroll_rule_end", "public.payroll_period_create", "public.payroll_period_work", "public.payroll_record_entries", "public.payroll_entry_set", "public.payroll_adjust", "public.payroll_period_approve", "public.payroll_export_record", "public.payroll_export_outcome",
   // Platform customer lifecycle (20261118000300): platform admins only (private.require_platform_admin); the cron entry is service_role only.
   "private.company_today", "private.lifecycle_activate_due", "private.lifecycle_for_update", "private.lifecycle_json", "public.lifecycle_activate_due_cron", "public.platform_attention_ack", "public.platform_console", "public.platform_lifecycle", "public.platform_lifecycle_cancel", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_terms", "public.platform_plan_version_create", "public.platform_plans",
+  // Sample-data removal releases open payroll entries of sample tickets (20261118000400); only under tlt.sample_purge.
+  "private.payroll_release_sample_ticket",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

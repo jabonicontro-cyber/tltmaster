@@ -327,10 +327,9 @@ describe("downstream re-evaluation", () => {
       expect(await readiness()).toBe("blocked");
       expect(await kinds()).toContain("load_quantity");
       expect((await s.query("select 1 from public.billing_handoff_orders where order_id = $1", [order.id])).rowCount).toBe(0);
-      // No driver-pay data model exists yet: billing readiness says nothing about payroll.
+      // Billing review never creates driver pay: payroll (B27) only records a ticket when its owner calculates a period.
       await s.asAdmin();
-      expect((await s.query("select 1 from information_schema.tables where table_schema = 'public' and table_name ilike '%payroll%'")).rowCount).toBe(0);
-      expect((await s.query("select 1 from public.permissions where code ilike 'payroll%'")).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.payroll_entries where ticket_id in ($1, $2)", [t.ticket_id, c.ticket_id])).rowCount).toBe(0);
     });
   });
 });
