@@ -96,8 +96,9 @@ test("staff create a customer sign-in; the customer sets a password and lands in
     await cust.getByRole("button", { name: "Sign In" }).click();
     await expect(cust.getByText(/turned off|incorrect/)).toBeVisible();
 
-    // Turned back on: a new temporary password, the old one gone.
+    // Turned back on (from the collapsed "Turned off" group): a new temporary password, the old one gone.
     await page.reload();
+    await page.getByText(/^Turned off \(\d+\)$/).click();
     await row.getByRole("button", { name: "Turn On Sign-in" }).click();
     const again = page.getByRole("region", { name: "Sign-in instructions" });
     await again.getByRole("button", { name: "Show", exact: true }).click();

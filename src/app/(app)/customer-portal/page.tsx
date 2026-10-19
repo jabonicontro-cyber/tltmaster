@@ -258,8 +258,10 @@ async function AccessTab(access: Access, canEdit: boolean, open: boolean) {
         <Card>
           <CardHeader title="Customer Sign-ins" description="Created here with a username. Turning one off keeps the customer's requests and history." />
           <CardBody>
-            <ul className="divide-y divide-line">
-              {usernameRows.map((a) => {
+            {(() => {
+              const list = (rowsOf: PortalAccountRow[]) => (
+                <ul className="divide-y divide-line">
+                  {rowsOf.map((a) => {
                 const st = states!.get(a.user_id!)!;
                 const person = a.contact_id ? contactName.get(a.contact_id) : undefined;
                 const to = person?.email && !isUsernameEmail(person.email) ? person.email : "";
@@ -276,7 +278,22 @@ async function AccessTab(access: Access, canEdit: boolean, open: boolean) {
                   </li>
                 );
               })}
-            </ul>
+                </ul>
+              );
+              const on = usernameRows.filter((a) => a.status !== "revoked");
+              const off = usernameRows.filter((a) => a.status === "revoked");
+              return (
+                <>
+                  {on.length ? list(on) : <p className="text-sm text-muted">No active customer sign-ins.</p>}
+                  {off.length ? (
+                    <details className="mt-3 border-t border-line pt-3">
+                      <summary className="cursor-pointer text-sm font-semibold text-muted hover:text-ink">Turned off ({off.length})</summary>
+                      {list(off)}
+                    </details>
+                  ) : null}
+                </>
+              );
+            })()}
           </CardBody>
         </Card>
       ) : null}
