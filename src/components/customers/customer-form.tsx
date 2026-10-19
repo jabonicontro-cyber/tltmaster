@@ -84,6 +84,18 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
       </fieldset>
 
       {withContact && (
+        <div className="space-y-2">
+          <Field label="Relationship" htmlFor="relationship" hint="A prospect becomes a customer when you win an opportunity or create their first order.">
+            <Select id="relationship" name="relationship" defaultValue="customer" className="sm:max-w-xs">
+              <option value="customer">Customer</option>
+              <option value="prospect">Prospect (not ordering yet)</option>
+            </Select>
+          </Field>
+          {formError?.startsWith("Possible duplicate") && <Checkbox name="confirm_new" label="This is a different customer — create it anyway" />}
+        </div>
+      )}
+
+      {withContact && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
           <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Primary contact (optional)</legend>
           <Field label="Contact name" htmlFor="contact_name" error={fieldError("contact_name")} className="sm:col-span-2">

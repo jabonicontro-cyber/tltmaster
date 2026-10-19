@@ -76,7 +76,37 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
+  note("CRM pipeline", await crm(db, today, userId));
   return result;
+}
+
+/**
+ * Company CRM (20261119000100): on the demo's three most recent customers with orders — an opportunity in Quoting
+ * valued at that customer's latest order total (the demo's own figure), one in Negotiation with no value (a stated
+ * unknown), an overdue follow-up and a follow-up for this week assigned to the viewer, and one logged call each.
+ * Only while the demo has no opportunity; nothing is sent.
+ */
+async function crm(db: Db, today: string, me: string): Promise<number> {
+  const n = await count(db, "crm_opportunities");
+  if (n === null || n > 0) return 0;
+  const orders = ((await db.from("orders").select("customer_id, total_cents, order_date").neq("status", "canceled").order("order_date", { ascending: false }).limit(200)).data ?? []) as Array<{ customer_id: string; total_cents: number }>;
+  const latest = new Map<string, number>();
+  for (const o of orders) if (!latest.has(o.customer_id)) latest.set(o.customer_id, o.total_cents);
+  const customers = [...latest.keys()].slice(0, 3);
+  if (customers.length === 0) return 0;
+  let added = 0;
+  const [a, b = a, c = a] = customers;
+  await must("opportunity", db.from("crm_opportunities").insert({ customer_id: a, title: "Repeat of the last order (demo)", stage: "quoting", value_cents: latest.get(a) ?? null, probability: 50, owner_id: me, follow_up_on: addDays(today, 2), next_action: "Send the updated quote" }));
+  await must("opportunity", db.from("crm_opportunities").insert({ customer_id: b, title: "Next season's work (demo)", stage: "negotiation", owner_id: me, next_action: "Agree the start date" }));
+  added += 2;
+  await must("task", db.from("customer_tasks").insert({ customer_id: a, title: "Call back about delivery windows (demo)", due_on: addDays(today, -1), assigned_to: me }));
+  await must("task", db.from("customer_tasks").insert({ customer_id: c, title: "Check how the last delivery went (demo)", due_on: addDays(today, 3), assigned_to: me }));
+  added += 2;
+  for (const id of new Set([a, b, c])) {
+    await must("activity", db.from("customer_activities").insert({ customer_id: id, kind: "call", subject: "Check-in call (demo)", body: "Fictional sample activity.", occurred_at: `${addDays(today, -2)}T15:00:00Z` }));
+    added++;
+  }
+  return added;
 }
 
 /**

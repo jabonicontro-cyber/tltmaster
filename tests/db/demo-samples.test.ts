@@ -141,6 +141,12 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(periods.rows).toEqual([{ status: "open" }]);
     const rules = await q<{ n: string }>("select count(*) n from public.pay_rules where company_id = $1", [w.company]);
     expect(Number(rules.rows[0].n)).toBe(0);
+    // CRM: two opportunities (one valued from the customer's own latest order, one without a value) and an overdue
+    // follow-up; all on real demo customers.
+    const opps = await q<{ stage: string; valued: boolean }>("select stage, value_cents is not null valued from public.crm_opportunities where company_id = $1 order by stage", [w.company]);
+    expect(opps.rows).toEqual([{ stage: "negotiation", valued: false }, { stage: "quoting", valued: true }]);
+    const overdue = await q<{ n: string }>("select count(*) n from public.customer_tasks where company_id = $1 and status = 'open' and due_on < current_date", [w.company]);
+    expect(Number(overdue.rows[0].n)).toBe(1);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

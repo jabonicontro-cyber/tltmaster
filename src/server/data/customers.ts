@@ -7,28 +7,47 @@ export interface CustomerFilters {
   q?: string;
   type?: string;
   status?: string;
+  relationship?: string;
+  tag?: string;
+  sort?: string;
   page: number;
 }
 
+const BASE_COLUMNS = "id, customer_number, name, customer_type, email, phone, billing_city, billing_state, active, is_sample, po_required, updated_at, created_at";
+type ListRow = Pick<CustomerRow, "id" | "customer_number" | "name" | "customer_type" | "email" | "phone" | "billing_city" | "billing_state" | "active" | "is_sample" | "po_required" | "updated_at"> & {
+  relationship?: "prospect" | "customer";
+  tags?: string[];
+  account_owner_id?: string | null;
+};
+
+/** Customers for the list. With the CRM update (20261119000100) also relationship, tags and owner; without it the
+ *  list works as before and the CRM filters are ignored. */
 export async function listCustomers(filters: CustomerFilters) {
   const supabase = await createClient();
-  let query = supabase
-    .from("customers")
-    .select("id, customer_number, name, customer_type, email, phone, billing_city, billing_state, active, is_sample, po_required, updated_at", { count: "exact" })
-    .order("name");
-
-  const pattern = ilikePattern(filters.q);
-  if (pattern) {
-    query = query.or(`name.ilike.${pattern},customer_number.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},billing_city.ilike.${pattern}`);
+  const run = (crm: boolean) => {
+    let query = supabase.from("customers").select(crm ? `${BASE_COLUMNS}, relationship, tags, account_owner_id` : BASE_COLUMNS, { count: "exact" });
+    const sort = filters.sort === "newest" ? ["created_at", false] : filters.sort === "number" ? ["customer_number", true] : filters.sort === "updated" ? ["updated_at", false] : ["name", true];
+    query = query.order(sort[0] as string, { ascending: sort[1] as boolean });
+    const pattern = ilikePattern(filters.q);
+    if (pattern) {
+      query = query.or(`name.ilike.${pattern},customer_number.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},billing_city.ilike.${pattern}`);
+    }
+    if (filters.type === "commercial" || filters.type === "residential") query = query.eq("customer_type", filters.type);
+    if (filters.status === "archived") query = query.eq("active", false);
+    else if (filters.status !== "all") query = query.eq("active", true);
+    if (crm && (filters.relationship === "prospect" || filters.relationship === "customer")) query = query.eq("relationship", filters.relationship);
+    if (crm && filters.tag) query = query.contains("tags", [filters.tag.slice(0, 40)]);
+    const from = (filters.page - 1) * PAGE_SIZE;
+    return query.range(from, from + PAGE_SIZE - 1);
+  };
+  let res = await run(true);
+  let crm = true;
+  if (res.error?.code === "42703") {
+    crm = false;
+    res = await run(false);
   }
-  if (filters.type === "commercial" || filters.type === "residential") query = query.eq("customer_type", filters.type);
-  if (filters.status === "archived") query = query.eq("active", false);
-  else if (filters.status !== "all") query = query.eq("active", true);
-
-  const from = (filters.page - 1) * PAGE_SIZE;
-  const { data, error, count } = await query.range(from, from + PAGE_SIZE - 1);
-  if (error) throw new Error(`Could not load customers: ${error.message}`);
-  return { rows: (data ?? []) as Array<Pick<CustomerRow, "id" | "customer_number" | "name" | "customer_type" | "email" | "phone" | "billing_city" | "billing_state" | "active" | "is_sample" | "po_required" | "updated_at">>, total: count ?? 0 };
+  if (res.error) throw new Error(`Could not load customers: ${res.error.message}`);
+  return { rows: (res.data ?? []) as unknown as ListRow[], total: res.count ?? 0, crm };
 }
 
 export async function getCustomer(id: string) {

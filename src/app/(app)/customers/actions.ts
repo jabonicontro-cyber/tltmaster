@@ -9,6 +9,7 @@ import { optionalEmail, optionalPhone, optionalText, uuid } from "@/lib/schemas/
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { findDuplicates } from "@/server/data/crm";
 
 const firstContactSchema = z.object({
   contact_name: optionalText(120),
@@ -28,8 +29,19 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<{
     if (!contact.success) return validationFailure(contact.error);
 
     const supabase = await createClient();
-    const { data, error } = await supabase.from("customers").insert(parsed.data).select("id").single();
-    if (error) return fail(dbErrorMessage(error));
+    // Possible duplicates (same name, email or phone) are shown first; the person confirms a different customer.
+    if (formData.get("confirm_new") !== "on") {
+      const dups = await findDuplicates(parsed.data.name, String(parsed.data.email ?? ""), String(parsed.data.phone ?? ""));
+      if (dups.length) {
+        return fail(`Possible duplicate: ${dups.slice(0, 3).map((d) => `${d.name} (${d.customer_number}, same ${d.matched_on}${d.active ? "" : ", archived"})`).join("; ")}. Open the existing record, or tick the box below to create a new one.`);
+      }
+    }
+    const prospect = formData.get("relationship") === "prospect";
+    const row: Record<string, unknown> = prospect ? { ...parsed.data, relationship: "prospect" } : parsed.data;
+    let { data, error } = await supabase.from("customers").insert(row).select("id").single();
+    // Before the CRM update (20261119000100) there is no relationship column: save the customer without it.
+    if (error?.code === "PGRST204" && prospect) ({ data, error } = await supabase.from("customers").insert(parsed.data).select("id").single());
+    if (error || !data) return fail(error ? dbErrorMessage(error) : "The customer could not be saved.");
 
     if (contact.data.contact_name) {
       const { error: cErr } = await supabase.from("customer_contacts").insert({

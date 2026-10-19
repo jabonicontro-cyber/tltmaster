@@ -8,6 +8,7 @@ afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
+  "customer_activities", "crm_opportunities", "crm_opportunity_events", "customer_tasks",
   "comm_settings", "conversations", "conversation_members", "messages", "message_revisions", "conversation_events",
   "user_presence", "comm_preferences", "comm_notifications", "announcements", "announcement_revisions", "announcement_receipts",
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
@@ -77,6 +78,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.company_today", "private.lifecycle_activate_due", "private.lifecycle_for_update", "private.lifecycle_json", "public.lifecycle_activate_due_cron", "public.platform_attention_ack", "public.platform_console", "public.platform_lifecycle", "public.platform_lifecycle_cancel", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_terms", "public.platform_plan_version_create", "public.platform_plans",
   // Sample-data removal releases open payroll entries of sample tickets (20261118000400); only under tlt.sample_purge.
   "private.payroll_release_sample_ticket",
+  // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
+  "private.is_company_member", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

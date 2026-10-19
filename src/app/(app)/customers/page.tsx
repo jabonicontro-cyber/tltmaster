@@ -15,20 +15,24 @@ import { pageParam, PAGE_SIZE } from "@/server/data/search";
 
 export const metadata = { title: "Customers" };
 
-type Search = { q?: string; type?: string; status?: string; page?: string };
+type Search = { q?: string; type?: string; status?: string; relationship?: string; tag?: string; sort?: string; page?: string };
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("customers.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const { rows, total } = await listCustomers({ q: sp.q, type: sp.type, status: sp.status, page });
-  const filtered = Boolean(sp.q || sp.type || (sp.status && sp.status !== "active"));
+  const { rows, total, crm } = await listCustomers({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag, sort: sp.sort, page });
+  const filtered = Boolean(sp.q || sp.type || sp.relationship || sp.tag || (sp.status && sp.status !== "active"));
+  const exportParams = new URLSearchParams(Object.entries({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag }).filter((e): e is [string, string] => Boolean(e[1])));
 
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
     if (sp.q) params.set("q", sp.q);
     if (sp.type) params.set("type", sp.type);
     if (sp.status) params.set("status", sp.status);
+    if (sp.relationship) params.set("relationship", sp.relationship);
+    if (sp.tag) params.set("tag", sp.tag);
+    if (sp.sort) params.set("sort", sp.sort);
     params.set("page", String(p));
     return `/customers?${params}`;
   };
@@ -37,13 +41,17 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         title="Customers"
-        description="Commercial and residential customers, their contacts and job sites."
+        description="Customers and prospects, their contacts, job sites, activity and follow-ups."
         actions={
-          can(access, "customers.edit") && (
-            <ButtonLink href="/customers/new" icon={<Plus className="size-4" />}>
-              New customer
-            </ButtonLink>
-          )
+          <>
+            {crm && <ButtonLink href="/customers/pipeline" variant="secondary">Pipeline</ButtonLink>}
+            <ButtonLink href={`/customers/export${exportParams.size ? `?${exportParams}` : ""}`} variant="secondary">Export CSV</ButtonLink>
+            {can(access, "customers.edit") && (
+              <ButtonLink href="/customers/new" icon={<Plus className="size-4" />}>
+                New customer
+              </ButtonLink>
+            )}
+          </>
         }
       />
       <Card>
@@ -68,7 +76,32 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
               { value: "all", label: "All" },
             ]}
           />
+          {crm && (
+            <FilterSelect
+              name="relationship"
+              label="Relationship"
+              value={sp.relationship}
+              options={[
+                { value: "", label: "Customers and prospects" },
+                { value: "customer", label: "Customers" },
+                { value: "prospect", label: "Prospects" },
+              ]}
+            />
+          )}
+          <FilterSelect
+            name="sort"
+            label="Sort"
+            value={sp.sort}
+            options={[
+              { value: "", label: "Name" },
+              { value: "number", label: "Customer number" },
+              { value: "newest", label: "Newest first" },
+              { value: "updated", label: "Recently updated" },
+            ]}
+          />
+          {sp.tag && <input type="hidden" name="tag" value={sp.tag} />}
         </FilterBar>
+        {sp.tag && <p className="px-4 pb-2 text-sm text-muted sm:px-5">Tagged “{sp.tag}” · <Link href="/customers" className="font-semibold text-brand-fg hover:underline">clear</Link></p>}
         {rows.length === 0 ? (
           <EmptyState
             title={filtered ? "No customers match these filters" : "No customers yet"}
@@ -100,7 +133,9 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                         </Link>
                         <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted">
                           <span className="tabular">{c.customer_number}</span>
+                          {c.relationship === "prospect" && <Badge tone="amber">Prospect</Badge>}
                           {c.po_required && <Badge tone="blue">PO required</Badge>}
+                          {c.tags?.slice(0, 3).map((t) => <Link key={t} href={`/customers?tag=${encodeURIComponent(t)}`} className="rounded bg-surface px-1.5 text-xs hover:underline">{t}</Link>)}
                           <SampleBadge show={c.is_sample} />
                         </div>
                       </Td>
