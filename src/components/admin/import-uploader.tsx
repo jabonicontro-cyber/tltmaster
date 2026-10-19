@@ -11,11 +11,15 @@ import { stageImport } from "@/app/admin/actions";
  * review. Nothing is created here: staging only records the rows; records are
  * created when the batch is approved. The server repeats every check.
  */
-export function ImportUploader({ companyId }: { companyId: string }) {
-  const [entity, setEntity] = useState<ImportEntity>("customers");
-  const [fileName, setFileName] = useState("");
-  const [csv, setCsv] = useState("");
-  const [mapping, setMapping] = useState<string[]>([]);
+export function ImportUploader({ companyId, initial }: {
+  companyId: string;
+  /** A CSV a company uploaded to its onboarding checklist, opened by Taviron for import (still reviewed before anything is created). */
+  initial?: { csv: string; fileName: string; entity: ImportEntity; documentId: string };
+}) {
+  const [entity, setEntity] = useState<ImportEntity>(initial?.entity ?? "customers");
+  const [fileName, setFileName] = useState(initial?.fileName ?? "");
+  const [csv, setCsv] = useState(initial?.csv ?? "");
+  const [mapping, setMapping] = useState<string[]>(() => (initial ? guessMapping(parseCsv(initial.csv)[0] ?? [], initial.entity) : []));
   const [readError, setReadError] = useState<string | null>(null);
 
   const table = useMemo(() => (csv ? parseCsv(csv) : []), [csv]);
@@ -55,6 +59,7 @@ export function ImportUploader({ companyId }: { companyId: string }) {
   return (
     <form action={stageImport} className="space-y-5">
       <input type="hidden" name="company" value={companyId} />
+      {initial ? <input type="hidden" name="document" value={initial.documentId} /> : null}
       <input type="hidden" name="entity" value={entity} />
       <input type="hidden" name="file_name" value={fileName} />
       <input type="hidden" name="csv" value={csv} />

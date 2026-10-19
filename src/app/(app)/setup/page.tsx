@@ -5,6 +5,10 @@ import { requirePagePermission } from "@/server/auth";
 import { GATE_LABELS, type GateState } from "@/lib/ai/capabilities";
 import { allCapabilityGates } from "@/server/ai/gates";
 import { getCompanyReadiness } from "@/server/data/readiness";
+import { companyOnboarding } from "@/server/data/onboarding";
+import { businessToday } from "@/server/data/settings";
+import { createClient } from "@/server/supabase/server";
+import { OnboardingChecklist } from "@/components/onboarding/checklist";
 
 export const metadata = { title: "Company setup" };
 
@@ -18,8 +22,21 @@ const GATE_TONE: Record<GateState, string> = { ready: "text-green-700", limited:
  * missing before Taviron's checks, Smart Dispatch and Plan the day can rely on the data. Read-only; every link goes
  * to the page where the record is added or fixed. Counts come from the company's own data (RLS).
  */
+/** Active people in the company, for choosing a task owner (RLS: the caller's own company). */
+async function companyPeople(companyId: string): Promise<Array<{ id: string; name: string }>> {
+  const supabase = await createClient();
+  const { data: members } = await supabase.from("company_memberships").select("user_id").eq("company_id", companyId).eq("active", true);
+  const ids = ((members ?? []) as Array<{ user_id: string }>).map((m) => m.user_id);
+  if (!ids.length) return [];
+  const { data: profiles } = await supabase.from("profiles").select("id, full_name, display_name").in("id", ids);
+  return ((profiles ?? []) as Array<{ id: string; full_name: string | null; display_name: string | null }>)
+    .map((p) => ({ id: p.id, name: p.display_name?.trim() || p.full_name?.trim() || "Unnamed person" }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export default async function SetupPage() {
   const access = await requirePagePermission("settings.manage");
+  const [onboarding, people, { today }] = await Promise.all([companyOnboarding(), companyPeople(access.companyId!), businessToday()]);
   const [readiness, gates] = await Promise.all([
     getCompanyReadiness(access.companyId!).catch((e: unknown) => {
       console.error("Company setup checklist failed", e);
@@ -33,6 +50,19 @@ export default async function SetupPage() {
         title="Company setup"
         description="What Taviron needs before its checks, dispatch suggestions and plans can rely on your data. Nothing here changes a record; each step links to where you add or fix it."
       />
+      {onboarding.ok && onboarding.data.tasks.length ? (
+        <section aria-labelledby="onboarding-title" className="mb-8">
+          <h2 id="onboarding-title" className="text-base font-bold text-ink">Onboarding with Taviron</h2>
+          <p className="mb-3 mt-1 text-sm text-muted">
+            Your onboarding checklist, shared with Taviron&apos;s onboarding team. Tasks marked &ldquo;Taviron reviews&rdquo; are submitted here and approved by
+            Taviron; nothing is imported or changed until then. Reminders and replies arrive as in-app notifications.
+          </p>
+          <OnboardingChecklist state={onboarding.data} side="customer" people={people} readiness={"error" in readiness ? [] : readiness.items} today={today} />
+        </section>
+      ) : !onboarding.ok && onboarding.reason === "error" ? (
+        <p role="alert" className="mb-6 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">{onboarding.message}</p>
+      ) : null}
+      <h2 className="mb-2 text-base font-bold text-ink">Your records</h2>
       {"error" in readiness ? (
         <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{readiness.error}</p>
       ) : (

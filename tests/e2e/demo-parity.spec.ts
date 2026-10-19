@@ -154,6 +154,12 @@ test("every demo mode opens its pages and each feature shows sample data", async
           await expect(page.getByRole("row").filter({ hasText: "Paid time off" }).first(), "owner balances").toBeVisible();
           await expect(page.getByText("No balances to show"), "owner balances").toHaveCount(0);
         }
+        // Guided onboarding (20261120001000, samples.ts guidedOnboarding): a mid-onboarding checklist in varied states.
+        await visit(page, "/setup");
+        await expect(page.getByRole("heading", { name: "Onboarding with Taviron" }), "owner onboarding checklist").toBeVisible();
+        for (const state of ["Changes requested", "Submitted for review", "Blocked", "Awaiting customer", "Approved"]) {
+          await expect(page.getByText(state, { exact: true }).first(), `onboarding state ${state}`).toBeVisible();
+        }
       }
       // Modes that drive see a day with loads on My Day.
       if (role === "driver" || role === "multi") {

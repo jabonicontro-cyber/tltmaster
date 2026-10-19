@@ -34,6 +34,7 @@ const TENANT_TABLES = [
   "field_reports", "ticket_attachments",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
+  "onboarding_tasks", "onboarding_events", "onboarding_documents",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -104,6 +105,20 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // limited; the company policy needs settings.manage and an aal2 session; the platform switch is read-only here.
   "private.security_log", "private.platform_mfa_enforced", "public.mfa_policy", "public.set_company_mfa_policy",
   "public.mfa_recovery_generate", "public.mfa_recovery_redeem", "public.mfa_record_event", "public.my_security_events",
+  // Guided onboarding (20261120001000): company side needs settings.manage in the task's own company (current
+  // company); Taviron side needs require_platform_admin (aal2); generation reads only the target company; documents
+  // at database-chosen paths; demo samples is_demo only.
+  "private.onboarding_staff", "private.onboarding_customer", "private.onboarding_unmet", "private.onboarding_notify",
+  "private.onboarding_json", "private.onboarding_summary", "private.onboarding_generate", "private.onboarding_change",
+  "private.can_upload_onboarding_document", "private.can_read_onboarding_document",
+  "public.onboarding_state", "public.onboarding_set_status", "public.onboarding_comment", "public.onboarding_assign",
+  "public.platform_onboarding_generate", "public.platform_onboarding", "public.platform_onboarding_overview",
+  "public.platform_onboarding_set_status", "public.platform_onboarding_comment", "public.platform_onboarding_remind",
+  "public.platform_onboarding_import_staged", "public.onboarding_document_path", "public.onboarding_begin_document",
+  "public.onboarding_confirm_document", "public.onboarding_demo_samples",
+  // Security hardening (20261120001100): the caller's own company before the two-step check, the caller's own
+  // factors, and the per-account duplicate guard on portal requests.
+  "private.current_company_id_any", "private.mfa_enrolled", "private.portal_request_dedupe",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
@@ -208,7 +223,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo"];
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo", "public.platform_onboarding_generate", "public.platform_onboarding"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;

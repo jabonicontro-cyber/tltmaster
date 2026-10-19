@@ -11,6 +11,7 @@ import { formatDate } from "@/lib/dates";
 import type { PlatformCompany } from "@/lib/platform/types";
 import { createClient } from "@/server/supabase/server";
 import { createCompany } from "../actions";
+import { platformOnboardingOverview } from "@/server/data/onboarding";
 
 export const metadata = { title: "Onboarding" };
 
@@ -19,6 +20,8 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
   const supabase = await createClient();
   const { data } = await supabase.rpc("platform_companies");
   const companies = (data ?? []) as PlatformCompany[];
+  const overview = await platformOnboardingOverview();
+  const progress = new Map(overview.ok ? overview.data.map((r) => [r.company_id, r.summary]) : []);
   return (
     <>
       <PageHeader title="Company onboarding" description="Set up a customer company with the team: create it, import its records from spreadsheets, review, approve." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding" }]} />
@@ -37,6 +40,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                   <Th align="right">Materials</Th>
                   <Th align="right">Trucks</Th>
                   <Th align="right">Drivers</Th>
+                  <Th>Onboarding</Th>
                   <Th>Created</Th>
                 </tr>
               </thead>
@@ -52,6 +56,22 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
                     <Td align="right">{c.materials}</Td>
                     <Td align="right">{c.trucks}</Td>
                     <Td align="right">{c.drivers}</Td>
+                    <Td>
+                      {(() => {
+                        const p = progress.get(c.id);
+                        if (!p) return <span className="text-xs text-muted">Not started</span>;
+                        return (
+                          <span className="flex flex-wrap items-center gap-1 text-xs">
+                            <span className="font-semibold text-ink tabular-nums">{p.required_done}/{p.required}</span>
+                            {p.review ? <Badge tone="blue">{p.review} to review</Badge> : null}
+                            {p.customer_actions ? <Badge tone="amber">{p.customer_actions} with customer</Badge> : null}
+                            {p.blocked ? <Badge tone="critical-soft">{p.blocked} blocked</Badge> : null}
+                            {p.overdue ? <Badge tone="critical-soft">{p.overdue} overdue</Badge> : null}
+                            {p.ready ? <Badge tone="green">Ready for go-live review</Badge> : null}
+                          </span>
+                        );
+                      })()}
+                    </Td>
                     <Td>{formatDate(c.created_at.slice(0, 10))}</Td>
                   </Tr>
                 ))}

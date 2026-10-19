@@ -78,7 +78,20 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("payroll period", await payrollPeriod(db, today));
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
+  note("guided onboarding", await guidedOnboarding(db));
   return result;
+}
+
+/**
+ * Guided onboarding (B68, 20261120001000): a fictional mid-onboarding checklist — finished, submitted for review,
+ * changes requested, blocked, awaiting the customer and not started — built by the database from the demo's own plan,
+ * fleet and bases. Only while the demo has no checklist; nothing is sent.
+ */
+async function guidedOnboarding(db: Db): Promise<number> {
+  const { data, error } = await db.rpc("onboarding_demo_samples");
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (guided onboarding): ${error.message}`);
+  return Number(data ?? 0);
 }
 
 /**

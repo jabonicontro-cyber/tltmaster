@@ -109,6 +109,12 @@ export async function stageImport(formData: FormData) {
   const supabase = await db();
   const { data, error } = await supabase.rpc("platform_import_stage", { p_company: company, p_entity: entity.data, p_file_name: fileName, p_mapping: mapped, p_rows: rows });
   if (error) back(path, dbErrorMessage(error));
+  // Staged from a file on the company's onboarding checklist: note it in the task's history (20261120001000).
+  const document = uuid.safeParse(formData.get("document"));
+  if (document.success) {
+    const note = await supabase.rpc("platform_onboarding_import_staged", { p_document: document.data, p_batch: data as string });
+    if (note.error) console.warn("Onboarding import note not recorded", { code: note.error.code });
+  }
   redirect(`/admin/onboarding/batch/${data as string}`);
 }
 
