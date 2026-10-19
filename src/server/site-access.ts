@@ -63,9 +63,11 @@ export function publicSiteEnabled(): boolean {
 /**
  * Paths reachable without early access: the gate itself, Supabase Auth email links (one-time tokens) and the
  * scheduled jobs (each checks CRON_SECRET itself and refuses everything without it), and the companion app's manifest,
- * service worker and offline page (no company data; browsers fetch the manifest without cookies).
+ * service worker and offline page (no company data; browsers fetch the manifest without cookies). Each company's customer
+ * portal and tracking links (B66) are for that company's own customers, who never see Taviron's preview: every portal
+ * page and function checks the company's portal switches and the customer's account itself.
  */
-const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline"];
+const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }

@@ -77,6 +77,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
   note("CRM pipeline", await crm(db, today, userId));
+  note("customer portal", await customerPortal(db));
   return result;
 }
 
@@ -611,4 +612,46 @@ async function workspace(db: Db, today: string, me: string): Promise<number> {
   if (missing(r.error)) return 0;
   if (r.error) throw new Error(`Demo samples (workspace): ${r.error.message}`);
   return 1;
+}
+
+/**
+ * Customer portal (20261120000700): entitle and open the demo's portal with a public page, plus a few published help
+ * articles. Entitlement is the platform owner's call (platform_portal_set_entitlement) and the person refreshing a demo
+ * is the platform owner; for anyone else it is skipped. The company's own portal choices are never overwritten.
+ */
+async function customerPortal(db: Db): Promise<number> {
+  const state = await db.rpc("portal_admin_state");
+  if (missing(state.error)) return 0;
+  let added = 0;
+  const s = state.data as { entitled: boolean; slug: string; settings: Record<string, unknown> | null };
+  const { data: access } = await db.rpc("my_access");
+  const companyId = (access as { company_id?: string } | null)?.company_id;
+  if (!s.entitled && companyId) {
+    const r = await db.rpc("platform_portal_set_entitlement", { p_company: companyId, p_entitled: true, p_note: "Demo company (sample data)" });
+    if (!r.error) added++;
+  }
+  if (!s.settings) {
+    const r = await db.rpc("portal_save_settings", {
+      p: {
+        enabled: true, public_page: true, feature_orders: true, feature_quotes: true, feature_documents: true, feature_support: true, feature_help: true, feature_tracking: true,
+        welcome: "Welcome to our customer portal. Follow your orders and deliveries, see your quotes and ask us anything. (Demo company: all records are fictional.)",
+        hours: "Mon–Fri 6:30 AM – 5:00 PM\nSat 7:00 AM – noon",
+      },
+    });
+    if (!r.error) added++;
+  }
+  const existing = await count(db, "portal_help_articles");
+  if (existing === 0) {
+    const articles: Array<[string, string, string]> = [
+      ["Ordering", "How do I place an order?", "Request a quote in the portal (Quotes → Request a Quote) or call the office. Once you accept a quote and we confirm it, your order appears under Orders with its planned deliveries. (Sample article in a demo company.)"],
+      ["Deliveries", "What should the site have ready?", "A clear, safe place to dump, a contact on site, and the gate code if there is one. Add site notes when you request a quote. (Sample article in a demo company.)"],
+      ["Tickets", "How do I get a copy of a delivery ticket?", "Open the order under Orders, then open the ticket. Each ticket has a printable customer copy. (Sample article in a demo company.)"],
+    ];
+    for (const [category, title, body] of articles) {
+      const r = await db.rpc("portal_help_save", { p_id: null, p_title: title, p_category: category, p_body: body, p_status: "published" });
+      if (r.error) throw new Error(`Demo samples (portal help): ${r.error.message}`);
+      added++;
+    }
+  }
+  return added;
 }

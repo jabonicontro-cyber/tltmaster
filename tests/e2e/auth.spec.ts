@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { signIn, closeDemoWelcomeIfShown } from "./helpers";
-import { PASSWORD, PLATFORM_USER, USERS } from "./users";
+import { signIn, closeDemoWelcomeIfShown, signInPlatform } from "./helpers";
+import { PASSWORD, USERS } from "./users";
 
 test("anonymous visitors are sent to sign in, then back to the page they wanted", async ({ page }) => {
   await page.goto("/customers");
@@ -89,10 +89,7 @@ test("the platform administration link appears only for platform owners, and /ad
   // A platform owner who is working inside a company sees the link, and it opens the portal.
   const ctx = await browser.newContext();
   const p = await ctx.newPage();
-  await p.goto("/login");
-  await p.getByLabel("Email").fill(PLATFORM_USER.email);
-  await p.getByLabel("Password").fill(PASSWORD);
-  await p.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(p);
   await p.waitForURL((u) => !u.pathname.startsWith("/login"));
   await p.goto("/command-center");
   test.skip(!p.url().includes("/command-center"), "The platform test user has no company here (start the live demo once).");

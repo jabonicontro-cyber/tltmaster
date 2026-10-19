@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { unique } from "./helpers";
-import { PASSWORD, PLATFORM_USER } from "./users";
+import { unique, signInPlatform } from "./helpers";
+
 
 // Platform admin: classify, archive, restore and permanently delete a practice company (20261120000500). The test
 // creates its own company; no existing company is touched.
@@ -20,10 +20,7 @@ test.afterEach(async () => settings("false"));
 
 test("a practice company is archived (hidden by default), restored, archived again and deleted with its name typed", async ({ page }) => {
   test.slow();
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(page);
   await expect(page).toHaveURL(/\/admin$|\/command-center/);
 
   const name = `Practice Hauling ${unique()}`;

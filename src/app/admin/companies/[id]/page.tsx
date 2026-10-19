@@ -9,6 +9,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
+import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { activityText } from "@/lib/platform/launchpad";
@@ -43,6 +44,8 @@ const SAVED: Record<string, string> = {
   classified: "Classification saved.",
   archived: "Company archived. Its people cannot open it until it is restored.",
   restored: "Company restored.",
+  portal_on: "Customer portal entitlement granted. The company turns its portal on itself.",
+  portal_off: "Customer portal entitlement removed. The portal is off; accounts and records are kept.",
 };
 
 export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }) {
@@ -59,6 +62,9 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   // Classification, archive and delete (20261120000500); not shown before that update or for demo companies.
   const pv = c.is_demo ? null : await supabase.rpc("platform_company_delete_preview", { p_company: id });
   const preview = pv && !pv.error ? (pv.data as DeletePreview) : null;
+  // Customer portal entitlement (20261120000700); not shown before that update.
+  const pe = await supabase.rpc("platform_portal_entitlement", { p_company: id });
+  const portal = pe.error ? null : (pe.data as PortalEntitlement);
   const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
   const steps = [
     { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
@@ -144,6 +150,11 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         )}
       </Card>
 
+      {portal ? (
+        <Card className="mt-5">
+          <PortalEntitlementCard companyId={c.id} state={portal} />
+        </Card>
+      ) : null}
       {preview ? (
         <Card className="mt-5">
           <CompanyLifecycleControls company={{ id: c.id, name: c.name, classification: preview.classification, archived_at: preview.archived_at, archive_reason: preview.archive_reason, is_demo: c.is_demo }} preview={preview} />

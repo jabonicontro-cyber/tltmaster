@@ -6,8 +6,8 @@ import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnable
 
 // "/api/cron": scheduled jobs authenticate with CRON_SECRET, not a session.
 // The companion app's manifest, service worker and offline page hold no company data; browsers fetch the first two
-// without cookies (docs/COMPANION_APP.md).
-const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline"];
+// without cookies (docs/COMPANION_APP.md). Customer portals and tracking links have their own sign-in and checks (B66).
+const PUBLIC_PATHS = ["/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track"];
 
 const isHttps = (request: NextRequest) =>
   request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";

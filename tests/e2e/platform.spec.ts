@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { closeDemoWelcome, signIn, unique } from "./helpers";
+import { closeDemoWelcome, signIn, unique, signInPlatform } from "./helpers";
 import { asUser } from "./db";
 import { PASSWORD, PLATFORM_USER } from "./users";
 
@@ -8,11 +8,8 @@ import { PASSWORD, PLATFORM_USER } from "./users";
 // reachable without the platform role.
 test.describe.configure({ mode: "serial" });
 
-async function signInPlatform(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+async function signInPlatformHome(page: Page) {
+  await signInPlatform(page);
   // Without a company of their own they land on the launchpad; once they have
   // opened the demo company, on its Command Center.
   await expect(page).toHaveURL(/\/admin$|\/command-center/);
@@ -99,7 +96,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await expect(other.getByText("Enter a valid email address.").first()).toBeVisible();
   await other.close();
 
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   await page.getByRole("link", { name: /Leads/ }).first().click();
   await page.getByLabel("Search").fill(id);
   await page.getByRole("button", { name: "Search" }).click();
@@ -159,7 +156,7 @@ test("the platform area is not reachable without the platform role", async ({ pa
 
 test("live demo: a separate company with fictional data; role previews only narrow what is shown", async ({ page }) => {
   test.setTimeout(120_000);
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();
   await expect(page).toHaveURL(/\/command-center/, { timeout: 60_000 });
@@ -268,7 +265,7 @@ test("live demo: a separate company with fictional data; role previews only narr
 
 test("team-led onboarding: map a spreadsheet, review, approve, then revert without touching anything else", async ({ page }) => {
   const id = unique();
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   await page.goto("/admin/onboarding");
   await page.getByLabel("Company name").fill(`Lakeview Haul ${id} (test)`);
   await page.getByRole("button", { name: "Create company" }).click();
@@ -317,7 +314,7 @@ test("team-led onboarding: map a spreadsheet, review, approve, then revert witho
 });
 
 test("the Launchpad shows live platform work, links each item to its record, and the company directory filters and opens a company", async ({ page }) => {
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   await page.goto("/admin");
   await expect(page.getByRole("heading", { name: "Launchpad" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Launchpad" })).toHaveAttribute("aria-current", "page");
@@ -355,7 +352,7 @@ test("the Launchpad shows live platform work, links each item to its record, and
 });
 
 test("the platform team member appears as themselves (name, Taviron Administrator, initials or photo) in the console; a company user keeps their own identity", async ({ page, browser }) => {
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   await page.goto("/admin");
   const account = page.getByRole("button", { name: new RegExp(`Account menu: ${PLATFORM_USER.name}`) });
   await expect(account).toContainText("Taviron Administrator");
@@ -375,7 +372,7 @@ test("the platform team member appears as themselves (name, Taviron Administrato
 
 test("customer lifecycle: plan and founding offer, onboarding fee, go-live only earlier, Go Live Now with the password; acknowledging is not resolving", async ({ page }) => {
   test.slow();
-  await signInPlatform(page);
+  await signInPlatformHome(page);
   const kpis = page.getByRole("list", { name: "Business KPIs" });
   await expect(kpis).toContainText("Monthly recurring revenue");
   const liveBefore = Number((await kpis.getByRole("listitem").first().locator("p").nth(1).textContent()) ?? "0");

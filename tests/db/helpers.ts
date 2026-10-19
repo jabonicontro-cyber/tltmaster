@@ -40,7 +40,8 @@ export async function withSession(fn: (s: Session) => Promise<void>): Promise<vo
       if (userId) {
         await client.query("set local role authenticated");
         await client.query("select set_config('request.jwt.claims', $1, true)", [
-          JSON.stringify({ sub: userId, role: "authenticated" }),
+          // A verified two-step session (aal2), as most tests act; tests/db/mfa.test.ts sets aal1 explicitly.
+          JSON.stringify({ sub: userId, role: "authenticated", aal: "aal2" }),
         ]);
       } else {
         await client.query("set local role anon");

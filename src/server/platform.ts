@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
+import { MfaRequiredError, mfaBlocks } from "@/server/mfa";
 
 /**
  * Platform owner (the Taviron team) — separate from every company role.
@@ -22,6 +23,8 @@ export async function requirePlatformAdmin(): Promise<{ userId: string; email: s
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims?.sub) redirect("/login?next=/admin");
   if (!(await isPlatformAdmin())) notFound();
+  // Mandatory two-step verification for the platform team (also enforced in every platform_* database function).
+  if (await mfaBlocks()) redirect("/mfa?next=/admin");
   return { userId: String(claims.claims.sub), email: String(claims.claims.email ?? "") };
 }
 
@@ -35,4 +38,5 @@ export class PlatformAccessError extends Error {
 /** For platform server actions: throws for anyone who is not a platform admin. */
 export async function assertPlatformAdmin(): Promise<void> {
   if (!(await isPlatformAdmin())) throw new PlatformAccessError();
+  if (await mfaBlocks()) throw new MfaRequiredError();
 }

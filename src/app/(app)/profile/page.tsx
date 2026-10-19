@@ -8,6 +8,7 @@ import { ProfileForm } from "@/components/people/profile-form";
 import { ROLE_LABELS } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { getMyProfile, photoUrl } from "@/server/data/profile";
+import { SecuritySection } from "@/components/security/security-section";
 
 export const metadata = { title: "My profile" };
 
@@ -43,6 +44,7 @@ export default async function ProfilePage() {
           </Card>
         </div>
       )}
+      <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Managed by your company" description="Ask your company administrator to change these." />
         <dl className="grid gap-x-6 gap-y-3 px-4 pb-5 text-sm sm:grid-cols-2 sm:px-5">

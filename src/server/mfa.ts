@@ -1,0 +1,57 @@
+import "server-only";
+import { cache } from "react";
+import { createClient } from "@/server/supabase/server";
+
+// Two-step verification (MFA) state for the signed-in person (20261120000900). The assurance level comes from the
+// verified session token (getClaims), never from the browser. Before the migration is installed nothing is required
+// (the policy function does not exist), so a deployment ahead of the database update locks nobody out.
+
+export type MfaPolicy = {
+  platform: boolean;
+  companies: string[];
+  current_company: boolean;
+  recovery_codes: number;
+  recent_failures: number;
+  aal2: boolean;
+};
+
+export type MfaState = {
+  installed: boolean;
+  aal: "aal1" | "aal2";
+  /** Must have a verified second factor in this session to continue (policy). */
+  required: boolean;
+  /** The person set up an authenticator, so every session must verify it (Auth's next level is aal2). */
+  enrolled: boolean;
+  reason: string | null;
+  policy: MfaPolicy | null;
+};
+
+export const mfaState = cache(async (): Promise<MfaState> => {
+  const supabase = await createClient();
+  const { data: claims } = await supabase.auth.getClaims();
+  const aal = claims?.claims?.aal === "aal2" ? "aal2" : "aal1";
+  // nextLevel comes from the session's own factor list (no network call); aal2 means a verified authenticator exists.
+  const { data: level } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  const enrolled = level?.nextLevel === "aal2";
+  const { data, error } = await supabase.rpc("mfa_policy");
+  if (error || !data) return { installed: false, aal, required: false, enrolled, reason: null, policy: null };
+  const policy = data as MfaPolicy;
+  const reason = policy.platform ? "Platform administrators must use two-step verification." : policy.current_company ? "Your company requires two-step verification." : null;
+  return { installed: true, aal, required: Boolean(reason), enrolled, reason, policy };
+});
+
+/**
+ * True when the person must verify (or set up) a second factor before using this page or action: a policy requires
+ * it, or they set up an authenticator themselves (otherwise enrolling would protect nothing).
+ */
+export async function mfaBlocks(): Promise<boolean> {
+  const s = await mfaState();
+  return (s.required || s.enrolled) && s.aal !== "aal2";
+}
+
+export class MfaRequiredError extends Error {
+  constructor() {
+    super("Two-step verification is required. Verify with your authenticator app and try again.");
+    this.name = "MfaRequiredError";
+  }
+}

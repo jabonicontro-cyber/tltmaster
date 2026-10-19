@@ -26,6 +26,7 @@ import { DocumentRulesForm } from "@/components/settings/document-rules-form";
 import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
 import { BasesPanel } from "@/components/settings/bases-panel";
+import { CompanyMfaPolicyForm } from "@/components/security/company-mfa-policy";
 import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
 import { listSignIns } from "@/server/data/people";
 
@@ -53,6 +54,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "bases", label: "Dispatch Bases", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "users.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
+  { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "audit", label: "Audit log", group: "System", visible: (a) => can(a, "audit.view") },
 ];
@@ -127,6 +129,20 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
         <CardBody>
           {chain ? <ApprovalChainForm steps={chain.map((c) => ({ role: c.role, label: c.label }))} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Approval chains need a database update that has not been installed yet. Until then one approval decides each request.</p>}
+        </CardBody>
+      </>
+    );
+  } else if (tab === "security") {
+    const { data, error } = await supabase.from("company_settings").select("require_mfa").maybeSingle();
+    content = (
+      <>
+        <CardHeader title="Two-step verification" description="A code from an authenticator app after the password, for everyone in this company." />
+        <CardBody>
+          {error ? (
+            <p className="text-sm text-muted">Two-step verification needs a database update that has not been installed yet (20261120000900). Until then nobody is asked for a code.</p>
+          ) : (
+            <CompanyMfaPolicyForm required={Boolean((data as { require_mfa?: boolean } | null)?.require_mfa)} canEdit={can(access, "settings.manage")} />
+          )}
         </CardBody>
       </>
     );

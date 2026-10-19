@@ -63,3 +63,14 @@ export async function deleteCompany(formData: FormData) {
   const n = Object.values(((data as { counts?: Record<string, number> } | null)?.counts) ?? {}).reduce((a, b) => a + b, 0);
   redirect(`/admin/companies?deleted=${n}`);
 }
+
+/** Customer portal entitlement (B66): the platform owner's decision; the company then turns its portal on itself. */
+export async function setPortalEntitlement(formData: FormData) {
+  const id = idOf(formData);
+  const supabase = await db();
+  const entitled = formData.get("entitled") === "yes";
+  const { error } = await supabase.rpc("platform_portal_set_entitlement", { p_company: id, p_entitled: entitled, p_note: String(formData.get("note") ?? "") });
+  if (error) to(id, "error", error.message);
+  revalidatePath("/admin", "layout");
+  redirect(`/admin/companies/${id}?saved=${entitled ? "portal_on" : "portal_off"}`);
+}

@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
+import { writeFileSync } from "node:fs";
+import { TOTP_FILE, totp } from "./mfa";
 import { OTHER_COMPANY, PASSWORD, PLATFORM_USER, USERS } from "./users";
 
 /**
@@ -73,4 +75,21 @@ export default async function globalSetup() {
   }
   const { data: granted, error: gErr } = await admin.rpc("platform_admin_grant", { p_email: PLATFORM_USER.email, p_note: "e2e" });
   if (gErr || !(granted as { ok: boolean }).ok) throw new Error(`platform_admin_grant: ${gErr?.message ?? JSON.stringify(granted)}`);
+
+  // Two-step verification is mandatory for the platform role (20261120000900): a fresh authenticator each run, whose
+  // secret the tests use to compute codes (tests/e2e/mfa.ts). Earlier factors are removed first.
+  const { data: platformRow } = await admin.from("profiles").select("id").eq("email", PLATFORM_USER.email).single();
+  const platformId = (platformRow as { id: string }).id;
+  const { data: old } = await admin.auth.admin.mfa.listFactors({ userId: platformId });
+  for (const f of old?.factors ?? []) await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId: platformId });
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!anon) throw new Error("E2E tests need NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+  const userClient = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { error: sErr } = await userClient.auth.signInWithPassword({ email: PLATFORM_USER.email, password: PASSWORD });
+  if (sErr) throw new Error(`platform sign-in for MFA setup: ${sErr.message}`);
+  const { data: enrolled, error: eErr } = await userClient.auth.mfa.enroll({ factorType: "totp", friendlyName: "e2e" });
+  if (eErr || !enrolled) throw new Error(`MFA enroll: ${eErr?.message}`);
+  const { error: vErr } = await userClient.auth.mfa.challengeAndVerify({ factorId: enrolled.id, code: totp(enrolled.totp.secret) });
+  if (vErr) throw new Error(`MFA verify: ${vErr.message}`);
+  writeFileSync(TOTP_FILE, enrolled.totp.secret, { mode: 0o600 });
 }

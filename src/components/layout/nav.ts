@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet,
+  BarChart3, Boxes, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Map, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -28,6 +28,8 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/communications", label: "Communications", icon: MessagesSquare },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers.view", group: "Sales" },
   { href: "/quotes", label: "Quotes", icon: FileText, permission: "quotes.view", group: "Sales" },
+  // The company's own customers' portal (B66): requests to answer, access, help articles, settings.
+  { href: "/customer-portal", label: "Customer Portal", icon: Globe, permission: "customers.view", group: "Sales" },
   { href: "/materials", label: "Materials & Pricing", icon: Boxes, permission: "materials.view", group: "Sales" },
   { href: "/orders", label: "Orders", icon: ClipboardList, permission: "orders.view", group: "Operations" },
   { href: "/dispatch", label: "Dispatch", icon: CalendarRange, permission: "dispatch.view", group: "Operations" },

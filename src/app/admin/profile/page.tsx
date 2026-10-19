@@ -7,6 +7,7 @@ import { PhotoUploader } from "@/components/people/photo-uploader";
 import { ProfileForm } from "@/components/people/profile-form";
 import { PLATFORM_ROLE_TITLE, getMyProfile, photoUrl } from "@/server/data/profile";
 import { requirePlatformAdmin } from "@/server/platform";
+import { SecuritySection } from "@/components/security/security-section";
 
 export const metadata = { title: "My profile" };
 
@@ -39,6 +40,7 @@ export default async function AdminProfilePage() {
           </Card>
         </div>
       )}
+      <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Platform access" description="Granted and revoked only by an operator with server access (scripts/platform-admin.mjs); it cannot be changed here." />
         <dl className="grid gap-x-6 gap-y-3 px-4 pb-5 text-sm sm:grid-cols-2 sm:px-5">

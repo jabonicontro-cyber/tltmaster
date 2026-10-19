@@ -1,17 +1,14 @@
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { closeDemoWelcome, signIn } from "./helpers";
-import { PASSWORD, PLATFORM_USER } from "./users";
+import { closeDemoWelcome, signIn, signInPlatform } from "./helpers";
+
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 
 // Plan the day (docs/OPTIMIZATION.md) and Company setup (docs/ONBOARDING.md) in the presenter demo: whole-day plans
 // with honest statuses, approval through the normal assignment checks, and read-only setup readiness.
 
 async function startDemo(page: Page) {
-  await page.goto("/login");
-  await page.getByLabel("Email or username").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(page);
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { signIn, unique } from "./helpers";
-import { PASSWORD, PLATFORM_USER } from "./users";
+import { signIn, unique, signInPlatform } from "./helpers";
+
 
 // Help Center (B65): contextual help in the header, search, article feedback, a guided how-to that only highlights,
 // role-based visibility, and a support request the person reviews before sending.
@@ -73,10 +73,7 @@ test("a support request is reviewed before it is sent, and only the sender sees 
 
   // The platform team sees it in the console, with the company and page.
   const admin = await browser.newPage();
-  await admin.goto("/login");
-  await admin.getByLabel("Email").fill(PLATFORM_USER.email);
-  await admin.getByLabel("Password").fill(PASSWORD);
-  await admin.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(admin);
   await expect(admin).toHaveURL(/\/admin$|\/command-center/);
   await admin.goto("/admin/support");
   await expect(admin.getByRole("table", { name: "Support requests" }).getByRole("row").filter({ hasText: text })).toContainText("/dispatch");

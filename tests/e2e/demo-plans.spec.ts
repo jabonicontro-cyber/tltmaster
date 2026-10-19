@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { PLATFORM_USER, PASSWORD } from "./users";
+
+import { signInPlatform } from "./helpers";
 
 // Demo Management → Plan Shown (20261120000300): the platform owner switches the Live Demo between plans; its bases
 // follow (Growth = 2 active), and switching back to Essential leaves one. Demo companies only.
@@ -17,10 +18,7 @@ async function bases(companyName: string) {
 }
 
 test("the platform owner shows the Live Demo as Growth, then Essential again", async ({ page }) => {
-  await page.goto("/login");
-  await page.getByLabel("Email").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(page);
   await expect(page).toHaveURL(/\/admin$|\/command-center/);
   await page.goto("/admin/demo");
   const list = page.getByRole("list", { name: "Demo plans" });

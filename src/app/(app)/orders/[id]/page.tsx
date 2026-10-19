@@ -31,6 +31,7 @@ import { DirectionsRiskBadge, DirectionsStatusBadge } from "@/components/sites/d
 import { directionsStatus } from "@/lib/sites";
 import { OrderBase } from "@/components/bases/order-base-form";
 import { baseOptions, recordBase } from "@/server/data/bases";
+import { OrderTrackingCard } from "@/components/portal/order-tracking-card";
 
 export const metadata = { title: "Order" };
 
@@ -364,6 +365,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               </dl>
             </div>
           </Card>
+          <OrderTrackingCard orderId={order.id} canEdit={can(access, "orders.edit")} />
         </div>
 
         <Card className="self-start">

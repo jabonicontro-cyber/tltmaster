@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { closeDemoWelcome, signIn, unique } from "./helpers";
-import { PASSWORD, PLATFORM_USER } from "./users";
+import { closeDemoWelcome, signIn, unique, signInPlatform } from "./helpers";
+
 import { PREVIEW_COOKIE, PREVIEW_ROLES } from "@/lib/platform/preview";
 
 // Demo tenants run the current product (docs/DEMO_TENANTS.md): a demo company's owner gets the same navigation
@@ -105,10 +105,7 @@ test("a demo company's owner has the same navigation and working pages as a stan
 // role can use it — not only the Owner view.
 test("every demo mode opens its pages and each feature shows sample data", async ({ page, context }) => {
   test.setTimeout(600_000);
-  await page.goto("/login");
-  await page.getByLabel("Email or username").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(page);
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
   await page.goto("/admin/demo");
   await page.getByRole("button", { name: /Start the demo|Reset: start a fresh demo/ }).click();
@@ -173,10 +170,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
 // added as `demo-owner` does. Refresh gives the existing demo the shared samples, including the owner's driver day.
 test("a prospect demo's owner sees sample data in every demo mode after Refresh", async ({ page, browser, context }) => {
   test.setTimeout(900_000);
-  await page.goto("/login");
-  await page.getByLabel("Email or username").fill(PLATFORM_USER.email);
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await signInPlatform(page);
   await page.waitForURL((u) => !u.pathname.startsWith("/login"));
   // A fresh Prairie Lantern demo (retire an earlier one first: its owner record is already linked).
   await page.goto("/admin/demo");

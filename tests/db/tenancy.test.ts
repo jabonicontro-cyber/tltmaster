@@ -17,6 +17,8 @@ const TENANT_TABLES = [
   "help_feedback",
   "help_searches",
   "help_support_requests",
+  "portal_settings", "portal_accounts", "portal_quote_requests", "portal_quote_responses", "portal_support_requests", "portal_messages",
+  "portal_help_articles", "portal_help_feedback", "portal_tracking_links",
   "payroll_settings", "pay_rules", "pay_rule_versions", "payroll_periods", "payroll_entries", "payroll_adjustments", "payroll_exports",
   "employees", "employee_compensation", "employee_work_schedules",
   "time_off_requests", "time_off_events", "time_off_approval_steps", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
@@ -81,6 +83,27 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.company_today", "private.lifecycle_activate_due", "private.lifecycle_for_update", "private.lifecycle_json", "public.lifecycle_activate_due_cron", "public.platform_attention_ack", "public.platform_console", "public.platform_lifecycle", "public.platform_lifecycle_cancel", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_terms", "public.platform_plan_version_create", "public.platform_plans",
   // Sample-data removal releases open payroll entries of sample tickets (20261118000400); only under tlt.sample_purge.
   "private.payroll_release_sample_ticket",
+  // Customer portal (20261120000700): a portal account is not a membership. Customer functions derive company and
+  // customer from auth.uid() via private.portal_me (active account, portal entitled + enabled) and re-check every record
+  // id against that customer; staff functions require the caller's company and a permission; invitation, public card,
+  // public help and tracking take only an unguessable token or a slug and return nothing unless the company publishes it.
+  "private.portal_company_card", "private.portal_entitled", "private.portal_feature", "private.portal_help_company", "private.portal_log",
+  "private.portal_me", "private.portal_open", "private.portal_order_summary", "private.portal_rate", "private.portal_require_feature",
+  "public.platform_portal_entitlement", "public.platform_portal_set_entitlement", "public.portal_accept", "public.portal_admin_state",
+  "public.portal_context", "public.portal_help", "public.portal_help_save", "public.portal_help_vote", "public.portal_invite",
+  "public.portal_invite_peek", "public.portal_my_accounts", "public.portal_order", "public.portal_orders", "public.portal_public",
+  "public.portal_quote", "public.portal_quote_request_update", "public.portal_quote_respond", "public.portal_quote_response_handle",
+  "public.portal_quotes", "public.portal_request_quote", "public.portal_revoke", "public.portal_save_settings", "public.portal_staff_reply",
+  "public.portal_support_create", "public.portal_support_list", "public.portal_support_reply", "public.portal_support_thread",
+  "public.portal_ticket", "public.portal_track", "public.portal_tracking_create", "public.portal_tracking_revoke",
+  // Testing Lab (20261120000800): platform admins only (private.require_platform_admin); portal previews only for demo
+  // companies, one customer, one hour; preview state answers only about the caller's own preview.
+  "private.portal_preview_account", "public.platform_portal_preview_start", "public.platform_portal_preview_stop", "public.portal_preview_state",
+  "public.platform_testing_checks", "public.platform_testing_record", "public.platform_testing_demo",
+  // Two-step verification (20261120000900): about the caller only (auth.uid()); recovery codes hashed and rate
+  // limited; the company policy needs settings.manage and an aal2 session; the platform switch is read-only here.
+  "private.security_log", "private.platform_mfa_enforced", "public.mfa_policy", "public.set_company_mfa_policy",
+  "public.mfa_recovery_generate", "public.mfa_recovery_redeem", "public.mfa_record_event", "public.my_security_events",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
@@ -185,7 +208,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete"];
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;
