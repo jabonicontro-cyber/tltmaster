@@ -11,6 +11,10 @@ type Q = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<strin
 
 async function acceptedTicket() {
   const id = unique();
+  // Its own (non-sample) material, created by the owner: sample materials used by a real order stay behind after
+  // Remove sample data.
+  const material = await asUser(USERS.owner.email, async (q: Q) =>
+    (await q("insert into public.materials (name, default_unit_code) values ($1, 'ton') returning id", [`Payroll Gravel ${id}`])).rows[0].id as string);
   const daysAgo = 120 + Math.floor(Math.random() * 240); // orders must be within a year
   return asUser(USERS.office.email, async (q: Q) => {
     const ins = async (table: string, row: Record<string, unknown>) => {
@@ -25,10 +29,9 @@ async function acceptedTicket() {
     const truck = await ins("trucks", { unit_number: `PAY-${id}`, truck_type: "tri_axle_dump" });
     // Its own (non-sample) customer: a sample customer's tickets would block Remove sample data once paid.
     const cust = { rows: [{ id: await ins("customers", { name: `Payroll Customer ${id}` }) }] };
-    const mats = await q("select id from public.materials where code = 'GRV-53' and company_id = '00000000-0000-4000-8000-000000000001'");
     const o = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       site_line1: "1 Payroll Pit Rd (test)", customer_id: cust.rows[0].id, order_date: day, project_name: `Payroll e2e ${id}`,
-      lines: [{ kind: "material", calc_method: "per_unit", material_id: mats.rows[0].id, description: "Gravel #53", unit_code: "ton", quantity: "22", unit_rate_cents: 1000 }],
+      lines: [{ kind: "material", calc_method: "per_unit", material_id: material, description: "Gravel (test)", unit_code: "ton", quantity: "22", unit_rate_cents: 1000 }],
     })])).rows[0].r as { order_id: string };
     await q("select public.set_order_status($1, 'confirmed', '')", [o.order_id]);
     await q("select public.update_order_schedule($1, null, $2::jsonb)", [o.order_id, JSON.stringify({ scheduled_start: day, scheduled_end: day })]);
