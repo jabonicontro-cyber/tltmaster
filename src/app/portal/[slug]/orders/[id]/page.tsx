@@ -2,13 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { formatDay, formatMoney, formatQuantity, formatTime, scheduleText, type PortalOrder } from "@/lib/portal";
+import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, scheduleText, type PortalOrder } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Order" };
 
 const UUID = /^[0-9a-f-]{36}$/;
-const DATETIME = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 export default async function PortalOrderPage({ params }: { params: Promise<{ slug: string; id: string }> }) {
   const { slug, id } = await params;
@@ -74,7 +73,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
                 {o.tickets.map((t) => (
                   <li key={t.id}>
                     <Link href={`/portal/${slug}/orders/${o.id}/tickets/${t.id}`} className="flex flex-wrap items-center justify-between gap-2 py-2 hover:bg-surface">
-                      <span className="text-ink">Ticket {t.number} · {DATETIME.format(new Date(t.delivered_at))}</span>
+                      <span className="text-ink">Ticket {t.number} · {formatMoment(t.delivered_at, c.timezone)}</span>
                       <span className="flex items-center gap-2"><span className="tabular text-muted">{formatQuantity(t.quantity, t.unit)}</span><Badge tone={t.confirmed ? "green" : "gray"}>{t.confirmed ? "Confirmed" : "Being checked"}</Badge></span>
                     </Link>
                   </li>
@@ -93,7 +92,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
           <CardBody>
             <ol className="space-y-1 text-sm">
               {o.history.map((h, i) => (
-                <li key={i} className="flex justify-between gap-3"><span className="text-ink">{h.label}</span><span className="text-muted">{DATETIME.format(new Date(h.at))}</span></li>
+                <li key={i} className="flex justify-between gap-3"><span className="text-ink">{h.label}</span><span className="text-muted">{formatMoment(h.at, c.timezone)}</span></li>
               ))}
             </ol>
           </CardBody>

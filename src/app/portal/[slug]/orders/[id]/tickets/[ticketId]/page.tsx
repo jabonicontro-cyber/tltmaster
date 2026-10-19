@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatQuantity } from "@/lib/portal";
+import { formatMoment, formatQuantity } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { PrintButton } from "@/components/portal/print-button";
 
@@ -20,7 +20,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
   const c = await requirePortalCustomer(slug, `/portal/${slug}/orders/${id}/tickets/${ticketId}`);
   if (!c.features.documents || !UUID.test(ticketId)) notFound();
   const t = await portalCall<Ticket>("portal_ticket", { p_slug: slug, p_ticket: ticketId });
-  const delivered = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeStyle: "short" }).format(new Date(t.delivered_at));
+  const delivered = formatMoment(t.delivered_at, c.timezone);
   return (
     <div className="space-y-4">
       <div className="no-print flex items-center justify-between gap-3 text-sm">

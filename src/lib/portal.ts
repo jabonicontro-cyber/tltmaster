@@ -12,6 +12,8 @@ export type PortalCompany = {
   contact_email: string;
   contact_phone: string;
   hours: string;
+  /** The company's own time zone: every time in the portal is shown in it, never the server's. */
+  timezone: string;
   is_demo: boolean;
   features: PortalFeatures;
 };
@@ -157,6 +159,19 @@ export function scheduleText(o: Pick<PortalOrderSummary, "scheduled_start" | "sc
     return days + window;
   }
   return null;
+}
+
+/** A moment (timestamp) in the company's time zone, e.g. "Oct 19, 1:05 PM". */
+export function formatMoment(at: string | null | undefined, timeZone: string, withDate = true): string {
+  if (!at) return "";
+  const t = Date.parse(at);
+  if (Number.isNaN(t)) return "";
+  const opts: Intl.DateTimeFormatOptions = withDate ? { month: "short", day: "numeric", hour: "numeric", minute: "2-digit", timeZone } : { hour: "numeric", minute: "2-digit", timeZone };
+  try {
+    return new Intl.DateTimeFormat("en-US", opts).format(t);
+  } catch {
+    return new Intl.DateTimeFormat("en-US", { ...opts, timeZone: "America/Chicago" }).format(t);
+  }
 }
 
 export function formatMoney(cents: number | null | undefined): string {

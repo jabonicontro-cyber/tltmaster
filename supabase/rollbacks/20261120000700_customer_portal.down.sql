@@ -35,6 +35,7 @@ drop function if exists public.portal_admin_state();
 drop function if exists private.portal_order_summary(uuid);
 drop function if exists private.portal_order_label(public.order_status);
 drop function if exists private.portal_company_card(uuid);
+drop function if exists private.portal_unit(uuid, text);
 drop function if exists private.portal_rate(uuid, text, integer);
 drop function if exists private.portal_log(uuid, text, text, uuid, text, jsonb);
 drop function if exists private.portal_require_feature(uuid, text);

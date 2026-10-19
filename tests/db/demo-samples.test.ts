@@ -147,6 +147,12 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(opps.rows).toEqual([{ stage: "negotiation", valued: false }, { stage: "quoting", valued: true }]);
     const overdue = await q<{ n: string }>("select count(*) n from public.customer_tasks where company_id = $1 and status = 'open' and due_on < current_date", [w.company]);
     expect(Number(overdue.rows[0].n)).toBe(1);
+    // Customer portal (20261120000700): three published sample help articles. The entitlement is the platform owner's
+    // decision, so a demo owner alone does not get a portal turned on (the owner's Refresh entitles demo portals).
+    const help = await q<{ n: string }>("select count(*) n from public.portal_help_articles where company_id = $1 and status = 'published'", [w.company]);
+    expect(Number(help.rows[0].n)).toBe(3);
+    const portal = await q<{ n: string }>("select count(*) n from public.portal_settings where company_id = $1 and enabled", [w.company]);
+    expect(Number(portal.rows[0].n)).toBe(0);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

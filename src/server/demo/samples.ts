@@ -626,11 +626,16 @@ async function customerPortal(db: Db): Promise<number> {
   const s = state.data as { entitled: boolean; slug: string; settings: Record<string, unknown> | null };
   const { data: access } = await db.rpc("my_access");
   const companyId = (access as { company_id?: string } | null)?.company_id;
-  if (!s.entitled && companyId) {
+  let entitled = s.entitled;
+  if (!entitled && companyId) {
     const r = await db.rpc("platform_portal_set_entitlement", { p_company: companyId, p_entitled: true, p_note: "Demo company (sample data)" });
-    if (!r.error) added++;
+    if (!r.error) {
+      added++;
+      entitled = true;
+    }
   }
-  if (!s.settings) {
+  // Settings only once the demo is entitled (a company cannot turn on a portal it is not entitled to).
+  if (entitled && !s.settings) {
     const r = await db.rpc("portal_save_settings", {
       p: {
         enabled: true, public_page: true, feature_orders: true, feature_quotes: true, feature_documents: true, feature_support: true, feature_help: true, feature_tracking: true,

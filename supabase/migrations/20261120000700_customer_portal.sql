@@ -370,6 +370,18 @@ end;
 $$;
 revoke all on function private.portal_rate(uuid, text, integer) from public, anon, authenticated;
 
+-- A unit's label for customers ("Cubic yards", not "cu_yd").
+create or replace function private.portal_unit(p_company uuid, p_code text)
+ returns text
+ language sql
+ stable
+ security definer
+ set search_path to ''
+as $$
+  select coalesce((select coalesce(nullif(u.label, ''), u.code) from public.units_of_measure u where u.company_id = p_company and u.code = p_code), coalesce(p_code, ''));
+$$;
+revoke all on function private.portal_unit(uuid, text) from public, anon, authenticated;
+
 -- Branding and public info shared by the public page and the signed-in context.
 create or replace function private.portal_company_card(p_company uuid)
  returns jsonb
@@ -387,6 +399,7 @@ as $$
     'contact_email', coalesce(nullif(s.contact_email, ''), cs.email, ''),
     'contact_phone', coalesce(nullif(s.contact_phone, ''), cs.phone, ''),
     'hours', s.hours,
+    'timezone', coalesce(nullif(cs.timezone, ''), 'America/Chicago'),
     'is_demo', c.is_demo,
     'features', jsonb_build_object('orders', s.feature_orders, 'quotes', s.feature_quotes, 'documents', s.feature_documents,
                                    'support', s.feature_support, 'help', s.feature_help, 'tracking', s.feature_tracking))
@@ -732,11 +745,11 @@ begin
     'lines', (select coalesce(jsonb_agg(jsonb_build_object('description', l.description, 'quantity', l.quantity, 'unit', coalesce(nullif(l.unit_label, ''), l.unit_code)) order by l.line_no), '[]'::jsonb)
               from public.order_lines l where l.order_id = p_order),
     'loads', (select coalesce(jsonb_agg(jsonb_build_object('number', ld.load_number, 'date', ld.load_date, 'start', ld.start_time, 'end', ld.end_time,
-                                                            'quantity', ld.planned_quantity, 'unit', ld.unit_code, 'canceled', ld.status = 'canceled')
+                                                            'quantity', ld.planned_quantity, 'unit', private.portal_unit(ld.company_id, ld.unit_code), 'canceled', ld.status = 'canceled')
                                         order by ld.load_date, ld.start_time nulls last, ld.load_number), '[]'::jsonb)
               from public.order_loads ld where ld.order_id = p_order),
     'tickets', case when private.portal_feature(v.company_id, 'documents') then
-              (select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'number', t.ticket_number, 'delivered_at', t.delivered_at, 'quantity', t.quantity, 'unit', t.unit_code,
+              (select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'number', t.ticket_number, 'delivered_at', t.delivered_at, 'quantity', t.quantity, 'unit', private.portal_unit(t.company_id, t.unit_code),
                                                              'confirmed', t.status = 'accepted') order by t.delivered_at), '[]'::jsonb)
                from public.delivery_tickets t where t.order_id = p_order and t.status in ('submitted', 'needs_review', 'accepted'))
               else '[]'::jsonb end,
@@ -758,7 +771,7 @@ declare
   r jsonb;
 begin
   perform private.portal_require_feature(v.company_id, 'documents');
-  select jsonb_build_object('number', t.ticket_number, 'delivered_at', t.delivered_at, 'quantity', t.quantity, 'unit', t.unit_code,
+  select jsonb_build_object('number', t.ticket_number, 'delivered_at', t.delivered_at, 'quantity', t.quantity, 'unit', private.portal_unit(t.company_id, t.unit_code),
            'confirmed', t.status = 'accepted', 'reference', t.external_reference,
            'material', (select l.description from public.order_lines l where l.id = t.order_line_id),
            'order', jsonb_build_object('number', o.order_number, 'site', concat_ws(', ', nullif(o.site_label, ''), nullif(o.site_line1, ''), nullif(o.site_city, '')),

@@ -4,13 +4,12 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody } from "@/components/ui/card";
 import { SupportReplyForm } from "@/components/portal/portal-forms";
 import { cn } from "@/lib/cn";
-import { SUPPORT_STATUS_LABEL, type PortalThread } from "@/lib/portal";
+import { formatMoment, SUPPORT_STATUS_LABEL, type PortalThread } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Support Request" };
 
 const UUID = /^[0-9a-f-]{36}$/;
-const WHEN = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
 export default async function SupportThread({ params, searchParams }: { params: Promise<{ slug: string; id: string }>; searchParams: Promise<{ sent?: string }> }) {
   const { slug, id } = await params;
@@ -32,7 +31,7 @@ export default async function SupportThread({ params, searchParams }: { params: 
       <ol className="space-y-3">
         {t.messages.map((m, i) => (
           <li key={i} className={cn("max-w-[42rem] rounded-lg border p-3", m.from === "customer" ? "ml-auto border-line bg-card" : "border-brand/30 bg-brand-light")}>
-            <p className="mb-1 text-xs font-semibold text-muted">{m.from === "customer" ? "You" : c.name} · {WHEN.format(new Date(m.at))}</p>
+            <p className="mb-1 text-xs font-semibold text-muted">{m.from === "customer" ? "You" : c.name} · {formatMoment(m.at, c.timezone)}</p>
             <p className="text-sm whitespace-pre-line text-ink">{m.body}</p>
           </li>
         ))}

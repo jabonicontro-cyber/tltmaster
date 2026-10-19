@@ -88,7 +88,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // id against that customer; staff functions require the caller's company and a permission; invitation, public card,
   // public help and tracking take only an unguessable token or a slug and return nothing unless the company publishes it.
   "private.portal_company_card", "private.portal_entitled", "private.portal_feature", "private.portal_help_company", "private.portal_log",
-  "private.portal_me", "private.portal_open", "private.portal_order_summary", "private.portal_rate", "private.portal_require_feature",
+  "private.portal_me", "private.portal_open", "private.portal_unit", "private.portal_order_summary", "private.portal_rate", "private.portal_require_feature",
   "public.platform_portal_entitlement", "public.platform_portal_set_entitlement", "public.portal_accept", "public.portal_admin_state",
   "public.portal_context", "public.portal_help", "public.portal_help_save", "public.portal_help_vote", "public.portal_invite",
   "public.portal_invite_peek", "public.portal_my_accounts", "public.portal_order", "public.portal_orders", "public.portal_public",
