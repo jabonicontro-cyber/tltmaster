@@ -15,9 +15,17 @@ project credentials. Read it together with:
 | `188a81d` | **Platform Launchpad (B52)**: live counts, one needs-attention list, activity feed, company directory and detail, audited demo refreshes, duplicate-company refusal | `20261118000100` local / not pushed / **not hosted** |
 | `dc5900f` | **Administrator identity**: the platform admin appears as their own profile (name, photo or initials, "Taviron Administrator") in the console, company workspaces and demos; profile page in the console | none (touches `src/server/auth.ts` → APPROVAL tier) |
 | `ca35b20` | **Driver payroll foundation (B27)**: company formula engine (fixed inputs/operators, no code execution), versioned rules with preview and confirmed activation, ticket ledger, periods, exceptions instead of guesses, owner approval and lock, CSV export by hash, reconciliation. **Top Line's rules not configured** (Discovery Report: no pay records available). | `20261118000200` local / not pushed / **not hosted** |
-| next | **Customer lifecycle (B53)**: four console KPIs, acknowledge ≠ resolve, versioned plans, subscription per company (plan, terms, offer, agreed amount), onboarding fee, go-live earlier-only, Go Live Now with password, daily scheduled activation, annual cancellation balance. No payment provider. | `20261118000300` local / not pushed / **not hosted** |
+| `efd50de` | **Customer lifecycle (B53)**: four console KPIs, acknowledge ≠ resolve, versioned plans, subscription per company (plan, terms, offer, agreed amount), onboarding fee, go-live earlier-only, Go Live Now with password, daily scheduled activation, annual cancellation balance. No payment provider. | `20261118000300` local / not pushed / **not hosted** |
 
-Owner steps: runbook §6 + §7 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for five migrations; then Refresh
+| `32459b7`, `0f6deb8` | Remove sample data releases sample tickets from open payroll (never approved payroll); payroll e2e uses its own customer and material | `20261118000400` local / not hosted |
+| `e96f6a5` | Profile photo: frame before saving (zoom, position, preview, Save/Cancel) for every profile | none |
+
+Release checks for `e96f6a5` (2026-10-19): lint + typecheck clean; vitest 752/752; full browser suite 159 passed / 1 failed /
+9 skipped (command-center.spec:59 "Urgent" badge not found once at 00:24 UTC; passed on isolated rerun, cause not found —
+watch it); production build OK; gate spec 8 passed / 1 skipped; risk tier APPROVAL (auth.ts, permissions.ts, vercel.json),
+Production authorized by the owner on 2026-10-19 once gates pass.
+
+Owner steps: runbook §6 + §7 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for six migrations; then Refresh
 demo data in both demos. Payment provider choice (checkout, webhooks, 72-hour grace) is still yours (docs/PLATFORM_LIFECYCLE.md).
 
 ## 000000. Round 2026-10-15 (night) — job site directions verification (B51)
