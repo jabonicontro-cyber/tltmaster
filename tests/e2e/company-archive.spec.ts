@@ -1,9 +1,22 @@
 import { expect, test } from "@playwright/test";
+import pg from "pg";
 import { unique } from "./helpers";
 import { PASSWORD, PLATFORM_USER } from "./users";
 
 // Platform admin: classify, archive, restore and permanently delete a practice company (20261120000500). The test
 // creates its own company; no existing company is touched.
+
+async function settings(value: "true" | "false") {
+  const c = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await c.connect();
+  try {
+    await c.query("insert into private.platform_settings (key, value) values ('company_delete_enabled', $1) on conflict (key) do update set value = excluded.value", [value]);
+  } finally {
+    await c.end();
+  }
+}
+
+test.afterEach(async () => settings("false"));
 
 test("a practice company is archived (hidden by default), restored, archived again and deleted with its name typed", async ({ page }) => {
   test.slow();
@@ -24,7 +37,12 @@ test("a practice company is archived (hidden by default), restored, archived aga
   const box = page.getByRole("region", { name: "Classification and archive" });
   // A new company is a production customer until someone says otherwise; deletion is not offered.
   await expect(box.getByLabel("Classification")).toHaveValue("production");
+  await expect(box.getByText(/Permanent delete is turned off/)).toBeVisible();
+  await settings("true");
+  await page.reload();
   await expect(box.getByText(/Only an archived company classified as Practice/)).toBeVisible();
+  await settings("false");
+  await page.reload();
   await box.getByLabel("Classification").selectOption("practice");
   await box.getByRole("button", { name: "Save Classification" }).click();
   await expect(page.getByText("Classification saved.")).toBeVisible();
@@ -48,6 +66,12 @@ test("a practice company is archived (hidden by default), restored, archived aga
   await box.getByLabel(/I understand its people lose access/).check();
   await box.getByRole("button", { name: "Archive Company" }).click();
   await expect(page.getByText(/Company archived/)).toBeVisible();
+
+  // Permanent delete is off until the platform owner enables it with SQL: no delete form.
+  await expect(box.getByText(/Permanent delete is turned off/)).toBeVisible();
+  await expect(box.getByRole("button", { name: "Delete Permanently" })).toHaveCount(0);
+  await settings("true");
+  await page.reload();
 
   // Delete: shows what is removed; the wrong name is refused; the right one deletes.
   await expect(box.getByText("This cannot be undone")).toBeVisible();

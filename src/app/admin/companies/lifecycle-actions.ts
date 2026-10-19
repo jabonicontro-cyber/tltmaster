@@ -54,6 +54,9 @@ export async function restoreCompany(formData: FormData) {
 export async function deleteCompany(formData: FormData) {
   const id = idOf(formData);
   const supabase = await db();
+  // Also refused here: a database with 20261120000500 but not 000600 has no switch, and delete stays off there too.
+  const { data: preview } = await supabase.rpc("platform_company_delete_preview", { p_company: id });
+  if ((preview as { delete_enabled?: boolean } | null)?.delete_enabled !== true) to(id, "error", "Permanent delete is turned off on this database until the platform owner enables it.");
   const { data, error } = await supabase.rpc("platform_company_delete", { p_company: id, p_confirm_name: String(formData.get("confirm_name") ?? "") });
   if (error) to(id, "error", error.message);
   revalidatePath("/admin", "layout");

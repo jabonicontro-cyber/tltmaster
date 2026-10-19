@@ -64,8 +64,14 @@ describe("company classification and practice-company deletion", () => {
       await s.query("select public.platform_company_archive($1, 'Onboarding practice')", [c]);
       const preview = (await s.query<{ r: { eligible: boolean; counts: Record<string, number> } }>("select public.platform_company_delete_preview($1) r", [c])).rows[0].r;
       expect(preview.eligible).toBe(true);
+      expect((preview as unknown as { delete_enabled: boolean }).delete_enabled).toBe(false);
       expect(preview.counts.customers).toBe(1);
       expect(preview.counts.trucks).toBe(1);
+      // Permanent delete stays off until the platform owner turns it on with SQL.
+      expect((await pgError(s.query("select public.platform_company_delete($1, $2)", [c, name]))).code).toBe("42501");
+      await s.asAdmin();
+      await s.query("insert into private.platform_settings (key, value) values ('company_delete_enabled', 'true') on conflict (key) do update set value = 'true'");
+      await s.as(admin);
       expect((await pgError(s.query("select public.platform_company_delete($1, 'wrong name')", [c]))).code).toBe("22023");
       const r = (await s.query<{ r: { deleted: boolean } }>("select public.platform_company_delete($1, $2) r", [c, name])).rows[0].r;
       expect(r.deleted).toBe(true);

@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { archiveCompany, classifyCompany, deleteCompany, restoreCompany } from "@/app/admin/companies/lifecycle-actions";
 import { COMPANY_CLASS_LABELS, type CompanyClass } from "@/lib/terminology";
 
-export type DeletePreview = { name: string; classification: CompanyClass; archived_at: string | null; archive_reason: string; eligible: boolean; blockers: string[]; counts: Record<string, number>; members: number };
+export type DeletePreview = { name: string; delete_enabled?: boolean; classification: CompanyClass; archived_at: string | null; archive_reason: string; eligible: boolean; blockers: string[]; counts: Record<string, number>; members: number };
 
 /**
  * Company page → Classification and Archive (B67). Classification is a person's decision (never inferred from a name
@@ -70,7 +70,9 @@ export function CompanyLifecycleControls({
         {preview ? (
           <div className="space-y-3 border-t border-line pt-5">
             <h3 className="text-base font-semibold text-ink">Permanent Delete</h3>
-            {!preview.eligible ? (
+            {!preview.delete_enabled ? (
+              <p className="text-sm text-muted">Permanent delete is turned off until the platform owner enables it on this database (docs/runbooks/2026-10-14-hosted-db.md §11). Archive keeps the company out of every count in the meantime.</p>
+            ) : !preview.eligible ? (
               <p className="text-sm text-muted">Only an archived company classified as Practice / test can be deleted. {preview.blockers.join(" ")}</p>
             ) : (
               <form action={deleteCompany} className="space-y-3">
