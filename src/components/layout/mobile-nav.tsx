@@ -3,7 +3,7 @@
 import { Dialog as D } from "radix-ui";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
-import { TavironEmblem } from "./brand";
+import { PoweredByTaviron } from "./powered-by-taviron";
 import { CompanyIdentity } from "./company-identity";
 import { SidebarNav } from "./sidebar-nav";
 import type { Permission } from "@/lib/permissions";
@@ -29,9 +29,9 @@ export function MobileNav({ permissions, companyName, logoUrl }: { permissions: 
           <div className="relative flex-1 overflow-y-auto py-3">
             <SidebarNav permissions={permissions} onNavigate={() => setOpen(false)} />
           </div>
-          <p className="flex items-center gap-2 border-t border-white/10 px-4 py-3 text-xs text-white/55">
-            <TavironEmblem className="size-4 opacity-80" /> Powered by Taviron
-          </p>
+          <div className="border-t border-white/10 px-2 py-2">
+            <PoweredByTaviron className="px-2 py-2" />
+          </div>
         </D.Content>
       </D.Portal>
     </D.Root>

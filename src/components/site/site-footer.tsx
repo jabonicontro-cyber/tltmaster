@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { TavironLogo } from "./logo";
+import { cn } from "@/lib/cn";
+import { SITE_CONTAINER } from "@/lib/layout";
 
 const COLUMNS = [
   { title: "Product", links: [{ href: "/platform", label: "Platform" }, { href: "/solutions", label: "Solutions" }, { href: "/pricing", label: "Pricing" }] },
@@ -10,7 +12,7 @@ const COLUMNS = [
 export function SiteFooter() {
   return (
     <footer className="border-t border-silver/10 bg-[#091422]">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <div className={cn(SITE_CONTAINER, "grid gap-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]")}>
         <div className="space-y-3">
           <TavironLogo />
           <p className="max-w-xs text-sm text-silver/80">Operations software for hauling companies: orders, dispatch, drivers, delivery tickets and billing readiness in one place.</p>

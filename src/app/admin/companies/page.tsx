@@ -1,3 +1,4 @@
+import { SETUP_STATUS_LABELS, TERMS, setupStatus, type SetupStatus } from "@/lib/terminology";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Input, Select } from "@/components/ui/form";
@@ -27,12 +28,14 @@ interface DirectoryRow {
 
 type Search = { q?: string; status?: string; setup?: string; sort?: string };
 
-/** Every customer company (demo companies are in Live demo), with its setup gaps. No business records are shown. */
+/** Every customer company (demo companies are in Demo Management), with its setup gaps. No business records are shown. */
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<Search> }) {
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().toLowerCase().slice(0, 100);
   const status = sp.status === "active" || sp.status === "inactive" ? sp.status : "";
-  const setup = sp.setup === "incomplete" || sp.setup === "complete" ? sp.setup : "";
+  // "open" = anything not yet complete (the Launchpad tile links here).
+  const setup: SetupStatus | "open" | "" = sp.setup === "open" ? "open" : ((Object.keys(SETUP_STATUS_LABELS) as SetupStatus[]).find((k) => k === sp.setup) ?? "");
+  const statusOf = (c: DirectoryRow) => setupStatus(c.missing, SETUP_CHECKS, c.imports_in_review);
   const sort = sp.sort === "name" ? "name" : "newest";
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("platform_company_directory");
@@ -40,15 +43,15 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const rows = all
     .filter((c) => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
     .filter((c) => !status || (status === "active") === c.active)
-    .filter((c) => !setup || (setup === "incomplete") === c.missing.length > 0)
+    .filter((c) => !setup || (setup === "open" ? statusOf(c) !== "complete" : statusOf(c) === setup))
     .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.created_at.localeCompare(a.created_at)));
   return (
     <>
       <PageHeader
         title="Companies"
-        description="Customer companies on Taviron and how far their setup has got. Demo companies are under Live demo."
+        description="Customer companies on Taviron and how far their setup has got. Demo companies are under Demo Management."
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies" }]}
-        actions={<Link href="/admin/onboarding" className="text-sm font-semibold text-brand-fg hover:underline">Start onboarding</Link>}
+        actions={<Link href="/admin/onboarding" className="text-sm font-semibold text-brand-fg hover:underline">{TERMS.startOnboarding}</Link>}
       />
       <form className="mb-4 flex flex-wrap items-end gap-2" role="search" aria-label="Filter companies">
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Search</span><Input name="q" defaultValue={sp.q ?? ""} placeholder="Name" className="w-56" /></label>
@@ -56,7 +59,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
           <Select name="status" defaultValue={status}><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option></Select>
         </label>
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Setup</span>
-          <Select name="setup" defaultValue={setup}><option value="">All</option><option value="incomplete">Incomplete</option><option value="complete">Complete</option></Select>
+          <Select name="setup" defaultValue={setup}><option value="">All</option><option value="open">Not Yet Complete</option>{(Object.entries(SETUP_STATUS_LABELS) as [SetupStatus, string][]).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
         </label>
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Sort</span>
           <Select name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="name">Name</option></Select>
@@ -92,7 +95,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                     {!c.active ? <Badge className="ml-2">Inactive</Badge> : null}
                     {c.imports_in_review > 0 ? <Badge tone="amber" className="ml-2">{c.imports_in_review} import{c.imports_in_review === 1 ? "" : "s"} to review</Badge> : null}
                   </Td>
-                  <Td>{c.missing.length === 0 ? <span className="text-sm text-muted">Complete</span> : <span className="text-sm text-amber-800">Missing {c.missing.join(", ")}</span>}</Td>
+                  <Td><SetupBadge status={statusOf(c)} detail={c.missing.length ? `Missing ${c.missing.join(", ")}` : ""} /></Td>
                   <Td align="right">{c.members}</Td>
                   <Td align="right">{c.customers}</Td>
                   <Td align="right">{c.trucks}</Td>
@@ -106,5 +109,19 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
       )}
       <p className="mt-3 text-xs text-muted">{rows.length} of {all.length} companies. Setup is complete when the company has an owner login, customers, trucks and drivers.</p>
     </>
+  );
+}
+
+/** Setup is complete when these four exist: an owner login, customers, trucks and drivers (platform_company_directory). */
+const SETUP_CHECKS = 4;
+
+/** The concise status, with what is missing beside it in small text (and as the badge's title). */
+function SetupBadge({ status, detail }: { status: SetupStatus; detail: string }) {
+  const tone = status === "complete" ? "green" : status === "action_required" ? "amber" : status === "in_progress" ? "blue" : "gray";
+  return (
+    <span className="flex flex-col items-start gap-0.5">
+      <Badge tone={tone}>{SETUP_STATUS_LABELS[status]}</Badge>
+      {detail ? <span className="text-xs text-muted">{detail}</span> : null}
+    </span>
   );
 }

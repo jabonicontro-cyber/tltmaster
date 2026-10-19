@@ -1,3 +1,4 @@
+import { TERMS } from "@/lib/terminology";
 import { notFound } from "next/navigation";
 import { DateInput } from "@/components/ui/date-input";
 import { AdminFlash } from "@/components/admin/flash";
@@ -216,7 +217,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             </CardBody>
           </Card>
           <Card>
-            <CardHeader title="Start onboarding" description="Creates the company (no users yet) and opens its import page. The lead becomes Converted, with onboarding in progress." />
+            <CardHeader title={TERMS.startOnboarding} description="Creates the company (no users yet) and opens its import page. The lead becomes Converted, with onboarding in progress." />
             <CardBody>
               <form action={createCompany} className="space-y-3">
                 <input type="hidden" name="lead" value={lead.id} />

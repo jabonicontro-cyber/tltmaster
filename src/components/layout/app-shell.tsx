@@ -6,6 +6,7 @@ import { ListViewRecorder } from "@/components/nav/nav-memory";
 import { UnsavedChangesGuard } from "@/components/nav/unsaved-guard";
 import { MobileNav } from "./mobile-nav";
 import { cn } from "@/lib/cn";
+import { APP_CONTAINER } from "@/lib/layout";
 import { DriverTabBar } from "@/components/companion/driver-tab-bar";
 import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
 import { isDriverOnly } from "@/lib/companion";
@@ -43,12 +44,13 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
 
       {access.isDemo ? <DemoWelcome initiallyOpen={welcome} companyName={access.companyName} /> : null}
-      <header className="no-print sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b border-line bg-card/95 px-3 backdrop-blur lg:px-6">
-        <div className="flex min-w-0 items-center gap-1">
-          <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} />
-          <Link href="/command-center" className="min-w-0 lg:hidden" aria-label={`${access.companyName ?? "Company"} — home`}>
-            <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
-          </Link>
+      <header className="no-print sticky top-0 z-20 border-b border-line bg-card/95 backdrop-blur">
+        <div className={cn(APP_CONTAINER, "flex h-14 items-center justify-between gap-3")}>
+          <div className="flex min-w-0 items-center gap-1">
+            <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} />
+            <Link href="/command-center" className="min-w-0 lg:hidden" aria-label={`${access.companyName ?? "Company"} — home`}>
+              <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
+            </Link>
         </div>
         <UserMenu
           name={me?.name || access.fullName}
@@ -63,9 +65,10 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
           demo={access.isDemo ? { presentation, preview: access.preview ?? null } : null}
           platformAdmin={platformAdmin}
         />
+        </div>
       </header>
 
-      <main id="main" tabIndex={-1} className={cn("outline-none mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8", driverOnly && "pb-24 md:pb-6")}>
+      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", driverOnly && "pb-24 md:pb-6")}>
         {children}
       </main>
       {driverOnly && <DriverTabBar permissions={navPermissions} />}

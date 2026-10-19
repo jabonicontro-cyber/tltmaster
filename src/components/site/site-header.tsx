@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Menu } from "lucide-react";
 import { TavironLogo } from "./logo";
+import { cn } from "@/lib/cn";
+import { SITE_CONTAINER } from "@/lib/layout";
 
 const NAV = [
   { href: "/platform", label: "Platform" },
@@ -14,8 +16,8 @@ const NAV = [
 export function SiteHeader() {
   return (
     <header className="site-header sticky top-0 z-40 bg-navy/75 backdrop-blur-xl backdrop-saturate-150">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" aria-label="Taviron home" className="rounded-md">
+      <div className={cn(SITE_CONTAINER, "flex h-16 items-center justify-between gap-4")}>
+        <Link href="/" aria-label="Taviron home" className="flex rounded-md">
           <TavironLogo />
         </Link>
         <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">

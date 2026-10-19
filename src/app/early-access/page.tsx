@@ -24,7 +24,7 @@ export default async function EarlyAccessPage({ searchParams }: { searchParams: 
       <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(55%_60%_at_50%_0%,rgb(22_139_255/0.16),transparent)]" aria-hidden />
 
-      <header className="relative mx-auto flex w-full max-w-6xl items-center px-4 pt-6 sm:px-8">
+      <header className="relative mx-auto flex w-full max-w-6xl items-center px-4 pt-6 sm:px-6">
         {site ? (
           <Link href="/" className="rounded" aria-label="Taviron home">
             <TavironLogo />
@@ -68,7 +68,7 @@ export default async function EarlyAccessPage({ searchParams }: { searchParams: 
         </div>
       </main>
 
-      <footer className="relative mx-auto w-full max-w-6xl px-4 pb-6 text-xs text-silver/60 sm:px-8">Taviron · Early access</footer>
+      <footer className="relative mx-auto w-full max-w-6xl px-4 pb-6 text-xs text-silver/60 sm:px-6">Taviron · Early access</footer>
     </div>
   );
 }

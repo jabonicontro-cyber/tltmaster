@@ -1,3 +1,4 @@
+import { TERMS } from "@/lib/terminology";
 import { AdminFlash } from "@/components/admin/flash";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
@@ -10,7 +11,7 @@ import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
 import { createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, startDemo } from "../actions";
 
-export const metadata = { title: "Live demo" };
+export const metadata = { title: TERMS.demoManagement };
 // Starting a demo seeds a few hundred records through the normal app functions.
 export const maxDuration = 60;
 
@@ -25,7 +26,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
   const prospectRows = (prospects.data ?? []) as Array<{ id: string; name: string; slug: string; created_at: string }>;
   return (
     <>
-      <PageHeader title="Live demo" description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Live demo" }]} />
+      <PageHeader title={TERMS.demoManagement} description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: TERMS.demoManagement }]} />
       <AdminFlash error={sp.error} saved={sp.saved} savedText={sp.saved === "retired" ? "Demo retired. You can create it again below."
         : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.` : "Saved."} />
       <div className="grid gap-5 lg:grid-cols-2">

@@ -163,3 +163,22 @@ test("Route Planner is live: no Coming soon label; without a routing key it says
   await expect(page.getByRole("heading", { name: "Route Planner", level: 1 })).toBeVisible();
   await expect(page.getByText("Straight-line distances")).toBeVisible();
 });
+
+test("Powered by Taviron is a link to the public homepage, on the rail and in the phone menu, without breaking the pin", async ({ page }) => {
+  await signIn(page, "dispatcher");
+  await page.goto("/command-center");
+  const sidebar = page.getByRole("complementary", { name: "Sidebar" });
+  const link = sidebar.getByRole("link", { name: /Powered by Taviron/ });
+  await expect(link).toHaveAttribute("href", "https://mytaviron.com/");
+  await expect(link).not.toHaveAttribute("target", /.+/); // same tab: Back returns to the workspace
+  // Keyboard: it takes focus with a visible outline, and the pin button beside it still works.
+  await link.focus();
+  expect(await link.evaluate((el) => getComputedStyle(el).outlineStyle)).not.toBe("none");
+  await sidebar.getByRole("button", { name: "Keep sidebar open" }).click();
+  await expect(sidebar.getByRole("button", { name: "Unpin sidebar" })).toBeVisible();
+  await sidebar.getByRole("button", { name: "Unpin sidebar" }).click();
+
+  await page.setViewportSize({ width: 390, height: 800 });
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.getByRole("dialog").getByRole("link", { name: /Powered by Taviron/ })).toHaveAttribute("href", "https://mytaviron.com/");
+});

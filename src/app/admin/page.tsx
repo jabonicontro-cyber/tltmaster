@@ -1,3 +1,4 @@
+import { TERMS } from "@/lib/terminology";
 import Link from "next/link";
 import { AppWindow, ArrowRight, Building2, CheckCircle2, Inbox, PlayCircle, ReceiptText, ShieldCheck, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +22,7 @@ const QUICK = [
   { href: "/admin/leads?status=new", icon: Inbox, label: "Review new leads" },
   { href: "/admin/companies", icon: Building2, label: "Company directory" },
   { href: "/admin/plans", icon: ReceiptText, label: "Plans and prices" },
-  { href: "/admin/onboarding", icon: Upload, label: "Start onboarding or an import" },
+  { href: "/admin/onboarding", icon: Upload, label: "Start Onboarding or an Import" },
   { href: "/admin/demo", icon: PlayCircle, label: "Manage demos" },
   { href: "/admin/platform", icon: ShieldCheck, label: "Team and audit log" },
   { href: "/command-center", icon: AppWindow, label: "Open the app" },
@@ -62,7 +63,7 @@ export default async function LaunchpadPage() {
   ];
   const urgent = p.attention.items.filter((i) => i.priority === 1).length;
   const metrics = [
-    { label: "Setup incomplete", value: p.companies.setup_incomplete, sub: "No owner login, customers, trucks or drivers", href: "/admin/companies?setup=incomplete", warn: p.companies.setup_incomplete > 0 },
+    { label: "Setup Not Complete", value: p.companies.setup_incomplete, sub: "Missing an owner login, customers, trucks or drivers", href: "/admin/companies?setup=open", warn: p.companies.setup_incomplete > 0 },
     { label: "New leads", value: p.leads.new, sub: `${p.leads.due_today} follow-ups due today`, href: "/admin/leads?status=new", warn: p.leads.new > 0 },
     { label: "Follow-ups overdue", value: p.leads.overdue, sub: "Past the follow-up date you set", href: "/admin/leads?due=1", bad: p.leads.overdue > 0 },
     { label: "Demos scheduled", value: p.leads.demo_scheduled, sub: "Leads in Demo Scheduled (no demo dates are recorded)", href: "/admin/leads?status=demo_scheduled" },
@@ -169,7 +170,7 @@ export default async function LaunchpadPage() {
             </ul>
           </Card>
           <Card>
-            <CardHeader title="Demos" description="Separate demo companies with fictional data. Refreshes are recorded here." actions={<Link href="/admin/demo" className="text-sm font-semibold text-brand-fg hover:underline">Live demo</Link>} />
+            <CardHeader title="Demos" description="Separate demo companies with fictional data. Refreshes are recorded here." actions={<Link href="/admin/demo" className="text-sm font-semibold text-brand-fg hover:underline">{TERMS.demoManagement}</Link>} />
             {p.demos.length === 0 ? (
               <p className="px-4 py-4 text-sm text-muted sm:px-5">No demo company yet. Create one in Live demo.</p>
             ) : (

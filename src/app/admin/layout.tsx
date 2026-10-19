@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/layout/brand";
+import { cn } from "@/lib/cn";
+import { APP_CONTAINER } from "@/lib/layout";
 import { requirePlatformAdmin } from "@/server/platform";
 import { AdminNav } from "@/components/admin/admin-nav";
 import { AdminUserMenu } from "@/components/admin/admin-user-menu";
@@ -18,18 +20,15 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   return (
     <div className="min-h-dvh bg-surface">
       <header className="bg-charcoal">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <div className="flex items-center gap-3">
-            <Link href="/admin">
-              <BrandMark />
-            </Link>
-            <span className="rounded bg-brand px-2 py-0.5 text-xs font-bold tracking-wide text-white">PLATFORM</span>
-          </div>
+        <div className={cn(APP_CONTAINER, "flex h-16 items-center justify-between gap-3")}>
+          <Link href="/admin" aria-label="Taviron Platform — Launchpad" className="flex rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white/60">
+            <BrandMark badge="Platform" />
+          </Link>
           <AdminUserMenu name={profile?.displayName || profile?.fullName || ""} email={me.email} photo={profile ? photoUrl(profile.userId, profile.photoUpdatedAt) : ""} roleTitle={PLATFORM_ROLE_TITLE} />
         </div>
         <AdminNav />
       </header>
-      <main id="main" className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <main id="main" className={cn(APP_CONTAINER, "py-6")}>
         {children}
       </main>
     </div>

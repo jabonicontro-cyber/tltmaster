@@ -4,7 +4,7 @@ import Link from "next/link";
 import { PanelLeftClose, PanelLeftOpen, Pin, PinOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
-import { TavironEmblem } from "./brand";
+import { PoweredByTaviron } from "./powered-by-taviron";
 import { CompanyIdentity } from "./company-identity";
 import { SidebarNav } from "./sidebar-nav";
 import type { Permission } from "@/lib/permissions";
@@ -123,10 +123,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
           {pinned ? <PinOff className="size-[18px] shrink-0" aria-hidden /> : <Pin className="size-[18px] shrink-0" aria-hidden />}
           <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "opacity-0")}>{pinned ? "Unpin sidebar" : "Keep sidebar open"}</span>
         </button>
-        <p className="flex items-center gap-2 px-3 py-2 text-xs whitespace-nowrap text-white/55">
-          <TavironEmblem className="size-4 shrink-0 opacity-80" />
-          <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "opacity-0")}>Powered by Taviron</span>
-        </p>
+        <PoweredByTaviron labelHidden={!expanded} className="px-3 py-2" />
       </div>
     </aside>
     </>

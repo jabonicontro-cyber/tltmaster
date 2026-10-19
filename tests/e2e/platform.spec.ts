@@ -340,6 +340,7 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await page.goto(`/admin/companies?q=${encodeURIComponent(name)}&setup=incomplete`);
   await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Companies" })).toHaveAttribute("aria-current", "page");
   const row = page.getByRole("row").filter({ hasText: name });
+  await expect(row).toContainText("Setup Incomplete");
   await expect(row).toContainText("Missing owner login, customers, trucks, drivers");
   await row.getByRole("link", { name }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();

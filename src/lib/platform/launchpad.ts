@@ -53,7 +53,7 @@ export const ATTENTION_LABELS: Record<AttentionKind, string> = {
   lead_due_today: "Follow-up today",
   lead_new: "New lead",
   import_review: "Import to review",
-  company_setup: "Setup incomplete",
+  company_setup: "Setup Not Complete",
 };
 
 /** What to do about each kind (the button text on the item). */

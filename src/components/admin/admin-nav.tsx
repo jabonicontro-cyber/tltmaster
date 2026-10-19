@@ -1,8 +1,10 @@
 "use client";
 
+import { TERMS } from "@/lib/terminology";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
+import { APP_CONTAINER } from "@/lib/layout";
 
 const NAV = [
   { href: "/admin", label: "Launchpad" },
@@ -10,7 +12,7 @@ const NAV = [
   { href: "/admin/companies", label: "Companies" },
   { href: "/admin/plans", label: "Plans" },
   { href: "/admin/onboarding", label: "Onboarding" },
-  { href: "/admin/demo", label: "Live demo" },
+  { href: "/admin/demo", label: TERMS.demoManagement },
   { href: "/admin/platform", label: "Administration" },
 ];
 
@@ -18,7 +20,7 @@ const NAV = [
 export function AdminNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Platform" className="mx-auto flex max-w-7xl gap-1 overflow-x-auto px-2 sm:px-4">
+    <nav aria-label="Platform" className={cn(APP_CONTAINER, "flex gap-1 overflow-x-auto")}>
       {NAV.map((n) => {
         const current = n.href === "/admin" ? path === "/admin" : path === n.href || path.startsWith(`${n.href}/`);
         return (

@@ -2,12 +2,13 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
+import { SITE_CONTAINER } from "@/lib/layout";
 
 // Shared building blocks of the public website (Taviron palette: navy, silver,
 // electric blue accents, action blue for filled buttons — see globals.css).
 
 export function Container({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("mx-auto w-full max-w-6xl px-4 sm:px-6", className)}>{children}</div>;
+  return <div className={cn(SITE_CONTAINER, className)}>{children}</div>;
 }
 
 // No tracked-out ALL-CAPS eyebrow labels above headings (.claude/skills/frontend-design): the heading carries the
