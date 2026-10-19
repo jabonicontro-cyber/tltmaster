@@ -7,7 +7,15 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
-## 00000000. Round 2026-10-20 — multi-location, plan demos, visual alignment (local; not pushed at time of writing)
+## 00000000. Round 2026-10-20 — multi-location, plan demos, visual alignment — released `4dc7383`
+
+- **Released:** Preview deploy 7166311031 and Production deploy 7166330838 (both success, `4dc7383`). Not verified live
+  (the sandbox cannot reach the deployed domains). Hosted migrations `20261120000100`–`000300` are **not** applied
+  (owner, runbook §9); until then the new screens say a database update is needed — checked locally on a rolled-back
+  database. `000400` (help center) and `000500` (company classification) are written but untested and not wired: do not
+  apply them yet.
+- Gates: lint, typecheck, vitest 776/776, full e2e 173/177 then the 4 failures fixed (test pollution from the bases
+  test; a streaming race in the Command Center test) and their specs re-run green, build, gate spec.
 
 - **Multi-location (B62):** migrations `20261120000100`–`000300` applied **locally only** (backups in /var/lib/tlt-backups);
   hosted application is the owner's `db push` (runbook §9). Settings → Dispatch Bases; base on forms and order page;
