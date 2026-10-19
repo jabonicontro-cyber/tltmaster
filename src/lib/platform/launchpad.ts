@@ -98,6 +98,14 @@ const ACTIVITY_TEXT: Record<string, string> = {
   note_added: "Note added to a lead",
   disposition_changed: "Lead spam flag changed",
   onboarding_changed: "Lead onboarding progress changed",
+  lifecycle_terms_set: "Subscription terms set",
+  onboarding_fee_paid: "Onboarding fee recorded as received",
+  onboarding_fee_waived: "Onboarding fee waived",
+  go_live_scheduled: "Go-live date set",
+  company_went_live: "Company went live",
+  subscription_canceled: "Subscription canceled",
+  plan_version_created: "New plan price version",
+  attention_acknowledged: "Attention item acknowledged",
 };
 
 export function activityText(a: Pick<LaunchpadActivity, "source" | "action">): string {

@@ -1,11 +1,17 @@
 import Link from "next/link";
-import { AppWindow, ArrowRight, Building2, CheckCircle2, Inbox, PlayCircle, ShieldCheck, Upload } from "lucide-react";
+import { AppWindow, ArrowRight, Building2, CheckCircle2, Inbox, PlayCircle, ReceiptText, ShieldCheck, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
+import { FlashToast } from "@/components/ui/flash-toast";
+import { Input } from "@/components/ui/form";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { ackFor, type Console } from "@/lib/platform/lifecycle";
+import { usd } from "@/lib/site/pricing";
+import { acknowledgeAttention } from "./lifecycle-actions";
 import { ATTENTION_ACTIONS, ATTENTION_LABELS, activityHref, activityText, ageText, attentionHref, type Launchpad } from "@/lib/platform/launchpad";
 import { createClient } from "@/server/supabase/server";
 
@@ -14,6 +20,7 @@ export const metadata = { title: "Launchpad" };
 const QUICK = [
   { href: "/admin/leads?status=new", icon: Inbox, label: "Review new leads" },
   { href: "/admin/companies", icon: Building2, label: "Company directory" },
+  { href: "/admin/plans", icon: ReceiptText, label: "Plans and prices" },
   { href: "/admin/onboarding", icon: Upload, label: "Start onboarding or an import" },
   { href: "/admin/demo", icon: PlayCircle, label: "Manage demos" },
   { href: "/admin/platform", icon: ShieldCheck, label: "Team and audit log" },
@@ -27,7 +34,7 @@ const QUICK = [
  */
 export default async function LaunchpadPage() {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("platform_launchpad");
+  const [{ data, error }, consoleRes] = await Promise.all([supabase.rpc("platform_launchpad"), supabase.rpc("platform_console")]);
   if (error || !data) {
     // Before the 20261118000100 update is installed: the earlier overview still works.
     const old = await supabase.rpc("platform_overview");
@@ -43,10 +50,18 @@ export default async function LaunchpadPage() {
     );
   }
   const p = data as Launchpad;
+  // The business KPIs and acknowledgements (20261118000300). Without that update they say so instead of showing 0.
+  const k = consoleRes.error ? null : (consoleRes.data as Console);
+  const kpiNote = consoleRes.error?.code === "PGRST202" ? "Needs database update 20261118000300" : "Could not be read";
   const now = Date.parse(p.as_of); // ages are measured at the moment the figures were read
+  const kpis = [
+    { label: "Customer companies", value: k ? String(k.customers.live) : "—", sub: k ? `live · ${k.customers.total} active in all` : kpiNote, href: "/admin/companies" },
+    { label: "Monthly recurring revenue", value: k ? usd(k.mrr.cents) : "—", sub: k ? `agreed amounts of ${k.mrr.live} live compan${k.mrr.live === 1 ? "y" : "ies"}${k.mrr.free ? ` (${k.mrr.free} free beta)` : ""}` : kpiNote, href: "/admin/companies" },
+    { label: "Pipeline", value: k ? String(k.pipeline.open) : "—", sub: k ? `open leads · ${k.pipeline.demo_scheduled} demo scheduled · ${k.pipeline.overdue} overdue` : kpiNote, href: "/admin/leads" },
+    { label: "Onboarding", value: k ? String(k.customers.onboarding + k.customers.fee_due) : "—", sub: k ? `${k.customers.fee_due} fee due · ${k.customers.go_live_14d} going live within 14 days` : kpiNote, href: "/admin/companies" },
+  ];
   const urgent = p.attention.items.filter((i) => i.priority === 1).length;
   const metrics = [
-    { label: "Customer companies", value: p.companies.active, sub: `${p.companies.inactive} inactive · ${p.companies.created_30d} new in 30 days`, href: "/admin/companies" },
     { label: "Setup incomplete", value: p.companies.setup_incomplete, sub: "No owner login, customers, trucks or drivers", href: "/admin/companies?setup=incomplete", warn: p.companies.setup_incomplete > 0 },
     { label: "New leads", value: p.leads.new, sub: `${p.leads.due_today} follow-ups due today`, href: "/admin/leads?status=new", warn: p.leads.new > 0 },
     { label: "Follow-ups overdue", value: p.leads.overdue, sub: "Past the follow-up date you set", href: "/admin/leads?due=1", bad: p.leads.overdue > 0 },
@@ -56,6 +71,19 @@ export default async function LaunchpadPage() {
   return (
     <>
       <PageHeader title="Launchpad" description="What needs you today across leads, customer companies, imports and demos — read live from the platform records." />
+      <FlashToast messages={{ saved: { text: "Acknowledged. It stays on the list until its cause is resolved." } }} />
+
+      <ul className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4" aria-label="Business KPIs">
+        {kpis.map((m) => (
+          <li key={m.label}>
+            <Link href={m.href} className="flex h-full flex-col rounded-lg border border-line bg-card p-4 shadow-xs transition-colors hover:border-strong/40 sm:p-5">
+              <p className="text-[13px] font-medium text-muted">{m.label}</p>
+              <p className="mt-1 text-3xl font-semibold tracking-tight tabular text-ink">{m.value}</p>
+              <p className="mt-auto pt-1 text-xs text-muted">{m.sub}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
       <section aria-label="Platform status" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", urgent ? "border-l-critical" : p.attention.total ? "border-l-amber-400" : "border-l-green-500")}>
         <p className="text-base font-semibold text-ink">{p.attention.total === 0 ? "Nothing needs attention" : `${p.attention.total} item${p.attention.total === 1 ? "" : "s"} need attention`}</p>
@@ -64,7 +92,7 @@ export default async function LaunchpadPage() {
         <p className="ml-auto text-xs text-muted">As of {formatDateTime(p.as_of)}</p>
       </section>
 
-      <ul className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-6" aria-label="Platform overview">
+      <ul className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5" aria-label="Platform overview">
         {metrics.map((m) => (
           <li key={m.label}>
             <Link href={m.href} className="flex h-full flex-col rounded-lg border border-line bg-card p-3 transition-colors hover:border-strong/40 hover:bg-surface/40 sm:p-4">
@@ -87,7 +115,9 @@ export default async function LaunchpadPage() {
           ) : (
             <>
               <ul className="divide-y divide-line" aria-label="Needs attention">
-                {p.attention.items.map((i) => (
+                {p.attention.items.map((i) => {
+                  const ack = ackFor(k?.acks, i);
+                  return (
                   <li key={`${i.kind}:${i.ref_id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 sm:px-5">
                     <div className="min-w-0 flex-[1_1_18rem]">
                       <p className="flex flex-wrap items-center gap-2">
@@ -98,12 +128,23 @@ export default async function LaunchpadPage() {
                         {i.detail}
                         {i.since && i.kind !== "lead_overdue" ? ` · ${ageText(i.since, now)} ago` : ""}
                       </p>
+                      {ack && <p className="mt-0.5 text-xs text-muted">Acknowledged by {ack.by} · {formatDateTime(ack.at)}{ack.note ? ` — ${ack.note}` : ""} · still open</p>}
                     </div>
-                    <Link href={attentionHref(i)} className="ml-auto inline-flex items-center gap-1 text-sm font-semibold text-brand-fg hover:underline">
-                      {ATTENTION_ACTIONS[i.kind]} <ArrowRight className="size-3.5" aria-hidden />
-                    </Link>
+                    <div className="ml-auto flex flex-wrap items-center gap-3">
+                      {k && !ack && (
+                        <form action={acknowledgeAttention} className="flex items-center gap-1.5">
+                          <input type="hidden" name="key" value={`${i.kind}:${i.ref_id}`} />
+                          <Input name="note" placeholder="Note (optional)" aria-label={`Note for ${i.title}`} maxLength={300} className="h-8 w-36 text-xs" />
+                          <SubmitButton size="sm" variant="secondary" pendingLabel="…">Acknowledge</SubmitButton>
+                        </form>
+                      )}
+                      <Link href={attentionHref(i)} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-fg hover:underline">
+                        {ATTENTION_ACTIONS[i.kind]} <ArrowRight className="size-3.5" aria-hidden />
+                      </Link>
+                    </div>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
               {p.attention.total > p.attention.items.length && (
                 <p className="border-t border-line px-4 py-2.5 text-sm text-muted sm:px-5">

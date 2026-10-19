@@ -12,3 +12,12 @@ test("the scheduled cleanup refuses requests without the right secret", async ({
     expect(body).not.toMatch(/"companies"|expired_messages|filesRemoved/); // no work done, nothing reported
   }
 });
+
+// Scheduled go-live (/api/cron/lifecycle-activation, 20261118000300): the same CRON_SECRET rule.
+test("scheduled go-live refuses requests without the right secret", async ({ request }) => {
+  for (const headers of [{}, { authorization: "Bearer not-the-secret-value-123" }] as Array<Record<string, string>>) {
+    const r = await request.get("/api/cron/lifecycle-activation", { headers });
+    expect([401, 503], JSON.stringify(headers)).toContain(r.status());
+    expect(await r.text()).not.toMatch(/activated/);
+  }
+});

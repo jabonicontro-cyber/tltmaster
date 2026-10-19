@@ -5,6 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
+import { FlashToast } from "@/components/ui/flash-toast";
+import { Notice } from "@/components/ui/states";
+import { SubscriptionCard } from "@/components/admin/subscription-card";
+import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { activityText } from "@/lib/platform/launchpad";
 import { LEAD_STATUS_LABELS, ONBOARDING_LABELS, type LeadStatus, type OnboardingStage } from "@/lib/platform/leads";
@@ -17,6 +21,7 @@ interface CompanyDetail {
   name: string;
   slug: string;
   active: boolean;
+  is_demo: boolean;
   created_at: string;
   timezone: string | null;
   setup: { owner_login: boolean; customers: number; trucks: number; drivers: number; members: number; imports_in_review: number };
@@ -33,14 +38,18 @@ const IMPORT_STATUS: Record<string, string> = { review: "Waiting for review", ap
  * One customer company for the platform team: setup progress, who can sign in, imports and the platform actions taken
  * on it. Operational records (orders, tickets, money) are not shown here — they belong to the company.
  */
-export default async function CompanyPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const { id } = await params;
+  const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("platform_company", { p_id: id });
   if (error?.code === "P0002" || (!error && !data)) notFound();
   if (error) throw new Error("The company could not be loaded.");
   const c = data as CompanyDetail;
+  // Subscription lifecycle (20261118000300); before that update is installed the card says so.
+  const [life, plans] = c.is_demo ? [null, null] : await Promise.all([supabase.rpc("platform_lifecycle", { p_company: id }), supabase.rpc("platform_plans")]);
+  const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
   const steps = [
     { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
     { label: "Customers", done: c.setup.customers > 0, hint: `${c.setup.customers} active` },
@@ -55,6 +64,8 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: c.name }]}
         actions={<Link href={`/admin/onboarding/${c.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Imports for this company</Link>}
       />
+      <FlashToast messages={{ saved: { text: "Saved." } }} />
+      {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Setup" description={c.missing.length ? `Missing: ${c.missing.join(", ")}.` : "Every setup step is done."} />
@@ -90,6 +101,14 @@ export default async function CompanyPage({ params }: { params: Promise<{ id: st
           )}
         </Card>
       </div>
+
+      {!c.is_demo && (lifecycleMissing ? (
+        <div className="mt-5"><Notice title="Subscription needs a database update">Apply migration 20261118000300 (owner step) to record plans, onboarding fees and go-live dates.</Notice></div>
+      ) : life?.error || plans?.error ? (
+        <div className="mt-5"><Notice tone="warning" title="The subscription could not be loaded">Nothing is shown rather than guessed. Reload to try again.</Notice></div>
+      ) : (
+        <SubscriptionCard companyId={c.id} life={(life?.data ?? null) as Lifecycle | null} plans={(plans?.data ?? []) as PlanVersion[]} />
+      ))}
 
       <Card className="mt-5">
         <CardHeader title="Imports" />

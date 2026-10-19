@@ -322,7 +322,8 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await expect(page.getByRole("heading", { name: "Launchpad" })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "Platform" }).getByRole("link", { name: "Launchpad" })).toHaveAttribute("aria-current", "page");
   const overview = page.getByRole("list", { name: "Platform overview" });
-  await expect(overview.getByRole("listitem")).toHaveCount(6);
+  await expect(overview.getByRole("listitem")).toHaveCount(5);
+  await expect(page.getByRole("list", { name: "Business KPIs" }).getByRole("listitem")).toHaveCount(4);
   await expect(page.getByLabel("Platform status")).toContainText(/need attention|Nothing needs attention/);
   // Every attention item links to a record page.
   const items = page.getByRole("list", { name: "Needs attention" }).getByRole("link");
@@ -369,4 +370,61 @@ test("the platform team member appears as themselves (name, Taviron Administrato
   await expect(owner.getByRole("banner")).toContainText("Erin Owner");
   await expect(owner.getByRole("banner")).not.toContainText("Taviron Administrator");
   await ctx.close();
+});
+
+test("customer lifecycle: plan and founding offer, onboarding fee, go-live only earlier, Go Live Now with the password; acknowledging is not resolving", async ({ page }) => {
+  test.slow();
+  await signInPlatform(page);
+  const kpis = page.getByRole("list", { name: "Business KPIs" });
+  await expect(kpis).toContainText("Monthly recurring revenue");
+  const liveBefore = Number((await kpis.getByRole("listitem").first().locator("p").nth(1).textContent()) ?? "0");
+
+  const name = `Lifecycle Hauling ${unique()}`;
+  await page.goto("/admin/onboarding");
+  await page.getByLabel("Company name").fill(name);
+  await page.getByRole("button", { name: "Create company" }).click();
+  await page.waitForURL(/\/admin\/onboarding\/[0-9a-f-]{36}\?created=1/);
+  const id = page.url().match(/onboarding\/([0-9a-f-]{36})/)![1];
+  await page.goto(`/admin/companies/${id}`);
+  const sub = page.getByRole("region", { name: "Subscription" });
+  await expect(sub).toContainText("Not set up");
+  await sub.getByLabel("Plan").selectOption({ label: "Essential — $499/mo, onboarding $199" });
+  await sub.getByLabel("Offer").selectOption("founding");
+  await sub.getByRole("button", { name: "Save plan and terms" }).click();
+  await expect(sub).toContainText("$399.20");
+  await expect(sub).toContainText("Onboarding fee due");
+
+  await sub.getByLabel("Payment reference or waiver reason").fill("Check 2201 (test)");
+  await sub.getByRole("button", { name: "Record" }).click();
+  await expect(sub).toContainText("received");
+  await expect(sub.getByText("Onboarding", { exact: true })).toBeVisible();
+
+  const day = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
+  await sub.getByLabel("Go-live date").fill(day(30));
+  await sub.getByRole("button", { name: "Set go-live date" }).click();
+  await expect(sub.getByLabel("Move go-live earlier")).toBeVisible();
+  await sub.getByLabel("Move go-live earlier").fill(day(40));
+  await sub.getByRole("button", { name: "Move earlier" }).click();
+  await expect(page.getByText(/can only move earlier/).first()).toBeVisible();
+
+  await sub.getByLabel("Your password").fill("not-the-password-123");
+  await sub.getByLabel("This company goes live today").check();
+  await sub.getByRole("button", { name: "Go live now" }).click();
+  await expect(page.getByText("That password is not correct. Nothing was changed.")).toBeVisible();
+  await sub.getByLabel("Your password").fill(PASSWORD);
+  await sub.getByLabel("This company goes live today").check();
+  await sub.getByRole("button", { name: "Go live now" }).click();
+  await expect(sub.getByText("Live", { exact: true })).toBeVisible();
+  await expect(sub).toContainText("Live since");
+
+  await page.goto("/admin");
+  await expect(kpis.getByRole("listitem").first()).toContainText(String(liveBefore + 1));
+  // Acknowledge the first open item: it stays on the list, marked as acknowledged.
+  const list = page.getByRole("list", { name: "Needs attention" });
+  const first = list.getByRole("listitem").filter({ has: page.getByRole("button", { name: "Acknowledge" }) }).first();
+  if (await first.count()) {
+    const title = (await first.locator("span.break-words").first().textContent())!;
+    await first.getByRole("button", { name: "Acknowledge" }).click();
+    await expect(list.getByRole("listitem").filter({ hasText: title }).first()).toContainText(/Acknowledged by .* still open/);
+  }
 });

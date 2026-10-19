@@ -8,6 +8,7 @@ const NAV = [
   { href: "/admin", label: "Launchpad" },
   { href: "/admin/leads", label: "Leads" },
   { href: "/admin/companies", label: "Companies" },
+  { href: "/admin/plans", label: "Plans" },
   { href: "/admin/onboarding", label: "Onboarding" },
   { href: "/admin/demo", label: "Live demo" },
   { href: "/admin/platform", label: "Administration" },

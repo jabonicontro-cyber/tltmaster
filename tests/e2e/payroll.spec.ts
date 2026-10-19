@@ -5,13 +5,13 @@ import { USERS } from "./users";
 
 // Driver payroll (docs/PAYROLL.md): the owner writes a rule, previews it, activates it, calculates a period from a
 // verified ticket, approves it and downloads the export. Other roles cannot open payroll. Isolated: a fresh driver and a
-// random day long in the past, so no other test's tickets fall into this period.
+// random day 4–12 months ago, so no other test's tickets fall into this period.
 
 type Q = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>> }>;
 
 async function acceptedTicket() {
   const id = unique();
-  const daysAgo = 400 + Math.floor(Math.random() * 2000);
+  const daysAgo = 120 + Math.floor(Math.random() * 240); // orders must be within a year
   return asUser(USERS.office.email, async (q: Q) => {
     const ins = async (table: string, row: Record<string, unknown>) => {
       const cols = Object.keys(row);

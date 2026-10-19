@@ -1,11 +1,24 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-15, night round. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-19 (round of 2026-10-18). Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 0000000. Round 2026-10-18 — Taviron Live, platform console, payroll, customer lifecycle
+
+| Commit | What | Migration (local / pushed / hosted) |
+| --- | --- | --- |
+| `50d6450` | **Taviron Live round 1**: 7-day outlook on the Command Center (loads, coverage gaps, trucks down, people off, value at risk with billing.view, next steps). Benchmark: owner Command Center 374 → 404 KB, ~1.7 s local; dispatch payload unchanged (2.2 MB). | none |
+| `188a81d` | **Platform Launchpad (B52)**: live counts, one needs-attention list, activity feed, company directory and detail, audited demo refreshes, duplicate-company refusal | `20261118000100` local / not pushed / **not hosted** |
+| `dc5900f` | **Administrator identity**: the platform admin appears as their own profile (name, photo or initials, "Taviron Administrator") in the console, company workspaces and demos; profile page in the console | none (touches `src/server/auth.ts` → APPROVAL tier) |
+| `ca35b20` | **Driver payroll foundation (B27)**: company formula engine (fixed inputs/operators, no code execution), versioned rules with preview and confirmed activation, ticket ledger, periods, exceptions instead of guesses, owner approval and lock, CSV export by hash, reconciliation. **Top Line's rules not configured** (Discovery Report: no pay records available). | `20261118000200` local / not pushed / **not hosted** |
+| next | **Customer lifecycle (B53)**: four console KPIs, acknowledge ≠ resolve, versioned plans, subscription per company (plan, terms, offer, agreed amount), onboarding fee, go-live earlier-only, Go Live Now with password, daily scheduled activation, annual cancellation balance. No payment provider. | `20261118000300` local / not pushed / **not hosted** |
+
+Owner steps: runbook §6 + §7 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for five migrations; then Refresh
+demo data in both demos. Payment provider choice (checkout, webhooks, 72-hour grace) is still yours (docs/PLATFORM_LIFECYCLE.md).
 
 ## 000000. Round 2026-10-15 (night) — job site directions verification (B51)
 
