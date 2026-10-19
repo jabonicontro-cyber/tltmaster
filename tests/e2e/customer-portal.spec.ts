@@ -88,19 +88,21 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
     // Request a quote; the same request again is not duplicated.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/quotes`);
     const form = cust.getByRole("form", { name: "Request a quote" });
-    await form.getByLabel("Material").fill("Pea gravel");
+    const material = `Pea gravel ${unique()}`;
+    await form.getByLabel("Material").fill(material);
     await form.getByLabel("Quantity").fill("12");
     await form.getByLabel("Unit").fill("tons");
     await form.getByRole("button", { name: "Send Request" }).click();
     await expect(cust.getByText("Request sent. We will reply with a quote.")).toBeVisible();
-    await form.getByLabel("Material").fill("pea gravel");
+    await form.getByLabel("Material").fill(material.toLowerCase());
     await form.getByLabel("Quantity").fill("12");
     await form.getByRole("button", { name: "Send Request" }).click();
     await expect(cust.getByText(/We already have this request/)).toBeVisible();
 
     // Support: a question, answered by the office.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/support/new`);
-    await cust.getByLabel("Subject").fill("Gate code");
+    const subject = `Gate code ${unique()}`;
+    await cust.getByLabel("Subject").fill(subject);
     await cust.getByLabel("Message").fill("What is the gate code for the north entrance?");
     await cust.getByRole("button", { name: "Send" }).click();
     await expect(cust.getByText(/Sent\. .* will reply here/)).toBeVisible();
@@ -113,15 +115,15 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
 
     // The office sees both requests and answers the question.
     await page.goto("/customer-portal");
-    await expect(page.getByText(`${CUSTOMER} · Pea gravel`)).toBeVisible();
-    await expect(page.getByText(`${CUSTOMER} · Gate code`)).toBeVisible();
-    await page.getByLabel("Reply").first().fill("It is 4412. Drive slowly past the scale.");
-    await page.getByRole("button", { name: "Send Reply" }).first().click();
+    await expect(page.getByText(`${CUSTOMER} · ${material}`)).toBeVisible();
+    const thread = page.getByRole("listitem").filter({ hasText: `${CUSTOMER} · ${subject}` });
+    await expect(thread.getByText(`${CUSTOMER} · ${subject}`)).toBeVisible();
+    await thread.getByLabel("Reply").fill("It is 4412. Drive slowly past the scale.");
+    await thread.getByRole("button", { name: "Send Reply" }).click();
     await expect(page.getByText("Reply sent to the customer's portal.")).toBeVisible();
 
     await cust.goto(`/portal/${TOP_LINE_SLUG}/support`);
-    await expect(cust.getByText("Answered")).toBeVisible();
-    await cust.getByRole("link", { name: /Gate code/ }).click();
+    await cust.getByRole("link", { name: new RegExp(subject) }).click();
     await expect(cust.getByText("It is 4412. Drive slowly past the scale.")).toBeVisible();
 
     // Turning the portal off closes it immediately.
