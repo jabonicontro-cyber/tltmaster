@@ -79,7 +79,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Sample-data removal releases open payroll entries of sample tickets (20261118000400); only under tlt.sample_purge.
   "private.payroll_release_sample_ticket",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
-  "private.is_company_member", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
+  "public.command_center_urgent_by_kind", "private.is_company_member", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

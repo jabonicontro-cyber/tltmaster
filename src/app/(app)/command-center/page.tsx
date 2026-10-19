@@ -16,6 +16,7 @@ import { shownName } from "@/server/data/profile";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { EXCEPTION_KINDS, KIND_LABELS, PRIORITY_RULES, metricCards, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
+import { urgentSummary } from "@/lib/command-center/urgent";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
@@ -342,12 +343,21 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             <p className="text-base font-semibold text-ink">
               {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
             </p>
-            {s.exceptions.urgent > 0 && (
-              <Link href={href({})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>
-            )}
-            {(s.urgent_orders ?? 0) > 0 && (
-              <Link href={href({ kind: "urgent_order" })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{s.urgent_orders} urgent order{s.urgent_orders === 1 ? "" : "s"}</Link>
-            )}
+            {/* One urgent indicator: each urgent item counted once, under its own kind (no separate "urgent orders" label). */}
+            {s.exceptions.urgent > 0 && (() => {
+              const u = urgentSummary(s.urgent_by_kind);
+              if (!u || u.total !== s.exceptions.urgent) {
+                return <Link href={href({})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>;
+              }
+              return (
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
+                  <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{u.lead}</Link>
+                  {u.parts.map((p, i) => (
+                    <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
+                  ))}
+                </span>
+              );
+            })()}
             {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link>}
             {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
             <p className="ml-auto text-xs text-muted">As of {formatDateTime(s.as_of, timezone)}</p>

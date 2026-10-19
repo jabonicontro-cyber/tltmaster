@@ -33,7 +33,7 @@ test("the appearance choice switches the app to dark, survives a reload, and kee
   // The company's accent stays its own; urgency stays the fixed critical red.
   const brand = await page.locator("#main").evaluate((el) => getComputedStyle(el).getPropertyValue("--color-brand").trim());
   expect(brand).toBe("#0f6fd6");
-  const urgent = page.getByRole("region", { name: "Attention summary" }).getByRole("link", { name: /urgent$/ });
+  const urgent = page.getByRole("region", { name: "Attention summary" }).getByRole("link", { name: /^\d+ urgent/ });
   if (await urgent.count()) expect(await urgent.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(185, 28, 28)");
 
   // The public website keeps its own light tokens inside .site.

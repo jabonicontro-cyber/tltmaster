@@ -13,9 +13,11 @@ export const ACTIVITY_PAGE_SIZE = 15;
 /** Counts computed in the database for the caller's company and permissions. */
 export async function loadSummary(): Promise<Loaded<CommandSummary>> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("command_center_summary");
+  // Urgent items per kind (20261119000200): the parts of the urgent total, so nothing is counted twice. Without that
+  // update the strip shows the total only.
+  const [{ data, error }, byKind] = await Promise.all([supabase.rpc("command_center_summary"), supabase.rpc("command_center_urgent_by_kind")]);
   if (error || !data) return { ok: false, error: "The overview could not be loaded." };
-  return { ok: true, data: data as CommandSummary };
+  return { ok: true, data: { ...(data as CommandSummary), urgent_by_kind: byKind.error ? null : (byKind.data as Record<string, number>) } };
 }
 
 export interface QueuePage {

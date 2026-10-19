@@ -13,12 +13,12 @@ test("office staff create, find, extend and archive a customer", async ({ page }
   await expect(page.getByText("Enter a valid email address.")).toBeVisible();
   await expect(page.getByLabel("Customer name")).toHaveValue(name);
 
-  await page.getByLabel("Main email").fill("office@e2e.example");
+  await page.getByLabel("Main email").fill(`office-${unique()}@e2e.example`); // unique: the same email would be flagged as a possible duplicate
   await page.getByLabel("Contact name").fill("Chris Contact");
   await page.getByLabel("City").fill("Valparaiso");
   await page.getByRole("button", { name: "Create customer" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
-  await expect(page.getByText("Chris Contact")).toBeVisible();
+  await expect(page.locator("p", { hasText: "Chris Contact" }).first()).toBeVisible();
 
   await page.getByRole("button", { name: "Add job site" }).click();
   await page.getByLabel("Site name").fill("North pit road");

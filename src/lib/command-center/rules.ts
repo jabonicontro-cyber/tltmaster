@@ -238,6 +238,8 @@ export interface CommandSummary {
   as_of: string;
   today: string;
   exceptions: { total: number; urgent: number; mine: number; hidden?: number };
+  /** Urgent (priority 1) items per kind, adding up to exceptions.urgent; null before 20261119000200. */
+  urgent_by_kind?: Record<string, number> | null;
   by_kind: Partial<Record<ExceptionKind, number>>;
   /** Orders whose scheduled dates include today (orders.view). */
   orders_today?: number | null;
