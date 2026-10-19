@@ -7,6 +7,10 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 000000000. 2026-10-20 (later) — Help Center and practice companies released `5881927`
+
+- Preview 7167489920 and Production 7167511026 (success); not verified live. Hosted migrations now pending: `20261120000100`–`000500` (runbook §9–§10). Gates: vitest 787 + 1 timeout fixed (shared test DB growth, measured), e2e 171 passed + 2 intermittent passed on rerun, build, gate spec, pages checked without the migrations.
+
 ## 00000000. Round 2026-10-20 — multi-location, plan demos, visual alignment — released `4dc7383`
 
 - **Released:** Preview deploy 7166311031 and Production deploy 7166330838 (both success, `4dc7383`). Not verified live
