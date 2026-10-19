@@ -20,22 +20,22 @@ export function SiteHeader() {
         <Link href="/" aria-label="Taviron home" className="flex rounded-md">
           <TavironLogo />
         </Link>
-        <nav aria-label="Main" className="hidden items-center gap-0.5 md:flex">
+        <nav aria-label="Main" className="hidden items-center gap-0.5 lg:flex">
           {NAV.map((n) => (
-            <Link key={n.href} href={n.href} className="site-link rounded-md px-3 py-2 text-sm font-medium text-silver hover:text-cloud">
+            <Link key={n.href} href={n.href} className="site-link whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-silver hover:text-cloud">
               {n.label}
             </Link>
           ))}
         </nav>
-        <div className="hidden items-center gap-1 md:flex">
-          <Link href="/login" className="site-link rounded-md px-3 py-2 text-sm font-medium text-silver hover:text-cloud">
+        <div className="hidden items-center gap-1 lg:flex">
+          <Link href="/login" className="site-link whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-silver hover:text-cloud">
             Sign in
           </Link>
-          <Link href="/demo" className="site-press rounded-md bg-action px-4 py-2 text-sm font-semibold text-white hover:bg-action-hover">
+          <Link href="/demo" className="site-press whitespace-nowrap rounded-md bg-action px-4 py-2 text-sm font-semibold text-white hover:bg-action-hover">
             Request a demo
           </Link>
         </div>
-        <details className="site-menu group relative md:hidden">
+        <details className="site-menu group relative lg:hidden">
           <summary className="flex cursor-pointer list-none items-center rounded-md p-2 text-silver hover:text-cloud [&::-webkit-details-marker]:hidden" aria-label="Menu">
             <Menu className="size-6" aria-hidden />
           </summary>

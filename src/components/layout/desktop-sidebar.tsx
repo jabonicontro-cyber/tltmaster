@@ -93,8 +93,10 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         expanded && !pinned && "shadow-2xl",
       )}
     >
-      <Link href="/command-center" className="flex h-16 shrink-0 items-center border-b border-white/10 px-4" aria-label={`${companyName ?? "Company"} — home`}>
+      <Link href="/command-center" className="flex h-16 shrink-0 items-center border-b border-white/10 px-4">
         {expanded ? <CompanyIdentity name={companyName} logoUrl={logoUrl} /> : <CompanyIdentity name={companyName} logoUrl={logoUrl} compact />}
+        {/* The name comes from what is shown (company name or its mark), so voice control matches it (WCAG 2.5.3). */}
+        <span className="sr-only"> — home</span>
       </Link>
       <div className="shrink-0 px-3 pt-3">
         <button

@@ -52,8 +52,9 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
         <div className={cn(APP_CONTAINER, "flex h-14 items-center justify-between gap-3")}>
           <div className="flex min-w-0 items-center gap-1">
             <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} />
-            <Link href="/command-center" className="min-w-0 lg:hidden" aria-label={`${access.companyName ?? "Company"} — home`}>
+            <Link href="/command-center" className="min-w-0 lg:hidden">
               <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
+              <span className="sr-only"> — home</span>
             </Link>
         </div>
         <div className="flex items-center gap-1">

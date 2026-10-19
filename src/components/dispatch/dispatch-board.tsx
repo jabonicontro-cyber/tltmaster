@@ -73,19 +73,19 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
       {/* Date navigation and summary */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card px-4 py-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
-          <Link href={`/dispatch?date=${shiftDate(day.date, -1)}`} className={buttonClasses("secondary", "sm")} aria-label="Previous day">
-            <ChevronLeft className="size-4" aria-hidden /> Prev
+          <Link href={`/dispatch?date=${shiftDate(day.date, -1)}`} className={buttonClasses("secondary", "sm")}>
+            <ChevronLeft className="size-4" aria-hidden /> Prev<span className="sr-only">ious day</span>
           </Link>
           <Link href={`/dispatch?date=${day.today}`} className={buttonClasses(day.date === day.today ? "dark" : "secondary", "sm")}>
             Today
           </Link>
-          <Link href={`/dispatch?date=${shiftDate(day.date, 1)}`} className={buttonClasses("secondary", "sm")} aria-label="Next day">
-            Next <ChevronRight className="size-4" aria-hidden />
+          <Link href={`/dispatch?date=${shiftDate(day.date, 1)}`} className={buttonClasses("secondary", "sm")}>
+            Next<span className="sr-only"> day</span> <ChevronRight className="size-4" aria-hidden />
           </Link>
           <form action="/dispatch" method="get" className="flex items-center gap-2">
             <label htmlFor="board-date" className="sr-only">Go to date</label>
             <DateInput id="board-date" name="date" defaultValue={day.date} className="h-9 w-40" />
-            <button type="submit" className={buttonClasses("ghost", "sm")}>Go</button>
+            <button type="submit" className={buttonClasses("secondary", "sm", "h-9")}>Go</button>
           </form>
         </nav>
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">

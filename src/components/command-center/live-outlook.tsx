@@ -78,10 +78,11 @@ export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: strin
 function DayColumn({ day: d, today, busiest, shopChecked }: { day: OutlookDay; today: string; busiest: number; shopChecked: boolean }) {
   const isToday = d.date === today;
   const gapTone = d.unassigned === 0 ? "" : isToday ? "bg-critical" : "bg-amber-400";
-  const label = `${isToday ? "Today" : formatDate(d.date)}: ${d.loads} loads, ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
+  // Spoken details after what is shown (day, date, loads), so the name starts with the visible words (WCAG 2.5.3).
+  const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
   return (
     <li className="border-r border-line last:border-r-0">
-      <Link href={`/dispatch?date=${d.date}`} aria-label={label} className={cn("flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:bg-surface/60", isToday && "bg-surface/40")}>
+      <Link href={`/dispatch?date=${d.date}`} className={cn("flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:bg-surface/60", isToday && "bg-surface/40")}>
         <p className="flex items-baseline justify-between gap-1">
           <span className={cn("text-xs font-semibold uppercase tracking-wide", isToday ? "text-brand-fg" : "text-muted")}>{isToday ? "Today" : weekday(d.date)}</span>
           <span className="text-xs tabular text-muted">{dayNumber(d.date)}</span>
@@ -106,6 +107,7 @@ function DayColumn({ day: d, today, busiest, shopChecked }: { day: OutlookDay; t
           {d.conflicts > 0 && <div className="flex justify-between gap-1 font-semibold text-critical"><dt>Conflicts</dt><dd className="tabular">{d.conflicts}</dd></div>}
           {!shopChecked && <div className="text-[11px]">Shop dates not checked</div>}
         </dl>
+        <span className="sr-only">{detail}</span>
       </Link>
     </li>
   );

@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { BrandMark } from "@/components/layout/brand";
+import { PUBLIC_WEBSITE_URL } from "@/lib/site/urls";
 import { redirect } from "next/navigation";
 import { ShieldCheck } from "lucide-react";
 import { MfaChallenge, MfaEnroll, RecoveryCodesStep } from "@/components/security/mfa-flow";
@@ -27,13 +29,21 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
   const needsCodes = done && state.installed && (state.policy?.recovery_codes ?? 0) === 0;
 
   return (
-    <main id="main" className="app-root flex min-h-dvh items-center justify-center bg-surface px-4 py-10 text-ink">
-      <div className="w-full max-w-sm rounded-lg border border-line bg-card p-6">
-        <div className="mb-4 flex items-center gap-2 text-brand-fg">
-          <ShieldCheck className="size-6" aria-hidden />
-          <span className="text-sm font-semibold">{PRODUCT_NAME}</span>
+    // Same frame as sign-in (src/app/(auth)/layout.tsx): Taviron's mark on the dark background, one card.
+    <div className="app-root flex min-h-dvh flex-col bg-charcoal text-ink">
+      <div className="h-1.5 bg-brand" />
+      <main id="main" className="flex flex-1 items-center justify-center px-4 py-10">
+      <div className="w-full max-w-sm">
+        <div className="mb-8 flex justify-center">
+          <a href={PUBLIC_WEBSITE_URL} aria-label="Taviron website" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+            <BrandMark className="scale-125" />
+          </a>
         </div>
-        <h1 className="text-xl font-bold">{done ? "You Are Verified" : verified ? "Enter Your Code" : "Set Up Two-Step Verification"}</h1>
+      <div className="rounded-lg bg-card p-6 shadow-xl">
+        <h1 className="flex items-center gap-2 text-xl font-bold">
+          <ShieldCheck className="size-5 shrink-0 text-brand-fg" aria-hidden />
+          {done ? "You are verified" : verified ? "Enter your code" : "Set up two-step verification"}
+        </h1>
         <p className="mt-1 mb-5 text-sm text-muted">
           {sp.reset ? "Your lost authenticator was removed. Set up a new one now. " : ""}
           {state.reason ?? (verified ? "Open your authenticator app for the current code." : "Protect your account with a code from your phone, in addition to your password.")}
@@ -51,6 +61,9 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
           <button type="submit" className="text-sm text-muted hover:text-ink hover:underline">Sign out</button>
         </form>
       </div>
-    </main>
+        <p className="mt-6 text-center text-xs text-white/50">{PRODUCT_NAME} · Authorized users only</p>
+      </div>
+      </main>
+    </div>
   );
 }

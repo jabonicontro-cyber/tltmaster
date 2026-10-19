@@ -88,7 +88,7 @@ test("set up an authenticator, be asked for it at sign-in, refuse a wrong code, 
   await page.getByLabel("Recovery code", { exact: true }).fill(codes[0]);
   await page.getByRole("button", { name: "Use Recovery Code" }).click();
   await expect(page).toHaveURL(/\/mfa\?reset=1/);
-  await expect(page.getByRole("heading", { name: "Set Up Two-Step Verification" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Set up two-step verification" })).toBeVisible();
   const events = await sql("select event from private.security_events where user_id = $1 order by at", [userId]);
   expect(events.map((e) => e.event)).toEqual(expect.arrayContaining(["mfa.enrolled", "mfa.challenge_failed", "mfa.verified", "mfa.recovery_used", "mfa.removed"]));
   const used = await sql("select count(*)::int n from private.mfa_recovery_codes where user_id = $1 and used_at is not null", [userId]);

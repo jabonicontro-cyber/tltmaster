@@ -32,11 +32,11 @@ export default async function PortalLayout({ children, params }: { children: Rea
             {company?.logo ? (
               // eslint-disable-next-line @next/next/no-img-element -- a data URL from the company's settings
               <img src={company.logo} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
-            ) : (
+            ) : company?.name ? (
               <span aria-hidden className="flex size-9 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">
-                {(company?.name ?? "?").slice(0, 1)}
+                {company.name.slice(0, 1)}
               </span>
-            )}
+            ) : null}
             <span className="truncate text-base font-semibold text-ink">{company?.name ?? "Customer Portal"}</span>
           </Link>
           {gate.kind === "customer" && !preview ? (
@@ -45,7 +45,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
               <form action={signOutOfPortal}>
                 <input type="hidden" name="slug" value={slug} />
                 <button type="submit" className="rounded-md px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">
-                  Sign Out
+                  Sign out
                 </button>
               </form>
             </div>

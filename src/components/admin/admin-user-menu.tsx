@@ -13,9 +13,10 @@ export function AdminUserMenu({ name, email, photo, roleTitle }: { name: string;
   const shown = name || email;
   return (
     <M.Root>
-      <M.Trigger aria-label={`Account menu: ${shown}`} className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-white hover:bg-white/10">
-        <Avatar key={photo} name={shown} src={photo} size={32} />
-        <span className="hidden min-w-0 sm:block">
+      <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-white hover:bg-white/10">
+        <span className="sr-only">Account menu: {shown}</span>
+        <span aria-hidden><Avatar key={photo} name={shown} src={photo} size={32} /></span>
+        <span className="hidden min-w-0 sm:block" aria-hidden>
           <span className="block max-w-[14rem] truncate text-sm font-semibold">{shown}</span>
           <span className="block max-w-[14rem] truncate text-xs text-white/70">{roleTitle}</span>
         </span>

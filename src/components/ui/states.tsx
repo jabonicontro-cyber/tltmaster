@@ -2,11 +2,15 @@ import type { ReactNode } from "react";
 import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
-export function EmptyState({ title, description, action, icon, className }: { title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode; className?: string }) {
+export function EmptyState({ title, description, action, icon, className, as: Title = "p" }: {
+  title: string; description?: ReactNode; action?: ReactNode; icon?: ReactNode; className?: string;
+  /** "h1" when the state is the whole page (not found, nothing to show yet), so the page still has a main heading. */
+  as?: "p" | "h1" | "h2";
+}) {
   return (
     <div className={cn("flex flex-col items-center justify-center px-6 py-12 text-center", className)}>
       <div className="mb-3 rounded-full bg-surface p-3 text-muted">{icon ?? <Inbox className="size-6" aria-hidden />}</div>
-      <p className="text-base font-semibold text-ink">{title}</p>
+      <Title className="text-base font-semibold text-ink">{title}</Title>
       {description && <p className="mt-1 max-w-md text-sm text-muted">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
     </div>

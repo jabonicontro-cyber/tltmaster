@@ -247,6 +247,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           ))}
         </nav>
       )}
+      {!can(access, "settings.manage") ? (
+        <p className="mb-3 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
+          You can view these settings. Changing them needs the company settings permission (an owner or administrator).
+        </p>
+      ) : null}
       <Card>{content}</Card>
     </>
   );

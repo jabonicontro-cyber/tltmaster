@@ -22,7 +22,11 @@ const NAV = [
 export function AdminNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Platform" className={cn(APP_CONTAINER, "flex gap-1 overflow-x-auto")}>
+    <nav
+      aria-label="Platform"
+      // Narrow screens: the tabs scroll sideways; the fading right edge shows there are more (no wrap, no clipping mid-word).
+      className={cn(APP_CONTAINER, "flex snap-x gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] lg:[mask-image:none]")}
+    >
       {NAV.map((n) => {
         const current = n.href === "/admin" ? path === "/admin" : path === n.href || path.startsWith(`${n.href}/`);
         return (
@@ -31,7 +35,7 @@ export function AdminNav() {
             href={n.href}
             aria-current={current ? "page" : undefined}
             className={cn(
-              "rounded-t-md px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors",
+              "snap-start rounded-t-md px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors",
               current ? "bg-surface text-ink" : "text-white/75 hover:bg-white/10 hover:text-white",
             )}
           >
