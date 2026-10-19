@@ -18,10 +18,10 @@ export default async function PortalLogin({ params, searchParams }: { params: Pr
       <h1 className="mb-1 text-xl font-bold text-ink">Sign In</h1>
       <p className="mb-5 text-sm text-muted">to the {gate.company.name} customer portal</p>
       {gate.kind === "no-access" ? (
-        <p className="mb-4 rounded-md bg-surface p-3 text-sm text-muted">The account you are signed in with has no access here. Sign in with the email {gate.company.name} invited.</p>
+        <p className="mb-4 rounded-md bg-surface p-3 text-sm text-muted">The account you are signed in with has no access here. Sign in with the email or username {gate.company.name} gave you.</p>
       ) : null}
-      <PortalLoginForm slug={slug} next={next} />
-      <p className="mt-4 text-center text-sm text-muted">No account yet? Ask {gate.company.name} for an invitation.</p>
+      <PortalLoginForm slug={slug} next={next} company={gate.company.name} />
+      <p className="mt-4 text-center text-sm text-muted">No sign-in yet? Ask {gate.company.name} for one.</p>
     </div>
   );
 }

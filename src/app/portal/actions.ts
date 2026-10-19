@@ -10,6 +10,7 @@ import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { safeNextPath } from "@/lib/safe-redirect";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isPortalSlug, isPortalToken } from "@/lib/portal";
+import { signInAddress } from "@/lib/usernames";
 import { portalError } from "@/server/portal";
 import { getEmailMode } from "@/server/email/provider";
 import { env } from "@/server/env";
@@ -25,18 +26,29 @@ const slugOf = (fd: FormData) => {
   return slug;
 };
 
-const signInSchema = z.object({ email: z.email("Enter your email address."), password: z.string().min(1, "Enter your password.") });
+const signInSchema = z.object({ email: z.string().max(254), password: z.string().min(1, "Enter your password.") });
 
-/** Portal sign-in: an existing account only. Not the early-access gate (customers never see Taviron's preview). */
+/**
+ * Portal sign-in with an email or a username the company created (docs/ACCOUNT_PROVISIONING.md): an existing account
+ * only. Not the early-access gate (customers never see Taviron's preview). A first sign-in with a temporary password
+ * is sent to "Create your password" by the portal gate.
+ */
 export async function signInToPortal(formData: FormData): Promise<ActionResult> {
   const slug = slugOf(formData);
   const parsed = signInSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the form.");
+  const address = signInAddress(parsed.data.email);
+  if (!address.ok) return fail(address.error);
+  const jar = await cookies();
+  if (formData.get("shared_device") === "on") jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  else jar.delete(SHARED_DEVICE_COOKIE);
   const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithPassword({ email: parsed.data.email, password: parsed.data.password });
+  const { error } = await supabase.auth.signInWithPassword({ email: address.email, password: parsed.data.password });
   if (error) {
     if (error.status === 429) return fail("Too many attempts. Wait a minute and try again.");
-    return fail("Email or password is incorrect.");
+    // Reported only after the password matched, so it reveals nothing to a stranger.
+    if (error.code === "user_banned") return fail("This sign-in is turned off. Contact the company that gave it to you.");
+    return fail(parsed.data.email.includes("@") ? "Email or password is incorrect." : "Username or password is incorrect.");
   }
   // Back to the page they asked for, but only inside this portal.
   const base = `/portal/${slug}`;

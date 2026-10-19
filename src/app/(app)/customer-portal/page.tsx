@@ -4,9 +4,13 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
-import { can } from "@/lib/permissions";
+import { can, type Access } from "@/lib/permissions";
 import { formatDay, formatQuantity, REQUEST_STATUS_LABEL, SUPPORT_STATUS_LABEL } from "@/lib/portal";
+import { isUsernameEmail } from "@/lib/usernames";
 import { requirePagePermission } from "@/server/auth";
+import { accountStates, emailServerStatus } from "@/server/accounts";
+import { PortalSignInForm } from "@/components/accounts/portal-sign-in-form";
+import { SignInManager } from "@/components/accounts/sign-in-manager";
 import { createClient } from "@/server/supabase/server";
 import {
   HelpArticleForm, InviteForm, PortalSettingsForm, QuoteRequestForm, QuoteResponseButtons, RevokeAccountButton, StaffReplyForm, type PortalSettingsValues,
@@ -53,7 +57,7 @@ export default async function CustomerPortalPage({ searchParams }: { searchParam
 
   let content: React.ReactNode = null;
   if (tab === "inbox") content = await Inbox(access.permissions.includes("quotes.view"), can(access, "customers.edit"), can(access, "quotes.edit"), can(access, "quotes.status"));
-  else if (tab === "access") content = await AccessTab(can(access, "customers.edit"));
+  else if (tab === "access") content = await AccessTab(access, can(access, "customers.edit"), state.open);
   else if (tab === "help") content = await HelpTab(can(access, "settings.manage"));
   else
     content = (
@@ -208,28 +212,84 @@ async function Inbox(canSeeQuotes: boolean, canReply: boolean, canEditQuotes: bo
   );
 }
 
-async function AccessTab(canEdit: boolean) {
+type PortalAccountRow = {
+  id: string; customer_id: string; contact_id: string | null; user_id: string | null; email: string; status: string;
+  invited_at: string; accepted_at: string | null; last_seen_at: string | null; invite_expires_at: string | null;
+};
+
+async function AccessTab(access: Access, canEdit: boolean, open: boolean) {
   const supabase = await createClient();
-  const [accounts, customers, contacts] = await Promise.all([
-    supabase.from("portal_accounts").select("id, customer_id, email, status, invited_at, accepted_at, last_seen_at, invite_expires_at").neq("status", "revoked").order("invited_at", { ascending: false }),
+  const [accounts, customers, contacts, states] = await Promise.all([
+    supabase.from("portal_accounts").select("id, customer_id, contact_id, user_id, email, status, invited_at, accepted_at, last_seen_at, invite_expires_at").order("invited_at", { ascending: false }),
     supabase.from("customers").select("id, name").eq("active", true).order("name"),
     supabase.from("customer_contacts").select("id, customer_id, name, email").eq("active", true).order("name"),
+    canEdit ? accountStates("portal") : Promise.resolve(null),
   ]);
   const list = (customers.data ?? []) as Array<{ id: string; name: string }>;
   const names = new Map(list.map((c) => [c.id, c.name]));
-  const rows = (accounts.data ?? []) as Array<{ id: string; customer_id: string; email: string; status: string; invited_at: string; accepted_at: string | null; last_seen_at: string | null; invite_expires_at: string | null }>;
+  const contactRows = (contacts.data ?? []) as Array<{ id: string; customer_id: string; name: string; email: string }>;
+  const contactName = new Map(contactRows.map((c) => [c.id, c]));
+  const all = (accounts.data ?? []) as PortalAccountRow[];
+  // Username sign-ins (made here, managed below) and email invitations (the earlier flow) are listed apart.
+  const usernameRows = all.filter((a) => a.user_id && isUsernameEmail(a.email) && states?.has(a.user_id));
+  const rows = all.filter((a) => a.status !== "revoked" && !usernameRows.includes(a));
+  const taken = usernameRows.filter((a) => a.status !== "revoked" && a.contact_id).map((a) => a.contact_id!);
+  const mail = emailServerStatus(Boolean(access.isDemo));
+  const companyName = access.companyName ?? "Your company";
   return (
     <div className="space-y-5">
       {canEdit ? (
         <Card>
-          <CardHeader title="Invite a Customer Contact" description="Each email belongs to one customer and sees only that customer's records. A portal account never gets access to your workspace." />
+          <CardHeader title="Create a Customer Sign-in" description="A username and a temporary password for one person at one customer; no email needed. They choose their own password the first time." />
           <CardBody>
-            <InviteForm customers={list} contacts={(contacts.data ?? []) as Array<{ id: string; customer_id: string; name: string; email: string }>} />
+            {access.isDemo ? (
+              <Notice title="Not in a demo company">Demo companies do not create sign-ins. Preview the portal as a customer from the Testing Lab instead.</Notice>
+            ) : !open ? (
+              <Notice title="Turn the portal on first">Customer sign-ins can be created once the portal is on (Settings tab).</Notice>
+            ) : states === null ? (
+              <Notice title="Needs a database update">Username sign-ins need the database update 20261120001200, which is not installed yet. Email invitations below still work.</Notice>
+            ) : (
+              <PortalSignInForm customers={list} contacts={contactRows} taken={taken} companyName={companyName} emailConfigured={mail.configured} emailReason={mail.reason} />
+            )}
+          </CardBody>
+        </Card>
+      ) : null}
+      {usernameRows.length ? (
+        <Card>
+          <CardHeader title="Customer Sign-ins" description="Created here with a username. Turning one off keeps the customer's requests and history." />
+          <CardBody>
+            <ul className="divide-y divide-line">
+              {usernameRows.map((a) => {
+                const st = states!.get(a.user_id!)!;
+                const person = a.contact_id ? contactName.get(a.contact_id) : undefined;
+                const to = person?.email && !isUsernameEmail(person.email) ? person.email : "";
+                return (
+                  <li key={a.id} className="space-y-2 py-3">
+                    <p className="text-sm"><span className="font-semibold text-ink">{person?.name ?? "Contact"}</span> <span className="text-muted">· {names.get(a.customer_id) ?? "Customer"}</span></p>
+                    <SignInManager
+                      kind="portal"
+                      s={{ userId: st.user_id, username: st.username, status: st.status, expired: st.expired, issuedAt: st.issued_at, expiresAt: st.expires_at, completedAt: st.completed_at, lastSignInAt: st.last_sign_in_at, banned: st.banned, active: a.status !== "revoked" }}
+                      personName={person?.name ?? st.username}
+                      companyName={companyName}
+                      email={mail.configured && to ? { available: true, to } : { available: false, reason: mail.configured ? "Add the contact's email in Customers to send a setup link." : mail.reason }}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </CardBody>
+        </Card>
+      ) : null}
+      {canEdit ? (
+        <Card>
+          <CardHeader title="Invite a Customer Contact by Email" description="Each email belongs to one customer and sees only that customer's records. A portal account never gets access to your workspace." />
+          <CardBody>
+            <InviteForm customers={list} contacts={contactRows} />
           </CardBody>
         </Card>
       ) : null}
       <Card>
-        <CardHeader title="Who Has Access" />
+        <CardHeader title="Email Invitations" />
         <CardBody>
           {rows.length ? (
             <ul className="divide-y divide-line text-sm">
@@ -250,7 +310,7 @@ async function AccessTab(canEdit: boolean) {
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted">Nobody has portal access yet.</p>
+            <p className="text-sm text-muted">{usernameRows.length ? "No email invitations." : "Nobody has portal access yet."}</p>
           )}
         </CardBody>
       </Card>

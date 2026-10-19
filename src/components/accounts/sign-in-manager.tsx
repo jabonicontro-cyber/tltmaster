@@ -7,10 +7,36 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/dates";
 import { signInStatus } from "@/lib/accounts";
+import type { ActionResult } from "@/lib/action-result";
 import {
   accountEvents, deactivateEmployeeSignIn, emailEmployeeSetup, reactivateEmployeeSignIn, recordInstructionsHandoff, reissueEmployeeSignIn,
 } from "@/app/(app)/employees/account-actions";
+import {
+  emailPortalSetup, portalAccountEvents, recordPortalHandoff, reissuePortalSignIn, turnOffPortalSignIn, turnOnPortalSignIn,
+} from "@/app/(app)/customer-portal/account-actions";
 import { CredentialDelivery, type DeliveryCredential } from "./credential-delivery";
+
+type Issued = { username: string; loginUrl: string; temporaryPassword: string; expiresAt: string };
+type Events = Array<{ at: string; event: string }> | string;
+
+/** The same panel manages employee and customer-portal sign-ins; only the server actions differ. */
+const ACTIONS: Record<"employee" | "portal", {
+  reissue: (u: string) => Promise<ActionResult<Issued>>;
+  email: (u: string) => Promise<ActionResult<{ reference: string | null }>>;
+  record: (u: string, c: "print" | "copy") => Promise<void>;
+  off: (u: string) => Promise<ActionResult>;
+  on: (u: string) => Promise<ActionResult<Issued | undefined>>;
+  events: (u: string) => Promise<Events>;
+}> = {
+  employee: {
+    reissue: reissueEmployeeSignIn, email: emailEmployeeSetup, record: recordInstructionsHandoff, off: deactivateEmployeeSignIn,
+    on: reactivateEmployeeSignIn, events: accountEvents,
+  },
+  portal: {
+    reissue: reissuePortalSignIn, email: emailPortalSetup, record: recordPortalHandoff, off: turnOffPortalSignIn,
+    on: turnOnPortalSignIn, events: portalAccountEvents,
+  },
+};
 
 export interface SignInState {
   userId: string;
@@ -35,12 +61,14 @@ const EVENT_LABELS: Record<string, string> = {
   "account.delivery_prepared": "Instructions printed or copied",
   "account.deactivated": "Sign-in turned off",
   "account.reactivated": "Sign-in turned on",
+  "account.revoked": "Portal access removed",
   "account.sessions_blocked": "Signed out everywhere (blocked in Auth)",
   "account.sessions_unblocked": "Sign-in unblocked in Auth",
 };
 
-export function SignInManager({ s, personName, companyName, email }: {
+export function SignInManager({ s, personName, companyName, email, kind = "employee" }: {
   s: SignInState;
+  kind?: "employee" | "portal";
   personName: string;
   companyName: string;
   email: { available: boolean; reason?: string; to?: string };
@@ -51,6 +79,8 @@ export function SignInManager({ s, personName, companyName, email }: {
   const [confirmOff, setConfirmOff] = useState(false);
   const [events, setEvents] = useState<Array<{ at: string; event: string }> | string | null>(null);
   const status = signInStatus(s);
+  const act = ACTIONS[kind];
+  const show = (r: Issued) => setCredential({ kind, personName, companyName, username: r.username, loginUrl: r.loginUrl, temporaryPassword: r.temporaryPassword, expiresAt: r.expiresAt });
 
   const run = (fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) =>
     startBusy(async () => {
@@ -65,8 +95,8 @@ export function SignInManager({ s, personName, companyName, email }: {
       <CredentialDelivery
         c={credential}
         email={email}
-        onEmail={() => emailEmployeeSetup(s.userId)}
-        onRecord={(channel) => recordInstructionsHandoff(s.userId, channel)}
+        onEmail={() => act.email(s.userId)}
+        onRecord={(channel) => act.record(s.userId, channel)}
         onDone={() => { setCredential(null); router.refresh(); }}
       />
     );
@@ -86,33 +116,39 @@ export function SignInManager({ s, personName, companyName, email }: {
       <div className="flex flex-wrap gap-2">
         {s.active ? (
           <Button size="sm" variant="secondary" loading={busy} onClick={() => startBusy(async () => {
-            const r = await reissueEmployeeSignIn(s.userId);
+            const r = await act.reissue(s.userId);
             if (!r.ok) { toast.error(r.error); return; }
             toast.success(r.message ?? "New temporary password issued.");
-            setCredential({ kind: "employee", personName, companyName, username: r.data.username, loginUrl: r.data.loginUrl, temporaryPassword: r.data.temporaryPassword, expiresAt: r.data.expiresAt });
+            show(r.data);
           })}>
             {s.status === "setup_required" ? "Reissue Sign-in Sheet" : "Reset Password"}
           </Button>
         ) : null}
         {s.active && email.available ? (
-          <Button size="sm" variant="secondary" loading={busy} onClick={() => run(() => emailEmployeeSetup(s.userId))}>Email Setup Link</Button>
+          <Button size="sm" variant="secondary" loading={busy} onClick={() => run(() => act.email(s.userId))}>Email Setup Link</Button>
         ) : null}
         {s.active ? (
           confirmOff ? (
             <span className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface p-2">
-              <span className="text-xs text-ink">Turn off {personName}&apos;s sign-in? Their records and history are kept.</span>
-              <Button size="sm" variant="danger" loading={busy} onClick={() => { setConfirmOff(false); run(() => deactivateEmployeeSignIn(s.userId)); }}>Turn Off</Button>
+              <span className="text-xs text-ink">Turn off {personName}&apos;s sign-in? {kind === "portal" ? "Their requests" : "Their records"} and history are kept.</span>
+              <Button size="sm" variant="danger" loading={busy} onClick={() => { setConfirmOff(false); run(() => act.off(s.userId)); }}>Turn Off</Button>
               <Button size="sm" variant="ghost" onClick={() => setConfirmOff(false)}>Cancel</Button>
             </span>
           ) : (
             <Button size="sm" variant="ghost" onClick={() => setConfirmOff(true)}>Turn Off Sign-in</Button>
           )
         ) : (
-          <Button size="sm" variant="secondary" loading={busy} onClick={() => run(() => reactivateEmployeeSignIn(s.userId))}>Turn On Sign-in</Button>
+          <Button size="sm" variant="secondary" loading={busy} onClick={() => startBusy(async () => {
+            const r = await act.on(s.userId);
+            if (!r.ok) { toast.error(r.error); return; }
+            toast.success(r.message ?? "Sign-in turned on.");
+            if (r.data) show(r.data);
+            else router.refresh();
+          })}>Turn On Sign-in</Button>
         )}
       </div>
       {!email.available && email.reason ? <p className="text-xs text-muted">Email: {email.reason}</p> : null}
-      <details onToggle={(e) => { if ((e.target as HTMLDetailsElement).open && events === null) void accountEvents(s.userId).then(setEvents); }}>
+      <details onToggle={(e) => { if ((e.target as HTMLDetailsElement).open && events === null) void act.events(s.userId).then(setEvents); }}>
         <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-ink">Security history</summary>
         {events === null ? <p className="mt-1 text-xs text-muted">Loading…</p> : typeof events === "string" ? (
           <p className="mt-1 text-xs text-critical">{events}</p>

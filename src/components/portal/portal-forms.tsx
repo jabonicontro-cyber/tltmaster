@@ -6,25 +6,37 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
-export function PortalLoginForm({ slug, next }: { slug: string; next?: string }) {
+export function PortalLoginForm({ slug, next, company }: { slug: string; next?: string; company: string }) {
   const { pending, onSubmit, formError } = useFormAction(signInToPortal);
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <FormError message={formError} />
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="next" value={next ?? ""} />
-      <Field label="Email" htmlFor="email">
-        <Input id="email" name="email" type="email" autoComplete="username" required autoFocus />
+      <Field label="Email or username" htmlFor="email">
+        <Input id="email" name="email" type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required autoFocus className="h-12 text-base" />
       </Field>
       <Field label="Password" htmlFor="password">
-        <Input id="password" name="password" type="password" autoComplete="current-password" required />
+        <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 text-base" />
       </Field>
+      <label className="flex items-start gap-2 text-sm text-ink">
+        <input type="checkbox" name="shared_device" className="mt-0.5 size-5 rounded border-line accent-brand" />
+        This is a shared computer (sign me out when the browser closes)
+      </label>
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign In"}
       </Button>
+      <details className="rounded-md bg-surface p-3 text-sm text-ink">
+        <summary className="cursor-pointer font-semibold">First time signing in, or forgot your password?</summary>
+        <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
+          <li>If {company} gave you a username and a temporary password, type them here. You will then create your own password.</li>
+          <li>Forgot your password, or the temporary one expired? Ask {company} for a new sign-in. Nobody there can see your password.</li>
+        </ul>
+      </details>
     </form>
   );
 }

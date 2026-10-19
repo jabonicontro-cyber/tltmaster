@@ -590,7 +590,7 @@ begin
     order by (v_email <> '' and lower(email) = v_email) desc limit 1;
     if v_contact is null then
       insert into public.customer_contacts (company_id, customer_id, name, email)
-      values (v_company, p_customer, v_name, nullif(v_email, '')) returning id into v_contact;
+      values (v_company, p_customer, v_name, v_email) returning id into v_contact;  -- email is not null; empty = none
     end if;
   end if;
   if exists (select 1 from public.portal_accounts a where a.company_id = v_company and a.contact_id = v_contact and a.status <> 'revoked' and a.user_id is not null) then

@@ -16,7 +16,7 @@ import { CredentialDelivery } from "./credential-delivery";
 type RoleOption = { role: AppRole; label: string; permissions: string[] };
 
 /** A username suggestion from a name: "Sam O'Neil" → "sam.oneil". */
-function suggestUsername(name: string): string {
+export function suggestUsername(name: string): string {
   const parts = name.toLowerCase().normalize("NFKD").replace(/[^\p{L}\p{N}\s.-]/gu, "").replace(/[^a-z0-9\s.-]/g, "").trim().split(/\s+/).filter(Boolean);
   const s = parts.length > 1 ? `${parts[0]}.${parts[parts.length - 1]}` : (parts[0] ?? "");
   return s.slice(0, 32).replace(/^[.-]+|[.-]+$/g, "");
