@@ -50,6 +50,11 @@ test("a driver adds, replaces and removes their photo, sets a display name, and 
 
   // Photo: picked, resized in the browser to a 256 px square, saved.
   await page.locator("#photo").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: await pngFile(page) });
+  // Framed and previewed first; nothing is sent before Save.
+  const framing = page.getByRole("group", { name: "Frame your photo" });
+  await expect(framing.getByRole("img", { name: "Preview of your new photo" })).toBeVisible();
+  await framing.getByLabel("Zoom").fill("2");
+  await framing.getByRole("button", { name: "Save photo" }).click();
   await expectToast(page, "Photo saved.");
   const stored = await asUser(USERS.driver.email, async (q) => (await q("select mime_type, length(data_base64) as len from public.profile_photo((public.my_profile()->>'user_id')::uuid)")).rows[0]);
   expect(stored.mime_type).toBe("image/jpeg"); // re-encoded, metadata dropped

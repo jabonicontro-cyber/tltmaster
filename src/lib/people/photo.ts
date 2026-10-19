@@ -13,6 +13,17 @@ export function initialsOf(name: string | null | undefined): string {
   return out || "?";
 }
 
+/**
+ * The square to crop from a w×h image after the person framed it: zoom ≥ 1 narrows the square, x and y (−1 … 1) move
+ * it from the left/top edge (−1) through the centre (0) to the right/bottom edge (1). Always inside the image.
+ */
+export function framedCrop(w: number, h: number, zoom: number, x: number, y: number): { sx: number; sy: number; size: number } {
+  const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, Number.isFinite(v) ? v : 0));
+  const size = Math.max(1, Math.floor(Math.min(w, h) / clamp(zoom, 1, 4)));
+  const at = (len: number, pos: number) => Math.floor(((len - size) * (clamp(pos, -1, 1) + 1)) / 2);
+  return { sx: at(w, x), sy: at(h, y), size };
+}
+
 /** The centered square to crop from a w×h image, so faces are not stretched. */
 export function squareCrop(w: number, h: number): { sx: number; sy: number; size: number } {
   const size = Math.min(w, h);
