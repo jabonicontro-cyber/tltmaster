@@ -36,6 +36,8 @@ const BASE_SAVED: Record<string, string> = {
   deactivated: "Base deactivated. Its trucks, drivers and orders are unchanged.",
   default: "Default base changed. New trucks, drivers and orders without a base go there.",
   access: "Base access saved.",
+  cross_on: "Cross-base dispatch is on. Smart Dispatch may now propose trucks and drivers from other bases, with a warning.",
+  cross_off: "Cross-base dispatch is off. Smart Dispatch proposes only the order's own base.",
 };
 
 export const metadata = { title: "Settings" };
@@ -106,13 +108,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       );
     } else {
       const monthStart = `${today.slice(0, 8)}01`;
-      const [summary, allowance, members, people] = await Promise.all([
+      const [summary, allowance, members, people, cross] = await Promise.all([
         baseSummary(monthStart, today),
         baseAllowance(),
         can(access, "users.manage") ? baseMembers() : Promise.resolve(null),
         can(access, "users.manage") ? listSignIns(access.companyId!) : Promise.resolve([]),
+        supabase.from("company_settings").select("cross_base_dispatch").maybeSingle(),
       ]);
-      content = <BasesPanel bases={bases} summary={summary} allowance={allowance} people={people} access={members} canEdit={can(access, "settings.manage")} canManagePeople={can(access, "users.manage")} />;
+      content = <BasesPanel bases={bases} summary={summary} allowance={allowance} people={people} access={members} canEdit={can(access, "settings.manage")} canManagePeople={can(access, "users.manage")} crossBase={cross.error ? null : Boolean((cross.data as { cross_base_dispatch?: boolean } | null)?.cross_base_dispatch)} />;
     }
   } else if (tab === "time-off") {
     const chain = await approvalChain();

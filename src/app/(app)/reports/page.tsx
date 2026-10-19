@@ -11,6 +11,7 @@ import { requireAccess } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 
+import { baseSummary, listBases, type BaseSummary, type DispatchBase } from "@/server/data/bases";
 export const metadata = { title: "Reports" };
 
 interface Ranked { name: string | null; tickets: number; value_cents: number; quantity?: number; unit?: string }
@@ -83,6 +84,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("report_operations", { p_from: from, p_to: to });
   const r = data as Report | null;
+  const bases = await listBases();
+  const byBase = bases && bases.length > 1 ? await baseSummary(from, to) : [];
 
   return (
     <>
@@ -105,6 +108,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <Notice tone="warning" title="The report could not be produced">{error?.message?.includes("one year") ? "Choose a period of up to one year." : "Try again, or choose a shorter period."}</Notice>
       ) : (
         <div className="space-y-6">
+          {byBase.length > 1 ? <BaseReport rows={byBase} bases={bases ?? []} /> : null}
           {r.deliveries ? (
             <section aria-label="Deliveries and rework" className="space-y-3">
               <h2 className="text-lg font-bold">Deliveries and rework</h2>
@@ -185,5 +189,38 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         </div>
       )}
     </>
+  );
+}
+
+/** Per dispatch base: each truck, driver and order belongs to exactly one base, so the rows add up to the total row. */
+function BaseReport({ rows, bases }: { rows: BaseSummary[]; bases: DispatchBase[] }) {
+  const name = new Map(bases.map((b) => [b.id, b]));
+  const total = rows.reduce((t, x) => ({ trucks: t.trucks + x.trucks, drivers: t.drivers + x.drivers, orders: t.orders + x.orders, loads: t.loads + x.loads, ordered_cents: t.ordered_cents + x.ordered_cents }), { trucks: 0, drivers: 0, orders: 0, loads: 0, ordered_cents: 0 });
+  return (
+    <section aria-label="By dispatch base" className="space-y-3">
+      <h2 className="text-lg font-bold">By Dispatch Base</h2>
+      <p className="text-sm text-muted">Active trucks and drivers today; orders and loads in the period (canceled ones left out). Every record belongs to one base, so nothing is counted twice. Ordered value is as ordered, not invoiced.</p>
+      <Card>
+        <TableWrap>
+          <Table aria-label="Dispatch base report">
+            <thead>
+              <tr><Th>Base</Th><Th align="right">Trucks</Th><Th align="right">Drivers</Th><Th align="right">Orders</Th><Th align="right">Loads</Th><Th align="right">Ordered value</Th></tr>
+            </thead>
+            <tbody>
+              {rows.map((x) => (
+                <Tr key={x.id}>
+                  <Td><span className="font-semibold">{name.get(x.id)?.name ?? "Base"}</span> {name.get(x.id) && !name.get(x.id)!.active ? <span className="text-xs text-muted">(inactive)</span> : null}</Td>
+                  <Td align="right">{x.trucks}</Td><Td align="right">{x.drivers}</Td><Td align="right">{x.orders}</Td><Td align="right">{x.loads}</Td><Td align="right">{formatCents(x.ordered_cents)}</Td>
+                </Tr>
+              ))}
+              <Tr>
+                <Td><span className="font-semibold">All bases</span></Td>
+                <Td align="right" className="font-semibold">{total.trucks}</Td><Td align="right" className="font-semibold">{total.drivers}</Td><Td align="right" className="font-semibold">{total.orders}</Td><Td align="right" className="font-semibold">{total.loads}</Td><Td align="right" className="font-semibold">{formatCents(total.ordered_cents)}</Td>
+              </Tr>
+            </tbody>
+          </Table>
+        </TableWrap>
+      </Card>
+    </section>
   );
 }

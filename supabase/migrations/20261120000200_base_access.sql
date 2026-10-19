@@ -212,3 +212,8 @@ create or replace view public.driver_list with (security_invoker = true) as
    FROM drivers d
      LEFT JOIN companies c ON c.id = d.company_id
      LEFT JOIN LATERAL private.member_summary(d.user_id) ms(full_name, active, role) ON d.user_id IS NOT NULL;
+
+-- Smart Dispatch: may a load be proposed a truck or driver from another base? Off by default (each base dispatches its
+-- own); with it on, other-base resources are proposed with a warning and ranked after same-base ones.
+alter table public.company_settings add column if not exists cross_base_dispatch boolean not null default false;
+grant update (cross_base_dispatch) on public.company_settings to authenticated;

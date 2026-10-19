@@ -96,3 +96,13 @@ export async function setPersonBases(formData: FormData) {
   revalidatePath("/", "layout");
   go("saved", "access");
 }
+
+export async function setCrossBaseDispatch(formData: FormData) {
+  const supabase = await as("settings.manage");
+  const on = formData.get("cross_base") === "on";
+  const { data, error } = await supabase.from("company_settings").update({ cross_base_dispatch: on }).not("company_id", "is", null).select("company_id");
+  if (error) go("error", dbErrorMessage(error));
+  if (!data?.length) go("error", "Settings could not be saved.");
+  revalidatePath("/", "layout");
+  go("saved", on ? "cross_on" : "cross_off");
+}

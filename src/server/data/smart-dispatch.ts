@@ -3,6 +3,7 @@ import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
 import { getTrailerInput } from "./trailer-input";
 import { addDays } from "@/lib/dates";
 import { recommend, toBoardPlan, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { dispatchBaseContext } from "@/server/data/bases";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
@@ -111,16 +112,24 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     return { load_id: a.load_id as string, order_id: a.order_id as string, truck_id: a.truck_id as string, driver_id: a.driver_id as string, starts_at: a.starts_at as string, ends_at: a.ends_at as string, load_date: l?.load_date ?? "", site: site(l?.orders ?? null) };
   });
 
+  // Dispatch bases (two or more): each load carries its order's base, each truck and driver its own.
+  const bases = await dispatchBaseContext([...new Set(smartLoads.map((l) => l.order_id))]);
+  if (bases) {
+    for (const l of smartLoads) l.base_id = bases.order.get(l.order_id) ?? null;
+  }
+
   return {
     today,
+    bases: bases ? { crossBase: bases.crossBase, names: bases.names } : undefined,
     loads: smartLoads,
     bookings,
     trucks: ((trucks.data ?? []) as Array<SmartTruck & { weight_capacity: number | string | null; volume_capacity: number | string | null }>).map((t) => ({
       ...t,
       weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),
       volume_capacity: t.volume_capacity === null ? null : Number(t.volume_capacity),
+      base_id: bases?.truck.get(t.id) ?? null,
     })),
-    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [], primary_truck_id: primaryOf.get(d.id) ?? null })),
+    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [], primary_truck_id: primaryOf.get(d.id) ?? null, base_id: bases?.driver.get(d.id) ?? null })),
     truckReports: ((reports.data ?? []) as Array<{ truck_id: string | null; kind: string }>).filter((r) => r.truck_id).map((r) => ({ truck_id: r.truck_id as string, kind: r.kind })),
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
     shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),

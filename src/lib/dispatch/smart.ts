@@ -18,6 +18,8 @@
 //   recorded for trucks), using the truck's capacity well, spreading loads
 //   across drivers, and avoiding equipment with an open equipment-issue report
 //   or unknown/unverified capacity (warnings).
+// Dispatch bases (multi-location): a truck or driver at another base than the load's order is excluded unless the
+// company allows cross-base dispatch; then it is proposed with a warning and ranked after same-base resources.
 // Loads are handled most urgent first (open urgent flag, customer's requested
 // date passed, earliest load), and a truck or driver proposed for a more urgent
 // load is not proposed again for an overlapping one.
@@ -27,6 +29,8 @@ import { driverChecks, eligibilityMessage, type EligibilityQualification } from 
 
 export interface SmartLoad {
   id: string;
+  /** The order's dispatch base (undefined/null before bases or when unset). */
+  base_id?: string | null;
   order_id: string;
   order_number: string;
   customer_name: string | null;
@@ -55,6 +59,7 @@ export interface SmartBooking {
 
 export interface SmartTruck {
   id: string;
+  base_id?: string | null;
   unit_number: string;
   truck_type: string;
   active: boolean;
@@ -68,6 +73,7 @@ export interface SmartTruck {
 
 export interface SmartDriver {
   id: string;
+  base_id?: string | null;
   name: string;
   active: boolean;
   qualifications: EligibilityQualification[];
@@ -111,6 +117,18 @@ export interface SmartInput {
    * is excluded with "choose a trailer on the board", as before.
    */
   pickTrailer?: (truck: SmartTruck, load: SmartLoad, driver: SmartDriver | null, busy: string[]) => { id: string; unit_number: string } | null;
+  /** Dispatch bases, when the company has more than one: names by id and whether cross-base dispatch is allowed. */
+  bases?: { crossBase: boolean; names: Record<string, string> };
+}
+
+/** Base rule for one truck or driver on a load: a block (cross-base off), a warning (allowed), or nothing. */
+export function baseCheck(resourceBase: string | null | undefined, l: SmartLoad, input: Pick<SmartInput, "bases">): { block?: string; warn?: string } {
+  if (!input.bases || !resourceBase || !l.base_id || resourceBase === l.base_id) return {};
+  const theirs = input.bases.names[resourceBase] ?? "another base";
+  const load = input.bases.names[l.base_id] ?? "the order's base";
+  return input.bases.crossBase
+    ? { warn: `From ${theirs}; this load is dispatched from ${load}.` }
+    : { block: `Based at ${theirs}; this load is dispatched from ${load}, and cross-base dispatch is off.` };
 }
 
 export interface SmartDocumentIssue {
@@ -315,6 +333,8 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   if (visit) out.push(`In the shop on this date (${visit.number}).`);
   const safety = (ix.reportsByTruck.get(t.id) ?? NONE).filter((r) => r.kind === "breakdown" || r.kind === "inspection_issue");
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
+  const base = baseCheck(t.base_id, l, input).block;
+  if (base) out.push(base);
   const tractor = t.truck_type === "tractor";
   if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
   else if (tractor && !input.pickTrailer!(t, l, null, taken.busy)) out.push("No usable trailer is free at this time (compatible, in service, not booked, enough combined capacity).");
@@ -337,6 +357,8 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, taken: Overlaps, input: 
   const ix = indexOf(input);
   const checks = checksOn(d, l.load_date, input);
   const blockers = checks.blockers.map(eligibilityMessage);
+  const base = baseCheck(d.base_id, l, input);
+  if (base.block) blockers.push(base.block);
   const leave = (ix.timeOffByDriver.get(d.id) ?? NONE).filter((t) => overlaps(t, l));
   if (leave.some((t) => t.status === "approved")) blockers.push("Approved time off covers this load's time.");
   const pendingLeave = leave.some((t) => t.status === "pending");
@@ -344,6 +366,7 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, taken: Overlaps, input: 
   const r = taken.driver.get(d.id);
   if (r) blockers.push(`Proposed for ${r.load.order_number} load ${r.load.load_number}, which is more urgent or earlier.`);
   const warnings = checks.warnings.map(eligibilityMessage);
+  if (base.warn) warnings.push(base.warn);
   if (pendingLeave) warnings.push("Has a pending time-off request for this time — confirm before relying on them.");
   if (ix.onLeave.has(d.id)) warnings.push("Their employee record says On leave — confirm they are working that day.");
   return { blockers, warnings };
@@ -362,6 +385,11 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
   const reasons: string[] = [];
   const warnings: string[] = [];
   const sameDay = dayWork.filter((w) => w.truck_id === t.id && w.load_date === l.load_date);
+  const other = baseCheck(t.base_id, l, input).warn;
+  if (other) {
+    score -= 25; // same-base trucks first
+    warnings.push(other);
+  }
   if (sameDay.some((w) => w.order_id === l.order_id)) {
     score += 30;
     reasons.push("Already working this job that day (no extra trip to a new site).");
@@ -401,8 +429,8 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
   return { id: t.id, label: t.unit_number, score, reasons, warnings };
 }
 
-function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; load_date: string }>): Scored {
-  let score = 0;
+function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; load_date: string }>, input: Pick<SmartInput, "bases"> = {}): Scored {
+  let score = baseCheck(d.base_id, l, input).warn ? -25 : 0; // same-base drivers first
   const reasons: string[] = [];
   const sameDay = dayWork.filter((w) => w.driver_id === d.id && w.load_date === l.load_date);
   if (sameDay.some((w) => w.order_id === l.order_id)) {
@@ -449,7 +477,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
     for (const d of input.drivers) {
       const x = driverExclusions(d, load, taken, input);
       if (x.blockers.length) excludedDrivers.push({ id: d.id, label: d.name, reasons: x.blockers });
-      else okDrivers.push(scoreDriver(d, load, x.warnings, workByDriver.get(d.id) ?? NONE));
+      else okDrivers.push(scoreDriver(d, load, x.warnings, workByDriver.get(d.id) ?? NONE, input));
     }
     okTrucks.sort(byScore);
     okDrivers.sort(byScore);

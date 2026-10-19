@@ -86,3 +86,29 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 /** A ?base= filter value, only if it is a well-formed id (RLS still decides what the person can see). */
 export const parseBaseFilter = (v: string | undefined) => (v && UUID.test(v) ? v : null);
 
+
+/**
+ * What Smart Dispatch needs to respect bases: base names, the cross-base setting, and the base of each truck, driver
+ * and order. Null when the company has fewer than two active bases or the bases update is not installed — then
+ * dispatch works exactly as before.
+ */
+export async function dispatchBaseContext(orderIds: string[]): Promise<{ crossBase: boolean; names: Record<string, string>; truck: Map<string, string>; driver: Map<string, string>; order: Map<string, string> } | null> {
+  const bases = await activeBases();
+  if (bases.length < 2) return null;
+  const supabase = await createClient();
+  const [settings, trucks, drivers, orders] = await Promise.all([
+    supabase.from("company_settings").select("cross_base_dispatch").maybeSingle(),
+    supabase.from("trucks").select("id, base_id").eq("active", true),
+    supabase.from("drivers").select("id, base_id").eq("active", true),
+    orderIds.length ? supabase.from("orders").select("id, base_id").in("id", orderIds.slice(0, 300)) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (trucks.error || drivers.error || orders.error) return null;
+  const map = (rows: unknown) => new Map(((rows ?? []) as Array<{ id: string; base_id: string | null }>).filter((r) => r.base_id).map((r) => [r.id, r.base_id as string]));
+  return {
+    crossBase: Boolean((settings.data as { cross_base_dispatch?: boolean } | null)?.cross_base_dispatch),
+    names: Object.fromEntries((await listBases() ?? []).map((b) => [b.id, b.name])),
+    truck: map(trucks.data),
+    driver: map(drivers.data),
+    order: map(orders.data),
+  };
+}

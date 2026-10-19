@@ -101,6 +101,20 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
     await page.goto(`/orders?base=${northId}`);
     await expect(page.getByRole("link", { name: `BO-${code}` })).toBeVisible();
 
+    // Reports: a per-base section whose rows add up to the "All bases" row.
+    await page.goto("/reports");
+    await expect(page.getByRole("table", { name: "Dispatch base report" })).toContainText("All bases");
+
+    // Cross-base dispatch: off by default, switched on and off again.
+    await page.goto("/settings?tab=bases");
+    await expect(page.getByText(/Off: Smart Dispatch proposes only/)).toBeVisible();
+    await page.getByLabel("Allow trucks and drivers from other bases").check();
+    await page.getByRole("region", { name: "Cross-Base Dispatch" }).getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText(/Cross-base dispatch is on/).first()).toBeVisible();
+    await page.getByLabel("Allow trucks and drivers from other bases").uncheck();
+    await page.getByRole("region", { name: "Cross-Base Dispatch" }).getByRole("button", { name: "Save" }).click();
+    await expect(page.getByText(/Cross-base dispatch is off/).first()).toBeVisible();
+
     await page.goto("/settings?tab=bases");
     // (This company may have nobody but its owner: then the page says how to add people instead of an empty table.)
     const access = page.getByRole("table", { name: "Base access" });

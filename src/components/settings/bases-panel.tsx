@@ -5,7 +5,7 @@ import { Field, Input, Select } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { ROLE_LABELS, type AppRole } from "@/lib/permissions";
-import { createBase, makeDefaultBase, setBaseActive, setPersonBases, updateBase } from "@/app/(app)/settings/bases-actions";
+import { createBase, makeDefaultBase, setBaseActive, setCrossBaseDispatch, setPersonBases, updateBase } from "@/app/(app)/settings/bases-actions";
 import { BASE_TIMEZONES, type BaseSummary, type DispatchBase } from "@/server/data/bases";
 
 type Person = { id: string; full_name: string; email: string; role: AppRole | null; active: boolean };
@@ -22,6 +22,7 @@ export function BasesPanel({
   access,
   canEdit,
   canManagePeople,
+  crossBase,
 }: {
   bases: DispatchBase[];
   summary: BaseSummary[];
@@ -30,6 +31,8 @@ export function BasesPanel({
   access: Map<string, string[]> | null;
   canEdit: boolean;
   canManagePeople: boolean;
+  /** Smart Dispatch may propose trucks and drivers from another base (null = setting not installed). */
+  crossBase: boolean | null;
 }) {
   const counts = new Map(summary.map((s) => [s.id, s]));
   const atLimit = allowance?.limit != null && allowance.active >= allowance.limit;
@@ -130,6 +133,26 @@ export function BasesPanel({
               </form>
             </details>
           )
+        ) : null}
+
+        {active.length > 1 && crossBase !== null ? (
+          <section aria-labelledby="cross-base-heading" className="space-y-2 border-t border-line pt-6">
+            <h3 id="cross-base-heading" className="text-base font-semibold">Cross-Base Dispatch</h3>
+            <p className="text-sm text-muted">
+              {crossBase
+                ? "On: Smart Dispatch may propose a truck or driver from another base, marked with a warning and ranked after the order's own base."
+                : "Off: Smart Dispatch proposes only trucks and drivers at the order's base, and says why others were left out."}
+            </p>
+            {canEdit ? (
+              <form action={setCrossBaseDispatch} className="flex flex-wrap items-center gap-3">
+                <label className="flex min-h-9 items-center gap-2 text-sm">
+                  <input type="checkbox" name="cross_base" defaultChecked={crossBase} className="size-4 accent-brand" />
+                  Allow trucks and drivers from other bases
+                </label>
+                <Button type="submit" variant="secondary" size="sm">Save</Button>
+              </form>
+            ) : null}
+          </section>
         ) : null}
 
         {canManagePeople && active.length > 1 && access && !people.some((p) => p.active && p.role && p.role !== "owner") ? (

@@ -140,4 +140,25 @@ describe("dispatch bases", () => {
       expect(Number((await s.query<{ n: string }>("select count(*) n from public.audit_events where action = 'bases.person_access_changed' and entity_id = $1", [dispatcher])).rows[0].n)).toBe(2);
     });
   });
+
+  it("the per-base summary adds up to the company totals (nothing counted twice)", async () => {
+    await withSession(async (s) => {
+      const c = await company(s);
+      await s.asAdmin();
+      const v = (await s.query<{ id: string }>("select id from private.platform_plan_versions where plan_key = 'growth' order by version desc limit 1")).rows[0].id;
+      await s.query("insert into private.company_lifecycle (company_id, plan_version_id) values ($1, $2)", [c, v]);
+      const owner = await s.createUser("owner", { companyId: c });
+      await s.as(owner);
+      const north = (await addBase(s, "NORTH")).rows[0].id as string;
+      await s.query("insert into public.trucks (unit_number, truck_type) values ('A-1', 'tri_axle_dump'), ('A-2', 'tri_axle_dump')");
+      await s.query("insert into public.trucks (unit_number, truck_type, base_id) values ('B-1', 'tri_axle_dump', $1)", [north]);
+      await s.query("insert into public.drivers (name, base_id) values ('One', $1), ('Two', null)", [north]);
+      const rows = (await s.query<{ s: Array<{ trucks: number; drivers: number }> }>("select public.dispatch_base_summary(current_date - 30, current_date) s")).rows[0].s;
+      const sum = (k: "trucks" | "drivers") => rows.reduce((t, r) => t + Number(r[k]), 0);
+      const totals = (await s.query<{ t: string; d: string }>("select (select count(*) from public.trucks where active) t, (select count(*) from public.drivers where active) d")).rows[0];
+      expect(rows).toHaveLength(2);
+      expect(sum("trucks")).toBe(Number(totals.t));
+      expect(sum("drivers")).toBe(Number(totals.d)); // the driver without a base got the default base
+    });
+  });
 });
