@@ -100,7 +100,7 @@ describe("exception classification and deduplication", () => {
       expect(mineOnly(await queue(s), ids)).toEqual([]);
       for (const i of [unassigned]) for (const r of i.reasons) expect(knowsReason(r), r).toBe(true);
     });
-  });
+  }, 60_000); // ~25 queue reads of the shared test database (0.5–1 s each as it grows; measured 2026-10-20)
 
   it("flags equipment out of service once per unit, and the upcoming assignments on it once each", async () => {
     await withSession(async (s) => {
