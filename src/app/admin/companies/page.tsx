@@ -1,10 +1,10 @@
-import { SETUP_STATUS_LABELS, TERMS, setupStatus, type SetupStatus } from "@/lib/terminology";
+import { COMPANY_CLASS_LABELS, SETUP_STATUS_LABELS, TERMS, setupStatus, type CompanyClass, type SetupStatus } from "@/lib/terminology";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Input, Select } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState, ErrorState } from "@/components/ui/states";
+import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import { createClient } from "@/server/supabase/server";
@@ -24,9 +24,12 @@ interface DirectoryRow {
   owner_login: boolean;
   imports_in_review: number;
   missing: string[];
+  /** 20261120000500; absent before that update (every company is then a production customer). */
+  classification?: CompanyClass;
+  archived_at?: string | null;
 }
 
-type Search = { q?: string; status?: string; setup?: string; sort?: string };
+type Search = { q?: string; status?: string; setup?: string; sort?: string; type?: string; archived?: string; deleted?: string };
 
 /** Every customer company (demo companies are in Demo Management), with its setup gaps. No business records are shown. */
 export default async function CompaniesPage({ searchParams }: { searchParams: Promise<Search> }) {
@@ -37,6 +40,8 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const setup: SetupStatus | "open" | "" = sp.setup === "open" ? "open" : ((Object.keys(SETUP_STATUS_LABELS) as SetupStatus[]).find((k) => k === sp.setup) ?? "");
   const statusOf = (c: DirectoryRow) => setupStatus(c.missing, SETUP_CHECKS, c.imports_in_review);
   const sort = sp.sort === "name" ? "name" : "newest";
+  const type = sp.type === "production" || sp.type === "practice" ? sp.type : "";
+  const archived = sp.archived === "include" || sp.archived === "only" ? sp.archived : "";
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("platform_company_directory");
   const all = (data ?? []) as DirectoryRow[];
@@ -44,6 +49,9 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
     .filter((c) => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
     .filter((c) => !status || (status === "active") === c.active)
     .filter((c) => !setup || (setup === "open" ? statusOf(c) !== "complete" : statusOf(c) === setup))
+    // Archived companies are hidden unless asked for; Type narrows to production or practice companies.
+    .filter((c) => (archived === "only" ? Boolean(c.archived_at) : archived === "include" ? true : !c.archived_at))
+    .filter((c) => !type || (c.classification ?? "production") === type)
     .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.created_at.localeCompare(a.created_at)));
   return (
     <>
@@ -53,6 +61,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies" }]}
         actions={<Link href="/admin/onboarding" className="text-sm font-semibold text-brand-fg hover:underline">{TERMS.startOnboarding}</Link>}
       />
+      {sp.deleted ? <div className="mb-4"><Notice title="Company permanently deleted">{Number(sp.deleted) || 0} records were removed. The deletion and its counts are kept in the platform audit.</Notice></div> : null}
       <form className="mb-4 flex flex-wrap items-end gap-2" role="search" aria-label="Filter companies">
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Search</span><Input name="q" defaultValue={sp.q ?? ""} placeholder="Name" className="w-56" /></label>
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Status</span>
@@ -60,6 +69,12 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
         </label>
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Setup</span>
           <Select name="setup" defaultValue={setup}><option value="">All</option><option value="open">Not Yet Complete</option>{(Object.entries(SETUP_STATUS_LABELS) as [SetupStatus, string][]).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Type</span>
+          <Select name="type" defaultValue={type}><option value="">All</option>{(Object.entries(COMPANY_CLASS_LABELS) as Array<[CompanyClass, string]>).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
+        </label>
+        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Archived</span>
+          <Select name="archived" defaultValue={archived}><option value="">Hidden</option><option value="include">Shown</option><option value="only">Only archived</option></Select>
         </label>
         <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Sort</span>
           <Select name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="name">Name</option></Select>
@@ -92,7 +107,8 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                 <Tr key={c.id}>
                   <Td>
                     <Link href={`/admin/companies/${c.id}`} className="font-semibold hover:underline">{c.name}</Link>
-                    {!c.active ? <Badge className="ml-2">Inactive</Badge> : null}
+                    {c.archived_at ? <Badge className="ml-2">Archived</Badge> : !c.active ? <Badge className="ml-2">Inactive</Badge> : null}
+                    {c.classification === "practice" ? <Badge tone="blue" className="ml-2">{COMPANY_CLASS_LABELS.practice}</Badge> : null}
                     {c.imports_in_review > 0 ? <Badge tone="amber" className="ml-2">{c.imports_in_review} import{c.imports_in_review === 1 ? "" : "s"} to review</Badge> : null}
                   </Td>
                   <Td><SetupBadge status={statusOf(c)} detail={c.missing.length ? `Missing ${c.missing.join(", ")}` : ""} /></Td>

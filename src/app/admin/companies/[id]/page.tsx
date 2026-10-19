@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { CompanyLifecycleControls, type DeletePreview } from "@/components/admin/company-lifecycle-controls";
 import { notFound } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -38,7 +39,13 @@ const IMPORT_STATUS: Record<string, string> = { review: "Waiting for review", ap
  * One customer company for the platform team: setup progress, who can sign in, imports and the platform actions taken
  * on it. Operational records (orders, tickets, money) are not shown here — they belong to the company.
  */
-export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
+const SAVED: Record<string, string> = {
+  classified: "Classification saved.",
+  archived: "Company archived. Its people cannot open it until it is restored.",
+  restored: "Company restored.",
+};
+
+export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -49,6 +56,9 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const c = data as CompanyDetail;
   // Subscription lifecycle (20261118000300); before that update is installed the card says so.
   const [life, plans] = c.is_demo ? [null, null] : await Promise.all([supabase.rpc("platform_lifecycle", { p_company: id }), supabase.rpc("platform_plans")]);
+  // Classification, archive and delete (20261120000500); not shown before that update or for demo companies.
+  const pv = c.is_demo ? null : await supabase.rpc("platform_company_delete_preview", { p_company: id });
+  const preview = pv && !pv.error ? (pv.data as DeletePreview) : null;
   const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
   const steps = [
     { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
@@ -64,7 +74,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: c.name }]}
         actions={<Link href={`/admin/onboarding/${c.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Imports for this company</Link>}
       />
-      <FlashToast messages={{ saved: { text: "Saved." } }} />
+      <FlashToast messages={{ saved: { text: SAVED[sp.saved ?? ""] ?? "Saved." } }} />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
@@ -133,6 +143,12 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
           </TableWrap>
         )}
       </Card>
+
+      {preview ? (
+        <Card className="mt-5">
+          <CompanyLifecycleControls company={{ id: c.id, name: c.name, classification: preview.classification, archived_at: preview.archived_at, archive_reason: preview.archive_reason, is_demo: c.is_demo }} preview={preview} />
+        </Card>
+      ) : null}
 
       <Card className="mt-5">
         <CardHeader title="Platform actions on this company" description="From the append-only platform audit." />

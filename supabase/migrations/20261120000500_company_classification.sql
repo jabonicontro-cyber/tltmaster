@@ -177,10 +177,11 @@ begin
   if not found then
     raise exception 'Company not found.' using errcode = 'P0002';
   end if;
-  if v.is_demo then v_blockers := v_blockers || 'It is a demo company (retire demos in Demo Management).'; end if;
-  if v.classification <> 'practice' then v_blockers := v_blockers || 'It is not classified as Practice / test.'; end if;
-  if v.archived_at is null then v_blockers := v_blockers || 'Archive it first.'; end if;
-  return jsonb_build_object('name', v.name, 'eligible', cardinality(v_blockers) = 0, 'blockers', to_jsonb(v_blockers),
+  if v.is_demo then v_blockers := array_append(v_blockers, 'It is a demo company (retire demos in Demo Management).'); end if;
+  if v.classification <> 'practice' then v_blockers := array_append(v_blockers, 'It is not classified as Practice / test.'); end if;
+  if v.archived_at is null then v_blockers := array_append(v_blockers, 'Archive it first.'); end if;
+  return jsonb_build_object('name', v.name, 'classification', v.classification, 'archived_at', v.archived_at, 'archive_reason', v.archive_reason,
+    'eligible', cardinality(v_blockers) = 0, 'blockers', to_jsonb(v_blockers),
     'counts', private.company_record_counts(p_company),
     'members', (select count(*) from public.company_memberships m where m.company_id = p_company));
 end;

@@ -27,7 +27,7 @@ describe("help center storage", () => {
       await s.query("insert into public.help_support_requests (page, message) values ('/customers', 'How do I export only prospects?')");
       expect((await s.query("select helpful from public.help_feedback")).rows).toEqual([{ helpful: true }]);
       expect((await s.query("select 1 from public.help_support_requests")).rowCount).toBe(1);
-      expect((await pgError(s.query("select * from public.help_searches"))).code).toBe("42501");
+      expect((await s.query("select * from public.help_searches")).rowCount).toBe(0); // write-only: no select policy
       // Status cannot be set by the person, and a message must say something.
       expect((await pgError(s.query("insert into public.help_support_requests (message, status) values ('Please close this one', 'closed')"))).code).toBe("42501");
       expect((await pgError(s.query("insert into public.help_support_requests (message) values ('short')"))).code).toBe("23514");

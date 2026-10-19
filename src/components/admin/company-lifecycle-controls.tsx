@@ -6,7 +6,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { archiveCompany, classifyCompany, deleteCompany, restoreCompany } from "@/app/admin/companies/lifecycle-actions";
 import { COMPANY_CLASS_LABELS, type CompanyClass } from "@/lib/terminology";
 
-export type DeletePreview = { name: string; eligible: boolean; blockers: string[]; counts: Record<string, number>; members: number };
+export type DeletePreview = { name: string; classification: CompanyClass; archived_at: string | null; archive_reason: string; eligible: boolean; blockers: string[]; counts: Record<string, number>; members: number };
 
 /**
  * Company page → Classification and Archive (B67). Classification is a person's decision (never inferred from a name

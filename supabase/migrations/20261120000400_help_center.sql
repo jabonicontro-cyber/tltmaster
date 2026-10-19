@@ -38,7 +38,8 @@ alter table public.help_searches enable row level security;
 create policy help_searches_insert on public.help_searches for insert to authenticated
   with check (company_id = (select private.current_company_id()));
 revoke all on public.help_searches from anon, authenticated;
-grant insert on public.help_searches to authenticated;
+-- Readable by nobody: there is no select policy (the grant only lets tenancy checks count zero rows).
+grant select, insert on public.help_searches to authenticated;
 
 create table public.help_support_requests (
   id          uuid primary key default gen_random_uuid(),
