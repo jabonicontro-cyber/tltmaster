@@ -8,7 +8,7 @@ afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
 const TENANT_TABLES = [
-  "dispatch_bases", "customer_activities", "crm_opportunities", "crm_opportunity_events", "customer_tasks",
+  "dispatch_bases", "base_members", "customer_activities", "crm_opportunities", "crm_opportunity_events", "customer_tasks",
   "comm_settings", "conversations", "conversation_members", "messages", "message_revisions", "conversation_events",
   "user_presence", "comm_preferences", "comm_notifications", "announcements", "announcement_revisions", "announcement_receipts",
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
@@ -81,7 +81,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
-  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
+  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

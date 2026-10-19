@@ -89,4 +89,55 @@ describe("dispatch bases", () => {
       expect(rows.reduce((n, b) => n + b.trucks, 0)).toBe(total);
     });
   });
+
+  it("a person limited to one base sees and changes only that base's trucks, drivers and orders; owners see all", async () => {
+    await withSession(async (s) => {
+      const c = await company(s);
+      await s.asAdmin();
+      const v = (await s.query<{ id: string }>("select id from private.platform_plan_versions where plan_key = 'growth' order by version desc limit 1")).rows[0].id;
+      await s.query("insert into private.company_lifecycle (company_id, plan_version_id) values ($1, $2)", [c, v]);
+      // This company lets dispatchers edit the fleet, so the base rule (not the edit permission) is what stops a move.
+      await s.query("insert into public.role_permissions (company_id, role, permission) values ($1, 'dispatcher', 'fleet.edit') on conflict do nothing", [c]);
+      const owner = await s.createUser("owner", { companyId: c });
+      const dispatcher = await s.createUser("dispatcher", { companyId: c });
+      const office = await s.createUser("office", { companyId: c });
+      await s.as(owner);
+      const main = (await s.query<{ id: string }>("select id from public.dispatch_bases where is_default")).rows[0].id;
+      const north = (await addBase(s, "NORTH")).rows[0].id as string;
+      await s.query("insert into public.trucks (unit_number, truck_type, base_id) values ('M-1', 'tri_axle_dump', $1), ('N-1', 'tri_axle_dump', $2)", [main, north]);
+      await s.query("insert into public.drivers (name, base_id) values ('Main Driver', $1), ('North Driver', $2)", [main, north]);
+
+      // Only users.manage sets access; a base of another company is refused.
+      await s.as(office);
+      expect((await pgError(s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, [north]]))).code).toBe("42501");
+      await s.as(owner);
+      expect((await pgError(s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, [randomUUID()]]))).code).toBe("22023");
+      await s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, [north]]);
+
+      await s.as(dispatcher);
+      expect((await s.query<{ unit_number: string }>("select unit_number from public.trucks order by 1")).rows.map((r) => r.unit_number)).toEqual(["N-1"]);
+      expect((await s.query<{ name: string }>("select name from public.drivers order by 1")).rows.map((r) => r.name)).toEqual(["North Driver"]);
+      // Cannot move a record to, or create one at, a base outside their access.
+      expect((await pgError(s.query("update public.trucks set base_id = $1 where unit_number = 'N-1'", [main]))).code).toBe("42501");
+      // Orders change base only through set_order_base, which keeps a limited person inside their bases.
+      await s.as(owner);
+      const cust = (await s.query<{ id: string }>("insert into public.customers (name) values ('Base Customer') returning id")).rows[0].id;
+      await s.asAdmin();
+      const order = (await s.query<{ id: string }>("insert into public.orders (company_id, customer_id, order_number, order_date, base_id) values ($1, $2, 'BASE-1', current_date, $3) returning id", [c, cust, north])).rows[0].id;
+      await s.as(dispatcher);
+      expect((await pgError(s.query("select public.set_order_base($1, $2)", [order, main]))).code).toBe("42501");
+      await s.as(owner);
+      await s.query("select public.set_order_base($1, $2)", [order, main]);
+      await s.as(dispatcher);
+      expect((await s.query("select 1 from public.orders where id = $1", [order])).rowCount).toBe(0);
+      // Everyone else still sees every base; clearing the list restores every base.
+      await s.as(owner);
+      expect((await s.query("select 1 from public.trucks")).rowCount).toBe(2);
+      await s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, []]);
+      await s.as(dispatcher);
+      expect((await s.query("select 1 from public.trucks")).rowCount).toBe(2);
+      await s.asAdmin();
+      expect(Number((await s.query<{ n: string }>("select count(*) n from public.audit_events where action = 'bases.person_access_changed' and entity_id = $1", [dispatcher])).rows[0].n)).toBe(2);
+    });
+  });
 });
