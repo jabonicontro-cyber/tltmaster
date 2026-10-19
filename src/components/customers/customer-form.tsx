@@ -67,7 +67,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
         <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Customer</legend>
         <Field label="Customer name" htmlFor="name" required error={fieldError("name")} className="sm:col-span-4">
-          <Input {...f("name")} defaultValue={initial.name} required maxLength={160} autoFocus={!compact} />
+          <Input {...f("name")} defaultValue={initial.name} required maxLength={160} autoFocus={!compact} data-guide="customer-name" />
         </Field>
         <Field label="Type" htmlFor="customer_type" error={fieldError("customer_type")} className="sm:col-span-2">
           <Select {...f("customer_type")} defaultValue={initial.customer_type}>
@@ -174,7 +174,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
             Cancel
           </Button>
         )}
-        <Button type="submit" loading={pending}>
+        <Button type="submit" loading={pending} data-guide="customer-create">
           {pending ? "Saving…" : submitLabel}
         </Button>
       </div>

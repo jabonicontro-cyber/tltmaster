@@ -14,6 +14,9 @@ const TENANT_TABLES = [
   "operation_workspaces", "comm_housekeeping_runs", "message_attachments",
   "comm_alert_settings", "alerts", "alert_recipients", "alert_acknowledgments", "alert_events",
   "ai_usage_events",
+  "help_feedback",
+  "help_searches",
+  "help_support_requests",
   "payroll_settings", "pay_rules", "pay_rule_versions", "payroll_periods", "payroll_entries", "payroll_adjustments", "payroll_exports",
   "employees", "employee_compensation", "employee_work_schedules",
   "time_off_requests", "time_off_events", "time_off_approval_steps", "pto_banks", "pto_ledger", "pto_policies", "pto_hours_worked",
@@ -81,7 +84,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
-  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "public.dispatch_base_allowance", "public.platform_demo_set_plan", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
+  "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "public.dispatch_base_allowance", "public.platform_demo_set_plan", "public.platform_help_overview", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",
   "private.comm_document_alerts", "private.comm_escalate_due", "private.comm_operation_can_archive",
   "private.comm_raise_alert", "private.comm_resolve_alert",

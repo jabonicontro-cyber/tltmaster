@@ -62,22 +62,32 @@ export function GuidePlayer() {
   const step = guide ? guide.steps[index] : undefined;
   const here = step ? routeScore(step.route, path) >= 0 : false;
 
-  // Highlight the step's control (its stable data-guide anchor), scrolled into view; removed when the step changes.
+  // Highlight the step's control (its stable data-guide anchor) and scroll it into view once. Pages stream in and
+  // re-render, which can replace the element, so the mark is re-applied while the step is showing; removed after.
   useEffect(() => {
     if (!step?.anchor || !here) return;
     const key = `${progress?.id}:${index}:${path}`;
-    let el: Element | null = null;
-    const t = window.setTimeout(() => {
-      el = document.querySelector(`[data-guide="${CSS.escape(step.anchor!)}"]`);
-      setLookup({ key, found: Boolean(el) });
-      if (el) {
-        el.setAttribute("data-guide-active", "true");
+    const selector = `[data-guide="${CSS.escape(step.anchor)}"]`;
+    let scrolled = false;
+    let last: boolean | null = null;
+    const mark = () => {
+      const el = document.querySelector(selector);
+      if (el && el.getAttribute("data-guide-active") !== "true") el.setAttribute("data-guide-active", "true");
+      if (el && !scrolled) {
+        scrolled = true;
         el.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
       }
-    }, 150);
+      if (Boolean(el) !== last) {
+        last = Boolean(el);
+        setLookup({ key, found: last });
+      }
+    };
+    const t = window.setTimeout(mark, 150);
+    const i = window.setInterval(mark, 500);
     return () => {
       window.clearTimeout(t);
-      el?.removeAttribute("data-guide-active");
+      window.clearInterval(i);
+      document.querySelectorAll('[data-guide-active="true"]').forEach((e) => e.removeAttribute("data-guide-active"));
     };
   }, [step, here, path, progress?.id, index]);
   const found = step?.anchor && here && lookup?.key === `${progress?.id}:${index}:${path}` ? lookup.found : null;

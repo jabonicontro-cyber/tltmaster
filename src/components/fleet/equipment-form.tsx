@@ -48,7 +48,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
         <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">{kind === "truck" ? "Truck" : "Trailer"}</legend>
         <Field label="Unit number" htmlFor="unit_number" required error={fieldError("unit_number")} className="sm:col-span-2" hint="As painted on the equipment">
-          <Input {...f("unit_number")} defaultValue={initial.unit_number} maxLength={20} required autoFocus />
+          <Input {...f("unit_number")} defaultValue={initial.unit_number} maxLength={20} required autoFocus data-guide={kind === "truck" ? "truck-unit" : undefined} />
         </Field>
         <Field label="Type" htmlFor={typeName} required error={fieldError(typeName)} className="sm:col-span-4">
           <Select {...f(typeName)} defaultValue={initial.type}>

@@ -47,7 +47,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
             {crm && <ButtonLink href="/customers/pipeline" variant="secondary">Pipeline</ButtonLink>}
             <ButtonLink href={`/customers/export${exportParams.size ? `?${exportParams}` : ""}`} variant="secondary">Export CSV</ButtonLink>
             {can(access, "customers.edit") && (
-              <ButtonLink href="/customers/new" icon={<Plus className="size-4" />}>
+              <ButtonLink href="/customers/new" icon={<Plus className="size-4" />} data-guide="customers-new">
                 New customer
               </ButtonLink>
             )}

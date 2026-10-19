@@ -23,6 +23,7 @@ alter table public.help_feedback enable row level security;
 create policy help_feedback_own on public.help_feedback for all to authenticated
   using (company_id = (select private.current_company_id()) and user_id = (select auth.uid()))
   with check (company_id = (select private.current_company_id()) and user_id = (select auth.uid()));
+revoke all on public.help_feedback from anon, authenticated;
 grant select, insert, update on public.help_feedback to authenticated;
 
 create table public.help_searches (
@@ -36,6 +37,7 @@ create index help_searches_recent on public.help_searches (created_at desc);
 alter table public.help_searches enable row level security;
 create policy help_searches_insert on public.help_searches for insert to authenticated
   with check (company_id = (select private.current_company_id()));
+revoke all on public.help_searches from anon, authenticated;
 grant insert on public.help_searches to authenticated;
 
 create table public.help_support_requests (
@@ -53,6 +55,7 @@ create policy help_support_own_read on public.help_support_requests for select t
   using (company_id = (select private.current_company_id()) and user_id = (select auth.uid()));
 create policy help_support_insert on public.help_support_requests for insert to authenticated
   with check (company_id = (select private.current_company_id()) and user_id = (select auth.uid()) and status = 'new');
+revoke all on public.help_support_requests from anon, authenticated;
 grant select, insert on public.help_support_requests to authenticated;
 
 -- Platform team: totals for the last 90 days and the latest support requests (with the company name and the page).

@@ -26,7 +26,7 @@ export default async function TrucksPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Fleet"
         description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work."
-        actions={canEdit && <ButtonLink href="/fleet/trucks/new" icon={<Plus className="size-4" />}>Add truck</ButtonLink>}
+        actions={canEdit && <ButtonLink href="/fleet/trucks/new" icon={<Plus className="size-4" />} data-guide="trucks-add">Add truck</ButtonLink>}
       />
       <FleetNav active="Trucks" />
       <EquipmentList kind="truck" rows={rows} filters={sp} canEdit={canEdit} bases={bases} extras={extras} sources={{ maintenance: ctx.maintenance.available, documents: ctx.documents.available }} typeOptions={TRUCK_TYPES.map((t) => ({ value: t, label: TRUCK_TYPE_LABELS[t] }))} />

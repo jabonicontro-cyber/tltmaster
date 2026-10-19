@@ -395,3 +395,10 @@
     transform: none;
   }
 }
+
+/* Guided how-tos (B65): the control a guide step points at. Outline only — nothing moves or changes size. */
+[data-guide-active="true"] {
+  outline: 3px solid var(--color-action, #0f6fd6);
+  outline-offset: 3px;
+  border-radius: 6px;
+}

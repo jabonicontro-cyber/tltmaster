@@ -387,6 +387,22 @@ export const FEATURES: Feature[] = [
     related: ["smart-dispatch", "route-planner"],
     verified: "2026-10-20",
   },
+  {
+    id: "help-center",
+    name: "Help Center and guided how-tos",
+    category: "platform",
+    problem: "New office staff and dispatchers learn the system by asking someone, and the same questions reach support again and again.",
+    how: "A Help button on every page opens the articles for that page; the Help Center searches step-by-step articles written for each role; guided how-tos highlight the next control without doing anything for you; and a support request is reviewed by the person before it is sent.",
+    value: "People answer routine questions themselves, and the team sees which questions Help does not answer yet.",
+    points: ["Help for the page you are on", "Searchable articles by role", "Guided how-tos that never act for you", "Support requests with a review step"],
+    limitations: ["AI answers are not turned on: they need the owner's AI key and passing evaluation evidence", "Support replies are by email or phone outside Taviron for now"],
+    status: "in_development",
+    published: false,
+    routes: ["/help"],
+    screenshots: [],
+    related: ["smart-dispatch"],
+    verified: "2026-10-20",
+  },
 ];
 
 /** Planned or unreleased work, said plainly on the website ("Not yet — and we will say so"). */

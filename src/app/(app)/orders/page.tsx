@@ -61,7 +61,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
       <PageHeader
         title="Orders"
         description="Work the customer has committed to — from accepted quotes or entered directly. Schedule them and track them through delivery."
-        actions={canCreate && <ButtonLink href="/orders/new" icon={<Plus className="size-4" />}>New order</ButtonLink>}
+        actions={canCreate && <ButtonLink href="/orders/new" icon={<Plus className="size-4" />} data-guide="orders-new">New order</ButtonLink>}
       />
       <Card>
         <div className="flex flex-wrap gap-2 border-b border-line px-4 py-3 sm:px-5" aria-label="Quick filters">

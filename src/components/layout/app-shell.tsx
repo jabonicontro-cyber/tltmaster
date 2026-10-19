@@ -16,6 +16,9 @@ import { DemoWelcome } from "./demo-welcome";
 import { ROLE_LABELS, type Access } from "@/lib/permissions";
 import type { MyCompany } from "@/server/data/companies";
 import { brandingStyle } from "@/lib/branding";
+import { HelpPanel } from "@/components/help/help-panel";
+import { GuidePlayer } from "@/components/help/guide-player";
+import { helpPanelData } from "@/server/help";
 
 export interface ShellBranding {
   color: string;
@@ -52,6 +55,8 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
               <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
             </Link>
         </div>
+        <div className="flex items-center gap-1">
+        <HelpPanel {...helpPanelData(access.permissions)} />
         <UserMenu
           name={me?.name || access.fullName}
           email={access.email}
@@ -66,7 +71,9 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
           platformAdmin={platformAdmin}
         />
         </div>
+        </div>
       </header>
+      <GuidePlayer />
 
       <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", driverOnly && "pb-24 md:pb-6")}>
         {children}
