@@ -144,21 +144,24 @@ function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; 
       <div className="flex flex-col items-start gap-2 lg:items-end">
         <OpenControl view={view} demo={demo} companyId={companyId} />
         {!labMissing && impl !== "not_implemented" ? (
-          <form action={recordCheck} className="flex flex-wrap items-end gap-2">
-            <input type="hidden" name="view" value={view.key} />
-            {companyId ? <input type="hidden" name="company" value={companyId} /> : null}
-            <label className="sr-only" htmlFor={`st-${view.key}`}>Result</label>
-            <Select id={`st-${view.key}`} name="status" defaultValue="tested" className="h-9 text-sm">
-              <option value="tested">Tested — works</option>
-              <option value="failing">Failing</option>
-              <option value="needs_config">Needs configuration</option>
-              <option value="blocked">Blocked</option>
-              <option value="clear">Clear the result</option>
-            </Select>
-            <label className="sr-only" htmlFor={`note-${view.key}`}>What you checked</label>
-            <Input id={`note-${view.key}`} name="note" placeholder="What you checked" maxLength={1000} className="h-9 w-48 text-sm" />
-            <SubmitButton size="sm" variant="secondary" pendingLabel="Saving…">Record</SubmitButton>
-          </form>
+          <details className="w-full text-sm lg:w-auto">
+            <summary className="cursor-pointer text-right font-semibold text-brand-fg">Record a result</summary>
+            <form action={recordCheck} className="mt-2 flex flex-wrap items-end gap-2 lg:justify-end">
+              <input type="hidden" name="view" value={view.key} />
+              {companyId ? <input type="hidden" name="company" value={companyId} /> : null}
+              <label className="sr-only" htmlFor={`st-${view.key}`}>Result</label>
+              <Select id={`st-${view.key}`} name="status" defaultValue="tested" className="h-9 w-auto text-sm">
+                <option value="tested">Tested — works</option>
+                <option value="failing">Failing</option>
+                <option value="needs_config">Needs configuration</option>
+                <option value="blocked">Blocked</option>
+                <option value="clear">Clear the result</option>
+              </Select>
+              <label className="sr-only" htmlFor={`note-${view.key}`}>What you checked</label>
+              <Input id={`note-${view.key}`} name="note" placeholder="What you checked" maxLength={1000} className="h-9 w-56 text-sm" />
+              <SubmitButton size="sm" variant="secondary" pendingLabel="Saving…">Record</SubmitButton>
+            </form>
+          </details>
         ) : null}
       </div>
     </li>

@@ -1,11 +1,25 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-19 (round of 2026-10-18). Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-19 (portal / Testing Lab / MFA batch). Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 0000000000. 2026-10-19 — customer portal, Testing Lab, two-step verification; delete switch released to Preview
+
+- **Released to Preview only:** `8238483` (permanent company delete off by default, migration `20261120000600`,
+  runbook §11–§12). Preview deploy 7181493096 success. **Production promotion was refused by the session's permission
+  system**, so Production stays at `5881927`; promoting is the owner's decision. Gates for `8238483`: vitest 788/788,
+  e2e 173 passed + 9 skipped, build, gate spec 8 passed + 1 skipped. Not verified live (sandbox cannot reach the domains).
+- **Built locally (branch `wt/portal-batch` → merged into `claude/ui-and-signin-checkpoint` after gates; see git log):**
+  customer portal (B66, `20261120000700`), Testing Lab (`20261120000800`), MFA (B69, `20261120000900`). Applied to the
+  local database only (backups in /var/lib/tlt-backups). Hosted: nothing applied; runbook §12–§13 lists the expected
+  pending set (17 IDs since `20261114000500`) and the owner's exact steps, including setting up an authenticator
+  **before** the push (000900 makes platform functions require aal2).
+- **Not done this session:** guided customer onboarding portal (B68), homepage hero replacement, website/design audit
+  sweep, invoices/payments in the portal (no issued invoices, no provider), emailed invitations (no provider).
 
 ## 000000000. 2026-10-20 (later) — Help Center and practice companies released `5881927`
 

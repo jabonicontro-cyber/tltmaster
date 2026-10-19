@@ -38,6 +38,7 @@ test("the platform owner previews a demo customer's portal and records the check
   // Record the check against this demo.
   await page.goto(`/admin/testing-lab?demo=${presenter}`);
   const row = page.locator("#check-customer\\.portal");
+  await row.getByText("Record a result").click();
   await row.getByLabel("Result").selectOption("tested");
   await row.getByLabel("What you checked").fill("Overview and orders as a demo customer");
   await row.getByRole("button", { name: "Record" }).click();

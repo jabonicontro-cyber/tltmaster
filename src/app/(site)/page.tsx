@@ -3,7 +3,6 @@ import Link from "next/link";
 import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { CatalogShot } from "@/components/site/feature-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
-import { TruckStory, type StoryChapter } from "@/components/site/truck-story";
 import { Container, CtaLink, FinalCta, SectionHeading } from "@/components/site/ui";
 import { publishedFeatures } from "@/lib/site/features";
 
@@ -15,7 +14,8 @@ export const metadata: Metadata = {
 // Every statement on this page matches a capability listed as available in
 // src/lib/site/capabilities.ts. Screens are the real app with fictional demo data.
 
-// The story beside the truck. Each chapter describes what works today; what is still being built says so.
+// What Taviron does today, one card each; what is still being built says so.
+type StoryChapter = { id: string; title: React.ReactNode; body: React.ReactNode };
 const STORY: StoryChapter[] = [
   {
     id: "intelligence",
@@ -108,42 +108,46 @@ function Points({ items }: { items: string[] }) {
 export default function HomePage() {
   return (
     <>
-      {/* Opening and story: the truck stays in view while the chapters scroll (src/components/site/truck-story.tsx). */}
-      <section className="relative overflow-x-clip" aria-label="Introduction">
+      {/* Opening: the message and the real product (src/components/site/product-showcase.tsx). A static hero replaced
+          the scroll-driven 3D truck (owner 2026-10-19: reliable on every screen, no WebGL, nothing drawn that the
+          product does not do). */}
+      <section className="relative overflow-x-clip" aria-labelledby="hero-title">
         <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(60%_60%_at_60%_0%,rgb(22_139_255/0.16),transparent)]" aria-hidden />
-        <Container className="relative">
-          <TruckStory
-            intro={
-              <div className="max-w-2xl">
-                <h1 className="site-display text-[2.6rem] font-bold text-cloud sm:text-6xl">
-                  A smarter way to run a fleet.
-                </h1>
-                <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
-                  Taviron plans the whole operation at once — loads, trucks, trailers, drivers and the rules that bind them — and shows you the
-                  best plan for the priorities you choose. Safety, qualification and capacity rules come first. Nothing moves until a person approves it.
-                </p>
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                  <CtaLink href="/demo">Request a demo</CtaLink>
-                  <CtaLink href="/platform" variant="ghost">
-                    See what it does today
-                  </CtaLink>
-                </div>
-                <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
-              </div>
-            }
-            chapters={STORY}
-          />
+        <Container className="relative pt-16 pb-20 sm:pt-24 sm:pb-28">
+          <div className="max-w-3xl">
+            <h1 id="hero-title" className="site-display text-[2.6rem] font-bold text-cloud sm:text-6xl">
+              A smarter way to run a fleet.
+            </h1>
+            <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
+              Taviron plans the whole operation at once — loads, trucks, trailers, drivers and the rules that bind them — and shows you the
+              best plan for the priorities you choose. Safety, qualification and capacity rules come first. Nothing moves until a person approves it.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <CtaLink href="/demo">Request a demo</CtaLink>
+              <CtaLink href="/platform" variant="ghost">
+                See what it does today
+              </CtaLink>
+            </div>
+            <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
+          </div>
+          <ProductShowcase />
+          <p className="mt-6 text-center text-sm text-silver/75">The real app, captured from the live demo company with fictional data — not a mock-up.</p>
         </Container>
       </section>
 
-      {/* The real product: screens from the live demo company (fictional data). */}
-      <section aria-labelledby="product-title" className="overflow-x-clip border-t border-silver/10">
+      {/* What it does today: each statement matches an available capability; what is still being built says so. */}
+      <section aria-labelledby="story-title" className="border-t border-silver/10">
         <Container className="py-16 sm:py-20">
-          <SectionHeading id="product-title" title="This is the app, not a mock-up.">
-            <p>Every screen on this page is Taviron itself, captured from the live demo company with fictional data.</p>
-          </SectionHeading>
-          <ProductShowcase />
+          <SectionHeading id="story-title" title="One plan for the whole day." />
+          <div className="mt-10 grid gap-6 md:grid-cols-2">
+            {STORY.map((c) => (
+              <article key={c.id} className="rounded-xl border border-silver/10 bg-navy-2 p-6 sm:p-7">
+                <h3 className="text-xl font-semibold text-cloud">{c.title}</h3>
+                <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-silver">{c.body}</div>
+              </article>
+            ))}
+          </div>
         </Container>
       </section>
 

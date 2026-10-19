@@ -1,3 +1,8 @@
+> **Retired 2026-10-19:** the homepage now opens with a static hero and the real product (`ProductShowcase`, screens
+> from the demo company); the scroll-driven 3D truck (`truck-story.tsx`, `truck-scene.tsx`) and its test were removed
+> (owner request: reliable on every screen, nothing drawn that the product does not do). Kept below for history.
+> Test: `tests/e2e/home-hero.spec.ts`.
+
 # Homepage 3D story
 
 The homepage hero is a real-time WebGL truck (`src/components/site/truck-scene.tsx`) that follows the story text

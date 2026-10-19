@@ -34,7 +34,7 @@ export function PortalSettingsForm({ values, entitled, canEdit }: { values: Port
     <form onSubmit={onSubmit} className="space-y-5">
       <FormError message={formError} />
       <fieldset disabled={!canEdit} className="space-y-5">
-        <div className="space-y-2">
+        <div className="flex flex-col gap-2">
           <Checkbox name="enabled" defaultChecked={values.enabled} disabled={!entitled} label={<span><strong>Portal on</strong> — invited customers can sign in.</span>} />
           <Checkbox name="public_page" defaultChecked={values.public_page} label="Public page — anyone with the link sees your welcome, contact details and published help (never orders or quotes)." />
         </div>
@@ -55,7 +55,7 @@ export function PortalSettingsForm({ values, entitled, canEdit }: { values: Port
         <Field label="Welcome message" htmlFor="welcome">
           <Textarea id="welcome" name="welcome" defaultValue={values.welcome} rows={3} maxLength={2000} />
         </Field>
-        <fieldset className="space-y-2">
+        <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold text-ink">What customers can use</legend>
           <Checkbox name="feature_orders" defaultChecked={values.feature_orders} label="Orders and delivery status" />
           <Checkbox name="feature_documents" defaultChecked={values.feature_documents} label="Delivery tickets (customer copy: no driver or truck details)" />
