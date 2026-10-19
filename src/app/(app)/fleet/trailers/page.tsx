@@ -16,7 +16,9 @@ type Search = { q?: string; status?: string; type?: string; driver?: string; mai
 export default async function TrailersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("fleet.view");
   const sp = await searchParams;
-  const [all, ctx, bases] = await Promise.all([listTrailers(sp), fleetContext({ maintenance: can(access, "maintenance.view") }), baseOptions()]);
+  // The base filter applies only where the company has bases to choose from (and the bases update is installed).
+  const bases = await baseOptions();
+  const [all, ctx] = await Promise.all([listTrailers({ ...sp, base: bases.length > 1 ? sp.base : undefined }), fleetContext({ maintenance: can(access, "maintenance.view") })]);
   const { rows, extras } = buildDirectory("trailer", all, ctx, sp);
   const canEdit = can(access, "fleet.edit");
   return (

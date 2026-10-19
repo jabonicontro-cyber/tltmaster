@@ -28,10 +28,11 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const access = await requirePagePermission("orders.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const [{ rows, total }, { today }, bases] = await Promise.all([
-    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base: sp.base, page }),
+  // The base filter applies only where the company has bases to choose from (and the bases update is installed).
+  const bases = await baseOptions();
+  const [{ rows, total }, { today }] = await Promise.all([
+    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base: bases.length > 1 ? sp.base : undefined, page }),
     businessToday(),
-    baseOptions(),
   ]);
   const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base);
   const canCreate = can(access, "orders.edit");

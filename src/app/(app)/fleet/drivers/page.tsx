@@ -25,7 +25,9 @@ type Search = { q?: string; status?: string; base?: string };
 export default async function DriversPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("fleet.view");
   const sp = await searchParams;
-  const [{ rows, today }, bases] = await Promise.all([listDrivers(sp), baseOptions()]);
+  // The base filter applies only where the company has bases to choose from (and the bases update is installed).
+  const bases = await baseOptions();
+  const { rows, today } = await listDrivers({ ...sp, base: bases.length > 1 ? sp.base : undefined });
   const canEdit = can(access, "fleet.edit");
   const filtered = Boolean(sp.q || sp.status || sp.base);
 
