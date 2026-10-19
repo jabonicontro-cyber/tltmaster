@@ -24,6 +24,10 @@ Release checks for `e96f6a5` (2026-10-19): lint + typecheck clean; vitest 752/75
 9 skipped (command-center.spec:59 "Urgent" badge not found once at 00:24 UTC; passed on isolated rerun, cause not found —
 watch it); production build OK; gate spec 8 passed / 1 skipped; risk tier APPROVAL (auth.ts, permissions.ts, vercel.json),
 Production authorized by the owner on 2026-10-19 once gates pass.
+**Released:** Preview `ce39234` (deploy 7163334449, success) and Production fast-forward `0ef6650..ce39234` (deploy
+7163451156, success). Not verified live: this sandbox's network policy blocks `*.vercel.app` and `mytaviron.com`.
+Hosted migrations `20261118000100`–`000400` are **not applied**; until the owner's `db push`, the Launchpad, payroll,
+lifecycle and plans show their "needs a database update" state and the daily lifecycle cron answers 503.
 
 Owner steps: runbook §6 + §7 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for six migrations; then Refresh
 demo data in both demos. Payment provider choice (checkout, webhooks, 72-hour grace) is still yours (docs/PLATFORM_LIFECYCLE.md).
