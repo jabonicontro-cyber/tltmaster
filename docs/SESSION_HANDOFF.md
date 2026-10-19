@@ -35,6 +35,8 @@ lifecycle and plans show their "needs a database update" state and the daily lif
 
 Release checks for `8052e65`+docs (2026-10-19): lint + typecheck clean; vitest 764/764; full browser suite 163 passed / 1
 failed / 9 skipped (maintenance.spec:202 failed while a page was still navigating; 6/6 passed on rerun); build OK; gate 8/1.
+**Released:** Preview `8489bbf` (deploy 7164654756, success) and Production fast-forward `ce39234..8489bbf` (deploy
+7164672409, success). Not verified live (sandbox network blocks the domains). Migrations `20261119000100`/`000200` not hosted.
 
 Owner steps: runbook §6 + §7 + §8 (`docs/runbooks/2026-10-14-hosted-db.md`) — one `db push` for six migrations; then Refresh
 demo data in both demos. Payment provider choice (checkout, webhooks, 72-hour grace) is still yours (docs/PLATFORM_LIFECYCLE.md).
