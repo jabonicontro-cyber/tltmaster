@@ -94,6 +94,8 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   const late = page.getByRole("listitem", { name: `${f.orderNumber} · load 2 today has no truck` });
   for (let p = 1; p <= 10; p++) {
     await page.goto(`/command-center?kind=unassigned_load&page=${p}`);
+    // The queue streams in: wait for it before deciding the item is not on this page.
+    await page.getByRole("list", { name: "Attention items" }).waitFor();
     if (await late.count()) break;
   }
   await expect(late.getByText("Urgent", { exact: true })).toBeVisible();

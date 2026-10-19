@@ -74,7 +74,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
             ) : canEditYard ? (
               <YardLocationForm current={yardText} canLookUp={status.state === "ready"} />
             ) : (
-              <p className="text-sm text-muted">Someone with settings access can set it here or in Settings → Dispatch rules.</p>
+              <p className="text-sm text-muted">Someone with settings access can set it on this page.</p>
             )}
           </CardBody>
         </Card>

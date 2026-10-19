@@ -43,7 +43,8 @@ export function startGuide(id: string) {
 export function GuidePlayer() {
   const path = usePathname();
   const [progress, setProgress] = useState<Progress | null>(null);
-  const [found, setFound] = useState<boolean | null>(null);
+  // Whether the current step's control was found, keyed by step so a stale answer is never shown.
+  const [lookup, setLookup] = useState<{ key: string; found: boolean } | null>(null);
 
   useEffect(() => {
     const sync = () => setProgress(read());
@@ -63,14 +64,12 @@ export function GuidePlayer() {
 
   // Highlight the step's control (its stable data-guide anchor), scrolled into view; removed when the step changes.
   useEffect(() => {
-    if (!step?.anchor || !here) {
-      setFound(null);
-      return;
-    }
+    if (!step?.anchor || !here) return;
+    const key = `${progress?.id}:${index}:${path}`;
     let el: Element | null = null;
     const t = window.setTimeout(() => {
       el = document.querySelector(`[data-guide="${CSS.escape(step.anchor!)}"]`);
-      setFound(Boolean(el));
+      setLookup({ key, found: Boolean(el) });
       if (el) {
         el.setAttribute("data-guide-active", "true");
         el.scrollIntoView({ block: "center", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
@@ -80,7 +79,8 @@ export function GuidePlayer() {
       window.clearTimeout(t);
       el?.removeAttribute("data-guide-active");
     };
-  }, [step, here, path]);
+  }, [step, here, path, progress?.id, index]);
+  const found = step?.anchor && here && lookup?.key === `${progress?.id}:${index}:${path}` ? lookup.found : null;
 
   const go = useCallback(
     (delta: number) => {

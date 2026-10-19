@@ -130,7 +130,15 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
       await c.query("update public.dispatch_bases set is_default = true where company_id = $1 and code = 'MAIN'", [companyId]);
       await c.query("update public.dispatch_bases set active = false where company_id = $1 and code <> 'MAIN'", [companyId]);
       await c.query("delete from private.company_lifecycle where company_id = $1", [companyId]);
-      await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [companyId, `T-${code}`]).catch(() => undefined);
+      // Remove what this test created (Brookside must stay empty for the tenancy and Command Center tests). Order
+      // records are append-only for users, so the cleanup bypasses those guards for its own rows only.
+      await c.query("begin");
+      await c.query("set local session_replication_role = replica");
+      await c.query("delete from public.order_status_events where order_id in (select id from public.orders where company_id = $1 and order_number = $2)", [companyId, `BO-${code}`]);
+      await c.query("delete from public.orders where company_id = $1 and order_number = $2", [companyId, `BO-${code}`]);
+      await c.query("delete from public.customers where company_id = $1 and customer_number = $2", [companyId, `BT-${code}`]);
+      await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [companyId, `T-${code}`]);
+      await c.query("commit");
     });
   }
 });
