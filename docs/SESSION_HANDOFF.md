@@ -7,6 +7,18 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000000. Round 2026-10-20 — multi-location, plan demos, visual alignment (local; not pushed at time of writing)
+
+- **Multi-location (B62):** migrations `20261120000100`–`000300` applied **locally only** (backups in /var/lib/tlt-backups);
+  hosted application is the owner's `db push` (runbook §9). Settings → Dispatch Bases; base on forms and order page;
+  list filters; per-person access (RLS); Smart Dispatch base rule; Reports → By Dispatch Base.
+- **Regression found and fixed before commit:** the first base-access policy shape made `billing_order_status` take
+  more than 60 s (planner estimates); the tenancy suite timed out. Fixed with a `base_unrestricted()` short-circuit (0.4 s).
+- **Plan demos (B63):** Demo Management → Plan Shown.
+- **Visual alignment (B64):** shared lockup, containers, terminology, Powered by Taviron link, phone overflow fix.
+- Still requested and not started: Help Center (B65), customer portal + Testing Lab (B66), archive/delete practice
+  companies (B67), guided onboarding (B68), MFA, website hero, CRM email, Marketing Center.
+
 ## 0000000. Round 2026-10-18 — Taviron Live, platform console, payroll, customer lifecycle
 
 | Commit | What | Migration (local / pushed / hosted) |

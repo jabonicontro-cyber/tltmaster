@@ -371,6 +371,22 @@ export const FEATURES: Feature[] = [
     related: ["plan-the-day", "smart-dispatch"],
     verified: "2026-10-14",
   },
+  {
+    id: "dispatch-bases",
+    name: "Multiple dispatch bases",
+    category: "dispatch",
+    problem: "Companies with more than one yard dispatch each from its own trucks and drivers, but one shared list mixes them and nobody can limit who sees which yard.",
+    how: "Each truck, trailer, driver and order belongs to a dispatch base. Lists filter by base, Smart Dispatch keeps proposals inside the order's base unless cross-base dispatch is allowed, people can be limited to their bases (enforced by the database), and reports show each base with totals that add up.",
+    value: "Each yard runs its own day while the office still sees the whole company, without double counting.",
+    points: ["Bases within the plan (Essential 1, Growth 2, Professional 3, Enterprise 5)", "Per-person base access", "Smart Dispatch respects bases and says why", "Per-base report"],
+    limitations: ["The dispatch board and maintenance lists do not filter by base yet", "Manual board assignments are not checked against bases"],
+    status: "in_development",
+    published: false,
+    routes: ["/settings"],
+    screenshots: [],
+    related: ["smart-dispatch", "route-planner"],
+    verified: "2026-10-20",
+  },
 ];
 
 /** Planned or unreleased work, said plainly on the website ("Not yet — and we will say so"). */
