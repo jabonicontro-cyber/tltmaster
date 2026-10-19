@@ -30,6 +30,9 @@ const flag = async (s: Session, orderId: string, reason: string, neededBy: strin
   (await s.query<{ r: { urgency_id: string; created: boolean; changed: boolean } }>("select public.flag_order_urgent($1, $2, $3) as r", [orderId, reason, neededBy])).rows[0].r;
 const move = async (s: Session, id: string, state: string, note = "") =>
   (await s.query<{ r: { state: string; changed: boolean } }>("select public.update_order_urgency($1, $2::public.urgency_state, $3) as r", [id, state, note])).rows[0].r;
+// Urgent-order checks read only that category of the queue (same function and rules): the shared test database grows
+// with every run, and reading the whole queue page by page made these tests depend on its size (2026-10-19).
+const URGENT = { kind: "urgent_order" };
 const urgentItems = (p: Page, orderId: string) => p.items.filter((i) => i.kind === "urgent_order" && i.order_id === orderId);
 
 /** A scheduled Top Line order (synthetic, rolled back) with office, dispatcher and mechanic users and a ready fleet. */
@@ -63,7 +66,7 @@ describe("urgent orders", () => {
 
       // Dispatch sees it first in the queue, awaiting acknowledgement.
       await s.as(w.dispatcher);
-      let items = urgentItems(await queue(s), w.order.id);
+      let items = urgentItems(await queue(s, URGENT), w.order.id);
       expect(items).toHaveLength(1);
       expect(items[0]).toMatchObject({ priority: 1, reasons: ["urgent_awaiting_acknowledgement"] });
       expect(items[0].details).toMatchObject({ state: "awaiting_acknowledgement", reason: "Customer moved the pour up to 7 AM", escalated: false, active_assignments: 0 });
@@ -71,7 +74,7 @@ describe("urgent orders", () => {
 
       // A mechanic (no orders or dispatch access) does not see it and cannot move it.
       await s.as(w.mechanic);
-      expect(urgentItems(await queue(s), w.order.id)).toHaveLength(0);
+      expect(urgentItems(await queue(s, URGENT), w.order.id)).toHaveLength(0);
       expect((await summary(s)).urgent_orders).toBeNull();
       expect((await pgError(move(s, f1.urgency_id, "acknowledged"))).code).toBe("42501");
       expect((await s.query("select 1 from public.order_urgencies where id = $1", [f1.urgency_id])).rowCount).toBe(0); // RLS
@@ -79,7 +82,7 @@ describe("urgent orders", () => {
       await s.as(w.dispatcher);
       expect((await pgError(move(s, f1.urgency_id, "awaiting_acknowledgement"))).code).toBe("22023");
       expect(await move(s, f1.urgency_id, "acknowledged")).toMatchObject({ state: "acknowledged", changed: true });
-      items = urgentItems(await queue(s), w.order.id);
+      items = urgentItems(await queue(s, URGENT), w.order.id);
       expect(items[0]).toMatchObject({ priority: 2, reasons: ["urgent_acknowledged"] });
       expect(items[0].details.acknowledged_by_name).toBe("Test dispatcher");
       // Notes are required where they explain something.
@@ -90,12 +93,12 @@ describe("urgent orders", () => {
       const load = await planLoad(s, w.order.id, w.today, "23:00", "23:59");
       await assign(s, load.load_id, w.f.t1, null, w.f.d1);
       await move(s, f1.urgency_id, "assigned");
-      expect(urgentItems(await queue(s), w.order.id)[0]).toMatchObject({ priority: 3 });
+      expect(urgentItems(await queue(s, URGENT), w.order.id)[0]).toMatchObject({ priority: 3 });
 
       // Withdrawing needs orders.edit; resolving closes it and it leaves the queue.
       expect((await pgError(move(s, f1.urgency_id, "canceled", "x"))).code).toBe("42501");
       await move(s, f1.urgency_id, "resolved", "Delivered at 6:50");
-      expect(urgentItems(await queue(s), w.order.id)).toHaveLength(0);
+      expect(urgentItems(await queue(s, URGENT), w.order.id)).toHaveLength(0);
       expect((await pgError(move(s, f1.urgency_id, "evaluating"))).code).toBe("PT409");
 
       // History: every step, append-only, plus audit events.
@@ -133,14 +136,14 @@ describe("urgent orders", () => {
       await s.query("set local session_replication_role = origin");
 
       await s.as(w.dispatcher);
-      let item = urgentItems(await queue(s), w.order.id)[0];
+      let item = urgentItems(await queue(s, URGENT), w.order.id)[0];
       expect(item.reasons).toEqual(["urgent_awaiting_acknowledgement", "urgent_deadline_passed"]);
       expect(item.details.escalated).toBe(false);
 
       await s.asAdmin();
       await s.query("update public.company_settings set urgent_ack_minutes = 15 where company_id = $1", [TOP_LINE]);
       await s.as(w.dispatcher);
-      item = urgentItems(await queue(s), w.order.id)[0];
+      item = urgentItems(await queue(s, URGENT), w.order.id)[0];
       expect(item.reasons).toContain("urgent_ack_overdue");
       expect(item.details.escalated).toBe(true);
       // Only settings.manage changes it (RLS filters the dispatcher's update), and only to a sensible value.
@@ -365,14 +368,14 @@ describe("two independent companies", () => {
       await s.asAdmin();
       await s.query("insert into public.company_memberships (company_id, user_id, role) values ($1, $2, 'dispatcher')", [B, w.dispatcher]);
       await s.as(w.dispatcher);
-      expect(urgentItems(await queue(s), w.order.id)).toHaveLength(1);
+      expect(urgentItems(await queue(s, URGENT), w.order.id)).toHaveLength(1);
       await s.query("select public.switch_company($1)", [B]);
-      expect(urgentItems(await queue(s), w.order.id)).toHaveLength(0);
+      expect(urgentItems(await queue(s, URGENT), w.order.id)).toHaveLength(0);
       expect((await s.query("select 1 from public.order_urgencies")).rowCount).toBe(0);
       expect((await s.query("select 1 from public.user_preferences")).rowCount).toBe(0); // Top Line layout stays with Top Line
       expect((await pgError(move(s, f.urgency_id, "acknowledged"))).code).toBe("P0002");
       await s.query("select public.switch_company($1)", [TOP_LINE]);
-      expect(urgentItems(await queue(s), w.order.id)).toHaveLength(1);
+      expect(urgentItems(await queue(s, URGENT), w.order.id)).toHaveLength(1);
       expect(bDispatcher).toBeTruthy();
     });
   });

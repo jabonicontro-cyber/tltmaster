@@ -71,14 +71,25 @@ create or replace function private.current_company_id()
  security definer
  set search_path to ''
 as $$
+  -- One query, cheapest test first: this runs inside most row-level security policies. (Same membership choice as
+  -- private.current_company_id_any(), inlined rather than called: a nested definer call costs ~15% on the Command Center.)
   select case
-    when v.company_id is null then null
-    when private.aal2() then v.company_id
-    when private.mfa_enrolled() then null
-    when coalesce((select s.require_mfa from public.company_settings s where s.company_id = v.company_id), false) then null
-    else v.company_id
+    when x.company_id is null then null
+    when coalesce(auth.jwt() ->> 'aal', 'aal1') = 'aal2' then x.company_id
+    when exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status = 'verified') then null
+    when coalesce((select s.require_mfa from public.company_settings s where s.company_id = x.company_id), false) then null
+    else x.company_id
   end
-  from (select private.current_company_id_any() as company_id) v
+  from (select (
+    select m.company_id
+    from public.company_memberships m
+    join public.companies c on c.id = m.company_id and c.active
+    join public.profiles p on p.id = m.user_id
+    where m.user_id = auth.uid()
+      and m.active
+      and m.role is not null
+    order by (m.company_id = p.active_company_id) desc nulls last, m.created_at, m.company_id
+    limit 1) as company_id) x
 $$;
 
 create or replace function public.mfa_policy()

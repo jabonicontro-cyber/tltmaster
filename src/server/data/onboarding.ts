@@ -32,7 +32,7 @@ export async function platformOnboarding(companyId: string): Promise<Loaded<Onbo
   return { ok: true, data: data as OnboardingState };
 }
 
-export type OnboardingOverviewRow = { company_id: string; name: string; is_demo: boolean; summary: OnboardingSummary };
+export type OnboardingOverviewRow = { company_id: string; name: string; summary: OnboardingSummary };
 
 /** Every company with a checklist and its counts (platform administrators). */
 export async function platformOnboardingOverview(): Promise<Loaded<OnboardingOverviewRow[]>> {
