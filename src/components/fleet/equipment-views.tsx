@@ -5,6 +5,8 @@ import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
+import { BaseFilter } from "@/components/bases/base-filter";
+import type { BaseOption } from "@/components/bases/base-field";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate, formatDateTime } from "@/lib/dates";
@@ -35,6 +37,7 @@ export interface EquipmentListFilters {
   documents?: string;
   ownership?: string;
   sort?: string;
+  base?: string;
 }
 
 export function EquipmentList({
@@ -45,6 +48,7 @@ export function EquipmentList({
   canEdit,
   extras = {},
   sources = { maintenance: false, documents: false },
+  bases,
 }: {
   kind: Kind;
   rows: Equipment[];
@@ -54,10 +58,12 @@ export function EquipmentList({
   extras?: Record<string, EquipmentRowExtra>;
   /** Which optional sources could be read (tables installed and permitted). */
   sources?: { maintenance: boolean; documents: boolean };
+  /** Active dispatch bases, for the Base filter (two or more). */
+  bases?: BaseOption[];
 }) {
   const base = `/fleet/${kind}s`;
   const noun = kind === "truck" ? "truck" : "trailer";
-  const filtered = Boolean(filters.q || filters.status || filters.type || filters.driver || filters.maintenance || filters.documents || filters.ownership);
+  const filtered = Boolean(filters.q || filters.status || filters.type || filters.driver || filters.maintenance || filters.documents || filters.ownership || filters.base);
   return (
     <Card>
       <FilterBar action={base} query={filters.q} placeholder="Search unit #, make, model, plate, VIN…" clearHref={base}>
@@ -73,6 +79,7 @@ export function EquipmentList({
             { value: "all", label: "All" },
           ]}
         />
+        <BaseFilter bases={bases} value={filters.base} />
         <FilterSelect name="type" label="Type" value={filters.type} options={[{ value: "", label: "All types" }, ...typeOptions]} />
         {kind === "truck" && (
           <FilterSelect name="driver" label="Driver" value={filters.driver} options={[{ value: "", label: "Any" }, { value: "assigned", label: "Has a driver" }, { value: "unassigned", label: "No driver" }]} />

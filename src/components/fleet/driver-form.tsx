@@ -8,6 +8,7 @@ import { Field, FormError, Input, Select, Textarea, describedBy } from "@/compon
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
 import type { DriverFormValues } from "./form-defaults";
+import { BaseField, type BaseOption } from "@/components/bases/base-field";
 
 interface Props {
   initial: DriverFormValues;
@@ -16,9 +17,12 @@ interface Props {
   action: (formData: FormData) => Promise<ActionResult<{ id: string }>>;
   cancelHref: string;
   submitLabel: string;
+  /** Active dispatch bases (the picker shows only with two or more) and the current one. */
+  bases?: BaseOption[];
+  baseId?: string | null;
 }
 
-export function DriverForm({ initial, users, action, cancelHref, submitLabel }: Props) {
+export function DriverForm({ initial, users, action, cancelHref, submitLabel, bases, baseId }: Props) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(action);
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
   const [userId, setUserId] = useState(initial.user_id ?? "");
@@ -60,6 +64,7 @@ export function DriverForm({ initial, users, action, cancelHref, submitLabel }: 
         <Field label="Hire date" htmlFor="hire_date" error={fieldError("hire_date")} className="sm:col-span-2">
           <DateInput min="1900-01-01" {...f("hire_date")} defaultValue={initial.hire_date ?? ""} />
         </Field>
+      <BaseField bases={bases} defaultValue={baseId} className="sm:col-span-3" />
       </fieldset>
       <Field label="Notes" htmlFor="notes" error={fieldError("notes")}>
         <Textarea {...f("notes")} defaultValue={initial.notes} rows={3} maxLength={4000} />

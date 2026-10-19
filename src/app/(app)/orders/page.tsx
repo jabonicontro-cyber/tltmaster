@@ -18,19 +18,22 @@ import { listOrders, ORDER_SCHEDULE_FILTERS } from "@/server/data/orders";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 import { businessToday } from "@/server/data/settings";
 
+import { baseOptions } from "@/server/data/bases";
+import { BaseFilter } from "@/components/bases/base-filter";
 export const metadata = { title: "Orders" };
 
-type Search = { q?: string; status?: string; customer?: string; source?: string; when?: string; page?: string };
+type Search = { q?: string; status?: string; customer?: string; source?: string; when?: string; base?: string; page?: string };
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("orders.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const [{ rows, total }, { today }] = await Promise.all([
-    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, page }),
+  const [{ rows, total }, { today }, bases] = await Promise.all([
+    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base: sp.base, page }),
     businessToday(),
+    baseOptions(),
   ]);
-  const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when);
+  const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base);
   const canCreate = can(access, "orders.edit");
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
@@ -92,6 +95,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
               { value: "direct", label: "Direct orders" },
             ]}
           />
+          <BaseFilter bases={bases} value={sp.base} />
         </FilterBar>
         {rows.length === 0 ? (
           <EmptyState

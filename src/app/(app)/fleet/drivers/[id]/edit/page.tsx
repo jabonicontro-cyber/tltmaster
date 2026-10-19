@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/server/auth";
 import { getDriver, linkableUsers } from "@/server/data/fleet";
 import { saveDriver } from "../../../actions";
 
+import { baseOptions, recordBase } from "@/server/data/bases";
 export const metadata = { title: "Edit driver" };
 
 export default async function EditDriverPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +24,7 @@ export default async function EditDriverPage({ params }: { params: Promise<{ id:
       />
       <Card>
         <CardBody>
-          <DriverForm initial={d} users={users} action={saveDriver.bind(null, id)} cancelHref={`/fleet/drivers/${id}`} submitLabel="Save driver" />
+          <DriverForm initial={d} users={users} action={saveDriver.bind(null, id)} cancelHref={`/fleet/drivers/${id}`} submitLabel="Save driver" bases={await baseOptions()} baseId={await recordBase("drivers", id)} />
         </CardBody>
       </Card>
     </>

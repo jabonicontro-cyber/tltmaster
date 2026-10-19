@@ -6,6 +6,7 @@ import { driverReadiness, EXPIRY_WARNING_DAYS } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { uuid } from "@/lib/schemas/common";
 import { createClient } from "@/server/supabase/server";
+import { parseBaseFilter } from "@/server/data/bases";
 import { getUserNames } from "./quotes";
 import { ilikePattern } from "./search";
 import { businessToday } from "./settings";
@@ -16,6 +17,8 @@ export interface EquipmentFilters {
   /** "", "in_service", "out_of_service", "inactive" — default lists active equipment */
   status?: string;
   type?: string;
+  /** A dispatch base id (validated by parseBaseFilter). */
+  base?: string;
 }
 
 /** Search + status filter shared by trucks and trailers. */
@@ -36,6 +39,8 @@ function equipmentQuery<T extends "trucks" | "trailers">(table: T, filters: Equi
     }
     const types: readonly string[] = table === "trucks" ? TRUCK_TYPES : TRAILER_TYPES;
     if (filters.type && types.includes(filters.type)) query = query.eq(table === "trucks" ? "truck_type" : "trailer_type", filters.type);
+    const base = parseBaseFilter(filters.base);
+    if (base) query = query.eq("base_id", base);
     const { data, error } = await query.limit(500);
     if (error) throw new Error(`Could not load ${table}: ${error.message}`);
     return data ?? [];
@@ -114,6 +119,7 @@ export interface DriverFilters {
   q?: string;
   /** "", "ready", "not_ready", "inactive", "all" — default lists active drivers */
   status?: string;
+  base?: string;
 }
 
 export async function listDrivers(filters: DriverFilters): Promise<{ rows: DriverWithReadiness[]; today: string }> {
@@ -123,6 +129,8 @@ export async function listDrivers(filters: DriverFilters): Promise<{ rows: Drive
   if (pattern) query = query.or(`display_name.ilike.${pattern},employee_number.ilike.${pattern},phone.ilike.${pattern}`);
   if (filters.status === "inactive") query = query.eq("active", false);
   else if (filters.status !== "all") query = query.eq("active", true);
+  const base = parseBaseFilter(filters.base);
+  if (base) query = query.eq("base_id", base);
   const [{ data, error }, quals, { today }] = await Promise.all([
     query.limit(500),
     supabase.from("driver_qualifications").select("*").order("expires_on", { ascending: true, nullsFirst: true }),

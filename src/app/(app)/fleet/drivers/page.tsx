@@ -16,16 +16,18 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listDrivers } from "@/server/data/fleet";
 
+import { baseOptions } from "@/server/data/bases";
+import { BaseFilter } from "@/components/bases/base-filter";
 export const metadata = { title: "Drivers" };
 
-type Search = { q?: string; status?: string };
+type Search = { q?: string; status?: string; base?: string };
 
 export default async function DriversPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("fleet.view");
   const sp = await searchParams;
-  const { rows, today } = await listDrivers(sp);
+  const [{ rows, today }, bases] = await Promise.all([listDrivers(sp), baseOptions()]);
   const canEdit = can(access, "fleet.edit");
-  const filtered = Boolean(sp.q || sp.status);
+  const filtered = Boolean(sp.q || sp.status || sp.base);
 
   return (
     <>
@@ -49,6 +51,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
               { value: "all", label: "All" },
             ]}
           />
+          <BaseFilter bases={bases} value={sp.base} />
         </FilterBar>
         {rows.length === 0 ? (
           <EmptyState

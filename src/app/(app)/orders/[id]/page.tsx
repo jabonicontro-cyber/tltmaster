@@ -29,13 +29,16 @@ import { orderProgress } from "@/lib/orders/progress";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { DirectionsRiskBadge, DirectionsStatusBadge } from "@/components/sites/directions-status";
 import { directionsStatus } from "@/lib/sites";
+import { OrderBase } from "@/components/bases/order-base-form";
+import { baseOptions, recordBase } from "@/server/data/bases";
 
 export const metadata = { title: "Order" };
 
-export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; base_saved?: string; base_error?: string }> }) {
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
-  const { back } = await searchParams;
+  const { back, base_saved: baseSaved, base_error: baseError } = await searchParams;
+  const [bases, orderBase] = await Promise.all([baseOptions(), recordBase("orders", id)]);
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names, site: savedSite } = detail;
@@ -195,8 +198,11 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   { label: "Scheduled", value: scheduled || <span className="text-muted">Not scheduled yet</span> },
                   { label: "Time window", value: formatWindow(order.window_start, order.window_end) },
                   { label: "Scheduling notes", value: order.scheduling_notes, wide: true },
+                  ...(bases.length > 1 ? [{ label: "Dispatch base", value: <OrderBase orderId={id} baseId={orderBase} bases={bases} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                 ]}
               />
+              {baseSaved ? <p className="mt-3 text-sm text-muted" role="status">Dispatch base changed.</p> : null}
+              {baseError ? <div className="mt-3"><Notice tone="warning" title="Base not changed">{baseError}</Notice></div> : null}
             </CardBody>
           </Card>
 

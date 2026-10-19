@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
+import { parseBaseFilter } from "@/server/data/bases";
 import { addDays } from "@/lib/dates";
 import { OPEN_ORDER_STATUSES, ORDER_STATUSES } from "@/lib/orders/status";
 import { uuid } from "@/lib/schemas/common";
@@ -23,6 +24,8 @@ export interface OrderFilters {
   /** "quote" or "direct" */
   source?: string;
   when?: string;
+  /** A dispatch base id. */
+  base?: string;
   page: number;
 }
 
@@ -43,6 +46,8 @@ export async function listOrders(filters: OrderFilters) {
   if (filters.status === "open") query = query.in("status", OPEN_ORDER_STATUSES);
   else if (filters.status && (ORDER_STATUSES as string[]).includes(filters.status)) query = query.eq("status", filters.status as OrderStatus);
   if (filters.customer && uuid.safeParse(filters.customer).success) query = query.eq("customer_id", filters.customer);
+  const base = parseBaseFilter(filters.base);
+  if (base) query = query.eq("base_id", base);
   if (filters.source === "quote") query = query.not("source_quote_id", "is", null);
   else if (filters.source === "direct") query = query.is("source_quote_id", null);
   if (when) {

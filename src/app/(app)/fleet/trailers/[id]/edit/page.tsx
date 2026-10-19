@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/server/auth";
 import { getTrailer, truckOptions } from "@/server/data/fleet";
 import { saveTrailer } from "../../../actions";
 
+import { baseOptions, recordBase } from "@/server/data/bases";
 export const metadata = { title: "Edit trailer" };
 
 export default async function EditTrailerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -29,6 +30,8 @@ export default async function EditTrailerPage({ params }: { params: Promise<{ id
             action={saveTrailer.bind(null, id)}
             cancelHref={`/fleet/trailers/${id}`}
             submitLabel="Save trailer"
+            bases={await baseOptions()}
+            baseId={await recordBase("trailers", id)}
           />
         </CardBody>
       </Card>

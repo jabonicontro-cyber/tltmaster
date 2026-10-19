@@ -8,6 +8,7 @@ import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
 import { TRAILER_TYPE_LABELS, TRAILER_TYPES, TRUCK_TYPE_LABELS, TRUCK_TYPES, trimNumber } from "@/lib/fleet/labels";
 import type { EquipmentFormValues } from "./form-defaults";
+import { BaseField, type BaseOption } from "@/components/bases/base-field";
 
 const trim = (v: string | number | null | undefined) => (v == null ? "" : trimNumber(v));
 
@@ -19,9 +20,12 @@ interface Props {
   submitLabel: string;
   /** Trailers: trucks to pair with. */
   trucks?: Array<{ id: string; unit_number: string; active: boolean }>;
+  /** Active dispatch bases (the picker shows only with two or more) and the current one. */
+  bases?: BaseOption[];
+  baseId?: string | null;
 }
 
-export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [] }: Props) {
+export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [], bases, baseId }: Props) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(action);
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
   const [weight, setWeight] = useState(trim(initial.weight_capacity));
@@ -72,6 +76,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
         <Field label="State" htmlFor="plate_state" error={fieldError("plate_state")} className="sm:col-span-1">
           <Input {...f("plate_state")} defaultValue={initial.plate_state} maxLength={2} className="uppercase" />
         </Field>
+      <BaseField bases={bases} defaultValue={baseId} className="sm:col-span-3" />
       </fieldset>
 
       <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">

@@ -31,6 +31,13 @@ function uniqueFailure(error: DbError, field: string, message: string) {
   return fail(dbErrorMessage(error));
 }
 
+/** The chosen dispatch base, only when the form offered one (companies with two or more bases). The database checks
+ *  that it is this company's base and one the person may use. */
+function baseFrom(formData: FormData): { base_id?: string } {
+  const v = formData.get("base_id");
+  return typeof v === "string" && uuid.safeParse(v).success ? { base_id: v } : {};
+}
+
 function revalidateFleet(path?: string) {
   revalidatePath("/fleet", "layout");
   if (path) revalidatePath(path);
@@ -45,7 +52,7 @@ export async function saveTruck(id: string | null, formData: FormData): Promise<
     if (id && !uuid.safeParse(id).success) return fail("Invalid truck.");
     const parsed = truckSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
-    const row = toEquipmentRow(parsed.data);
+    const row = { ...toEquipmentRow(parsed.data), ...baseFrom(formData) };
     const supabase = await createClient();
     const res = id ? await supabase.from("trucks").update(row).eq("id", id).select("id") : await supabase.from("trucks").insert(row).select("id");
     if (res.error) return uniqueFailure(res.error, "unit_number", "Another truck already uses this unit number.");
@@ -67,7 +74,7 @@ export async function saveTrailer(id: string | null, formData: FormData): Promis
     if (id && !uuid.safeParse(id).success) return fail("Invalid trailer.");
     const parsed = trailerSchema.safeParse(trailerFormValues(formData));
     if (!parsed.success) return validationFailure(parsed.error);
-    const row = toEquipmentRow(parsed.data);
+    const row = { ...toEquipmentRow(parsed.data), ...baseFrom(formData) };
     const supabase = await createClient();
     const res = id ? await supabase.from("trailers").update(row).eq("id", id).select("id") : await supabase.from("trailers").insert(row).select("id");
     if (res.error) return uniqueFailure(res.error, "unit_number", "Another trailer already uses this unit number.");
@@ -126,7 +133,7 @@ export async function saveDriver(id: string | null, formData: FormData): Promise
     const parsed = driverSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
-    const row = parsed.data;
+    const row = { ...parsed.data, ...baseFrom(formData) };
     const res = id ? await supabase.from("drivers").update(row).eq("id", id).select("id") : await supabase.from("drivers").insert(row).select("id");
     if (res.error) {
       if (res.error.code === "23505" && /user/.test(res.error.message ?? "")) return fail("This user is already linked to another driver.", { user_id: "Already linked to another driver." });

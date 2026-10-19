@@ -68,3 +68,21 @@ export async function baseMembers(): Promise<Map<string, string[]> | null> {
 
 /** US time zones offered for a base (the stored value is always shown, even if it is not in this list). */
 export const BASE_TIMEZONES = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"];
+
+/** Active bases as picker options. */
+export async function baseOptions(): Promise<Array<{ id: string; name: string; code: string }>> {
+  return (await activeBases()).map((b) => ({ id: b.id, name: b.name, code: b.code }));
+}
+
+/** The base of one truck, trailer, driver or order (null before the bases migration or when unset). */
+export async function recordBase(table: "trucks" | "trailers" | "drivers" | "orders", id: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from(table).select("base_id").eq("id", id).maybeSingle();
+  if (error) return null;
+  return (data as { base_id: string | null } | null)?.base_id ?? null;
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+/** A ?base= filter value, only if it is a well-formed id (RLS still decides what the person can see). */
+export const parseBaseFilter = (v: string | undefined) => (v && UUID.test(v) ? v : null);
+

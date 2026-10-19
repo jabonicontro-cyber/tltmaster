@@ -6,6 +6,7 @@ import { requirePagePermission } from "@/server/auth";
 import { linkableUsers } from "@/server/data/fleet";
 import { saveDriver } from "../../actions";
 
+import { baseOptions } from "@/server/data/bases";
 export const metadata = { title: "Add driver" };
 
 export default async function NewDriverPage() {
@@ -20,7 +21,7 @@ export default async function NewDriverPage() {
       />
       <Card>
         <CardBody>
-          <DriverForm initial={EMPTY_DRIVER} users={users} action={saveDriver.bind(null, null)} cancelHref="/fleet/drivers" submitLabel="Add driver" />
+          <DriverForm initial={EMPTY_DRIVER} users={users} action={saveDriver.bind(null, null)} cancelHref="/fleet/drivers" submitLabel="Add driver" bases={await baseOptions()} />
         </CardBody>
       </Card>
     </>

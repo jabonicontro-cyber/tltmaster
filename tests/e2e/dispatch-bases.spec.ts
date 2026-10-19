@@ -73,10 +73,39 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
     await page.getByRole("table", { name: "Dispatch bases" }).getByRole("row").filter({ hasText: "MAIN" }).getByRole("button", { name: "Make Default" }).click();
     await expect(page.getByText(/Default base changed/)).toBeVisible();
 
+    // Fleet: the truck form offers the base, and the list filters by it.
+    const northId = await admin(async (c) => (await c.query<{ id: string }>("select id from public.dispatch_bases where company_id = $1 and code = $2", [companyId, code])).rows[0].id);
+    const mainId = await admin(async (c) => (await c.query<{ id: string }>("select id from public.dispatch_bases where company_id = $1 and code = 'MAIN'", [companyId])).rows[0].id);
+    await page.goto("/fleet/trucks/new");
+    await page.getByLabel("Unit number").fill(`T-${code}`);
+    await page.getByRole("combobox", { name: "Type", exact: true }).selectOption({ index: 1 });
+    await page.getByLabel("Dispatch base").selectOption(northId);
+    await page.getByRole("button", { name: "Add truck" }).click();
+    await expect(page).toHaveURL(/\/fleet\/trucks\/[0-9a-f-]{36}\?saved=1/);
+    await page.goto(`/fleet/trucks?base=${northId}`);
+    await expect(page.getByRole("row").filter({ hasText: `T-${code}` })).toBeVisible();
+    await page.goto(`/fleet/trucks?base=${mainId}`);
+    await expect(page.getByRole("row").filter({ hasText: `T-${code}` })).toHaveCount(0);
+
     // Base access: the section lists people (owners are never limited).
+    // Orders: the order page shows its base and moves it (set_order_base, audited).
+    const orderId = await admin(async (c) => {
+      const cust = (await c.query<{ id: string }>("insert into public.customers (company_id, customer_number, name) values ($1, $2, 'Base Test Customer') returning id", [companyId, `BT-${code}`])).rows[0].id;
+      return (await c.query<{ id: string }>("insert into public.orders (company_id, customer_id, order_number, order_date, base_id) values ($1, $2, $3, current_date, $4) returning id", [companyId, cust, `BO-${code}`, mainId])).rows[0].id;
+    });
+    await page.goto(`/orders/${orderId}`);
+    await page.getByLabel("Dispatch base").selectOption(northId);
+    await page.getByRole("button", { name: "Change Base" }).click();
+    await expect(page.getByText("Dispatch base changed.")).toBeVisible();
+    expect(await admin(async (c) => (await c.query("select base_id from public.orders where id = $1", [orderId])).rows[0].base_id)).toBe(northId);
+    await page.goto(`/orders?base=${northId}`);
+    await expect(page.getByRole("link", { name: `BO-${code}` })).toBeVisible();
+
+    await page.goto("/settings?tab=bases");
+    // (This company may have nobody but its owner: then the page says how to add people instead of an empty table.)
     const access = page.getByRole("table", { name: "Base access" });
-    await expect(access).toBeVisible();
-    await expect(access).not.toContainText(USERS.otherOwner.name);
+    await expect(access.or(page.getByText(/Once you add people on the People page/))).toBeVisible();
+    if (await access.count()) await expect(access).not.toContainText(USERS.otherOwner.name);
 
     await page.getByRole("table", { name: "Dispatch bases" }).getByRole("row").filter({ hasText: code }).getByRole("button", { name: "Deactivate" }).click();
     await expect(page.getByText(/Base deactivated/)).toBeVisible();
@@ -87,6 +116,7 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
       await c.query("update public.dispatch_bases set is_default = true where company_id = $1 and code = 'MAIN'", [companyId]);
       await c.query("update public.dispatch_bases set active = false where company_id = $1 and code <> 'MAIN'", [companyId]);
       await c.query("delete from private.company_lifecycle where company_id = $1", [companyId]);
+      await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [companyId, `T-${code}`]).catch(() => undefined);
     });
   }
 });
