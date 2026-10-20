@@ -1,3 +1,4 @@
+import { ButtonLink } from "@/components/ui/button";
 import Link from "next/link";
 import { ArrowRight, CircleCheck, CircleDashed, CircleAlert } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
@@ -49,6 +50,7 @@ export default async function SetupPage() {
       <PageHeader
         title="Company setup"
         description="What Taviron needs before its checks, dispatch suggestions and plans can rely on your data. Nothing here changes a record; each step links to where you add or fix it."
+        actions={<ButtonLink href="/setup/kit">Open Onboarding</ButtonLink>}
       />
       {onboarding.ok && onboarding.data.tasks.length ? (
         <section aria-labelledby="onboarding-title" className="mb-8">

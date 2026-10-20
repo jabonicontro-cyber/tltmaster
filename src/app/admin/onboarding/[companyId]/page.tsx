@@ -1,3 +1,4 @@
+import { ButtonLink } from "@/components/ui/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AdminFlash } from "@/components/admin/flash";
@@ -54,6 +55,7 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
         title={company.name}
         description={`${company.members} users · ${company.customers} customers · ${company.materials} materials · ${company.trucks} trucks · ${company.drivers} drivers`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding", href: "/admin/onboarding" }, { label: company.name }]}
+        actions={<ButtonLink href={`/admin/onboarding/${company.id}/kit`}>Onboarding Kit</ButtonLink>}
       />
       <AdminFlash error={sp.error} saved={sp.created} savedText="Company created. Import its records below." />
       <div className="space-y-5">

@@ -237,3 +237,17 @@ export function prepareRows(table: string[][], mapping: string[], entity: Import
     return { row: i + 2, data, errors };
   });
 }
+
+/**
+ * Column names for a downloadable template (Onboarding kit): each field's label when the importer recognizes it,
+ * otherwise its key, so a filled template always maps back without manual mapping.
+ */
+export function templateHeaders(entity: ImportEntity): string[] {
+  return IMPORT_FIELDS[entity].map((f) => (guessMapping([f.label], entity)[0] === f.key ? f.label : f.key));
+}
+
+/** The template as CSV text (header row only; no example rows that could be imported by mistake). */
+export function templateCsv(entity: ImportEntity): string {
+  const quote = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  return `${templateHeaders(entity).map(quote).join(",")}\r\n`;
+}

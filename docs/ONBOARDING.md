@@ -73,8 +73,8 @@ the batch is approved. Self-service import for company administrators is still �
 owners when nobody is assigned, on changes requested, awaiting customer, approval, Taviron replies and reminders.
 Nothing is emailed.
 
-**Lifecycle and billing.** Onboarding never changes the lifecycle (stage, go-live date, fees) or billing: no onboarding
-function touches `private.company_lifecycle`. When every required task is approved or not applicable the checklist says
+**Lifecycle and billing.** The checklist never changes the lifecycle (stage, go-live date, fees) or billing. Since the
+Onboarding Kit (§5) activation of a company *with a checklist* also waits for the signed go-live acceptance. When every required task is approved or not applicable the checklist says
 so; Taviron then agrees the go-live date on the lifecycle page as before. Tested (`tests/db/guided-onboarding.test.ts`,
 `tests/e2e/guided-onboarding.spec.ts`).
 
@@ -87,3 +87,36 @@ settings.manage). Nothing is sent. Checked in `tests/e2e/demo-parity.spec.ts` an
 
 **Not yet:** manual (non-generated) tasks, task templates per plan beyond the generated set, an onboarding view on the
 platform Launchpad's attention queue, emailed reminders (needs an email decision), AI summaries.
+
+## 5. Onboarding Kit (B75, 2026-10-20 — migration `20261120001500`, local only)
+
+**Status:** implemented and locally tested (DB 5, unit 5, browser 3); **blocked on migration** `20261120001500`
+(Phase B of the hosted runbook). Before it is applied the kit pages say the database update is needed.
+
+**Where.** Company: `/setup/kit` (settings.manage; linked from `/setup` → *Open Onboarding*). Taviron:
+`/admin/onboarding/[company]/kit` (platform admin, aal2). One shared record per company; sections Overview, Welcome
+email, Questionnaire, Data import, Dispatch worksheet, Integrations, Testing, Go-live acceptance, After launch.
+
+| Deliverable | What it is | Who edits |
+| --- | --- | --- |
+| Welcome email | Template filled from the company record; **copy only, never sent** (no email is sent by the kit). Says billing starts at the actual go-live. | Taviron |
+| Questionnaire | Company profile, operations, fleet, people, customers, billing contacts; missing answers are listed. | Company and Taviron |
+| Import templates | Header-only CSVs generated from the importer's own column list (`templateCsv`), downloaded at `/onboarding/templates/[entity]`; uploading goes through the existing reviewed import. | — |
+| Dispatch worksheet | One card per dispatch rule with the product's real enforcement (verified against `src/lib/dispatch/smart.ts`: hours of service is *manually checked*, bases, eligibility, availability, maintenance and safety are *product-enforced*), the company's rule, and test scenarios with results. | Company and Taviron |
+| Integration checklist | Each integration's real availability (accounting, ELD and payments are *not available*); the company records needs, Taviron records checks; "verified" is refused for anything not configured on the server. **No secrets:** keys such as password, token, secret or api_key are refused by the server and the database. | Company (needs), Taviron (checks) |
+| Go-live acceptance | Twelve items; four are critical (tenant permissions, data validation, dispatch testing, safety procedures) and can be neither waived nor excepted. Exceptions need a reason and are listed in the sign-off. Open critical testing issues block sign-off. | Taviron records results; the company owner and Taviron sign |
+
+**Rules in the database.** Every save carries the version it was based on; a stale save is refused (`40001`) and every
+version is kept (`onboarding_form_versions`). Sign-offs are append-only, tied to the acceptance version, and voided
+(kept in history) by any later change. Only an owner signs for the company, never in a demo company.
+`private.lifecycle_activate_due()` skips, and *Go Live Now* refuses, a company that has an onboarding checklist and no
+accepted go-live; nothing else about lifecycle, fees or billing changes.
+
+**Demo companies.** Same pages and data; the owner's sign-off panel is not offered and the database refuses it
+(docs/DEMO_TENANTS.md §2). No kit sample data yet: a demo shows the empty kit with its real rules.
+
+**Rollback** `supabase/rollbacks/20261120001500_onboarding_kit.down.sql` restores the earlier activation functions and
+drops every kit form, version and sign-off (destructive).
+
+**Not yet:** kit sample data for demos, emailing the welcome email (needs an email decision), PDF export of the signed
+acceptance.

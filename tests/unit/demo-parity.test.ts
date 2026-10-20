@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "..", "..");
 const ALLOWED = new Set([
+  "src/app/(app)/setup/kit/page.tsx",
   "src/app/portal/[slug]/layout.tsx",
   "src/lib/portal.ts",
   "src/app/admin/testing-lab/page.tsx",
