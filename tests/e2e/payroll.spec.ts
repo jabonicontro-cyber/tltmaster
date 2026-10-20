@@ -77,6 +77,8 @@ test("the owner sets a rule, calculates a period from a verified ticket, approve
   await page.goto("/payroll");
   await page.getByLabel("Calculate earnings from verified tickets").check();
   await page.getByRole("button", { name: "Save settings" }).click();
+  // The box was already ticked before saving: wait for the save itself before filling the period form.
+  await expect(page.getByText("Saved.", { exact: true })).toBeVisible();
   await expect(page.getByLabel("Calculate earnings from verified tickets")).toBeChecked();
   await page.getByLabel("First day").fill(f.day);
   await page.getByLabel("Last day").fill(f.day);

@@ -51,7 +51,10 @@ test("leaving a form with unsaved edits asks first; saving clears the warning", 
   await expect(page).toHaveURL(/\/profile$/);
   expect(asked).toBe(1);
 
-  // After a successful save the same link navigates without asking.
+  // After a successful save the same link navigates without asking. The person moves back to the form first (the
+  // pointer leaving the sidebar lets the rail close, as it does for a real mouse).
+  await page.mouse.move(1100, 500);
+  await expect(page.getByRole("complementary", { name: "Sidebar" })).toHaveAttribute("data-expanded", "false");
   await page.getByLabel("Name to show").fill("");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.getByText("Profile saved.")).toBeVisible();

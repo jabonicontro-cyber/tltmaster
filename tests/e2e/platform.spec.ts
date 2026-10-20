@@ -403,7 +403,8 @@ test("customer lifecycle: plan and founding offer, onboarding fee, go-live only 
   await expect(sub.getByLabel("Move go-live earlier")).toBeVisible();
   await sub.getByLabel("Move go-live earlier").fill(day(40));
   await sub.getByRole("button", { name: "Move earlier" }).click();
-  await expect(page.getByText(/can only move earlier/).first()).toBeVisible();
+  // The field hint also says "can only move earlier": wait for the refusal itself before typing in the next form.
+  await expect(page.getByText(/^The go-live date can only move earlier/)).toBeVisible();
 
   await sub.getByLabel("Your password").fill("not-the-password-123");
   await sub.getByLabel("This company goes live today").check();

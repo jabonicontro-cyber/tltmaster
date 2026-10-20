@@ -173,7 +173,8 @@ export async function turnOnPortalSignIn(userId: string): Promise<ActionResult<I
   await unblock("portal", userId);
   const r = await reissue("portal", userId);
   if (!r.ok) return r;
-  revalidatePath(PATH);
+  // No revalidation here: refreshing now would move the row out of the "Turned off" group and unmount the panel that
+  // shows the one-time temporary password. The panel refreshes the list when the person clicks Done.
   return ok({ ...r.data, loginUrl: loginUrl("portal", await portalSlug()) }, "Sign-in turned on with a new temporary password.");
 }
 

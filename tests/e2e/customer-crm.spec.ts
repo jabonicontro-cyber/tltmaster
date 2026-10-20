@@ -16,7 +16,7 @@ test("office works a prospect from first call to won, and the pipeline follows",
   await page.getByLabel("Customer name").fill(name);
   await page.getByLabel("Relationship").selectOption("prospect");
   await page.getByRole("button", { name: "Create customer" }).click();
-  await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}\?created=1/);
+  await expect(page).toHaveURL(/\/customers\/[0-9a-f-]{36}(\?created=1)?$/);
   const customerUrl = page.url().split("?")[0];
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await page.goto("/customers/new");

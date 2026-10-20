@@ -1,16 +1,17 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 /**
  * Shows a toast for ?param=1 after a redirect, then removes the param. Each redirect shows once; a later redirect to the
- * same page (a second save) shows again — the guard resets once the param is gone.
+ * same page (a second save) shows again — the guard resets once the param is gone. The param is removed with the
+ * native history API (synced with the router) rather than router.replace: a router navigation re-renders the page with
+ * new search params, which remounts it and clears anything typed right after the save.
  */
 export function FlashToast({ messages }: { messages: Record<string, { text: string; tone?: "success" | "warning" }> }) {
   const params = useSearchParams();
-  const router = useRouter();
   const pathname = usePathname();
   const shown = useRef<string | null>(null);
 
@@ -30,8 +31,8 @@ export function FlashToast({ messages }: { messages: Record<string, { text: stri
     }
     const next = new URLSearchParams(params);
     hits.forEach(([key]) => next.delete(key));
-    router.replace(next.size ? `${pathname}?${next}` : pathname, { scroll: false });
-  }, [params, messages, router, pathname]);
+    window.history.replaceState(null, "", next.size ? `${pathname}?${next}` : pathname);
+  }, [params, messages, pathname]);
 
   return null;
 }

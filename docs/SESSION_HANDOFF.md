@@ -7,6 +7,26 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0000000000000. 2026-10-20 (late night) — post-Preview verification, website, Reports dates
+
+- **Committed here:** the public website transformation (B78), typed MM/DD/YYYY dates on Reports (B79), and four
+  browser-test fixes found by the full suite on a production build:
+  - `FlashToast` now removes `?saved=` with the native history API (synced with the router) instead of
+    `router.replace`. The router navigation re-rendered the page with new search params, which remounted it and
+    cleared anything typed right after a save (the payroll period form, Go live now). This was a real input-loss
+    defect, not only a test race.
+  - The sidebar's hover-close now ignores touch/pen pointer-leave; the customer-portal "turn on sign-in" action no
+    longer revalidates, which unmounted the one-time password panel (its Done button refreshes).
+  - Tests: lifecycle and payroll wait for the save's own result (they matched text already on the page); two
+    URL assertions accept the cleaned URL; the coordination DB test pages through the ticket queue.
+- **Checks on the final tree (local, production build):** lint (0 errors), typecheck, unit 499/499, full browser
+  suite 205 passed / 9 skipped / 2 failed → both fixed and re-run green (customer-crm, dispatch-bases, fleet: 7/7),
+  the earlier four re-run green (29/29), gate spec 8 passed / 1 skipped, `check-deployment` all passed. The DB suite
+  ran earlier in the session with the coordination fix; three of its tests are slow on this database's leftover e2e
+  data (Command Center queue reads 0.7–1.3 s each), recorded, timeout not raised.
+- **Not done:** Production promotion (owner), Phase B hosted migrations (owner, after authenticators), AI provider
+  configuration (owner). Deployed Preview not verified live from this session (the site is unreachable from here).
+
 ## 000000000000. 2026-10-20 (night) — hosted Phase A complete (owner report)
 
 - The owner's `supabase migration list` showed every migration through `20261120000500` already applied on the hosted

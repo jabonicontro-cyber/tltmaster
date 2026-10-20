@@ -75,7 +75,13 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
       aria-label="Sidebar"
       data-expanded={expanded ? "true" : "false"}
       onPointerEnter={(e) => { if (e.pointerType === "mouse") schedule(true, OPEN_DELAY); }}
-      onPointerLeave={(e) => { if (e.pointerType === "mouse") schedule(false, CLOSE_DELAY); }}
+      // A mouse leaving also ends a focus hold: a dismissed dialog (unsaved-changes prompt) hands focus back to the link
+      // as keyboard focus, which must not keep the rail open over the page the person is working on.
+      onPointerLeave={(e) => {
+        if (e.pointerType !== "mouse") return;
+        schedule(false, CLOSE_DELAY);
+        setFocused(false);
+      }}
       // Keyboard focus only: a mouse click leaves focus on the link or button, and that must not hold the rail open.
       onFocus={(e) => { if (e.target.matches(":focus-visible")) setFocused(true); }}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false); }}

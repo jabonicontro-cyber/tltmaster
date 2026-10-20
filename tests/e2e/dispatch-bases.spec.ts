@@ -81,7 +81,7 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
     await page.getByRole("combobox", { name: "Type", exact: true }).selectOption({ index: 1 });
     await page.getByLabel("Dispatch base").selectOption(northId);
     await page.getByRole("button", { name: "Add truck" }).click();
-    await expect(page).toHaveURL(/\/fleet\/trucks\/[0-9a-f-]{36}\?saved=1/);
+    await expect(page).toHaveURL(/\/fleet\/trucks\/[0-9a-f-]{36}(\?saved=1)?$/);
     await page.goto(`/fleet/trucks?base=${northId}`);
     await expect(page.getByRole("row").filter({ hasText: `T-${code}` })).toBeVisible();
     await page.goto(`/fleet/trucks?base=${mainId}`);
