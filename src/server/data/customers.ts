@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
-import { ilikePattern, PAGE_SIZE } from "./search";
+import { referenceKey } from "@/lib/search";
+import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import type { ContactRow, CustomerRow, QuoteListRow, SiteRow } from "./types";
 
 export interface CustomerFilters {
@@ -24,13 +25,14 @@ type ListRow = Pick<CustomerRow, "id" | "customer_number" | "name" | "customer_t
  *  list works as before and the CRM filters are ignored. */
 export async function listCustomers(filters: CustomerFilters) {
   const supabase = await createClient();
+  const refIds = await referenceMatches(supabase, REF_KEYS.customers, referenceKey(filters.q));
   const run = (crm: boolean) => {
     let query = supabase.from("customers").select(crm ? `${BASE_COLUMNS}, relationship, tags, account_owner_id` : BASE_COLUMNS, { count: "exact" });
     const sort = filters.sort === "newest" ? ["created_at", false] : filters.sort === "number" ? ["customer_number", true] : filters.sort === "updated" ? ["updated_at", false] : ["name", true];
     query = query.order(sort[0] as string, { ascending: sort[1] as boolean });
     const pattern = ilikePattern(filters.q);
     if (pattern) {
-      query = query.or(`name.ilike.${pattern},customer_number.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},billing_city.ilike.${pattern}`);
+      query = query.or(`name.ilike.${pattern},customer_number.ilike.${pattern},email.ilike.${pattern},phone.ilike.${pattern},billing_city.ilike.${pattern}${idsClause(refIds)}`);
     }
     if (filters.type === "commercial" || filters.type === "residential") query = query.eq("customer_type", filters.type);
     if (filters.status === "archived") query = query.eq("active", false);

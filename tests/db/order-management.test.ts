@@ -109,7 +109,7 @@ describe("direct orders", () => {
     await withSession(async (s) => {
       const ids = await sampleIds(s);
       const r = await directOrder(s, ids);
-      expect(r.order_number).toMatch(/^O-\d{4}-\d{4}$/);
+      expect(r.order_number).toMatch(/^ORD-\d{4,}$/);
 
       const o = await order(s, r.order_id);
       expect(o).toMatchObject({
@@ -488,7 +488,7 @@ describe("company isolation", () => {
 
       // Its own order works and is numbered in its own sequence.
       const own = await saveOrder(s, { customer_id: bCustomer, lines: [custom] });
-      expect(own.order_number).toMatch(/^O-\d{4}-0001$/);
+      expect(own.order_number).toMatch(/^ORD-1001$/);
     });
   });
 

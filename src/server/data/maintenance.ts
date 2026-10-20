@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
-import { ilikePattern, PAGE_SIZE } from "@/server/data/search";
+import { referenceKey } from "@/lib/search";
+import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "@/server/data/search";
 import type { ClearanceStatus, CostKind, PmState, WoCategory, WoStatus, WoUrgency } from "@/lib/maintenance";
 import { OPEN_STATUSES } from "@/lib/maintenance";
 
@@ -155,16 +156,17 @@ export async function listWorkOrders(f: WorkOrderFilters) {
   const pattern = ilikePattern(f.q);
   if (pattern) {
     // Search number, title and truck or trailer unit.
-    const [{ data: t }, { data: tr }, trailersOk] = await Promise.all([
+    const [{ data: t }, { data: tr }, trailersOk, refIds] = await Promise.all([
       supabase.from("trucks").select("id").ilike("unit_number", pattern),
       supabase.from("trailers").select("id").ilike("unit_number", pattern),
       trailerWorkOrdersAvailable(),
+      referenceMatches(supabase, REF_KEYS.workOrders, referenceKey(f.q)),
     ]);
     const truckIds = ((t ?? []) as Array<{ id: string }>).map((x) => x.id);
     const trailerIds = trailersOk ? ((tr ?? []) as Array<{ id: string }>).map((x) => x.id) : [];
     query = query.or([`number.ilike.${pattern}`, `title.ilike.${pattern}`,
       ...(truckIds.length ? [`truck_id.in.(${truckIds.join(",")})`] : []),
-      ...(trailerIds.length ? [`trailer_id.in.(${trailerIds.join(",")})`] : [])].join(","));
+      ...(trailerIds.length ? [`trailer_id.in.(${trailerIds.join(",")})`] : [])].join(",") + idsClause(refIds));
   }
   const view = f.view || "open";
   if (f.status && f.status in { reported: 1, triaged: 1, scheduled: 1, in_progress: 1, awaiting_parts: 1, awaiting_inspection: 1, completed: 1, closed: 1, canceled: 1 }) query = query.eq("status", f.status);

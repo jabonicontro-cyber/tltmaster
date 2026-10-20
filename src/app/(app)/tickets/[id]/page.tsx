@@ -1,3 +1,4 @@
+import { CopyReference } from "@/components/ui/copy-reference";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
@@ -82,6 +83,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         badges={
           <>
             <TicketStatusBadge status={t.status} />
+            <CopyReference value={t.ticket_number} label="ticket number" />
             {t.revision > 1 && <span className="text-sm font-semibold text-muted">Revision {t.revision}</span>}
           </>
         }

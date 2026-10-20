@@ -89,6 +89,31 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Never deploy to production, change DNS or add paid services without approval.
   - Never print or commit secrets.
 
+## Product principles and controlled autonomy (owner 2026-10-20, permanent)
+
+- **One connected operating system:** reuse authoritative records and shared services; never a second source of truth,
+  a parallel importer, a second design system or a disconnected implementation.
+- **Simple for small fleets, powerful for large ones:** good defaults, progressive disclosure; advanced settings only
+  where they help, scoped, validated and audited.
+- **Company rules before personal preferences:** company policy and mandatory safety constraints outrank personal
+  preferences, AI recommendations and optimization; personalization never grants permissions or hides safety issues.
+- **Controlled autonomy (human-directed AI):** automation may do low-risk, reversible, permitted assistance; it detects
+  issues and prepares drafts, recommendations, plans and scenarios without committing them. Consequential operational,
+  financial, customer-facing, permission, safety, compliance and policy changes need an authorized person's approval,
+  unless the company explicitly authorized that specific action, scope, conditions and limits through a verified
+  control — never bypassing safety, security, legal or platform restrictions. Revalidate permissions, current data
+  and constraints right before execution; use idempotency, safe retries and clear failure states; record
+  recommendations, approvals, outcomes and failures. AI output is labelled and distinguished from verified facts;
+  missing data or checks mean stop and explain, never invented certainty or reported success.
+- **Proactive visibility:** three alert priorities with configurable defaults, mandatory safety minimums and audited
+  overrides; acknowledgment is not resolution; critical issues stay visible until resolved.
+- **Premium quality everywhere:** fix shared root causes; every visible control works; no placeholder functionality,
+  false success, fabricated metrics or unverified integrations.
+- **Learning:** only from recorded decisions and verified outcomes; never silently change policies or weaken constraints.
+- **Procedure for every requirement:** inspect the repository and deployed behavior first; reuse what exists; separate
+  verified, incomplete, proposed and undecided; build the smallest complete solution; test real behavior, authorization,
+  tenant isolation and recovery; report exact status. Unresolved product decisions are asked, not invented.
+
 ## Demo tenants stay in sync with the product (permanent requirement, owner 2026-10-12)
 
 - **One application.** Demo companies (`companies.is_demo`; presenter and prospect demos) run the same code, pages,

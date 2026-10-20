@@ -67,7 +67,7 @@ describe("converting accepted quotes into orders", () => {
       // Accepting the quote already created the order (N15); converting returns it.
       const r = await convert(s, q.quote_id);
       expect(r.created).toBe(false);
-      expect(r.order_number).toMatch(/^O-\d{4}-\d{4}$/);
+      expect(r.order_number).toMatch(/^ORD-\d{4,}$/);
 
       const order = (await s.query("select * from public.orders where id = $1", [r.order_id])).rows[0];
       const version = versionsBefore.rows[0];
@@ -118,7 +118,7 @@ describe("converting accepted quotes into orders", () => {
 
       // History and audit
       const events = await s.query("select from_status, to_status, note from public.order_status_events where order_id = $1", [r.order_id]);
-      expect(events.rows).toEqual([{ from_status: null, to_status: "confirmed", note: expect.stringMatching(/^Created from quote Q-\d{4}-\d{4} revision 1$/) }]);
+      expect(events.rows).toEqual([{ from_status: null, to_status: "confirmed", note: expect.stringMatching(/^Created from quote QTE-\d{4,} revision 1$/) }]);
       const audit = await s.query("select action from public.audit_events where entity_id in ($1, $2)", [r.order_id, q.quote_id]);
       expect(audit.rows.map((a) => a.action)).toEqual(expect.arrayContaining(["order.created_from_quote", "quote.converted_to_order"]));
     });

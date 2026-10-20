@@ -31,7 +31,7 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
   await page.getByLabel(/Safety-critical defect/).check();
   await expect(page.getByText("Saving takes the truck out of service")).toBeVisible();
   await page.getByRole("button", { name: "Create work order" }).click();
-  await expectToast(page, /Work order WO-\d{4}-\d{4} created/);
+  await expectToast(page, /Work order MWO-\d{4,} created/);
   await expect(page.getByText(/is out of service and cannot be dispatched/)).toBeVisible();
   expect(await serviceStatus(truckId)).toBe("out_of_service");
   const woUrl = page.url();
@@ -216,7 +216,7 @@ test("a trailer defect gets its own work order: the trailer is restricted, named
   await page.getByLabel(/Safety-critical defect/).check();
   await expect(page.getByText("Saving takes the trailer out of service")).toBeVisible();
   await page.getByRole("button", { name: "Create work order" }).click();
-  await expectToast(page, /Work order WO-\d{4}-\d{4} created/);
+  await expectToast(page, /Work order MWO-\d{4,} created/);
   await expect(page.getByText(`Trailer TX-${tag} is out of service and cannot be dispatched`)).toBeVisible();
   expect(await trailerStatus()).toBe("out_of_service");
   const number = (await page.getByRole("heading", { level: 1 }).textContent())!.split(" · ")[0];

@@ -1,3 +1,4 @@
+import { CopyReference } from "@/components/ui/copy-reference";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { OrderActions } from "@/components/orders/order-actions";
@@ -103,6 +104,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         badges={
           <>
             <OrderStatusBadge status={order.status} />
+            <CopyReference value={order.order_number} label="order number" />
             {order.source_quote_id ? <Badge tone="gray">From quote</Badge> : <Badge tone="blue">Direct order</Badge>}
             <SampleBadge show={order.is_sample} />
           </>

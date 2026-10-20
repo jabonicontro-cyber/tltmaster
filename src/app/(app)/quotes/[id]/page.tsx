@@ -1,3 +1,4 @@
+import { CopyReference } from "@/components/ui/copy-reference";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -52,6 +53,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         badges={
           <>
             <QuoteStatusBadge status={quote.status} />
+            <CopyReference value={quote.quote_number} label="quote number" />
             <Badge tone="gray">Revision {current.version_no}</Badge>
             {current.locked_at && <Badge tone="dark">Issued</Badge>}
             <SampleBadge show={quote.is_sample} />

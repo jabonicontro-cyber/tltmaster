@@ -240,7 +240,7 @@ export function SequencesPanel({ rows, year }: { rows: SequenceRow[]; year: numb
   };
   return (
     <>
-      <CardHeader title="Document numbering" description="Numbers are assigned in order and are safe when several people save at once. Year-based numbers restart at 1 each January." />
+      <CardHeader title="Document numbering" description="Numbers are assigned in order and are safe when several people save at once. A number is never issued twice: changing the format never renumbers existing records, and the next number can only move forward." />
       <TableWrap>
         <Table>
           <thead>

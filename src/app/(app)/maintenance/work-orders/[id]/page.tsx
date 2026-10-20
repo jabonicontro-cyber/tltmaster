@@ -1,3 +1,4 @@
+import { CopyReference } from "@/components/ui/copy-reference";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
@@ -53,6 +54,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
         description={`${unitWord} ${unit?.unit_number ?? "—"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
         badges={<>
           <WoStatusBadge status={wo.status} />
+          <CopyReference value={wo.number} label="work order number" />
           <UrgencyBadge urgency={wo.urgency} />
           {wo.safety_critical && <SafetyBadge />}
           {wo.clearance_status && <Badge tone={wo.clearance_status === "cleared" ? "green" : wo.clearance_status === "failed" ? "red" : "amber"}>{CLEARANCE_STATUSES[wo.clearance_status]}</Badge>}

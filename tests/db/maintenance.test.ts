@@ -41,7 +41,7 @@ describe("maintenance work orders", () => {
 
       await s.as(mechanic);
       const wo = await createWo(s, { truck_id: t, title: "Air leak at rear axle", category: "brakes", urgency: "high" });
-      expect(wo.number).toMatch(/^WO-\d{4}-\d{4}$/);
+      expect(wo.number).toMatch(/^MWO-\d{4,}$/);
       expect((await woRow(s, wo.id)).status).toBe("reported");
 
       await s.as(dispatcher);

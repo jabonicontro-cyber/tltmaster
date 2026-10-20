@@ -4,7 +4,8 @@ import { parseBaseFilter } from "@/server/data/bases";
 import { addDays } from "@/lib/dates";
 import { OPEN_ORDER_STATUSES, ORDER_STATUSES } from "@/lib/orders/status";
 import { uuid } from "@/lib/schemas/common";
-import { ilikePattern, PAGE_SIZE } from "./search";
+import { referenceKey } from "@/lib/search";
+import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import { getUserNames } from "./quotes";
 import { businessToday } from "./settings";
 import type { AuditEventRow, CustomerRow, OrderLineRow, OrderListRow, OrderRow, OrderStatusEventRow, OrderStatus, SiteRow } from "./types";
@@ -39,8 +40,10 @@ export async function listOrders(filters: OrderFilters) {
       : query.order("created_at", { ascending: false });
   const pattern = ilikePattern(filters.q);
   if (pattern) {
+    // A reference typed any way (ORD1042, o-2026-0001) also matches, through the stored search key.
+    const refIds = await referenceMatches(supabase, REF_KEYS.orders, referenceKey(filters.q));
     query = query.or(
-      `order_number.ilike.${pattern},customer_name.ilike.${pattern},source_quote_number.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern},customer_po.ilike.${pattern},contact_name.ilike.${pattern},material_summary.ilike.${pattern}`,
+      `order_number.ilike.${pattern},customer_name.ilike.${pattern},source_quote_number.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern},customer_po.ilike.${pattern},contact_name.ilike.${pattern},material_summary.ilike.${pattern}${idsClause(refIds)}`,
     );
   }
   if (filters.status === "open") query = query.in("status", OPEN_ORDER_STATUSES);

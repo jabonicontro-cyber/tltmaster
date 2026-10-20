@@ -36,7 +36,7 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await page.getByRole("button", { name: "Save & review" }).click();
   await expect(page).toHaveURL(/\/quotes\/[0-9a-f-]{36}$/);
   const quoteUrl = page.url();
-  await expect(page.getByRole("heading", { name: /^Q-\d{4}-\d{4}$/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /^QTE-\d{4,}$/ })).toBeVisible();
   await expect(page.getByText("$292.60").first()).toBeVisible();
 
   // PDF
@@ -86,14 +86,14 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await page.getByRole("button", { name: "Mark accepted" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Mark accepted" }).click();
   // Acceptance creates exactly one Confirmed order (N15); there is nothing left to convert.
-  await expectToast(page, /Quote marked accepted\. Order O-\d{4}-\d{4} was created as Confirmed\./);
+  await expectToast(page, /Quote marked accepted\. Order ORD-\d{4,} was created as Confirmed\./);
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Convert to order" })).toHaveCount(0);
   await page.getByRole("link", { name: /^Order O-/ }).first().click();
   await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
   const orderUrl = page.url();
   const orderNumber = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
-  expect(orderNumber).toMatch(/^O-\d{4}-\d{4}$/);
+  expect(orderNumber).toMatch(/^ORD-\d{4,}$/);
   await expect(page.getByText("Confirmed", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("PO-E2E-1")).toBeVisible();
   // Revision 2: 30 t × $9.00 = $270.00 (+7% tax $18.90) + 20 t hauling × $5.00 = $100.00 → $388.90

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
-import { ilikePattern, PAGE_SIZE } from "./search";
+import { referenceKey } from "@/lib/search";
+import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import type {
   CustomerRow,
   DeliveryRow,
@@ -26,7 +27,8 @@ export async function listQuotes(filters: QuoteFilters) {
   let query = supabase.from("quote_list").select("*", { count: "exact" }).order("created_at", { ascending: false });
   const pattern = ilikePattern(filters.q);
   if (pattern) {
-    query = query.or(`quote_number.ilike.${pattern},customer_name.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern}`);
+    const refIds = await referenceMatches(supabase, REF_KEYS.quotes, referenceKey(filters.q));
+    query = query.or(`quote_number.ilike.${pattern},customer_name.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern}${idsClause(refIds)}`);
   }
   if (filters.status && (QUOTE_STATUSES as readonly string[]).includes(filters.status)) query = query.eq("status", filters.status);
   if (filters.status === "open") query = query.in("status", ["draft", "sent"]);

@@ -21,3 +21,16 @@ describe("global search", () => {
     expect(cleanQuery("x".repeat(200))).toHaveLength(80);
   });
 });
+
+describe("referenceKey", () => {
+  it("accepts a reference typed any way and ignores plain words", async () => {
+    const { referenceKey } = await import("@/lib/search");
+    expect(referenceKey("ORD-1042")).toBe("ORD1042");
+    expect(referenceKey("ord 1042")).toBe("ORD1042");
+    expect(referenceKey("o-2026-0001")).toBe("O20260001");
+    expect(referenceKey("1042")).toBe("1042");
+    expect(referenceKey("Riverbend")).toBeNull();
+    expect(referenceKey("")).toBeNull();
+    expect(referenceKey("ORD-1042'),id.eq.(x")).toBe("ORD1042IDEQX");
+  });
+});

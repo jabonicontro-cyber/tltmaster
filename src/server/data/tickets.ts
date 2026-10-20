@@ -4,7 +4,8 @@ import { uuid } from "@/lib/schemas/common";
 import { createClient } from "@/server/supabase/server";
 import type { AssignmentRow, OrderLoadRow } from "./dispatch";
 import { getUserNames } from "./quotes";
-import { ilikePattern } from "./search";
+import { referenceKey } from "@/lib/search";
+import { idsClause, ilikePattern, REF_KEYS, referenceMatches } from "./search";
 import { businessToday } from "./settings";
 import type { OrderLineRow, OrderListRow, UnitRow } from "./types";
 
@@ -171,7 +172,8 @@ export async function listTickets(view: TicketView, q?: string) {
   else if (view === "voided") query = query.eq("status", "voided");
   const pattern = ilikePattern(q);
   if (pattern) {
-    query = query.or(`ticket_number.ilike.${pattern},external_reference.ilike.${pattern},snapshot->>order_number.ilike.${pattern},snapshot->>customer_name.ilike.${pattern},snapshot->>truck_unit.ilike.${pattern},snapshot->>driver_name.ilike.${pattern}`);
+    const refIds = await referenceMatches(supabase, REF_KEYS.tickets, referenceKey(q));
+    query = query.or(`ticket_number.ilike.${pattern},external_reference.ilike.${pattern},snapshot->>order_number.ilike.${pattern},snapshot->>customer_name.ilike.${pattern},snapshot->>truck_unit.ilike.${pattern},snapshot->>driver_name.ilike.${pattern}${idsClause(refIds)}`);
   }
   const { data, error } = await query;
   if (error) throw new Error(`Could not load tickets: ${error.message}`);

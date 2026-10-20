@@ -28,14 +28,14 @@ export async function saveCompanySettings(formData: FormData): Promise<ActionRes
 export async function saveSequence(key: string, formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("settings.manage");
-    if (!["customer", "quote", "order", "ticket", "billing"].includes(key)) return fail("Unknown sequence.");
+    if (!["customer", "quote", "order", "ticket", "billing", "work_order"].includes(key)) return fail("Unknown sequence.");
     const parsed = sequenceSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
     const { error } = await supabase.from("document_sequences").update(parsed.data).eq("key", key);
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/settings");
-    return ok(undefined, "Numbering saved. If a number is already taken, saving that document will be refused rather than duplicated.");
+    return ok(undefined, "Numbering saved. Existing records keep their numbers; a number already used is skipped, never issued twice.");
   });
 }
 

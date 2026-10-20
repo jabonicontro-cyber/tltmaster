@@ -102,7 +102,7 @@ describe("driver tickets", () => {
       const payload = w.ticket({ truck_id: w.f.t2, driver_id: w.f.d2 }); // ignored: taken from the assignment
       const r = await submit(s, payload);
       expect(r).toMatchObject({ created: true, status: "submitted" });
-      expect(r.ticket_number).toMatch(/^T-\d{4}-\d{5}$/);
+      expect(r.ticket_number).toMatch(/^TKT-\d{4,}$/);
       expect(await submit(s, payload)).toMatchObject({ ticket_id: r.ticket_id, created: false });
 
       await s.asAdmin();

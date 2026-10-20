@@ -126,6 +126,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.account_setup_issue", "public.account_delivery_record", "public.my_account_setup", "public.account_setup_complete",
   "public.company_account_states", "public.account_events", "public.account_block_allowed", "public.account_access_record",
   "public.portal_create_login", "public.portal_reactivate", "public.account_employee_created",
+  // Reference numbers (20261120001300): is a reference already used by the company (never reissue).
+  "private.reference_in_use",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
   "public.command_center_urgent_by_kind", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
@@ -541,25 +543,26 @@ describe("per-company numbering and uniqueness", () => {
       const w = await world(s);
       await s.as(w.bOwner);
       const cust = await s.query<{ customer_number: string }>("select customer_number from public.customers where id = $1", [w.bCustomerId]);
-      expect(cust.rows[0].customer_number).toBe("C-00001");
+      expect(cust.rows[0].customer_number).toBe("CUS-1001");
       await s.query("insert into public.materials (name, default_unit_code) values ('Gravel #53 limestone', 'ton')");
       const q = await saveQuote(s, {
         customer_id: w.bCustomerId,
         lines: [{ kind: "other", calc_method: "per_unit", description: "Trucking", unit_code: "hour", quantity: "2", unit_rate_cents: 12345 }],
       });
-      expect(q.quote_number).toMatch(/^Q-\d{4}-0001$/);
+      expect(q.quote_number).toMatch(/^QTE-1001$/);
       expect(q.total_cents).toBe(24690);
 
       await s.query("select public.mark_quote_sent($1, $2, 'Handed over')", [q.quote_id, q.edit_seq]);
       await s.query("select public.set_quote_status($1, 'accepted', '')", [q.quote_id]);
       const o = await s.query<{ r: { order_number: string; created: boolean } }>("select public.convert_quote_to_order($1) as r", [q.quote_id]);
-      expect(o.rows[0].r.order_number).toMatch(/^O-\d{4}-0001$/);
+      expect(o.rows[0].r.order_number).toMatch(/^ORD-1001$/);
       const again = await s.query<{ r: { created: boolean } }>("select public.convert_quote_to_order($1) as r", [q.quote_id]);
       expect(again.rows[0].r.created).toBe(false);
 
-      // Top Line can still have its own Q-…-0001 etc. without conflict.
+      // The same number can exist in both companies without conflict (numbering is per company).
       await s.asAdmin();
-      const dup = await s.query<{ n: number }>("select count(distinct company_id)::int as n from public.customers where customer_number = 'C-00001' and company_id in ($1, $2)", [TOP_LINE, w.B]);
+      await s.query("insert into public.customers (company_id, customer_number, name) values ($1, 'CUS-1001', 'Same number elsewhere') on conflict do nothing", [TOP_LINE]);
+      const dup = await s.query<{ n: number }>("select count(distinct company_id)::int as n from public.customers where customer_number = 'CUS-1001' and company_id in ($1, $2)", [TOP_LINE, w.B]);
       expect(dup.rows[0].n).toBe(2);
     });
   });

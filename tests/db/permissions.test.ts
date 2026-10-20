@@ -58,14 +58,14 @@ describe("row level security and permissions", () => {
       const ins = await s.query<{ id: string; customer_number: string; created_by: string }>(
         "insert into public.customers (name, customer_type) values ('Test Customer LLC', 'commercial') returning id, customer_number, created_by",
       );
-      expect(ins.rows[0].customer_number).toMatch(/^C-\d{5}$/);
+      expect(ins.rows[0].customer_number).toMatch(/^CUS-\d{4,}$/);
       expect(ins.rows[0].created_by).toBe(office);
       const id = ins.rows[0].id;
       // customer_number cannot be changed by an update
       await s.query("update public.customers set name = 'Renamed LLC', customer_number = 'HACK' where id = $1", [id]);
       const row = await s.query<{ name: string; customer_number: string }>("select name, customer_number from public.customers where id = $1", [id]);
       expect(row.rows[0].name).toBe("Renamed LLC");
-      expect(row.rows[0].customer_number).toMatch(/^C-\d{5}$/);
+      expect(row.rows[0].customer_number).toMatch(/^CUS-\d{4,}$/);
       // no hard deletes
       const del = await pgError(s.query("delete from public.customers where id = $1", [id]));
       expect(del.code).toBe("42501");

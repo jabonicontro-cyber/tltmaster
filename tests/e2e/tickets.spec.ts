@@ -73,7 +73,7 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await page.getByLabel("Delivery time").fill("08:30");
   await page.getByLabel("Paper / scale ticket #").fill(f.paper);
   await page.getByRole("button", { name: "Submit ticket" }).click();
-  await expectToast(page, /Ticket T-\d{4}-\d{5} submitted\./);
+  await expectToast(page, /Ticket TKT-\d{4,} submitted\./);
   await expect(page).toHaveURL(/\/tickets\/[0-9a-f-]{36}$/);
   const number = (await page.getByRole("heading", { level: 1 }).textContent())!.replace("Ticket ", "").trim();
   await expect(page.getByText("21.47 tons")).toBeVisible();

@@ -2,7 +2,7 @@
 // permission that opens its page, and the database's row-level security still decides which rows come back.
 import type { Permission } from "@/lib/permissions";
 
-export type SearchGroupKey = "customers" | "orders" | "quotes" | "tickets" | "trucks" | "trailers" | "drivers" | "people";
+export type SearchGroupKey = "customers" | "orders" | "quotes" | "tickets" | "workOrders" | "trucks" | "trailers" | "drivers" | "people";
 
 export type SearchHit = { id: string; title: string; detail: string; href: string };
 
@@ -11,6 +11,7 @@ export const SEARCH_GROUPS: Array<{ key: SearchGroupKey; label: string; permissi
   { key: "orders", label: "Orders", permission: "orders.view" },
   { key: "quotes", label: "Quotes", permission: "quotes.view" },
   { key: "tickets", label: "Delivery Tickets", permission: "tickets.view" },
+  { key: "workOrders", label: "Work Orders", permission: "maintenance.view" },
   { key: "trucks", label: "Trucks", permission: "fleet.view" },
   { key: "trailers", label: "Trailers", permission: "fleet.view" },
   { key: "drivers", label: "Drivers", permission: "fleet.view" },
@@ -36,4 +37,13 @@ export function cleanQuery(q: string | null | undefined): string | null {
 export function ilikePattern(q: string): string {
   const safe = q.replace(/[(),"'\\]/g, " ").replace(/[%_]/g, (c) => `\\${c}`).trim();
   return `%${safe}%`;
+}
+
+/**
+ * A reference typed any reasonable way (ORD-1042, ord1042, "ORD 1042", O-2026-0001, O20260001) as the stored search
+ * key: upper case, letters and digits only. Null unless it contains a digit (names are searched as typed).
+ */
+export function referenceKey(q: string | null | undefined): string | null {
+  const key = (q ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  return key.length >= 2 && key.length <= 30 && /\d/.test(key) ? key : null;
 }

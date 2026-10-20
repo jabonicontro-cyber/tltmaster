@@ -55,7 +55,7 @@ describe("quote creation and calculation", () => {
       const office = await s.createUser("office");
       await s.as(office);
       const r = await newDraft(s, ids);
-      expect(r.quote_number).toMatch(/^Q-\d{4}-\d{4}$/);
+      expect(r.quote_number).toMatch(/^QTE-\d{4,}$/);
       expect(r.version_no).toBe(1);
       // 22.5 × $10.00 = $225.00 (taxable) + 22.5 × $5.00 = $112.50; tax 7% of 225 = $15.75
       expect(r.total_cents).toBe(22500 + 11250 + 1575);

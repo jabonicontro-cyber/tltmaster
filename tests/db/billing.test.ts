@@ -242,7 +242,7 @@ describe("billing handoff", () => {
       const key = randomUUID();
       const r = await handOff(s, [w.order.id], key, "QB batch Oct (test)");
       expect(r).toMatchObject({ created: true, orders: 1 });
-      expect(r.batch_number).toMatch(/^B-\d{4}-\d{4}$/);
+      expect(r.batch_number).toMatch(/^BIL-\d{4,}$/);
       expect(await handOff(s, [w.order.id], key)).toMatchObject({ handoff_id: r.handoff_id, created: false });
       const dup = await pgError(handOff(s, [w.order.id]));
       expect(dup.code).toBe("PT409");
@@ -323,7 +323,7 @@ describe("permissions and isolation", () => {
 
       const B = await s.createCompany("Brookside Aggregates (test)");
       await s.asAdmin();
-      expect((await s.query("select prefix from public.document_sequences where company_id = $1 and key = 'billing'", [B])).rows).toEqual([{ prefix: "B-" }]);
+      expect((await s.query("select prefix from public.document_sequences where company_id = $1 and key = 'billing'", [B])).rows).toEqual([{ prefix: "BIL-" }]);
       const bOwner = await s.createUser("owner", { companyId: B });
       await s.as(bOwner);
       for (const v of ["billing_order_status", "billing_load_status", "billing_line_status", "billing_exceptions"]) {

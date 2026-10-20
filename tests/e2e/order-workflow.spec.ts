@@ -58,7 +58,7 @@ test("billing shows an invoice draft from verified deliveries only, clearly not 
   await signIn(page, "office");
   await page.goto("/billing?view=all");
   // Any order with tickets will do; the billing e2e creates such orders.
-  const link = page.getByRole("link", { name: /^O-\d{4}-\d{4}$/ }).first();
+  const link = page.getByRole("link", { name: /^ORD-\d{4,}$/ }).first();
   await link.click();
   await expect(page).toHaveURL(/\/billing\/orders\//);
   const draft = page.getByRole("table", { name: "Invoice draft" });

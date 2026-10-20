@@ -101,14 +101,14 @@ test("office follows an order from a missing ticket to a billing handoff and bac
   await page.getByRole("button", { name: "Hand off selected" }).click();
   await page.getByRole("dialog").getByLabel("Reference (optional)").fill("QB entry e2e");
   await page.getByRole("dialog").getByRole("button", { name: "Create batch" }).click();
-  await expectToast(page, /Batch B-\d{4}-\d{4} created with 1 order\./);
+  await expectToast(page, /Batch BIL-\d{4,} created with 1 order\./);
   await expect(page).toHaveURL(/view=handed_off/);
   const batch = page.getByRole("listitem").filter({ hasText: f.orderNumber }).filter({ hasText: "QB entry e2e" });
   await expect(batch).toBeVisible();
 
   // 5. The batch file: a labeled handoff list, counted per download.
   const [download] = await Promise.all([page.waitForEvent("download"), batch.getByRole("link", { name: "Download file (CSV)" }).click()]);
-  expect(download.suggestedFilename()).toMatch(/^billing-handoff-B-\d{4}-\d{4}\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^billing-handoff-BIL-\d{4,}\.csv$/);
   const csv = await readFile((await download.path())!, "utf8");
   expect(csv.split("\r\n")[0]).toMatch(/^format,batch_number,batch_reference,order_number/);
   expect(csv).toContain(`tlt-billing-handoff-v1`);

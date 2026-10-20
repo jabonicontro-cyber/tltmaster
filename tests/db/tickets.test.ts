@@ -52,7 +52,7 @@ describe("submitting tickets", () => {
       await s.as(w.office);
       const r = await submit(s, w.payload);
       expect(r).toMatchObject({ status: "submitted", created: true });
-      expect(r.ticket_number).toMatch(/^T-\d{4}-\d{5}$/);
+      expect(r.ticket_number).toMatch(/^TKT-\d{4,}$/);
       const t = await ticket(s, r.ticket_id);
       expect(t).toMatchObject({
         company_id: TOP_LINE,
@@ -318,7 +318,7 @@ describe("permissions and isolation", () => {
       expect((await pgError(submit(s, { ...bPayload, driver_id: w.f.d1 }))).message).toMatch(/Driver not found/);
       // B's own ticket works and is numbered in B's sequence.
       const own = await submit(s, bPayload);
-      expect(own.ticket_number).toMatch(/^T-\d{4}-00001$/);
+      expect(own.ticket_number).toMatch(/^TKT-1001$/);
 
       await s.asAdmin();
       expect((await s.query("select status from public.delivery_tickets where id = $1", [r.ticket_id])).rows[0].status).toBe("submitted");
@@ -394,7 +394,9 @@ describe("ticket numbers under concurrency", () => {
       const na = ra.rows[0].r.ticket_number as string;
       const nb = rb.rows[0].r.ticket_number as string;
       expect(na).not.toBe(nb);
-      expect(Number(nb.slice(-5)) - Number(na.slice(-5))).toBe(1);
+      // Whichever commits second gets the next number (the order of the two is not fixed).
+      const seq = (n: string) => Number(/(\d+)$/.exec(n)![1]);
+      expect(Math.abs(seq(nb) - seq(na))).toBe(1);
     } finally {
       a.release();
       b.release();

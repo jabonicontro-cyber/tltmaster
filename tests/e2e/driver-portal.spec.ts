@@ -45,7 +45,7 @@ test("a driver sees only their own day, sends a ticket (with a failed send and a
   await page.context().setOffline(false);
   await page.getByRole("button", { name: "Send again" }).dblclick();
   await expect(page).toHaveURL(/\/driver\?sent=/);
-  await expect(page.getByRole("status")).toContainText(/Ticket T-\d{4}-\d{5} sent to the office\./);
+  await expect(page.getByRole("status")).toContainText(/Ticket TKT-\d{4,} sent to the office\./);
   const recent = page.getByRole("list", { name: "My recent tickets" });
   await expect(recent.getByText("Sent — waiting for office review").first()).toBeVisible();
   const count = await office(async (q) => (await q("select count(*)::int as n from public.delivery_tickets where external_reference = $1", [f.ref])).rows[0].n as number);
