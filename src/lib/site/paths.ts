@@ -1,7 +1,12 @@
 // The public website: pages anyone may read, even while the early-access gate
 // is on. Exact paths only — nothing below them, and only GET/HEAD, so no
 // server action or app route is ever reachable through a public page.
-export const SITE_PAGES = ["/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms"] as const;
+export const SITE_PAGES = [
+  "/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms", "/faq", "/trust",
+  // Platform areas and solutions (src/lib/site/areas.ts; tests/unit/site-areas.test.ts keeps these lists in step).
+  "/platform/dispatch", "/platform/fleet", "/platform/customers", "/platform/intelligence", "/platform/automation", "/platform/control",
+  "/solutions/small-fleets", "/solutions/growing-fleets", "/solutions/enterprise",
+] as const;
 export type SitePage = (typeof SITE_PAGES)[number];
 
 /** The one public endpoint that accepts data: the demo/contact form (POST only). */

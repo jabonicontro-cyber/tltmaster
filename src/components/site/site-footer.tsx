@@ -2,23 +2,18 @@ import Link from "next/link";
 import { TavironLogo } from "./logo";
 import { cn } from "@/lib/cn";
 import { SITE_CONTAINER } from "@/lib/layout";
-
-const COLUMNS = [
-  { title: "Product", links: [{ href: "/platform", label: "Platform" }, { href: "/solutions", label: "Solutions" }, { href: "/pricing", label: "Pricing" }] },
-  { title: "Company", links: [{ href: "/about", label: "About" }, { href: "/contact", label: "Contact" }, { href: "/demo", label: "Request a demo" }] },
-  { title: "Legal", links: [{ href: "/privacy", label: "Privacy" }, { href: "/terms", label: "Terms" }] },
-];
+import { FOOTER_GROUPS } from "@/lib/site/nav";
 
 export function SiteFooter() {
   return (
     <footer className="border-t border-silver/10 bg-[#091422]">
-      <div className={cn(SITE_CONTAINER, "grid gap-10 py-12 md:grid-cols-[1.4fr_repeat(3,1fr)]")}>
+      <div className={cn(SITE_CONTAINER, "grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_repeat(5,1fr)]")}>
         <div className="space-y-3">
           <TavironLogo />
-          <p className="max-w-xs text-sm text-silver/80">Operations software for hauling companies: orders, dispatch, drivers, delivery tickets and billing readiness in one place.</p>
+          <p className="max-w-xs text-sm text-silver/80">Your entire trucking operation. Connected. Orders, dispatch, drivers, delivery tickets, maintenance and billing readiness in one place.</p>
           <p className="text-xs text-silver/60">In early access. Taviron is a working product name.</p>
         </div>
-        {COLUMNS.map((c) => (
+        {FOOTER_GROUPS.map((c) => (
           <div key={c.title}>
             <h2 className="text-sm font-semibold text-cloud">{c.title}</h2>
             <ul className="mt-3 space-y-2">
@@ -33,6 +28,7 @@ export function SiteFooter() {
           </div>
         ))}
       </div>
+      <div className={cn(SITE_CONTAINER, "border-t border-silver/10 py-6 text-xs text-silver/60")}>© {new Date().getFullYear()} Taviron. All rights reserved.</div>
     </footer>
   );
 }

@@ -100,3 +100,26 @@ public page.
 
 Next screenshots to add, if the demo data shows them well: Time off approvals (the demo has two pending requests), a
 richer Communications sample (the demo has one workspace conversation).
+
+## 7. Website structure (2026-10-20)
+
+Positioning: **"Your entire trucking operation. Connected."** with **"See what's happening. Know what to do next."**;
+homepage calls to action **Explore the Platform** and **Request a Demo**.
+
+| Where | Source | Notes |
+| --- | --- | --- |
+| Navigation and footer | `src/lib/site/nav.ts` (`SITE_NAV`, `FOOTER_GROUPS`); `src/components/site/site-nav.tsx` | Disclosure menus (keyboard, Escape, outside click); the phone menu lists the same groups. |
+| Platform areas `/platform/{dispatch,fleet,customers,intelligence,automation,control}` | `src/lib/site/areas.ts` (`AREAS`) | Each area: problem, value, workflow steps, the real screens of its **published** catalog features, controls, "Not available yet", connections. |
+| Solutions `/solutions/{small-fleets,growing-fleets,enterprise}` | `SEGMENTS` in the same file | Needs, a demo scenario, and the plans that usually fit, read from `src/lib/site/pricing.ts`. |
+| `/trust`, `/faq` | the pages; `src/lib/site/faq.ts`, `src/lib/site/pricing-faq.ts` | Pricing questions are written once and shown on `/pricing` and `/faq`. |
+| Public page list | `SITE_PAGES` in `src/lib/site/paths.ts` | Exact paths only; robots and `sitemap.xml` (only when `SITE_INDEXING=on`) read it. |
+
+Rules kept by `tests/unit/site-areas.test.ts`: areas use only published features; every navigation and footer link is a
+public page with a page file; solutions name real plans; no percentages, testimonials or guarantees in area text.
+`tests/e2e/website.spec.ts` checks every page renders with one heading, every link resolves, the menus work by keyboard
+and on a phone, a demo request keeps the visitor's interest (`/demo?interest=<area or solution>` prefills the message),
+and nothing scrolls sideways.
+
+Not done, needing a decision: analytics (the privacy notice says the site sets no analytics cookies), publishing the
+hosting providers and data locations, a public Help Center, an interactive guided demo on the website (today the demo is
+a walkthrough led by the Taviron team), and new screenshots for areas without one.

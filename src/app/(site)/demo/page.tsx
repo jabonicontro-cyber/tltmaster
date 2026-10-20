@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { LeadForm } from "@/components/site/lead-form";
 import { Container, PageIntro } from "@/components/site/ui";
+import { AREAS, SEGMENTS } from "@/lib/site/areas";
 
 export const metadata: Metadata = {
   title: "Request a demo",
@@ -13,8 +14,10 @@ const STEPS = [
   { title: "Your questions, your data", text: "If it fits, we talk through how your records would be imported and checked before anything goes live." },
 ];
 
-export default async function DemoPage({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string }> }) {
+export default async function DemoPage({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string; interest?: string }> }) {
   const sp = await searchParams;
+  // Only known pages become a prefilled interest; anything else is ignored.
+  const topic = AREAS.find((a) => a.slug === sp.interest)?.label ?? SEGMENTS.find((s) => s.slug === sp.interest)?.label;
   return (
     <>
       <PageIntro title="See Taviron run a hauling day.">
@@ -33,7 +36,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
               </li>
             ))}
           </ol>
-          <LeadForm kind="demo" sent={sp.sent === "1"} initialError={sp.error?.slice(0, 200)} />
+          <LeadForm kind="demo" sent={sp.sent === "1"} initialError={sp.error?.slice(0, 200)} initialMessage={topic ? `Interested in: ${topic}` : undefined} />
         </Container>
       </section>
     </>

@@ -4,11 +4,14 @@ import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Sm
 import { CatalogShot } from "@/components/site/feature-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
 import { Container, CtaLink, FinalCta, SectionHeading } from "@/components/site/ui";
+import { SEGMENTS } from "@/lib/site/areas";
+import { TIERS, usd } from "@/lib/site/pricing";
 import { publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
-  title: { absolute: "Taviron — plan the whole hauling operation" },
-  description: "Taviron plans loads, trucks, trailers and drivers together under your safety and capacity rules — quotes, dispatch, tickets and billing readiness in one place for aggregate and material haulers.",
+  title: { absolute: "Taviron — Your entire trucking operation. Connected." },
+  description: "See what's happening. Know what to do next. Taviron connects quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness for trucking and hauling companies — with people approving every consequential step.",
+  alternates: { canonical: "/" },
 };
 
 // Every statement on this page matches a capability listed as available in
@@ -117,16 +120,17 @@ export default function HomePage() {
         <Container className="relative pt-16 pb-20 sm:pt-24 sm:pb-28">
           <div className="max-w-3xl">
             <h1 id="hero-title" className="site-display text-[2.6rem] font-bold text-cloud sm:text-6xl">
-              A smarter way to run a fleet.
+              Your entire trucking operation. Connected.
             </h1>
-            <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
-              Taviron plans the whole operation at once — loads, trucks, trailers, drivers and the rules that bind them — and shows you the
-              best plan for the priorities you choose. Safety, qualification and capacity rules come first. Nothing moves until a person approves it.
+            <p className="mt-6 text-xl font-medium text-cloud sm:text-2xl">See what&apos;s happening. Know what to do next.</p>
+            <p className="mt-4 text-lg leading-relaxed text-silver">
+              Quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness in one set of connected records. Taviron checks your
+              safety, qualification and capacity rules before it suggests anything — and nothing moves until a person approves it.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <CtaLink href="/demo">Request a demo</CtaLink>
-              <CtaLink href="/platform" variant="ghost">
-                See what it does today
+              <CtaLink href="/platform">Explore the Platform</CtaLink>
+              <CtaLink href="/demo" variant="ghost">
+                Request a Demo
               </CtaLink>
             </div>
             <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
@@ -148,6 +152,34 @@ export default function HomePage() {
               </article>
             ))}
           </div>
+        </Container>
+      </section>
+
+
+      {/* Intelligence in action: one real situation from the demo company, the evidence and the human decision. */}
+      <section aria-labelledby="intel-title" className="border-t border-silver/10 bg-navy-2">
+        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <SectionHeading id="intel-title" title="Know what's happening. Understand why. Decide what comes next.">
+              <p>A driver reports a brake problem on a truck booked for tomorrow. Here is what Taviron does — and what it leaves to you.</p>
+            </SectionHeading>
+            <ol className="mt-6 space-y-4">
+              {[
+                ["Detect", "The shop opens a safety-critical work order from the report, which restricts the truck at once; its assigned loads appear in the Command Center as assignment problems."],
+                ["Explain", "Each item names the reason and links to the load, the truck and the work order."],
+                ["Compare", "Smart Dispatch lists the trucks and drivers that can still take each load — and the ones it left out, with the rule."],
+                ["Decide", "A dispatcher approves the reassignment; approval re-checks it against the latest data. The truck stays restricted until an authorized inspection clears it."],
+              ].map(([t, d], i) => (
+                <li key={t} className="flex gap-4">
+                  <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-electric/15 text-sm font-semibold text-electric tabular" aria-hidden>{i + 1}</span>
+                  <p className="text-[15px] leading-relaxed text-silver"><span className="font-semibold text-cloud">{t}. </span>{d}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="mt-6 text-sm text-silver/80">Shown in the demo company with fictional data. AI assistance is built but not switched on yet; everything above works without it.</p>
+            <Link href="/platform/intelligence" className="mt-4 inline-block text-[15px] font-semibold text-electric hover:underline">How Taviron surfaces what needs attention</Link>
+          </div>
+          <CatalogShot id="command-center" />
         </Container>
       </section>
 
@@ -236,6 +268,45 @@ export default function HomePage() {
         </Container>
       </section>
 
+
+      {/* Solutions and plans */}
+      <section aria-labelledby="solutions-title" className="border-t border-silver/10">
+        <Container className="py-20 sm:py-24">
+          <SectionHeading id="solutions-title" title="The same platform, sized to your operation.">
+            <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform.</p>
+          </SectionHeading>
+          <ul className="mt-10 grid gap-4 md:grid-cols-3">
+            {SEGMENTS.map((s) => (
+              <li key={s.slug}>
+                <Link href={`/solutions/${s.slug}`} className="group flex h-full flex-col rounded-xl border border-silver/12 bg-navy-2/60 p-6 hover:border-electric/50">
+                  <span className="text-lg font-semibold text-cloud">{s.label}</span>
+                  <span className="mt-2 flex-1 text-sm leading-relaxed text-silver">{s.summary}</span>
+                  <span className="mt-4 text-sm font-semibold text-electric group-hover:underline">For {s.label.toLowerCase()}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-12 grid gap-8 rounded-xl border border-silver/12 bg-navy-2/60 p-6 sm:p-8 lg:grid-cols-[1fr_1.2fr]">
+            <div>
+              <h3 className="text-xl font-semibold text-cloud">From {usd(TIERS[0].monthlyCents)} a month for up to {TIERS[0].trucks} trucks.</h3>
+              <p className="mt-2 text-[15px] leading-relaxed text-silver">A one-time onboarding fee is separate from the monthly price. The subscription starts at your go-live, not while you set up and test.</p>
+              <div className="mt-6 flex flex-wrap gap-3">
+                <CtaLink href="/pricing">Compare Plans</CtaLink>
+                <CtaLink href="/demo" variant="ghost">Request a Walkthrough</CtaLink>
+              </div>
+            </div>
+            <ol className="grid gap-3 sm:grid-cols-2">
+              {["Choose a plan", "Set up the company, bases, users and permissions", "Import and check your data", "Connect what you need", "Test your essential workflows", "Agree the go-live date"].map((t, i) => (
+                <li key={t} className="flex gap-3 text-sm text-silver">
+                  <span className="text-electric tabular" aria-hidden>{i + 1}.</span>
+                  <span>{t}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </Container>
+      </section>
+
       {/* Roles */}
       <section>
         <Container className="py-20 sm:py-24">
@@ -261,8 +332,8 @@ export default function HomePage() {
             <ShieldCheck className="size-8 text-electric" aria-hidden />
             <h2 className="mt-5 site-title text-3xl font-bold text-cloud">Your company&apos;s data stays your company&apos;s.</h2>
             <p className="mt-4 text-[17px] leading-relaxed text-silver">Taviron recommends; people decide.</p>
-            <Link href="/platform" className="mt-6 inline-block rounded text-[15px] font-semibold text-electric hover:underline">
-              What is available today, and what is planned
+            <Link href="/trust" className="mt-6 inline-block rounded text-[15px] font-semibold text-electric hover:underline">
+              Trust &amp; Security: what is in place, and what is not yet
             </Link>
           </div>
           <dl className="grid gap-8 sm:grid-cols-3 lg:gap-6">

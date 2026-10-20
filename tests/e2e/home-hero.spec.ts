@@ -11,9 +11,9 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["tab
     page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
     await page.setViewportSize(viewport);
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1, name: "A smarter way to run a fleet." })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Your entire trucking operation. Connected." })).toBeVisible();
     await expect(page.getByRole("link", { name: "Request a demo" }).first()).toBeVisible();
-    await expect(page.getByRole("link", { name: "See what it does today" })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Explore the Platform" })).toBeVisible();
     const shot = page.getByRole("img", { name: /The Taviron Command Center for a demo company/ }).first();
     await expect(shot).toBeVisible();
     // No 3D canvas any more.
@@ -28,7 +28,7 @@ test("reduced motion: the same hero, nothing animated that carries meaning", asy
   const context = await browser.newContext({ reducedMotion: "reduce", viewport: { width: 1440, height: 900 } });
   const page = await context.newPage();
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1, name: "A smarter way to run a fleet." })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Your entire trucking operation. Connected." })).toBeVisible();
   await expect(page.locator("canvas")).toHaveCount(0);
   await context.close();
 });

@@ -13,7 +13,7 @@ const input =
  * Demo request / contact form. Posts JSON to /api/leads; without JavaScript
  * the same form posts normally and the server redirects back with the result.
  */
-export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialError?: string; sent?: boolean }) {
+export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: Kind; initialError?: string; sent?: boolean; /** Prefilled message (the page the visitor came from). */ initialMessage?: string }) {
   const startedAt = useRef<number | null>(null);
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(Boolean(sent));
@@ -154,7 +154,7 @@ export function LeadForm({ kind, initialError, sent }: { kind: Kind; initialErro
         ) : (
           "Message"
         )}
-        <textarea name="message" rows={5} maxLength={4000} required={kind === "contact"} className={input} {...aria("message")} />
+        <textarea name="message" rows={5} maxLength={4000} required={kind === "contact"} defaultValue={initialMessage} className={input} {...aria("message")} />
         {err("message")}
       </label>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">

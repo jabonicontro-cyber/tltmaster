@@ -73,8 +73,8 @@ export function FinalCta() {
           <p className="mt-2 max-w-xl text-silver">A free walkthrough of the live demo company, with fictional data, led by the Taviron team.</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          <CtaLink href="/demo">Request a demo</CtaLink>
-          <CtaLink href="/pricing" variant="ghost">See pricing</CtaLink>
+          <CtaLink href="/demo">Request a Demo</CtaLink>
+          <CtaLink href="/pricing" variant="ghost">Compare Plans</CtaLink>
         </div>
       </Container>
     </section>
