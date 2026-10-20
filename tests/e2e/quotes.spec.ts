@@ -89,7 +89,7 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await expectToast(page, /Quote marked accepted\. Order ORD-\d{4,} was created as Confirmed\./);
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
   await expect(page.getByRole("button", { name: "Convert to order" })).toHaveCount(0);
-  await page.getByRole("link", { name: /^Order O-/ }).first().click();
+  await page.getByRole("link", { name: /^Order (ORD|O)-/ }).first().click();
   await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
   const orderUrl = page.url();
   const orderNumber = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();

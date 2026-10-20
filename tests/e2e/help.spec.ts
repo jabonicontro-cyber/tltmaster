@@ -26,9 +26,9 @@ test("an article records feedback, and a guide highlights controls without creat
   await page.goto("/help/customers");
   await expect(page.getByRole("heading", { name: "Customers", level: 1 })).toBeVisible();
   await page.getByLabel(/What was missing or wrong/).fill("More about exports, please");
-  await page.getByRole("button", { name: "No" }).click();
+  await page.getByRole("button", { name: "No", exact: true }).click();
   await expect(page.getByText(/your answer is saved/)).toBeVisible();
-  await expect(page.getByRole("button", { name: "No" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("button", { name: "No", exact: true })).toHaveAttribute("aria-pressed", "true");
 
   await page.getByRole("button", { name: "Show Me How" }).click();
   await expect(page).toHaveURL(/\/customers$/);

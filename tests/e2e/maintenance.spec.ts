@@ -96,7 +96,7 @@ test("preventive schedules flag overdue service and create one work order howeve
   await page.getByRole("button", { name: "Create work orders for due services" }).click();
   // This acts on every due schedule in the company (many accumulated test trucks): allow the dev server time.
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: /work orders? created/ }).first()).toBeVisible({ timeout: 15_000 });
-  const woLink = page.getByRole("row", { name: new RegExp(`Annual inspection ${tag}`) }).getByRole("link", { name: /^WO-/ });
+  const woLink = page.getByRole("row", { name: new RegExp(`Annual inspection ${tag}`) }).getByRole("link", { name: /^(MWO|WO)-/ });
   await expect(woLink).toBeVisible();
   await page.getByRole("button", { name: "Create work orders for due services" }).click();
   await expectToast(page, "No new work orders: every due service already has one.");
@@ -179,7 +179,7 @@ test("dispatchers read only; drivers and other companies get no access", async (
 
   await signIn(page, "dispatcher");
   await page.goto(`/maintenance/work-orders?q=Mirror%20${tag}`);
-  await expect(page.getByRole("link", { name: /^WO-/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^(MWO|WO)-/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "New work order" })).toHaveCount(0);
   await page.goto(`/maintenance/work-orders/${wo.id}`);
   await expect(page.getByRole("button", { name: "Start work" })).toHaveCount(0);

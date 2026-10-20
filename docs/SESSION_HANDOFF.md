@@ -1,11 +1,37 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-19 (portal / Testing Lab / MFA batch). Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-20 (accounts, reference numbers, onboarding kit, Ask Taviron batch). Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000. 2026-10-20 — username sign-ins, reference numbers, Onboarding Kit, Ask Taviron, order-to-cash chain test
+
+- **Pushed to Preview** (`claude/ui-and-signin-checkpoint`) after the gates below; **not verified live** (the sandbox
+  cannot reach the deployed domains). **Production unchanged** (`5881927`); promotion needs the owner, and this batch
+  is approval tier (auth, migrations).
+- **Built (code):** username sign-ins for employees and portal contacts with first-login setup (`20261120001200`,
+  docs/ACCOUNT_PROVISIONING.md); readable references ORD-/QTE-/TKT-/BIL-/CUS-/MWO- for new records, legacy kept and
+  searchable however typed (`20261120001300`, docs/REFERENCE_NUMBERS.md); sample removal with portal messages
+  (`20261120001400`); Onboarding Kit with go-live acceptance that gates activation of companies with a checklist
+  (`20261120001500`, docs/ONBOARDING.md §5); Ask Taviron, a read-only AI assistant (docs/AI.md §15) — Blocked until the
+  owner configures a provider, a model and a passing evaluation; regression fixes from the full browser run.
+- **Migrations:** `20261120001200`–`001500` applied to the **local** database only (backups in /var/lib/tlt-backups;
+  none separate for the function-only `001400`). Hosted: nothing applied. Runbook Phase B now lists 9 migrations
+  (docs/runbooks/2026-10-14-hosted-db.md).
+- **Gates (local):** lint (0 errors), typecheck, production build, gate spec 8 passed / 1 skipped, deployment check.
+  Vitest 855/857 — the 2 are 20 s timeouts in command-center and coordination from local data volume (18/18 with a
+  longer timeout; committed timeout unchanged). New chain test `tests/db/order-to-cash-chain.test.ts` 3/3.
+  Full browser run 185 passed / 9 skipped / 5 failed: four were stale test expectations (old `WO-`/`O-` formats, an
+  inexact "No" locator now that presence is announced) and one ran during a dev-server restart; after the fixes all
+  five specs and the new `ai-assistant` spec pass (21), and `quotes` passed 4 more times (one toast miss earlier).
+- **Owner actions:** Phase B of the runbook when promoting (authenticator first); to turn on Ask Taviron: the AI usage
+  migration, `AI_PROVIDER`, `OPENAI_API_KEY`, `AI_CAPABILITIES=ops_assistant`, `AI_MODEL_OPS_ASSISTANT`,
+  `AI_MONTHLY_TOKEN_LIMIT`, then `npm run ai:eval` and commit the evidence only if it passed.
+- **Not started:** multi-company financial attribution / intercompany accounting (needs decisions on legal entities,
+  invoicing and accounting; no issued-invoice or payment model exists yet).
 
 ## 0000000000. 2026-10-19 — customer portal, Testing Lab, two-step verification, static homepage hero
 

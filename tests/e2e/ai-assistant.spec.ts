@@ -12,8 +12,8 @@ test("an owner opens Ask Taviron from the header and sees why it is not availabl
   await expect(page.getByRole("heading", { name: "Ask Taviron", level: 1 })).toBeVisible();
   await expect(page.getByText(/Ask Taviron is not available for this company yet \(Blocked\)/)).toBeVisible();
   await expect(page.getByText("No AI provider is configured.")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Company setup" })).toBeVisible();
-  await expect(page.getByRole("link", { name: "Command Center" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Company setup" })).toBeVisible();
+  await expect(page.getByRole("main").getByRole("link", { name: "Command Center" })).toBeVisible();
   // No question box while it cannot answer: nothing pretends to work.
   await expect(page.getByLabel("Your question")).toHaveCount(0);
 });
