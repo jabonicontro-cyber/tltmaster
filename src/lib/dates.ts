@@ -32,6 +32,41 @@ export function normalizeTypedDate(value: string): string {
   return m ? `20${m[1]}-${m[2]}-${m[3]}` : value;
 }
 
+/** "2026-10-19" → "10/19/2026", the format people type; "" for anything that is not a real date. */
+export function isoToTyped(iso: string | null | undefined): string {
+  if (!iso || !isIsoDate(iso)) return "";
+  return `${iso.slice(5, 7)}/${iso.slice(8, 10)}/${iso.slice(0, 4)}`;
+}
+
+export type TypedDate = { ok: true; iso: string } | { ok: false; empty: boolean; error: string };
+
+/**
+ * A date typed by a person: "10/19/2026", "10-19-2026", "10.19.2026", "1/5/2026", "10/19/26" (2000s) or a pasted
+ * "2026-10-19". Month lengths and leap years are checked; an impossible date (02/30/2026) is an error, never moved
+ * to another day. `min`/`max` are ISO dates.
+ */
+export function parseTypedDate(text: string, min = "2000-01-01", max = "2099-12-31"): TypedDate {
+  const t = text.trim();
+  if (!t) return { ok: false, empty: true, error: "Enter a date as MM/DD/YYYY." };
+  let y: number, m: number, d: number;
+  const us = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(t);
+  const iso = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(t);
+  if (us) {
+    [m, d, y] = [Number(us[1]), Number(us[2]), Number(us[3])];
+    if (us[3].length === 2) y += 2000;
+  } else if (iso) {
+    [y, m, d] = [Number(iso[1]), Number(iso[2]), Number(iso[3])];
+  } else {
+    return { ok: false, empty: false, error: "Enter the date as MM/DD/YYYY, for example 10/19/2026." };
+  }
+  if (m < 1 || m > 12) return { ok: false, empty: false, error: `There is no month ${m}. Use MM/DD/YYYY.` };
+  const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+  if (d < 1 || d > daysInMonth) return { ok: false, empty: false, error: `${String(m).padStart(2, "0")}/${y} has ${daysInMonth} days.` };
+  const value = `${String(y).padStart(4, "0")}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  if (value < min || value > max) return { ok: false, empty: false, error: `Choose a date between ${isoToTyped(min)} and ${isoToTyped(max)}.` };
+  return { ok: true, iso: value };
+}
+
 /** "2026-10-01" → "Oct 1, 2026" (no timezone shift). */
 export function formatDate(value: string | null | undefined): string {
   if (!value) return "";

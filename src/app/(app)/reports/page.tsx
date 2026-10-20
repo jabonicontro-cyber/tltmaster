@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DateInput } from "@/components/ui/date-input";
+import { DateRangeFields } from "@/components/ui/typed-date-input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
@@ -93,15 +93,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         title="Reports"
         description={`Measured from your own records, ${formatDate(from)} – ${formatDate(to)}. Nothing here is estimated; where data is missing, the report says so.`}
       />
-      <form className="mb-5 flex flex-wrap items-end gap-2" aria-label="Period">
+      <form className="mb-8 flex flex-wrap items-end gap-x-3 gap-y-6" aria-label="Period">
         {PERIODS.map((p) => (
           <Link key={p} href={`/reports?days=${p}`} className={`rounded-md border px-3 py-2 text-sm font-semibold ${!custom && days === p ? "border-strong bg-strong text-white" : "border-line bg-card hover:bg-surface"}`}>
             Last {p} days
           </Link>
         ))}
-        <label className="text-sm font-semibold">From <DateInput name="from" defaultValue={from} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
-        <label className="text-sm font-semibold">To <DateInput name="to" defaultValue={to} className="ml-1 h-9 rounded-md border border-line px-2" /></label>
-        <button className="h-9 rounded-md bg-strong px-3 text-sm font-semibold text-white">Show</button>
+        <DateRangeFields key={`${from}-${to}`} from={from} to={to} />
+        <button className="h-10 rounded-md bg-strong px-4 text-sm font-semibold text-white">Show</button>
       </form>
 
       {error || !r ? (

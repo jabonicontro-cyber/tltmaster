@@ -324,7 +324,15 @@ describe("downstream re-evaluation", () => {
       const status = (await s.query<{ status: string }>("select status from public.delivery_tickets where id = $1", [c.ticket_id])).rows[0].status;
       expect(["submitted", "needs_review"]).toContain(status);
       expect(await readiness()).toBe("needs_review");
-      expect((await s.query<{ r: Page }>("select public.command_center_exceptions('ticket_review', false, 100, 0) as r")).rows[0].r.items.some((i) => i.exception_key === `ticket_review:${t.ticket_number}`)).toBe(true);
+      // Page through the whole queue (100 per page): the shared test database may already hold other tickets to review.
+      const inQueue = async (key: string) => {
+        for (let offset = 0; ; offset += 100) {
+          const page = (await s.query<{ r: Page }>("select public.command_center_exceptions('ticket_review', false, 100, $1) as r", [offset])).rows[0].r;
+          if (page.items.some((i) => i.exception_key === key)) return true;
+          if (offset + 100 >= page.total) return false;
+        }
+      };
+      expect(await inQueue(`ticket_review:${t.ticket_number}`)).toBe(true);
       await s.query("select public.review_delivery_ticket($1, 'accept', '')", [c.ticket_id]);
       // 36 t delivered vs 40 t planned: a new difference to acknowledge appears — nothing became "ready" silently.
       expect(await readiness()).toBe("blocked");
