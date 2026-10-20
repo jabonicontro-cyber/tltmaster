@@ -223,7 +223,7 @@ const FORBIDDEN: Array<[RegExp, string]> = [
 ];
 const NEGATED = /\b(not|isn't|aren't|unverified|cannot|can't|no|unknown|must|confirm)\b/i;
 
-function forbiddenIn(sentence: string): string | null {
+export function forbiddenIn(sentence: string): string | null {
   // "Hours of service are not verified" is the required caution; "verified" without a negation is a claim.
   if (/\bverified\b/i.test(sentence) && !NEGATED.test(sentence)) return "claims something is verified";
   if (/\bmargin\b/i.test(sentence) && !NEGATED.test(sentence)) return "estimates margin, which is not known";

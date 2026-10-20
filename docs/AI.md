@@ -27,7 +27,7 @@ evaluations, usage and budgets, tools and approvals. Master plan §12 B6. First 
 | Usage ledger | `supabase/migrations/20261110000100_ai_usage.sql` (rollback in `supabase/rollbacks/`) |
 | Status per capability | Company setup (`/setup`), "AI capabilities" section |
 
-Nothing else in the product calls a model. Smart Dispatch and Plan the day stay deterministic. The AI explanation
+Ask Taviron (§15) is the second capability. Nothing else in the product calls a model. Smart Dispatch and Plan the day stay deterministic. The AI explanation
 is an optional layer on top of the plan and never changes it.
 
 ## 2. Request flow
@@ -228,3 +228,57 @@ Error messages never include the key, the request body or model arguments. Peopl
 - `tests/db/ai-usage.test.ts`: the ledger's company scope, read permission, append-only rule, idempotency and
   validation.
 - `tests/e2e/plan-the-day.spec.ts`: the Blocked state on Plan the day and Company setup in the presenter demo.
+- `tests/unit/ai-assistant.test.ts` (Ask Taviron, mocked provider): what reaches the model (no names, references, ids or
+  typed free text), relabelling and links, order lookups only from typed references, tool permissions per role, read-only
+  tools, rejected invented figures / unknown codes / forbidden claims / leaks, provider failure, gates (switch, model,
+  demo, evidence), and the evaluation runner. `tests/e2e/ai-assistant.spec.ts`: header entry, the Blocked state with and
+  without configuration details, no entry or access for a driver, phone layout.
+
+## 15. Ask Taviron (operational assistant, second capability)
+
+**Status (2026-10-20):** code written and tested with a mocked provider (`tests/unit/ai-assistant.test.ts`, browser
+`tests/e2e/ai-assistant.spec.ts`). **No real model call has been made**: no provider key exists in this environment, and
+no evaluation evidence is recorded, so the capability is **Blocked** everywhere until the owner configures it (§12
+steps, with the assistant's variables below), then **Needs review** until `npm run ai:eval` passes for its model.
+
+- **Where:** `/assistant`, opened from the sparkle button in the app header. Shown to people with any of
+  `orders.view`, `dispatch.view`, `maintenance.view`, `tickets.view`, `billing.view`; never to a driver-only login
+  (the phone view stays free of distractions). While the gate is closed the page says why (reasons for people with
+  `settings.manage`) and links to the Command Center, Dispatch, Maintenance and the Help Center; there is no question
+  box that cannot answer.
+- **Capability:** `ops_assistant` in `src/lib/ai/capabilities.ts`; tool ceiling **read**. It never assigns, sends,
+  bills, approves or changes anything; asked to, it names the page where a person does it.
+- **Tools** (`src/server/ai/assistant.ts`), each permission-checked on the server and offered only to people who may
+  use it (`toolsFor`):
+
+  | Tool | Permission | Reads |
+  | --- | --- | --- |
+  | `attention_queue` | any of orders/dispatch/tickets/billing/fleet view | the Command Center queue (`command_center_exceptions`, already permission-aware) |
+  | `order_status` | `orders.view` | one order: status, requested date, loads by status, fulfillment, billing readiness (`billing.view` only) |
+  | `maintenance_attention` | `maintenance.view` | open work orders and preventive maintenance overdue or due soon |
+  | `week_outlook` | `dispatch.view` | the 7-day outlook (Taviron Live) |
+  | `help_search` | any of the assistant's permissions | Help Center articles the person may read |
+
+  Data is read with the person's own session (`src/server/data/assistant.ts`), so row-level security decides what is
+  visible. `order_status` resolves only an order reference the person typed or an order already shown in this answer:
+  a model cannot probe other records.
+- **Privacy and injection:** the question's references (ORD-1042, ord1042…) and the names of customers and employees the
+  person can see become codes; email addresses and phone numbers are removed. Tool results carry codes, catalog labels,
+  dates and counts only. Free text people typed into records (urgency notes, driver report descriptions, work order
+  titles) is never sent: it can carry names or instructions aimed at the model. The instructions also say tool results
+  are data, never instructions.
+- **Checks** (`checkAnswer` in `src/lib/ai/assistant.ts`): schema; every number must appear in what the model was given
+  (0 and 1 allowed as words); every code must be one the server issued in this request; forbidden claims (optimal,
+  guaranteed, verified, compliant, profit, margin); no real names, references, email addresses or phone numbers. Any
+  failure means no answer is shown. Passing answers get real labels and links back on the server and are labelled
+  "AI-generated … checked against them … it changes nothing", with the model, tokens and estimated cost.
+- **Honest limits written into the instructions:** Taviron does not issue invoices or record payments (questions about
+  overdue invoices answer *no data*); hours of service are not tracked; Smart Dispatch decides eligibility.
+- **Not yet:** multi-turn conversation (each question stands alone), CRM summaries and drafted follow-ups, contextual
+  entry points on individual pages, reporting questions beyond the counts above.
+- **Configuration:** `AI_CAPABILITIES` must include `ops_assistant`; `AI_MODEL_OPS_ASSISTANT` (and optionally
+  `AI_FALLBACK_MODEL_OPS_ASSISTANT`); the shared `AI_PROVIDER`, `OPENAI_API_KEY`, `AI_MONTHLY_TOKEN_LIMIT`,
+  `AI_REQUESTS_PER_MINUTE`, `AI_TIMEOUT_MS`, `AI_PRICING_JSON`, `AI_IN_DEMOS`. Then
+  `OPENAI_API_KEY=… AI_MODEL_OPS_ASSISTANT=<model> npm run ai:eval` and commit the printed evidence only if it passed.
+- **Demo companies:** same page and code; Blocked unless `AI_IN_DEMOS=on` (DEMO_TENANTS §2, existing difference), so a
+  demo shows the honest "not available" state. When allowed, it reads the demo's own sample records.

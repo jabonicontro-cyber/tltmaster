@@ -26,7 +26,8 @@ export interface Tool<C, A = unknown> {
   name: string;
   description: string;
   kind: ToolKind;
-  permission: Permission;
+  /** The permission it needs; a list means any one of them. */
+  permission: Permission | readonly Permission[];
   parameters: JsonSchema;
   args: z.ZodType<A>;
   run: (args: A, ctx: ToolContext<C>) => Promise<unknown> | unknown;
@@ -50,6 +51,15 @@ export type ToolOutcome =
 
 const MAX_OUTPUT = 8000;
 
+function allowed(tool: { permission: Permission | readonly Permission[] }, permissions: readonly Permission[]): boolean {
+  return typeof tool.permission === "string" ? permissions.includes(tool.permission) : tool.permission.some((p) => permissions.includes(p));
+}
+
+/** The tools the person may use: the model is only offered these. */
+export function toolsFor<C>(tools: Tool<C>[], permissions: readonly Permission[]): Tool<C>[] {
+  return tools.filter((t) => allowed(t, permissions));
+}
+
 export function toolDefinitions<C>(tools: Tool<C>[]): ToolDefinition[] {
   return tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters }));
 }
@@ -71,7 +81,7 @@ export async function runToolCall<C>(tools: Tool<C>[], call: { name: string; arg
   const parsed = tool.args.safeParse(raw);
   // Issue paths only: never echo the model's values back into logs or errors.
   if (!parsed.success) return refuse("invalid", `Invalid arguments: ${parsed.error.issues.map((i) => i.path.join(".") || "(root)").join(", ")}.`);
-  if (!ctx.permissions.includes(tool.permission)) return refuse("permission", "The signed-in person is not allowed to use this tool.");
+  if (!allowed(tool, ctx.permissions)) return refuse("permission", "The signed-in person is not allowed to use this tool.");
   if (tool.kind === "execute") {
     return { status: "needs_approval", output: JSON.stringify({ status: "needs_approval", note: "Recorded for a person to approve. Nothing was done." }), pending: { tool: tool.name, args: parsed.data } };
   }
@@ -93,7 +103,7 @@ export async function runToolCall<C>(tools: Tool<C>[], call: { name: string; arg
 export async function executeApprovedTool<C>(tools: Tool<C>[], pending: PendingApproval, approver: ToolContext<C>): Promise<{ ok: true; result: unknown } | { ok: false; error: string }> {
   const tool = tools.find((t) => t.name === pending.tool);
   if (!tool || tool.kind !== "execute") return { ok: false, error: "That action cannot be approved." };
-  if (!approver.permissions.includes(tool.permission)) return { ok: false, error: "You are not allowed to approve this action." };
+  if (!allowed(tool, approver.permissions)) return { ok: false, error: "You are not allowed to approve this action." };
   const parsed = tool.args.safeParse(pending.args);
   if (!parsed.success) return { ok: false, error: "The action's details are no longer valid." };
   return { ok: true, result: await tool.run(parsed.data, approver) };

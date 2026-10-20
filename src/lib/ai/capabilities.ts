@@ -4,7 +4,7 @@ import type { Permission } from "@/lib/permissions";
 // same rules decide what the server runs and what the setup page shows. A capability runs only when its gate is Ready
 // or Limited; Needs review and Blocked never call a model.
 
-export type AiCapabilityId = "plan_explanation";
+export type AiCapabilityId = "plan_explanation" | "ops_assistant";
 
 export interface AiCapability {
   id: AiCapabilityId;
@@ -12,6 +12,8 @@ export interface AiCapability {
   description: string;
   /** Who may use it; checked on the server from the session, never from the request. */
   permission: Permission;
+  /** When set, any one of these permissions is enough (each tool still checks its own). */
+  anyPermission?: readonly Permission[];
   /** What the capability may do with its tools. Nothing in this increment executes a consequential action. */
   maxToolKind: "read" | "propose";
   /** Version of the evaluation set; evidence for an older version does not count. */
@@ -35,7 +37,24 @@ export const AI_CAPABILITIES: AiCapability[] = [
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,
   },
+  {
+    id: "ops_assistant",
+    label: "Ask Taviron",
+    description: "Answers questions about your own company's operations — the attention queue, an order's status, maintenance, the week ahead, how a page works — from records you may see, with links to them. Read only: it never assigns, sends, bills or changes anything.",
+    permission: "orders.view",
+    anyPermission: ["orders.view", "dispatch.view", "maintenance.view", "tickets.view", "billing.view"],
+    maxToolKind: "read",
+    evalVersion: 1,
+    minPassRate: 0.9,
+    evidenceMaxAgeDays: 90,
+    needsStructuredOutput: true,
+  },
 ];
+
+/** Whether the person may use the capability at all (from their session's permissions). */
+export function mayUse(c: AiCapability, permissions: readonly string[]): boolean {
+  return c.anyPermission ? c.anyPermission.some((p) => permissions.includes(p)) : permissions.includes(c.permission);
+}
 
 export function capability(id: AiCapabilityId): AiCapability {
   const c = AI_CAPABILITIES.find((x) => x.id === id);
@@ -119,7 +138,7 @@ export function evaluateGate(input: GateInput): Gate {
   const review: string[] = [];
   const limited: string[] = [];
 
-  if (!input.permissions.includes(c.permission)) blocked.push("You do not have permission to use this.");
+  if (!mayUse(c, input.permissions)) blocked.push("You do not have permission to use this.");
   if (!config.provider) blocked.push("No AI provider is configured.");
   else if (!config.hasKey) blocked.push("The provider's API key is not set on the server.");
   if (config.invalid.length) blocked.push(`Some AI settings are malformed and ignored: ${config.invalid.join(", ")}.`);

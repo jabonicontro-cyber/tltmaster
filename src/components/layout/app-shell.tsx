@@ -17,7 +17,8 @@ import { ROLE_LABELS, type Access } from "@/lib/permissions";
 import type { MyCompany } from "@/server/data/companies";
 import { brandingStyle } from "@/lib/branding";
 import { HelpPanel } from "@/components/help/help-panel";
-import { Search } from "lucide-react";
+import { Search, Sparkles } from "lucide-react";
+import { capability, mayUse } from "@/lib/ai/capabilities";
 import { GuidePlayer } from "@/components/help/guide-player";
 import { helpPanelData } from "@/server/help";
 
@@ -61,6 +62,12 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
         <Link href="/search" className="inline-flex size-10 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Search records">
           <Search className="size-5" aria-hidden />
         </Link>
+        {/* Ask Taviron (docs/AI.md §12); not for driver-only logins, whose phone view stays free of distractions. */}
+        {!driverOnly && mayUse(capability("ops_assistant"), navPermissions) && (
+          <Link href="/assistant" className="inline-flex size-10 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Ask Taviron">
+            <Sparkles className="size-5" aria-hidden />
+          </Link>
+        )}
         <HelpPanel {...helpPanelData(access.permissions)} />
         <UserMenu
           name={me?.name || access.fullName}
