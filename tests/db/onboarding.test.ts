@@ -147,7 +147,7 @@ describe("creating a company", () => {
       // Its own numbering starts at 1 and does not touch Top Line's.
       await s.as(u);
       const c = (await s.query<{ customer_number: string }>("insert into public.customers (name) values ('First customer (test)') returning customer_number")).rows[0];
-      expect(c.customer_number).toBe("C-00001");
+      expect(c.customer_number).toBe("CUS-1001");
       expect((await s.query("select 1 from public.customers where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
     });
   });

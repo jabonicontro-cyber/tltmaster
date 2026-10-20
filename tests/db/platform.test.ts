@@ -255,7 +255,7 @@ describe("team-led onboarding imports", () => {
       const created = (await s.query<{ name: string; po_required: boolean; customer_number: string }>("select name, po_required, customer_number from public.customers where company_id = $1 order by name collate \"C\"", [company])).rows;
       expect(created.map((c) => c.name)).toEqual(["Alpha Paving", "Beta Grading", "Existing Builders", "existing builders"]);
       expect(created.find((c) => c.name === "Beta Grading")!.po_required).toBe(true);
-      expect(created.every((c) => c.customer_number.startsWith("C-"))).toBe(true);
+      expect(created.every((c) => c.customer_number.startsWith("CUS-"))).toBe(true);
       // After approval the records are in use: Beta gets a contact (now used), "existing builders" is edited.
       const ids = Object.fromEntries((await s.query<{ id: string; name: string }>("select id, name from public.customers where company_id = $1", [company])).rows.map((r) => [r.name, r.id]));
       await s.query("insert into public.customer_contacts (company_id, customer_id, name) values ($1, $2, 'Robin Contact')", [company, ids["Beta Grading"]]);
