@@ -51,8 +51,15 @@ export function ConversationView(props: {
   canPost: boolean;
   postBlockedReason: string | null;
 }) {
-  const { conversationId, me, messages, names, receipts } = props;
+  const { conversationId, me, names, receipts } = props;
   const router = useRouter();
+  // What this person just sent, shown at once and until the refreshed server list contains it (never depends on the
+  // refresh arriving, e.g. in a long conversation).
+  const [sentHere, setSentHere] = useState<Message[]>([]);
+  const messages = useMemo(() => {
+    const pending = sentHere.filter((m) => !props.messages.some((x) => x.id === m.id));
+    return pending.length ? [...props.messages, ...pending] : props.messages;
+  }, [props.messages, sentHere]);
   const list = useRef<HTMLOListElement>(null);
   const [body, setBody] = useState("");
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -122,6 +129,11 @@ export function ConversationView(props: {
     const r = await sendMessage({ conversationId, body, replyTo: replyTo?.id ?? null, clientKey, attachments: ready });
     setSending(false);
     if (!r.ok) return setError(r.error);
+    const attached = files.filter((f) => f.status === "ready" && f.id).map((f) => ({ id: f.id as string, message_id: r.data.id, file_name: f.name, mime_type: "", size_bytes: f.size }));
+    setSentHere((s) => [...s, {
+      id: r.data.id, author_id: me, kind: "text", body: body.trim(), reply_to_id: replyTo?.id ?? null, pinned: false,
+      created_at: new Date().toISOString(), edited_at: null, deleted_at: null, attachments: attached,
+    } as Message]);
     setBody("");
     setReplyTo(null);
     setFiles([]);

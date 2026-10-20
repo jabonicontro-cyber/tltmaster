@@ -75,6 +75,8 @@ export async function requireAccess(): Promise<Access> {
   if (!access.active || !access.role || !access.companyId) {
     // First sign-in with a temporary password: the database gives no company until setup is done (20261120001200).
     if (await setupRequired()) redirect("/welcome");
+    // Below the second factor the database withholds the company for enrolled people (20261120001100): verify first.
+    if (await mfaBlocks()) redirect("/mfa");
     // A platform team member without a company of their own starts at the launchpad.
     if (await isPlatformAdmin()) redirect("/admin");
     // A trucking company's customer (portal account, not a membership) goes to their portal (B66).

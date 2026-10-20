@@ -81,7 +81,7 @@ function DayColumn({ day: d, today, busiest, shopChecked }: { day: OutlookDay; t
   // Spoken details after what is shown (day, date, loads), so the name starts with the visible words (WCAG 2.5.3).
   const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
   return (
-    <li className="border-r border-line last:border-r-0">
+    <li className="relative border-r border-line last:border-r-0">
       <Link href={`/dispatch?date=${d.date}`} className={cn("flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:bg-surface/60", isToday && "bg-surface/40")}>
         <p className="flex items-baseline justify-between gap-1">
           <span className={cn("text-xs font-semibold uppercase tracking-wide", isToday ? "text-brand-fg" : "text-muted")}>{isToday ? "Today" : weekday(d.date)}</span>

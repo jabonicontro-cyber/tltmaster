@@ -13,7 +13,8 @@ test("dispatch sees the next 7 days day by day, and a day opens that day's board
   // A dispatcher does not see estimated revenue.
   await expect(page.getByText("of work not yet covered")).toHaveCount(0);
   const first = days.getByRole("link").first();
-  await expect(first).toHaveAttribute("aria-label", /^Today: \d+ loads, \d+ without a truck, \d+ trucks ready, \d+ drivers available/);
+  // The name starts with the visible words (WCAG 2.5.3), then the spoken details.
+  await expect(first).toHaveAccessibleName(/^Today\b.*\d+\s*loads.*\d+ without a truck, \d+ trucks ready, \d+ drivers available/);
   await first.click();
   await expect(page).toHaveURL(/\/dispatch\?date=\d{4}-\d{2}-\d{2}/);
 });

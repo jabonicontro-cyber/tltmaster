@@ -41,7 +41,7 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
         <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-ink hover:bg-surface">
           {/* Spoken name starts with what is shown (the person's name), not a hidden aria-label (WCAG 2.5.3). */}
           <span className="sr-only">Account menu: {name || email}{demo && !demo.presentation ? " (demo company)" : ""}</span>
-          <span className="relative shrink-0" aria-hidden>
+          <span className="relative shrink-0">
             {/* Keyed by the picture so a new photo (or another person) never shows a stale image or failure. */}
             <Avatar key={`${photo}|${fallbackPhoto}`} name={name || email} src={photo} fallbackSrc={fallbackPhoto} size={32} />
             {presence !== undefined && <PresenceDot presence={presence} className="absolute -right-0.5 -bottom-0.5" />}
