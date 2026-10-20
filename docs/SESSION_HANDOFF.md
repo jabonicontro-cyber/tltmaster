@@ -7,6 +7,16 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 000000000000. 2026-10-20 (night) — hosted Phase A complete (owner report)
+
+- The owner's `supabase migration list` showed every migration through `20261120000500` already applied on the hosted
+  database; the version check (anon cannot write help feedback, final grant on help searches, final delete preview)
+  returned all true, so the hosted copies of `000400` and `000500` are the final ones. The owner then backed up, ran the
+  dry run and pushed `20261120000600` from `8238483`, and reported the delete-switch verification and migration list as
+  done. Reported by the owner; not independently verified from this session.
+- **Hosted now:** through `20261120000600`. **Pending:** Phase B (`20261120000700`–`001500`, 9 migrations), which must
+  wait until Production runs code with the two-step screens (runbook §14); then Refresh demo data.
+
 ## 00000000000. 2026-10-20 — username sign-ins, reference numbers, Onboarding Kit, Ask Taviron, order-to-cash chain test
 
 - **Pushed to Preview** (`claude/ui-and-signin-checkpoint`) after the gates below; **not verified live** (the sandbox
