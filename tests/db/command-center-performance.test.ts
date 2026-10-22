@@ -47,7 +47,9 @@ describe("Command Center queue performance structure", () => {
   it("every kind the queue produces is in the once-per-call list (a new kind cannot be hidden by accident)", async () => {
     await withSession(async (s) => {
       await s.asAdmin();
-      const src = (await s.query<{ src: string }>("select prosrc as src from pg_proc where proname = 'operational_exceptions'")).rows[0].src;
+      // Since 20261120001700 the kinds are produced by operational_exceptions_all; operational_exceptions scopes them.
+      const src = (await s.query<{ src: string }>(
+        "select string_agg(prosrc, E'\\n') as src from pg_proc where proname in ('operational_exceptions', 'operational_exceptions_all')")).rows[0].src;
       const produced = [...src.matchAll(/'([a-z_]+):' \|\|/g)].map((m) => m[1]);
       expect(produced.length).toBeGreaterThanOrEqual(9);
       // Field reports are keyed 'field_report:' and come in two kinds.
