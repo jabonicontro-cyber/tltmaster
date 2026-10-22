@@ -50,6 +50,14 @@ jobs:
       - run: npm ci
       - name: Migrate and seed (Supabase Auth schema + app migrations)
         run: bash scripts/dev-stack/stack.sh db-reset
+      # Hosted Supabase always has the storage schema; functions that read storage.objects (company delete preview,
+      # onboarding document confirmation) need it, so the database tests run against the real storage server.
+      - uses: actions/cache@v4
+        with:
+          path: .dev-stack/storage-api
+          key: storage-api-v1.45.0-node22-${{ runner.os }}
+      - name: Storage server (schema, buckets and policies)
+        run: DEV_STORAGE=1 bash scripts/dev-stack/stack.sh up
       - run: npm run test:db
 
   # Release risk tier of everything not yet on Production (docs/DEVELOPMENT_WORKFLOW.md §3). Informational: it never

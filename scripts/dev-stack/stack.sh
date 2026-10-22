@@ -173,9 +173,13 @@ start_storage() {
     curl -sf "http://127.0.0.1:$STORAGE_PORT/status" >/dev/null && break
     sleep 1
   done
-  # Bucket and policies (no-op if already present).
-  psql_admin -c "select private.setup_ticket_photo_storage();" >/dev/null 2>&1 || \
-    echo "storage running; apply the migrations, then run: select private.setup_ticket_photo_storage();"
+  # Buckets and policies (no-op if already present). A migration only sets up its bucket when storage already
+  # exists, so on a database migrated before storage started (CI, a fresh db-reset) each one is set up here.
+  local fn
+  for fn in setup_ticket_photo_storage setup_comm_attachment_storage setup_onboarding_document_storage; do
+    psql_admin -c "select private.$fn();" >/dev/null 2>&1 || \
+      echo "storage running; apply the migrations, then run: select private.$fn();"
+  done
 }
 
 cmd_up() {

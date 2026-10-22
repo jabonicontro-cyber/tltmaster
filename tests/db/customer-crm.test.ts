@@ -83,7 +83,9 @@ describe("company CRM", () => {
       await s.as(office);
       const name = `Granite Supply ${randomUUID().slice(0, 6)}`;
       const c = (await s.query<{ id: string }>("insert into public.customers (name, email, phone, tags) values ($1, 'orders@granite.example', '(555) 222-3344', array['  Quarry ', 'quarry', '', 'Priority']) returning id", [`${name}, Inc.`])).rows[0].id;
-      expect((await s.query<{ tags: string[] }>("select tags from public.customers where id = $1", [c])).rows[0].tags).toEqual(["Priority", "Quarry", "quarry"]);
+      // Trimmed, blanks dropped, exact duplicates merged; case variants stay distinct. The stored order follows the
+      // database collation (C.UTF-8 locally, en_US.utf8 in CI), so compare in code-point order.
+      expect([...(await s.query<{ tags: string[] }>("select tags from public.customers where id = $1", [c])).rows[0].tags].sort()).toEqual(["Priority", "Quarry", "quarry"]);
       const t = (await s.query<{ id: string }>("insert into public.customer_tasks (customer_id, title) values ($1, 'Call back') returning id", [c])).rows[0].id;
       await s.query("update public.customer_tasks set status = 'done' where id = $1", [t]);
       expect((await s.query<{ completed_by: string }>("select completed_by from public.customer_tasks where id = $1", [t])).rows[0].completed_by).toBe(office);
