@@ -96,7 +96,7 @@ public page.
   Billing readiness, Communications, Driver portal, Delivery tickets, Maintenance, Fleet, Employees and time off
   (the employee directory), Reports, Company setup / roles / security (the setup checklist).
 - **Published, brief only:** none.
-- **Not published:** AI explanation of a plan (in development), Route planning (planned).
+- **Not published:** AI explanation of a plan (in development), Route planning (built and marked available in the catalog; not published — publishing is a person's decision).
 
 Next screenshots to add, if the demo data shows them well: Time off approvals (the demo has two pending requests), a
 richer Communications sample (the demo has one workspace conversation).
