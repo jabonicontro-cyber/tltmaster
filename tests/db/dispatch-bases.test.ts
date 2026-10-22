@@ -161,4 +161,58 @@ describe("dispatch bases", () => {
       expect(sum("drivers")).toBe(Number(totals.d)); // the driver without a base got the default base
     });
   });
+
+  it("the Command Center shows a person limited to one base only that base's items, counts and actions; owners see all", async () => {
+    await withSession(async (s) => {
+      const c = await company(s);
+      await s.asAdmin();
+      const v = (await s.query<{ id: string }>("select id from private.platform_plan_versions where plan_key = 'growth' order by version desc limit 1")).rows[0].id;
+      await s.query("insert into private.company_lifecycle (company_id, plan_version_id) values ($1, $2)", [c, v]);
+      // This company lets dispatchers assign items, so the base rule (not the permission) is what stops an assignment.
+      await s.query("insert into public.role_permissions (company_id, role, permission) values ($1, 'dispatcher', 'exceptions.assign') on conflict do nothing", [c]);
+      const owner = await s.createUser("owner", { companyId: c });
+      const dispatcher = await s.createUser("dispatcher", { companyId: c });
+      await s.as(owner);
+      const main = (await s.query<{ id: string }>("select id from public.dispatch_bases where is_default")).rows[0].id;
+      const north = (await addBase(s, "NORTH")).rows[0].id as string;
+      const cust = (await s.query<{ id: string }>("insert into public.customers (name) values ('Base Scope Customer') returning id")).rows[0].id;
+      // One out-of-service truck and one confirmed order without a delivery date at each base.
+      await s.asAdmin();
+      await s.query(
+        "insert into public.trucks (company_id, unit_number, truck_type, base_id, service_status, out_of_service_reason, out_of_service_since) values ($1, 'M-OUT', 'tri_axle_dump', $2, 'out_of_service', 'Brakes', now()), ($1, 'N-OUT', 'tri_axle_dump', $3, 'out_of_service', 'Tires', now())",
+        [c, main, north]);
+      await s.query(
+        "insert into public.orders (company_id, customer_id, order_number, order_date, base_id, status, confirmed_at) values ($1, $2, 'SCOPE-MAIN', current_date, $3, 'confirmed', now()), ($1, $2, 'SCOPE-NORTH', current_date, $4, 'confirmed', now())",
+        [c, cust, main, north]);
+      await s.as(owner);
+      await s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, [north]]);
+
+      type Item = { exception_key: string; kind: string; order_number: string | null; unit_number: string | null };
+      const items = async () => (await s.query<{ r: { total: number; items: Item[] } }>("select public.command_center_exceptions(null, false, 100, 0) r")).rows[0].r;
+      const labels = (r: { items: Item[] }) => r.items.map((i) => i.order_number ?? i.unit_number).sort();
+
+      // The owner sees both bases.
+      const all = await items();
+      expect(labels(all)).toEqual(["M-OUT", "N-OUT", "SCOPE-MAIN", "SCOPE-NORTH"]);
+      const mainTruck = all.items.find((i) => i.unit_number === "M-OUT")!.exception_key;
+      const mainOrder = all.items.find((i) => i.order_number === "SCOPE-MAIN")!.exception_key;
+
+      // The limited dispatcher sees only North's items, and the summary counts only those.
+      await s.as(dispatcher);
+      const mine = await items();
+      expect(labels(mine)).toEqual(["N-OUT", "SCOPE-NORTH"]);
+      expect(mine.total).toBe(2);
+      const summary = (await s.query<{ r: { exceptions: { total: number } } }>("select public.command_center_summary() r")).rows[0].r;
+      expect(summary.exceptions.total).toBe(2);
+      // Another base's item cannot be hidden or assigned by key either.
+      expect((await pgError(s.query("select public.hide_exception($1, 24)", [mainTruck]))).code).toBe("PT409");
+      expect((await pgError(s.query("select public.assign_exception($1, $2, '')", [mainOrder, dispatcher]))).code).toBe("PT409");
+
+      // Clearing the list restores every base.
+      await s.as(owner);
+      await s.query("select public.set_person_bases($1, $2::uuid[])", [dispatcher, []]);
+      await s.as(dispatcher);
+      expect(labels(await items())).toEqual(["M-OUT", "N-OUT", "SCOPE-MAIN", "SCOPE-NORTH"]);
+    });
+  });
 });
