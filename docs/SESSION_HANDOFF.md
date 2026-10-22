@@ -1,11 +1,43 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-20 (accounts, reference numbers, onboarding kit, Ask Taviron batch). Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-22 (VER2 verification, CI green, Command Center index and base-scope fixes, traceability matrix). Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000000. 2026-10-22 — VER2 release verification, CI green, Command Center fixes, traceability
+
+- **State:** Preview branch `claude/ui-and-signin-checkpoint` at `5837017` (pushed; Preview deployment record success at
+  `https://tltmaster-eqxu04asd-taviron.vercel.app`, **not verified live** — the environment's network policy refuses
+  `*.vercel.app`). Production `5881927`, unchanged (latest Production deployment record 2026-10-19). Hosted database
+  through `20261120000600`; nothing applied from this session.
+- **CI:** was red on every Preview push from `891f996` to `dc868d1` (database job: storage-dependent tests on a database
+  without Supabase Storage, and a collation-dependent tag order). Fixed: the CI database job starts the storage server
+  (cached build) and the stack sets up all three buckets; the tag test compares in code-point order. **Green on
+  `5837017`.**
+- **DB-test timeouts — root cause, fixed:** no index on `delivery_tickets.order_line_id`; the billing views read every
+  live ticket per order line (Command Center 0.7–0.9 s per call for a ~900-order company). `20261120001600` adds the
+  index: 250 ms, same results, 8 timeouts → 0 on the same data. Remaining: `billing_order_status` aggregates all
+  companies before filtering (~170 ms) — follow-up.
+- **Security fix:** Command Center items ignored per-person dispatch base access (a base-limited person saw other bases'
+  order numbers, customer names, truck units, and could hide or assign them by key). `20261120001700` scopes the
+  exception list at its source; test reproduced the leak, then passes. Apply soon after Production promotion.
+- **Phase B is now 11 migrations** (`000700`–`001700`; runbook §14 updated). Prerequisites unchanged: Production on the
+  two-step-screen code, platform admins enrolled (run the read-only MFA query), backup, then push.
+- **Clean-state results** (fresh cluster, db-reset + seed + storage, app build of `e488ef2` = current app code):
+  vitest 883/883; browser 204 passed / 2 failed / 10 skipped → the 2 were a test-order dependency (fixed `05b7a7c`,
+  4/4). **Phase A compatibility** (database through `000600`, as hosted): 20 app pages render with no error page;
+  Phase B pages show "needs a database update"; browser failures there are tests that expect Phase B migrations.
+- **Traceability:** `docs/TRACEABILITY.md` (152 rows, evidence-checked) is the current status view; master plan §3 is
+  marked historical; B14/B42/Q23 and two docs corrected.
+- **Owner:** promote `5837017` to Production (approval); then Phase B (11); allow `*.vercel.app` in the environment's
+  network settings if live Preview checks from a session are wanted; decide discount stacking (master plan §10 vs
+  PLATFORM_LIFECYCLE); confirm `CRON_SECRET` on Vercel; AI provider and `npm run ai:eval` when wanted.
+- **Next (no owner input needed):** base filter on the dispatch board and maintenance lists (B62); push the company
+  filter into the billing views; not-found title; remove the unused `three` dependency; truck-count plan limits need a
+  decision on enforcement (§5.1/§10) before building.
 
 ## 0000000000000. 2026-10-20 (late night) — post-Preview verification, website, Reports dates
 

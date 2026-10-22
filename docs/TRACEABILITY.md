@@ -41,20 +41,29 @@ Qualifiers in parentheses are allowed, for example "implemented (Preview only)" 
   Onboarding Kit (`010954a`), Ask Taviron (`fbaf337`), order-to-cash chain test (`10cd4e8`), Reports typed dates
   (`d8b2af2`), website transformation (`dc99cd0`), input-loss and test fixes (`5398fdb`, `e488ef2`), plus docs.
 - **Hosted database** (owner's report, not independently verified): migrations applied **through `20261120000600`**.
-  **Pending (Phase B, 9):** `20261120000700` → `20261120001500`. They wait until Production runs code with the
+  **Pending (Phase B, 11):** `20261120000700` → `20261120001700` (`001600` index and `001700` Command Center base
+  scope added 2026-10-22). They wait until Production runs code with the
   two-step verification (MFA) screens, and until every platform admin has enrolled an authenticator (runbook
   `docs/runbooks/2026-10-14-hosted-db.md` §14). Preview and Production **share one Supabase project**. One mismatch:
   `20261120000600` is hosted, but the code that reads it (`8238483`) is on Preview only.
 - **AI:** no provider is configured. Ask Taviron and "Explain this plan" were tested with a mocked provider only.
   `src/lib/ai/evidence.ts` holds `EVAL_EVIDENCE = []`, so there is no real `npm run ai:eval` evidence.
-- **Test results:** the latest run is **re-run in progress (VER2)**. The last results recorded in
-  SESSION_HANDOFF (2026-10-20, late night, local, production build):
-  - lint 0 errors and typecheck clean;
-  - unit tests 499/499;
-  - full browser suite 205 passed / 9 skipped / 2 failed; both were fixed and re-run green;
-  - gate spec 8 passed / 1 skipped;
-  - `check-deployment` passed;
-  - the earlier full vitest run (2026-10-20) was 855/857 (2 timeouts caused by the volume of local data).
+- **Test results (VER2, 2026-10-22, local, production build of the app code at `e488ef2`, which is unchanged since):**
+  - lint 0 errors, typecheck clean, `npm run build` passes.
+  - **Clean starting state:** a fresh PostgreSQL 16 cluster (C.UTF-8), `stack.sh db-reset` (every migration and the
+    seed), then the storage server (all three buckets). Full vitest: **883/883** (134 files, 110 s). Full browser
+    suite: **204 passed / 2 failed / 10 skipped** (16.7 min). Both failures were a test-order dependency (no real
+    material on a fresh seed), fixed in `05b7a7c` and re-run green (4/4). Skips: 9 `gate.spec` (needs a gated server;
+    run separately: 8 passed / 1 skipped on 2026-10-20) and 1 order-dependent skip that passes once the live demo
+    exists (re-run: 12/12 of the skippable specs passed).
+  - **Built-up dev database** (722 companies, 7,813 orders): vitest 875/883 with 8 Command Center timeouts → root
+    cause the missing ticket index; with `20261120001600` the 18 Command Center/coordination tests pass on the same
+    data. DB project with `001600` and `001700`: 380/380.
+  - **Phase A database** (migrations through `20261120000600`, as hosted): full browser suite 183 passed / 22 failed
+    / 10 skipped; every failure is a test expecting a Phase B migration (new reference formats, portal, MFA recovery
+    codes, onboarding, account provisioning, Testing Lab) or the dev mailbox path; 20 app pages opened as the owner
+    render without an error page, Phase B pages show their "needs a database update" state.
+  - **GitHub CI** green on `5837017` (the six Preview pushes before it, `891f996`–`dc868d1`, were all red); it now runs the DB tests with Supabase Storage.
 
   "Verified" below refers to these local runs.
 
