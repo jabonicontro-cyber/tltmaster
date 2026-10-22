@@ -251,10 +251,47 @@ stored as SHA-256, with label, maximum uses, expiry and revocation.
 - **Roles** (per company membership; only owners can grant or remove Owner): owner, office, dispatcher (views orders, schedules them and moves them through delivery, plans loads and assigns trucks and drivers; cannot create, price, confirm or cancel orders), mechanic (views the fleet and takes equipment in and out of service), driver (future). A new account has no membership and sees nothing until an owner adds it.
 - **Permissions** (`public.permissions`, per-company `public.role_permissions`, defaults in `role_permission_defaults`): editable by owners in Settings → Permissions; owner permissions are fixed so an owner cannot lock themselves out. At least one active owner per company must always exist.
 - **Staff directory**: `user_directory()` lists people in the caller's company only; email addresses only for users with `users.manage`.
-- **RLS**: enabled on every table. `anon` has no grants. Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
+- **RLS**: enabled on every table. `anon` has no table grants and no policy applies to it (signed-out features call reviewed functions); `anon` and `authenticated` have no TRUNCATE, TRIGGER or REFERENCES on any public table (`20261120002200`; asserted by `tests/db/tenancy.test.ts`). Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
+- **Dispatch base access** (per person, master plan B62; `20261120000200`, `001700`, `001800`, `002000`, `002100`, `002300`): see below.
 - **Secrets**: the service-role key is only read in `src/server/supabase/admin.ts` (server-only) for invitations (after the caller's `users.manage` permission has been checked) and early-access sign-up (after the code and rate limits have been checked).
 - **Indexing**: `X-Robots-Tag: noindex`, `robots.txt` disallow, and `robots` metadata.
 - **Input**: all server actions validate with zod; database functions validate again.
+
+## Dispatch base access (per person)
+
+An owner can limit a person to some dispatch bases (`base_members`, `set_person_bases`). `private.my_bases()` returns
+their list, or null when they are unrestricted (owners, anyone with no list, calls without a signed-in person); company
+isolation is unchanged and always applies first.
+
+- **Reads:** a restrictive `<table>_base_access` RLS policy on 23 tables. `orders`, `trucks`, `trailers` and `drivers`
+  check their own `base_id`; every other table checks that its order, load, truck, trailer or driver is visible (the
+  subquery runs as the person, so the parent's own policy decides). Records without a base stay visible.
+- **Writes:** functions with elevated rights bypass RLS, so the same 23 tables carry three statement-level triggers
+  (`<table>_base_guard_ins/_upd/_del`, `private.base_write_guard_stmt`). For a base-limited person they check **every
+  row** of the statement (transition tables: old and new rows), so a bulk update or delete, a multi-row insert, an
+  upsert's update half or a MERGE that touches one other-base row is refused as a whole (42501, "You can only work
+  with records at your dispatch bases."). Unrestricted people pay one check per statement. Direct client writes
+  (where column grants exist: trucks, trailers, drivers, vehicle documents, driver qualifications) are also stopped by
+  the restrictive policy's implicit WITH CHECK.
+- **Elevated-rights readers** apply the rule themselves: Command Center items (`operational_exceptions`) and counts
+  (`command_center_summary`), the dispatch board's shop schedule. Driver and portal functions are scoped to the
+  driver or customer; payroll is owner-only; platform functions need a platform administrator.
+- **New records** of a base-limited person start at one of their bases (`private.default_base`).
+- **Not base-scoped, on purpose:** employees (people records), payroll, customer portal tables (customer-scoped),
+  customers and quotes (company-wide records).
+
+| Area | Read rule | Write guard | Proof |
+| --- | --- | --- | --- |
+| orders, trucks, trailers, drivers | own `base_id` (`000200`) | statement guard (`002000`) | db base-scope, dispatch-bases; e2e dispatch-bases (pages + REST) |
+| order lines, loads, assignments, delivery tickets | via order (`001800`) | statement guard | db base-scope |
+| field reports, work orders | via order / truck / trailer (`001800`) | statement guard | db base-scope |
+| order status and urgency history, billing reviews and handoff lines, ticket attachments, recommendation rejections | via order / load (`002000`) | statement guard | db base-scope |
+| driver qualifications, vehicle documents, truck readings, maintenance schedules, equipment status and assignment history | via driver / truck / trailer (`002000`) | statement guard | db base-scope |
+| Command Center items and counts; shop schedule | in the function (`001700`, `002300`, `002100`) | — (read only) | db base-scope, dispatch-bases |
+| bulk, upsert, MERGE, moving a record to another base | — | every old and new row checked | db base-scope ("checks every row of a statement") |
+
+Rollbacks restore the previous state exactly (tested on a fresh database: `002300`→`001800` rolled back leaves the 4
+original policies and no guard; reapplied, 23 policies and 69 triggers, all tests pass).
 
 ## Rendering choices
 
