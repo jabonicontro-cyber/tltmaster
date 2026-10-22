@@ -51,7 +51,12 @@ export type BoardTrailer = Pick<TrailerRow, "id" | "unit_number" | "trailer_type
 export type BoardDriver = Pick<DriverListRow, "id" | "display_name" | "active"> & { qualifications: Array<Pick<QualificationRow, "kind" | "cdl_class" | "expires_on" | "verified_at">> };
 
 /** Orders whose scheduled dates cover `date`, their loads that day, assignments and the fleet. */
-export async function getDispatchDay(date: string) {
+/**
+ * The dispatch board for one day. `base` (a validated dispatch base id) narrows the orders and their loads to that
+ * base; trucks, trailers and drivers stay as the person may see them (RLS), since cross-base dispatch is a company
+ * setting.
+ */
+export async function getDispatchDay(date: string, base: string | null = null) {
   const supabase = await createClient();
   const [orders, loads, trucks, trailers, drivers, quals, units, { timezone, today }] = await Promise.all([
     supabase
@@ -82,8 +87,14 @@ export async function getDispatchDay(date: string) {
     const extra = await supabase.from("order_list").select("*").in("id", missing);
     orderRows = [...orderRows, ...((extra.data ?? []) as OrderListRow[])];
   }
+  let dayLoads = loadRows;
+  if (base) {
+    orderRows = orderRows.filter((o) => o.base_id === base);
+    const shown = new Set(orderRows.map((o) => o.id));
+    dayLoads = loadRows.filter((l) => shown.has(l.order_id));
+  }
 
-  const loadIds = loadRows.map((l) => l.id);
+  const loadIds = dayLoads.map((l) => l.id);
   const tickets = await liveTicketsForLoads(loadIds);
   const assignments = loadIds.length
     ? await supabase.from("dispatch_assignments").select("*").in("load_id", loadIds).order("created_at", { ascending: false })
@@ -100,7 +111,9 @@ export async function getDispatchDay(date: string) {
     today,
     timezone,
     orders: orderRows,
-    loads: loadRows,
+    loads: dayLoads,
+    /** The base filter applied, if any. */
+    base,
     assignments: (assignments.data ?? []) as AssignmentRow[],
     trucks: (trucks.data ?? []) as BoardTruck[],
     trailers: (trailers.data ?? []) as BoardTrailer[],

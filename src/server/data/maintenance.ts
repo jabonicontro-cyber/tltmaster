@@ -4,6 +4,7 @@ import { referenceKey } from "@/lib/search";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "@/server/data/search";
 import type { ClearanceStatus, CostKind, PmState, WoCategory, WoStatus, WoUrgency } from "@/lib/maintenance";
 import { OPEN_STATUSES } from "@/lib/maintenance";
+import { parseBaseFilter } from "@/server/data/bases";
 
 export interface WorkOrderRow {
   id: string;
@@ -140,6 +141,8 @@ export async function listAssignees(): Promise<Array<{ id: string; name: string;
 
 export interface WorkOrderFilters {
   q?: string;
+  /** A dispatch base id: work orders on that base's trucks and trailers. */
+  base?: string;
   view?: string; // open | immediate | clearance | closed | all
   status?: string;
   urgency?: string;
@@ -178,6 +181,20 @@ export async function listWorkOrders(f: WorkOrderFilters) {
   if (f.category) query = query.eq("category", f.category);
   if (f.truck) query = query.eq("truck_id", f.truck);
   if (f.trailer && (await trailerWorkOrdersAvailable())) query = query.eq("trailer_id", f.trailer);
+  const base = parseBaseFilter(f.base);
+  if (base) {
+    // The base of a work order is its truck's or trailer's base (read as the person, so RLS applies).
+    const [{ data: bt }, { data: bl }, trailersOk] = await Promise.all([
+      supabase.from("trucks").select("id").eq("base_id", base),
+      supabase.from("trailers").select("id").eq("base_id", base),
+      trailerWorkOrdersAvailable(),
+    ]);
+    const truckIds = ((bt ?? []) as Array<{ id: string }>).map((x) => x.id);
+    const trailerIds = trailersOk ? ((bl ?? []) as Array<{ id: string }>).map((x) => x.id) : [];
+    const units = [...(truckIds.length ? [`truck_id.in.(${truckIds.join(",")})`] : []), ...(trailerIds.length ? [`trailer_id.in.(${trailerIds.join(",")})`] : [])];
+    if (!units.length) return { rows: [], total: 0 };
+    query = query.or(units.join(","));
+  }
   if (f.assigned === "none") query = query.is("assigned_to", null);
   else if (f.assigned) query = query.eq("assigned_to", f.assigned);
   const from = (f.page - 1) * PAGE_SIZE;

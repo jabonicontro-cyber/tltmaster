@@ -145,6 +145,8 @@ test("drivers and other companies cannot open the directory", async ({ page, bro
   await signIn(other, "otherOwner");
   await other.goto(`/employees/${id}`);
   await expect(other.getByText("Not found", { exact: true })).toBeVisible();
+  // The tab says so too, not the record page's own title.
+  await expect(other).toHaveTitle("Not found · Taviron");
   await other.close();
 });
 

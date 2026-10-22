@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import type { BaseOption } from "@/components/bases/base-field";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -41,7 +42,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [] }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -67,24 +68,35 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
   const plannedLoads = day.loads.filter((l) => l.status === "planned");
   const unassigned = plannedLoads.filter((l) => !activeByLoad.has(l.id)).length;
   const refresh = () => router.refresh();
+  // Day links keep the chosen base.
+  const dayHref = (date: string) => `/dispatch?date=${date}${day.base ? `&base=${day.base}` : ""}`;
 
   return (
     <div className="space-y-5">
       {/* Date navigation and summary */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card px-4 py-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
-          <Link href={`/dispatch?date=${shiftDate(day.date, -1)}`} className={buttonClasses("secondary", "sm")}>
+          <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")}>
             <ChevronLeft className="size-4" aria-hidden /> Prev<span className="sr-only">ious day</span>
           </Link>
-          <Link href={`/dispatch?date=${day.today}`} className={buttonClasses(day.date === day.today ? "dark" : "secondary", "sm")}>
+          <Link href={dayHref(day.today)} className={buttonClasses(day.date === day.today ? "dark" : "secondary", "sm")}>
             Today
           </Link>
-          <Link href={`/dispatch?date=${shiftDate(day.date, 1)}`} className={buttonClasses("secondary", "sm")}>
+          <Link href={dayHref(shiftDate(day.date, 1))} className={buttonClasses("secondary", "sm")}>
             Next<span className="sr-only"> day</span> <ChevronRight className="size-4" aria-hidden />
           </Link>
           <form action="/dispatch" method="get" className="flex items-center gap-2">
             <label htmlFor="board-date" className="sr-only">Go to date</label>
             <DateInput id="board-date" name="date" defaultValue={day.date} className="h-9 w-40" />
+            {bases.length > 1 && (
+              <>
+                <label htmlFor="board-base" className="sr-only">Dispatch base</label>
+                <Select id="board-base" name="base" defaultValue={day.base ?? ""} className="h-9 w-auto">
+                  <option value="">All bases</option>
+                  {bases.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </Select>
+              </>
+            )}
             <button type="submit" className={buttonClasses("secondary", "sm", "h-9")}>Go</button>
           </form>
         </nav>

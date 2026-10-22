@@ -12,18 +12,22 @@ import { formatDateLong, isIsoDate } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDispatchDay, listUnscheduledOrders } from "@/server/data/dispatch";
+import { baseOptions, parseBaseFilter } from "@/server/data/bases";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Dispatch" };
 
-export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string; load?: string; back?: string; horizon?: string }> }) {
+export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string; load?: string; back?: string; horizon?: string; base?: string }> }) {
   const access = await requirePagePermission("dispatch.view");
-  const { date: param, load, back, horizon: h } = await searchParams;
+  const { date: param, load, back, horizon: h, base: baseParam } = await searchParams;
   const { today, timezone } = await businessToday();
   const date = param && isIsoDate(param) ? param : today;
   const horizon = [1, 3, 7].includes(Number(h)) ? Number(h) : 3;
+  // The base filter applies only where the company has bases to choose from (and the bases update is installed).
+  const bases = await baseOptions();
+  const base = bases.length > 1 ? parseBaseFilter(baseParam) : null;
   const [day, urgent, unscheduled, smart] = await Promise.all([
-    getDispatchDay(date),
+    getDispatchDay(date, base),
     listOpenUrgencies(),
     listUnscheduledOrders(),
     getSmartDispatchPlan(today, horizon).catch((e: unknown) => {
@@ -63,7 +67,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} />
       )}
       <div data-guide="dispatch-board">
-        <DispatchBoard day={day} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard day={day} bases={bases} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

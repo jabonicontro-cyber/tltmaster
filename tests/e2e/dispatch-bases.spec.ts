@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
+import { asUser } from "./db";
 import { signIn, unique } from "./helpers";
 import { OTHER_COMPANY, USERS } from "./users";
 
@@ -101,6 +102,25 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
     await page.goto(`/orders?base=${northId}`);
     await expect(page.getByRole("link", { name: `BO-${code}` })).toBeVisible();
 
+    // Dispatch board: the base filter keeps the chosen base across days.
+    await page.goto(`/dispatch?base=${northId}`);
+    await expect(page.getByLabel("Dispatch base")).toHaveValue(northId);
+    await expect(page.getByRole("link", { name: /^Next/ })).toHaveAttribute("href", new RegExp(`base=${northId}`));
+    await page.getByLabel("Dispatch base").selectOption("");
+    await page.getByRole("button", { name: "Go" }).click();
+    await expect(page).not.toHaveURL(/base=[0-9a-f]/);
+
+    // Work orders: a North truck's work order is listed under North, not under Main.
+    const woNumber = await asUser(USERS.otherOwner.email, async (q) => {
+      const truck = (await q("select id from public.trucks where unit_number = $1", [`T-${code}`])).rows[0].id as string;
+      return (await q("select public.maintenance_create_work_order($1::jsonb) as r", [JSON.stringify({ truck_id: truck, title: `Base filter ${code}`, category: "brakes", urgency: "normal" })])).rows[0].r.number as string;
+    });
+    await page.goto(`/maintenance/work-orders?base=${northId}`);
+    await expect(page.getByLabel("Base")).toHaveValue(northId);
+    await expect(page.getByRole("link", { name: woNumber })).toBeVisible();
+    await page.goto(`/maintenance/work-orders?base=${mainId}`);
+    await expect(page.getByRole("link", { name: woNumber })).toHaveCount(0);
+
     // Reports: a per-base section whose rows add up to the "All bases" row.
     await page.goto("/reports");
     await expect(page.getByRole("table", { name: "Dispatch base report" })).toContainText("All bases");
@@ -137,6 +157,8 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
       await c.query("delete from public.order_status_events where order_id in (select id from public.orders where company_id = $1 and order_number = $2)", [companyId, `BO-${code}`]);
       await c.query("delete from public.orders where company_id = $1 and order_number = $2", [companyId, `BO-${code}`]);
       await c.query("delete from public.customers where company_id = $1 and customer_number = $2", [companyId, `BT-${code}`]);
+      await c.query("delete from public.work_order_events where work_order_id in (select id from public.work_orders where company_id = $1 and title = $2)", [companyId, `Base filter ${code}`]);
+      await c.query("delete from public.work_orders where company_id = $1 and title = $2", [companyId, `Base filter ${code}`]);
       await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [companyId, `T-${code}`]);
       await c.query("commit");
     });

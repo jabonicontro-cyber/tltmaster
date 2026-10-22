@@ -344,6 +344,8 @@ export interface OrderListRow {
   status_note: string;
   updated_at: string;
   material_summary: string | null;
+  /** Dispatch base (20261120000100); absent on a database without bases. */
+  base_id?: string | null;
 }
 
 export interface OrderRow {
