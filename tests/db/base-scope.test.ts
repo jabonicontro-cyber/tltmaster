@@ -75,6 +75,15 @@ describe("dispatch base access on attached records", () => {
       await check(false);
       await s.as(w.owner);
       await check(true);
+      // The dispatch board's shop schedule (elevated rights) follows the same rule.
+      await s.asAdmin();
+      await s.query("update public.work_orders set scheduled_for = $2 where id = any($1::uuid[])", [[w.woMain, w.woNorth], w.day]);
+      const shop = async () => (await s.query<{ r: Array<{ work_order_id: string }> }>("select public.dispatch_shop_schedule($1, $1) r", [w.day])).rows[0].r
+        .map((x) => x.work_order_id).filter((id) => id === w.woMain || id === w.woNorth).sort();
+      await s.as(w.dispatcher);
+      expect(await shop()).toEqual([w.woNorth]);
+      await s.as(w.owner);
+      expect(await shop()).toEqual([w.woMain, w.woNorth].sort());
     });
   }, SETUP_HEAVY);
 
