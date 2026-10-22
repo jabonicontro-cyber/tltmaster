@@ -111,6 +111,43 @@ describe("dispatch base access on attached records", () => {
     });
   }, SETUP_HEAVY);
 
+  it("a base-limited person cannot change another base's orders, trucks or drivers, cannot read their history, and creates records at their own base", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      // History and documents attached to Main's records (written by the owner).
+      await s.as(w.owner);
+      await s.query("insert into public.vehicle_documents (truck_id, kind, reference_number, expires_on) values ($1, 'registration', 'MAIN-REG', '2030-01-01'), ($2, 'registration', 'NORTH-REG', '2030-01-01')", [w.f.t1, w.f.t2]);
+      await s.query("select public.record_truck_reading($1, 1000, null, 'Main reading')", [w.f.t1]);
+      // This company lets dispatchers edit orders and the fleet, so the base rule (not a permission) is what refuses.
+      await s.asAdmin();
+      await s.query("insert into public.role_permissions (company_id, role, permission) values ($1, 'dispatcher', 'orders.edit'), ($1, 'dispatcher', 'fleet.edit'), ($1, 'dispatcher', 'fleet.service'), ($1, 'dispatcher', 'maintenance.manage') on conflict do nothing", [TOP_LINE]);
+      await s.as(w.dispatcher);
+      // Changes through the app's functions to another base's order, truck and driver.
+      expect(refusal(await pgError(s.query("select public.set_order_status($1, 'in_progress', '')", [w.oMain.id])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("select public.flag_order_urgent($1, 'Customer called', null)", [w.oMain.id])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("select public.set_equipment_service_status('truck', $1, 'out_of_service', 'Not mine', null)", [w.f.t1])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("select public.record_truck_reading($1, 2000, null, 'Not mine')", [w.f.t1])))).toEqual(BASE_REFUSAL);
+      // History and documents of another base are not readable.
+      expect((await s.query<{ reference_number: string }>("select reference_number from public.vehicle_documents where truck_id = any($1::uuid[]) order by 1", [[w.f.t1, w.f.t2]])).rows.map((r) => r.reference_number)).toEqual(["NORTH-REG"]);
+      expect((await s.query("select 1 from public.truck_readings where truck_id = $1", [w.f.t1])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.order_status_events where order_id = $1", [w.oMain.id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.order_status_events where order_id = $1", [w.oNorth.id])).rowCount).toBeGreaterThan(0);
+      expect((await s.query("select 1 from public.driver_qualifications where driver_id = $1", [w.f.d1])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.driver_qualifications where driver_id = $1", [w.f.d2])).rowCount).toBeGreaterThan(0);
+      // A truck they add starts at their base (before, it started at the company default and vanished from their list).
+      const mine = (await s.query<{ id: string; base_id: string }>("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump') returning id, base_id", [`NB-${randomUUID().slice(0, 4)}`])).rows[0];
+      expect(mine.base_id).toBe(w.north);
+      // Explicitly placing it at another base is refused by the trucks' base policy (a direct write, so RLS applies).
+      expect(refusal(await pgError(s.query("insert into public.trucks (unit_number, truck_type, base_id) values ($1, 'tri_axle_dump', $2)", [`NX-${randomUUID().slice(0, 4)}`, w.main]))))
+        .toEqual({ code: "42501", message: 'new row violates row-level security policy "trucks_base_access" for table "trucks"' });
+      // Their own base still works, and the owner is unaffected.
+      await s.query("select public.record_truck_reading($1, 3000, null, 'Mine')", [w.f.t2]);
+      await s.as(w.owner);
+      await s.query("select public.record_truck_reading($1, 1100, null, 'Owner')", [w.f.t1]);
+      expect((await s.query("select 1 from public.vehicle_documents where truck_id = any($1::uuid[])", [[w.f.t1, w.f.t2]])).rowCount).toBe(2);
+    });
+  }, SETUP_HEAVY);
+
   it("another company sees none of these records, restricted or not", async () => {
     await withSession(async (s) => {
       const w = await world(s);

@@ -193,7 +193,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.prepare_ticket", "public.submit_delivery_ticket", "public.correct_delivery_ticket", "public.review_delivery_ticket",
   "private.add_billing_sequence", "public.acknowledge_billing_exceptions", "public.hand_off_orders",
   "public.revert_billing_handoff", "public.record_billing_export",
-  "private.operational_exceptions", "private.operational_exceptions_all", "private.base_write_guard", "private.require_command_center", "private.demo_person_name", "public.command_center_summary",
+  "private.operational_exceptions", "private.operational_exceptions_all", "private.base_write_guard_stmt", "private.row_outside_bases", "private.require_command_center", "private.demo_person_name", "public.command_center_summary",
   "public.command_center_exceptions", "public.exception_assignee_options", "public.assign_exception", "public.unassign_exception",
   "private.create_ticket", "private.portal_driver", "private.driver_assignments", "public.driver_portal_home",
   "public.driver_assignment_form", "public.driver_submit_ticket", "public.driver_submit_field_report", "public.review_field_report",
