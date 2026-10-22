@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectToast, signIn, unique } from "./helpers";
-import { asUser } from "./db";
+import { asUser, realMaterial } from "./db";
 import { USERS } from "./users";
 
 // Expired vehicle documents (20261112000200; owner 2026-10-13): an expired insurance warns until a person marks the
@@ -14,7 +14,7 @@ test("a verified expired insurance blocks assignment; the rules are shown in Set
     await q("insert into public.vehicle_documents (truck_id, kind, reference_number, expires_on) values ($1, 'insurance', 'POL-1', (now() - interval '20 days')::date)", [truckId]);
     const driverId = (await q("insert into public.drivers (name) values ($1) returning id", [`DP Driver ${unit}`])).rows[0].id as string;
     await q("insert into public.driver_qualifications (driver_id, kind, cdl_class, expires_on, verified_at) values ($1, 'cdl', 'A', '2030-01-01', now()), ($1, 'medical_card', null, '2030-01-01', now())", [driverId]);
-    const material = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
+    const material = await realMaterial(q);
     const customer = (await q("select id from public.customers where active order by created_at limit 1")).rows[0].id as string;
     const today = (await q("select (now() at time zone 'America/Chicago')::date::text as d")).rows[0].d as string;
     const day = (await q("select ($1::date + 3)::text as d", [today])).rows[0].d as string;

@@ -23,3 +23,13 @@ export async function asUser<T>(email: string, fn: (q: (sql: string, params?: un
     await client.end();
   }
 }
+
+/**
+ * A real (non-sample) active material for order fixtures. The seed's materials are all sample data, so on a freshly
+ * built database the first spec that needs one creates it instead of relying on another spec having run first.
+ */
+export async function realMaterial(q: (sql: string, params?: unknown[]) => Promise<pg.QueryResult>): Promise<{ id: string; unit: string }> {
+  const found = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
+  if (found) return found as { id: string; unit: string };
+  return (await q("insert into public.materials (code, name, default_unit_code) values ('E2E-BASE', 'Base material (test)', 'ton') returning id, default_unit_code as unit")).rows[0] as { id: string; unit: string };
+}

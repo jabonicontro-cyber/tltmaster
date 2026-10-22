@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signIn, unique } from "./helpers";
-import { asUser } from "./db";
+import { asUser, realMaterial } from "./db";
 import { USERS } from "./users";
 
 // Order-to-Cash Control Center (B42 increment 1): an order is placed on its stage with why, the next step and the
@@ -10,7 +10,7 @@ import { USERS } from "./users";
 test("an unscheduled order shows in Needs scheduling with the next step and team; stages filter the list", async ({ page }) => {
   const project = `O2C ${unique()}`;
   await asUser(USERS.owner.email, async (q) => {
-    const material = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
+    const material = await realMaterial(q);
     const customer = (await q("select id from public.customers where active order by created_at limit 1")).rows[0].id as string;
     const today = (await q("select (now() at time zone 'America/Chicago')::date::text as d")).rows[0].d as string;
     const order = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
