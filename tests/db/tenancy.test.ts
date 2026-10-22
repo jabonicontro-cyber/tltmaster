@@ -312,6 +312,33 @@ describe("schema guards", () => {
     });
   });
 
+  it("app roles cannot truncate, add triggers to or reference any public table, and signed-out requests hold no table rights", async () => {
+    await withSession(async (s) => {
+      await s.asAdmin();
+      const granted = await s.query(
+        `select c.relname, r.rolname, p.priv from pg_class c join pg_namespace n on n.oid = c.relnamespace
+         cross join (values ('anon'), ('authenticated')) r(rolname) cross join (values ('TRUNCATE'), ('TRIGGER'), ('REFERENCES')) p(priv)
+         where n.nspname = 'public' and c.relkind in ('r', 'v', 'm') and has_table_privilege(r.rolname, c.oid, p.priv)`,
+      );
+      expect(granted.rows).toEqual([]);
+      // Signed-out requests have no table rights at all (no policy applies to anon; signed-out features use functions).
+      const anon = await s.query(
+        `select c.relname from pg_class c join pg_namespace n on n.oid = c.relnamespace
+         where n.nspname = 'public' and c.relkind in ('r', 'v', 'm')
+           and (has_table_privilege('anon', c.oid, 'SELECT') or has_any_column_privilege('anon', c.oid, 'INSERT')
+                or has_any_column_privilege('anon', c.oid, 'UPDATE') or has_table_privilege('anon', c.oid, 'DELETE'))`,
+      );
+      expect(anon.rows).toEqual([]);
+      const defaults = await s.query(
+        "select defaclacl::text as acl from pg_default_acl d join pg_namespace n on n.oid = d.defaclnamespace where n.nspname = 'public' and d.defaclobjtype = 'r'",
+      );
+      for (const d of defaults.rows) {
+        expect(d.acl).not.toMatch(/authenticated=[a-zA-Z]*[Dxt]/);
+        expect(d.acl).not.toMatch(/anon=[a-zA-Z]/);
+      }
+    });
+  });
+
   it("app users cannot call internal functions", async () => {
     await withSession(async (s) => {
       const office = await s.createUser("office");
