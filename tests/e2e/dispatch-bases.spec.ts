@@ -1,8 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { asUser } from "./db";
 import { signIn, unique } from "./helpers";
-import { OTHER_COMPANY, USERS } from "./users";
+import { OTHER_COMPANY, PASSWORD, TOP_LINE_SLUG, USERS } from "./users";
 
 // Settings → Dispatch Bases (migrations 20261120000100/000200): the plan limit shows and is enforced, a base can be
 // added, edited, made default and deactivated without touching its records, and a person can be limited to a base.
@@ -161,6 +162,64 @@ test("on a two-base plan the owner adds, edits, makes default and deactivates a 
       await c.query("delete from public.work_orders where company_id = $1 and title = $2", [companyId, `Base filter ${code}`]);
       await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [companyId, `T-${code}`]);
       await c.query("commit");
+    });
+  }
+});
+
+test("a dispatcher limited to one base sees and changes only that base, in the pages and through the API", async ({ page }) => {
+  test.slow();
+  const code = `R${unique().toUpperCase().slice(0, 5)}`;
+  const setup = await admin(async (c) => {
+    const company = (await c.query<{ id: string }>("select id from public.companies where slug = $1", [TOP_LINE_SLUG])).rows[0].id;
+    const before = (await c.query<{ plan_version_id: string }>("select plan_version_id from private.company_lifecycle where company_id = $1", [company])).rows[0]?.plan_version_id ?? null;
+    const v = (await c.query<{ id: string }>("select id from private.platform_plan_versions where plan_key = 'growth' order by version desc limit 1")).rows[0].id;
+    await c.query("insert into private.company_lifecycle (company_id, plan_version_id) values ($1, $2) on conflict (company_id) do update set plan_version_id = excluded.plan_version_id", [company, v]);
+    await c.query("update public.dispatch_bases set active = false where company_id = $1 and not is_default", [company]);
+    const north = (await c.query<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone) values ($1, $2, $3, 'America/Chicago') returning id", [company, code, `North ${code}`])).rows[0].id;
+    const mainTruck = (await c.query<{ id: string; unit_number: string }>("select t.id, t.unit_number from public.trucks t join public.dispatch_bases b on b.id = t.base_id and b.is_default where t.company_id = $1 and t.active limit 1", [company])).rows[0];
+    const mainOrder = (await c.query<{ id: string; order_number: string }>("select o.id, o.order_number from public.orders o join public.dispatch_bases b on b.id = o.base_id and b.is_default where o.company_id = $1 limit 1", [company])).rows[0];
+    const dispatcher = (await c.query<{ id: string }>("select id from public.profiles where email = $1", [USERS.dispatcher.email])).rows[0].id;
+    return { company, before, north, mainTruck, mainOrder, dispatcher };
+  });
+  try {
+    // The owner limits the dispatcher to North (the app's function, audited); North gets a truck of its own.
+    await asUser(USERS.owner.email, (q) => q("select public.set_person_bases($1, $2::uuid[])", [setup.dispatcher, [setup.north]]));
+    const northTruck = await asUser(USERS.owner.email, async (q) =>
+      (await q("insert into public.trucks (unit_number, truck_type, base_id) values ($1, 'tri_axle_dump', $2) returning id", [`T-${code}`, setup.north])).rows[0].id as string);
+
+    // Pages: their base's truck opens; another base's truck and order are not found.
+    await signIn(page, "dispatcher");
+    await page.goto(`/fleet/trucks/${northTruck}`);
+    await expect(page.getByRole("heading", { name: new RegExp(`T-${code}`) }).first()).toBeVisible();
+    await page.goto(`/fleet/trucks/${setup.mainTruck.id}`);
+    await expect(page.getByText("Not found", { exact: true })).toBeVisible();
+    await page.goto(`/orders/${setup.mainOrder.id}`);
+    await expect(page.getByText("Not found", { exact: true })).toBeVisible();
+    await page.goto("/fleet/trucks");
+    await expect(page.getByRole("row").filter({ hasText: `T-${code}` })).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: setup.mainTruck.unit_number })).toHaveCount(0);
+
+    // The API (PostgREST, signed in as the dispatcher): reads, direct writes and functions stop at the base.
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const api = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+    const { error: signInError } = await api.auth.signInWithPassword({ email: USERS.dispatcher.email, password: PASSWORD });
+    expect(signInError).toBeNull();
+    expect((await api.from("trucks").select("id").eq("id", northTruck)).data).toHaveLength(1);
+    expect((await api.from("trucks").select("id").eq("id", setup.mainTruck.id)).data).toEqual([]);
+    expect((await api.from("orders").select("id").eq("id", setup.mainOrder.id)).data).toEqual([]);
+    expect((await api.from("order_loads").select("id").eq("order_id", setup.mainOrder.id)).data).toEqual([]);
+    const patched = await api.from("trucks").update({ notes: "Not mine" }).eq("id", setup.mainTruck.id).select("id");
+    expect(patched.data ?? []).toEqual([]);
+    const refused = await api.rpc("set_order_status", { p_order_id: setup.mainOrder.id, p_status: "in_progress", p_note: "", p_expected_edit_seq: null });
+    expect(refused.error?.code).toBe("42501");
+    expect(await admin(async (c) => (await c.query("select notes from public.trucks where id = $1", [setup.mainTruck.id])).rows[0].notes)).not.toBe("Not mine");
+  } finally {
+    await admin(async (c) => {
+      await c.query("delete from public.base_members where company_id = $1 and user_id = $2", [setup.company, setup.dispatcher]);
+      await c.query("delete from public.trucks where company_id = $1 and unit_number = $2", [setup.company, `T-${code}`]);
+      await c.query("update public.dispatch_bases set active = false where id = $1", [setup.north]);
+      if (setup.before) await c.query("update private.company_lifecycle set plan_version_id = $2 where company_id = $1", [setup.company, setup.before]);
+      else await c.query("delete from private.company_lifecycle where company_id = $1", [setup.company]);
     });
   }
 });

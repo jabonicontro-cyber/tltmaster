@@ -157,6 +157,80 @@ describe("dispatch base access on attached records", () => {
     });
   }, SETUP_HEAVY);
 
+  it("the write guard checks every row of a statement: bulk updates, deletes, inserts, upserts and merges cannot mix in another base", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      // Act as an elevated-rights function does: the database owner's rights (no RLS) with the person's identity.
+      const asFunctionFor = async (user: string) => {
+        await s.as(user);
+        await s.query("reset role");
+      };
+      const notes = async () => (await s.query<{ id: string; notes: string | null }>("select id, description as notes from public.work_orders where id = any($1::uuid[])", [[w.woMain, w.woNorth]])).rows;
+      await s.asAdmin();
+      const before = await notes();
+      await s.query("insert into public.vehicle_documents (company_id, truck_id, kind, reference_number) values ($1, $2, 'registration', 'N0'), ($1, $3, 'registration', 'M0')", [TOP_LINE, w.f.t2, w.f.t1]);
+      await asFunctionFor(w.dispatcher);
+      // One statement touching their base and another: refused as a whole, nothing changes.
+      expect(refusal(await pgError(s.query("update public.work_orders set description = 'bulk' where id = any($1::uuid[])", [[w.woNorth, w.woMain]])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("update public.work_orders set truck_id = $2 where id = $1", [w.woNorth, w.f.t1])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("delete from public.vehicle_documents where truck_id = any($1::uuid[])", [[w.f.t2, w.f.t1]])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("insert into public.vehicle_documents (company_id, truck_id, kind, reference_number) values ($1, $2, 'registration', 'N'), ($1, $3, 'registration', 'M')", [TOP_LINE, w.f.t2, w.f.t1])))).toEqual(BASE_REFUSAL);
+      // An upsert that lands on another base's row (the update half), and a merge over both bases.
+      expect(refusal(await pgError(s.query("insert into public.trucks (id, company_id, unit_number, truck_type) values ($1, $2, 'X', 'tri_axle_dump') on conflict (id) do update set notes = 'upsert'", [w.f.t1, TOP_LINE])))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(s.query("merge into public.work_orders t using (select unnest($1::uuid[]) id) x on t.id = x.id when matched then update set description = 'merge'", [[w.woNorth, w.woMain]])))).toEqual(BASE_REFUSAL);
+      // Moving their own order to another base is refused too (the new row is checked, not only the old one).
+      expect(refusal(await pgError(s.query("update public.orders set base_id = $2 where id = $1", [w.oNorth.id, w.main])))).toEqual(BASE_REFUSAL);
+      // Their own base, in bulk, still works.
+      await s.query("update public.work_orders set description = 'mine' where id = $1", [w.woNorth]);
+      await s.query("insert into public.trucks (id, company_id, unit_number, truck_type) values ($1, $2, 'X', 'tri_axle_dump') on conflict (id) do update set notes = 'upsert'", [w.f.t2, TOP_LINE]);
+      // An unrestricted person may change both bases in one statement (cross-base work stays theirs to decide).
+      await asFunctionFor(w.owner);
+      await s.query("update public.work_orders set description = 'owner bulk' where id = any($1::uuid[])", [[w.woNorth, w.woMain]]);
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.vehicle_documents where truck_id = any($1::uuid[]) and reference_number in ('N0', 'M0')", [[w.f.t1, w.f.t2]])).rowCount).toBe(2);
+      const after = await notes();
+      expect(after.map((r) => r.notes)).toEqual(["owner bulk", "owner bulk"]);
+      expect(before.every((r) => r.notes !== "owner bulk")).toBe(true);
+    });
+  }, SETUP_HEAVY);
+
+  it("Command Center counts follow the person's bases", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      // Today's loads at both bases, and a truck out of service at each.
+      await s.asAdmin();
+      const today = await businessToday(s);
+      await s.query("update public.order_loads set load_date = $2 where id = any($1::uuid[])", [[w.lMain.load_id, w.lNorth.load_id], today]);
+      await s.query("update public.trucks set service_status = 'out_of_service', out_of_service_reason = 'Test', out_of_service_since = now() where id = any($1::uuid[])", [[w.f.t1, w.f.t2]]);
+      // The counts equal what the person's own lists show (the same query, run as the person, so RLS decides).
+      const check = async (user: string) => {
+        await s.as(user);
+        const r = (await s.query<{ r: Record<string, number> }>("select public.command_center_summary() r")).rows[0].r;
+        const listed = (await s.query<{ loads: number; assigned: number; orders: number; trucks: number }>(
+          `select (select count(*)::int from public.order_loads l join public.orders o on o.id = l.order_id
+                   where l.status = 'planned' and l.load_date = $1
+                     and o.status in ('scheduled', 'dispatched', 'in_progress', 'partially_completed', 'completed')) loads,
+                  (select count(*)::int from public.order_loads l join public.orders o on o.id = l.order_id
+                   where l.status = 'planned' and l.load_date = $1
+                     and o.status in ('scheduled', 'dispatched', 'in_progress', 'partially_completed', 'completed')
+                     and exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')) assigned,
+                  (select count(*)::int from public.orders o where o.status <> 'canceled'
+                     and o.scheduled_start <= $1 and coalesce(o.scheduled_end, o.scheduled_start) >= $1) orders,
+                  (select count(*)::int from public.trucks where active and service_status = 'out_of_service') trucks`, [today])).rows[0];
+        expect({ loads: r.loads_today, assigned: r.loads_today_assigned, orders: r.orders_today, trucks: r.trucks_out_of_service }).toEqual(listed);
+        return listed;
+      };
+      const owner = await check(w.owner);
+      const dispatcher = await check(w.dispatcher);
+      // Main's load, assignment, order and truck count for the owner only; North's for both.
+      expect(owner.loads - dispatcher.loads).toBeGreaterThanOrEqual(1);
+      expect(owner.trucks - dispatcher.trucks).toBeGreaterThanOrEqual(1);
+      expect(owner.orders - dispatcher.orders).toBeGreaterThanOrEqual(1);
+      expect(dispatcher.loads).toBeGreaterThanOrEqual(1);
+      expect(dispatcher.trucks).toBeGreaterThanOrEqual(1);
+    });
+  }, SETUP_HEAVY);
+
   it("another company sees none of these records, restricted or not", async () => {
     await withSession(async (s) => {
       const w = await world(s);
