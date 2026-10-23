@@ -290,6 +290,11 @@ isolation is unchanged and always applies first.
 | Command Center items and counts; shop schedule | in the function (`001700`, `002300`, `002100`) | — (read only) | db base-scope, dispatch-bases |
 | bulk, upsert, MERGE, moving a record to another base | — | every old and new row checked | db base-scope ("checks every row of a statement") |
 
+**Residual (known, low):** elevated-rights functions validate before they write, so a base-limited person who already
+knows another base's record id can get that record's number and state back in a refusal message (for example "Order
+ORD-1025 cannot move from confirmed to in progress", or a duplicate-ticket warning naming a ticket). Nothing is written
+and RLS hides those ids from them; checking the base first in every such function is a follow-up.
+
 Rollbacks restore the previous state exactly (tested on a fresh database: `002300`→`001800` rolled back leaves the 4
 original policies and no guard; reapplied, 23 policies and 69 triggers, all tests pass).
 

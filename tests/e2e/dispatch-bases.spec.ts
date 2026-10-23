@@ -177,7 +177,8 @@ test("a dispatcher limited to one base sees and changes only that base, in the p
     await c.query("update public.dispatch_bases set active = false where company_id = $1 and not is_default", [company]);
     const north = (await c.query<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone) values ($1, $2, $3, 'America/Chicago') returning id", [company, code, `North ${code}`])).rows[0].id;
     const mainTruck = (await c.query<{ id: string; unit_number: string }>("select t.id, t.unit_number from public.trucks t join public.dispatch_bases b on b.id = t.base_id and b.is_default where t.company_id = $1 and t.active limit 1", [company])).rows[0];
-    const mainOrder = (await c.query<{ id: string; order_number: string }>("select o.id, o.order_number from public.orders o join public.dispatch_bases b on b.id = o.base_id and b.is_default where o.company_id = $1 limit 1", [company])).rows[0];
+    // A scheduled order, so moving it to In progress is allowed in itself and only the base rule can refuse it.
+    const mainOrder = (await c.query<{ id: string; order_number: string }>("select o.id, o.order_number from public.orders o join public.dispatch_bases b on b.id = o.base_id and b.is_default where o.company_id = $1 and o.status = 'scheduled' order by o.order_number limit 1", [company])).rows[0];
     const dispatcher = (await c.query<{ id: string }>("select id from public.profiles where email = $1", [USERS.dispatcher.email])).rows[0].id;
     return { company, before, north, mainTruck, mainOrder, dispatcher };
   });
@@ -211,7 +212,7 @@ test("a dispatcher limited to one base sees and changes only that base, in the p
     const patched = await api.from("trucks").update({ notes: "Not mine" }).eq("id", setup.mainTruck.id).select("id");
     expect(patched.data ?? []).toEqual([]);
     const refused = await api.rpc("set_order_status", { p_order_id: setup.mainOrder.id, p_status: "in_progress", p_note: "", p_expected_edit_seq: null });
-    expect(refused.error?.code).toBe("42501");
+    expect({ code: refused.error?.code, message: refused.error?.message }).toEqual({ code: "42501", message: "You can only work with records at your dispatch bases." });
     expect(await admin(async (c) => (await c.query("select notes from public.trucks where id = $1", [setup.mainTruck.id])).rows[0].notes)).not.toBe("Not mine");
   } finally {
     await admin(async (c) => {

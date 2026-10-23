@@ -37,7 +37,7 @@ project credentials. Read it together with:
   promotion, MFA enrolment and a backup; CRON_SECRET check (open `/api/cron/lifecycle-activation` signed out: 503 = not
   set, 401 = set); discount stacking decision (proposal: founding + annual suggest the single best discount); Next.js
   patch reaches Production only through promotion.
-- **Residual risks:** duplicate-ticket error text can name another base's ticket if the caller already knows a load id;
+- **Residual risks:** refusal messages of elevated-rights functions (status changes, duplicate tickets) can name another base's record and its state if the caller already knows its id (found by the release gate run; nothing is written);
   local tests run on PostgreSQL 16, hosted is 17; 5 high npm advisories remain in lint tooling only.
 
 ## 00000000000000. 2026-10-22 — VER2 release verification, CI green, Command Center fixes, traceability
