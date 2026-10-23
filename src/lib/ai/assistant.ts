@@ -32,11 +32,17 @@ export type AssistantKind = (typeof ASSISTANT_KINDS)[number];
 const answerSchema = z.object({
   kind: z.enum(ASSISTANT_KINDS),
   answer: z.string().min(1).max(1200),
-  sources: z.array(z.string().regex(/^[OLCDTRWKHQ]\d{1,4}$/)).max(12),
-  followUps: z.array(z.string().min(1).max(140)).max(3),
+  // Long lists are accepted (every code is still checked below) and trimmed for display: a week's outlook can cite
+  // more records than the page shows, which is not a reason to throw a correct answer away.
+  sources: z.array(z.string().regex(/^[OLCDTRWKHQ]\d{1,4}$/)).max(60),
+  followUps: z.array(z.string().min(1).max(140)).max(6),
 }).strict();
 
 export type AssistantAnswer = z.infer<typeof answerSchema>;
+
+/** How many sources and follow-up questions the page shows. */
+export const SHOWN_SOURCES = 12;
+export const SHOWN_FOLLOW_UPS = 3;
 
 export const ASSISTANT_JSON_SCHEMA = {
   type: "object",

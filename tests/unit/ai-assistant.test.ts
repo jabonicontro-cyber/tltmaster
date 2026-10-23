@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ASSISTANT_EVAL_CASES, Pseudonyms, checkAnswer, pseudonymizeQuestion } from "@/lib/ai/assistant";
+import { ASSISTANT_EVAL_CASES, Pseudonyms, SHOWN_SOURCES, checkAnswer, pseudonymizeQuestion } from "@/lib/ai/assistant";
 import { capability, evaluateGate, mayUse, type GateInput } from "@/lib/ai/capabilities";
 import type { ExceptionItem } from "@/lib/command-center/rules";
 import type { Permission } from "@/lib/permissions";
@@ -195,6 +195,14 @@ describe("Ask Taviron: answers are checked before they are shown", () => {
     expect(checkAnswer({ kind: "answer", answer: "Assigning T1 is optimal.", sources: [], followUps: [] }, g, new Set(["T1"]), []).map((f) => f.rule)).toContain("forbidden_claim");
     expect(checkAnswer({ kind: "answer", answer: "Call Maria Okafor about L1.", sources: ["L1"], followUps: [] }, g, known, ["Maria Okafor"]).map((f) => f.rule)).toContain("sensitive_data");
     expect(checkAnswer({ kind: "answer", answer: "L1 needs a truck.", sources: ["L1"], followUps: [] }, g, known, [])).toEqual([]);
+  });
+
+  it("a long list of known sources is accepted (and trimmed for display); one unknown code in it still fails", () => {
+    const codes = Array.from({ length: 20 }, (_, i) => `L${i + 1}`);
+    const g = JSON.stringify({ loads: 20 });
+    expect(checkAnswer({ kind: "answer", answer: "L1 and L2 need a truck.", sources: codes, followUps: [] }, g, new Set(codes), [])).toEqual([]);
+    expect(checkAnswer({ kind: "answer", answer: "L1 needs a truck.", sources: [...codes, "L99"], followUps: [] }, g, new Set(codes), []).map((f) => f.rule)).toContain("unknown_reference");
+    expect(SHOWN_SOURCES).toBe(12);
   });
 
   it("a provider failure, timeout or budget stop is reported honestly and recorded", async () => {

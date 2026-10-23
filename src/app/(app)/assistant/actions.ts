@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { Pseudonyms, type AssistantKind } from "@/lib/ai/assistant";
+import { Pseudonyms, SHOWN_FOLLOW_UPS, SHOWN_SOURCES, type AssistantKind } from "@/lib/ai/assistant";
 import { capability } from "@/lib/ai/capabilities";
 import { can } from "@/lib/permissions";
 import { assistantRequest } from "@/server/ai/assistant";
@@ -58,12 +58,12 @@ export async function askAssistant(input: z.input<typeof askInput>): Promise<Act
         settings: { monthlyTokenLimit: config.monthlyTokenLimit!, requestsPerMinute: config.requestsPerMinute, timeoutMs: config.timeoutMs, pricing: config.pricing },
         toolContext: { permissions: access.permissions, data },
       });
-      const sources = [...new Set(run.value.sources)].map((code) => data.p.entry(code)).filter((e) => e !== null).map((e) => ({ label: e.label, href: e.href }));
+      const sources = [...new Set(run.value.sources)].map((code) => data.p.entry(code)).filter((e) => e !== null).slice(0, SHOWN_SOURCES).map((e) => ({ label: e.label, href: e.href }));
       return ok<AssistantView>({
         kind: run.value.kind,
         answer: data.p.relabel(run.value.answer),
         sources,
-        followUps: run.value.followUps.map((f) => data.p.relabel(f)),
+        followUps: run.value.followUps.slice(0, SHOWN_FOLLOW_UPS).map((f) => data.p.relabel(f)),
         model: run.model,
         tokens: { input: run.usage.inputTokens, output: run.usage.outputTokens },
         estimatedCostUsd: run.estimatedCostUsd,
