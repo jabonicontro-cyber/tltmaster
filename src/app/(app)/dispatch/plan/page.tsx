@@ -44,40 +44,42 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
       <ReturnLink back={params.back ?? "/dispatch"} />
       <PageHeader
         title="Plan the day"
-        description={`${formatDateLong(date)}. Taviron plans every unassigned load across your trucks and drivers at once, checks every hard rule first, and ranks the options by the priorities you choose. Nothing is assigned until you approve it.`}
+        description={`${formatDateLong(date)}. Taviron proposes an assignment for every open load, checking hard rules first. Nothing is assigned until you approve it.`}
       />
-      <form method="get" className="mb-6 rounded-lg border border-line bg-card p-4" aria-label="Plan settings">
-        <div className="flex flex-wrap items-end gap-4">
+      <form method="get" className="mb-5 rounded-lg border border-line bg-card px-4 py-3" aria-label="Plan settings">
+        <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
           <label className="text-sm">
             <span className="mb-1 block font-semibold text-ink">Day</span>
             <DateInput name="date" defaultValue={date} min={today} max={addDays(today, 14)} />
           </label>
-          {/* Changing the day keeps the current preset or custom priorities. */}
-          <button name="preset" value={preset ?? ""} className="h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">
-            Show plan
-          </button>
           <fieldset className="text-sm">
-            <legend className="mb-1 font-semibold text-ink">Start from</legend>
-            <div className="flex flex-wrap gap-2">
+            <legend className="mb-1 font-semibold text-ink">Planning mode</legend>
+            {/* Each mode reloads the plan for the chosen day with that preset's priorities. */}
+            <div className="inline-flex flex-wrap gap-1 rounded-md border border-line bg-surface p-1">
               {Object.entries(PRESETS).map(([key, p]) => (
-                <button key={key} name="preset" value={key} className={`h-10 rounded-md border px-3 text-sm font-semibold ${preset === key ? "border-strong bg-surface text-ink" : "border-line text-muted hover:bg-surface"}`} aria-pressed={preset === key}>
+                <button key={key} name="preset" value={key} aria-pressed={preset === key}
+                  className={`h-8 rounded px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${preset === key ? "bg-strong text-white" : "text-muted hover:bg-card hover:text-ink"}`}>
                   {p.label}
                 </button>
               ))}
             </div>
           </fieldset>
+          {/* Changing the day keeps the current preset or custom priorities. */}
+          <button name="preset" value={preset ?? ""} className="h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+            Show plan
+          </button>
         </div>
-        <details className="mt-4" open={preset === null}>
-          <summary className="cursor-pointer text-sm font-semibold text-ink">Adjust priorities (0 = ignore, 5 = most important)</summary>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <details className="mt-3 border-t border-line pt-3" open={preset === null}>
+          <summary className="cursor-pointer text-sm font-semibold text-ink">Adjust priorities{preset === null ? " · custom" : ""}</summary>
+          <p className="mt-1 text-xs text-muted">0 = ignore, 5 = most important. Priorities rank feasible options only: safety, legal, qualification, capacity and maintenance rules always come first.</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {PRIORITY_KEYS.map((k) => (
               <label key={k} className="text-sm">
                 <span className="flex justify-between font-medium text-ink">{PRIORITY_LABELS[k]} <span className="tabular text-muted">{priorities[k]}</span></span>
-                <input type="range" name={k} min={0} max={5} step={1} defaultValue={priorities[k]} className="mt-1 w-full accent-brand" aria-describedby="priority-note" />
+                <input type="range" name={k} min={0} max={5} step={1} defaultValue={priorities[k]} className="mt-1 w-full accent-brand" />
               </label>
             ))}
           </div>
-          <p id="priority-note" className="mt-2 text-xs text-muted">Priorities rank feasible options only. Safety, legal, qualification, capacity and maintenance rules always come first.</p>
           <button className="mt-3 h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">
             <Sparkles className="mr-1.5 inline size-4" aria-hidden />Plan with these priorities
           </button>

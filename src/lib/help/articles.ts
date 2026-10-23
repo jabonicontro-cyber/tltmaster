@@ -884,18 +884,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
     permissions: ["dispatch.view"],
     audience: "Dispatchers and owners.",
     whatYouSee: [
-      "A **Day** from today to 14 days ahead and **Start from** presets: Balanced, Service first, Revenue first and Efficiency first.",
-      "**Adjust priorities (0 = ignore, 5 = most important)** for service reliability, revenue (estimate), truck utilization, fewer empty trips, driver workload balance and keeping crews together.",
-      "**Plans** with measures such as loads covered, urgent covered, average truck fill and revenue covered (estimate), and how other presets compare.",
-      "Each proposed assignment with a checkbox, and **Check before approving** notes.",
-      "**Missing or estimated information** that limits the plan.",
+      "A **Day** from today to 14 days ahead and a **Planning mode**: Balanced, Service first, Revenue first or Efficiency first.",
+      "**Adjust priorities** (collapsed; 0 = ignore, 5 = most important) for service reliability, revenue (estimate), truck utilization, fewer empty trips, driver workload balance and keeping crews together.",
+      "**Plans** with four measures (loads covered, estimated revenue, trucks and drivers used, assignments that need review), **More plan details** (urgent and overdue coverage, average truck fill, site changes, workload), and how other presets compare.",
+      "Each proposed assignment with a checkbox, a status (**Recommended**, **Needs review** or **Blocked**), what to check, and **View explanation** for the full reasons.",
+      "**Missing or estimated information** that limits the plan, and **Unavailable resources** with the reason for each truck, trailer or driver.",
     ],
     tasks: [
       {
         title: "Build a plan",
         steps: [
           "On **Dispatch**, select **Plan the day**.",
-          "Choose the **Day** and a **Start from** preset, then select **Show plan**.",
+          "Choose the **Day** and a **Planning mode**, or select **Show plan** to keep the current one.",
           "To fine-tune, open **Adjust priorities**, move the sliders and select **Plan with these priorities**.",
         ],
       },

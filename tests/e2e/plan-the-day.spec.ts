@@ -43,11 +43,40 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   const count = await assignments.count();
   expect(count).toBeGreaterThanOrEqual(2);
   await expect(assignments.first()).toContainText("Needs review");
-  await expect(assignments.first()).toContainText("Hours of service not verified");
+  // The row says what to check in one line; the full explanation opens on demand.
+  await expect(assignments.first().getByText(/^Check: Hours of service not verified/)).toBeVisible();
+  const why = assignments.first().getByText("View explanation");
+  await why.click();
+  await expect(assignments.first().getByText("Check before approving")).toBeVisible();
+  await why.click();
+  // Summary: four measures up front, the rest under More plan details; the data notice is compact with details.
+  await expect(page.getByText("Need review", { exact: true })).toBeVisible();
+  await expect(page.getByText("Truck fill is how much recorded capacity")).toBeHidden();
+  await page.getByText("More plan details").click();
+  await expect(page.getByText("Truck fill is how much recorded capacity")).toBeVisible();
+  await expect(missing.getByText(/Hours of service are not checked/)).toBeHidden();
+  await missing.getByText(/^Details \(/).click();
+  await expect(missing.getByText(/Hours of service are not checked/)).toBeVisible();
+  // The selected planning mode is marked; the priorities stay collapsed until opened.
+  await expect(page.getByRole("button", { name: "Balanced", exact: true })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByRole("slider").first()).toBeHidden();
+  await page.getByText("Adjust priorities").click();
+  await expect(page.getByRole("slider").first()).toBeVisible();
+  // Selection: every proposal starts selected; the count follows Clear, Select all and single ticks.
+  await expect(page.getByRole("button", { name: `Approve ${count} selected` })).toBeEnabled();
+  await page.getByRole("button", { name: "Clear", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Approve 0 selected" })).toBeDisabled();
+  await assignments.first().getByRole("checkbox").check();
+  await expect(page.getByText(`1 of ${count} selected`)).toBeVisible();
+  await page.getByRole("button", { name: "Select all", exact: true }).click();
+  await expect(page.getByText(`${count} of ${count} selected`)).toBeVisible();
 
   // Another preset gives an alternative with its trade-offs (or the same plan, said once).
-  await page.getByRole("button", { name: "Service first" }).click();
-  await expect(plans.getByRole("tab").first()).toContainText("Service first (your priorities)");
+  for (const mode of ["Revenue first", "Efficiency first", "Balanced", "Service first"]) {
+    await page.getByRole("button", { name: mode, exact: true }).click();
+    await expect(plans.getByRole("tab").first()).toContainText(`${mode} (your priorities)`);
+    await expect(page.getByRole("button", { name: mode, exact: true })).toHaveAttribute("aria-pressed", "true");
+  }
 
   // Approve only the first proposal: it is re-checked and assigned; the rest stay open.
   // Count again: the service-first plan may cover a different number of loads than the balanced one.
