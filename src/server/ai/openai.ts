@@ -1,5 +1,6 @@
 import "server-only";
 import { AiError, type AiProvider, type CompletionRequest, type CompletionResponse, type ConversationItem } from "./types";
+import { isReasoningModel, outputTokenCap, REASONING_EFFORT } from "@/lib/ai/reasoning";
 
 // OpenAI adapter (Responses API, https://platform.openai.com/docs/api-reference/responses). Everything OpenAI-specific
 // lives here: request and response shapes, function-call encoding, structured outputs, error mapping and usage
@@ -79,9 +80,10 @@ export class OpenAiProvider implements AiProvider {
       model: request.model,
       instructions: request.instructions,
       input: request.input.map(toItem),
-      max_output_tokens: request.maxOutputTokens,
+      max_output_tokens: outputTokenCap(request.model, request.maxOutputTokens),
       store: false,
     };
+    if (isReasoningModel(request.model)) body.reasoning = { effort: REASONING_EFFORT };
     if (request.tools?.length) {
       body.tools = request.tools.map((t) => ({ type: "function", name: t.name, description: t.description, parameters: t.parameters, strict: true }));
     }

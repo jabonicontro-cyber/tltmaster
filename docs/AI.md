@@ -70,6 +70,11 @@ are ignored, and only their *names* appear on the setup page.
 | `AI_PRICING_JSON` | Optional prices, `{"<model>": {"inputPerMillion": n, "outputPerMillion": n}}` in USD per million tokens, entered from the provider's price list. Without it, costs are not estimated and the gate is Limited. |
 | `AI_IN_DEMOS` | `on` lets demo companies call the model (default off; see §11). |
 
+**Reasoning models** (`gpt-5…`, `o…`): they spend hidden reasoning tokens that count against the output cap. The
+adapter sends `reasoning: { effort: "low" }` and adds a fixed allowance (`REASONING_ALLOWANCE`, `src/lib/ai/reasoning.ts`)
+to each capability's answer budget; the token-budget checks use the same cap. Found by the first live evaluation
+(gpt-5-mini, 2026-10-23): every answer was cut off at `max_output_tokens`.
+
 ## 4. Readiness gates
 
 `evaluateGate` (pure) decides one of four states per capability and person. The same function serves the server and

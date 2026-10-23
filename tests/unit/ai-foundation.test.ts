@@ -7,6 +7,7 @@ import type { Plan } from "@/lib/optimization/plan";
 import { parseAiConfig } from "@/server/ai/config";
 import { runPlanExplanationEval } from "@/server/ai/evals";
 import { OpenAiProvider } from "@/server/ai/openai";
+import { REASONING_ALLOWANCE } from "@/lib/ai/reasoning";
 import { PLAN_TOOLS, planExplanationRequest, type PlanToolData } from "@/server/ai/plan-explanation";
 import { estimateCostMicroUsd, findSensitive, runCapability, type UsageLedger, type UsageRecord } from "@/server/ai/run";
 import { executeApprovedTool, runToolCall, type Tool } from "@/server/ai/tools";
@@ -227,6 +228,20 @@ describe("OpenAI adapter", () => {
     expect(r.usage).toEqual({ inputTokens: 900, outputTokens: 120 });
   });
 
+  it("gives reasoning models (gpt-5, o-series) low effort and room to reason; other models keep their cap", async () => {
+    const send = async (model: string) => {
+      const fetchImpl = vi.fn(async () => resp(answer(GOOD)));
+      await new OpenAiProvider(KEY, fetchImpl as unknown as typeof fetch, 0).complete({ ...request, model }, { timeoutMs: 1000 });
+      return JSON.parse(String((fetchImpl.mock.calls[0] as unknown as [string, RequestInit])[1].body));
+    };
+    const reasoning = await send("gpt-5-mini");
+    expect(reasoning).toMatchObject({ max_output_tokens: 700 + REASONING_ALLOWANCE, reasoning: { effort: "low" } });
+    expect(await send("o4-mini")).toMatchObject({ max_output_tokens: 700 + REASONING_ALLOWANCE });
+    const plain = await send("test-model-2030");
+    expect(plain.max_output_tokens).toBe(700);
+    expect(plain.reasoning).toBeUndefined();
+  });
+
   it("encodes tool calls and results and parses function calls", async () => {
     const fetchImpl = vi.fn(async () => resp(toolCallResponse("get_load_details", '{"load":"L1"}')));
     const r = await new OpenAiProvider(KEY, fetchImpl as unknown as typeof fetch, 0).complete({ ...request, input: [
@@ -445,6 +460,18 @@ describe("running a capability", () => {
     await expect(runCapability(request(), deps(p, memoryLedger(null)))).rejects.toMatchObject({ kind: "not_configured" });
     await expect(runCapability(request(), deps(p, memoryLedger({ tokensThisMonth: 0, callsLastMinute: 6 })))).rejects.toMatchObject({ kind: "rate_limit" });
     await expect(runCapability(request(), deps(p, memoryLedger({ tokensThisMonth: 99_900, callsLastMinute: 0 })))).rejects.toMatchObject({ kind: "budget" });
+    expect(p.requests).toHaveLength(0);
+  });
+
+  it("the budget check counts a reasoning model's reasoning allowance", async () => {
+    const r = request();
+    const answerOnly = Math.ceil((r.instructions.length + r.input.length) / 3) + r.maxOutputTokens;
+    const ledger = () => memoryLedger({ tokensThisMonth: 100_000 - answerOnly - 10, callsLastMinute: 0 });
+    // Room for the answer alone: a plain model runs, a reasoning model is refused before anything is sent.
+    expect((await runCapability(r, deps(scripted([text(GOOD)]), ledger()))).value).toEqual(GOOD);
+    const p = scripted([text(GOOD)]);
+    const reasoning = deps(p, ledger(), { config: { model: "gpt-5-mini" }, evidence: [{ ...EVIDENCE, model: "gpt-5-mini" }] });
+    await expect(runCapability(r, reasoning)).rejects.toMatchObject({ kind: "budget" });
     expect(p.requests).toHaveLength(0);
   });
 

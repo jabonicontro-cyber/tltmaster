@@ -2,6 +2,7 @@ import "server-only";
 import type { AiCapability, Gate } from "@/lib/ai/capabilities";
 import { runToolCall, toolDefinitions, type PendingApproval, type Proposal, type Tool, type ToolContext } from "./tools";
 import { AiError, type AiErrorKind, type AiProvider, type CompletionResponse, type ConversationItem, type JsonSchema } from "./types";
+import { outputTokenCap } from "@/lib/ai/reasoning";
 
 // Runs one AI capability request (docs/AI.md §2): gate → budget and rate limit → provider calls with approved tools →
 // validation → result. Every provider call is recorded in the usage ledger, success or failure. Nothing here can
@@ -99,7 +100,7 @@ export async function runCapability<C, O>(req: CapabilityRequest<C, O>, deps: Ru
   const usage = await deps.ledger.summary();
   if (!usage) throw new AiError("not_configured", "AI usage cannot be tracked right now, so nothing was sent.");
   if (usage.callsLastMinute >= deps.settings.requestsPerMinute) throw new AiError("rate_limit", "Too many AI requests in the last minute for this company. Try again shortly.");
-  const projected = Math.ceil((req.instructions.length + req.input.length) / 3) + req.maxOutputTokens;
+  const projected = Math.ceil((req.instructions.length + req.input.length) / 3) + outputTokenCap(deps.gate.model, req.maxOutputTokens);
   if (usage.tokensThisMonth + projected > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
 
   try {
@@ -138,7 +139,7 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
     };
     const leak = findSensitive(JSON.stringify(request), req.secrets);
     if (leak) throw new AiError("sensitive_data", `The request would have sent ${leak}; nothing was sent.`);
-    if (usedBefore + spent + req.maxOutputTokens > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
+    if (usedBefore + spent + outputTokenCap(model, req.maxOutputTokens) > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
 
     const t0 = clock();
     let res: CompletionResponse;
