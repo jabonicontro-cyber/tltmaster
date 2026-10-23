@@ -142,8 +142,13 @@ describe("AI configuration", () => {
     expect(g.reasons.join(" ")).toContain("API key is not set");
   });
 
-  it("no evaluation evidence is committed: nothing is Ready by default", () => {
-    expect(EVAL_EVIDENCE).toEqual([]);
+  it("committed evidence is only passing runs of the current test set; a model without evidence is not Ready", () => {
+    for (const e of EVAL_EVIDENCE) {
+      expect(e.provider, e.capability).toBe("openai");
+      expect(e.criticalFailures, e.capability).toBe(0);
+      expect(e.passed / e.cases, e.capability).toBeGreaterThanOrEqual(0.9);
+      expect(e.evalVersion, e.capability).toBe(capability(e.capability).evalVersion);
+    }
     expect(evaluateGate(gateInput({ evidence: EVAL_EVIDENCE })).state).toBe("needs_review");
   });
 });
