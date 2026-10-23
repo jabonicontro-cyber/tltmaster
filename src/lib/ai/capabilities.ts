@@ -44,7 +44,7 @@ export const AI_CAPABILITIES: AiCapability[] = [
     permission: "orders.view",
     anyPermission: ["orders.view", "dispatch.view", "maintenance.view", "tickets.view", "billing.view"],
     maxToolKind: "read",
-    evalVersion: 1,
+    evalVersion: 2, // 2: instructions name code letters, not example codes (the model cited the example Q1 as a source)
     minPassRate: 0.9,
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,
