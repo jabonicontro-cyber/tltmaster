@@ -10,7 +10,8 @@ import { AiError, type AiProvider } from "./types";
 
 export interface EvalReport {
   evidence: EvalEvidence;
-  cases: Array<{ name: string; passed: boolean; findings: Array<Finding | AssistantFinding>; error: string | null }>;
+  /** `answer` is the model's raw output for a failed case (fixed fictional test data only), so a failure can be read. */
+  cases: Array<{ name: string; passed: boolean; findings: Array<Finding | AssistantFinding>; error: string | null; answer?: string }>;
 }
 
 export async function runPlanExplanationEval(provider: AiProvider, model: string, now = new Date()): Promise<EvalReport> {
@@ -32,7 +33,7 @@ export async function runPlanExplanationEval(provider: AiProvider, model: string
         /* graded as a schema failure below */
       }
       const findings = res.refusal ? [{ rule: "schema" as const, critical: true, detail: "The model refused." }] : checkExplanation(k.facts, raw, []);
-      cases.push({ name: k.name, passed: findings.length === 0, findings, error: null });
+      cases.push({ name: k.name, passed: findings.length === 0, findings, error: null, ...(findings.length ? { answer: res.text ?? res.refusal ?? "" } : {}) });
     } catch (e) {
       // Provider failures are not model quality, but they still fail the case: evidence must come from real answers.
       cases.push({ name: k.name, passed: false, findings: [], error: e instanceof AiError ? `${e.kind}: ${e.message}` : "unexpected error" });
@@ -80,7 +81,7 @@ export async function runAssistantEval(provider: AiProvider, model: string, now 
       const findings: AssistantFinding[] = res.refusal ? [{ rule: "schema", critical: true, detail: "The model refused." }] : checkAnswer(raw, input, new Set(k.codes), []);
       const kind = (raw as { kind?: unknown } | null)?.kind;
       if (!findings.length && kind !== k.expectKind) findings.push({ rule: "expected_kind", critical: false, detail: `Expected ${k.expectKind}, got ${String(kind)}.` });
-      cases.push({ name: k.name, passed: findings.length === 0, findings, error: null });
+      cases.push({ name: k.name, passed: findings.length === 0, findings, error: null, ...(findings.length ? { answer: res.text ?? res.refusal ?? "" } : {}) });
     } catch (e) {
       cases.push({ name: k.name, passed: false, findings: [], error: e instanceof AiError ? `${e.kind}: ${e.message}` : "unexpected error" });
     }
