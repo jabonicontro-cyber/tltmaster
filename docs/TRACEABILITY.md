@@ -41,8 +41,8 @@ Qualifiers in parentheses are allowed, for example "implemented (Preview only)" 
   Onboarding Kit (`010954a`), Ask Taviron (`fbaf337`), order-to-cash chain test (`10cd4e8`), Reports typed dates
   (`d8b2af2`), website transformation (`dc99cd0`), input-loss and test fixes (`5398fdb`, `e488ef2`), plus docs.
 - **Hosted database** (owner's report, not independently verified): migrations applied **through `20261120000600`**.
-  **Pending (Phase B, 11):** `20261120000700` → `20261120001700` (`001600` index and `001700` Command Center base
-  scope added 2026-10-22). They wait until Production runs code with the
+  **Pending (Phase B, 17):** `20261120000700` → `20261120002300` (base access, billing view, privileges and Command
+  Center counts added 2026-10-22; results of the 2026-10-23 clean run in SESSION_HANDOFF). They wait until Production runs code with the
   two-step verification (MFA) screens, and until every platform admin has enrolled an authenticator (runbook
   `docs/runbooks/2026-10-14-hosted-db.md` §14). Preview and Production **share one Supabase project**. One mismatch:
   `20261120000600` is hosted, but the code that reads it (`8238483`) is on Preview only.

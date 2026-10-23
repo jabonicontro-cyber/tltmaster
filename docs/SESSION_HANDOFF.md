@@ -1,11 +1,44 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-22 (VER2 verification, CI green, Command Center index and base-scope fixes, traceability matrix). Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-23 (clean verification and base-level security audit; Phase B is 17 migrations). Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000000. 2026-10-23 — Clean verification and base-level security audit before push
+
+- **Bundle:** 14 commits on the Preview branch `claude/ui-and-signin-checkpoint` (`0024a00` … this entry), pushed
+  together after the gates below. Production `5881927` unchanged; hosted database through `20261120000600`, nothing applied.
+- **Security fixes (each reproduced before the fix, refused after):** base access on records attached to orders,
+  loads and equipment (`001800`, `002000`; statement-level guard checks every old and new row, so bulk updates and
+  deletes, multi-row inserts, upserts and MERGE cannot mix in another base), shop schedule (`002100`), Command Center
+  counts (`002300`: a base-limited dispatcher saw 53 orders instead of 1), app roles' TRUNCATE/TRIGGER/REFERENCES and
+  anon's table grants removed (`002200`). Next.js 16.4.2 (critical advisories). Model and matrix: ARCHITECTURE "Dispatch
+  base access".
+- **Hosted exposure until Phase B is applied:** on the hosted schema (Phase A) a person limited to some bases can read
+  other bases' loads, assignments, tickets, work orders and history through the API (proven by the new browser test,
+  which fails there at `order_loads`). Only companies that set Base Access are affected. Apply Phase B (17 migrations,
+  runbook §14) after Production promotion and the MFA prerequisites.
+- **Clean results (fresh PostgreSQL 16 cluster, every migration through `002300`, seed, storage; production build of
+  the app code):** vitest **891/891** (135 files) at `be33674`; browser **206 passed / 1 failed / 10 skipped** — the
+  failure was a race in the guided-onboarding test (it matched old history text), fixed in `a3422ef`, then 10/10 on
+  repeat. Lint 0 errors (1 warning in an untracked scratch file), typecheck clean, `npm run build` passes.
+- **Phase A (hosted-state) check:** full browser suite on a database with migrations through `000600` and the current
+  build: 183 passed / 23 failed / 10 skipped; the 22 earlier failures (all Phase B features) plus the new base-access
+  test above. No new compatibility failure.
+- **Rollback/reapply (fresh cluster):** `002300`→`001800` rolled back leaves the 4 original policies, no guard and
+  34 truncatable objects (5 of 6 base-scope tests fail); reapplied: 23 policies, 69 statement triggers, 0 row triggers,
+  0 truncatable, 24/24 tests. `002000` alone rolled back restores `001800` exactly.
+- **Found and fixed in the local stack:** `roles.sql` re-granted Supabase default privileges on every `stack.sh up`,
+  undoing `002200`'s default-privilege revoke (CI would have failed the new tenancy test).
+- **Owner actions:** promotion to Production (APPROVAL tier, `scripts/release/risk.mjs`); Phase B (17 migrations) after
+  promotion, MFA enrolment and a backup; CRON_SECRET check (open `/api/cron/lifecycle-activation` signed out: 503 = not
+  set, 401 = set); discount stacking decision (proposal: founding + annual suggest the single best discount); Next.js
+  patch reaches Production only through promotion.
+- **Residual risks:** duplicate-ticket error text can name another base's ticket if the caller already knows a load id;
+  local tests run on PostgreSQL 16, hosted is 17; 5 high npm advisories remain in lint tooling only.
 
 ## 00000000000000. 2026-10-22 — VER2 release verification, CI green, Command Center fixes, traceability
 
