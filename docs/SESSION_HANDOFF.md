@@ -7,6 +7,16 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000000000000. 2026-10-23 — Production release `84707ae` (pushed, not verified live)
+
+- Production branch fast-forwarded `5881927..84707ae` after all gates passed (owner authorization 2026-10-23). Full
+  report: `docs/releases/2026-10-23-production-84707ae.md`.
+- Not verified from here: Vercel deployment record (GitHub deployments API refused by the session permissions) and the
+  live site (network policy blocks the Production hosts). Owner: check the deployment and run the smoke list in the
+  report §I.1.
+- Hosted database unchanged (through `000600`); Phase B (17) waits for admins' two-step enrolment in the live app, a
+  backup and hosted credentials.
+
 ## 00000000000000. 2026-10-23 — Clean verification and base-level security audit before push
 
 - **Bundle:** 14 commits on the Preview branch `claude/ui-and-signin-checkpoint` (`0024a00` … this entry), pushed
