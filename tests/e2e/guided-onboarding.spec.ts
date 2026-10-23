@@ -71,7 +71,10 @@ test("Taviron starts onboarding, the company submits a file, Taviron requests ch
     const notes = await sql<{ title: string }>("select title from public.comm_notifications where company_id = $1 and category = 'onboarding'", [TOP_LINE]);
     expect(notes.map((n) => n.title)).toContain("Changes requested: Send your customer list");
     await owner.locator("#task-customers").getByRole("button", { name: "Resubmit for review" }).click();
-    await expect(owner.locator("#task-customers").getByText("Submitted for review").first()).toBeVisible();
+    // Wait for the new state itself, in the task's status badge: "Submitted for review" is also in the task's history
+    // from the first submission, so matching that text anywhere passed before the resubmission was saved (and Taviron
+    // then found nothing to approve).
+    await expect(owner.locator("#task-customers summary").getByText("Submitted for review")).toBeVisible();
 
     // Taviron approves.
     await page.reload();
