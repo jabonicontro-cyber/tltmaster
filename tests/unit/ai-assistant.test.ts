@@ -51,6 +51,13 @@ function source(over: Partial<AssistantSource> = {}): AssistantSource & { orderL
     },
     maintenance: async () => ({ workOrders: [], pm: [] }),
     outlook: async () => [],
+    report: async (from, to) => ({
+      from, to,
+      deliveries: { tickets: 42, accepted: 38, pending: 3, voided: 1, corrected: 4, medianHoursToAccept: 6 },
+      value: { acceptedTicketValueUsd: 18420.5, pricedTickets: 36, unpricedTickets: 2 },
+      billing: null,
+      fleet: { trucks: 6, loads: 44, daysWithLoads: 51, daysOutOfService: 3 },
+    }),
     names: async () => [
       { kind: "customer", key: ID(501), label: "Ridgeway Paving LLC", href: `/customers/${ID(501)}` },
       { kind: "driver", key: ID(601), label: "Maria Okafor", href: null },
@@ -85,7 +92,7 @@ const call = (name: string, args: unknown): CompletionResponse => ({ id: "t", mo
 
 function ledger(): UsageLedger & { events: UsageRecord[] } {
   const events: UsageRecord[] = [];
-  return { events, summary: async () => ({ tokensThisMonth: 0, callsLastMinute: 0 }), record: async (e) => void events.push(e) };
+  return { events, summary: async () => ({ tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0 } }), record: async (e) => void events.push(e) };
 }
 
 const C = capability("ops_assistant");
@@ -93,14 +100,17 @@ function gate(over: Partial<GateInput["config"]> = {}, permissions: string[] = D
   return evaluateGate({
     capability: C,
     evidence: [{ capability: "ops_assistant", provider: "openai", model: "test-model-2030", evalVersion: C.evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 4, passed: 4, criticalFailures: 0 }],
-    usage: { tokensThisMonth: 0 },
+    usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false },
     isDemo,
     permissions,
     now: new Date("2030-04-01T00:00:00Z"),
-    config: { provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null, monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], ...over },
+    config: { provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null, monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], companyAllowed: true, userMonthlyTokenLimit: 50_000, monthlyCostLimitMicroUsd: null, ...over },
   });
 }
-const SETTINGS = { monthlyTokenLimit: 100_000, requestsPerMinute: 6, timeoutMs: 5000, pricing: {} };
+const SETTINGS = {
+  monthlyTokenLimit: 100_000, requestsPerMinute: 6, timeoutMs: 5000, pricing: {},
+  userMonthlyTokenLimit: 50_000, userRequestsPerMinute: 6, userDailyRequests: 150, monthlyCostLimitMicroUsd: null, maxRequestChars: 40_000,
+};
 
 async function ask(question: string, steps: Array<CompletionResponse | AiError>, d = data()) {
   const provider = scripted(steps);
@@ -168,7 +178,7 @@ describe("Ask Taviron: what the model may see", () => {
     expect(forced).toMatchObject({ status: "refused", reason: "permission" });
     const mechanic = data(["maintenance.view", "fleet.view"]);
     const mreq = await assistantRequest("Which trucks need maintenance?", mechanic, "2030-04-02");
-    expect(mreq.tools.map((t) => t.name).sort()).toEqual(["attention_queue", "help_search", "maintenance_attention"]);
+    expect(mreq.tools.map((t) => t.name).sort()).toEqual(["attention_queue", "help_search", "maintenance_attention", "period_report"]);
   });
 
   it("every tool is read only", () => {
@@ -234,8 +244,8 @@ describe("Ask Taviron: who may use it", () => {
 
   it("without passing evaluation evidence for the model it needs review and never runs", () => {
     const g = evaluateGate({
-      capability: C, evidence: [], usage: { tokensThisMonth: 0 }, isDemo: false, permissions: DISPATCHER, now: new Date("2030-04-01T00:00:00Z"),
-      config: { provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null, monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [] },
+      capability: C, evidence: [], usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false }, isDemo: false, permissions: DISPATCHER, now: new Date("2030-04-01T00:00:00Z"),
+      config: { provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null, monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], companyAllowed: true, userMonthlyTokenLimit: 50_000, monthlyCostLimitMicroUsd: null },
     });
     expect(g.state).toBe("needs_review");
     expect(g.canRun).toBe(false);

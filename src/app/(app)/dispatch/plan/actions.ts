@@ -6,11 +6,11 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { buildPlanFacts, relabel } from "@/lib/ai/plan-explanation";
 import { addDays, isIsoDate } from "@/lib/dates";
 import { PRESETS, checkAssignment, parsePriorities } from "@/lib/optimization/plan";
-import { aiConfig } from "@/server/ai/config";
+import { aiConfig, runSettings } from "@/server/ai/config";
 import { capabilityGate, provider, sessionLedger } from "@/server/ai/gates";
 import { planExplanationRequest } from "@/server/ai/plan-explanation";
 import { runCapability } from "@/server/ai/run";
-import { AiError } from "@/server/ai/types";
+import { AiError, publicMessage } from "@/server/ai/types";
 import { HOS_REQUIRED_MESSAGE, approvalNote, hosApprovalAllowed, hosProvider } from "@/lib/hos";
 import { assertPermission } from "@/server/auth";
 import { getOptimizationInput, getOptimizationPlan } from "@/server/data/optimization";
@@ -123,7 +123,7 @@ export async function explainPlan(input: z.input<typeof explainInput>): Promise<
         provider: ai,
         ledger,
         gate,
-        settings: { monthlyTokenLimit: config.monthlyTokenLimit!, requestsPerMinute: config.requestsPerMinute, timeoutMs: config.timeoutMs, pricing: config.pricing },
+        settings: runSettings(config),
         toolContext: { permissions: access.permissions, data: { pseudonyms } },
       });
       const label = (t: string) => relabel(t, pseudonyms.labels);
@@ -140,7 +140,7 @@ export async function explainPlan(input: z.input<typeof explainInput>): Promise<
         estimatedCostUsd: run.estimatedCostUsd,
       });
     } catch (e) {
-      if (e instanceof AiError) return fail(`AI explanation unavailable: ${e.message} The plan itself is unchanged.`);
+      if (e instanceof AiError) return fail(`AI explanation unavailable: ${publicMessage(e)} The plan itself is unchanged.`);
       throw e;
     }
   });

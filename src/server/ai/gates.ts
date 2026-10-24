@@ -20,10 +20,18 @@ export async function sessionLedger(): Promise<UsageLedger> {
   const db = await createClient();
   return {
     async summary() {
-      const { data, error } = await db.rpc("ai_usage_summary");
-      const row = (Array.isArray(data) ? data[0] : data) as { tokens_this_month: number | string; calls_last_minute: number } | null;
-      if (error || !row) return null; // migration not applied or unreadable: nothing is sent
-      return { tokensThisMonth: Number(row.tokens_this_month), callsLastMinute: Number(row.calls_last_minute) };
+      // Company and person totals plus the platform pause switch (20261120002400). Without that migration nothing is
+      // sent: per-person limits and the pause switch could not be checked (fail closed).
+      const { data, error } = await db.rpc("ai_usage_limits");
+      const row = (Array.isArray(data) ? data[0] : data) as Record<string, number | string | boolean | null> | null;
+      if (error || !row) return null;
+      return {
+        tokensThisMonth: Number(row.tokens_this_month),
+        callsLastMinute: Number(row.calls_last_minute),
+        costThisMonthMicroUsd: Number(row.cost_this_month_micro_usd),
+        user: { tokensThisMonth: Number(row.user_tokens_this_month), callsLastMinute: Number(row.user_calls_last_minute), callsToday: Number(row.user_calls_today) },
+        paused: row.paused !== false,
+      };
     },
     async record(e) {
       const { error } = await db.rpc("record_ai_usage", {
@@ -36,8 +44,11 @@ export async function sessionLedger(): Promise<UsageLedger> {
   };
 }
 
-/** The gate for one capability and person. Demo companies are Blocked unless AI_IN_DEMOS=on (DEMO_TENANTS §2). */
-export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "permissions" | "isDemo">, ledger?: UsageLedger, config: AiConfig = aiConfig()): Promise<Gate> {
+/**
+ * The gate for one capability and person. Demo companies are Blocked unless AI_IN_DEMOS=on (DEMO_TENANTS §2); real
+ * companies unless listed in AI_COMPANY_ALLOWLIST (customer activation stays off until the owner lists a company).
+ */
+export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "permissions" | "isDemo" | "companyId">, ledger?: UsageLedger, config: AiConfig = aiConfig()): Promise<Gate> {
   const summary = await (ledger ?? (await sessionLedger())).summary().catch(() => null);
   const p = provider(config);
   return evaluateGate({
@@ -53,16 +64,19 @@ export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "p
       priced: (m) => m in config.pricing,
       inDemos: config.inDemos,
       invalid: config.invalid,
+      companyAllowed: Boolean(access.companyId && config.companyAllowlist.includes(access.companyId.toLowerCase())),
+      userMonthlyTokenLimit: config.userMonthlyTokenLimit,
+      monthlyCostLimitMicroUsd: config.monthlyCostLimitUsd === null ? null : Math.round(config.monthlyCostLimitUsd * 1_000_000),
     },
     evidence: EVAL_EVIDENCE,
-    usage: summary ? { tokensThisMonth: summary.tokensThisMonth } : null,
+    usage: summary ? { tokensThisMonth: summary.tokensThisMonth, costThisMonthMicroUsd: summary.costThisMonthMicroUsd, userTokensThisMonth: summary.user.tokensThisMonth, paused: summary.paused } : null,
     isDemo: Boolean(access.isDemo),
     permissions: access.permissions,
     now: new Date(),
   });
 }
 
-export async function allCapabilityGates(access: Pick<Access, "permissions" | "isDemo">) {
+export async function allCapabilityGates(access: Pick<Access, "permissions" | "isDemo" | "companyId">) {
   const ledger = await sessionLedger();
   return Promise.all(AI_CAPABILITIES.map(async (c) => ({ capability: c, gate: await capabilityGate(c.id, access, ledger) })));
 }

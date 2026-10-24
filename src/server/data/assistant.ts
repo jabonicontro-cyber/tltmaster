@@ -3,7 +3,7 @@ import type { ExceptionKind } from "@/lib/command-center/rules";
 import type { Access } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
 import { referenceKey } from "@/lib/search";
-import type { AssistantOrder, AssistantSource } from "@/server/ai/assistant";
+import type { AssistantOrder, AssistantReport, AssistantSource } from "@/server/ai/assistant";
 import { loadQueue, loadSummary } from "@/server/data/command-center";
 import { loadOutlook } from "@/server/data/live";
 import { listOpenWorkOrders, listPmStatus, listTrailers, listTrucks, trailerWorkOrdersAvailable } from "@/server/data/maintenance";
@@ -14,6 +14,36 @@ import { createClient } from "@/server/supabase/server";
 // never as an empty result.
 
 const NAME_LIMIT = 2000;
+
+interface RawReport {
+  from: string;
+  to: string;
+  deliveries?: { tickets: number; accepted: number; pending: number; voided: number; corrected: number; median_hours_to_accept: number | null };
+  value?: { verified_value_cents: number; priced_tickets: number; unpriced_tickets: number };
+  billing?: { handed_off_orders: number; ready_not_handed_off: number; loads_missing_tickets: number; orders_with_missing_tickets: number };
+  fleet?: Array<{ loads: number; days_with_loads: number; days_out_of_service: number }>;
+}
+
+/** The report's totals only; ranked lists (customer names, unit numbers) are left out. */
+export function reportTotals(r: RawReport): AssistantReport {
+  const n = (v: unknown) => Number(v ?? 0);
+  return {
+    from: String(r.from),
+    to: String(r.to),
+    deliveries: r.deliveries ? {
+      tickets: n(r.deliveries.tickets), accepted: n(r.deliveries.accepted), pending: n(r.deliveries.pending), voided: n(r.deliveries.voided),
+      corrected: n(r.deliveries.corrected), medianHoursToAccept: r.deliveries.median_hours_to_accept === null ? null : n(r.deliveries.median_hours_to_accept),
+    } : null,
+    value: r.value ? { acceptedTicketValueUsd: Math.round(n(r.value.verified_value_cents)) / 100, pricedTickets: n(r.value.priced_tickets), unpricedTickets: n(r.value.unpriced_tickets) } : null,
+    billing: r.billing ? { readyNotHandedOff: n(r.billing.ready_not_handed_off), loadsMissingTickets: n(r.billing.loads_missing_tickets), ordersWithMissingTickets: n(r.billing.orders_with_missing_tickets), handedOffOrders: n(r.billing.handed_off_orders) } : null,
+    fleet: r.fleet ? {
+      trucks: r.fleet.length,
+      loads: r.fleet.reduce((a, t) => a + n(t.loads), 0),
+      daysWithLoads: r.fleet.reduce((a, t) => a + n(t.days_with_loads), 0),
+      daysOutOfService: r.fleet.reduce((a, t) => a + n(t.days_out_of_service), 0),
+    } : null,
+  };
+}
 
 export function sessionAssistantSource(access: Pick<Access, "permissions">, today: string): AssistantSource {
   const may = (p: Parameters<typeof can>[1]) => can(access, p);
@@ -106,6 +136,13 @@ export function sessionAssistantSource(access: Pick<Access, "permissions">, toda
       } catch {
         return null;
       }
+    },
+
+    async report(from, to) {
+      const supabase = await createClient();
+      const { data, error } = await supabase.rpc("report_operations", { p_from: from, p_to: to });
+      if (error || !data) return null;
+      return reportTotals(data as RawReport);
     },
 
     async names() {

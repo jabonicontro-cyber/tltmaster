@@ -23,6 +23,11 @@ export interface AssistantSource {
   order(lookup: { id: string } | { reference: string }): Promise<AssistantOrder | null>;
   maintenance(): Promise<{ workOrders: AssistantWorkOrder[]; pm: AssistantPm[] } | null>;
   outlook(): Promise<OutlookDay[] | null>;
+  /**
+   * Measured totals for a period from public.report_operations (security invoker: the caller's row-level security,
+   * company and dispatch bases; each section only with the permission that grants its data). null when unavailable.
+   */
+  report(from: string, to: string): Promise<AssistantReport | null>;
   /** Customers and drivers the caller can see, to replace their names in the question with codes. */
   names(): Promise<Array<{ kind: "customer" | "driver"; key: string; label: string; href: string | null }>>;
 }
@@ -38,6 +43,16 @@ export interface AssistantOrder {
   fulfillment: { loadsPlanned: number; loadsUpcoming: number; loadsWithoutAcceptedTicket: number; ticketsPending: number; ticketsAccepted: number; fulfilled: boolean } | null;
   /** From billing_order_status (billing.view only). */
   billing: { readiness: string; exceptions: number; handedOff: boolean } | null;
+}
+
+/** Totals only: no customer names, unit numbers or other labels (the report's ranked lists are not used). */
+export interface AssistantReport {
+  from: string;
+  to: string;
+  deliveries: { tickets: number; accepted: number; pending: number; voided: number; corrected: number; medianHoursToAccept: number | null } | null;
+  value: { acceptedTicketValueUsd: number; pricedTickets: number; unpricedTickets: number } | null;
+  billing: { readyNotHandedOff: number; loadsMissingTickets: number; ordersWithMissingTickets: number; handedOffOrders: number } | null;
+  fleet: { trucks: number; loads: number; daysWithLoads: number; daysOutOfService: number } | null;
 }
 
 export interface AssistantWorkOrder {
@@ -99,6 +114,11 @@ function attentionItem(e: ExceptionItem, d: AssistantToolData) {
 const kindArg = z.object({ kind: z.enum(EXCEPTION_KINDS).nullable() }).strict();
 const orderArg = z.object({ order: z.string().regex(/^[OQ]\d{1,4}$/) }).strict();
 const helpArg = z.object({ query: z.string().min(2).max(120) }).strict();
+const ISO = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine((d) => !Number.isNaN(Date.parse(`${d}T00:00:00Z`)) && new Date(`${d}T00:00:00Z`).toISOString().startsWith(d));
+/** Longest period one report covers (the page allows a year; the assistant keeps requests small). */
+export const REPORT_MAX_DAYS = 92;
+const reportArg = z.object({ from: ISO, to: ISO }).strict().refine((a) => a.from <= a.to, "from must not be after to")
+  .refine((a) => (Date.parse(`${a.to}T00:00:00Z`) - Date.parse(`${a.from}T00:00:00Z`)) / 86_400_000 < REPORT_MAX_DAYS, `at most ${REPORT_MAX_DAYS} days`);
 const none = z.object({}).strict();
 
 function record<T>(d: AssistantToolData, result: T): T {
@@ -190,6 +210,20 @@ export const ASSISTANT_TOOLS: Tool<AssistantToolData>[] = [
       return record(ctx.data, {
         days: days.map((d) => ({ date: d.date, loads: d.loads, assigned: d.assigned, unassigned: d.unassigned, trucksReady: d.trucksReady, trucksDown: d.trucksDown, driversAvailable: d.driversAvailable, driversOff: d.driversOff, conflicts: d.conflicts })),
       });
+    },
+  },
+  {
+    name: "period_report",
+    description: `Measured totals for a period of up to ${REPORT_MAX_DAYS} days (dates YYYY-MM-DD): delivery tickets (accepted, waiting, voided, corrected), the value of accepted tickets in US dollars (accepted quantities × approved rates; not invoices, not profit), billing handoff and loads without tickets, and truck utilization. Sections the person may not see are null.`,
+    kind: "read",
+    permission: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"],
+    parameters: { type: "object", properties: { from: { type: "string" }, to: { type: "string" } }, required: ["from", "to"], additionalProperties: false },
+    args: reportArg as z.ZodType<unknown>,
+    run: async (args, ctx) => {
+      const a = args as z.infer<typeof reportArg>;
+      const r = await ctx.data.source.report(a.from, a.to);
+      if (!r) return record(ctx.data, { from: a.from, to: a.to, error: "The report could not be produced for that period." });
+      return record(ctx.data, r);
     },
   },
   {

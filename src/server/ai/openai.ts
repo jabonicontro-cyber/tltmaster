@@ -1,12 +1,15 @@
 import "server-only";
+import OpenAI, { APIConnectionError, APIConnectionTimeoutError, APIError, APIUserAbortError } from "openai";
 import { AiError, type AiProvider, type CompletionRequest, type CompletionResponse, type ConversationItem } from "./types";
 import { isReasoningModel, outputTokenCap, REASONING_EFFORT } from "@/lib/ai/reasoning";
 
-// OpenAI adapter (Responses API, https://platform.openai.com/docs/api-reference/responses). Everything OpenAI-specific
-// lives here: request and response shapes, function-call encoding, structured outputs, error mapping and usage
-// metadata. Requests are sent with `store: false` so OpenAI does not keep them for later retrieval.
-
-const ENDPOINT = "https://api.openai.com/v1/responses";
+// OpenAI adapter on the official SDK (`openai`, Responses API). Everything OpenAI-specific lives here: request and
+// response shapes, function-call encoding, structured outputs, error mapping and usage metadata. Requests are sent with
+// `store: false` so OpenAI does not keep them for later retrieval.
+//
+// The key is passed in by the server (src/server/ai/gates.ts) and never read from the environment here, never logged
+// and never put in an error message: provider error text is not passed on (it can quote part of a key), only a fixed
+// message per kind. The SDK's own retries and logging are off; this adapter retries once, itself, below.
 
 type OpenAiItem =
   | { role: "user" | "assistant"; content: string }
@@ -35,20 +38,22 @@ interface OpenAiResponse {
   usage?: { input_tokens?: number; output_tokens?: number } | null;
 }
 
-/** Map an HTTP failure to an error kind; never includes the request body or the key in the message. */
-function classify(status: number, body: string): AiError {
-  let detail = "";
-  try {
-    detail = (JSON.parse(body) as { error?: { message?: string } }).error?.message ?? "";
-  } catch {
-    /* not JSON */
+/** Map an SDK failure to an error kind with a fixed message (no provider text, no request content, no key). */
+export function classifyOpenAiError(e: unknown, timeoutMs: number): AiError {
+  if (e instanceof AiError) return e;
+  if (e instanceof APIConnectionTimeoutError) return new AiError("timeout", `OpenAI did not answer within ${Math.round(timeoutMs / 1000)} s.`, true);
+  if (e instanceof APIUserAbortError) return new AiError("timeout", `OpenAI did not answer within ${Math.round(timeoutMs / 1000)} s.`, true);
+  if (e instanceof APIConnectionError) return new AiError("provider", "Could not reach OpenAI.", true);
+  if (e instanceof APIError) {
+    const status = e.status ?? 0;
+    if (status === 401 || status === 403) return new AiError("auth", "OpenAI refused the API key or project access.");
+    if (status === 429) return new AiError("rate_limit", "OpenAI rate limit or quota reached.", true);
+    if (status === 400 || status === 404 || status === 409 || status === 422) return new AiError("bad_request", `OpenAI refused the request (HTTP ${status}).`);
+    if (status >= 500) return new AiError("provider", `OpenAI is unavailable (HTTP ${status}).`, true);
+    return new AiError("provider", `Unexpected response from OpenAI (HTTP ${status || "unknown"}).`);
   }
-  const tail = detail ? ` (${detail.slice(0, 200)})` : "";
-  if (status === 401 || status === 403) return new AiError("auth", `OpenAI refused the API key or project access${tail}.`);
-  if (status === 429) return new AiError("rate_limit", `OpenAI rate limit or quota reached${tail}.`, true);
-  if (status === 400 || status === 404 || status === 422) return new AiError("bad_request", `OpenAI refused the request${tail}.`);
-  if (status >= 500) return new AiError("provider", `OpenAI is unavailable (HTTP ${status}).`, true);
-  return new AiError("provider", `Unexpected response from OpenAI (HTTP ${status}).`);
+  if ((e as { name?: string } | null)?.name === "AbortError") return new AiError("timeout", `OpenAI did not answer within ${Math.round(timeoutMs / 1000)} s.`, true);
+  return new AiError("provider", "OpenAI returned a response that could not be read.", true);
 }
 
 export class OpenAiProvider implements AiProvider {
@@ -56,12 +61,20 @@ export class OpenAiProvider implements AiProvider {
   // Verified against the Responses API: JSON-schema structured outputs and function calling are both supported. Whether
   // a particular model supports them is checked by that capability's evaluation run, not assumed here.
   readonly capabilities = { structuredOutputs: true, toolCalls: true };
+  private readonly client: OpenAI;
 
   constructor(
-    private readonly apiKey: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    apiKey: string,
+    fetchImpl?: typeof fetch,
     private readonly retryDelayMs = 1200,
-  ) {}
+  ) {
+    this.client = new OpenAI({
+      apiKey,
+      maxRetries: 0,
+      logLevel: "off",
+      ...(fetchImpl ? { fetch: fetchImpl } : {}),
+    });
+  }
 
   async complete(request: CompletionRequest, opts: { timeoutMs: number }): Promise<CompletionResponse> {
     try {
@@ -90,32 +103,17 @@ export class OpenAiProvider implements AiProvider {
     if (request.output) {
       body.text = { format: { type: "json_schema", name: request.output.name, schema: request.output.schema, strict: true } };
     }
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let res: Response;
+
+    let raw: unknown;
     try {
-      res = await this.fetchImpl(ENDPOINT, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${this.apiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
+      raw = await this.client.responses.create(body as unknown as OpenAI.Responses.ResponseCreateParamsNonStreaming, { timeout: timeoutMs, maxRetries: 0 });
     } catch (e) {
-      if ((e as { name?: string }).name === "AbortError") throw new AiError("timeout", `OpenAI did not answer within ${Math.round(timeoutMs / 1000)} s.`, true);
-      throw new AiError("provider", "Could not reach OpenAI.", true);
-    } finally {
-      clearTimeout(timer);
+      throw classifyOpenAiError(e, timeoutMs);
     }
-    const text = await res.text();
-    if (!res.ok) throw classify(res.status, text);
-    let data: OpenAiResponse;
-    try {
-      data = JSON.parse(text) as OpenAiResponse;
-    } catch {
-      throw new AiError("provider", "OpenAI returned a response that is not JSON.", true);
-    }
-    if (data.status === "failed" || data.error) throw new AiError("provider", `OpenAI could not complete the request${data.error?.message ? ` (${data.error.message.slice(0, 200)})` : ""}.`);
-    if (data.status === "incomplete") throw new AiError("invalid_output", `The answer was cut off (${data.incomplete_details?.reason ?? "incomplete"}).`);
+    if (!raw || typeof raw !== "object") throw new AiError("provider", "OpenAI returned a response that is not JSON.", true);
+    const data = raw as OpenAiResponse;
+    if (data.status === "failed" || data.error) throw new AiError("provider", "OpenAI could not complete the request.");
+    if (data.status === "incomplete") throw new AiError("invalid_output", `The answer was cut off (${data.incomplete_details?.reason === "max_output_tokens" ? "output limit" : "incomplete"}).`);
 
     const toolCalls: CompletionResponse["toolCalls"] = [];
     const texts: string[] = [];

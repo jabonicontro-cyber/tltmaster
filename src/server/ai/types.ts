@@ -5,7 +5,9 @@
 export type AiErrorKind =
   | "not_configured" // no provider, key, model or capability switch
   | "disabled" // the capability's readiness gate is closed (evaluation, budget, demo, permission)
-  | "budget" // the company's monthly token cap is reached
+  | "budget" // the company's monthly token or estimated cost cap is reached
+  | "user_limit" // the person's own per-minute, daily or monthly limit is reached
+  | "too_large" // the request would exceed the maximum request size (never sent)
   | "auth" // the provider refused the credentials
   | "rate_limit"
   | "timeout"
@@ -81,4 +83,29 @@ export interface AiProvider {
   readonly name: string;
   readonly capabilities: ProviderCapabilities;
   complete(request: CompletionRequest, opts: { timeoutMs: number }): Promise<CompletionResponse>;
+}
+
+/**
+ * What a person is told when an AI request fails: a fixed sentence per kind. Provider failures never pass on provider
+ * text (it can quote part of a key or the request); limit and validation messages are Taviron's own wording.
+ */
+export function publicMessage(e: AiError): string {
+  switch (e.kind) {
+    case "auth":
+    case "bad_request":
+    case "provider":
+    case "not_configured":
+      return "The AI service is not available right now. Nothing was changed.";
+    case "timeout":
+    case "rate_limit":
+      return e.message.startsWith("Too many AI requests") ? e.message : "The AI service is busy. Try again in a minute.";
+    case "invalid_output":
+      return "The answer did not pass Taviron's checks, so it is not shown. Try asking in a different way.";
+    case "sensitive_data":
+      return "The question would have sent private details to the AI service, so nothing was sent.";
+    case "tool":
+      return "The answer needed information you do not have access to.";
+    default:
+      return e.message; // disabled, budget, user_limit, too_large: Taviron's own messages
+  }
 }

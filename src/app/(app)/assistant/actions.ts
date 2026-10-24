@@ -6,10 +6,10 @@ import { Pseudonyms, SHOWN_FOLLOW_UPS, SHOWN_SOURCES, type AssistantKind } from 
 import { capability } from "@/lib/ai/capabilities";
 import { can } from "@/lib/permissions";
 import { assistantRequest } from "@/server/ai/assistant";
-import { aiConfig } from "@/server/ai/config";
+import { aiConfig, runSettings } from "@/server/ai/config";
 import { capabilityGate, provider, sessionLedger } from "@/server/ai/gates";
 import { runCapability } from "@/server/ai/run";
-import { AiError } from "@/server/ai/types";
+import { AiError, publicMessage } from "@/server/ai/types";
 import { assertPermission, getAccess } from "@/server/auth";
 import { sessionAssistantSource } from "@/server/data/assistant";
 import { businessToday } from "@/server/data/settings";
@@ -55,7 +55,7 @@ export async function askAssistant(input: z.input<typeof askInput>): Promise<Act
         provider: ai,
         ledger,
         gate,
-        settings: { monthlyTokenLimit: config.monthlyTokenLimit!, requestsPerMinute: config.requestsPerMinute, timeoutMs: config.timeoutMs, pricing: config.pricing },
+        settings: runSettings(config),
         toolContext: { permissions: access.permissions, data },
       });
       const sources = [...new Set(run.value.sources)].map((code) => data.p.entry(code)).filter((e) => e !== null).slice(0, SHOWN_SOURCES).map((e) => ({ label: e.label, href: e.href }));
@@ -69,7 +69,7 @@ export async function askAssistant(input: z.input<typeof askInput>): Promise<Act
         estimatedCostUsd: run.estimatedCostUsd,
       });
     } catch (e) {
-      if (e instanceof AiError) return fail(`No answer: ${e.message}`);
+      if (e instanceof AiError) return fail(`No answer: ${publicMessage(e)}`);
       throw e;
     }
   });

@@ -40,11 +40,13 @@ export const AI_CAPABILITIES: AiCapability[] = [
   {
     id: "ops_assistant",
     label: "Ask Taviron",
-    description: "Answers questions about your own company's operations — the attention queue, an order's status, maintenance, the week ahead, how a page works — from records you may see, with links to them. Read only: it never assigns, sends, bills or changes anything.",
+    description: "Answers questions about your own company's operations — the attention queue, an order's status, maintenance, the week ahead, measured totals for a period, how a page works — from records you may see, with links to them. Read only: it never assigns, sends, bills or changes anything.",
     permission: "orders.view",
     anyPermission: ["orders.view", "dispatch.view", "maintenance.view", "tickets.view", "billing.view"],
     maxToolKind: "read",
-    evalVersion: 2, // 2: instructions name code letters, not example codes (the model cited the example Q1 as a source)
+    // 2: instructions name code letters, not example codes (the model cited the example Q1 as a source)
+    // 3: period_report tool (cross-module totals), instructions treat context as data; two cases added
+    evalVersion: 3,
     minPassRate: 0.9,
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,
@@ -98,10 +100,18 @@ export interface GateInput {
     priced: (model: string) => boolean;
     inDemos: boolean;
     invalid: string[];
+    /** This (non-demo) company is on AI_COMPANY_ALLOWLIST. */
+    companyAllowed: boolean;
+    userMonthlyTokenLimit: number | null;
+    /** Millionths of a US dollar per company per month; null: no cost ceiling. */
+    monthlyCostLimitMicroUsd: number | null;
   };
   evidence: EvalEvidence[];
-  /** null when the usage ledger is not available (migration not applied, or it could not be read). */
-  usage: { tokensThisMonth: number } | null;
+  /**
+   * null when the usage ledger or the per-person limits are not available (migration not applied, or unreadable).
+   * `paused` is the platform owner's switch (private.ai_controls).
+   */
+  usage: { tokensThisMonth: number; costThisMonthMicroUsd: number; userTokensThisMonth: number; paused: boolean } | null;
   isDemo: boolean;
   permissions: readonly string[];
   now: Date;
@@ -146,9 +156,15 @@ export function evaluateGate(input: GateInput): Gate {
   if (!config.model) blocked.push("No model is chosen for this capability.");
   if (c.needsStructuredOutput && config.provider && !config.providerSupportsStructuredOutput) blocked.push("The provider does not support structured output.");
   if (!config.monthlyTokenLimit) blocked.push("No monthly token limit is set (AI_MONTHLY_TOKEN_LIMIT).");
+  if (!config.userMonthlyTokenLimit) blocked.push("No monthly token limit per person is set (AI_USER_MONTHLY_TOKEN_LIMIT).");
   if (input.usage === null) blocked.push("The AI usage ledger is not available, so usage could not be tracked.");
+  if (input.usage?.paused) blocked.push("AI is paused by the platform owner.");
   if (input.isDemo && !config.inDemos) blocked.push("AI is not turned on in demo companies.");
+  if (!input.isDemo && !config.companyAllowed) blocked.push("AI is not switched on for this company (AI_COMPANY_ALLOWLIST).");
   if (input.usage && config.monthlyTokenLimit && input.usage.tokensThisMonth >= config.monthlyTokenLimit) blocked.push("This month's AI token limit is used up.");
+  if (input.usage && config.userMonthlyTokenLimit && input.usage.userTokensThisMonth >= config.userMonthlyTokenLimit) blocked.push("Your own AI token limit for this month is used up.");
+  if (config.monthlyCostLimitMicroUsd !== null && config.model && !config.priced(config.model)) blocked.push("A monthly cost limit is set but this model has no price, so the limit could not be enforced.");
+  if (input.usage && config.monthlyCostLimitMicroUsd !== null && input.usage.costThisMonthMicroUsd >= config.monthlyCostLimitMicroUsd) blocked.push("This month's estimated AI cost limit is reached.");
 
   let fallbackModel: string | null = null;
   if (config.provider && config.model) {

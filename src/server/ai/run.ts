@@ -26,9 +26,21 @@ export interface UsageRecord {
   latencyMs: number;
 }
 
+export interface UsageSummary {
+  /** The caller's company. */
+  tokensThisMonth: number;
+  callsLastMinute: number;
+  /** Estimated from the configured prices (millionths of a US dollar); calls without a price add nothing. */
+  costThisMonthMicroUsd: number;
+  /** The caller themself. */
+  user: { tokensThisMonth: number; callsLastMinute: number; callsToday: number };
+  /** The platform owner's pause switch: nothing is sent while it is on. */
+  paused: boolean;
+}
+
 export interface UsageLedger {
-  /** null when the ledger is unavailable: then nothing is sent. */
-  summary(): Promise<{ tokensThisMonth: number; callsLastMinute: number } | null>;
+  /** null when the ledger or the per-person limits are unavailable: then nothing is sent. */
+  summary(): Promise<UsageSummary | null>;
   record(event: UsageRecord): Promise<void>;
 }
 
@@ -46,10 +58,19 @@ export interface CapabilityRequest<C, O> {
 }
 
 export interface RunSettings {
+  /** Per company. */
   monthlyTokenLimit: number;
   requestsPerMinute: number;
   timeoutMs: number;
   pricing: Record<string, { inputPerMillion: number; outputPerMillion: number }>;
+  /** Per person. */
+  userMonthlyTokenLimit: number;
+  userRequestsPerMinute: number;
+  userDailyRequests: number;
+  /** Per company, estimated; null: no cost ceiling (the token limits still apply). */
+  monthlyCostLimitMicroUsd: number | null;
+  /** Largest request sent to the provider, in characters (instructions, input, tool results). */
+  maxRequestChars: number;
 }
 
 export interface RunResult<O> {
@@ -98,24 +119,32 @@ export function estimateCostMicroUsd(model: string, usage: CompletionResponse["u
 export async function runCapability<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>): Promise<RunResult<O>> {
   if (!deps.gate.canRun || !deps.gate.model) throw new AiError("disabled", deps.gate.reasons[0] ?? "This AI capability is not available.");
   const usage = await deps.ledger.summary();
+  const s = deps.settings;
   if (!usage) throw new AiError("not_configured", "AI usage cannot be tracked right now, so nothing was sent.");
-  if (usage.callsLastMinute >= deps.settings.requestsPerMinute) throw new AiError("rate_limit", "Too many AI requests in the last minute for this company. Try again shortly.");
+  if (usage.paused) throw new AiError("disabled", "AI is paused by the platform owner.");
+  if (!(s.userMonthlyTokenLimit > 0) || !(s.monthlyTokenLimit > 0)) throw new AiError("not_configured", "AI limits are not set, so nothing was sent.");
+  if (usage.user.callsLastMinute >= s.userRequestsPerMinute) throw new AiError("user_limit", "You have asked several questions in the last minute. Try again shortly.");
+  if (usage.user.callsToday >= s.userDailyRequests) throw new AiError("user_limit", "You have reached today's limit of AI requests.");
+  if (usage.callsLastMinute >= s.requestsPerMinute) throw new AiError("rate_limit", "Too many AI requests in the last minute for this company. Try again shortly.");
+  if (s.monthlyCostLimitMicroUsd !== null && usage.costThisMonthMicroUsd >= s.monthlyCostLimitMicroUsd) throw new AiError("budget", "This month's estimated AI cost limit is reached.");
   const projected = Math.ceil((req.instructions.length + req.input.length) / 3) + outputTokenCap(deps.gate.model, req.maxOutputTokens);
-  if (usage.tokensThisMonth + projected > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
+  if (usage.tokensThisMonth + projected > s.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
+  if (usage.user.tokensThisMonth + projected > s.userMonthlyTokenLimit) throw new AiError("user_limit", "Your own AI token limit for this month would be exceeded.");
 
+  const used = { company: usage.tokensThisMonth, user: usage.user.tokensThisMonth };
   try {
-    return await attempt(req, deps, deps.gate.model, false, usage.tokensThisMonth);
+    return await attempt(req, deps, deps.gate.model, false, used);
   } catch (e) {
     // Approved-only fallback: a second model is tried once, only for availability failures, and only when the gate
     // found passing evaluation evidence for it. Invalid answers, refusals, auth, budget and tool errors never fall back.
     if (e instanceof AiError && ["rate_limit", "timeout", "provider"].includes(e.kind) && deps.gate.fallbackModel) {
-      return attempt(req, deps, deps.gate.fallbackModel, true, usage.tokensThisMonth);
+      return attempt(req, deps, deps.gate.fallbackModel, true, used);
     }
     throw e;
   }
 }
 
-async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, model: string, usedFallback: boolean, usedBefore: number): Promise<RunResult<O>> {
+async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, model: string, usedFallback: boolean, usedBefore: { company: number; user: number }): Promise<RunResult<O>> {
   const clock = deps.clock ?? Date.now;
   const key = deps.requestKey ?? (() => crypto.randomUUID());
   const items: ConversationItem[] = [{ kind: "message", role: "user", text: req.input }];
@@ -137,9 +166,13 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
       output: req.output,
       maxOutputTokens: req.maxOutputTokens,
     };
-    const leak = findSensitive(JSON.stringify(request), req.secrets);
+    const payload = JSON.stringify(request);
+    const leak = findSensitive(payload, req.secrets);
     if (leak) throw new AiError("sensitive_data", `The request would have sent ${leak}; nothing was sent.`);
-    if (usedBefore + spent + outputTokenCap(model, req.maxOutputTokens) > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
+    if (payload.length > deps.settings.maxRequestChars) throw new AiError("too_large", "The question needs more data than one AI request may carry. Ask about a shorter period or one record.");
+    const next = spent + outputTokenCap(model, req.maxOutputTokens);
+    if (usedBefore.company + next > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
+    if (usedBefore.user + next > deps.settings.userMonthlyTokenLimit) throw new AiError("user_limit", "Your own AI token limit for this month would be exceeded.");
 
     const t0 = clock();
     let res: CompletionResponse;

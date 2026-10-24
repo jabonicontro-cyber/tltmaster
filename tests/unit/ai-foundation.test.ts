@@ -9,7 +9,7 @@ import { runPlanExplanationEval } from "@/server/ai/evals";
 import { OpenAiProvider } from "@/server/ai/openai";
 import { REASONING_ALLOWANCE } from "@/lib/ai/reasoning";
 import { PLAN_TOOLS, planExplanationRequest, type PlanToolData } from "@/server/ai/plan-explanation";
-import { estimateCostMicroUsd, findSensitive, runCapability, type UsageLedger, type UsageRecord } from "@/server/ai/run";
+import { estimateCostMicroUsd, findSensitive, runCapability, type RunSettings, type UsageLedger, type UsageRecord, type UsageSummary } from "@/server/ai/run";
 import { executeApprovedTool, runToolCall, type Tool } from "@/server/ai/tools";
 import { AiError, type AiProvider, type CompletionRequest, type CompletionResponse } from "@/server/ai/types";
 import { z } from "zod";
@@ -74,9 +74,15 @@ function scripted(steps: Array<CompletionResponse | AiError>): AiProvider & { re
 }
 const text = (json: unknown, model = "test-model-2030"): CompletionResponse => ({ id: "r", model, text: JSON.stringify(json), toolCalls: [], usage: { inputTokens: 900, outputTokens: 120 }, refusal: null });
 
-function memoryLedger(summary: { tokensThisMonth: number; callsLastMinute: number } | null = { tokensThisMonth: 0, callsLastMinute: 0 }): UsageLedger & { events: UsageRecord[] } {
+type SummaryOver = Partial<Omit<UsageSummary, "user">> & { user?: Partial<UsageSummary["user"]> };
+const fullSummary = (o: SummaryOver = {}): UsageSummary => ({
+  tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, ...o,
+  user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0, ...o.user },
+});
+
+function memoryLedger(summary: SummaryOver | null = {}): UsageLedger & { events: UsageRecord[] } {
   const events: UsageRecord[] = [];
-  return { events, summary: async () => summary, record: async (e) => void events.push(e) };
+  return { events, summary: async () => (summary === null ? null : fullSummary(summary)), record: async (e) => void events.push(e) };
 }
 
 const EVIDENCE: EvalEvidence = { capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: capability("plan_explanation").evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 3, passed: 3, criticalFailures: 0 };
@@ -85,18 +91,21 @@ function gateInput(over: Omit<Partial<GateInput>, "config"> & { config?: Partial
   return {
     capability: capability("plan_explanation"),
     evidence: [EVIDENCE],
-    usage: { tokensThisMonth: 0 },
+    usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false },
     isDemo: false,
     permissions: ["dispatch.view"],
     now: new Date("2030-04-01T00:00:00Z"),
     ...over,
     config: {
       provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null,
-      monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], ...over.config,
+      monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], companyAllowed: true, userMonthlyTokenLimit: 50_000, monthlyCostLimitMicroUsd: null, ...over.config,
     },
   };
 }
-const SETTINGS = { monthlyTokenLimit: 100_000, requestsPerMinute: 6, timeoutMs: 5000, pricing: { "test-model-2030": { inputPerMillion: 2, outputPerMillion: 8 } } };
+const SETTINGS: RunSettings = {
+  monthlyTokenLimit: 100_000, requestsPerMinute: 6, timeoutMs: 5000, pricing: { "test-model-2030": { inputPerMillion: 2, outputPerMillion: 8 } },
+  userMonthlyTokenLimit: 50_000, userRequestsPerMinute: 6, userDailyRequests: 150, monthlyCostLimitMicroUsd: null, maxRequestChars: 40_000,
+};
 
 function deps(provider: AiProvider, ledger = memoryLedger(), gateOver: Omit<Partial<GateInput>, "config"> & { config?: Partial<GateInput["config"]> } = {}) {
   const { pseudonyms } = built();
@@ -142,12 +151,16 @@ describe("AI configuration", () => {
     expect(g.reasons.join(" ")).toContain("API key is not set");
   });
 
-  it("committed evidence is only passing runs of the current test set; a model without evidence is not Ready", () => {
+  it("committed evidence is only passing runs; an older test set does not count; a model without evidence is not Ready", () => {
     for (const e of EVAL_EVIDENCE) {
       expect(e.provider, e.capability).toBe("openai");
       expect(e.criticalFailures, e.capability).toBe(0);
       expect(e.passed / e.cases, e.capability).toBeGreaterThanOrEqual(0.9);
-      expect(e.evalVersion, e.capability).toBe(capability(e.capability).evalVersion);
+      expect(e.evalVersion, e.capability).toBeLessThanOrEqual(capability(e.capability).evalVersion);
+      // Evidence for an older version of the test set (the capability changed since) leaves it in Needs review.
+      if (e.evalVersion < capability(e.capability).evalVersion) {
+        expect(evaluateGate(gateInput({ capability: capability(e.capability), permissions: ["orders.view", "dispatch.view"], evidence: [e], config: { model: e.model } })).state).toBe("needs_review");
+      }
     }
     expect(evaluateGate(gateInput({ evidence: EVAL_EVIDENCE })).state).toBe("needs_review");
   });
@@ -202,7 +215,7 @@ describe("readiness gates", () => {
 
   it("Limited: no price (cost not estimated) or 80% of the budget used", () => {
     expect(evaluateGate(gateInput({ config: { priced: () => false } }))).toMatchObject({ state: "limited", canRun: true });
-    expect(evaluateGate(gateInput({ usage: { tokensThisMonth: 85_000 } })).reasons[0]).toContain("85%");
+    expect(evaluateGate(gateInput({ usage: { tokensThisMonth: 85_000, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false } })).reasons[0]).toContain("85%");
   });
 
   it("a fallback model is approved only with its own passing evidence", () => {
@@ -225,7 +238,7 @@ describe("OpenAI adapter", () => {
     const r = await new OpenAiProvider(KEY, fetchImpl as unknown as typeof fetch, 0).complete(request, { timeoutMs: 1000 });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe("https://api.openai.com/v1/responses");
-    expect((init.headers as Record<string, string>).Authorization).toBe(`Bearer ${KEY}`);
+    expect(new Headers(init.headers).get("authorization")).toBe(`Bearer ${KEY}`);
     const body = JSON.parse(String(init.body));
     expect(body).toMatchObject({ model: "test-model-2030", store: false, max_output_tokens: 700, text: { format: { type: "json_schema", name: "plan_explanation", strict: true } } });
     expect(body.tools[0]).toMatchObject({ type: "function", name: "get_load_details", strict: true });

@@ -3,8 +3,8 @@
 How Taviron calls AI models: the provider-independent interface, the OpenAI adapter, configuration, readiness gates,
 evaluations, usage and budgets, tools and approvals. Master plan §12 B6. First built 2026-10-13.
 
-**Status:**
-- Code: written, tested with mocked provider responses, and committed locally (not pushed).
+**Status:** see §16 for Ask Taviron's current state (2026-10-24).
+- Code: written, tested with mocked provider responses.
 - Usage-ledger migration `20261110000100_ai_usage.sql`: applied to the local database only. The hosted database needs
   the owner's approval (DEPLOYMENT §2a).
 - Real OpenAI calls: never made from this repository's tests. No evaluation evidence has been recorded, so every
@@ -15,7 +15,7 @@ evaluations, usage and budgets, tools and approvals. Master plan §12 B6. First 
 | Piece | File |
 | --- | --- |
 | Provider-independent types, errors and the `AiProvider` interface | `src/server/ai/types.ts` |
-| OpenAI adapter (Responses API) | `src/server/ai/openai.ts` |
+| OpenAI adapter (official `openai` SDK, Responses API; SDK retries and logging off) | `src/server/ai/openai.ts` |
 | Configuration (server only) | `src/server/ai/config.ts` |
 | Capabilities and readiness gates (pure) | `src/lib/ai/capabilities.ts` |
 | Recorded evaluation evidence (empty) | `src/lib/ai/evidence.ts` |
@@ -25,6 +25,7 @@ evaluations, usage and budgets, tools and approvals. Master plan §12 B6. First 
 | First capability, "Explain this plan" | `src/lib/ai/plan-explanation.ts`, `src/server/ai/plan-explanation.ts`, `explainPlan` in `src/app/(app)/dispatch/plan/actions.ts`, `src/components/dispatch/plan-explanation.tsx` |
 | Evaluation runner, and the opt-in live run | `src/server/ai/evals.ts`, `tests/live/ai-eval.live.test.ts` (`npm run ai:eval`) |
 | Usage ledger | `supabase/migrations/20261110000100_ai_usage.sql` (rollback in `supabase/rollbacks/`) |
+| Per-person limits and the platform pause switch | `supabase/migrations/20261120002400_ai_usage_limits.sql` (`public.ai_usage_limits()`, `private.ai_controls`; rollback in `supabase/rollbacks/`) |
 | Status per capability | Company setup (`/setup`), "AI capabilities" section |
 
 Ask Taviron (§15) is the second capability. Nothing else in the product calls a model. Smart Dispatch and Plan the day stay deterministic. The AI explanation
@@ -38,8 +39,10 @@ Every request follows these steps:
 2. **Recompute on the server.** The server recomputes the data the request is about. Numbers sent by the browser are
    never trusted.
 3. **Readiness gate** (§4). Only Ready or Limited may continue.
-4. **Ledger, rate limit and budget** (§6). If the ledger cannot be read, nothing is sent. Nothing is sent either when
-   the company's per-minute call limit is reached or the monthly token cap would be exceeded.
+4. **Ledger, limits and budget** (§6). If the ledger or the per-person limits cannot be read, nothing is sent. Nothing
+   is sent either while the platform owner's pause switch is on, when the person's per-minute, daily or monthly limit
+   or the company's per-minute, monthly token or estimated cost limit is reached, or when the request is larger than
+   `AI_MAX_REQUEST_CHARS`.
 5. **Sensitive-data check** (§10). Real names, email addresses and record ids found in the outgoing request stop it
    before it is sent.
 6. **Provider call** (at most 3 rounds). Tool calls between rounds go through the registry (§8). Every call is recorded
@@ -69,6 +72,12 @@ are ignored, and only their *names* appear on the setup page.
 | `AI_TIMEOUT_MS` | Per provider call, default 20000 (allowed range 2000–60000). |
 | `AI_PRICING_JSON` | Optional prices, `{"<model>": {"inputPerMillion": n, "outputPerMillion": n}}` in USD per million tokens, entered from the provider's price list. Without it, costs are not estimated and the gate is Limited. |
 | `AI_IN_DEMOS` | `on` lets demo companies call the model (default off; see §11). |
+| `AI_COMPANY_ALLOWLIST` | **Customer activation.** Comma-separated company ids (UUIDs) of real companies allowed to use AI. Unset or empty: no real company can (fail closed). Demo companies follow `AI_IN_DEMOS` instead. |
+| `AI_USER_MONTHLY_TOKEN_LIMIT` | Required. Reported tokens per person per calendar month (UTC). Without it every capability is Blocked. |
+| `AI_USER_REQUESTS_PER_MINUTE` | Model calls per person per minute, default 6 (one question makes up to 3 calls). |
+| `AI_USER_DAILY_REQUESTS` | Model calls per person per UTC day, default 150. |
+| `AI_MONTHLY_COST_LIMIT_USD` | Optional estimated cost ceiling per company per month, from `AI_PRICING_JSON`. When set, a model without a price is Blocked (the ceiling could not be enforced). Unset: no cost ceiling (the token limits still apply). |
+| `AI_MAX_REQUEST_CHARS` | Largest request sent to the provider (instructions, question, context and tool results), default 40000 characters. |
 
 **Reasoning models** (`gpt-5…`, `o…`): they spend hidden reasoning tokens that count against the output cap. The
 adapter sends `reasoning: { effort: "low" }` and adds a fixed allowance (`REASONING_ALLOWANCE`, `src/lib/ai/reasoning.ts`)
@@ -82,7 +91,7 @@ the setup page.
 
 | State | Meaning | When |
 | --- | --- | --- |
-| **Blocked** | Never calls a model | Any of: no permission, no provider or key, malformed AI settings, capability not switched on, no model, provider lacks structured output, no monthly token limit, usage ledger unavailable, demo company without `AI_IN_DEMOS=on`, monthly limit used up. |
+| **Blocked** | Never calls a model | Any of: no permission, no provider or key, malformed AI settings, capability not switched on, no model, provider lacks structured output, no monthly token limit (company or per person), usage ledger or per-person limits unavailable (migration `20261120002400` not applied), platform pause switch on, demo company without `AI_IN_DEMOS=on`, real company not on `AI_COMPANY_ALLOWLIST`, company or personal monthly limit used up, cost limit reached or set for an unpriced model. |
 | **Needs review** | Never calls a model | Configured, but the model's latest evaluation is missing, failing (pass rate under 90% or any critical failure), older than 90 days, or from an older test set. |
 | **Limited** | Runs, with a stated limitation | No price for the model (cost not estimated), at least 80% of the monthly limit used, or a configured fallback without evidence (it will not be used). |
 | **Ready** | Runs | Everything above is in place. |
@@ -121,7 +130,15 @@ the setup page.
   - Each request key is recorded only once.
 - **Budget.** The monthly cap is checked before any call, against tokens already used plus a projection for this
   request. It is checked again before every round.
-- **Rate limit.** Per company, counted in the ledger over the last minute.
+- **Rate limits.** Per company and per person, counted in the ledger over the last minute; per person also per UTC
+  day. Counts are model calls.
+- **Per-person budget.** `AI_USER_MONTHLY_TOKEN_LIMIT`, checked like the company budget, before the first call and
+  before every round. A person who uses theirs up is Blocked for the rest of the month; the rest of the company is not.
+- **Cost ceiling.** `AI_MONTHLY_COST_LIMIT_USD` stops new requests once the company's estimated cost this month reaches
+  it. Estimates come only from the owner's `AI_PRICING_JSON`; no price is hard-coded. An unpriced model cannot run while
+  a ceiling is set.
+- **Size.** Requests over `AI_MAX_REQUEST_CHARS` are not sent; each capability also caps its output tokens.
+- **Pause switch.** `private.ai_controls.paused` (§16) stops every request on every company at the next request.
 - **Cost.** Shown as "estimated cost" and kept separate from reported tokens. It is null rather than guessed when no
   price is configured.
 - **Known limits:**
@@ -172,8 +189,11 @@ the setup page.
 | `auth` (401/403), `bad_request` (400/404/422) | no | no |
 | `invalid_output` (schema, grounding, refusal, cut off), `tool`, `budget`, `disabled`, `not_configured`, `sensitive_data` | no | no |
 
-Error messages never include the key, the request body or model arguments. People see "AI explanation unavailable:
-… The plan itself is unchanged."
+Error messages never include the key, the request body, model arguments or the provider's own error text (which can
+quote part of a key): the adapter maps each failure to a fixed message, and `publicMessage` (`src/server/ai/types.ts`)
+gives people one fixed sentence per kind ("The AI service is not available right now. Nothing was changed.", "The AI
+service is busy. Try again in a minute.", …). Limit messages are Taviron's own wording. Nothing in the AI path writes
+prompts, answers or records to the console.
 
 ## 10. Privacy and sensitive data
 
@@ -232,6 +252,15 @@ Error messages never include the key, the request body or model arguments. Peopl
   - the evaluation runner.
 - `tests/db/ai-usage.test.ts`: the ledger's company scope, read permission, append-only rule, idempotency and
   validation.
+- `tests/db/ai-assistant-scope.test.ts`: the reads Ask Taviron makes (orders by id and reference, loads, fulfillment, the
+  attention queue, trucks, the period report) as a person limited to one dispatch base and as another company's owner;
+  the per-person usage summary (own and company totals, never another company's) and the pause switch (readable only
+  through the summary, changed only by the database owner).
+- `tests/unit/ai-assistant-security.test.ts` (mocked provider): cross-module summary, the period report's limits and
+  totals-only output, another company's or base's reference, raw ids and unissued codes, role-based tools, prompt
+  injection in customer names, notes and descriptions, answers that follow injected text, prohibited changes (assign,
+  approve, permissions, SQL), missing configuration and the allowlist, provider errors and timeouts with fixed
+  messages, per-person / company / cost / pause / size limits, cost tracking, and nothing written to the console.
 - `tests/e2e/plan-the-day.spec.ts`: the Blocked state on Plan the day and Company setup in the presenter demo.
 - `tests/unit/ai-assistant.test.ts` (Ask Taviron, mocked provider): what reaches the model (no names, references, ids or
   typed free text), relabelling and links, order lookups only from typed references, tool permissions per role, read-only
@@ -262,6 +291,7 @@ steps, with the assistant's variables below), then **Needs review** until `npm r
   | `order_status` | `orders.view` | one order: status, requested date, loads by status, fulfillment, billing readiness (`billing.view` only) |
   | `maintenance_attention` | `maintenance.view` | open work orders and preventive maintenance overdue or due soon |
   | `week_outlook` | `dispatch.view` | the 7-day outlook (Taviron Live) |
+  | `period_report` | any of tickets/billing/fleet/dispatch view | totals for up to 92 days from `report_operations` (security invoker, so row-level security and dispatch bases apply; each section only with its permission): tickets accepted/waiting/voided/corrected, the value of accepted tickets, billing handoff and loads without tickets, truck utilization. Totals only: the report's ranked lists (customer names, unit numbers) are not sent. |
   | `help_search` | any of the assistant's permissions | Help Center articles the person may read |
 
   Data is read with the person's own session (`src/server/data/assistant.ts`), so row-level security decides what is
@@ -280,10 +310,45 @@ steps, with the assistant's variables below), then **Needs review** until `npm r
 - **Honest limits written into the instructions:** Taviron does not issue invoices or record payments (questions about
   overdue invoices answer *no data*); hours of service are not tracked; Smart Dispatch decides eligibility.
 - **Not yet:** multi-turn conversation (each question stands alone), CRM summaries and drafted follow-ups, contextual
-  entry points on individual pages, reporting questions beyond the counts above.
+  entry points on individual pages, per-customer or per-truck breakdowns in reports (they would need pseudonymized
+  ranked lists).
 - **Configuration:** `AI_CAPABILITIES` must include `ops_assistant`; `AI_MODEL_OPS_ASSISTANT` (and optionally
   `AI_FALLBACK_MODEL_OPS_ASSISTANT`); the shared `AI_PROVIDER`, `OPENAI_API_KEY`, `AI_MONTHLY_TOKEN_LIMIT`,
   `AI_REQUESTS_PER_MINUTE`, `AI_TIMEOUT_MS`, `AI_PRICING_JSON`, `AI_IN_DEMOS`. Then
   `OPENAI_API_KEY=… AI_MODEL_OPS_ASSISTANT=<model> npm run ai:eval` and commit the printed evidence only if it passed.
 - **Demo companies:** same page and code; Blocked unless `AI_IN_DEMOS=on` (DEMO_TENANTS §2, existing difference), so a
   demo shows the honest "not available" state. When allowed, it reads the demo's own sample records.
+
+## 16. Ask Taviron activation, evaluation and immediate disable (2026-10-24)
+
+**Status:** code written and tested locally with mocked providers (no paid call). Migration `20261120002400` is applied
+to the local database only. Evaluation version 3 (period report and injection cases) has **no evidence yet**, so Ask
+Taviron is **Needs review** everywhere until a new `npm run ai:eval` passes, and **Blocked** for every real company until
+it is listed in `AI_COMPANY_ALLOWLIST`. Nothing is activated for customers by this change.
+
+**Authorization before retrieval.** The server checks the person's permission from the session (`askAssistant`), offers
+only the tools their role allows (`toolsFor`), and every tool reads through the person's own Supabase session
+(`src/server/data/assistant.ts`): row-level security limits rows to their company and dispatch bases before anything is
+read, and `report_operations` runs as the caller. Tools take codes issued in this request or a reference the person
+typed, never ids, company ids or base ids. Nothing unauthorized is fetched and then hidden from the model.
+
+**Activation prerequisites (owner, each needing approval):**
+1. Back up and apply `20261120002400_ai_usage_limits.sql` to the hosted database (after `20261110000100`; DEPLOYMENT §2a).
+2. Run the evaluation with synthetic data: `OPENAI_API_KEY=… AI_MODEL_OPS_ASSISTANT=<model> npm run ai:eval` (spends a
+   few cents; never part of CI). Commit the printed evidence only if every case passed with no critical failure.
+3. In Vercel (server-side variables): `AI_PROVIDER=openai`, `OPENAI_API_KEY`, `AI_CAPABILITIES=ops_assistant` (plus
+   `plan_explanation` if wanted), `AI_MODEL_OPS_ASSISTANT`, `AI_MONTHLY_TOKEN_LIMIT`, `AI_USER_MONTHLY_TOKEN_LIMIT`;
+   recommended `AI_PRICING_JSON` and `AI_MONTHLY_COST_LIMIT_USD`; optionally `AI_USER_REQUESTS_PER_MINUTE`,
+   `AI_USER_DAILY_REQUESTS`, `AI_MAX_REQUEST_CHARS`, `AI_TIMEOUT_MS`. Set a spending limit on the OpenAI project too.
+4. Start with demo companies (`AI_IN_DEMOS=on`), then add real companies one at a time to `AI_COMPANY_ALLOWLIST`.
+5. Deploy, open Company setup → AI capabilities, confirm Ready or Limited, and ask one question per role.
+
+**Disable immediately (no redeploy):** in the Supabase SQL editor run
+`update private.ai_controls set paused = true, reason = '<why>', updated_at = now();`. Every AI request on every company
+stops at its next request ("AI is paused by the platform owner."); deterministic features are unaffected. Resume with
+`paused = false`. Longer term: remove the capability from `AI_CAPABILITIES` or the company from `AI_COMPANY_ALLOWLIST`
+and redeploy, or revoke the key in the OpenAI dashboard.
+
+**Remaining gaps:** no live evaluation of version 3 yet; one question can make up to 3 model calls, so limits count calls
+rather than questions; two simultaneous requests can both pass a limit check (no reservation; overshoot is at most one
+request); OpenAI's own retention terms apply even with `store: false`.
