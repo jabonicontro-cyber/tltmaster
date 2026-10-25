@@ -38,6 +38,10 @@ const ALLOWED = new Set([
   "src/app/(app)/employees/[id]/page.tsx",
   "src/app/(app)/customer-portal/account-actions.ts",
   "src/app/(app)/customer-portal/page.tsx",
+  // QuickBooks Online (B82): demos never connect to or send to QuickBooks; sends are recorded as simulated.
+  "src/server/accounting/send.ts",
+  "src/app/api/accounting/qbo/connect/route.ts",
+  "src/app/api/accounting/qbo/callback/route.ts",
 ]);
 
 function files(dir: string): string[] {
