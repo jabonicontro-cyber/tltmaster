@@ -39,8 +39,12 @@ export async function expectToast(page: Page, text: string | RegExp) {
 export async function closeDemoWelcome(page: Page) {
   const welcome = page.getByRole("dialog", { name: "Welcome to the Taviron demo" });
   await expect(welcome).toBeVisible();
+  // The dismissal is saved by a server action; wait for it so the next page load does not show the welcome again
+  // (a fresh demo's automatic refresh can keep the server busy for a while).
+  const saved = page.waitForResponse((r) => r.request().method() === "POST" && r.request().headers()["next-action"] !== undefined, { timeout: 30_000 });
   await welcome.getByRole("button", { name: "Explore the demo" }).click();
   await expect(welcome).toHaveCount(0);
+  await saved;
 }
 
 /** Close the demo welcome if it is open (a platform user's current company may be a demo they have not opened yet). */
