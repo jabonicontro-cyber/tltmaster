@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { buildRoutes, formatMinutes, parsePoint, routeTotals, straightLineMiles, YARD, type RouteAssignment } from "@/lib/routing/route";
-import { HereProvider, parseHereGeocode, parseHereRoute, RoutingError, type RoutingProvider } from "@/server/routing/here";
+import { HereProvider, parseHereCandidates, parseHereGeocode, parseHerePlan, parseHereRoute, RoutingError, type RoutingProvider } from "@/server/routing/here";
+import { decodeFlexPolyline } from "@/lib/routing/flexpolyline";
 import { addRoadEstimates, clearRoutingCacheForTests, MAX_CALLS, parseRoutingConfig, routingStatus, setRoutingProviderForTests } from "@/server/routing/service";
 
 vi.mock("server-only", () => ({}));
@@ -73,6 +74,16 @@ describe("HERE adapter", () => {
     expect(() => parseHereRoute({ routes: [], notices: [{ title: "Couldn't find a route" }] })).toThrow(/No truck route found: Couldn't find a route/);
     expect(parseHereGeocode({ items: [] })).toBeNull();
     expect(parseHereGeocode({ items: [{ position: { lat: 40.93671234, lng: -87.15091234 }, scoring: { queryScore: 0.97 } }] })).toEqual({ point: { lat: 40.936712, lng: -87.150912 }, score: 0.97 });
+    // Several matches are all returned for a person to choose from, with the provider's own label and precision.
+    const many = parseHereCandidates({ items: [
+      { title: "100 Main St, Rensselaer, IN", address: { label: "100 Main St, Rensselaer, IN 47978" }, resultType: "houseNumber", position: { lat: 40.93, lng: -87.15 }, scoring: { queryScore: 0.95 } },
+      { title: "Main St, Remington, IN", resultType: "street", position: { lat: 40.76, lng: -87.15 } },
+      { title: "no position" },
+    ] });
+    expect(many).toEqual([
+      { point: { lat: 40.93, lng: -87.15 }, label: "100 Main St, Rensselaer, IN 47978", score: 0.95, precision: "houseNumber" },
+      { point: { lat: 40.76, lng: -87.15 }, label: "Main St, Remington, IN", score: null, precision: "street" },
+    ]);
   });
 
   it("sends truck mode and the key only as a query parameter; errors never contain the key", async () => {
@@ -115,7 +126,9 @@ describe("configuration and limits", () => {
         if (a.lat === 1) throw new RoutingError("timeout", "The routing provider did not answer.");
         return { miles: 10, minutes: 15, notices: [], source: "fake" };
       },
-      geocode: async () => null,
+      geocodeCandidates: async () => [],
+      plan: async () => [],
+      tile: async () => new ArrayBuffer(0),
     };
     const many = Array.from({ length: MAX_CALLS + 5 }, (_, i) => asg(`T${i}`, stop(i, "07:00", { lat: 40 + i / 100, lng: -87 })));
     const routes = buildRoutes(many, RENSSELAER);
@@ -130,5 +143,56 @@ describe("configuration and limits", () => {
     const failing = buildRoutes([asg("X", stop(99, "07:00", { lat: 1, lng: 1 }))], { lat: 1, lng: 1 });
     await addRoadEstimates(failing, provider);
     expect(failing[0].legs.every((l) => l.road === null && l.roadMissing === "The routing provider did not answer.")).toBe(true);
+  });
+});
+
+describe("route builder: multi-stop truck routes", () => {
+  it("decodes HERE's flexible polyline (reference example)", () => {
+    expect(decodeFlexPolyline("BFoz5xJ67i1B1B7PzIhaxL7Y")).toEqual([
+      { lat: 50.10228, lng: 8.69821 }, { lat: 50.10201, lng: 8.69567 }, { lat: 50.10063, lng: 8.6915 }, { lat: 50.09878, lng: 8.68752 },
+    ]);
+    expect(() => decodeFlexPolyline("B!!")).toThrow();
+  });
+
+  it("reads every route and leg with critical restriction notices kept apart from information", () => {
+    const routes = parseHerePlan({ routes: [
+      { sections: [
+        { summary: { length: 16093.44, duration: 1200 }, polyline: "BFoz5xJ67i1B1B7PzIhaxL7Y", notices: [{ title: "Violated vehicle restriction: height", code: "violatedVehicleRestriction", severity: "critical" }] },
+        { summary: { length: 8046.72, duration: 600 }, notices: [{ title: "Toll road", code: "tollRoad" }] },
+      ] },
+      { sections: [{ summary: { length: 32186.88, duration: 2100 } }] },
+    ] });
+    expect(routes).toHaveLength(2);
+    expect(routes[0]).toMatchObject({ miles: 15, minutes: 30, legs: [{ miles: 10, minutes: 20 }, { miles: 5, minutes: 10 }] });
+    expect(routes[0].notices).toEqual([
+      { text: "Violated vehicle restriction: height", code: "violatedVehicleRestriction", severity: "critical" },
+      { text: "Toll road", code: "tollRoad", severity: "info" },
+    ]);
+    expect(routes[0].line).toHaveLength(4);
+    expect(() => parseHerePlan({ routes: [], notices: [{ title: "No route" }] })).toThrow(/No truck route found/);
+  });
+
+  it("sends the truck's recorded dimensions, via points and alternatives; the key never appears in errors", async () => {
+    const seen: URL[] = [];
+    const fetchImpl = async (u: URL) => {
+      seen.push(new URL(u));
+      return new Response(JSON.stringify({ routes: [{ sections: [{ summary: { length: 1609.344, duration: 60 } }] }] }), { status: 200 });
+    };
+    const key = "k".repeat(30);
+    const p = new HereProvider(key, 1000, fetchImpl as unknown as typeof fetch);
+    await p.plan([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }, { lat: 5, lng: 6 }], { vehicle: { heightCm: 411, grossWeightKg: 36287, axleCount: 5 } });
+    const q = seen[0].searchParams;
+    expect(q.get("transportMode")).toBe("truck");
+    expect(q.getAll("via")).toEqual(["3,4!passThrough=false"]);
+    expect(q.get("vehicle[height]")).toBe("411");
+    expect(q.get("vehicle[grossWeight]")).toBe("36287");
+    expect(q.get("vehicle[axleCount]")).toBe("5");
+    expect(q.get("alternatives")).toBeNull(); // not with via points
+    await p.plan([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }], { alternatives: 2 });
+    expect(seen[1].searchParams.get("alternatives")).toBe("2");
+    const denied = new HereProvider(key, 1000, (async () => new Response("", { status: 401 })) as unknown as typeof fetch);
+    const err = await denied.plan([{ lat: 1, lng: 2 }, { lat: 3, lng: 4 }], {}).catch((e) => e);
+    expect(err).toBeInstanceOf(RoutingError);
+    expect(String(err.message)).not.toContain(key);
   });
 });

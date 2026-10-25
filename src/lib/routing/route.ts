@@ -141,3 +141,60 @@ export function parsePoint(text: string): Point | null {
   if (!(lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180)) return null;
   return { lat: Math.round(lat * 1e6) / 1e6, lng: Math.round(lng * 1e6) / 1e6 };
 }
+
+// ---- Planned routes (route builder; B10 core) ---------------------------------------------------------------------
+
+/** Truck dimensions sent to the routing provider; unset values are left to the provider's default truck. */
+export interface VehicleProfile {
+  heightCm?: number | null;
+  widthCm?: number | null;
+  lengthCm?: number | null;
+  grossWeightKg?: number | null;
+  axleCount?: number | null;
+}
+
+export function hasVehicleProfile(v: VehicleProfile | null | undefined): boolean {
+  return Boolean(v && (v.heightCm || v.widthCm || v.lengthCm || v.grossWeightKg || v.axleCount));
+}
+
+/** One address match from the geocoder: always shown to a person to confirm, never saved silently. */
+export interface GeocodeCandidate {
+  point: Point;
+  /** The provider's own text for what it matched. */
+  label: string;
+  /** 0–1 query match from the provider; null when not reported. */
+  score: number | null;
+  /** e.g. houseNumber, street, locality: how precise the match is. */
+  precision: string;
+}
+
+export interface RouteNotice {
+  /** The provider's words. */
+  text: string;
+  code: string;
+  /** critical: the provider says the route breaks a restriction for this truck (or could not avoid one). */
+  severity: "critical" | "info";
+}
+
+export interface PlannedLeg {
+  miles: number;
+  minutes: number;
+  notices: RouteNotice[];
+}
+
+export interface PlannedRoute {
+  miles: number;
+  minutes: number;
+  legs: PlannedLeg[];
+  /** The road line for the map (decoded provider polyline). */
+  line: Point[];
+  notices: RouteNotice[];
+  source: string;
+}
+
+export const MAX_ROUTE_STOPS = 25;
+
+/** Driving plus time at stops (loading, unloading), in minutes; stop minutes are the dispatcher's own entries. */
+export function totalMinutes(route: Pick<PlannedRoute, "minutes">, stopMinutes: number[]): number {
+  return route.minutes + stopMinutes.reduce((a, b) => a + Math.max(0, b), 0);
+}

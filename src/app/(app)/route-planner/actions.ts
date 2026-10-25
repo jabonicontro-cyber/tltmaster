@@ -67,7 +67,8 @@ export async function locateSite(input: { siteId: string }): Promise<ActionResul
     const address = [s.line1, s.line2, s.city, s.state, s.postal_code].filter(Boolean).join(", ");
     let found;
     try {
-      found = await status.provider.geocode(address);
+      // Kept behaviour until the confirmation step lands: the best match, labelled as an estimate (DIR-1).
+      found = (await status.provider.geocodeCandidates(address))[0] ?? null;
     } catch (e) {
       return fail(e instanceof Error ? e.message : "The routing provider failed.");
     }
@@ -93,7 +94,7 @@ export async function setYardLocation(input: { location: string; fromAddress?: b
       const address = [s.address_line1, s.address_line2, s.city, s.state, s.postal_code].filter(Boolean).join(", ");
       if (!address) return fail("The company has no address in Settings → Company.");
       try {
-        point = (await status.provider.geocode(address))?.point ?? null;
+        point = (await status.provider.geocodeCandidates(address))[0]?.point ?? null;
       } catch (e) {
         return fail(e instanceof Error ? e.message : "The routing provider failed.");
       }

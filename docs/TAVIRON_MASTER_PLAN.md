@@ -427,6 +427,42 @@ billing code may be written without explicit authorization.
 7. **Payroll** (after pay rules), **customer portal**, **driver mobile**, **subscription billing** (after legal,
    tax and processor decisions).
 
+## 11a. Completion register (master completion directive, 2026-10-25)
+
+The one tracker for the directive's ten areas; §12 rows hold the detail. Statuses: **Verified** (code + tests run),
+**In progress**, **Blocked** (external dependency named), **Awaiting approval**, **Not started**. Evidence is from the code
+audit of 2026-10-25 (HEAD `0745149`), not from earlier reports.
+
+**Hosted database (owner's `migration list`, 2026-10-25):** applied through `20261120002300`; the workflow then applied
+`20261120002400` and `20261120002500` (run #2). Rows below that say "local only" for migrations up to 002300 are stale.
+New local-only migration: `20261120002600_route_planner_core` (applies automatically when promoted).
+
+| Area | Requirement | Status | Evidence / gap |
+| --- | --- | --- | --- |
+| Route Planner | Day routes from dispatch, straight line + HERE truck legs, yard, site locations | Verified | `src/lib/routing/route.ts`, `src/server/routing/*`, `tests/e2e/route-planner.spec.ts` |
+| Route Planner | Saved locations (yards, terminals, quarries, plants, pickups), geocode candidates with confirmation, truck dimensions, multi-stop routes, alternatives, map, saved routes | In progress (DIR-1) | Migration 002600 written; provider, UI, tests next |
+| Route Planner | Optimization (sequence, windows, pickups, capacity, schedules, costs), dispatch integration | Not started | After the core |
+| Scheduling | Weekly hours per weekday, time off, PTO | Verified | `work_schedules`, `tests/db/work-schedules.test.ts`, time-off tests |
+| Scheduling | Clock-time shifts, breaks, overnight, rotation, effective dates + history, overrides with reason/audit, dispatch shift checks, timeline, shift offers, staffing forecast | Not started | Audit: no columns; dispatch never reads schedules |
+| Orders | Customers, sites, materials, quotes → orders, windows, multi-load, tickets, reconciliation, billing handoff, history | Verified | orders/dispatch/tickets/billing DB + e2e tests |
+| Orders | Quarry/pickup source per load, per-load delivery status, projects, customer order requests + staff approval + feasibility | Not started | Audit gaps 4–7 |
+| Customer portal | Invites, isolation, orders (read), quotes + requests + duplicates, tickets, support, help | Verified | `tests/db/customer-portal.test.ts`, portal e2e |
+| Customer portal | Order requests, notifications, simple vs advanced mode, ETA/map (needs real tracking data) | Not started / Blocked (ETA: no GPS source) | — |
+| Demos | Plan switcher (admin) | Verified | `tests/e2e/demo-plans.spec.ts` |
+| Demos | Selector Essential/Growth/Professional/Customer View for prospects, connected internal ↔ customer view | Not started | Admin-only today |
+| Smart Dispatch / fleet | Availability, maintenance, documents, qualifications, capacity, explanations; PM, work orders, readings, costs, clearance | Verified | smart-dispatch unit/DB/e2e, maintenance tests |
+| Smart Dispatch | Work schedules, travel/pickup geography, real hours of service | Not started / Blocked (HOS: no ELD provider) | — |
+| Communications | DMs, groups, channels, presence, work status, receipts, acknowledgements, alert settings, audit | Verified | communications DB/unit/e2e tests |
+| Communications | Off-app delivery (email/SMS/push), company-set recipient roles and channels | Blocked (needs provider choice + approval) / Not started | Resend exists for some email only |
+| Ask Taviron | SDK, read-only tools, scoping, limits, atomic reservations, kill switch, docs | Verified (local tests; migrations applied hosted) | `tests/unit/ai-assistant-security.test.ts`, `tests/db/ai-usage-concurrency.test.ts` |
+| Ask Taviron | First-use disclosure, company opt-in | Not started | — |
+| Ask Taviron | Paid evaluation, privacy/terms update, activation | Awaiting approval | docs/AI.md §16–§17 |
+| Owner console | Companies, leads, onboarding, demo, plans, agreed MRR, cancellation record, audit | Verified | platform tests |
+| Owner console | Support access (read-only default, expiring elevation), system health, data export, entitlement enforcement, trials | Not started | Audit gaps |
+| Owner console | Payments, invoices, payment failures | Blocked (no payment provider; needs approval) | — |
+| Website | Positioning, catalog-backed claims, pricing, B80 design fixes | Verified (B80 local; full suite pending) | `tests/e2e/website.spec.ts` |
+| Website | Public demo selector and Customer View demo, help/how-to | Not started | Depends on the demo selector |
+
 ## 12. Feature backlog (living; process in docs/DEVELOPMENT_WORKFLOW.md)
 
 One row per independently deliverable feature. Status follows DEVELOPMENT_WORKFLOW §2 (requested → specified →
