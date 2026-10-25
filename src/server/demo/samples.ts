@@ -62,6 +62,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
   note("shop capacity", await shopCapacity(db));
+  note("shop schedule", await shopSchedule(db, today));
   note("maintenance triage", await maintenanceTriage(db));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
@@ -840,6 +841,31 @@ async function shopCapacity(db: Db): Promise<number> {
   return n;
 }
 
+
+/**
+ * Shop capacity needs planned work to show anything: while no estimated open work order is scheduled in the next two weeks, put
+ * up to five estimated ones on the next working days (Mon–Fri, the demo shop's days) — three on the first day, more
+ * jobs than the two bays, so the over-capacity warning shows, then one a day. Booking a date leaves the status (and
+ * any triage waiting for review) as it is.
+ */
+async function shopSchedule(db: Db, today: string): Promise<number> {
+  const until = addDays(today, 14);
+  const planned = await db.from("work_orders").select("id", { count: "exact", head: true }).not("estimated_hours", "is", null).gte("scheduled_for", today).lte("scheduled_for", until).not("status", "in", "(completed,closed,canceled)");
+  if (planned.error || (planned.count ?? 0) > 0) return 0;
+  const jobs = ((await db.from("work_orders").select("id, edit_seq").not("estimated_hours", "is", null).not("status", "in", "(in_progress,awaiting_inspection,completed,closed,canceled)").order("estimated_hours", { ascending: false }).limit(5)).data ?? []) as Array<{ id: string; edit_seq: number }>;
+  const days: string[] = [];
+  for (let d = addDays(today, 1); days.length < 3; d = addDays(d, 1)) {
+    const wd = new Date(`${d}T12:00:00Z`).getUTCDay();
+    if (wd >= 1 && wd <= 5) days.push(d);
+  }
+  const plan = [days[0], days[0], days[0], days[1], days[2]];
+  let n = 0;
+  for (const [i, w] of jobs.entries()) {
+    const r = await db.rpc("maintenance_update_work_order", { p_id: w.id, p_expected_seq: w.edit_seq, p: { scheduled_for: plan[i] } });
+    if (!r.error) n++;
+  }
+  return n;
+}
 
 /**
  * Maintenance triage (20261120003100): a rules suggestion waiting for review on up to two reported work orders, made by

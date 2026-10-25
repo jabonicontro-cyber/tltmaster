@@ -28,10 +28,11 @@ export function ShopSettingsForm({ initial }: { initial: { bays: number; shiftSt
   const [v, setV] = useState(initial ?? { bays: 2, shiftStart: "07:00", shiftEnd: "15:30", workDays: [1, 2, 3, 4, 5] });
   return (
     <form className="space-y-4" aria-label="Shop settings" onSubmit={(e) => { e.preventDefault(); run(() => saveShop(v)); }}>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="Service bays" htmlFor="shop-bays" hint="Jobs that fit at once">
-          <Input id="shop-bays" type="number" min={1} max={100} value={v.bays} onChange={(e) => setV({ ...v, bays: Number(e.target.value) })} />
-        </Field>
+      <Field label="Service bays" htmlFor="shop-bays" hint="Jobs that fit at once">
+        <Input id="shop-bays" type="number" min={1} max={100} value={v.bays} onChange={(e) => setV({ ...v, bays: Number(e.target.value) })} className="max-w-32" />
+      </Field>
+      {/* Two columns so the time fields have room for AM/PM. */}
+      <div className="grid grid-cols-2 gap-4">
         <Field label="Shift starts" htmlFor="shop-start"><Input id="shop-start" type="time" value={v.shiftStart} onChange={(e) => setV({ ...v, shiftStart: e.target.value })} /></Field>
         <Field label="Shift ends" htmlFor="shop-end"><Input id="shop-end" type="time" value={v.shiftEnd} onChange={(e) => setV({ ...v, shiftEnd: e.target.value })} /></Field>
       </div>

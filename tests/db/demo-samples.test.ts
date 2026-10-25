@@ -179,6 +179,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     const est = await q<{ estimated: string; unestimated: string }>("select count(*) filter (where estimated_hours is not null) estimated, count(*) filter (where estimated_hours is null) unestimated from public.work_orders where company_id = $1 and status not in ('completed', 'closed', 'canceled')", [w.company]);
     expect(Number(est.rows[0].estimated)).toBeGreaterThan(0);
     expect(Number(est.rows[0].unestimated)).toBe(1);
+    // Planned work in the next two weeks, with one day holding more jobs than the shop has bays.
+    const plan = await q<{ d: string; n: string }>("select scheduled_for::text as d, count(*) as n from public.work_orders where company_id = $1 and estimated_hours is not null and status not in ('completed', 'closed', 'canceled') and scheduled_for between current_date and current_date + 14 group by 1", [w.company]);
+    expect(plan.rows.length).toBeGreaterThan(0);
+    expect(Math.max(...plan.rows.map((r) => Number(r.n)))).toBeGreaterThan(2);
     // Triage (20261120003100): suggestions from the rules waiting for a person's review; nothing accepted for them.
     const tri = await q<{ source: string; status: string }>("select source, status from public.work_order_triage where company_id = $1", [w.company]);
     expect(tri.rows.length).toBeGreaterThan(0);
