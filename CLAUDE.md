@@ -39,7 +39,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Migrations:**
   - Never edit an applied migration; add a new versioned file in `supabase/migrations/`.
   - Back up the dev database before applying one: `pg_dump -Fc` into `/var/lib/tlt-backups/`.
-  - Staging and production migrations are the owner's action (DEPLOYMENT §2a).
+  - Hosted migrations are applied by the `Database migrations (Production)` workflow once CI passes on the Production
+    branch (owner decision 2026-10-25, DEPLOYMENT §2c); it backs up first and stops on destructive statements. Claude
+    never runs `db push` against a hosted database by hand.
   - A reversible change gets a tested rollback script in `supabase/rollbacks/` (not a migration).
 - **No silent side effects:**
   - No real emails, invoices, accounting exports or payments without explicit authorization.
@@ -170,8 +172,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
     Production deployment record and report it. Stop and report instead when a check fails or a blocker remains.
   - Code that depends on an unapplied migration ships only if it works safely without it; document the limitation
     and never call the feature operational until the migration is applied and verified.
-  - Still explicit owner approval, each time, for: remote migrations or database changes (never applied just
-    because code is ready), environment variables or secrets, domains, account/role changes, anything
+  - Promoting a commit with new migrations applies them automatically (DEPLOYMENT §2c), so a migration ships only when
+    its tested rollback exists and it works with the code before and after it. Still explicit owner approval, each
+    time, for: destructive migrations (the workflow stops on them; the owner re-runs it), other database changes, environment variables or secrets, domains, account/role changes, anything
     destructive, force-pushes or history rewrites. Approval for one operation never covers another.
 - **Feature by feature (docs/DEVELOPMENT_WORKFLOW.md):** every request becomes a row in the master plan §12 backlog
   with acceptance criteria, dependencies, risk tier and status; run `node scripts/release/risk.mjs` before promoting

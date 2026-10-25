@@ -1,0 +1,135 @@
+name: Database migrations (Production)
+
+# Applies new migrations in supabase/migrations/ to the hosted database automatically, after CI has passed on the
+# Production branch (docs/DEPLOYMENT.md §2c; owner decision 2026-10-25). Vercel deploys the same commit on its own.
+#
+# Fail-safe stops (the job fails and GitHub emails the owner; nothing is applied):
+# - CI did not pass on that commit.
+# - The secrets are missing (SUPABASE_DB_URL, BACKUP_PASSPHRASE): the workflow does nothing until the owner adds them.
+# - The encrypted backup could not be made.
+# - A pending migration contains a statement that deletes data or structure (drop table/schema/column, truncate,
+#   delete from). Apply it after reviewing it: Actions → this workflow → Run workflow with "allow_destructive" ticked.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [claude/top-line-trucking-manager-vmw04i]
+  workflow_dispatch:
+    inputs:
+      allow_destructive:
+        description: "I reviewed the pending migrations: apply even if one drops or deletes something"
+        type: boolean
+        default: false
+
+# One run at a time; a newer push waits for the current run instead of cancelling it mid-migration.
+concurrency:
+  group: production-db-migrations
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  SUPABASE_CLI: supabase@2.120.0
+  PRODUCTION_BRANCH: claude/top-line-trucking-manager-vmw04i
+
+jobs:
+  migrate:
+    if: >-
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
+      || (github.event_name == 'workflow_dispatch' && github.ref_name == 'claude/top-line-trucking-manager-vmw04i')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: production-database
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ] || [ -z "$BACKUP_PASSPHRASE" ]; then
+            echo "::notice::Automatic migrations are not set up (SUPABASE_DB_URL and BACKUP_PASSPHRASE secrets). Nothing was done."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "::add-mask::$SUPABASE_DB_URL"
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          # The commit CI passed on (workflow_run), or the branch head (manual run).
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-node@v4
+        if: steps.config.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - name: Pending migrations (dry run)
+        if: steps.config.outputs.ready == 'true'
+        id: pending
+        run: |
+          set -euo pipefail
+          npx --yes "$SUPABASE_CLI" db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee dry-run.txt
+          grep -oE '[0-9]{14}_[A-Za-z0-9_]+\.sql' dry-run.txt | sort -u > pending.txt || true
+          echo "count=$(wc -l < pending.txt | tr -d ' ')" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Pending migrations"
+            if [ -s pending.txt ]; then sed 's/^/- /' pending.txt; else echo "None: the database is up to date."; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Stop on destructive statements
+        if: steps.config.outputs.ready == 'true' && steps.pending.outputs.count != '0' && !inputs.allow_destructive
+        run: |
+          set -euo pipefail
+          found=0
+          while read -r f; do
+            # Comment lines are ignored; statements are matched case-insensitively.
+            if grep -vE '^\s*--' "supabase/migrations/$f" | grep -inE '\b(drop\s+(table|schema|column)|truncate|delete\s+from)\b'; then
+              echo "::error file=supabase/migrations/$f::This migration drops or deletes something. Review it, then run this workflow by hand with allow_destructive."
+              found=1
+            fi
+          done < pending.txt
+          exit $found
+
+      - name: Encrypted backup
+        if: steps.config.outputs.ready == 'true' && steps.pending.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+          stamp=$(date -u +%Y%m%dT%H%M%SZ)
+          /usr/lib/postgresql/17/bin/pg_dump -Fc --no-owner --no-privileges -d "$SUPABASE_DB_URL" -f "backup-$stamp.dump"
+          test -s "backup-$stamp.dump"
+          # Customer data never leaves the runner unencrypted.
+          gpg --batch --yes --pinentry-mode loopback --passphrase "$BACKUP_PASSPHRASE" --symmetric --cipher-algo AES256 -o "backup-$stamp.dump.gpg" "backup-$stamp.dump"
+          shred -u "backup-$stamp.dump"
+          echo "BACKUP_FILE=backup-$stamp.dump.gpg" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        if: steps.config.outputs.ready == 'true' && steps.pending.outputs.count != '0'
+        with:
+          name: production-db-backup-${{ github.run_id }}
+          path: ${{ env.BACKUP_FILE }}
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Apply migrations
+        if: steps.config.outputs.ready == 'true' && steps.pending.outputs.count != '0'
+        run: npx --yes "$SUPABASE_CLI" db push --db-url "$SUPABASE_DB_URL" --yes
+
+      - name: Verify nothing is left pending
+        if: steps.config.outputs.ready == 'true' && steps.pending.outputs.count != '0'
+        run: |
+          set -euo pipefail
+          npx --yes "$SUPABASE_CLI" db push --db-url "$SUPABASE_DB_URL" --dry-run 2>&1 | tee after.txt
+          if grep -qE '[0-9]{14}_[A-Za-z0-9_]+\.sql' after.txt; then
+            echo "::error::Migrations are still pending after the push."
+            exit 1
+          fi
+          echo "Applied $(wc -l < pending.txt | tr -d ' ') migration(s); the database is up to date." >> "$GITHUB_STEP_SUMMARY"

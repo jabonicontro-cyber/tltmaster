@@ -307,6 +307,32 @@ it; nothing is scheduled). Nothing accrues until a company saves a policy. Rollb
 `supabase/rollbacks/20261112000300_pto_accruals.down.sql` (refuses while accrual or forfeiture entries exist, so a
 balance is never changed silently; tested locally 2026-10-13).
 
+## 2c. Automatic database migrations (owner decision 2026-10-25)
+
+`.github/workflows/db-migrate.yml` applies new files in `supabase/migrations/` to the hosted database by itself, after
+CI passes on the Production branch (`claude/top-line-trucking-manager-vmw04i`). Vercel deploys the same commit on its own,
+so a release no longer needs `db push` from your computer. §2a stays as the manual fallback.
+
+**What one run does:** dry run (lists the pending migrations in the run summary) → stops if a pending migration drops a
+table, schema or column, truncates or deletes rows → encrypted full backup (`pg_dump`, AES-256 with your passphrase,
+kept 14 days as a private run artifact) → `db push` → dry run again to prove nothing is left pending. Runs never overlap.
+Any failure stops the run and GitHub emails you; nothing after the failing step happens.
+
+**Turn it on (once, owner):** GitHub → the repository → Settings → Secrets and variables → Actions → New repository secret:
+1. `SUPABASE_DB_URL`: Supabase dashboard → Connect → **Session pooler** connection string (GitHub's runners need IPv4),
+   with your database password filled in. It works only from GitHub; never paste it anywhere else.
+2. `BACKUP_PASSPHRASE`: a long random passphrase you keep in your password manager. Without it the backups cannot be
+   opened.
+Until both exist the workflow runs and does nothing. GitHub runs it from the default branch, which is the Production
+branch, so it takes effect once the commit that adds it has been promoted.
+
+**When it stops on a destructive migration:** read the migration and its rollback, then GitHub → Actions → "Database
+migrations (Production)" → Run workflow → tick *allow_destructive*. **Restoring a backup:** download the artifact, then
+`gpg --decrypt backup-….dump.gpg > backup.dump` and `pg_restore` into a new database first; restoring over Production is a
+separate decision.
+
+**Turn it off:** delete the `SUPABASE_DB_URL` secret (runs then do nothing), or disable the workflow under Actions.
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging
