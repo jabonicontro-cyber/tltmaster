@@ -22,6 +22,10 @@ const optional = {
   EMAIL_TEST_RECIPIENT: z.email(),
   /** Where new website leads are announced (the Taviron team's inbox). */
   LEAD_NOTIFY_EMAIL: z.email(),
+  /** QuickBooks Online app (Intuit developer portal; master plan B82). Server-only. */
+  QBO_CLIENT_ID: z.string().min(10).max(200),
+  QBO_CLIENT_SECRET: z.string().min(10).max(200),
+  QBO_ENVIRONMENT: z.enum(["sandbox", "production"]),
 } as const;
 
 type OptionalKey = keyof typeof optional;
@@ -37,6 +41,9 @@ export interface ServerEnv {
   EMAIL_REPLY_TO?: string;
   EMAIL_TEST_RECIPIENT?: string;
   LEAD_NOTIFY_EMAIL?: string;
+  QBO_CLIENT_ID?: string;
+  QBO_CLIENT_SECRET?: string;
+  QBO_ENVIRONMENT: "sandbox" | "production";
   /** Names (never values) of optional settings that were set but malformed and are being ignored. */
   invalidSettings: OptionalKey[];
 }
@@ -76,6 +83,9 @@ export function parseEnv(source: Record<string, string | undefined>): ServerEnv 
     EMAIL_REPLY_TO: values.EMAIL_REPLY_TO,
     EMAIL_TEST_RECIPIENT: values.EMAIL_TEST_RECIPIENT,
     LEAD_NOTIFY_EMAIL: values.LEAD_NOTIFY_EMAIL,
+    QBO_CLIENT_ID: values.QBO_CLIENT_ID,
+    QBO_CLIENT_SECRET: values.QBO_CLIENT_SECRET,
+    QBO_ENVIRONMENT: (values.QBO_ENVIRONMENT as ServerEnv["QBO_ENVIRONMENT"] | undefined) ?? "sandbox",
     invalidSettings,
   };
 }
