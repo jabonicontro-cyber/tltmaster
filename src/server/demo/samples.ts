@@ -59,6 +59,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   note("maintenance", await maintenance(db, today, trucks));
   note("trailer maintenance", await trailerMaintenance(db, today));
+  note("maintenance crews", await maintenanceCrews(db, today));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
@@ -775,5 +776,40 @@ async function routePlanner(db: Db, today: string): Promise<number> {
     await must("saved route stops", db.from("saved_route_stops").insert(r.stops.map((x, i) => ({ route_id: head.id, position: i + 1, ...x }))));
     n++;
   }
+  return n;
+}
+
+
+/**
+ * Maintenance crews, labor time and checklists (20261120002900): on up to three open work orders, the demo's owner (a
+ * real login, as crew must be) on the crew (lead on the first), time logged yesterday (no timer is left running), and a four-step checklist
+ * half done on the first. Only while the demo has no checklist yet; every write goes through the same functions as
+ * the work order page, so the overlap and permission rules apply.
+ */
+async function maintenanceCrews(db: Db, today: string): Promise<number> {
+  const tasks = await count(db, "work_order_tasks");
+  if (tasks === null || tasks > 0) return 0;
+  const { userId } = await demoCompany(db);
+  const open = ((await db.from("work_orders").select("id, status, title").in("status", ["in_progress", "scheduled", "triaged", "reported"]).order("created_at").limit(3)).data ?? []) as Array<{ id: string; status: string; title: string }>;
+  if (!open.length) return 0;
+  let n = 0;
+  const yesterday = addDays(today, -1);
+  // Yesterday, mid-morning and early afternoon UTC: two separate, non-overlapping blocks.
+  const blocks: Array<[string, string]> = [[`${yesterday}T14:00:00Z`, `${yesterday}T16:15:00Z`], [`${yesterday}T17:00:00Z`, `${yesterday}T18:30:00Z`], [`${yesterday}T19:00:00Z`, `${yesterday}T19:45:00Z`]];
+  for (const [i, w] of open.entries()) {
+    // Lead on the first job (it shows the Lead badge), helping on the others.
+    const added = await db.rpc("maintenance_add_mechanic", { p_wo: w.id, p_user: userId, p_lead: i === 0 });
+    if (added.error) continue;
+    const t = await db.rpc("maintenance_add_time", { p_wo: w.id, p_user: userId, p_started: blocks[i][0], p_ended: blocks[i][1], p_note: "Demo: logged labor" });
+    if (!t.error) n++;
+  }
+  const first = open[0];
+  const steps = ["Inspect and photograph the defect", "Order the parts", "Replace and torque to spec", "Road test and sign off"];
+  const ids: string[] = [];
+  for (const title of steps) {
+    const r = await db.rpc("maintenance_add_task", { p_wo: first.id, p_title: title });
+    if (!r.error) { ids.push(r.data as string); n++; }
+  }
+  for (const id of ids.slice(0, 2)) await db.rpc("maintenance_set_task", { p_task: id, p_status: "done" });
   return n;
 }

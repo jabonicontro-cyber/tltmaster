@@ -142,13 +142,13 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
         {data.time.length > 0 ? (
           <ul className="divide-y divide-line rounded-lg border border-line text-sm">
             {data.time.map((t) => (
-              <li key={t.id} className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${t.voided ? "text-muted line-through" : "text-ink"}`}>
+              <li key={t.id} className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${t.voided ? "text-muted" : "text-ink"}`}>
                 <span>
-                  <span className="font-medium">{t.name}</span> · {fmt(t.startedAt)} – {t.endedAt ? fmt(t.endedAt) : "running"}
+                  <span className={`font-medium ${t.voided ? "line-through" : ""}`}>{t.name}</span> · {fmt(t.startedAt)} – {t.endedAt ? fmt(t.endedAt) : "running"}
                   {t.minutes !== null && <span className="tabular"> · {hoursText(t.minutes)}</span>}
                   {t.source === "manual" && <span className="text-muted"> · logged later</span>}
                   {t.note && <span className="text-muted"> · {t.note}</span>}
-                  {t.voided && <span className="no-underline"> · removed: {t.voidReason}</span>}
+                  {t.voided && <span> · removed: {t.voidReason}</span>}
                 </span>
                 {canManage && open && !t.voided && t.endedAt && (
                   <Button size="sm" variant="ghost" disabled={pending} onClick={() => { setReason(""); setRemoving({ id: t.id, label: `${t.name}, ${fmt(t.startedAt)}` }); }}>Remove</Button>
@@ -206,10 +206,10 @@ export function TaskChecklist({ workOrderId, status, tasks, canManage }: { workO
             >
               {t.status === "done" && <Check className="size-3.5" aria-hidden />}
             </button>
-            <span className={`text-sm ${t.status === "open" ? "text-ink" : "text-muted line-through"}`}>
-              {t.title}
-              {t.status === "skipped" && <span className="no-underline"> (skipped)</span>}
-              {t.doneBy && <span className="ml-1 text-xs no-underline">· {t.doneBy}</span>}
+            <span className="text-sm">
+              <span className={t.status === "open" ? "text-ink" : "text-muted line-through"}>{t.title}</span>
+              {t.status === "skipped" && <span className="text-muted"> (skipped)</span>}
+              {t.doneBy && <span className="ml-1 text-xs text-muted">· {t.doneBy}</span>}
             </span>
           </li>
         ))}

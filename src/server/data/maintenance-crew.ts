@@ -58,3 +58,47 @@ export async function getWorkOrderCrew(workOrderId: string, userId: string): Pro
     totalMinutes: timeRows.filter((t) => !t.voided && t.minutes !== null).reduce((s, t) => s + (t.minutes ?? 0), 0),
   };
 }
+
+export interface MechanicLoad {
+  userId: string;
+  name: string;
+  leadJobs: number;
+  helperJobs: number;
+  working: { workOrderId: string; number: string; since: string } | null;
+  weekMinutes: number;
+}
+
+/** Each mechanic's open jobs (as lead or helper), what they are working on now, and the time they logged this week. */
+export async function listShopWorkload(openWorkOrderIds: string[], weekStartIso: string): Promise<{ installed: boolean; mechanics: MechanicLoad[] }> {
+  const supabase = await createClient();
+  const [crew, running, week, options] = await Promise.all([
+    openWorkOrderIds.length
+      ? supabase.from("work_order_mechanics").select("user_id, role, work_order_id").in("work_order_id", openWorkOrderIds)
+      : supabase.from("work_order_mechanics").select("user_id, role, work_order_id").limit(0),
+    supabase.from("work_order_time_entries").select("user_id, work_order_id, started_at, work_orders(number)").is("ended_at", null).is("voided_at", null),
+    supabase.from("work_order_time_entries").select("user_id, started_at, ended_at").is("voided_at", null).gte("started_at", weekStartIso),
+    supabase.rpc("maintenance_assignee_options"),
+  ]);
+  if (crew.error && MISSING.has(crew.error.code ?? "")) return { installed: false, mechanics: [] };
+  const byId = new Map<string, MechanicLoad>();
+  for (const o of (options.data ?? []) as Array<{ user_id: string; name: string }>) {
+    byId.set(o.user_id, { userId: o.user_id, name: o.name, leadJobs: 0, helperJobs: 0, working: null, weekMinutes: 0 });
+  }
+  const get = (id: string) => byId.get(id) ?? byId.set(id, { userId: id, name: "Former member", leadJobs: 0, helperJobs: 0, working: null, weekMinutes: 0 }).get(id)!;
+  for (const c of (crew.data ?? []) as Array<{ user_id: string; role: string }>) {
+    const m = get(c.user_id);
+    if (c.role === "lead") m.leadJobs++;
+    else m.helperJobs++;
+  }
+  for (const r of (running.data ?? []) as unknown as Array<{ user_id: string; work_order_id: string; started_at: string; work_orders: { number: string } | null }>) {
+    get(r.user_id).working = { workOrderId: r.work_order_id, number: r.work_orders?.number ?? "", since: r.started_at };
+  }
+  const now = Date.now();
+  for (const t of (week.data ?? []) as Array<{ user_id: string; started_at: string; ended_at: string | null }>) {
+    get(t.user_id).weekMinutes += Math.round(((t.ended_at ? Date.parse(t.ended_at) : now) - Date.parse(t.started_at)) / 60000);
+  }
+  return {
+    installed: true,
+    mechanics: [...byId.values()].sort((a, b) => Number(Boolean(b.working)) - Number(Boolean(a.working)) || (b.leadJobs + b.helperJobs) - (a.leadJobs + a.helperJobs) || a.name.localeCompare(b.name)),
+  };
+}

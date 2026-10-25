@@ -166,6 +166,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(routes.rows.map((r) => [Number(r.stops), r.truck])).toEqual([[5, true], [4, false]]);
     const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
     expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // Maintenance crews (20261120002900): a half-done checklist and logged labor that counts toward labor hours.
+    const checklist = await q<{ status: string; n: string }>("select status, count(*) n from public.work_order_tasks where company_id = $1 group by status order by status", [w.company]);
+    expect(checklist.rows.map((r) => [r.status, Number(r.n)])).toEqual([["done", 2], ["open", 2]]);
+    const labor = await q<{ entries: string; running: string; hours: string }>("select count(*) entries, count(*) filter (where ended_at is null) running, (select sum(labor_hours) from public.work_orders where company_id = $1) hours from public.work_order_time_entries where company_id = $1 and voided_at is null", [w.company]);
+    expect(Number(labor.rows[0].entries)).toBeGreaterThanOrEqual(1);
+    expect(Number(labor.rows[0].running)).toBe(0);
+    expect(Number(labor.rows[0].hours)).toBeGreaterThan(0);
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);

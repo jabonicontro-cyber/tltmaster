@@ -13,6 +13,9 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listAssignees, listDriverOptions, listOpenWorkOrders, listPmStatus, listTrailers, listTrucks } from "@/server/data/maintenance";
 import { businessToday } from "@/server/data/settings";
+import { listShopWorkload } from "@/server/data/maintenance-crew";
+import { zonedTimeToUtc } from "@/lib/dates";
+import { Badge } from "@/components/ui/badge";
 
 export const metadata = { title: "Maintenance" };
 
@@ -22,9 +25,12 @@ function daysBetween(fromIso: string, today: string) {
 
 export default async function MaintenancePage() {
   const access = await requirePagePermission("maintenance.view");
-  const [{ today }, open, pm, trucks, trailers, drivers, assignees] = await Promise.all([
+  const [{ today, timezone }, open, pm, trucks, trailers, drivers, assignees] = await Promise.all([
     businessToday(), listOpenWorkOrders(), listPmStatus(), listTrucks(), listTrailers(), listDriverOptions(), listAssignees(),
   ]);
+  // Monday of this week, in the company's time zone.
+  const weekStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
+  const shop = await listShopWorkload(open.map((w) => w.id), zonedTimeToUtc(weekStart, "00:00", timezone) ?? `${weekStart}T00:00:00Z`);
   const truckById = new Map(trucks.map((t) => [t.id, t]));
   const trailerById = new Map(trailers.map((t) => [t.id, t]));
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
@@ -165,6 +171,36 @@ export default async function MaintenancePage() {
         </div>
 
         <div className="space-y-5">
+          {shop.installed ? (
+            <Card>
+              <CardHeader title="Mechanics" description="Who is working now, their open jobs (as lead or helping) and the time logged this week." />
+              <ul className="divide-y divide-line text-sm">
+                {shop.mechanics.map((m) => (
+                  <li key={m.userId} className="px-4 py-2.5 sm:px-5">
+                    <div className="flex items-center justify-between gap-2">
+                      <Link href={`/maintenance/work-orders?assigned=${m.userId}`} className="font-medium text-ink hover:underline">{m.name}</Link>
+                      <span className="tabular text-muted">{Math.floor(m.weekMinutes / 60)} h {String(m.weekMinutes % 60).padStart(2, "0")} this week</span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-muted">
+                      {m.working
+                        ? <><Badge tone="green">Working</Badge><Link href={`/maintenance/work-orders/${m.working.workOrderId}`} className="text-ink hover:underline">{m.working.number}</Link></>
+                        : <span>Not on a timer</span>}
+                      <span>· {m.leadJobs} leading · {m.helperJobs} helping</span>
+                    </div>
+                  </li>
+                ))}
+                {shop.mechanics.length === 0 && <li className="px-4 py-3 text-muted sm:px-5">Nobody&apos;s role can do maintenance yet.</li>}
+                {(workload.get("")?.open ?? 0) > 0 && (
+                  <li className="px-4 py-2.5 sm:px-5">
+                    <Link href="/maintenance/work-orders?assigned=none" className="font-medium text-critical hover:underline">{workload.get("")!.open} open work order{workload.get("")!.open === 1 ? "" : "s"} with no lead mechanic</Link>
+                  </li>
+                )}
+              </ul>
+              <CardBody className="border-t border-line text-xs text-muted">
+                Shop capacity (bays, shift hours) is not configured yet, so Taviron cannot say whether the shop is over capacity.
+              </CardBody>
+            </Card>
+          ) : (
           <Card>
             <CardHeader title="Technician workload" description="Open work orders per mechanic and the labor hours recorded on them." />
             <ul className="divide-y divide-line text-sm">
@@ -182,6 +218,7 @@ export default async function MaintenancePage() {
               Shop capacity (bays, shift hours) is not configured yet, so Taviron cannot say whether the shop is over capacity.
             </CardBody>
           </Card>
+          )}
 
           <Card>
             <CardHeader title="Preventive maintenance data" />
