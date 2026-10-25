@@ -326,6 +326,12 @@ steps, with the assistant's variables below), then **Needs review** until `npm r
 
 ## 16. Ask Taviron activation, evaluation and immediate disable (2026-10-24)
 
+**Update 2026-10-25:** evaluation version 3 passed on `gpt-5-mini` (6/6, no critical failure; GitHub Actions run
+40225336674 via the manual `AI evaluation (manual, paid)` workflow), and the evidence is recorded in
+`src/lib/ai/evidence.ts`. The privacy notice and terms now describe the optional AI features and list OpenAI
+(published as drafts, subject to change), and Ask Taviron shows the OpenAI notice under the question box. The owner
+reports the Vercel variables are set. Real companies still need to be listed in `AI_COMPANY_ALLOWLIST`.
+
 **Status:** code written and tested locally with mocked providers (no paid call). Migration `20261120002400` is applied
 to the local database only. Evaluation version 3 (period report and injection cases) has **no evidence yet**, so Ask
 Taviron is **Needs review** everywhere until a new `npm run ai:eval` passes, and **Blocked** for every real company until
