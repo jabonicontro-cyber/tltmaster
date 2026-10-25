@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
+import { after } from "next/server";
 import { DEMO_WELCOME_COOKIE, PRESENTATION_COOKIE, welcomeToken, welcomedInCookie } from "@/lib/platform/preview";
 import { AppShell, type ShellBranding } from "@/components/layout/app-shell";
 import { SIDEBAR_COOKIE } from "@/components/layout/sidebar-cookie";
@@ -12,6 +13,7 @@ import { effectivePresence } from "@/lib/communications";
 import { can } from "@/lib/permissions";
 import { isPlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
+import { autoRefreshDemo } from "@/server/demo/auto-refresh";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const access = await requireAccess();
@@ -28,6 +30,9 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   ]);
   // Own employee avatar (fallback when there is no profile photo) and whether this login drives.
   const supabase = await createClient();
+  // Demos refresh their sample data themselves, after the page is sent (once per deployment and per day; the database
+  // decides and only for the demo's owner). Never in a real company.
+  if (access.isDemo) after(() => autoRefreshDemo(supabase).catch(() => undefined));
   const [ownEmployee, ownDriver, ownPresence, commSettings, welcomed] = await Promise.all([
     supabase.from("employees").select("avatar_key").eq("user_id", access.userId).maybeSingle(),
     supabase.from("drivers").select("id").eq("user_id", access.userId).eq("active", true).maybeSingle(),

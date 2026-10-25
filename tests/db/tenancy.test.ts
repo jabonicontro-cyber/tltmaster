@@ -210,7 +210,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome",
   // AI usage ledger (docs/AI.md §6).
-  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "private.ai_usage_totals",
+  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
   // N11: office scans of paper tickets.
   "public.begin_ticket_scan", "public.attach_ticket_scan",
   // N12: early-access site gate (service role only).
