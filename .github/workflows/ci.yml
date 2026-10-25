@@ -73,8 +73,8 @@ jobs:
           node-version: 22
       - name: Classify changes against Production
         run: |
-          git fetch --no-tags origin claude/top-line-trucking-manager-vmw04i
-          node scripts/release/risk.mjs origin/claude/top-line-trucking-manager-vmw04i HEAD | tee -a "$GITHUB_STEP_SUMMARY"
+          git fetch --no-tags origin main
+          node scripts/release/risk.mjs origin/main HEAD | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Critical browser workflows against a production build on the local backend (Postgres + Supabase Auth + PostgREST,
   # scripts/dev-stack). The full suite runs on demand (workflow_dispatch → full_browser_suite).

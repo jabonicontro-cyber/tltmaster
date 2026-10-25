@@ -67,6 +67,11 @@ export function AssistantPanel({ examples }: { examples: string[] }) {
           <Button type="submit" loading={busy} disabled={busy || question.trim().length < 3} icon={<Sparkles className="size-4" aria-hidden />}>Ask</Button>
           <span className="text-xs text-muted">Enter to ask · Shift+Enter for a new line</span>
         </div>
+        <p className="text-xs text-muted">
+          Questions are answered by OpenAI, Taviron&apos;s AI provider, with names and contact details removed. OpenAI does
+          not train on them and may keep them up to 30 days to check for abuse. Taviron does not store your questions or
+          answers. <a href="/privacy#ai" className="underline hover:text-ink">Privacy</a>
+        </p>
       </form>
 
       <div className="flex flex-wrap gap-2" aria-label="Example questions">

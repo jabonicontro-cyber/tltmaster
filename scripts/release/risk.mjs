@@ -14,7 +14,7 @@
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-export const PRODUCTION_BRANCH = "claude/top-line-trucking-manager-vmw04i";
+export const PRODUCTION_BRANCH = "main"; // DEPLOYMENT §2b (was claude/top-line-trucking-manager-vmw04i until 2026-10-25)
 
 /** Ordered rules: the first match decides a file's tier. Keep in sync with docs/DEVELOPMENT_WORKFLOW.md §3. */
 export const RULES = [

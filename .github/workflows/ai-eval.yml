@@ -1,0 +1,49 @@
+name: AI evaluation (manual, paid)
+
+# Runs the live AI evaluation (docs/AI.md §5, `npm run ai:eval`) with synthetic data only, on request. It spends a few
+# cents of OpenAI usage, so it never runs on push. The printed evidence goes into the job summary; a person (or Claude,
+# copying it verbatim) adds it to src/lib/ai/evidence.ts only when every case passed with no critical failure.
+#
+# Needs the repository secret OPENAI_API_KEY (Settings → Secrets and variables → Actions). Without it the job stops
+# before any call.
+
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model for every capability (e.g. gpt-5-mini)"
+        type: string
+        default: gpt-5-mini
+
+permissions:
+  contents: read
+
+jobs:
+  evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Require the API key secret
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then echo "::error::Add the OPENAI_API_KEY repository secret first."; exit 1; fi
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Live evaluation
+        env:
+          AI_PROVIDER: openai
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AI_MODEL_PLAN_EXPLANATION: ${{ inputs.model }}
+          AI_MODEL_OPS_ASSISTANT: ${{ inputs.model }}
+        run: |
+          set -o pipefail
+          npm run ai:eval 2>&1 | tee eval.log
+      - name: Evidence to the job summary
+        if: always()
+        run: |
+          { echo '## AI evaluation'; echo; echo "Commit: \`$GITHUB_SHA\` · model: \`${{ inputs.model }}\`"; echo; echo '```'; grep -E '^(PASS|FAIL)|^  - ' eval.log || true; echo '```'; echo; echo '### Evidence'; echo '```json'; sed -n '/^Evidence:/,/^}/p' eval.log | grep -v '^Evidence:' || true; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
