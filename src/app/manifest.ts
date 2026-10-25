@@ -11,11 +11,12 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/dashboard",
     name: PRODUCT_NAME,
     short_name: PRODUCT_NAME,
-    description: "Your loads, schedule, messages and time off.",
+    description: "Your loads, jobs, schedule, messages and time off.",
     start_url: "/dashboard",
     scope: "/",
     display: "standalone",
-    orientation: "portrait",
+    // Any orientation: phones are used upright, tablets (iPad, Android) often in landscape on a stand or in the shop.
+    orientation: "any",
     background_color: "#10233a",
     theme_color: "#10233a",
     icons: [

@@ -38,7 +38,7 @@ describe("account helpers", () => {
 
   it("people land on the page for their role, only with its permission", () => {
     expect(homePathFor("driver", ["driver.portal"])).toBe("/driver");
-    expect(homePathFor("mechanic", ["maintenance.view"])).toBe("/maintenance");
+    expect(homePathFor("mechanic", ["maintenance.view"])).toBe("/maintenance/my-jobs");
     expect(homePathFor("dispatcher", ["dispatch.view"])).toBe("/dispatch");
     expect(homePathFor("office", ["orders.view"])).toBe("/command-center");
     expect(homePathFor("driver", [])).toBe("/command-center");

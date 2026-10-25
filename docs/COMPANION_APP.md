@@ -42,6 +42,7 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 | Messaging, announcements, critical alerts with acknowledgment | Working through Communications (same membership rules and acknowledgment audit); Messages tab when the login has `comms.message` |
 | Presence (Available, Busy, Away, Busy – Active Delivery) | Working (Communications; active delivery is derived from the assignment, never set to Available automatically) |
 | Time off (requests, balances) | Working (Time off tab; same approval chains and balance checks) |
+| Mechanic workspace (owner 2026-10-25) | Working: **My jobs** (`/maintenance/my-jobs`) is a shop login's home, with a mechanic tab bar on phones (My jobs, Work orders, Messages, Time off, Profile). Each job shows the next step that fits it (Start this job, Start/Stop timer, My part is done), the running timer is pinned on top, and "Needs a mechanic" lists unled open jobs (most urgent first) to take. Same server actions and database functions as the work order page (crews, timers, statuses from `20261120002900`); nothing bypasses the work order rules. Before that migration the page says "Not available yet" |
 | Documents, inspections (DVIR) | **Not built.** Inspections need the compliance scope (§9 Q12) |
 | Push notifications to the lock screen | **Not built.** Needs owner approval and keys (section 7) |
 | Native iOS / Android store apps | **Not built.** Needs owner decision and accounts (section 7) |
@@ -87,6 +88,12 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 - **Not tested on a real iPhone or Android device**, and not on iOS Safari (Playwright runs Chromium here).
 
 ## 7. Owner decisions and dependencies
+
+**Devices (owner 2026-10-25: iPhone, iPad and Android).** The companion app is the installable web app on all three:
+iPhone and iPad through Safari → Share → Add to Home Screen; Android phones and tablets through Chrome → Install app.
+Phones show the bottom tab bar; tablets (768 px and wider, e.g. iPad) show the regular sidebar layout. The app follows
+the device's orientation (manifest `orientation: "any"`; it was portrait-only before, which locked iPads upright).
+Store-published apps are a separate, optional step (item 3 below).
 
 1. **Install it on your phone (no setup):** open the Taviron site in Safari on iPhone → Share → Add to Home Screen,
    or Chrome on Android → menu → Install app. Sign in as a driver to check My Day.

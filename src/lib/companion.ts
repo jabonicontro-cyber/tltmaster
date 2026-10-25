@@ -14,6 +14,15 @@ export function isDriverOnly(permissions: readonly string[]): boolean {
   return permissions.includes("driver.portal") && !OFFICE.some((p) => permissions.includes(p));
 }
 
+/**
+ * A login whose work is the shop (maintenance, but no dispatch, office or sales work and no driver day): My jobs is
+ * home and the phone shows the mechanic's tab bar.
+ */
+const NOT_SHOP: Permission[] = ["dispatch.view", "tickets.view", "billing.view", "orders.view", "quotes.view", "driver.portal"];
+export function isMechanicOnly(permissions: readonly string[]): boolean {
+  return permissions.includes("maintenance.view") && !NOT_SHOP.some((p) => permissions.includes(p));
+}
+
 export interface DriverTab { href: string; label: string; match: (path: string) => boolean }
 
 /**
@@ -22,6 +31,18 @@ export interface DriverTab { href: string; label: string; match: (path: string) 
  */
 export function driverTabs(permissions: readonly string[]): DriverTab[] {
   const tabs: DriverTab[] = [{ href: "/driver", label: "My Day", match: (p) => p === "/driver" || p.startsWith("/driver/") }];
+  if (permissions.includes("comms.message")) tabs.push({ href: "/communications", label: "Messages", match: (p) => p.startsWith("/communications") });
+  tabs.push({ href: "/time-off", label: "Time off", match: (p) => p.startsWith("/time-off") });
+  tabs.push({ href: "/profile", label: "Profile", match: (p) => p.startsWith("/profile") });
+  return tabs;
+}
+
+/** The mechanic's tabs (each page still checks its own permission on the server). */
+export function mechanicTabs(permissions: readonly string[]): DriverTab[] {
+  const tabs: DriverTab[] = [
+    { href: "/maintenance/my-jobs", label: "My jobs", match: (p) => p.startsWith("/maintenance/my-jobs") },
+    { href: "/maintenance/work-orders", label: "Work orders", match: (p) => p.startsWith("/maintenance/work-orders") },
+  ];
   if (permissions.includes("comms.message")) tabs.push({ href: "/communications", label: "Messages", match: (p) => p.startsWith("/communications") });
   tabs.push({ href: "/time-off", label: "Time off", match: (p) => p.startsWith("/time-off") });
   tabs.push({ href: "/profile", label: "Profile", match: (p) => p.startsWith("/profile") });

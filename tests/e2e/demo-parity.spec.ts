@@ -175,6 +175,12 @@ test("every demo mode opens its pages and each feature shows sample data", async
           }
         }
       }
+      // The mechanic's phone workspace: My jobs lists the demo owner's own jobs, with the mechanic tab bar on a phone.
+      if (role === "mechanic") {
+        await visit(page, "/maintenance/my-jobs");
+        await expect(page.getByText("No jobs for you right now"), "mechanic My jobs has jobs").toHaveCount(0);
+        await expect(page.getByRole("link", { name: /^Open MWO-/ }).first(), "mechanic My jobs").toBeVisible();
+      }
       // Modes that drive see a day with loads on My Day.
       if (role === "driver" || role === "multi") {
         await visit(page, "/driver");

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driverTabs, freshness, isDriverOnly, STALE_AFTER_MS } from "@/lib/companion";
+import { driverTabs, freshness, isDriverOnly, isMechanicOnly, mechanicTabs, STALE_AFTER_MS } from "@/lib/companion";
 
 describe("companion app shell", () => {
   it("gives the phone tab bar only to logins whose work is driving", () => {
@@ -21,5 +21,18 @@ describe("companion app shell", () => {
     expect(freshness(t, t + 1000, true)).toBe("current");
     expect(freshness(t, t + STALE_AFTER_MS + 1, true)).toBe("stale");
     expect(freshness(t, t + 1000, false)).toBe("offline");
+  });
+});
+
+describe("mechanic phone workspace", () => {
+  it("only a shop login gets the mechanic tabs; office, dispatch and drivers keep theirs", () => {
+    const mechanic = ["maintenance.view", "maintenance.manage", "fleet.view", "fleet.service", "field_reports.view", "comms.message"];
+    expect(isMechanicOnly(mechanic)).toBe(true);
+    expect(isMechanicOnly([...mechanic, "dispatch.view"])).toBe(false);
+    expect(isMechanicOnly([...mechanic, "driver.portal"])).toBe(false);
+    expect(isMechanicOnly(["fleet.view"])).toBe(false);
+    expect(mechanicTabs(mechanic).map((t) => t.label)).toEqual(["My jobs", "Work orders", "Messages", "Time off", "Profile"]);
+    expect(mechanicTabs(["maintenance.view"]).map((t) => t.label)).toEqual(["My jobs", "Work orders", "Time off", "Profile"]);
+    expect(mechanicTabs(mechanic)[0].match("/maintenance/my-jobs")).toBe(true);
   });
 });

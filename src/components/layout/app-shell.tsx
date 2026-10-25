@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { APP_CONTAINER } from "@/lib/layout";
 import { DriverTabBar } from "@/components/companion/driver-tab-bar";
 import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
-import { isDriverOnly } from "@/lib/companion";
+import { isDriverOnly, isMechanicOnly } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
@@ -41,6 +41,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
   const navPermissions = hideMyDay ? access.permissions.filter((p) => p !== "driver.portal") : access.permissions;
   // Companion app (docs/COMPANION_APP.md): a driver-only login gets bottom tabs on a phone.
   const driverOnly = isDriverOnly(navPermissions);
+  const mechanicOnly = !driverOnly && isMechanicOnly(navPermissions);
   return (
     <div className="app-root min-h-dvh lg:pl-[4.5rem] lg:data-[sidebar=pinned]:pl-64" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
@@ -87,10 +88,11 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       </header>
       <GuidePlayer />
 
-      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", driverOnly && "pb-24 md:pb-6")}>
+      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly) && "pb-24 md:pb-6")}>
         {children}
       </main>
       {driverOnly && <DriverTabBar permissions={navPermissions} />}
+      {mechanicOnly && <DriverTabBar permissions={navPermissions} kind="mechanic" />}
     </div>
   );
 }

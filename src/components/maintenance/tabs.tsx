@@ -3,6 +3,7 @@ import { cn } from "@/lib/cn";
 
 const TABS = [
   { key: "overview", label: "Overview", href: "/maintenance" },
+  { key: "my-jobs", label: "My jobs", href: "/maintenance/my-jobs" },
   { key: "work-orders", label: "Work orders", href: "/maintenance/work-orders" },
   { key: "clearance", label: "Clearance queue", href: "/maintenance/clearance" },
   { key: "preventive", label: "Preventive", href: "/maintenance/preventive" },

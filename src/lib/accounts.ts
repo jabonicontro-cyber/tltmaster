@@ -40,7 +40,7 @@ export interface RolePreset {
 /** Practical starting points; the role (and its permissions in Settings → Roles) is what grants access. */
 export const ROLE_PRESETS: RolePreset[] = [
   { id: "driver", label: "Driver", role: "driver", jobTitle: "Driver", lands: "My Day (their loads, tickets and notices) — built for a phone" },
-  { id: "mechanic", label: "Mechanic", role: "mechanic", jobTitle: "Mechanic", lands: "Maintenance (work orders and the shop)" },
+  { id: "mechanic", label: "Mechanic", role: "mechanic", jobTitle: "Mechanic", lands: "My jobs (their work orders, timer and checklist)" },
   { id: "dispatcher", label: "Dispatcher", role: "dispatcher", jobTitle: "Dispatcher", lands: "Dispatch (the board and Plan the day)" },
   { id: "office", label: "Office employee", role: "office", jobTitle: "Office", lands: "Command Center (quotes, orders, tickets, billing)" },
 ];
@@ -52,7 +52,7 @@ export const ROLE_PRESETS: RolePreset[] = [
 export function homePathFor(role: AppRole | null | undefined, permissions: readonly string[]): string {
   const has = (p: string) => permissions.includes(p);
   if (role === "driver" && has("driver.portal")) return "/driver";
-  if (role === "mechanic" && has("maintenance.view")) return "/maintenance";
+  if (role === "mechanic" && has("maintenance.view")) return "/maintenance/my-jobs";
   if (role === "dispatcher" && has("dispatch.view")) return "/dispatch";
   return "/command-center";
 }

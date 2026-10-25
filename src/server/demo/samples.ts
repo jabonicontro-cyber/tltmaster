@@ -61,6 +61,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("maintenance", await maintenance(db, today, trucks));
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
+  note("my jobs for each demo owner", await ownerCrews(db));
   note("shop capacity", await shopCapacity(db));
   note("shop schedule", await shopSchedule(db, today));
   note("maintenance triage", await maintenanceTriage(db));
@@ -818,6 +819,28 @@ async function maintenanceCrews(db: Db, today: string): Promise<number> {
   return n;
 }
 
+
+/**
+ * The Mechanic view's My jobs (docs/COMPANION_APP.md) shows the signed-in person's own jobs. Every demo owner login (the
+ * platform team and a prospect's owner) helps on at least one open job, so the view is never empty for them. Adds only
+ * people who are on no open job yet.
+ */
+async function ownerCrews(db: Db): Promise<number> {
+  const owners = ((await db.from("employees").select("user_id").not("user_id", "is", null).eq("department", "management")).data ?? []) as Array<{ user_id: string }>;
+  const crew = await db.from("work_order_mechanics").select("user_id, work_orders(status)").neq("status", "done");
+  if (crew.error) return 0;
+  const busy = new Set(((crew.data ?? []) as unknown as Array<{ user_id: string; work_orders: { status: string } | null }>)
+    .filter((c) => c.work_orders && !["completed", "closed", "canceled"].includes(c.work_orders.status)).map((c) => c.user_id));
+  const job = ((await db.from("work_orders").select("id").in("status", ["in_progress", "scheduled", "triaged"]).order("created_at").limit(1)).data ?? []) as Array<{ id: string }>;
+  if (!job.length) return 0;
+  let n = 0;
+  for (const o of owners) {
+    if (busy.has(o.user_id)) continue;
+    const r = await db.rpc("maintenance_add_mechanic", { p_wo: job[0].id, p_user: o.user_id, p_lead: false });
+    if (!r.error) n++;
+  }
+  return n;
+}
 
 /**
  * Shop capacity (20261120003000): a two-bay shop open 7:00–15:30 Monday to Friday, estimates on open work orders that

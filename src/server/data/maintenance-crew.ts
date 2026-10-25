@@ -1,5 +1,6 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
+import { OPEN_STATUSES } from "@/lib/maintenance";
 
 // Crews, labor time and checklists on a work order (migration 20261120002900). Read through the person's session
 // (maintenance.view, RLS). Before the migration is applied the loader says so instead of returning empty lists.
@@ -164,5 +165,66 @@ export async function getLatestTriage(workOrderId: string): Promise<{ installed:
   return {
     installed: true,
     triage: r && { id: r.id, source: r.source, model: r.model, status: r.status, suggestion: r.suggestion, decision: r.decision, decisionNote: r.decision_note, decidedBy: r.decided_by, decidedAt: r.decided_at, createdAt: r.created_at },
+  };
+}
+
+export interface MyJob {
+  id: string; number: string; title: string; status: string; urgency: string; safetyCritical: boolean;
+  scheduledFor: string | null; dueOn: string | null; unit: string; editSeq: number;
+  myRole: "lead" | "assist"; myStatus: CrewMember["status"]; tasksDone: number; tasksTotal: number;
+}
+export interface OpenJob { id: string; number: string; title: string; status: string; urgency: string; safetyCritical: boolean; scheduledFor: string | null; unit: string }
+
+/**
+ * The mechanic's phone workspace (docs/COMPANION_APP.md): the open work orders the signed-in person is on (not yet
+ * done with their part), their running timer, and open jobs nobody leads yet. Read as the person (RLS, maintenance.view).
+ */
+export async function listMyJobs(userId: string): Promise<{ installed: boolean; mine: MyJob[]; unled: OpenJob[]; myTimer: WorkOrderCrew["myTimer"] }> {
+  const supabase = await createClient();
+  const crew = await supabase.from("work_order_mechanics").select("work_order_id, role, status").eq("user_id", userId).neq("status", "done");
+  if (crew.error && MISSING.has(crew.error.code ?? "")) return { installed: false, mine: [], unled: [], myTimer: null };
+  const rows = (crew.data ?? []) as Array<{ work_order_id: string; role: "lead" | "assist"; status: CrewMember["status"] }>;
+  const ids = rows.map((r) => r.work_order_id);
+  const cols = "id, number, title, status, urgency, safety_critical, scheduled_for, due_on, edit_seq, truck_id, trailer_id";
+  const [wos, tasks, unled, timer] = await Promise.all([
+    ids.length ? supabase.from("work_orders").select(cols).in("id", ids).in("status", OPEN_STATUSES) : Promise.resolve({ data: [] }),
+    ids.length ? supabase.from("work_order_tasks").select("work_order_id, status").in("work_order_id", ids) : Promise.resolve({ data: [] }),
+    supabase.from("work_orders").select(cols).is("assigned_to", null).in("status", ["triaged", "scheduled", "in_progress", "awaiting_parts"]).order("created_at", { ascending: false }).limit(50),
+    supabase.from("work_order_time_entries").select("work_order_id, started_at, work_orders(number)").eq("user_id", userId).is("ended_at", null).is("voided_at", null).maybeSingle(),
+  ]);
+  type Wo = { id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; due_on: string | null; edit_seq: number; truck_id: string | null; trailer_id?: string | null };
+  const all = [...((wos.data ?? []) as Wo[]), ...((unled.data ?? []) as Wo[])];
+  const truckIds = [...new Set(all.map((w) => w.truck_id).filter((x): x is string => Boolean(x)))];
+  const trailerIds = [...new Set(all.map((w) => w.trailer_id).filter((x): x is string => Boolean(x)))];
+  const [trucks, trailers] = await Promise.all([
+    truckIds.length ? supabase.from("trucks").select("id, unit_number").in("id", truckIds) : Promise.resolve({ data: [] }),
+    trailerIds.length ? supabase.from("trailers").select("id, unit_number").in("id", trailerIds) : Promise.resolve({ data: [] }),
+  ]);
+  const units = new Map<string, string>([
+    ...((trucks.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => [t.id, `Truck ${t.unit_number}`] as [string, string]),
+    ...((trailers.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => [t.id, `Trailer ${t.unit_number}`] as [string, string]),
+  ]);
+  const unit = (w: Wo) => units.get(w.truck_id ?? "") ?? units.get(w.trailer_id ?? "") ?? "No unit";
+  const taskRows = (tasks.data ?? []) as Array<{ work_order_id: string; status: string }>;
+  const rank = (w: { safetyCritical: boolean; urgency: string; status: string }) =>
+    (w.status === "in_progress" ? 0 : 10) + (w.safetyCritical ? 0 : 5) + ({ immediate: 0, high: 1, normal: 2, low: 3 }[w.urgency] ?? 4);
+  const mine = ((wos.data ?? []) as Wo[]).map((w) => {
+    const me = rows.find((r) => r.work_order_id === w.id)!;
+    const t = taskRows.filter((x) => x.work_order_id === w.id);
+    return {
+      id: w.id, number: w.number, title: w.title, status: w.status, urgency: w.urgency, safetyCritical: w.safety_critical,
+      scheduledFor: w.scheduled_for, dueOn: w.due_on, unit: unit(w), editSeq: w.edit_seq, myRole: me.role, myStatus: me.status,
+      tasksDone: t.filter((x) => x.status !== "open").length, tasksTotal: t.length,
+    };
+  }).sort((a, b) => rank(a) - rank(b) || a.number.localeCompare(b.number));
+  const m = timer.data as { work_order_id: string; started_at: string; work_orders: { number: string } | null } | null;
+  return {
+    installed: true,
+    mine,
+    // Most urgent first (safety, then urgency), newest first within the same urgency; ten at most.
+    unled: ((unled.data ?? []) as Wo[]).filter((w) => !ids.includes(w.id)).map((w) => ({
+      id: w.id, number: w.number, title: w.title, status: w.status, urgency: w.urgency, safetyCritical: w.safety_critical, scheduledFor: w.scheduled_for, unit: unit(w),
+    })).sort((a, b) => (rank(a) % 10) - (rank(b) % 10)).slice(0, 10),
+    myTimer: m ? { workOrderId: m.work_order_id, number: m.work_orders?.number ?? "another work order", startedAt: m.started_at } : null,
   };
 }
