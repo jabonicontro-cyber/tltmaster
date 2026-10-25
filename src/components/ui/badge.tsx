@@ -19,9 +19,11 @@ const tones: Record<Tone, string> = {
   "critical-soft": "bg-red-50 text-critical ring-red-100",
 };
 
+// Optical centring (measured 2026-10-25): with Inter, lowercase text sits about 0.75 px low in a symmetric pill, so the
+// text is lifted half a pixel: 2 px above and 3 px below (21 px tall), which the browser renders as a true half-pixel lift.
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap", tones[tone], className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold ring-1 ring-inset whitespace-nowrap", tones[tone], className)}>
       {children}
     </span>
   );

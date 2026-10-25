@@ -31,7 +31,7 @@ export function StatCard({ href, label, value, hint, alert }: { href: string; la
       )}
     >
       <div className="flex items-center gap-1.5 text-sm font-medium text-muted">{alert && <span className="size-1.5 rounded-full bg-critical" aria-hidden />}{label}</div>
-      <div className={cn("mt-1 text-2xl font-semibold tracking-tight tabular", alert ? "text-critical" : "text-ink")}>{value}</div>
+      <div className={cn("mt-1 text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular", alert ? "text-critical" : "text-ink")}>{value}</div>
       {hint && <div className="mt-1 text-xs text-muted">{hint}</div>}
     </Link>
   );

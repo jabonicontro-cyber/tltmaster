@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import { Badge, OrderStatusBadge } from "@/components/ui/badge";
+import type { OrderStatus } from "@/server/data/types";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
@@ -73,11 +74,12 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
         {history.recent_orders.length > 0 && (
           <ul className="divide-y divide-line rounded-xl border border-line">
             {history.recent_orders.map((o) => (
-              <li key={o.id} className="flex flex-wrap items-center gap-x-3 px-3 py-2">
-                <Link href={`/orders/${o.id}`} className="font-semibold hover:underline">{o.order_number}</Link>
-                <span className="text-muted">{formatDate(o.order_date)}</span>
-                <Badge>{o.status.replaceAll("_", " ")}</Badge>
-                <span className="ml-auto tabular">{usd(o.total_cents)}</span>
+              // Fixed columns, so dates, statuses and totals line up from row to row whatever the number's width.
+              <li key={o.id} className="grid grid-cols-[minmax(5.5rem,auto)_1fr_auto] items-center gap-x-4 px-3 py-2 sm:grid-cols-[7rem_7.5rem_1fr_auto]">
+                <Link href={`/orders/${o.id}`} className="font-semibold tabular hover:underline">{o.order_number}</Link>
+                <span className="hidden whitespace-nowrap text-muted tabular sm:block">{formatDate(o.order_date)}</span>
+                <span><OrderStatusBadge status={o.status as OrderStatus} /></span>
+                <span className="text-right tabular">{usd(o.total_cents)}</span>
               </li>
             ))}
           </ul>

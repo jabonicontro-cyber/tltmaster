@@ -28,7 +28,7 @@ function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label:
         <div className={cn("rounded-xl p-2", warn ? "bg-amber-50 text-amber-800" : "bg-surface text-ink")}>{icon}</div>
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-medium text-muted">{warn && <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />}{label}</p>
-          <p className="text-2xl font-semibold tracking-tight text-ink tabular">{value}</p>
+          <p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink tabular">{value}</p>
           {sub && <p className="text-sm text-muted">{sub}</p>}
         </div>
       </div>

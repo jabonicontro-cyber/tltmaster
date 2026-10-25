@@ -75,9 +75,9 @@ export default async function HelpCenterPage({ searchParams }: { searchParams: P
       ) : null}
 
       <nav aria-label="Help topics" className="mb-4 flex flex-wrap gap-1.5">
-        <Link href="/help" aria-current={!category ? "page" : undefined} className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${!category ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink"}`}>All Topics</Link>
+        <Link href="/help" aria-current={!category ? "page" : undefined} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${!category ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink"}`}>All Topics</Link>
         {(Object.entries(HELP_CATEGORIES) as Array<[HelpCategory, string]>).filter(([c]) => articles.some((a) => a.category === c)).map(([c, label]) => (
-          <Link key={c} href={`/help?category=${c}`} aria-current={category === c ? "page" : undefined} className={`rounded-xl border px-3 py-1.5 text-sm font-medium ${category === c ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink"}`}>{label}</Link>
+          <Link key={c} href={`/help?category=${c}`} aria-current={category === c ? "page" : undefined} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${category === c ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink"}`}>{label}</Link>
         ))}
       </nav>
       <div className="grid gap-5 lg:grid-cols-2">

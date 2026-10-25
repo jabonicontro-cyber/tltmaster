@@ -85,9 +85,9 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
       {!r.maintenanceChecked && <p role="note" className="mb-4 text-sm text-muted">Shop visits are not shown: the maintenance database update is not installed yet. Out-of-service status is still enforced.</p>}
 
       <section aria-label="Summary" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <Card><CardBody><p className="text-sm text-muted">Trucks mechanically ready</p><p className="text-2xl font-bold tabular">{readyTrucks} / {r.trucks.length}</p></CardBody></Card>
-        <Card><CardBody><p className="text-sm text-muted">Drivers qualified and not on leave</p><p className="text-2xl font-bold tabular">{qualifiedDrivers} / {r.drivers.length}</p></CardBody></Card>
-        <Card><CardBody><p className="text-sm text-muted">Loads without a truck</p><p className="text-2xl font-bold tabular"><Link href={`/dispatch?date=${date}`} className="hover:underline">{r.unassignedLoads}</Link></p></CardBody></Card>
+        <Card><CardBody><p className="text-sm text-muted">Trucks mechanically ready</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{readyTrucks} / {r.trucks.length}</p></CardBody></Card>
+        <Card><CardBody><p className="text-sm text-muted">Drivers qualified and not on leave</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{qualifiedDrivers} / {r.drivers.length}</p></CardBody></Card>
+        <Card><CardBody><p className="text-sm text-muted">Loads without a truck</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular"><Link href={`/dispatch?date=${date}`} className="hover:underline">{r.unassignedLoads}</Link></p></CardBody></Card>
       </section>
 
       {leaveConflicts.length > 0 && (

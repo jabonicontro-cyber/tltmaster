@@ -24,6 +24,7 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 | `docs/CUSTOMER_PORTAL.md` | Customer portal (accounts are not memberships; `portal_*` functions only), Testing Lab (demo companies only), two-step verification: security model, owner steps, tests. |
 | `docs/AI.md` | AI runtime: provider interface, OpenAI adapter, configuration, readiness gates, evaluations, usage ledger and budgets, tools and approvals, demo behaviour, owner steps to turn a capability on. |
 | `docs/MARKETING.md` | Feature catalog, publication status, screenshot pipeline and quality gate, the feature-to-website workflow and its checks. |
+| `docs/DESIGN_SYSTEM.md` | The app's design rules (redesign 2026-10-25): tokens, patterns, faces, alignment and pill centring. |
 | `.claude/skills/` | Design skills (`skills-lock.json`): `emilkowalski/skills` (MIT: `emil-design-eng`, `review-animations`, `mobile-native`, `break-ui`, `apple-design`, `ask-sonner`), `frontend-design` (Anthropic, Apache-2.0), `ui-ux-pro-max`, `ckw-design` and `taste-skill` (MIT), `impeccable` (Apache-2.0, modified). Provenance and project overrides in `.claude/skills/TAVIRON-NOTES.md`. They never override the rules below. |
 
 ## Rules that always apply

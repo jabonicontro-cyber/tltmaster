@@ -25,8 +25,9 @@ export function AdminNav() {
     <nav
       aria-label="Platform"
       // Narrow screens: the tabs scroll sideways; the fading right edge shows there are more (no wrap, no clipping mid-word).
-      className={cn(APP_CONTAINER, "flex snap-x gap-1 overflow-x-auto [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] lg:[mask-image:none]")}
+      className={cn(APP_CONTAINER, "pb-3")}
     >
+      <div className="flex w-fit max-w-full snap-x gap-1 overflow-x-auto rounded-full bg-white/[0.07] p-1 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] lg:[mask-image:none]">
       {NAV.map((n) => {
         const current = n.href === "/admin" ? path === "/admin" : path === n.href || path.startsWith(`${n.href}/`);
         return (
@@ -35,14 +36,15 @@ export function AdminNav() {
             href={n.href}
             aria-current={current ? "page" : undefined}
             className={cn(
-              "snap-start rounded-t-md px-3 py-2 text-sm font-semibold whitespace-nowrap transition-colors",
-              current ? "bg-surface text-ink" : "text-white/75 hover:bg-white/10 hover:text-white",
+              "snap-start rounded-full px-3.5 pt-1.5 pb-[7px] text-sm leading-5 font-semibold whitespace-nowrap transition-colors duration-150",
+              current ? "bg-white text-charcoal shadow-xs" : "text-white/70 hover:bg-white/[0.08] hover:text-white",
             )}
           >
             {n.label}
           </Link>
         );
       })}
+      </div>
     </nav>
   );
 }

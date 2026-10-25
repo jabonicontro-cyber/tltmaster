@@ -105,7 +105,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
             {myBalances.map((b) => (
               <li key={b.bank_id} className="bg-card px-5 py-3 sm:px-6">
                 <p className="text-sm font-semibold">{b.name}</p>
-                <p className="mt-1 text-2xl font-semibold tabular" data-testid="available-hours">{formatHours(b.available)} <span className="text-sm font-normal text-muted">available</span></p>
+                <p className="mt-1 text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular" data-testid="available-hours">{formatHours(b.available)} <span className="text-sm font-normal text-muted">available</span></p>
                 <p className="text-xs text-muted">Balance {formatHours(b.balance)}{b.pending ? ` · ${formatHours(b.pending)} pending` : ""}</p>
                 {!b.eligible && <p className="mt-1 text-xs text-muted">Your employment type cannot use this bank.</p>}
                 {b.usable_from && <p className="mt-1 text-xs text-muted">Usable from {formatDate(b.usable_from)}.</p>}

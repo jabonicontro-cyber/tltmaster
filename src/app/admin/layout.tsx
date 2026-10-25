@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         </div>
         <AdminNav />
       </header>
-      <main id="main" className={cn(APP_CONTAINER, "py-6")}>
+      <main id="main" className={cn(APP_CONTAINER, "py-8")}>
         {children}
       </main>
     </div>

@@ -358,11 +358,11 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                   {s.exceptions.urgent > 0 ? (() => {
                     const u = urgentSummary(s.urgent_by_kind);
                     if (!u || u.total !== s.exceptions.urgent) {
-                      return <Link href={href({})} className="rounded-full bg-critical px-2.5 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>;
+                      return <Link href={href({})} className="rounded-full bg-critical px-2.5 pt-0.5 pb-[3px] text-sm leading-5 font-semibold text-white">{s.exceptions.urgent} urgent</Link>;
                     }
                     return (
                       <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
-                        <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="rounded-full bg-critical px-2.5 py-0.5 text-sm font-semibold text-white">{u.lead}</Link>
+                        <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="rounded-full bg-critical px-2.5 pt-0.5 pb-[3px] text-sm leading-5 font-semibold text-white">{u.lead}</Link>
                         {u.parts.map((p, i) => (
                           <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
                         ))}
@@ -401,7 +401,7 @@ function Chip({ href, active, label, count }: { href: string; active: boolean; l
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium transition-colors", active ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:border-strong/30")}
+      className={cn("inline-flex items-center gap-1.5 rounded-full border px-3 pt-1 pb-[5px] text-[13px] leading-5 font-medium transition-colors", active ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:border-strong/30")}
     >
       {label}
       {count !== undefined && <Badge tone={active ? "dark" : count > 0 ? "amber" : "gray"}>{count}</Badge>}

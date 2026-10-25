@@ -182,7 +182,7 @@ export function ConversationView(props: {
               {m.attachments.map((a) => (
                 <li key={a.id}>
                   <a href={`/communications/files/${a.id}`} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-2 py-1 text-xs text-ink hover:border-strong">
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-2 pt-1 pb-[5px] text-xs leading-4 text-ink hover:border-strong">
                     {a.mime_type === "application/pdf" ? <FileText className="size-3.5" aria-hidden /> : <Paperclip className="size-3.5" aria-hidden />}
                     <span className="max-w-48 truncate">{a.file_name}</span>
                     <span className="text-muted">{formatBytes(a.size_bytes)}</span>
@@ -283,7 +283,7 @@ export function ConversationView(props: {
             {files.length > 0 && (
               <ul className="flex flex-wrap gap-2" aria-label="Files to send">
                 {files.map((f) => (
-                  <li key={f.key} className={cn("inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-xs", f.status === "failed" ? "border-red-300 text-red-800" : "border-line text-ink")}>
+                  <li key={f.key} className={cn("inline-flex items-center gap-1.5 rounded-xl border px-2 pt-1 pb-[5px] text-xs leading-4", f.status === "failed" ? "border-red-300 text-red-800" : "border-line text-ink")}>
                     <Paperclip className="size-3.5" aria-hidden />
                     <span className="max-w-40 truncate">{f.name}</span>
                     <span className="text-muted">{f.status === "uploading" ? "Uploading…" : f.status === "failed" ? f.error : formatBytes(f.size)}</span>

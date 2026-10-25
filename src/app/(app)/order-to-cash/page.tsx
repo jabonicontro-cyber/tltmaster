@@ -46,7 +46,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
               className="block rounded-panel border border-line/70 bg-card shadow-card px-3 py-2.5 hover:border-strong aria-[current=true]:border-strong"
             >
               <span className="block text-xs font-medium text-muted">{STAGE_LABELS[s.stage]}</span>
-              <span className="mt-0.5 block text-2xl font-semibold tabular">{s.total}</span>
+              <span className="mt-0.5 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{s.total}</span>
               <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {formatCents(s.cents)}</span>
             </Link>
           </li>

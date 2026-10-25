@@ -89,12 +89,28 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
     setTarget(t);
   }
 
-  // One filled button: the first forward step. Everything else is outlined, so the next move is obvious.
+  // One filled button: the first forward step. Everything else is lighter, so the next move is obvious.
   const forward = (t: OrderStatus) => FORWARD.includes(t) && !(status === "scheduled" && t === "confirmed") && !(status === "dispatched" && t === "scheduled");
   const primaryStep = allowed.find(forward);
 
+  const transitionButton = (t: OrderStatus, variant: "primary" | "ghost", className?: string) => (
+    <Button
+      key={t}
+      variant={variant}
+      className={className}
+      icon={iconFor(t)}
+      disabled={t === "confirmed" && status === "draft" && lineCount === 0}
+      title={t === "confirmed" && status === "draft" && lineCount === 0 ? "Add at least one line first" : undefined}
+      onClick={() => choose(t)}
+    >
+      {orderTransitionLabel(status, t)}
+    </Button>
+  );
+
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap items-center gap-2">
+      {/* The next step leads (filled); editing follows (outlined); other moves are quiet; canceling sits apart. */}
+      {primaryStep && transitionButton(primaryStep, "primary")}
       {canEdit && (
         <Link href={`/orders/${orderId}/edit`} className={buttonClasses("secondary")}>
           <Pencil className="size-4" aria-hidden /> {editLabel}
@@ -105,18 +121,8 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
           {hasSchedule ? "Change schedule" : "Set schedule"}
         </Button>
       )}
-      {allowed.map((t) => (
-        <Button
-          key={t}
-          variant={t === "canceled" ? "danger" : t === primaryStep ? "primary" : "secondary"}
-          icon={iconFor(t)}
-          disabled={t === "confirmed" && status === "draft" && lineCount === 0}
-          title={t === "confirmed" && status === "draft" && lineCount === 0 ? "Add at least one line first" : undefined}
-          onClick={() => choose(t)}
-        >
-          {orderTransitionLabel(status, t)}
-        </Button>
-      ))}
+      {allowed.filter((t) => t !== primaryStep && t !== "canceled").map((t) => transitionButton(t, "ghost"))}
+      {allowed.includes("canceled") && <span className="sm:ml-auto">{transitionButton("canceled", "ghost", "text-red-700 hover:bg-red-50")}</span>}
 
       <ConfirmDialog
         open={Boolean(target)}

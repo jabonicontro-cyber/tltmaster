@@ -33,7 +33,7 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-ink">Welcome, {c.customer.name}</h1>
+        <h1 className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">Welcome, {c.customer.name}</h1>
         {c.welcome ? <p className="mt-2 max-w-2xl whitespace-pre-line text-[15px] text-muted">{c.welcome}</p> : null}
       </div>
 
@@ -102,7 +102,7 @@ function Stat({ label, value, href }: { label: string; value: number; href: stri
   return (
     <Link href={href} className="rounded-panel border border-line/70 bg-card shadow-card p-4 hover:border-strong focus-visible:outline-2 focus-visible:outline-strong">
       <span className="block text-sm text-muted">{label}</span>
-      <span className="tabular mt-1 block text-2xl font-bold text-ink">{value}</span>
+      <span className="tabular mt-1 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">{value}</span>
     </Link>
   );
 }
@@ -111,7 +111,7 @@ function PublicPage({ slug, company, noAccess }: { slug: string; company: Portal
   return (
     <div className="space-y-6">
       <div className="rounded-panel border border-line/70 bg-card shadow-card p-6 sm:p-8">
-        <h1 className="text-2xl font-bold text-ink">{company.name} Customer Portal</h1>
+        <h1 className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">{company.name} Customer Portal</h1>
         {company.public_page && company.welcome ? <p className="mt-3 max-w-2xl whitespace-pre-line text-[15px] text-muted">{company.welcome}</p> : null}
         <p className="mt-3 max-w-2xl text-[15px] text-muted">Customers can sign in to follow their orders and deliveries, see quotes, and ask us questions.</p>
         {noAccess ? (

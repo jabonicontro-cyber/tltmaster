@@ -25,7 +25,7 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
   return (
     <div className="rounded-xl border border-line px-3 py-2.5">
       <dt className="text-xs font-medium text-muted">{label}</dt>
-      <dd className="mt-0.5 text-xl font-semibold text-ink tabular">{value}</dd>
+      <dd className="mt-0.5 text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink tabular">{value}</dd>
       {note && <dd className="text-xs text-muted">{note}</dd>}
     </div>
   );

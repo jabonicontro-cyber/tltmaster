@@ -33,7 +33,7 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   return (
     <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <p className="text-sm text-muted">{label}</p>
-      <p className="mt-1 text-2xl font-bold tabular">{value}</p>
+      <p className="mt-1 text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{value}</p>
       {sub ? <p className="mt-1 text-xs text-muted">{sub}</p> : null}
     </div>
   );
@@ -95,7 +95,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       />
       <form className="mb-8 flex flex-wrap items-end gap-x-3 gap-y-6" aria-label="Period">
         {PERIODS.map((p) => (
-          <Link key={p} href={`/reports?days=${p}`} className={`rounded-xl border px-3 py-2 text-sm font-semibold ${!custom && days === p ? "border-strong bg-strong text-white" : "border-line bg-card hover:bg-surface"}`}>
+          <Link key={p} href={`/reports?days=${p}`} className={`rounded-full border px-4 py-2 text-sm font-semibold ${!custom && days === p ? "border-strong bg-strong text-white" : "border-line bg-card hover:bg-surface"}`}>
             Last {p} days
           </Link>
         ))}

@@ -101,7 +101,7 @@ export default async function LaunchpadPage() {
                 {(m.bad || m.warn) && <span className={cn("size-1.5 rounded-full", m.bad ? "bg-critical" : "bg-amber-500")} aria-hidden />}
                 {m.label}
               </p>
-              <p className={cn("mt-1 text-2xl font-semibold tracking-tight tabular", m.bad ? "text-critical" : "text-ink")}>{m.value}</p>
+              <p className={cn("mt-1 text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular", m.bad ? "text-critical" : "text-ink")}>{m.value}</p>
               <p className="mt-auto pt-1 text-xs text-muted">{m.sub}</p>
             </Link>
           </li>
