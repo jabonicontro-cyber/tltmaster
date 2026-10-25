@@ -24,7 +24,7 @@ export function OrderProgress({ steps }: { steps: ProgressStep[] }) {
         {steps.map((s) => {
           const I = ICONS[s.state];
           return (
-            <li key={s.key} className="flex flex-col gap-1.5 px-4 py-3 sm:px-5" aria-label={`${s.label}: ${I.label}`}>
+            <li key={s.key} className="flex flex-col gap-1.5 px-5 py-3 sm:px-6" aria-label={`${s.label}: ${I.label}`}>
               <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
                 <I.icon className={cn("size-4", I.className)} aria-hidden /> {s.label}
                 <span className="sr-only"> — {I.label}</span>

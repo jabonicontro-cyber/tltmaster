@@ -52,7 +52,7 @@ export function ContactsPanel({ customerId, contacts, canEdit }: { customerId: s
       ) : (
         <ul className="divide-y divide-line">
           {visible.map((c) => (
-            <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+            <li key={c.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 sm:px-6">
               <div className="min-w-0">
                 <p className="flex flex-wrap items-center gap-2 font-semibold">
                   {c.name}
@@ -97,7 +97,7 @@ export function ContactsPanel({ customerId, contacts, canEdit }: { customerId: s
         </ul>
       )}
       {contacts.some((c) => !c.active) && (
-        <div className="border-t border-line px-4 py-2 sm:px-5">
+        <div className="border-t border-line px-5 py-2 sm:px-6">
           <button className="text-sm text-muted hover:text-ink hover:underline" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Hide archived contacts" : "Show archived contacts"}
           </button>
@@ -189,7 +189,7 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
       ) : (
         <ul className="divide-y divide-line">
           {visible.map((s) => (
-            <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+            <li key={s.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 sm:px-6">
               <div className="min-w-0">
                 <p className="flex items-center gap-2 font-semibold">
                   {s.label} {!s.active && <Badge>Archived</Badge>}
@@ -246,7 +246,7 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
         </ul>
       )}
       {sites.some((s) => !s.active) && (
-        <div className="border-t border-line px-4 py-2 sm:px-5">
+        <div className="border-t border-line px-5 py-2 sm:px-6">
           <button className="text-sm text-muted hover:text-ink hover:underline" onClick={() => setShowArchived((v) => !v)}>
             {showArchived ? "Hide archived sites" : "Show archived sites"}
           </button>

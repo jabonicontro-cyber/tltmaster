@@ -7,6 +7,7 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { addDays, formatDate, isIsoDate } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
+import { facesForEmployees } from "@/server/data/faces";
 import { getScheduleWeek, listPatterns, weekStart } from "@/server/data/schedules";
 import { businessToday } from "@/server/data/settings";
 
@@ -24,6 +25,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   const { today } = await businessToday();
   const from = weekStart(sp.week && isIsoDate(sp.week) ? sp.week : today);
   const [week, patterns] = await Promise.all([getScheduleWeek(from, 7), listPatterns(from)]);
+  const faces = await facesForEmployees(week.people.map((p) => p.employeeId));
   const q = (sp.q ?? "").trim().toLowerCase();
   const people = q ? week.people.filter((p) => p.name.toLowerCase().includes(q)) : week.people;
   const todayRows = week.people.map((p) => p.days.find((d) => d.date === today)).filter(Boolean);
@@ -51,7 +53,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             <p className="mb-3 text-sm text-muted">Today: <strong className="text-ink">{counts.on}</strong> on shift · <strong className="text-ink">{counts.off}</strong> off · <strong className="text-ink">{counts.none}</strong> without a schedule</p>
           )}
           {people.length ? (
-            <ScheduleGrid people={people} from={from} canManage={manage} patterns={patterns} />
+            <ScheduleGrid people={people} from={from} canManage={manage} patterns={patterns} faces={faces} />
           ) : (
             <EmptyState title={q ? "Nobody matches" : "No people yet"} description={q ? "Try another name." : "Add people under People; their schedules show here."} action={q ? <Link href={`/schedule?week=${from}`} className="underline">Show everyone</Link> : undefined} />
           )}

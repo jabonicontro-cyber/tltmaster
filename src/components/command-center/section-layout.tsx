@@ -50,23 +50,23 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
   const byId = new Map(sections.map((s) => [s.id, s]));
 
   return (
-    <div className="space-y-7">
+    <div className="space-y-10">
       {order.map((id, index) => {
         const s = byId.get(id);
         if (!s) return null;
         const isCollapsed = collapsed.includes(id);
         return (
           <section key={id} id={id === "attention" ? "attention" : undefined} aria-labelledby={`section-${id}`} className="scroll-mt-20">
-            <div className="mb-2 flex items-center gap-2">
+            <div className="mb-3 flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => toggle(id)}
                 aria-expanded={!isCollapsed}
                 aria-controls={`section-body-${id}`}
-                className="flex min-w-0 items-center gap-1.5 text-left"
+                className="group flex min-w-0 items-center gap-2 rounded-full text-left"
               >
-                {isCollapsed ? <ChevronRight className="size-3.5 shrink-0 text-muted" aria-hidden /> : <ChevronDown className="size-3.5 shrink-0 text-muted" aria-hidden />}
-                <h2 id={`section-${id}`} className="text-sm font-semibold text-ink">{s.title}</h2>
+                <h2 id={`section-${id}`} className="text-lg font-semibold tracking-[-0.015em] text-ink">{s.title}</h2>
+                {isCollapsed ? <ChevronRight className="size-4 shrink-0 text-muted transition-colors group-hover:text-ink" aria-hidden /> : <ChevronDown className="size-4 shrink-0 text-muted transition-colors group-hover:text-ink" aria-hidden />}
               </button>
               {isCollapsed && s.collapsedSummary && <span className="truncate text-sm text-muted">{s.collapsedSummary}</span>}
               <span className="ml-auto flex items-center gap-1">

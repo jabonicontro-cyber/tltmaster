@@ -101,7 +101,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
           />
           {sp.tag && <input type="hidden" name="tag" value={sp.tag} />}
         </FilterBar>
-        {sp.tag && <p className="px-4 pb-2 text-sm text-muted sm:px-5">Tagged “{sp.tag}” · <Link href="/customers" className="font-semibold text-brand-fg hover:underline">clear</Link></p>}
+        {sp.tag && <p className="px-5 pb-2 text-sm text-muted sm:px-6">Tagged “{sp.tag}” · <Link href="/customers" className="font-semibold text-brand-fg hover:underline">clear</Link></p>}
         {rows.length === 0 ? (
           <EmptyState
             title={filtered ? "No customers match these filters" : "No customers yet"}

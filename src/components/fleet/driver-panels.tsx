@@ -86,7 +86,7 @@ export function QualificationsPanel({ driverId, qualifications, today, soon, tim
       ) : (
         <ul className="divide-y divide-line">
           {qualifications.map((q) => (
-            <li key={q.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3 sm:px-5">
+            <li key={q.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 sm:px-6">
               <div className="min-w-0 space-y-1">
                 <p className="font-semibold">
                   {qualificationName(q)}

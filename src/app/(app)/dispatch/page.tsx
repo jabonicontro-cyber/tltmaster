@@ -12,6 +12,7 @@ import { formatDateLong, isIsoDate } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDispatchDay, listUnscheduledOrders } from "@/server/data/dispatch";
+import { facesForDrivers } from "@/server/data/faces";
 import { baseOptions, parseBaseFilter } from "@/server/data/bases";
 import { businessToday } from "@/server/data/settings";
 
@@ -36,6 +37,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       return { error: "Smart Dispatch suggestions are unavailable right now. The board below still works; try again in a moment." };
     }),
   ]);
+  // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
+  const faces = await facesForDrivers(day.drivers.map((d) => d.id));
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
 
   return (
@@ -64,10 +67,10 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       {"error" in smart ? (
         <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
       ) : (
-        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} />
+        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces} />
       )}
       <div data-guide="dispatch-board">
-        <DispatchBoard day={day} bases={bases} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard day={day} bases={bases} faces={faces} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

@@ -217,7 +217,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               description={photos.length ? "From the driver or the office. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute." : "No photo or scan is attached yet."}
             />
             {live && can(access, "tickets.edit") && (
-              <div className="border-b border-line px-4 py-3 sm:px-5"><TicketScanUpload ticketId={t.id} /></div>
+              <div className="border-b border-line px-5 py-3 sm:px-6"><TicketScanUpload ticketId={t.id} /></div>
             )}
             {photos.length > 0 && (
               <CardBody>
@@ -277,7 +277,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
 
         <Card className="self-start">
           <CardHeader title="History" description="All actions on this ticket number, newest first." />
-          <ol className="px-4 py-3 sm:px-5" aria-label="Ticket history">
+          <ol className="px-5 py-3 sm:px-6" aria-label="Ticket history">
             {events.map((e) => (
               <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
                 <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />

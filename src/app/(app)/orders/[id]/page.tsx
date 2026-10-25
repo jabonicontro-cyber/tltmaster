@@ -237,7 +237,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 {dispatch.loads.map((l) => {
                   const a = dispatch.assignments.find((x) => x.load_id === l.id);
                   return (
-                    <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
+                    <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-2.5 sm:px-6">
                       <span>
                         <strong>Load {l.load_number}</strong>{" "}
                         <span className="text-sm text-muted tabular">
@@ -326,7 +326,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               <QuoteLinesTable lines={lines} />
             )}
             {lineTickets && lines.length > 0 && (
-              <div className="border-t border-line px-4 py-3 sm:px-5">
+              <div className="border-t border-line px-5 py-3 sm:px-6">
                 <h3 className="mb-2 text-sm font-bold text-ink">Delivered so far</h3>
                 <table className="w-full text-sm" aria-label="Delivered so far">
                   <thead>
@@ -356,7 +356,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 <p className="mt-1 text-xs text-muted">From delivery tickets in each line&apos;s unit. Only verified (accepted) tickets count as delivered; prices are not changed by deliveries.</p>
               </div>
             )}
-            <div className="flex justify-end border-t border-line px-4 py-3 sm:px-5">
+            <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
               <dl className="w-full max-w-xs space-y-1 text-[15px]">
                 <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(order.subtotal_cents)}</dd></div>
                 {order.discount_cents > 0 && (
@@ -372,7 +372,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
 
         <Card className="self-start">
           <CardHeader title="History" description="Status changes and edits, newest first." />
-          <ol className="px-4 py-3 sm:px-5" aria-label="Order history">
+          <ol className="px-5 py-3 sm:px-6" aria-label="Order history">
             {timeline.map((e) => (
               <li key={`${e.kind}-${e.id}`} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
                 <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.kind === "status" ? "bg-strong" : "bg-line"}`} aria-hidden />

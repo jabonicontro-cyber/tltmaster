@@ -53,7 +53,7 @@ export default async function ClearancePage() {
             ) : (
               <ul className="divide-y divide-line">
                 {g.rows.map((w) => (
-                  <li key={w.id} className="px-4 py-3 sm:px-5">
+                  <li key={w.id} className="px-5 py-3 sm:px-6">
                     <div className="flex flex-wrap items-center gap-2">
                       <Link href={`/maintenance/work-orders/${w.id}`} className="font-semibold text-ink hover:underline">{w.number} · {w.title}</Link>
                       {w.safety_critical && <SafetyBadge />}

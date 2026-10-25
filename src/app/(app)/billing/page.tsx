@@ -243,13 +243,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "exceptions" ? (
           <>
-            <p className="border-b border-line px-4 py-3 text-sm text-muted sm:px-5">{QUANTITY_POLICY}</p>
+            <p className="border-b border-line px-5 py-3 text-sm text-muted sm:px-6">{QUANTITY_POLICY}</p>
             {board.groups.length === 0 ? (
               <EmptyState icon={<CheckCircle2 className="size-6" />} title="No exceptions" description="Quantity differences, units that cannot be compared, lines without tickets, missing POs and zero rates appear here." />
             ) : (
               <ul className="divide-y divide-line" aria-label="Orders with exceptions">
                 {board.groups.map(({ order: o, exceptions }) => (
-                  <li key={o.order_id} className="px-4 py-4 sm:px-5">
+                  <li key={o.order_id} className="px-5 py-4 sm:px-6">
                     <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
                       <div>
                         <Link href={`/billing/orders/${o.order_id}`} className="font-semibold tabular hover:underline">{o.order_number}</Link>
@@ -298,7 +298,7 @@ function HandedOff({ board, canManage, highlight, qb }: {
   return (
     <ul className="divide-y divide-line" aria-label="Handoff batches">
       {board.batches.map(({ batch: b, orders }) => (
-        <li key={b.id} className={cn("px-4 py-4 sm:px-5", highlight === b.id && "bg-amber-50/40")} aria-label={`Batch ${b.batch_number}`}>
+        <li key={b.id} className={cn("px-5 py-4 sm:px-6", highlight === b.id && "bg-amber-50/40")} aria-label={`Batch ${b.batch_number}`}>
           <div className="mb-2 flex flex-wrap items-start justify-between gap-2">
             <div>
               <span className="font-semibold tabular">Batch {b.batch_number}</span>

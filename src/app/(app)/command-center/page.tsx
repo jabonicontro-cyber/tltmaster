@@ -150,7 +150,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
               {!myItems ? (
                 <div className="p-4"><ErrorState title="Your items could not be loaded" description="This does not mean nothing is assigned to you. Try again in a moment." /></div>
               ) : myItems.items.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-muted sm:px-5">Nothing is assigned to you right now.</p>
+                <p className="px-5 py-6 text-sm text-muted sm:px-6">Nothing is assigned to you right now.</p>
               ) : (
                 <>
                   <ul className="divide-y divide-line" aria-label="Assigned to you">
@@ -159,7 +159,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     ))}
                   </ul>
                   {myItems.total > myItems.items.length && (
-                    <p className="px-4 py-3 text-sm sm:px-5"><Link href={href({ mine: true })} className="font-semibold underline">All {myItems.total} assigned to you</Link></p>
+                    <p className="px-5 py-3 text-sm sm:px-6"><Link href={href({ mine: true })} className="font-semibold underline">All {myItems.total} assigned to you</Link></p>
                   )}
                 </>
               )}
@@ -173,11 +173,11 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 actions={<ButtonLink href="/driver" size="sm" variant="secondary" icon={<Route className="size-4" />}>Open My Day</ButtonLink>}
               />
               {myLoads.length === 0 ? (
-                <p className="px-4 py-6 text-sm text-muted sm:px-5">No loads assigned to you today.</p>
+                <p className="px-5 py-6 text-sm text-muted sm:px-6">No loads assigned to you today.</p>
               ) : (
                 <ul className="divide-y divide-line" aria-label="Your loads today">
                   {myLoads.map((a) => (
-                    <li key={a.assignment_id} className="px-4 py-3 text-sm sm:px-5">
+                    <li key={a.assignment_id} className="px-5 py-3 text-sm sm:px-6">
                       <p className="font-semibold">{formatTime(a.load.start_time)} – {formatTime(a.load.end_time)} · {a.order.number} load {a.load.number}</p>
                       <p className="text-muted">{a.order.customer_name} · {a.site.label || a.site.line1} · Truck {a.truck ?? "—"}{a.trailer ? ` + ${a.trailer}` : ""}</p>
                       {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand-fg hover:underline">Send the ticket</Link>}
@@ -200,8 +200,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       collapsedSummary: s ? `${s.exceptions.total} open · ${s.exceptions.urgent} urgent` : "Could not be loaded",
       content: (
         <Card>
-          <CardHeader title="What needs attention" description="One item per underlying problem, most urgent and oldest first. An item leaves the queue only when its record is fixed in its own module." />
-          <nav aria-label="Filter the queue" className="flex flex-wrap gap-2 border-b border-line px-4 py-3 sm:px-5">
+          <CardHeader description="One item per underlying problem, most urgent and oldest first. An item leaves the queue only when its record is fixed in its own module." />
+          <nav aria-label="Filter the queue" className="flex flex-wrap gap-2 border-b border-line/70 px-5 py-3 sm:px-6">
             <Chip href={href({})} active={!kind && !mine && !hidden} label="All" count={queue?.ok && !kind && !mine && !hidden ? queue.data.total : s ? s.exceptions.total - (s.exceptions.hidden ?? 0) : undefined} />
             {visibleKinds.map((k) => (
               <Chip key={k} href={href({ kind: k })} active={kind === k && !mine && !hidden} label={KIND_LABELS[k]} count={s?.by_kind[k] ?? 0} />
@@ -209,7 +209,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             {s && s.exceptions.mine > 0 && <Chip href={href({ mine: true })} active={mine && !hidden} label="Assigned to me" count={s.exceptions.mine} />}
             {s && (s.exceptions.hidden ?? 0) > 0 && <Chip href={href({ hidden: true })} active={hidden} label="Hidden by you" count={s.exceptions.hidden} />}
           </nav>
-          <details className="border-b border-line px-4 py-2 text-sm sm:px-5">
+          <details className="border-b border-line/70 px-5 py-2.5 text-sm sm:px-6">
             <summary className="cursor-pointer font-semibold text-muted">How priority is decided</summary>
             <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
               {PRIORITY_RULES.map((r) => <li key={r}>{r}</li>)}
@@ -233,7 +233,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             />
           ) : (
             <>
-              {hidden && <p className="border-b border-line bg-surface px-4 py-2 text-sm sm:px-5">These are still open for everyone else. They return to your queue when the time runs out.</p>}
+              {hidden && <p className="border-b border-line bg-surface px-5 py-2 text-sm sm:px-6">These are still open for everyone else. They return to your queue when the time runs out.</p>}
               <ul className="divide-y divide-line" aria-label="Attention items">
                 {queue.data.items.map((item) => (
                   <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
@@ -289,25 +289,25 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         {!activity.ok ? (
           <div className="p-4"><ErrorState title="Activity could not be loaded" /></div>
         ) : activity.data.rows.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted sm:px-5">No activity yet.</p>
+          <p className="px-5 py-6 text-sm text-muted sm:px-6">No activity yet.</p>
         ) : (
           <>
             <ul className="divide-y divide-line" aria-label="Recent activity">
               {activity.data.rows.map((a) => {
                 const link = activityHref(a);
                 return (
-                  <li key={a.id} className="px-4 py-2.5 text-sm sm:px-5">
+                  <li key={a.id} className="px-5 py-2.5 text-sm sm:px-6">
                     {link ? <Link href={link} className="break-words hover:underline">{a.summary}</Link> : <span className="break-words">{a.summary}</span>}
                     <div className="text-xs text-muted">{formatDateTime(a.occurred_at, timezone)} · {a.actor_id ? names[a.actor_id] ?? "Former user" : "System"}</div>
                   </li>
                 );
               })}
             </ul>
-            <div className="flex justify-between gap-2 px-4 py-3 sm:px-5">
+            <div className="flex justify-between gap-2 px-5 py-3 sm:px-6">
               {activityPage > 1 ? <Link href={href({ kind, mine, hidden, page, activity: activityPage - 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Newer</Link> : <span />}
               {activity.data.hasMore && <Link href={href({ kind, mine, hidden, page, activity: activityPage + 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Older</Link>}
             </div>
-            <p className="px-4 pb-3 text-xs text-muted sm:px-5">{ACTIVITY_PAGE_SIZE} per page.</p>
+            <p className="px-5 pb-3 text-xs text-muted sm:px-6">{ACTIVITY_PAGE_SIZE} per page.</p>
           </>
         )}
       </Card>
@@ -316,7 +316,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 
   return (
     <>
-      <p className="mb-1 text-xl font-semibold text-ink" data-testid="greeting">{greeting(await shownName(access))}</p>
+      <p className="mb-0.5 text-[15px] font-medium text-muted" data-testid="greeting">{greeting(await shownName(access))}</p>
       <PageHeader
         title="Command Center"
         description={`Today is ${formatDate(today)}. What needs attention, what is yours, and where to fix it — read live from the records.`}
@@ -339,28 +339,47 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {/* Pinned status strip: not movable, not collapsible, urgent counts always visible. */}
       {ops &&
         (s ? (
-          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
-            <p className="text-base font-semibold text-ink">
-              {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
-            </p>
-            {/* One urgent indicator: each urgent item counted once, under its own kind (no separate "urgent orders" label). */}
-            {s.exceptions.urgent > 0 && (() => {
-              const u = urgentSummary(s.urgent_by_kind);
-              if (!u || u.total !== s.exceptions.urgent) {
-                return <Link href={href({})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>;
-              }
-              return (
-                <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
-                  <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{u.lead}</Link>
-                  {u.parts.map((p, i) => (
-                    <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
-                  ))}
-                </span>
-              );
-            })()}
-            {s.exceptions.mine > 0 && <Link href={href({ mine: true })} className="text-sm font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link>}
-            {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
-            <p className="ml-auto text-xs text-muted">As of {formatDateTime(s.as_of, timezone)}</p>
+          <section aria-label="Attention summary" className="mb-9 rounded-panel border border-line/70 bg-card shadow-card">
+            {/* Today at a glance: three large figures, each a way in. Urgent keeps the fixed critical red, never the brand. */}
+            <div className="grid grid-cols-1 divide-y divide-line/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
+              <div className="px-5 py-5 sm:px-6">
+                <p className="text-sm font-medium text-muted">Needs attention</p>
+                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.total === 0 ? "text-muted" : "text-ink")} aria-hidden>{s.exceptions.total}</p>
+                <p className="mt-2 text-sm font-semibold text-ink">
+                  {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
+                </p>
+                {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
+              </div>
+              <div className="px-5 py-5 sm:px-6">
+                <p className="text-sm font-medium text-muted">Urgent</p>
+                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.urgent > 0 ? "text-critical" : "text-muted")} aria-hidden>{s.exceptions.urgent}</p>
+                <div className="mt-2 text-sm">
+                  {/* One urgent indicator: each urgent item counted once, under its own kind (no separate "urgent orders" label). */}
+                  {s.exceptions.urgent > 0 ? (() => {
+                    const u = urgentSummary(s.urgent_by_kind);
+                    if (!u || u.total !== s.exceptions.urgent) {
+                      return <Link href={href({})} className="rounded-full bg-critical px-2.5 py-0.5 text-sm font-semibold text-white">{s.exceptions.urgent} urgent</Link>;
+                    }
+                    return (
+                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
+                        <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="rounded-full bg-critical px-2.5 py-0.5 text-sm font-semibold text-white">{u.lead}</Link>
+                        {u.parts.map((p, i) => (
+                          <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
+                        ))}
+                      </span>
+                    );
+                  })() : <span className="text-muted">Nothing urgent</span>}
+                </div>
+              </div>
+              <div className="px-5 py-5 sm:px-6">
+                <p className="text-sm font-medium text-muted">Assigned to you</p>
+                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.mine > 0 ? "text-ink" : "text-muted")} aria-hidden>{s.exceptions.mine}</p>
+                <div className="mt-2 text-sm">
+                  {s.exceptions.mine > 0 ? <Link href={href({ mine: true })} className="font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link> : <span className="text-muted">Nothing assigned to you</span>}
+                </div>
+              </div>
+            </div>
+            <p className="border-t border-line/70 px-5 py-2.5 text-xs text-muted sm:px-6">As of {formatDateTime(s.as_of, timezone)} · read live from the records</p>
           </section>
         ) : (
           <div className="mb-5">

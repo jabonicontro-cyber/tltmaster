@@ -133,7 +133,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
           <CardHeader title={`${day.unlocated.length} site${day.unlocated.length === 1 ? "" : "s"} without a location`} description="Legs to these sites have no distance until they are located. Coordinates can be copied from any map." />
           <ul className="divide-y divide-line">
             {day.unlocated.map((s) => (
-              <li key={s.siteId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
+              <li key={s.siteId} className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 sm:px-6">
                 <div className="min-w-0">
                   <p className="font-medium text-ink">{s.label}</p>
                   <p className="truncate text-xs text-muted">{s.customer}{s.address ? ` · ${s.address}` : ""}</p>
@@ -159,7 +159,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
             return (
               <section key={r.truckId} aria-label={`Route for truck ${r.unit}`}>
               <Card>
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-5">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-3.5 sm:px-6">
                   <div className="flex items-center gap-3">
                     <span className="grid size-9 place-items-center rounded-2xl bg-surface text-ink"><Truck className="size-4" aria-hidden /></span>
                     <div>
@@ -184,7 +184,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
                   </div>
                 </div>
                 {r.legs.some((l) => l.fromPoint && l.toPoint) && (
-                  <div className="px-4 pt-3 sm:px-5">
+                  <div className="px-5 pt-3 sm:px-6">
                     <RouteMap
                       stops={[...(r.legs[0]?.fromPoint ? [{ point: r.legs[0].fromPoint, label: r.legs[0].from }] : []), ...r.legs.filter((l) => l.toPoint).map((l) => ({ point: l.toPoint!, label: l.to }))]}
                       tiles={status.state === "ready"}
@@ -192,7 +192,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
                     />
                   </div>
                 )}
-                <ol className="px-4 py-3 sm:px-5" aria-label="Stops and legs">
+                <ol className="px-5 py-3 sm:px-6" aria-label="Stops and legs">
                   {r.legs.length === 0 && r.stops.map((s) => <StopRow key={s.loadId} label={`${s.orderNumber} · ${s.site}`} sub={`${s.customer} · ${s.start}–${s.end}`} located={Boolean(s.point)} />)}
                   {r.legs.map((l, i) => {
                     const stop = r.stops.find((s) => `${s.orderNumber} · ${s.site}` === l.to);

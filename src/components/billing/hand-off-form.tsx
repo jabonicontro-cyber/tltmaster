@@ -43,7 +43,7 @@ export function HandOffForm({ orders, canManage }: { orders: ReadyOrder[]; canMa
   return (
     <>
       {canManage && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-3 sm:px-5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3 sm:px-6">
           <p className="text-sm text-muted">{selected.size ? `${selected.size} selected · ${formatCents(total)} order total` : "Select the orders to hand off for billing."}</p>
           <Button icon={<Send className="size-4" />} disabled={!selected.size} onClick={() => { setKey(crypto.randomUUID()); setOpen(true); }}>
             Hand off selected

@@ -316,7 +316,7 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
         actions={<Button size="sm" icon={<UserPlus className="size-4" />} onClick={() => setInviting(true)}>Invite user</Button>}
       />
       {!inviteAvailable && (
-        <div className="px-4 pt-4 sm:px-5">
+        <div className="px-5 pt-4 sm:px-6">
           <Notice tone="warning" title="Invitations are not configured">
             Set SUPABASE_SERVICE_ROLE_KEY on the server to invite users from here. Until then, create users in the Supabase dashboard and assign roles below.
           </Notice>

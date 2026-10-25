@@ -1,5 +1,7 @@
 "use client";
 
+import { Avatar } from "@/components/ui/avatar";
+import type { Face } from "@/server/data/faces";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -31,7 +33,7 @@ function ExclusionList({ groups, className }: { groups: ExclusionGroup[]; classN
   );
 }
 
-function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string }) {
+function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string; faces: Record<string, Face> }) {
   const router = useRouter();
   const options = plan.proposal ? [plan.proposal, ...plan.alternatives] : [];
   const [choice, setChoice] = useState(0);
@@ -84,7 +86,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
   const urgentRank = plan.priority.rank;
   if (assigned) return null;
   return (
-    <li className="px-4 py-3 sm:px-5" aria-label={`${l.order_number} load ${l.load_number}`}>
+    <li className="px-5 py-3 sm:px-6" aria-label={`${l.order_number} load ${l.load_number}`}>
       {/* One line per load: what, when, for whom, and how urgent. */}
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <Link href={withReturn(`/orders/${l.order_id}`, back)} className="font-semibold tabular text-ink hover:underline">{l.order_number}</Link>
@@ -103,7 +105,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
               <span className="text-muted">Proposed: </span>
               <span className="font-semibold text-ink">Truck {chosen?.truckLabel}</span>
               <span className="text-muted"> with </span>
-              <span className="font-semibold text-ink">{chosen?.driverLabel}</span>
+              <span className="inline-flex items-center gap-1.5 align-middle font-semibold text-ink">{chosen && <Avatar name={chosen.driverLabel} size={22} {...faces[chosen.driverId]} />}{chosen?.driverLabel}</span>
             </p>
             {canEdit ? (
               <div className="flex flex-wrap items-center gap-2">
@@ -202,7 +204,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
  * the next few days, most urgent first. Proposals are suggestions only; each
  * one is assigned only when a dispatcher approves it.
  */
-export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string }) {
+export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {} }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face> }) {
   const feasible = plans.filter((p) => p.proposal).length;
   // The most urgent few first; the rest one click away, so the board below stays reachable.
   const [all, setAll] = useState(false);
@@ -218,15 +220,15 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
         </span>
       </summary>
       {/* Outside the summary: links inside it would also toggle the section (nested interactive controls). */}
-      <nav aria-label="Smart Dispatch period" className="flex justify-end gap-1 border-b border-line px-4 py-1.5 text-xs">
+      <nav aria-label="Smart Dispatch period" className="flex justify-end border-b border-line/70 px-5 py-2 sm:px-6"><span className="flex gap-0.5 rounded-full bg-ink/[0.05] p-0.5 text-xs font-semibold">
         {[1, 3, 7].map((d) => (
           <Link key={d} href={`/dispatch?horizon=${d}`} aria-current={d === horizon ? "page" : undefined}
-            className={`rounded border px-2 py-0.5 ${d === horizon ? "border-strong bg-strong text-white" : "border-line"}`}>
+            className={`rounded-full px-3 py-1 transition-colors ${d === horizon ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink"}`}>
             {d === 1 ? "Today" : `${d} days`}
           </Link>
         ))}
-      </nav>
-      <details className="border-b border-line px-4 py-2 text-xs text-muted sm:px-5">
+      </span></nav>
+      <details className="border-b border-line px-5 py-2 text-xs text-muted sm:px-6">
         <summary className="cursor-pointer">
           Proposals only — nothing is assigned until you approve. <span className="font-medium text-amber-900">Hours of service are not checked.</span> <span className="underline">About these proposals</span>
         </summary>
@@ -236,9 +238,9 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
           {plans.length === 0 && <li>{HOS_NOTE}</li>}
         </ul>
       </details>
-      {plans.length > 0 ? <ul className="divide-y divide-line">{shown.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} />)}</ul> : null}
+      {plans.length > 0 ? <ul className="divide-y divide-line">{shown.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} faces={faces} />)}</ul> : null}
       {plans.length > FIRST && (
-        <div className="border-t border-line px-4 py-2.5 text-center sm:px-5">
+        <div className="border-t border-line px-5 py-2.5 text-center sm:px-6">
           <button type="button" onClick={() => setAll((v) => !v)} className="text-sm font-medium text-brand-fg hover:underline">
             {all ? "Show fewer" : `Show all ${plans.length} loads`}
           </button>

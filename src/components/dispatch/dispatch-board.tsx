@@ -5,7 +5,9 @@ import type { BaseOption } from "@/components/bases/base-field";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Truck, UserRound, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Truck, XCircle } from "lucide-react";
+import { Avatar } from "@/components/ui/avatar";
+import type { Face } from "@/server/data/faces";
 import { toast } from "sonner";
 import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
@@ -32,6 +34,8 @@ interface Lookup {
   trucks: Map<string, DispatchDay["trucks"][number]>;
   trailers: Map<string, DispatchDay["trailers"][number]>;
   drivers: Map<string, DispatchDay["drivers"][number]>;
+  /** Driver pictures by driver id (initials when missing). */
+  faces: Record<string, Face>;
 }
 
 const timeRange = (l: Pick<OrderLoadRow, "start_time" | "end_time">) => `${formatTime(l.start_time)} – ${formatTime(l.end_time)}`;
@@ -42,7 +46,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [] }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[] }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {} }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face> }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -60,8 +64,9 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
       trucks: new Map(day.trucks.map((t) => [t.id, t])),
       trailers: new Map(day.trailers.map((t) => [t.id, t])),
       drivers: new Map(day.drivers.map((d) => [d.id, d])),
+      faces,
     }),
-    [day],
+    [day, faces],
   );
   const active = day.assignments.filter((a) => a.status === "active");
   const activeByLoad = new Map(active.map((a) => [a.load_id, a]));
@@ -259,7 +264,7 @@ function OrderCard({
 
   return (
     <Card>
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-3 sm:px-6">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
@@ -288,7 +293,7 @@ function OrderCard({
       </div>
 
       {!dispatchable && (
-        <p className="border-b border-line bg-amber-50 px-4 py-2 text-sm text-amber-950 sm:px-5">
+        <p className="border-b border-line bg-amber-50 px-5 py-2 text-sm text-amber-950 sm:px-6">
           {o.status === "confirmed"
             ? "This order is confirmed but not marked scheduled. Mark it scheduled on the order page to plan loads."
             : o.status === "on_hold"
@@ -298,7 +303,7 @@ function OrderCard({
       )}
 
       {loads.length === 0 ? (
-        <p className="px-4 py-4 text-sm text-muted sm:px-5">No loads planned for this day{canEdit && dispatchable ? " — add one to assign a truck." : "."}</p>
+        <p className="px-5 py-4 text-sm text-muted sm:px-6">No loads planned for this day{canEdit && dispatchable ? " — add one to assign a truck." : "."}</p>
       ) : (
         <ol className="divide-y divide-line">
           {loads.map((l) => {
@@ -310,7 +315,7 @@ function OrderCard({
                 key={l.id}
                 id={`load-${l.id}`}
                 aria-current={focusLoadId === l.id ? "true" : undefined}
-                className={cn("grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-12 sm:px-5", canceled && "bg-surface/60 text-muted", focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset")}
+                className={cn("grid grid-cols-1 gap-3 px-5 py-3 sm:grid-cols-12 sm:px-6", canceled && "bg-surface/60 text-muted", focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset")}
                 aria-label={`Load ${l.load_number}`}
               >
                 <div className="sm:col-span-3">
@@ -397,7 +402,7 @@ function AssignmentSummary({ a, lk }: { a: AssignmentRow; lk: Lookup }) {
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="inline-flex items-center gap-1 font-semibold"><Truck className="size-4" aria-hidden /> {truck?.unit_number ?? "Inactive truck"}</span>
         {a.trailer_id && <span className="font-semibold">+ {trailer?.unit_number ?? "inactive trailer"}</span>}
-        <span className="inline-flex items-center gap-1"><UserRound className="size-4" aria-hidden /> {driver?.display_name ?? "Inactive driver"}</span>
+        <span className="inline-flex items-center gap-1.5"><Avatar name={driver?.display_name ?? "Driver"} size={22} {...lk.faces[a.driver_id]} /> {driver?.display_name ?? "Inactive driver"}</span>
         <Badge tone="green">Assigned</Badge>
       </p>
       {a.warnings.length > 0 && <p className="text-xs text-amber-900">{a.warnings.map(eligibilityMessage).join(" ")}</p>}
@@ -418,13 +423,13 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
       <Card>
         <CardHeader title="Trucks today" description="Bookings on this board and service status." />
         {day.trucks.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">No active trucks. <Link href="/fleet/trucks/new" className="underline">Add a truck</Link>.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">No active trucks. <Link href="/fleet/trucks/new" className="underline">Add a truck</Link>.</p>
         ) : (
           <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label="Trucks today">
             {day.trucks.map((t) => {
               const bookings = bookingsFor(active, "truck", t.id);
               return (
-                <li key={t.id} className="px-4 py-2 sm:px-5">
+                <li key={t.id} className="px-5 py-2 sm:px-6">
                   <div className="flex items-center justify-between gap-2">
                     <Link href={`/fleet/trucks/${t.id}`} className="min-w-0 font-semibold break-words hover:underline">{t.unit_number}</Link>
                     {t.service_status === "out_of_service" ? (
@@ -448,16 +453,16 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
       <Card>
         <CardHeader title="Drivers today" description="Eligibility on this date (class B or higher) and bookings." />
         {day.drivers.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">No active drivers. <Link href="/fleet/drivers/new" className="underline">Add a driver</Link>.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">No active drivers. <Link href="/fleet/drivers/new" className="underline">Add a driver</Link>.</p>
         ) : (
           <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label="Drivers today">
             {day.drivers.map((d) => {
               const r = driverChecks(d, false, day.date);
               const bookings = bookingsFor(active, "driver", d.id);
               return (
-                <li key={d.id} className="px-4 py-2 sm:px-5">
+                <li key={d.id} className="px-5 py-2 sm:px-6">
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/fleet/drivers/${d.id}`} className="min-w-0 font-semibold break-words hover:underline">{d.display_name}</Link>
+                    <Link href={`/fleet/drivers/${d.id}`} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} />{d.display_name}</Link>
                     {!r.eligible ? (
                       <Badge tone="red">Not eligible</Badge>
                     ) : bookings.length ? (

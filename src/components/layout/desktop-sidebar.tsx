@@ -93,7 +93,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         }
       }}
       className={cn(
-        "no-print fixed inset-y-3 left-3 z-30 hidden flex-col overflow-x-hidden rounded-[1.5rem] bg-charcoal shadow-card lg:flex",
+        "no-print fixed inset-y-3 left-3 z-30 hidden flex-col overflow-x-hidden rounded-[1.5rem] bg-charcoal shadow-card ring-1 ring-white/[0.06] lg:flex",
         "transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none",
         expanded ? "w-64" : "w-[4.5rem]",
         expanded && !pinned && "shadow-float",

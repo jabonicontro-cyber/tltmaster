@@ -621,7 +621,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                 const amount = totals.lineAmounts[i] ?? 0;
                 const isCharge = l.kind !== "material";
                 return (
-                  <li key={l.key} className="grid grid-cols-12 gap-x-3 gap-y-2 px-4 py-4 sm:px-5" aria-label={`Line ${i + 1}`}>
+                  <li key={l.key} className="grid grid-cols-12 gap-x-3 gap-y-2 px-5 py-4 sm:px-6" aria-label={`Line ${i + 1}`}>
                     <div className="col-span-12 flex items-center gap-2 text-sm font-semibold text-muted lg:hidden">Line {i + 1}</div>
 
                     {/* Item */}
@@ -785,7 +785,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                 );
               })}
             </ol>
-            <div className="flex flex-wrap gap-2 border-t border-line px-4 py-3 sm:px-5">
+            <div className="flex flex-wrap gap-2 border-t border-line px-5 py-3 sm:px-6">
               <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("material")}>Add material</Button>
               <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("charge")}>Add hauling / charge</Button>
             </div>

@@ -23,7 +23,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
   const age = ageLabel(item.since, now);
   const reasons = exceptionReasons(item);
   return (
-    <li className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 hover:bg-surface/50 sm:px-5" aria-label={title}>
+    <li className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 transition-colors hover:bg-surface/60 sm:px-6" aria-label={title}>
       {/* The text keeps at least 18rem; the actions move below it when the card is narrow (half-width cards, phones). */}
       <div className="flex min-w-0 flex-[1_1_18rem] gap-3">
         <span className={cn("mt-1.5 size-2 shrink-0 rounded-full", dotTone[item.priority] ?? dotTone[3])} aria-hidden />
@@ -50,8 +50,11 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
         </div>
       </div>
       <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
-        {item.priority > 1 && <HideControl itemKey={item.exception_key} hiddenUntil={hiddenUntil} />}
-        {can.assign && <AssignControl itemKey={item.exception_key} kind={item.kind} title={title} assignedTo={item.assigned_to} people={people} />}
+        {/* Secondary controls stay out of the way until the row is pointed at or focused (always shown on touch). */}
+        <span className="flex items-center gap-1.5 transition-opacity duration-150 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-focus-within:opacity-100 [@media(hover:hover)]:group-hover:opacity-100">
+          {item.priority > 1 && <HideControl itemKey={item.exception_key} hiddenUntil={hiddenUntil} />}
+          {can.assign && <AssignControl itemKey={item.exception_key} kind={item.kind} title={title} assignedTo={item.assigned_to} people={people} />}
+        </span>
         <ButtonLink href={withReturn(action.href, back)} size="sm" variant="secondary" icon={<ArrowRight className="size-4" />}>{action.label}</ButtonLink>
       </div>
     </li>

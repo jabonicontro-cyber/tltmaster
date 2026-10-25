@@ -21,10 +21,9 @@ export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: strin
   return (
     <Card>
       <CardHeader
-        title="Next 7 days"
         description="Planned loads, trucks that can run and drivers available, day by day — read from dispatch, the shop schedule and time off."
       />
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-line px-4 py-3 text-sm sm:px-5" aria-label="Outlook summary">
+      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-line/70 px-5 py-3 text-sm sm:px-6" aria-label="Outlook summary">
         <p><span className="text-lg font-semibold tabular text-ink">{totals.loads}</span> <span className="text-muted">loads planned</span></p>
         <p>
           <span className={cn("text-lg font-semibold tabular", totals.unassigned > 0 ? "text-amber-700" : "text-ink")}>{totals.unassigned}</span>{" "}
@@ -49,7 +48,7 @@ export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: strin
         ))}
       </ol>
 
-      <div className="border-t border-line px-4 py-3 sm:px-5">
+      <div className="border-t border-line px-5 py-3 sm:px-6">
         <h3 className="text-sm font-semibold text-ink">What to do next</h3>
         {steps.length === 0 ? (
           <p className="mt-1 text-sm text-muted">Every load in the next 7 days has a truck and driver, and none is booked on equipment that cannot run.</p>

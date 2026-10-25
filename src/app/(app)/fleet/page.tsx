@@ -98,7 +98,7 @@ export default async function FleetPage() {
           <CappedList
             label="Vehicle documents needing renewal"
             items={docAttention.map(({ kind, v, att }) => (
-              <li key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm sm:px-5">
+              <li key={v.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
                 <Link href={`/fleet/${kind}s/${v.id}`} className="font-medium text-ink hover:underline">{kind === "truck" ? "Truck" : "Trailer"} {v.unit_number}</Link>
                 {att.expired.map((d) => <span key={d.id} className="inline-flex items-center gap-1.5 text-muted"><Badge tone="red">Expired</Badge>{att.label(d.kind)} · {formatDate(d.expires_on)}</span>)}
                 {att.expiring.map((d) => <span key={d.id} className="inline-flex items-center gap-1.5 text-muted"><Badge tone="amber">Due</Badge>{att.label(d.kind)} · {formatDate(d.expires_on)}</span>)}
@@ -112,12 +112,12 @@ export default async function FleetPage() {
         <Card>
           <CardHeader title="Out of service" description="Active equipment that cannot be assigned until it is returned to service." />
           {down.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted sm:px-5">All active equipment is in service.</p>
+            <p className="px-5 py-6 text-sm text-muted sm:px-6">All active equipment is in service.</p>
           ) : (
             <CappedList
               label="Out of service"
               items={down.map((e) => (
-                <li key={e.id} className="px-4 py-2.5 sm:px-5">
+                <li key={e.id} className="px-5 py-2.5 sm:px-6">
                   <Link href={`/fleet/${e.kind}s/${e.id}`} className="font-semibold hover:underline">
                     {e.kind === "truck" ? "Truck" : "Trailer"} {e.unit_number}
                   </Link>
@@ -134,13 +134,13 @@ export default async function FleetPage() {
         <Card>
           <CardHeader title="Drivers needing attention" description={`Not eligible today, or a license or medical card expiring within ${EXPIRY_WARNING_DAYS} days.`} />
           {o.drivers.notReady.length === 0 && o.expiring.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted sm:px-5">Nothing needs attention.</p>
+            <p className="px-5 py-6 text-sm text-muted sm:px-6">Nothing needs attention.</p>
           ) : (
             <CappedList
               label="Drivers needing attention"
               items={[
               ...o.drivers.notReady.map((d) => (
-                <li key={d.id} className="px-4 py-2.5 sm:px-5">
+                <li key={d.id} className="px-5 py-2.5 sm:px-6">
                   <Link href={`/fleet/drivers/${d.id}`} className="font-medium text-ink hover:underline">{d.display_name}</Link>
                   <div className="text-sm text-muted">
                     <AlertTriangle className="mr-1 inline size-3.5 text-amber-600" aria-hidden />
@@ -151,7 +151,7 @@ export default async function FleetPage() {
               ...o.expiring
                 .filter(({ driver }) => driver.readiness.eligible)
                 .map(({ driver, qualification }) => (
-                  <li key={qualification.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 sm:px-5">
+                  <li key={qualification.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 sm:px-6">
                     <Link href={`/fleet/drivers/${driver.id}`} className="font-semibold hover:underline">{driver.display_name}</Link>
                     <span className="text-sm">{qualificationName(qualification)}</span>
                     <QualificationBadge q={qualification} today={o.today} soon={soon} />

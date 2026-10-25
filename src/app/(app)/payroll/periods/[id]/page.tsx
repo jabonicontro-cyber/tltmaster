@@ -56,7 +56,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not done">{sp.error}</Notice></div>}
 
-      <section aria-label="Readiness" className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3 text-sm shadow-xs sm:px-5">
+      <section aria-label="Readiness" className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-5 py-3 text-sm shadow-xs sm:px-6">
         <span><strong className="tabular">{work.payable.length}</strong> verified ticket{work.payable.length === 1 ? "" : "s"} not yet calculated</span>
         <span className={exceptions.length ? "font-semibold text-amber-800" : ""}><strong className="tabular">{exceptions.length}</strong> exception{exceptions.length === 1 ? "" : "s"} to resolve</span>
         <span><strong className="tabular">{work.not_payable.length}</strong> ticket{work.not_payable.length === 1 ? "" : "s"} not payable yet</span>
@@ -77,7 +77,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       <Card className="mb-5">
         <CardHeader title="Earnings by driver" />
         {byDriver.size === 0 ? (
-          <p className="px-4 py-5 text-sm text-muted sm:px-5">Nothing calculated in this period yet.</p>
+          <p className="px-5 py-5 text-sm text-muted sm:px-6">Nothing calculated in this period yet.</p>
         ) : (
           <TableWrap className="rounded-none border-0">
             <Table>
@@ -104,7 +104,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Exceptions" description="Tickets Taviron could not calculate. Fix the cause (rule, ticket) and reverse the exception to recalculate, or exclude it with a reason." />
           <ul className="divide-y divide-line">
             {exceptions.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center gap-3 px-4 py-3 text-sm sm:px-5">
+              <li key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm sm:px-6">
                 <span className="min-w-0 flex-[1_1_16rem]"><Link href={`/tickets/${e.ticket_id}`} className="font-semibold hover:underline">{e.delivery_tickets?.ticket_number}</Link> · {name(e.driver_id)} — <span className="text-amber-800">{e.exception}</span></span>
                 {open && (
                   <form action={setEntry} className="flex flex-wrap items-center gap-2">
@@ -125,10 +125,10 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Not payable yet, and corrections" />
           <ul className="divide-y divide-line text-sm">
             {work.not_payable.map((t) => (
-              <li key={t.ticket_id} className="px-4 py-2.5 sm:px-5"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} — {NOT_PAYABLE[t.reason]}</li>
+              <li key={t.ticket_id} className="px-5 py-2.5 sm:px-6"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} — {NOT_PAYABLE[t.reason]}</li>
             ))}
             {work.corrections.map((c) => (
-              <li key={c.entry_id} className="px-4 py-2.5 sm:px-5">
+              <li key={c.entry_id} className="px-5 py-2.5 sm:px-6">
                 <Link href={`/tickets/${c.ticket_id}`} className="font-semibold hover:underline">{c.ticket_number}</Link> · {name(c.driver_id)} — paid {money(c.amount_cents)} in the period starting {formatDate(c.paid_in)}, then {c.ticket_status === "voided" ? "voided" : "corrected"}. Settle it with an adjustment below (link it to this ticket).
               </li>
             ))}
@@ -139,7 +139,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       <Card className="mb-5">
         <CardHeader title="Tickets in this period" />
         {entries.length === 0 ? (
-          <p className="px-4 py-5 text-sm text-muted sm:px-5">No tickets recorded yet.</p>
+          <p className="px-5 py-5 text-sm text-muted sm:px-6">No tickets recorded yet.</p>
         ) : (
           <TableWrap className="rounded-none border-0">
             <Table>
@@ -166,7 +166,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Adjustments" description="Additions or deductions entered by a person, with a reason. Nothing is deducted automatically." />
           {adjustments.length > 0 && (
             <ul className="divide-y divide-line text-sm">
-              {adjustments.map((a) => <li key={a.id} className="px-4 py-2.5 sm:px-5"><span className="font-semibold tabular">{money(a.amount_cents)}</span> · {name(a.driver_id)} — {a.reason}</li>)}
+              {adjustments.map((a) => <li key={a.id} className="px-5 py-2.5 sm:px-6"><span className="font-semibold tabular">{money(a.amount_cents)}</span> · {name(a.driver_id)} — {a.reason}</li>)}
             </ul>
           )}
           {open && (

@@ -59,7 +59,7 @@ export default async function BalancesPage() {
           ) : (
             <ul className="divide-y divide-line">
               {banks.map((b) => (
-                <li key={b.id} className="px-4 py-3 sm:px-5">
+                <li key={b.id} className="px-5 py-3 sm:px-6">
                   <details>
                     <summary className="flex cursor-pointer flex-wrap items-center gap-2">
                       <span className="font-semibold">{b.name}</span>
@@ -101,7 +101,7 @@ export default async function BalancesPage() {
           ) : (
             <ul className="divide-y divide-line" aria-label="Accrual policies">
               {policies.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-5">
+                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-5 py-3 sm:px-6">
                   <div className="min-w-0">
                     <p className="font-semibold">{bankName.get(p.bank_id)} · {EMPLOYMENT_TYPES[p.employment_type]}</p>
                     <p className="text-sm text-muted">{describePolicy(p)} · from {formatDate(p.effective_from)}</p>

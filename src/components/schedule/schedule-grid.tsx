@@ -1,5 +1,7 @@
 "use client";
 
+import { Avatar } from "@/components/ui/avatar";
+import type { Face } from "@/server/data/faces";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -49,7 +51,7 @@ function useRun(onDone?: () => void) {
   return { pending, error, run };
 }
 
-export function ScheduleGrid({ people, from, canManage, patterns }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern> }) {
+export function ScheduleGrid({ people, from, canManage, patterns, faces = {} }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern>; /** Pictures by employee id (initials when missing). */ faces?: Record<string, Face> }) {
   const [day, setDay] = useState<{ person: SchedulePerson; d: ScheduleDay } | null>(null);
   const [pattern, setPattern] = useState<SchedulePerson | null>(null);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(from, i));
@@ -68,10 +70,15 @@ export function ScheduleGrid({ people, from, canManage, patterns }: { people: Sc
             {people.map((p) => (
               <tr key={p.employeeId} className="border-t border-line">
                 <th scope="row" className="px-3 py-2 text-left font-medium text-ink">
+                  <div className="flex items-center gap-2.5">
+                  <Avatar name={p.name} size={32} {...faces[p.employeeId]} />
+                  <div className="min-w-0">
                   <div>{p.name}</div>
                   <div className="text-xs font-normal text-muted">
                     {patterns[p.employeeId] ? (patterns[p.employeeId].kind === "weekly" ? "Weekly" : `${patterns[p.employeeId].cycleDays}-day rotation`) : "No repeating schedule"}
                     {canManage && <> · <button type="button" className="underline hover:text-ink" onClick={() => setPattern(p)}>{patterns[p.employeeId] ? "Change" : "Set"}<span className="sr-only"> {p.name}&apos;s schedule</span></button></>}
+                  </div>
+                  </div>
                   </div>
                 </th>
                 {p.days.map((d) => {

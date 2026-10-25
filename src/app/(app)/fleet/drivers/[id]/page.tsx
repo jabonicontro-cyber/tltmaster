@@ -125,7 +125,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
               <p className="text-sm text-muted">No changes recorded.</p>
             </CardBody>
           ) : (
-            <ol className="px-4 py-3 sm:px-5" aria-label="Driver history">
+            <ol className="px-5 py-3 sm:px-6" aria-label="Driver history">
               {audit.map((a) => (
                 <li key={a.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
                   <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />

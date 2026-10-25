@@ -18,6 +18,8 @@ import { listDrivers } from "@/server/data/fleet";
 
 import { baseOptions } from "@/server/data/bases";
 import { BaseFilter } from "@/components/bases/base-filter";
+import { Avatar } from "@/components/ui/avatar";
+import { facesForDrivers } from "@/server/data/faces";
 export const metadata = { title: "Drivers" };
 
 type Search = { q?: string; status?: string; base?: string };
@@ -28,6 +30,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
   const { rows, today } = await listDrivers({ ...sp, base: bases.length > 1 ? sp.base : undefined });
+  const faces = await facesForDrivers(rows.map((d) => d.id));
   const canEdit = can(access, "fleet.edit");
   const filtered = Boolean(sp.q || sp.status || sp.base);
 
@@ -76,12 +79,17 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                 {rows.map((d) => (
                   <Tr key={d.id}>
                     <Td>
+                      <div className="flex items-start gap-3">
+                      <Avatar name={d.display_name} size={36} {...faces[d.id]} />
+                      <div className="min-w-0">
                       <Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:text-brand-fg hover:underline">{d.display_name}</Link>
                       <div className="flex flex-wrap items-center gap-1.5 text-sm text-muted">
                         {d.employee_number && <span>#{d.employee_number}</span>}
                         {d.phone && <span>{d.phone}</span>}
                         {d.user_id && <Badge tone="blue">Has login</Badge>}
                         {!d.active && <Badge tone="gray">Inactive</Badge>}
+                      </div>
+                      </div>
                       </div>
                     </Td>
                     <Td className="hidden md:table-cell">

@@ -91,7 +91,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
         </CardBody>
       )}
       {events.length > 0 && (
-        <details className="border-t border-line px-4 py-3 text-sm sm:px-5">
+        <details className="border-t border-line px-5 py-3 text-sm sm:px-6">
           <summary className="cursor-pointer font-semibold text-muted">Urgency history ({events.length})</summary>
           <ol className="mt-2 space-y-2" aria-label="Urgency history">
             {events.map((e) => (

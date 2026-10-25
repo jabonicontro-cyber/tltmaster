@@ -86,7 +86,7 @@ export default async function LaunchpadPage() {
         ))}
       </ul>
 
-      <section aria-label="Platform status" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", urgent ? "border-l-critical" : p.attention.total ? "border-l-amber-400" : "border-l-green-500")}>
+      <section aria-label="Platform status" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line border-l-4 bg-card px-5 py-3 shadow-xs sm:px-6", urgent ? "border-l-critical" : p.attention.total ? "border-l-amber-400" : "border-l-green-500")}>
         <p className="text-base font-semibold text-ink">{p.attention.total === 0 ? "Nothing needs attention" : `${p.attention.total} item${p.attention.total === 1 ? "" : "s"} need attention`}</p>
         {urgent > 0 && <span className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{urgent} urgent</span>}
         {p.email_failures_7d > 0 && <span className="text-sm font-semibold text-critical">{p.email_failures_7d} lead email{p.email_failures_7d === 1 ? "" : "s"} failed this week</span>}
@@ -119,7 +119,7 @@ export default async function LaunchpadPage() {
                 {p.attention.items.map((i) => {
                   const ack = ackFor(k?.acks, i);
                   return (
-                  <li key={`${i.kind}:${i.ref_id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-3 sm:px-5">
+                  <li key={`${i.kind}:${i.ref_id}`} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-5 py-3 sm:px-6">
                     <div className="min-w-0 flex-[1_1_18rem]">
                       <p className="flex flex-wrap items-center gap-2">
                         <Badge tone={i.priority === 1 ? "critical-soft" : i.priority === 2 ? "amber" : "gray"}>{ATTENTION_LABELS[i.kind]}</Badge>
@@ -148,7 +148,7 @@ export default async function LaunchpadPage() {
                 })}
               </ul>
               {p.attention.total > p.attention.items.length && (
-                <p className="border-t border-line px-4 py-2.5 text-sm text-muted sm:px-5">
+                <p className="border-t border-line px-5 py-2.5 text-sm text-muted sm:px-6">
                   Showing {p.attention.items.length} of {p.attention.total}. The rest: {Object.entries(p.attention.by_kind).map(([k, n]) => `${n} ${ATTENTION_LABELS[k as keyof typeof ATTENTION_LABELS].toLowerCase()}`).join(", ")}.
                 </p>
               )}
@@ -162,7 +162,7 @@ export default async function LaunchpadPage() {
             <ul className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 xl:grid-cols-1" aria-label="Quick actions">
               {QUICK.map((q) => (
                 <li key={q.href} className="bg-card">
-                  <Link href={q.href} className="flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium text-ink hover:bg-surface/60 sm:px-5">
+                  <Link href={q.href} className="flex items-center gap-2.5 px-5 py-2.5 text-sm font-medium text-ink hover:bg-surface/60 sm:px-6">
                     <q.icon className="size-4 text-brand-fg" aria-hidden /> {q.label}
                   </Link>
                 </li>
@@ -172,11 +172,11 @@ export default async function LaunchpadPage() {
           <Card>
             <CardHeader title="Demos" description="Separate demo companies with fictional data. Refreshes are recorded here." actions={<Link href="/admin/demo" className="text-sm font-semibold text-brand-fg hover:underline">{TERMS.demoManagement}</Link>} />
             {p.demos.length === 0 ? (
-              <p className="px-4 py-4 text-sm text-muted sm:px-5">No demo company yet. Create one in Live demo.</p>
+              <p className="px-5 py-4 text-sm text-muted sm:px-6">No demo company yet. Create one in Live demo.</p>
             ) : (
               <ul className="divide-y divide-line" aria-label="Demos">
                 {p.demos.slice(0, 8).map((d) => (
-                  <li key={d.id} className="px-4 py-2.5 text-sm sm:px-5">
+                  <li key={d.id} className="px-5 py-2.5 text-sm sm:px-6">
                     <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">{d.name} <Badge>{d.kind === "presenter" ? "Presenter" : "Prospect"}</Badge></p>
                     <p className={cn("text-xs", d.last_refresh_ok === false ? "font-semibold text-critical" : "text-muted")}>
                       {d.last_refresh_at
@@ -187,7 +187,7 @@ export default async function LaunchpadPage() {
                 ))}
               </ul>
             )}
-            {p.demos.length > 8 && <p className="border-t border-line px-4 py-2.5 text-sm sm:px-5"><Link href="/admin/demo" className="font-semibold text-brand-fg hover:underline">All {p.demos.length} demos</Link></p>}
+            {p.demos.length > 8 && <p className="border-t border-line px-5 py-2.5 text-sm sm:px-6"><Link href="/admin/demo" className="font-semibold text-brand-fg hover:underline">All {p.demos.length} demos</Link></p>}
           </Card>
         </div>
       </div>
@@ -195,14 +195,14 @@ export default async function LaunchpadPage() {
       <Card className="mt-5">
         <CardHeader title="Recent activity" description="Platform actions (from the append-only platform audit) and lead history, newest first." actions={<Link href="/admin/platform" className="text-sm font-semibold text-brand-fg hover:underline">Full audit log</Link>} />
         {p.activity.length === 0 ? (
-          <p className="px-4 py-6 text-sm text-muted sm:px-5">No activity recorded yet.</p>
+          <p className="px-5 py-6 text-sm text-muted sm:px-6">No activity recorded yet.</p>
         ) : (
           <ul className="divide-y divide-line" aria-label="Recent activity">
             {p.activity.map((a, idx) => {
               const href = activityHref(a);
               const text = `${activityText(a)}${a.summary ? ` — ${a.summary}` : ""}`;
               return (
-                <li key={`${a.at}:${idx}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-4 py-2 text-sm sm:px-5">
+                <li key={`${a.at}:${idx}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-5 py-2 text-sm sm:px-6">
                   {href ? <Link href={href} className="min-w-0 break-words hover:underline">{text}</Link> : <span className="min-w-0 break-words">{text}</span>}
                   <span className="text-xs text-muted">{formatDateTime(a.at)} · {a.actor}</span>
                 </li>

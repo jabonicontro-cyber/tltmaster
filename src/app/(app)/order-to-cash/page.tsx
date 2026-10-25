@@ -93,7 +93,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
             </Table>
           </TableWrap>
         )}
-        {listed.length > LIMIT && <p className="px-4 py-3 text-sm text-muted sm:px-5">Showing the first {LIMIT} of {listed.length}. Filter by stage or search to narrow the list.</p>}
+        {listed.length > LIMIT && <p className="px-5 py-3 text-sm text-muted sm:px-6">Showing the first {LIMIT} of {listed.length}. Filter by stage or search to narrow the list.</p>}
       </Card>
     </>
   );

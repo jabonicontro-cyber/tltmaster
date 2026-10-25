@@ -99,7 +99,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
           <CardHeader title="Setup" description={c.missing.length ? `Missing: ${c.missing.join(", ")}.` : "Every setup step is done."} />
           <ul className="divide-y divide-line" aria-label="Setup steps">
             {steps.map((s) => (
-              <li key={s.label} className="flex items-center gap-3 px-4 py-2.5 text-sm sm:px-5">
+              <li key={s.label} className="flex items-center gap-3 px-5 py-2.5 text-sm sm:px-6">
                 {s.done ? <CheckCircle2 className="size-4 text-green-700" aria-hidden /> : <Circle className="size-4 text-muted" aria-hidden />}
                 <span className="font-medium text-ink">{s.label}</span>
                 <span className="ml-auto text-xs text-muted">{s.done ? "Done" : "Not yet"} · {s.hint}</span>
@@ -115,11 +115,11 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         <Card>
           <CardHeader title="People who can sign in" description="Names and roles only. Roles are managed by the company's owner in People." />
           {c.members.length === 0 ? (
-            <p className="px-4 py-4 text-sm text-muted sm:px-5">Nobody can sign in to this company yet.</p>
+            <p className="px-5 py-4 text-sm text-muted sm:px-6">Nobody can sign in to this company yet.</p>
           ) : (
             <ul className="divide-y divide-line">
               {c.members.map((m) => (
-                <li key={m.email} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
+                <li key={m.email} className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-sm sm:px-6">
                   <span className="font-medium text-ink">{m.name}</span>
                   <span className="text-xs text-muted">{m.email}</span>
                   <span className="ml-auto flex gap-1.5">{m.role ? <Badge>{m.role}</Badge> : <Badge tone="amber">No role</Badge>}{!m.active && <Badge>Inactive</Badge>}</span>
@@ -141,7 +141,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       <Card className="mt-5">
         <CardHeader title="Imports" />
         {c.imports.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">No imports yet.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">No imports yet.</p>
         ) : (
           <TableWrap className="rounded-none border-0">
             <Table>
@@ -176,11 +176,11 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       <Card className="mt-5">
         <CardHeader title="Platform actions on this company" description="From the append-only platform audit." />
         {c.audit.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">Nothing recorded.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">Nothing recorded.</p>
         ) : (
           <ul className="divide-y divide-line">
             {c.audit.map((a, i) => (
-              <li key={`${a.at}:${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 px-4 py-2 text-sm sm:px-5">
+              <li key={`${a.at}:${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 px-5 py-2 text-sm sm:px-6">
                 <span>{activityText({ source: "platform", action: a.action })}{a.summary ? ` — ${a.summary}` : ""}</span>
                 <span className="text-xs text-muted">{formatDateTime(a.at)} · {a.actor}</span>
               </li>

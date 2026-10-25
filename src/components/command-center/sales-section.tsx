@@ -30,11 +30,11 @@ function Stat({ label, value, sub, href, tone = "default", icon }: { label: stri
 }
 
 function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: string; today: string }) {
-  if (rows.length === 0) return <p className="px-4 py-6 text-sm text-muted sm:px-5">{empty}</p>;
+  if (rows.length === 0) return <p className="px-5 py-6 text-sm text-muted sm:px-6">{empty}</p>;
   return (
     <ul className="divide-y divide-line">
       {rows.slice(0, 8).map((q) => (
-        <li key={q.id} className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5">
+        <li key={q.id} className="flex items-center justify-between gap-3 px-5 py-2.5 sm:px-6">
           <div className="min-w-0">
             <Link href={`/quotes/${q.id}`} className="font-semibold tabular hover:text-brand-fg hover:underline">{q.quote_number}</Link>
             <span className="ml-2 text-sm">{q.customer_name}</span>

@@ -69,7 +69,7 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
               <CardHeader title="Assignments to review" description="When this leave was approved, the driver was already booked at these times. Nothing was canceled automatically." />
               <ul className="divide-y divide-line text-sm">
                 {conflicts.map((c) => (
-                  <li key={c.assignment_id} className="px-4 py-2.5 sm:px-5">
+                  <li key={c.assignment_id} className="px-5 py-2.5 sm:px-6">
                     <Link href={`/dispatch?date=${c.load_date}&load=${c.load_id}`} className="font-medium hover:underline">{c.order_number} load {c.load_number}</Link>
                     <span className="text-muted"> · {formatDate(c.load_date)}</span>
                   </li>
@@ -82,7 +82,7 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
           <CardHeader title="History" />
           <ol className="divide-y divide-line text-sm">
             {events.map((e) => (
-              <li key={e.id} className="px-4 py-2.5 sm:px-5">
+              <li key={e.id} className="px-5 py-2.5 sm:px-6">
                 <p className="font-medium">{EVENT_LABELS[e.kind] ?? e.kind}</p>
                 {e.note && <p className="text-muted">{e.note}</p>}
                 <p className="text-xs text-muted">{who(e.actor_id)} · {formatDateTime(e.created_at, timezone)}</p>

@@ -16,6 +16,8 @@ import { formatHours } from "@/lib/pto";
 import { requireAccess } from "@/server/auth";
 import { balancesFor, listBanks } from "@/server/data/pto";
 import { currentEmployees, employeeNames, listTimeOff, myEmployee, type TimeOffRow } from "@/server/data/time-off";
+import { facesForEmployees, type Face } from "@/server/data/faces";
+import { Avatar } from "@/components/ui/avatar";
 
 export const metadata = { title: "Time off" };
 
@@ -27,7 +29,7 @@ function when(r: TimeOffRow) {
   return r.start_date === r.end_date ? `${formatDate(r.start_date)} (full day)` : `${formatDate(r.start_date)} – ${formatDate(r.end_date)} (${days} calendar days)`;
 }
 
-function Requests({ rows, names, showEmployee }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean }) {
+function Requests({ rows, names, showEmployee, faces = {} }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean; faces?: Record<string, Face> }) {
   return (
     <TableWrap>
       <Table>
@@ -35,7 +37,7 @@ function Requests({ rows, names, showEmployee }: { rows: TimeOffRow[]; names: Ma
         <tbody>
           {rows.map((r) => (
             <Tr key={r.id}>
-              {showEmployee && <Td className="font-medium">{names.get(r.employee_id)?.name ?? "Employee"}</Td>}
+              {showEmployee && <Td className="font-medium"><span className="flex items-center gap-2.5"><Avatar name={names.get(r.employee_id)?.name ?? "Employee"} size={28} {...faces[r.employee_id]} />{names.get(r.employee_id)?.name ?? "Employee"}</span></Td>}
               <Td><Link href={`/time-off/${r.id}`} className="font-medium text-ink hover:underline">{when(r)}</Link></Td>
               <Td className="hidden sm:table-cell">{TIME_OFF_CATEGORIES[r.category]}</Td>
               <Td><Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge></Td>
@@ -101,7 +103,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
           <CardHeader title="My balances" description="Available = balance minus your pending requests." />
           <ul className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3" aria-label="My balances">
             {myBalances.map((b) => (
-              <li key={b.bank_id} className="bg-card px-4 py-3 sm:px-5">
+              <li key={b.bank_id} className="bg-card px-5 py-3 sm:px-6">
                 <p className="text-sm font-semibold">{b.name}</p>
                 <p className="mt-1 text-2xl font-semibold tabular" data-testid="available-hours">{formatHours(b.available)} <span className="text-sm font-normal text-muted">available</span></p>
                 <p className="text-xs text-muted">Balance {formatHours(b.balance)}{b.pending ? ` · ${formatHours(b.pending)} pending` : ""}</p>
@@ -135,7 +137,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
             <FilterSelect name="status" label="Status" value={status} options={[...Object.entries(TIME_OFF_STATUSES).map(([value, label]) => ({ value, label })), { value: "all", label: "All" }]} />
             <FilterSelect name="employee" label="Employee" value={sp.employee ?? ""} options={[{ value: "", label: "Everyone" }, ...[...names.entries()].map(([value, e]) => ({ value, label: e.name }))]} />
           </FilterBar>
-          {shown.length === 0 ? <EmptyState title="No requests match" /> : <Requests rows={shown} names={names} showEmployee />}
+          {shown.length === 0 ? <EmptyState title="No requests match" /> : <Requests rows={shown} names={names} showEmployee faces={await facesForEmployees(shown.map((r) => r.employee_id))} />}
         </Card>
       )}
     </>

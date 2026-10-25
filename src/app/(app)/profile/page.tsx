@@ -32,13 +32,13 @@ export default async function ProfilePage() {
         <div className="space-y-5">
           <Card>
             <CardHeader title="Photo" />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-5 pb-5 sm:px-6">
               <PhotoUploader name={name} src={photoUrl(profile.userId, profile.photoUpdatedAt)} />
             </div>
           </Card>
           <Card>
             <CardHeader title="Your details" />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-5 pb-5 sm:px-6">
               <ProfileForm displayName={profile.displayName} phone={profile.phone} fullName={profile.fullName} />
             </div>
           </Card>
@@ -47,13 +47,13 @@ export default async function ProfilePage() {
       <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Managed by your company" description="Ask your company administrator to change these." />
-        <dl className="grid gap-x-6 gap-y-3 px-4 pb-5 text-sm sm:grid-cols-2 sm:px-5">
+        <dl className="grid gap-x-6 gap-y-3 px-5 pb-5 text-sm sm:grid-cols-2 sm:px-6">
           <div><dt className="text-muted">Full name on record</dt><dd className="font-medium">{access.fullName || "—"}</dd></div>
           <div><dt className="text-muted">Sign-in</dt><dd className="font-medium break-all">{access.email}</dd></div>
           <div><dt className="text-muted">Company</dt><dd className="font-medium">{access.companyName ?? "—"}</dd></div>
           <div><dt className="text-muted">Role</dt><dd className="font-medium">{access.role ? ROLE_LABELS[access.role] : "—"}</dd></div>
         </dl>
-        <div className="border-t border-line px-4 py-4 sm:px-5">
+        <div className="border-t border-line px-5 py-4 sm:px-6">
           <Link href="/forgot-password" className={buttonClasses("secondary")}>Change password (sends a reset link)</Link>
         </div>
       </Card>

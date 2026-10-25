@@ -306,7 +306,7 @@ export function EquipmentHistory({ events, audit, timezone, who }: { events: Equ
           <p className="text-sm text-muted">No changes recorded yet.</p>
         </CardBody>
       ) : (
-        <ol className="px-4 py-3 sm:px-5" aria-label="Equipment history">
+        <ol className="px-5 py-3 sm:px-6" aria-label="Equipment history">
           {items.map((e) => (
             <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
               <span className={`absolute top-1 -left-[5px] size-2 rounded-full ${e.status ? "bg-strong" : "bg-line"}`} aria-hidden />

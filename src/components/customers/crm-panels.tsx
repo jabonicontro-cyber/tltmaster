@@ -116,13 +116,13 @@ export function OpportunitiesCard({ customerId, opportunities, names, canEdit, t
       <span id="opportunities" className="block scroll-mt-20" />
       <CardHeader title="Opportunities" description="Work you are trying to win from this customer." actions={<Link href="/customers/pipeline" className="text-sm font-semibold text-brand-fg hover:underline">Pipeline</Link>} />
       {opportunities.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-muted sm:px-5">No opportunities yet.</p>
+        <p className="px-5 py-3 text-sm text-muted sm:px-6">No opportunities yet.</p>
       ) : (
         <ul className="divide-y divide-line">
           {opportunities.map((o) => {
             const late = o.follow_up_on && o.follow_up_on < today && OPEN_STAGES.includes(o.stage);
             return (
-              <li key={o.id} className="space-y-1 px-4 py-3 text-sm sm:px-5">
+              <li key={o.id} className="space-y-1 px-5 py-3 text-sm sm:px-6">
                 <p className="flex flex-wrap items-center gap-2"><span className="font-semibold">{o.title}</span><Badge tone={stageTone(o.stage)}>{STAGE_LABELS[o.stage]}</Badge><span className="ml-auto tabular">{money(o.value_cents)}{o.probability !== null ? ` · ${o.probability}%` : ""}</span></p>
                 <p className="text-muted">
                   {o.owner_id ? `${names[o.owner_id] ?? "Former user"} · ` : ""}
@@ -161,11 +161,11 @@ export function TasksCard({ customerId, tasks, names, canEdit, today }: { custom
       <span id="tasks" className="block scroll-mt-20" />
       <CardHeader title="Follow-ups" description={`${open.length} open`} />
       <ul className="divide-y divide-line" aria-label="Follow-ups">
-        {open.length === 0 && <li className="px-4 py-3 text-sm text-muted sm:px-5">Nothing to follow up.</li>}
+        {open.length === 0 && <li className="px-5 py-3 text-sm text-muted sm:px-6">Nothing to follow up.</li>}
         {open.map((t) => {
           const late = t.due_on !== null && t.due_on < today;
           return (
-            <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm sm:px-5">
+            <li key={t.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
               <span className="min-w-0 flex-[1_1_12rem]"><span className="font-medium">{t.title}</span>
                 <span className="block text-xs text-muted">{t.assigned_to ? names[t.assigned_to] ?? "Former user" : "Unassigned"} · {t.due_on ? <span className={late ? "font-semibold text-critical" : ""}>due {formatDate(t.due_on)}{late ? " (overdue)" : ""}</span> : "no due date"}</span>
               </span>
@@ -183,7 +183,7 @@ export function TasksCard({ customerId, tasks, names, canEdit, today }: { custom
           );
         })}
         {closed.map((t) => (
-          <li key={t.id} className="px-4 py-2 text-xs text-muted sm:px-5"><span className="line-through">{t.title}</span> — {t.status === "done" ? "done" : "canceled"}{t.completed_at ? ` ${formatDate(t.completed_at.slice(0, 10))}` : ""}</li>
+          <li key={t.id} className="px-5 py-2 text-xs text-muted sm:px-6"><span className="line-through">{t.title}</span> — {t.status === "done" ? "done" : "canceled"}{t.completed_at ? ` ${formatDate(t.completed_at.slice(0, 10))}` : ""}</li>
         ))}
       </ul>
       {canEdit && (
@@ -223,11 +223,11 @@ export function ActivityCard({ customerId, activities, contacts, names, canEdit,
         </CardBody>
       )}
       {activities.length === 0 ? (
-        <p className="px-4 py-3 text-sm text-muted sm:px-5">No activity recorded yet.</p>
+        <p className="px-5 py-3 text-sm text-muted sm:px-6">No activity recorded yet.</p>
       ) : (
         <ol className="divide-y divide-line" aria-label="Activity history">
           {activities.map((a) => (
-            <li key={a.id} className="px-4 py-2.5 text-sm sm:px-5">
+            <li key={a.id} className="px-5 py-2.5 text-sm sm:px-6">
               <p className="flex flex-wrap items-center gap-2"><Badge>{ACTIVITY_LABELS[a.kind]}</Badge><span className="font-medium">{a.subject}</span><span className="ml-auto text-xs text-muted">{formatDateTime(a.occurred_at, timezone)}</span></p>
               {a.body && <p className="mt-1 whitespace-pre-line text-muted">{a.body}</p>}
               <p className="mt-0.5 text-xs text-muted">{names[a.created_by] ?? "Former user"}{a.contact_id ? ` · with ${contactName.get(a.contact_id) ?? "a former contact"}` : ""}</p>

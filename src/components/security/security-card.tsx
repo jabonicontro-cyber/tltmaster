@@ -28,7 +28,7 @@ export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, i
         description="Two-step verification asks for a code from your phone after your password."
         actions={<Badge tone={enrolled ? "green" : required ? "amber" : "gray"}>{enrolled ? "Two-step on" : required ? "Required — not set up" : "Two-step off"}</Badge>}
       />
-      <div className="space-y-4 px-4 pb-5 text-sm sm:px-5">
+      <div className="space-y-4 px-5 pb-5 text-sm sm:px-6">
         {reason ? <p className="text-muted">{reason}</p> : null}
         {!enrolled ? (
           <Link href="/mfa?next=/profile" className={buttonClasses("primary")}>Set Up Two-Step Verification</Link>

@@ -95,7 +95,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
           <CardHeader title="Assignments to review" description="These drivers have approved time off overlapping an active assignment. Nothing was canceled — reassign or confirm with the driver." />
           <ul className="divide-y divide-line">
             {leaveConflicts.map(({ driver, booking }) => (
-              <li key={booking.load_id + driver.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 text-sm sm:px-5">
+              <li key={booking.load_id + driver.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-sm sm:px-6">
                 <Badge tone="red">On leave</Badge>
                 <Link href={`/fleet/drivers/${driver.id}`} className="font-semibold hover:underline">{driver.name}</Link>
                 <span>is booked on</span>

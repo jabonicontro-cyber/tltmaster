@@ -123,7 +123,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
             <FilterSelect name="photo" label="Photo or scan" value={photoFilter} options={[{ value: "", label: "Any" }, { value: "with", label: "Attached" }, { value: "without", label: "Missing" }]} />
           </FilterBar>
           {clean.length > 0 && (
-            <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-2 sm:px-5">
+            <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-2 sm:px-6">
               <BulkAccept tickets={clean} />
               <span className="text-sm text-muted">Tickets with any review reason are reviewed one by one.</span>
             </div>

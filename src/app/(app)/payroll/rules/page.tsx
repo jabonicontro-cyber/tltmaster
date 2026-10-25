@@ -64,7 +64,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
                 <CardHeader title={rule.name} />
                 <ul className="divide-y divide-line">
                   {rule.versions.map((v) => (
-                    <li key={v.id} className="space-y-2 px-4 py-3 text-sm sm:px-5">
+                    <li key={v.id} className="space-y-2 px-5 py-3 text-sm sm:px-6">
                       <p className="flex flex-wrap items-center gap-2">
                         <span className="font-semibold">Version {v.version}</span>
                         <Badge tone={RULE_STATUS[v.status].tone}>{RULE_STATUS[v.status].label}</Badge>

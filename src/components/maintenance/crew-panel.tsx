@@ -1,5 +1,7 @@
 "use client";
 
+import { Avatar } from "@/components/ui/avatar";
+import type { Face } from "@/server/data/faces";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Check, Clock, Play, Plus, Square, X } from "lucide-react";
@@ -44,8 +46,9 @@ function Elapsed({ since }: { since: string }) {
 }
 
 /** Crew and labor time on one work order. */
-export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone }: {
+export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {} }: {
   workOrderId: string; status: string; data: WorkOrderCrew; me: string; canManage: boolean; today: string; timeZone: string;
+  /** Mechanic pictures by user id. */ faces?: Record<string, Face>;
 }) {
   const { pending, run } = useRun();
   const [adding, setAdding] = useState("");
@@ -86,7 +89,8 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
           {data.crew.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">No mechanic assigned yet.</li>}
           {data.crew.map((c) => (
             <li key={c.userId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-              <span className="text-sm text-ink">
+              <span className="flex flex-wrap items-center text-sm text-ink">
+                <Avatar name={c.name} size={28} className="mr-2.5" {...faces[c.userId]} />
                 <span className="font-medium">{c.name}</span>
                 {c.role === "lead" && <Badge tone="blue" className="ml-2">Lead</Badge>}
                 <Badge tone={STATUS_TONE[c.status]} className="ml-2">{STATUS_LABEL[c.status]}</Badge>

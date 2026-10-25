@@ -64,7 +64,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         actions={canCreate && <ButtonLink href="/orders/new" icon={<Plus className="size-4" />} data-guide="orders-new">New order</ButtonLink>}
       />
       <Card>
-        <div className="flex flex-wrap gap-2 border-b border-line px-4 py-3 sm:px-5" aria-label="Quick filters">
+        <div className="flex flex-wrap gap-2 border-b border-line px-5 py-3 sm:px-6" aria-label="Quick filters">
           {quick("Open", { status: "open" })}
           {quick("Scheduled today", { when: "today" })}
           {quick("Next 7 days", { when: "week" })}
@@ -131,7 +131,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                             {o.order_number}
                           </Link>
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted">
-                            <span>{formatDate(o.order_date)}</span>
+                            <span className="whitespace-nowrap">{formatDate(o.order_date)}</span>
                             {o.customer_po && <span>PO {o.customer_po}</span>}
                             <SampleBadge show={o.is_sample} />
                           </div>

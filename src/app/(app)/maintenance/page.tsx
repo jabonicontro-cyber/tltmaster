@@ -103,7 +103,7 @@ export default async function MaintenancePage() {
             ) : (
               <ol className="divide-y divide-line">
                 {ranked.map(({ item: w, reasons }, i) => (
-                  <li key={w.id} className="flex gap-3 px-4 py-3 sm:px-5">
+                  <li key={w.id} className="flex gap-3 px-5 py-3 sm:px-6">
                     <span className="mt-0.5 w-5 shrink-0 text-right text-sm font-bold text-muted tabular">{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +158,7 @@ export default async function MaintenancePage() {
             ) : (
               <ul className="divide-y divide-line">
                 {upcoming.map((w) => (
-                  <li key={w.id} className="flex flex-wrap items-center gap-2 px-4 py-2.5 sm:px-5">
+                  <li key={w.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 sm:px-6">
                     <CalendarClock className="size-4 text-muted" aria-hidden />
                     <span className="font-medium tabular">{formatDate(w.scheduled_for)}</span>
                     <Link href={`/maintenance/work-orders/${w.id}`} className="text-ink hover:underline">{w.number} · {w.title}</Link>
@@ -176,7 +176,7 @@ export default async function MaintenancePage() {
               <CardHeader title="Mechanics" description="Who is working now, their open jobs (as lead or helping) and the time logged this week." />
               <ul className="divide-y divide-line text-sm">
                 {shop.mechanics.map((m) => (
-                  <li key={m.userId} className="px-4 py-2.5 sm:px-5">
+                  <li key={m.userId} className="px-5 py-2.5 sm:px-6">
                     <div className="flex items-center justify-between gap-2">
                       <Link href={`/maintenance/work-orders?assigned=${m.userId}`} className="font-medium text-ink hover:underline">{m.name}</Link>
                       <span className="tabular text-muted">{Math.floor(m.weekMinutes / 60)} h {String(m.weekMinutes % 60).padStart(2, "0")} this week</span>
@@ -189,9 +189,9 @@ export default async function MaintenancePage() {
                     </div>
                   </li>
                 ))}
-                {shop.mechanics.length === 0 && <li className="px-4 py-3 text-muted sm:px-5">Nobody&apos;s role can do maintenance yet.</li>}
+                {shop.mechanics.length === 0 && <li className="px-5 py-3 text-muted sm:px-6">Nobody&apos;s role can do maintenance yet.</li>}
                 {(workload.get("")?.open ?? 0) > 0 && (
-                  <li className="px-4 py-2.5 sm:px-5">
+                  <li className="px-5 py-2.5 sm:px-6">
                     <Link href="/maintenance/work-orders?assigned=none" className="font-medium text-critical hover:underline">{workload.get("")!.open} open work order{workload.get("")!.open === 1 ? "" : "s"} with no lead mechanic</Link>
                   </li>
                 )}
@@ -205,14 +205,14 @@ export default async function MaintenancePage() {
             <CardHeader title="Technician workload" description="Open work orders per mechanic and the labor hours recorded on them." />
             <ul className="divide-y divide-line text-sm">
               {[...workload.entries()].sort((a, b) => b[1].open - a[1].open).map(([who, w]) => (
-                <li key={who || "none"} className="flex items-center justify-between gap-2 px-4 py-2.5 sm:px-5">
+                <li key={who || "none"} className="flex items-center justify-between gap-2 px-5 py-2.5 sm:px-6">
                   <Link href={`/maintenance/work-orders?assigned=${who || "none"}`} className={who ? "font-medium text-ink hover:underline" : "font-medium text-muted hover:underline"}>
                     {who ? names.get(who) ?? "Former member" : "Unassigned"}
                   </Link>
                   <span className="tabular text-muted">{w.open} open · {w.inProgress} in progress · {w.hours.toLocaleString("en-US", { maximumFractionDigits: 1 })} h</span>
                 </li>
               ))}
-              {workload.size === 0 && <li className="px-4 py-3 text-muted sm:px-5">No open work.</li>}
+              {workload.size === 0 && <li className="px-5 py-3 text-muted sm:px-6">No open work.</li>}
             </ul>
             <CardBody className="border-t border-line text-xs text-muted">
               Shop capacity (bays, shift hours) is not configured yet, so Taviron cannot say whether the shop is over capacity.

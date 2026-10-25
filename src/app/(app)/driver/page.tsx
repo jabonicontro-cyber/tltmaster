@@ -217,11 +217,11 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       <Card>
         <CardHeader title="My recent tickets" description="The office reviews every ticket. Questions about a ticket go to the office." />
         {h.tickets.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">No tickets yet.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">No tickets yet.</p>
         ) : (
           <ul className="divide-y divide-line" aria-label="My recent tickets">
             {h.tickets.map((t) => (
-              <li key={t.id} className="px-4 py-3 sm:px-5">
+              <li key={t.id} className="px-5 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold tabular">{t.number}</span>
                   <TicketStatusBadge status={t.status} />
@@ -241,7 +241,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <CardHeader title="My reports" />
           <ul className="divide-y divide-line" aria-label="My reports">
             {h.reports.map((r) => (
-              <li key={r.id} className="px-4 py-3 sm:px-5">
+              <li key={r.id} className="px-5 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold">{REPORT_KIND_LABELS[r.kind]}</span>
                   <Badge tone={r.status === "resolved" ? "green" : r.status === "acknowledged" ? "blue" : "amber"}>{REPORT_STATUS_LABELS[r.status]}</Badge>

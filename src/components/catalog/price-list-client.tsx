@@ -109,7 +109,7 @@ export function PriceEntriesTable({ priceListId, entries, materials, charges, un
         </TableWrap>
       )}
       {entries.some((e) => entryState(e, today).label === "Ended") && (
-        <div className="border-t border-line px-4 py-2 sm:px-5">
+        <div className="border-t border-line px-5 py-2 sm:px-6">
           <button className="text-sm text-muted hover:text-ink hover:underline" onClick={() => setShowEnded((v) => !v)}>
             {showEnded ? "Hide rate history" : "Show rate history"}
           </button>

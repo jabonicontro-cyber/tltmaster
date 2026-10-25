@@ -98,7 +98,7 @@ export default async function ShopCapacityPage() {
               <CardHeader title="Mechanic skills" description="Optional. Once any are recorded, scheduled jobs no mechanic on shift can do are flagged." />
               <ul className="divide-y divide-line">
                 {mechanics.map((m) => <SkillsRow key={m.id} userId={m.id} name={m.name} skills={skills.get(m.id) ?? []} canManage={manage} />)}
-                {mechanics.length === 0 && <li className="px-4 py-3 text-sm text-muted sm:px-5">Nobody&apos;s role can do maintenance yet.</li>}
+                {mechanics.length === 0 && <li className="px-5 py-3 text-sm text-muted sm:px-6">Nobody&apos;s role can do maintenance yet.</li>}
               </ul>
             </Card>
           </div>

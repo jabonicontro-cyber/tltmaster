@@ -35,7 +35,7 @@ export default async function PipelinePage() {
   return (
     <>
       <PageHeader title="Sales pipeline" description="Open opportunities by stage and the follow-ups due this week. Values are your own estimates." crumbs={[{ label: "Customers", href: "/customers" }, { label: "Pipeline" }]} />
-      <section aria-label="Pipeline summary" className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3 text-sm shadow-xs sm:px-5">
+      <section aria-label="Pipeline summary" className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-5 py-3 text-sm shadow-xs sm:px-6">
         <span><strong className="tabular">{totals.open}</strong> open opportunities</span>
         <span><strong className="tabular">{usd(totals.valueCents)}</strong> open value{totals.unvalued ? ` (${totals.unvalued} without a value)` : ""}</span>
         <span><strong className="tabular">{usd(totals.weightedCents)}</strong> weighted by probability</span>
@@ -72,11 +72,11 @@ export default async function PipelinePage() {
       <Card>
         <CardHeader title="Due this week" description="Open follow-ups and opportunity follow-up dates up to one week ahead, overdue first." />
         {followUps.length === 0 ? (
-          <p className="px-4 py-4 text-sm text-muted sm:px-5">Nothing due this week.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">Nothing due this week.</p>
         ) : (
           <ul className="divide-y divide-line" aria-label="Due this week">
             {followUps.map((f) => (
-              <li key={f.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm sm:px-5">
+              <li key={f.key} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
                 <Badge tone={f.kind === "Follow-up" ? "blue" : "gray"}>{f.kind}</Badge>
                 <span className="min-w-0 flex-[1_1_14rem]"><span className="font-medium">{f.title}</span> · <Link href={`/customers/${f.customerId}`} className="hover:underline">{f.customer}</Link></span>
                 <span className="text-xs text-muted">{f.who ? names[f.who] ?? "Former user" : "Unassigned"}</span>

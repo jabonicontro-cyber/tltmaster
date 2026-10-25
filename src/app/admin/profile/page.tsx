@@ -28,13 +28,13 @@ export default async function AdminProfilePage() {
         <div className="space-y-5">
           <Card>
             <CardHeader title="Photo" description="JPEG, PNG or WebP. It is cropped to a square and made small before it is sent. Without a photo, your initials are shown." />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-5 pb-5 sm:px-6">
               <PhotoUploader name={name} src={photoUrl(profile.userId, profile.photoUpdatedAt)} />
             </div>
           </Card>
           <Card>
             <CardHeader title="Your details" description="The name shown next to your photo." />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-5 pb-5 sm:px-6">
               <ProfileForm displayName={profile.displayName} phone={profile.phone} fullName={profile.fullName} />
             </div>
           </Card>
@@ -43,11 +43,11 @@ export default async function AdminProfilePage() {
       <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Platform access" description="Granted and revoked only by an operator with server access (scripts/platform-admin.mjs); it cannot be changed here." />
-        <dl className="grid gap-x-6 gap-y-3 px-4 pb-5 text-sm sm:grid-cols-2 sm:px-5">
+        <dl className="grid gap-x-6 gap-y-3 px-5 pb-5 text-sm sm:grid-cols-2 sm:px-6">
           <div><dt className="text-muted">Role</dt><dd className="font-medium">{PLATFORM_ROLE_TITLE}</dd></div>
           <div><dt className="text-muted">Sign-in</dt><dd className="font-medium break-all">{me.email}</dd></div>
         </dl>
-        <div className="border-t border-line px-4 py-4 sm:px-5">
+        <div className="border-t border-line px-5 py-4 sm:px-6">
           <Link href="/forgot-password" className={buttonClasses("secondary")}>Change password (sends a reset link)</Link>
         </div>
       </Card>

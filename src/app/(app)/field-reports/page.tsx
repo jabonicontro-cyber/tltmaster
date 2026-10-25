@@ -37,7 +37,7 @@ export default async function FieldReportsPage({ searchParams }: { searchParams:
         ) : (
           <ul className="divide-y divide-line" aria-label="Driver reports">
             {rows.map((r) => (
-              <li key={r.id} className="px-4 py-3 sm:px-5">
+              <li key={r.id} className="px-5 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">
                   <Link href={`/field-reports/${r.id}`} className="font-semibold hover:underline">{REPORT_KIND_LABELS[r.kind]}</Link>
                   <Badge tone={statusTone[r.status]}>{r.status}</Badge>

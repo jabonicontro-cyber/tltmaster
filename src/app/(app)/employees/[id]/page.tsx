@@ -79,20 +79,20 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                 <p className="text-sm text-muted">{DEPARTMENTS[e.department]} · {EMPLOYMENT_TYPES[e.employment_type]}</p>
               </div>
             </div>
-            <dl className="grid gap-x-6 gap-y-3 border-t border-line px-4 py-4 sm:grid-cols-2 sm:px-5">
+            <dl className="grid gap-x-6 gap-y-3 border-t border-line px-5 py-4 sm:grid-cols-2 sm:px-6">
               <Item label="Work email">{e.work_email}</Item>
               <Item label="Work phone">{e.work_phone}</Item>
               <Item label="Hire date">{e.hire_date ? formatDate(e.hire_date) : ""}</Item>
               <Item label="Last day">{e.end_date ? formatDate(e.end_date) : ""}</Item>
               <Item label="Emergency contact">{[e.emergency_contact_name, e.emergency_contact_phone].filter(Boolean).join(" · ")}</Item>
             </dl>
-            {e.notes && <p className="border-t border-line px-4 py-4 text-sm whitespace-pre-line sm:px-5">{e.notes}</p>}
+            {e.notes && <p className="border-t border-line px-5 py-4 text-sm whitespace-pre-line sm:px-6">{e.notes}</p>}
           </Card>
 
           {driver && (
             <Card>
               <CardHeader title="Driver" description="Qualifications and the truck this driver normally uses. Dispatch checks qualifications before every assignment." />
-              <div className="space-y-4 px-4 pb-5 sm:px-5">
+              <div className="space-y-4 px-5 pb-5 sm:px-6">
                 {assign ? (
                   <PrimaryTruckPicker employeeId={id} driverId={driver.id} current={driver.primaryTruck?.id ?? null} trucks={detail.trucks} />
                 ) : (
@@ -121,7 +121,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
 
           <Card>
             <CardHeader title="Work schedule" description="Hours per weekday. Full-day time off counts the scheduled hours of the days requested." />
-            <div className="px-4 pb-5 sm:px-5">
+            <div className="px-5 pb-5 sm:px-6">
               {scheduleInstalled
                 ? <WorkScheduleForm employeeId={id} initial={(sched.data as WorkSchedule | null) ?? null} canEdit={can(access, "employees.edit")} />
                 : <p className="text-sm text-muted">Work schedules need a database update that has not been installed yet. Until then full-day time off asks for its hours.</p>}
@@ -131,7 +131,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
           {showPay && (
             <Card>
               <CardHeader title="Pay (confidential)" description="Only people with the confidential pay permission see this section. Amounts are never written to the audit log." />
-              <div className="px-4 pb-5 sm:px-5">
+              <div className="px-5 pb-5 sm:px-6">
                 {compensation && <p className="mb-4 font-semibold">{formatPay(compensation)}{compensation.effective_date ? <span className="font-normal text-muted"> · from {formatDate(compensation.effective_date)}</span> : null}</p>}
                 <CompensationForm
                   employeeId={id}
@@ -150,7 +150,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
 
         <Card className="h-fit">
           <CardHeader title="Taviron sign-in" />
-          <div className="space-y-3 px-4 pb-5 text-sm sm:px-5">
+          <div className="space-y-3 px-5 pb-5 text-sm sm:px-6">
             {!e.user_id ? (
               <>
                 <p className="text-muted">No sign-in. {manageUsers ? "Create a username sign-in (print or copy the instructions), send one to their work email, or link a sign-in they already have." : "Someone who manages users can give them one."}</p>

@@ -12,7 +12,7 @@ export function CappedList({ items, first = 6, label, className = "divide-y divi
       <ul className={className} aria-label={label}>{head}</ul>
       {rest.length > 0 && (
         <details className="group border-t border-line">
-          <summary className="cursor-pointer list-none px-4 py-2.5 text-center text-sm font-medium text-brand-fg hover:underline sm:px-5">
+          <summary className="cursor-pointer list-none px-5 py-2.5 text-center text-sm font-medium text-brand-fg hover:underline sm:px-6">
             <span className="group-open:hidden">Show {rest.length} more</span>
             <span className="hidden group-open:inline">Show fewer</span>
           </summary>

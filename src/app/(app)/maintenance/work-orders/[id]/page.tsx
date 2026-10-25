@@ -20,6 +20,7 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getWorkOrder } from "@/server/data/maintenance";
 import { getLatestTriage, getWorkOrderCrew } from "@/server/data/maintenance-crew";
+import { facesForUsers } from "@/server/data/faces";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -109,7 +110,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                   {"estimated_hours" in wo && (manage && editable
                     ? <EstimateForm workOrderId={wo.id} hours={(wo as { estimated_hours: number | null }).estimated_hours} />
                     : <p className="text-sm text-muted">Estimate: {(wo as { estimated_hours: number | null }).estimated_hours ?? "not set"}{(wo as { estimated_hours: number | null }).estimated_hours ? " h" : ""}</p>)}
-                  <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} me={access.userId} canManage={manage} today={today} timeZone={timezone} />
+                  <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} />
                 </CardBody>
               </Card>
               <Card>
@@ -168,7 +169,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <CardHeader title="History" />
             <ol className="divide-y divide-line text-sm">
               {events.map((e) => (
-                <li key={e.id} className="px-4 py-2.5 sm:px-5">
+                <li key={e.id} className="px-5 py-2.5 sm:px-6">
                   <div className="flex flex-wrap justify-between gap-2">
                     <span className="font-medium text-ink">
                       {EVENT_LABELS[e.kind] ?? e.kind}

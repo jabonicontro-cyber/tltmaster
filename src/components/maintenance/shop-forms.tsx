@@ -60,7 +60,7 @@ export function SkillsRow({ userId, name, skills, canManage }: { userId: string;
   const [sel, setSel] = useState(skills);
   const dirty = sel.slice().sort().join() !== skills.slice().sort().join();
   return (
-    <li className="space-y-2 px-4 py-3 sm:px-5">
+    <li className="space-y-2 px-5 py-3 sm:px-6">
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium text-ink">{name}</span>
         {canManage && dirty && <Button size="sm" disabled={pending} onClick={() => run(() => saveSkills({ userId, categories: sel }))}>Save</Button>}
