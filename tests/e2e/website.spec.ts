@@ -77,8 +77,29 @@ test("on a phone the menu works and no page scrolls sideways", async ({ page }) 
   test.setTimeout(180_000);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await page.getByLabel("Menu").click();
+  const menu = page.locator("details.site-menu");
+  const isOpen = () => menu.evaluate((d) => (d as HTMLDetailsElement).open);
+  const button = page.getByLabel("Menu");
+  // A comfortable touch target.
+  const box = await button.boundingBox();
+  expect(box!.width).toBeGreaterThanOrEqual(44);
+  expect(box!.height).toBeGreaterThanOrEqual(44);
+  await button.click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Trust & Security" }).click();
+  await expect(page).toHaveURL(/\/trust$/);
+  // The menu closes after a link is followed (the header stays mounted across pages)…
+  await expect.poll(isOpen).toBe(false);
+  // …on Escape, with focus back on the button…
+  await button.click();
+  await expect.poll(isOpen).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(isOpen).toBe(false);
+  await expect(button).toBeFocused();
+  // …and on a tap outside it, which does not also press what was underneath.
+  await button.click();
+  await expect.poll(isOpen).toBe(true);
+  await page.mouse.click(20, 700);
+  await expect.poll(isOpen).toBe(false);
   await expect(page).toHaveURL(/\/trust$/);
   for (const p of SITE_PAGES) {
     await page.goto(p);

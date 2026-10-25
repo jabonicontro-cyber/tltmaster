@@ -66,7 +66,7 @@ export function SiteNav() {
             <div
               id={`site-nav-${g.label}`}
               hidden={open !== g.label}
-              className="absolute left-0 mt-2 w-80 rounded-xl border border-silver/15 bg-navy-2 p-2 shadow-2xl shadow-black/40"
+              className="site-dropdown absolute left-0 mt-2 w-80 rounded-xl border border-silver/15 bg-navy-2 p-2 shadow-2xl shadow-black/40"
             >
               <ul>
                 {g.links.map((l) => (

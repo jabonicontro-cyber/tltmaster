@@ -136,7 +136,6 @@ export default function HomePage() {
             <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
           </div>
           <ProductShowcase />
-          <p className="mt-6 text-center text-sm text-silver/75">The real app, captured from the live demo company with fictional data — not a mock-up.</p>
         </Container>
       </section>
 

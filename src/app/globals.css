@@ -305,9 +305,16 @@
     border-bottom-color: rgb(199 209 222 / 0.1);
   }
 }
-/* The mobile menu materializes from the button that opened it (origin top right), never from nowhere. */
+/* The mobile menu materializes from the button that opened it (origin top right), never from nowhere. The page
+   behind it dims (a spread shadow, since the header's backdrop filter would clip a fixed overlay), focusing the task. */
 .site-menu[open] > nav {
   transform-origin: top right;
+  animation: site-menu-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 0 0 100vmax color-mix(in srgb, var(--color-navy) 70%, transparent), 0 25px 50px -12px rgb(0 0 0 / 0.4);
+}
+/* The desktop Platform and Solutions menus enter the same way, from the button that opened them. */
+.site-dropdown {
+  transform-origin: top center;
   animation: site-menu-in 200ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 @keyframes site-menu-in {
@@ -340,7 +347,8 @@
   text-wrap: balance;
 }
 @media (prefers-reduced-motion: reduce) {
-  .site-menu[open] > nav {
+  .site-menu[open] > nav,
+  .site-dropdown {
     animation: site-fade-in 120ms ease;
   }
   @keyframes site-fade-in {

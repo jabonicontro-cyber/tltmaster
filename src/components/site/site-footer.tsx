@@ -16,10 +16,11 @@ export function SiteFooter() {
         {FOOTER_GROUPS.map((c) => (
           <div key={c.title}>
             <h2 className="text-sm font-semibold text-cloud">{c.title}</h2>
-            <ul className="mt-3 space-y-2">
+            <ul className="mt-2 sm:mt-3 sm:space-y-2">
               {c.links.map((l) => (
                 <li key={l.href}>
-                  <Link href={l.href} className="text-sm text-silver transition-colors hover:text-cloud">
+                  {/* At least 44 px tall on phones, where these links are tapped. */}
+                  <Link href={l.href} className="inline-flex min-h-11 items-center text-sm text-silver transition-colors hover:text-cloud sm:min-h-0">
                     {l.label}
                   </Link>
                 </li>

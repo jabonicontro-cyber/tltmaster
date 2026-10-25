@@ -1,12 +1,12 @@
 import Link from "next/link";
-import { Menu } from "lucide-react";
 import { TavironLogo } from "./logo";
+import { MobileMenu } from "./mobile-menu";
 import { SiteNav } from "./site-nav";
 import { SITE_NAV } from "@/lib/site/nav";
 import { cn } from "@/lib/cn";
 import { SITE_CONTAINER } from "@/lib/layout";
 
-/** Public website header. The mobile menu is a <details> element: it works without JavaScript. */
+/** Public website header. The phone menu is a <details> element (works without JavaScript); see MobileMenu. */
 export function SiteHeader() {
   return (
     <header className="site-header sticky top-0 z-40 bg-navy/75 backdrop-blur-xl backdrop-saturate-150">
@@ -25,10 +25,7 @@ export function SiteHeader() {
             Request a Demo
           </Link>
         </div>
-        <details className="site-menu group relative lg:hidden">
-          <summary className="flex cursor-pointer list-none items-center rounded-md p-2 text-silver hover:text-cloud [&::-webkit-details-marker]:hidden" aria-label="Menu">
-            <Menu className="size-6" aria-hidden />
-          </summary>
+        <MobileMenu>
           <nav aria-label="Main" className="absolute right-0 mt-2 max-h-[calc(100dvh-5rem)] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-silver/15 bg-navy-2 p-2 shadow-2xl shadow-black/40">
             {SITE_NAV.map((g) =>
               g.links ? (
@@ -54,7 +51,7 @@ export function SiteHeader() {
               Request a Demo
             </Link>
           </nav>
-        </details>
+        </MobileMenu>
       </div>
     </header>
   );
