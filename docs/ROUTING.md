@@ -40,7 +40,7 @@ pounds, stored in cm and kg), or HERE's standard truck when none are recorded. A
 | Order suggestion, flexible polyline, dimensions | `src/lib/routing/optimize.ts`, `flexpolyline.ts`, `dimensions.ts` |
 | Map tiles (HERE, through the server; `dispatch.view`) | `src/app/api/map-tile/[z]/[x]/[y]/route.ts` |
 | Database | `20261112000500_routing.sql` (yard, site location source); `20261120002600_route_planner_core.sql` (locations, truck dimensions, saved routes); `20261120002700_yard_location_grant.sql` (the yard could not be saved before it) |
-| Demo samples | `src/server/demo/locations.ts` (yard, sites); `routePlanner` in `src/server/demo/samples.ts` (fictional pits and plant, two trucks' dimensions, one saved route, up to three of today's loads assigned through `assign_load`) |
+| Demo samples | `src/server/demo/locations.ts` (yard, sites); `routePlanner` in `src/server/demo/samples.ts` (`DEMO_PLACES`: one fictional place of each kind around the yard addressed to the demo's town, one not located yet, a yard per extra dispatch base; two trucks' dimensions; two saved routes, one with a sized truck; up to three of today's loads assigned through `assign_load`). Places and routes are added by name, so Refresh brings new ones to existing demos and keeps edits |
 | Tests | `tests/unit/routing.test.ts` (no live calls), `tests/db/route-planner.test.ts`, `tests/db/demo-samples.test.ts`, `tests/e2e/route-planner.spec.ts`, demo parity |
 
 ## 3. Limits and privacy

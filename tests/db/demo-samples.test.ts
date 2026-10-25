@@ -153,17 +153,29 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(help.rows[0].n)).toBe(3);
     const portal = await q<{ n: string }>("select count(*) n from public.portal_settings where company_id = $1 and enabled", [w.company]);
     expect(Number(portal.rows[0].n)).toBe(0);
-    // Route Planner (20261120002600): saved places around the demo yard, two trucks with routing dimensions, one saved
-    // route of four stops, and some of today's loads assigned (through assign_load) so today's routes are not empty.
-    const places = await q<{ kind: string; located: boolean }>("select kind, latitude is not null located from public.company_locations where company_id = $1 order by kind, name", [w.company]);
-    expect(places.rows.map((r) => r.kind)).toEqual(["plant", "quarry", "quarry", "yard"]);
-    expect(places.rows.every((r) => r.located)).toBe(true);
+    // Route Planner (20261120002600): one fictional place of each kind around the demo yard, addressed to the demo's
+    // town, and one not located yet; two trucks with routing dimensions; two saved routes; and some of today's loads
+    // assigned (through assign_load) so today's routes are not empty.
+    const places = await q<{ kind: string; located: boolean; city: string }>("select kind, latitude is not null located, city from public.company_locations where company_id = $1 order by kind, name", [w.company]);
+    expect(places.rows.map((r) => r.kind)).toEqual(["other", "pickup", "plant", "quarry", "quarry", "terminal", "yard"]);
+    expect(places.rows.filter((r) => !r.located).map((r) => r.kind)).toEqual(["other"]);
+    expect(places.rows.every((r) => r.city !== "")).toBe(true);
     const sized = await q<{ n: string }>("select count(*) n from public.trucks where company_id = $1 and height_cm is not null", [w.company]);
     expect(Number(sized.rows[0].n)).toBe(2);
-    const stops = await q<{ n: string }>("select count(*) n from public.saved_route_stops s join public.saved_routes r on r.id = s.route_id where r.company_id = $1", [w.company]);
-    expect(Number(stops.rows[0].n)).toBe(4);
+    const routes = await q<{ name: string; stops: string; truck: boolean }>("select r.name, count(s.id) stops, r.truck_id is not null truck from public.saved_routes r join public.saved_route_stops s on s.route_id = r.id where r.company_id = $1 group by r.id order by r.name", [w.company]);
+    expect(routes.rows.map((r) => [Number(r.stops), r.truck])).toEqual([[5, true], [4, false]]);
     const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
     expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // A second run adds no places or routes.
+    await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
+    expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
+    // A demo shown as Growth gets a yard for its second dispatch base, tied to that base.
+    await q("update public.companies set demo_plan = 'growth' where id = $1", [w.company]);
+    const base = (await q<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone) values ($1, 'EAST', 'East Yard', $2) returning id", [w.company, TZ])).rows[0].id;
+    await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    const baseYard = await q<{ base_id: string; located: boolean }>("select base_id, latitude is not null located from public.company_locations where company_id = $1 and name = 'East Yard yard (demo)'", [w.company]);
+    expect(baseYard.rows).toEqual([{ base_id: base, located: true }]);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

@@ -678,27 +678,48 @@ async function customerPortal(db: Db): Promise<number> {
 
 
 /**
- * Route Planner (B10, 20261120002600): saved places around the demo's own yard (a yard, two fictional pits and a
- * plant, placed a few miles out from the yard, not at real businesses), routing dimensions on two trucks, a saved
- * route, and today's routes: up to three of today's open loads are assigned through assign_load (the dispatch rules
- * decide; a refusal leaves the load open). Each part only while the demo has none of it.
+ * Route Planner (B10, 20261120002600): saved places around the demo's own yard, routing dimensions on two trucks, saved
+ * routes, and today's routes (up to three of today's open loads assigned through assign_load; the dispatch rules decide
+ * and a refusal leaves the load open).
+ *
+ * Places are fictional (named so) and placed a few miles out from the yard, not at real businesses; their address is
+ * the demo's own town only. One of each kind, a yard per extra dispatch base (Growth and Professional demos), and one
+ * place without a location yet so locating can be tried. Each place and route is added by name when missing, so
+ * existing demos receive new samples on Refresh and a person's own edits are kept.
  */
+export const DEMO_PLACES = [
+  { kind: "yard", name: "Main yard (demo)", d: [0, 0], notes: "Demo: trucks start and end the day here." },
+  { kind: "quarry", name: "North Pit (fictional)", d: [0.11, -0.04], notes: "Demo: scale house opens 6:00. Queue on the east lane." },
+  { kind: "quarry", name: "River Gravel Pit (fictional)", d: [-0.08, 0.12], notes: "Demo: washed stone and sand." },
+  { kind: "plant", name: "Asphalt Plant 2 (fictional)", d: [0.03, 0.19], notes: "Demo: hot mix loads by appointment." },
+  { kind: "terminal", name: "Rail Terminal (fictional)", d: [-0.14, -0.09], notes: "Demo: rail-delivered stone; trucks load at track 3." },
+  { kind: "pickup", name: "Sand Pickup, Hwy 24 (fictional)", d: [0.06, -0.16], notes: "Demo: self-load; bring a ticket from the office." },
+  { kind: "other", name: "Overflow parking (demo, not located yet)", d: null, notes: "Demo: no location yet. Use Edit to place it on the map." },
+] as const;
+
 async function routePlanner(db: Db, today: string): Promise<number> {
-  const locCount = await count(db, "company_locations");
-  if (locCount === null) return 0;
+  if ((await count(db, "company_locations")) === null) return 0;
   let n = 0;
-  const settings = (await db.from("company_settings").select("yard_latitude, yard_longitude").maybeSingle()).data as { yard_latitude: number | null; yard_longitude: number | null } | null;
+  const settings = (await db.from("company_settings").select("yard_latitude, yard_longitude, city, state").maybeSingle()).data as { yard_latitude: number | null; yard_longitude: number | null; city: string | null; state: string | null } | null;
   const yard = settings?.yard_latitude != null && settings.yard_longitude != null ? { lat: Number(settings.yard_latitude), lng: Number(settings.yard_longitude) } : null;
-  if (locCount === 0 && yard) {
-    const at = (dLat: number, dLng: number) => ({ latitude: Math.round((yard.lat + dLat) * 1e6) / 1e6, longitude: Math.round((yard.lng + dLng) * 1e6) / 1e6, location_source: "manual" });
+  const town = { city: (settings?.city ?? "").slice(0, 80), state: (settings?.state ?? "").slice(0, 40) };
+  if (yard) {
+    const at = (d: readonly [number, number] | null) => d
+      ? { latitude: Math.round((yard.lat + d[0]) * 1e6) / 1e6, longitude: Math.round((yard.lng + d[1]) * 1e6) / 1e6, location_source: "manual" }
+      : { latitude: null, longitude: null, location_source: "" };
+    const existing = new Set((((await db.from("company_locations").select("name")).data ?? []) as Array<{ name: string }>).map((r) => r.name));
+    const bases = ((await db.from("dispatch_bases").select("id, code, name").eq("active", true).neq("code", "MAIN").order("code")).data ?? []) as Array<{ id: string; code: string; name: string }>;
     const rows = [
-      { kind: "yard", name: "Main yard (demo)", ...at(0, 0), notes: "Demo: trucks start and end the day here." },
-      { kind: "quarry", name: "North Pit (fictional)", ...at(0.11, -0.04), notes: "Demo: scale house opens 6:00. Queue on the east lane." },
-      { kind: "quarry", name: "River Gravel Pit (fictional)", ...at(-0.08, 0.12), notes: "Demo: washed stone and sand." },
-      { kind: "plant", name: "Asphalt Plant 2 (fictional)", ...at(0.03, 0.19), notes: "Demo: hot mix loads by appointment." },
-    ];
-    await must("locations", db.from("company_locations").insert(rows));
-    n += rows.length;
+      ...DEMO_PLACES.map((p) => ({ kind: p.kind, name: p.name, notes: p.notes, ...at(p.d) })),
+      // A yard per extra base, spread around the main yard.
+      ...bases.map((b, i) => ({ kind: "yard", name: `${b.name} yard (demo)`.slice(0, 120), notes: "Demo: this dispatch base's trucks start here.", base_id: b.id, ...at([0.22 * Math.cos(i * 2.1), 0.28 * Math.sin(i * 2.1)]) })),
+    ].filter((r) => !existing.has(r.name)).map((r) => ({ ...town, ...r }));
+    if (rows.length) {
+      await must("locations", db.from("company_locations").insert(rows));
+      n += rows.length;
+    }
+    // Earlier samples had no address: give them the demo's town (only where still blank).
+    if (town.city) await db.from("company_locations").update(town).in("name", DEMO_PLACES.map((p) => p.name)).eq("city", "").eq("address_line1", "");
   }
 
   // Routing dimensions on two trucks that have none (a typical tri-axle dump truck; fictional).
@@ -738,23 +759,21 @@ async function routePlanner(db: Db, today: string): Promise<number> {
     }
   }
 
-  // A saved route: yard → first pit → a located customer site → yard.
-  const routes = await count(db, "saved_routes");
-  if (routes === 0) {
-    const places = ((await db.from("company_locations").select("id, kind").in("kind", ["yard", "quarry"]).order("name")).data ?? []) as Array<{ id: string; kind: string }>;
-    const yardLoc = places.find((p) => p.kind === "yard");
-    const pit = places.find((p) => p.kind === "quarry");
-    const site = (((await db.from("customer_sites").select("id").not("latitude", "is", null).eq("active", true).order("label").limit(1)).data ?? []) as Array<{ id: string }>)[0];
-    if (yardLoc && pit && site) {
-      const head = (await must("saved route", db.from("saved_routes").insert({ name: "Yard → North Pit → job site (demo)", notes: "Demo: a typical first load of the day." }).select("id").single())) as { id: string };
-      await must("saved route stops", db.from("saved_route_stops").insert([
-        { route_id: head.id, position: 1, company_location_id: yardLoc.id, label: "Main yard (demo)", service_minutes: 0 },
-        { route_id: head.id, position: 2, company_location_id: pit.id, label: "North Pit (fictional)", service_minutes: 25 },
-        { route_id: head.id, position: 3, customer_site_id: site.id, label: "Job site", service_minutes: 15 },
-        { route_id: head.id, position: 4, company_location_id: yardLoc.id, label: "Main yard (demo)", service_minutes: 0 },
-      ]));
-      n++;
-    }
+  // Saved routes, each added by name when missing: a first load of the day, and a plant run with a sized truck.
+  const placeIds = new Map((((await db.from("company_locations").select("id, name").eq("active", true)).data ?? []) as Array<{ id: string; name: string }>).map((p) => [p.name, p.id]));
+  const routeNames = new Set((((await db.from("saved_routes").select("name")).data ?? []) as Array<{ name: string }>).map((r) => r.name));
+  const site = (((await db.from("customer_sites").select("id, label").not("latitude", "is", null).eq("active", true).order("label").limit(1)).data ?? []) as Array<{ id: string; label: string }>)[0];
+  const sized = (((await db.from("trucks").select("id").eq("active", true).not("height_cm", "is", null).order("unit_number").limit(1)).data ?? []) as Array<{ id: string }>)[0];
+  const place = (name: string, minutes: number) => (placeIds.has(name) ? { company_location_id: placeIds.get(name)!, label: name, service_minutes: minutes } : null);
+  const samples = [
+    { name: "Yard → North Pit → job site (demo)", notes: "Demo: a typical first load of the day.", truck_id: null, stops: [place("Main yard (demo)", 0), place("North Pit (fictional)", 25), site ? { customer_site_id: site.id, label: site.label, service_minutes: 15 } : null, place("Main yard (demo)", 0)] },
+    { name: "Plant run via River Gravel (demo)", notes: "Demo: a sized truck, so its height and weight go to the routing provider.", truck_id: sized?.id ?? null, stops: [place("Main yard (demo)", 0), place("River Gravel Pit (fictional)", 20), place("Asphalt Plant 2 (fictional)", 30), place("Rail Terminal (fictional)", 20), place("Main yard (demo)", 0)] },
+  ];
+  for (const r of samples) {
+    if (routeNames.has(r.name) || r.stops.some((x) => !x)) continue;
+    const head = (await must("saved route", db.from("saved_routes").insert({ name: r.name, notes: r.notes, truck_id: r.truck_id }).select("id").single())) as { id: string };
+    await must("saved route stops", db.from("saved_route_stops").insert(r.stops.map((x, i) => ({ route_id: head.id, position: i + 1, ...x }))));
+    n++;
   }
   return n;
 }
