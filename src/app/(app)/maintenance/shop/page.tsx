@@ -48,7 +48,7 @@ export default async function ShopCapacityPage() {
                       const notes = [
                         !d.working_day && d.jobs > 0 ? "Work scheduled on a closed day" : null,
                         over ? `${(d.planned_hours - d.available_hours).toFixed(1)} h over` : null,
-                        d.jobs > d.bays ? `${d.jobs - d.bays} more jobs than bays` : null,
+                        d.jobs > d.bays ? `${d.jobs - d.bays} more job${d.jobs - d.bays === 1 ? "" : "s"} than bays` : null,
                         d.unestimated > 0 ? `${d.unestimated} without an estimate` : null,
                       ].filter(Boolean) as string[];
                       return (
@@ -57,10 +57,10 @@ export default async function ShopCapacityPage() {
                           <Td className="text-right tabular">{d.working_day ? d.mechanics : "—"}</Td>
                           <Td>
                             <div className="flex items-center gap-2">
-                              <div className="h-2 w-24 overflow-hidden rounded-full bg-surface" aria-hidden>
+                              <div className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-surface" aria-hidden>
                                 <div className={`h-full ${over ? "bg-critical" : "bg-strong"}`} style={{ width: `${pct}%` }} />
                               </div>
-                              <span className="tabular text-sm">{d.planned_hours} / {d.available_hours} h</span>
+                              <span className="tabular whitespace-nowrap text-sm">{d.planned_hours} / {d.available_hours} h</span>
                             </div>
                           </Td>
                           <Td className="text-right tabular">{d.jobs} / {d.bays}</Td>
