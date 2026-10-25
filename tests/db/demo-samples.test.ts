@@ -183,6 +183,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     const plan = await q<{ d: string; n: string }>("select scheduled_for::text as d, count(*) as n from public.work_orders where company_id = $1 and estimated_hours is not null and status not in ('completed', 'closed', 'canceled') and scheduled_for between current_date and current_date + 14 group by 1", [w.company]);
     expect(plan.rows.length).toBeGreaterThan(0);
     expect(Math.max(...plan.rows.map((r) => Number(r.n)))).toBeGreaterThan(2);
+    // Fictional VINs in the VIN format on all trucks but one (the missing case), and on trailers.
+    const vins = await q<{ with_vin: string; no_vin: string }>("select count(*) filter (where vin <> '') as with_vin, count(*) filter (where vin = '') as no_vin from public.trucks where company_id = $1 and active", [w.company]);
+    expect(Number(vins.rows[0].with_vin)).toBeGreaterThan(0);
+    expect(Number(vins.rows[0].no_vin)).toBe(1);
     // Triage (20261120003100): suggestions from the rules waiting for a person's review; nothing accepted for them.
     const tri = await q<{ source: string; status: string }>("select source, status from public.work_order_triage where company_id = $1", [w.company]);
     expect(tri.rows.length).toBeGreaterThan(0);

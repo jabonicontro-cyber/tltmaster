@@ -66,6 +66,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("shop schedule", await shopSchedule(db, today));
   note("maintenance triage", await maintenanceTriage(db));
   note("vehicle documents", await documents(db, today, trucks));
+  note("VINs", await demoVins(db));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
   note("work schedules", await workSchedules(db));
@@ -838,6 +839,29 @@ async function ownerCrews(db: Db): Promise<number> {
     if (busy.has(o.user_id)) continue;
     const r = await db.rpc("maintenance_add_mechanic", { p_wo: job[0].id, p_user: o.user_id, p_lead: false });
     if (!r.error) n++;
+  }
+  return n;
+}
+
+/**
+ * Fictional VINs for record keeping (Fleet → Edit; the list shows the last six characters). They follow the VIN format
+ * (17 characters, no I, O or Q) but are made up: "1DEM" plus TRK or TRL plus the unit number. The last truck keeps a
+ * blank VIN so the missing case shows. Only fills VINs that are still blank, so it runs on every Refresh without changes.
+ */
+async function demoVins(db: Db): Promise<number> {
+  const clean = (unit: string) => unit.toUpperCase().replace(/[^A-HJ-NPR-Z0-9]/g, "").slice(-10).padStart(10, "0");
+  let n = 0;
+  for (const [table, tag] of [["trucks", "TRK"], ["trailers", "TRL"]] as const) {
+    const { data, error } = await db.from(table).select("id, unit_number, vin").eq("active", true).order("unit_number");
+    if (error) continue;
+    const rows = (data ?? []) as Array<{ id: string; unit_number: string; vin: string }>;
+    // The last truck (by unit number) always stays without a VIN, so the missing case shows.
+    const keepBlank = table === "trucks" && rows.length > 1 ? rows[rows.length - 1].id : null;
+    const blank = rows.filter((r) => !r.vin && r.id !== keepBlank);
+    for (const r of blank) {
+      const u = await db.from(table).update({ vin: `1DEM${tag}${clean(r.unit_number)}` }).eq("id", r.id);
+      if (!u.error) n++;
+    }
   }
   return n;
 }

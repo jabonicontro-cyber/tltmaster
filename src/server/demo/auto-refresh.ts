@@ -7,12 +7,21 @@ import { refreshPrairieLantern } from "./prairie-lantern-refresh";
 import { ensureFeatureSamples } from "./samples";
 
 // Demos refresh themselves (owner 2026-10-25; migration 20261120002800). When a demo owner opens a demo company, the
-// same additive refresh as Admin → Demo → "Refresh demo data" runs after the page is sent, once per deployed version and
-// once per day. The database decides whether to run (demo_auto_refresh_claim: demo, owner, not yet at this version
+// same additive refresh as Admin → Demo → "Refresh demo data" runs after the page is sent, once per deployed version,
+// day and six-hour window (refreshKey). The database decides whether to run (demo_auto_refresh_claim: demo, owner, not yet at this version
 // and day, nothing in progress); real companies are never refreshed. A failure is recorded and retried an hour later.
 
 /** The deployed build; each deployment is a new version. */
 export const DEMO_SAMPLES_VERSION = process.env.VERCEL_GIT_COMMIT_SHA || "local";
+
+/**
+ * The claim key: the build plus a six-hour window. A database update applied after the deployment (the migration
+ * workflow runs after CI, and destructive-looking ones wait for the owner) therefore reaches the demos within six
+ * hours instead of the next day. The refresh only adds what is missing, so the extra runs change nothing otherwise.
+ */
+export function refreshKey(now = new Date()): string {
+  return `${DEMO_SAMPLES_VERSION}@${Math.floor(now.getUTCHours() / 6)}`;
+}
 
 export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
   const { data: access } = await db.rpc("my_access");
@@ -27,7 +36,8 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
   const timeZone = (settings as { timezone?: string | null } | null)?.timezone || PRAIRIE_LANTERN.timeZone;
   const day = todayIn(timeZone);
   // The lock is shared with the manual refresh (withDemoRefreshLock), so the two never add the same samples at once.
-  const claim = await db.rpc("demo_auto_refresh_claim", { p_version: DEMO_SAMPLES_VERSION, p_day: day });
+  const key = refreshKey();
+  const claim = await db.rpc("demo_auto_refresh_claim", { p_version: key, p_day: day });
   if (claim.error || claim.data !== true) return; // not installed, not an owner, already current, or running elsewhere
   let ok = true;
   let summary: string;
@@ -46,7 +56,7 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
     ok = false;
     summary = e instanceof Error ? e.message : "The demo could not be refreshed.";
   }
-  await db.rpc("demo_auto_refresh_finish", { p_version: DEMO_SAMPLES_VERSION, p_day: day, p_ok: ok, p_summary: summary });
+  await db.rpc("demo_auto_refresh_finish", { p_version: key, p_day: day, p_ok: ok, p_summary: summary });
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -73,6 +83,6 @@ export async function withDemoRefreshLock<T>(db: SupabaseClient, run: () => Prom
     ok = true;
     return result;
   } finally {
-    await db.rpc("demo_refresh_end", { p_version: DEMO_SAMPLES_VERSION, p_day: day, p_ok: ok });
+    await db.rpc("demo_refresh_end", { p_version: refreshKey(), p_day: day, p_ok: ok });
   }
 }
