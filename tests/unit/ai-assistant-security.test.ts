@@ -7,7 +7,7 @@ import type { Permission } from "@/lib/permissions";
 import { ASSISTANT_TOOLS, REPORT_MAX_DAYS, assistantRequest, type AssistantSource, type AssistantToolData } from "@/server/ai/assistant";
 import { parseAiConfig, runSettings } from "@/server/ai/config";
 import { classifyOpenAiError, OpenAiProvider } from "@/server/ai/openai";
-import { runCapability, type RunSettings, type UsageLedger, type UsageRecord, type UsageSummary } from "@/server/ai/run";
+import { runCapability, type ReserveRefusal, type RunSettings, type UsageLedger, type UsageRecord, type UsageSummary } from "@/server/ai/run";
 import { runToolCall } from "@/server/ai/tools";
 import { AiError, publicMessage, type AiProvider, type CompletionRequest, type CompletionResponse } from "@/server/ai/types";
 import { reportTotals } from "@/server/data/assistant";
@@ -93,7 +93,44 @@ type SummaryOver = Partial<Omit<UsageSummary, "user">> & { user?: Partial<UsageS
 function ledger(over: SummaryOver | null = {}): UsageLedger & { events: UsageRecord[] } {
   const events: UsageRecord[] = [];
   const summary = over === null ? null : { tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, ...over, user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0, ...over.user } };
-  return { events, summary: async () => summary, record: async (e) => void events.push(e) };
+  return { events, summary: async () => summary, reserve: async () => ({ ok: true }), record: async (e) => void events.push(e) };
+}
+
+/**
+ * The reservation as public.ai_reserve_call does it: one at a time (a lock), checking recorded calls plus calls in
+ * flight. Summaries always read as empty, like several requests that all read the summary before any call happened.
+ */
+function atomicLedger(): UsageLedger & { events: UsageRecord[]; reserved: string[]; refused: string[] } {
+  const events: UsageRecord[] = [];
+  const reserved: string[] = [];
+  const refused: string[] = [];
+  const held = new Map<string, number>();
+  let lock: Promise<unknown> = Promise.resolve();
+  const empty = { tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0 } };
+  return {
+    events, reserved, refused,
+    summary: async () => empty,
+    reserve: (r) => {
+      const next = lock.then(async () => {
+        await new Promise((res) => setTimeout(res, 1)); // others queue on the lock meanwhile
+        const tokens = [...held.values()].reduce((a, b) => a + b, 0);
+        const reason: ReserveRefusal | null = held.size >= r.settings.userRequestsPerMinute ? "user_per_minute" : tokens + r.tokens > r.settings.userMonthlyTokenLimit ? "user_tokens" : null;
+        if (reason) {
+          refused.push(reason);
+          return { ok: false as const, reason };
+        }
+        held.set(r.requestKey, r.tokens);
+        reserved.push(r.requestKey);
+        return { ok: true as const };
+      });
+      lock = next;
+      return next;
+    },
+    record: async (e) => {
+      events.push(e);
+      if (held.has(e.requestKey)) held.set(e.requestKey, (e.inputTokens ?? 0) + (e.outputTokens ?? 0));
+    },
+  };
 }
 
 const C = capability("ops_assistant");
@@ -361,6 +398,63 @@ describe("Ask Taviron: usage limits and cost tracking", () => {
     expect(runSettings(c)).toMatchObject({ userRequestsPerMinute: 6, userDailyRequests: 150, maxRequestChars: 40_000, monthlyCostLimitMicroUsd: null, userMonthlyTokenLimit: 0 });
     const set = parseAiConfig({ AI_USER_MONTHLY_TOKEN_LIMIT: "20000", AI_USER_REQUESTS_PER_MINUTE: "2", AI_USER_DAILY_REQUESTS: "40", AI_MONTHLY_COST_LIMIT_USD: "25", AI_MAX_REQUEST_CHARS: "30000" });
     expect(runSettings(set)).toMatchObject({ userMonthlyTokenLimit: 20_000, userRequestsPerMinute: 2, userDailyRequests: 40, monthlyCostLimitMicroUsd: 25_000_000, maxRequestChars: 30_000 });
+  });
+});
+
+describe("Ask Taviron: limits hold for simultaneous requests", () => {
+  const answer = () => final({ kind: "answer", answer: "2 loads need a truck.", sources: [], followUps: [] });
+
+  it("ten questions at once: only as many reach the provider as the per-person limit allows", async () => {
+    const led = atomicLedger();
+    const providers: Array<ReturnType<typeof scripted>> = [];
+    const runs = await Promise.all(Array.from({ length: 10 }, async () => {
+      const d = data();
+      const provider = scripted([answer()]);
+      providers.push(provider);
+      const req = await assistantRequest("How many loads need a truck?", d, "2030-04-02");
+      return runCapability(req, { provider, ledger: led, settings: { ...SETTINGS, userRequestsPerMinute: 3 }, gate: gate(), toolContext: { permissions: d.permissions, data: d } }).then(() => "ok", (e: AiError) => e.kind);
+    }));
+    expect(runs.filter((r) => r === "ok")).toHaveLength(3);
+    expect(runs.filter((r) => r === "user_limit")).toHaveLength(7);
+    expect(providers.reduce((n, p) => n + p.requests.length, 0)).toBe(3);
+    expect(led.reserved).toHaveLength(3);
+    // Each sent call is finalized under its own reservation key.
+    expect(led.events.map((e) => e.requestKey).sort()).toEqual([...led.reserved].sort());
+  });
+
+  it("the token budget holds across simultaneous requests (reserved tokens count until recorded)", async () => {
+    const led = atomicLedger();
+    let sentCalls = 0;
+    const results = await Promise.all(Array.from({ length: 6 }, async () => {
+      const d = data();
+      const provider = scripted([answer()]);
+      const req = await assistantRequest("How many loads need a truck?", d, "2030-04-02");
+      const r = await runCapability(req, { provider, ledger: led, settings: { ...SETTINGS, userRequestsPerMinute: 50, userMonthlyTokenLimit: 2_000 }, gate: gate(), toolContext: { permissions: d.permissions, data: d } })
+        .then(() => "ok", (e: AiError) => e.kind);
+      sentCalls += provider.requests.length;
+      return r;
+    }));
+    // Each call reserves more than half of the 2,000-token budget (its input estimate plus its 600-token output cap),
+    // so at most one fits, however the six interleave.
+    expect(results.filter((r) => r === "ok").length).toBeLessThanOrEqual(1);
+    expect(sentCalls).toBe(results.filter((r) => r === "ok").length);
+    expect(led.refused.every((r) => r === "user_tokens")).toBe(true);
+  });
+
+  it("a reservation that cannot be made (migration missing, database error) sends nothing", async () => {
+    const led = { ...ledger(), reserve: async () => { throw new Error("function ai_reserve_call does not exist"); } };
+    const { provider, run } = await ask("Which loads still need a truck?", [answer()], { led });
+    await expect(run).rejects.toMatchObject({ kind: "not_configured" });
+    expect(provider.requests).toHaveLength(0);
+  });
+
+  it("each refusal reason from the database becomes Taviron's own message", async () => {
+    for (const [reason, kind] of [["paused", "disabled"], ["user_daily", "user_limit"], ["company_cost", "budget"], ["company_per_minute", "rate_limit"]] as const) {
+      const led = { ...ledger(), reserve: async () => ({ ok: false as const, reason }) };
+      const { provider, run } = await ask("Which loads still need a truck?", [answer()], { led });
+      await expect(run).rejects.toMatchObject({ kind });
+      expect(provider.requests).toHaveLength(0);
+    }
   });
 });
 

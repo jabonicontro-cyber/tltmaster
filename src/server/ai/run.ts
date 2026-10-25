@@ -38,11 +38,41 @@ export interface UsageSummary {
   paused: boolean;
 }
 
+/** Why a reservation was refused (public.ai_reserve_call), or "unavailable" when it could not be made. */
+export type ReserveRefusal = "paused" | "user_per_minute" | "user_daily" | "user_tokens" | "company_per_minute" | "company_tokens" | "company_cost" | "unavailable";
+
+export interface ReserveRequest {
+  requestKey: string;
+  capability: string;
+  provider: string;
+  model: string;
+  /** Projected tokens for this call (input estimate plus the output cap); held until the call is recorded. */
+  tokens: number;
+  settings: RunSettings;
+}
+
 export interface UsageLedger {
   /** null when the ledger or the per-person limits are unavailable: then nothing is sent. */
   summary(): Promise<UsageSummary | null>;
+  /**
+   * Atomically checks every limit against recorded usage plus calls in flight and reserves this call (one
+   * reservation at a time per company). Without a reservation nothing is sent.
+   */
+  reserve(r: ReserveRequest): Promise<{ ok: true } | { ok: false; reason: ReserveRefusal }>;
+  /** Finalizes the reservation with the same request key (reported tokens, cost, outcome). */
   record(event: UsageRecord): Promise<void>;
 }
+
+const REFUSED: Record<ReserveRefusal, AiError> = {
+  paused: new AiError("disabled", "AI is paused by the platform owner."),
+  user_per_minute: new AiError("user_limit", "You have asked several questions in the last minute. Try again shortly."),
+  user_daily: new AiError("user_limit", "You have reached today's limit of AI requests."),
+  user_tokens: new AiError("user_limit", "Your own AI token limit for this month would be exceeded."),
+  company_per_minute: new AiError("rate_limit", "Too many AI requests in the last minute for this company. Try again shortly."),
+  company_tokens: new AiError("budget", "This month's AI token limit would be exceeded."),
+  company_cost: new AiError("budget", "This month's estimated AI cost limit is reached."),
+  unavailable: new AiError("not_configured", "AI usage cannot be tracked right now, so nothing was sent."),
+};
 
 export interface CapabilityRequest<C, O> {
   capability: AiCapability;
@@ -174,13 +204,21 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
     if (usedBefore.company + next > deps.settings.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
     if (usedBefore.user + next > deps.settings.userMonthlyTokenLimit) throw new AiError("user_limit", "Your own AI token limit for this month would be exceeded.");
 
+    // The atomic check: every limit again, counting calls still in flight (another request of this company or person).
+    const callKey = key();
+    const reservation = await deps.ledger.reserve({
+      requestKey: callKey, capability: req.capability.id, provider: deps.provider.name, model,
+      tokens: Math.ceil(payload.length / 3) + outputTokenCap(model, req.maxOutputTokens), settings: deps.settings,
+    }).catch(() => ({ ok: false as const, reason: "unavailable" as const }));
+    if (!reservation.ok) throw REFUSED[reservation.reason];
+
     const t0 = clock();
     let res: CompletionResponse;
     try {
       res = await deps.provider.complete(request, { timeoutMs: deps.settings.timeoutMs });
     } catch (e) {
       const err = e instanceof AiError ? e : new AiError("provider", "The AI provider failed.");
-      await deps.ledger.record({ requestKey: key(), capability: req.capability.id, provider: deps.provider.name, model, outcome: "error", errorKind: err.kind, inputTokens: null, outputTokens: null, estimatedCostMicroUsd: null, latencyMs: clock() - t0 });
+      await deps.ledger.record({ requestKey: callKey, capability: req.capability.id, provider: deps.provider.name, model, outcome: "error", errorKind: err.kind, inputTokens: null, outputTokens: null, estimatedCostMicroUsd: null, latencyMs: clock() - t0 });
       throw err;
     }
     const callCost = estimateCostMicroUsd(model, res.usage, deps.settings.pricing);
@@ -190,7 +228,7 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
     spent += (res.usage.inputTokens ?? 0) + (res.usage.outputTokens ?? 0);
 
     const finish = async (errorKind: AiErrorKind | null) =>
-      deps.ledger.record({ requestKey: key(), capability: req.capability.id, provider: deps.provider.name, model, outcome: errorKind ? "error" : "ok", errorKind, inputTokens: res.usage.inputTokens, outputTokens: res.usage.outputTokens, estimatedCostMicroUsd: callCost, latencyMs: clock() - t0 });
+      deps.ledger.record({ requestKey: callKey, capability: req.capability.id, provider: deps.provider.name, model, outcome: errorKind ? "error" : "ok", errorKind, inputTokens: res.usage.inputTokens, outputTokens: res.usage.outputTokens, estimatedCostMicroUsd: callCost, latencyMs: clock() - t0 });
 
     if (res.refusal) {
       await finish("invalid_output");

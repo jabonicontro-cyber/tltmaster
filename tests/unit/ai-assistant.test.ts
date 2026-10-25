@@ -92,7 +92,7 @@ const call = (name: string, args: unknown): CompletionResponse => ({ id: "t", mo
 
 function ledger(): UsageLedger & { events: UsageRecord[] } {
   const events: UsageRecord[] = [];
-  return { events, summary: async () => ({ tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0 } }), record: async (e) => void events.push(e) };
+  return { events, summary: async () => ({ tokensThisMonth: 0, callsLastMinute: 0, costThisMonthMicroUsd: 0, paused: false, user: { tokensThisMonth: 0, callsLastMinute: 0, callsToday: 0 } }), reserve: async () => ({ ok: true }), record: async (e) => void events.push(e) };
 }
 
 const C = capability("ops_assistant");

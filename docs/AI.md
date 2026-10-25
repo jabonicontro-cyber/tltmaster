@@ -144,8 +144,13 @@ the setup page.
 - **Known limits:**
   - Any member of a company can call `record_ai_usage`, so a member could inflate their own company's usage. That only
     uses up their company's AI budget sooner; it exposes nothing.
-  - Two simultaneous requests can both pass the budget check (no reservation). With 700 output tokens per call and
-    3 rounds, the overshoot is small.
+  - Simultaneous requests: fixed by `20261120002500`. Each model call is first reserved by `public.ai_reserve_call`,
+    which takes a per-company advisory lock, recomputes the company's and the caller's usage **including calls still in
+    flight** (their projected tokens), checks the pause switch and every limit, and refuses or reserves. Recording the call
+    (`record_ai_usage`, same request key) replaces the projection with the reported tokens. A reservation left behind by a
+    crashed request stops holding tokens after 15 minutes but still counts as a call. Without the migration nothing is
+    reserved and nothing is sent. Proven with eight and six parallel connections in `tests/db/ai-usage-concurrency.test.ts`
+    and with interleaved requests in `tests/unit/ai-assistant-security.test.ts`.
 
 ## 7. "Explain this plan" (first capability)
 
@@ -350,5 +355,41 @@ stops at its next request ("AI is paused by the platform owner."); deterministic
 and redeploy, or revoke the key in the OpenAI dashboard.
 
 **Remaining gaps:** no live evaluation of version 3 yet; one question can make up to 3 model calls, so limits count calls
-rather than questions; two simultaneous requests can both pass a limit check (no reservation; overshoot is at most one
-request); OpenAI's own retention terms apply even with `store: false`.
+rather than questions; the privacy notice and customer terms do not yet describe AI processing (§17). Simultaneous
+requests are limited atomically since `20261120002500` (§6). Activation also needs that migration, after
+`20261120002400`.
+
+## 17. OpenAI data handling and the disclosures needed before activation (2026-10-25)
+
+What OpenAI states for the API (checked 2026-10-25 from OpenAI's published pages; the owner should re-read them and the
+Data Processing Addendum before activation, because terms change):
+
+- **Training:** data sent to the API is not used to train OpenAI's models unless the account opts in (OpenAI, "Data
+  controls in the OpenAI platform" and "Enterprise privacy").
+- **Abuse monitoring:** API inputs and outputs may be retained for up to 30 days for service delivery and abuse
+  monitoring, longer only where legally required, then removed.
+- **`store: false`:** Taviron sends every Responses API request with `store: false`, so OpenAI does not keep the
+  response as application state for later retrieval. It does **not** turn off the 30-day abuse-monitoring retention.
+- **Zero Data Retention / Modified Abuse Monitoring:** available only with OpenAI's prior approval for eligible endpoints
+  and use cases (contact OpenAI sales); not something Taviron can switch on in code. Not assumed.
+- **Processing location:** the API is operated by OpenAI (United States unless a data-residency arrangement is made).
+
+What Taviron actually sends (by design, §10 and §15): the person's question with names, references, email addresses
+and phone numbers replaced or removed; codes (O1, L2, T3 …), catalog labels, dates and counts from tool results;
+period totals. Never record ids, company ids, typed notes or descriptions, customer or employee names, or the key.
+Taviron stores no prompts or answers; the ledger keeps counts only.
+
+**Disclosures required before Ask Taviron is switched on for any real company (owner decisions; legal review advised):**
+1. **Privacy notice** (`src/app/(site)/privacy/page.tsx`, currently a draft that does not mention AI): add that optional AI
+   features, when a company switches them on, send pseudonymized operational data and the user's question to OpenAI as
+   a service provider; not used for training; retained by OpenAI up to 30 days for abuse monitoring; not stored by
+   Taviron; how to ask questions about it. Also list OpenAI where providers are listed ("Where it is stored" promises the
+   list before general availability).
+2. **Customer terms / order form or DPA:** name OpenAI as a sub-processor for the optional AI features, and record the
+   customer company's choice to enable them (the `AI_COMPANY_ALLOWLIST` entry should follow that written choice).
+3. **In-app notice:** the Ask Taviron page already labels answers as AI-generated and checked; add one line on first
+   use saying questions are processed by OpenAI and not stored by Taviron (code change, small; not done yet).
+4. **OpenAI account settings:** confirm data-sharing for training is off for the project, set a spending limit, and
+   decide whether to apply for Zero Data Retention.
+
+No public page was changed in this round: public wording is a person's decision (CLAUDE.md).

@@ -5,7 +5,7 @@ import type { Access } from "@/lib/permissions";
 import { createClient } from "@/server/supabase/server";
 import { aiConfig, type AiConfig } from "./config";
 import { OpenAiProvider } from "./openai";
-import type { UsageLedger } from "./run";
+import type { ReserveRefusal, UsageLedger } from "./run";
 import type { AiProvider } from "./types";
 
 // Server wiring for AI capabilities: provider, usage ledger and readiness gates for the signed-in person (docs/AI.md).
@@ -32,6 +32,19 @@ export async function sessionLedger(): Promise<UsageLedger> {
         user: { tokensThisMonth: Number(row.user_tokens_this_month), callsLastMinute: Number(row.user_calls_last_minute), callsToday: Number(row.user_calls_today) },
         paused: row.paused !== false,
       };
+    },
+    async reserve(r) {
+      // 20261120002500. Without it (or on any error) nothing is reserved, so nothing is sent (fail closed).
+      const { data, error } = await db.rpc("ai_reserve_call", {
+        p_request_key: r.requestKey, p_capability: r.capability, p_provider: r.provider, p_model: r.model, p_reserve_tokens: r.tokens,
+        p_monthly_tokens: r.settings.monthlyTokenLimit, p_per_minute: r.settings.requestsPerMinute,
+        p_monthly_cost_micro_usd: r.settings.monthlyCostLimitMicroUsd,
+        p_user_monthly_tokens: r.settings.userMonthlyTokenLimit, p_user_per_minute: r.settings.userRequestsPerMinute, p_user_daily: r.settings.userDailyRequests,
+      });
+      if (error || typeof data !== "string") return { ok: false, reason: "unavailable" };
+      if (data === "ok") return { ok: true };
+      const known: ReserveRefusal[] = ["paused", "user_per_minute", "user_daily", "user_tokens", "company_per_minute", "company_tokens", "company_cost"];
+      return { ok: false, reason: known.includes(data as ReserveRefusal) ? (data as ReserveRefusal) : "unavailable" };
     },
     async record(e) {
       const { error } = await db.rpc("record_ai_usage", {

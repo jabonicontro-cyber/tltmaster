@@ -82,7 +82,7 @@ const fullSummary = (o: SummaryOver = {}): UsageSummary => ({
 
 function memoryLedger(summary: SummaryOver | null = {}): UsageLedger & { events: UsageRecord[] } {
   const events: UsageRecord[] = [];
-  return { events, summary: async () => (summary === null ? null : fullSummary(summary)), record: async (e) => void events.push(e) };
+  return { events, summary: async () => (summary === null ? null : fullSummary(summary)), reserve: async () => ({ ok: true }), record: async (e) => void events.push(e) };
 }
 
 const EVIDENCE: EvalEvidence = { capability: "plan_explanation", provider: "openai", model: "test-model-2030", evalVersion: capability("plan_explanation").evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 3, passed: 3, criticalFailures: 0 };
