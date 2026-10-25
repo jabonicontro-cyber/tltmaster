@@ -11,6 +11,7 @@ import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lante
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { refreshNorthfield } from "@/server/demo/northfield-refresh";
+import { withDemoRefreshLock } from "@/server/demo/auto-refresh";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
@@ -216,7 +217,7 @@ export async function refreshProspectDemo(formData: FormData) {
   if (sw.error) back("/admin/demo", "You are no longer a member of this demo, so it cannot be refreshed from here.");
   let r: { added: number; loads: number } = { added: 0, loads: 0 };
   try {
-    r = await refreshPrairieLantern(supabase);
+    r = await withDemoRefreshLock(supabase, () => refreshPrairieLantern(supabase));
   } catch (e) {
     const message = e instanceof Error ? e.message : "The demo could not be refreshed.";
     await recordRefresh(supabase, id.data ?? null, false, message);
@@ -240,7 +241,7 @@ export async function refreshPresenterDemo() {
   const company = (me as { company_id?: string | null } | null)?.company_id ?? null;
   let r: { added: number; loads: number } = { added: 0, loads: 0 };
   try {
-    r = await refreshNorthfield(supabase);
+    r = await withDemoRefreshLock(supabase, () => refreshNorthfield(supabase));
   } catch (e) {
     const message = e instanceof Error ? e.message : "The demo could not be refreshed.";
     await recordRefresh(supabase, company, false, message);

@@ -26,6 +26,7 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
   if (!c?.is_demo) return;
   const timeZone = (settings as { timezone?: string | null } | null)?.timezone || PRAIRIE_LANTERN.timeZone;
   const day = todayIn(timeZone);
+  // The lock is shared with the manual refresh (withDemoRefreshLock), so the two never add the same samples at once.
   const claim = await db.rpc("demo_auto_refresh_claim", { p_version: DEMO_SAMPLES_VERSION, p_day: day });
   if (claim.error || claim.data !== true) return; // not installed, not an owner, already current, or running elsewhere
   let ok = true;
@@ -46,4 +47,32 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
     summary = e instanceof Error ? e.message : "The demo could not be refreshed.";
   }
   await db.rpc("demo_auto_refresh_finish", { p_version: DEMO_SAMPLES_VERSION, p_day: day, p_ok: ok, p_summary: summary });
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Run a manual refresh of the current demo under the same lock as the automatic one (migration 20261120003200): when an
+ * automatic refresh is already running (it starts when a demo owner opens the demo after a deployment), wait for it to
+ * finish (up to 45 s: the admin page allows 60 s) instead of adding the same samples at the same time. Without the
+ * migration the refresh runs unlocked, as before.
+ */
+export async function withDemoRefreshLock<T>(db: SupabaseClient, run: () => Promise<T>): Promise<T> {
+  const { data: settings } = await db.from("company_settings").select("timezone").maybeSingle();
+  const day = todayIn((settings as { timezone?: string | null } | null)?.timezone || PRAIRIE_LANTERN.timeZone);
+  let begin = await db.rpc("demo_refresh_begin");
+  if (begin.error) return run(); // not installed yet
+  for (let waited = 0; begin.data !== true && waited < 45_000; waited += 3_000) {
+    await sleep(3_000);
+    begin = await db.rpc("demo_refresh_begin");
+  }
+  if (begin.data !== true) throw new Error("Another refresh of this demo is still running. Try again in a few minutes.");
+  let ok = false;
+  try {
+    const result = await run();
+    ok = true;
+    return result;
+  } finally {
+    await db.rpc("demo_refresh_end", { p_version: DEMO_SAMPLES_VERSION, p_day: day, p_ok: ok });
+  }
 }
