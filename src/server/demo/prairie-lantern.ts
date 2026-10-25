@@ -6,6 +6,7 @@ import { PRAIRIE_LANTERN_LOGO_PNG_BASE64 } from "./prairie-lantern-logo";
 import { ensureColbySamples } from "./prairie-lantern-colby";
 import { PRAIRIE_LANTERN_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
+import { demoAssign } from "./assign";
 
 /**
  * Fills the "Prairie Lantern Freight" prospect demo tenant (Rensselaer,
@@ -137,7 +138,7 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
   const load = async (orderId: string, date: string, start: string, end: string) =>
     ((await must("load", db.rpc("save_order_load", { p_payload: { order_id: orderId, load_date: date, start_time: start, end_time: end, planned_quantity: "1", unit_code: "load" } }))) as { load_id: string }).load_id;
   const assign = async (loadId: string, unit: string, trailerUnit: string | null, driver: string) =>
-    ((await must("assign", db.rpc("assign_load", { p_load_id: loadId, p_truck_id: truck[unit], p_trailer_id: trailerUnit ? trailer[trailerUnit] : null, p_driver_id: drv[driver], p_note: "" }))) as { assignment_id: string }).assignment_id;
+    ((await must("assign", demoAssign(db, { p_load_id: loadId, p_truck_id: truck[unit], p_trailer_id: trailerUnit ? trailer[trailerUnit] : null, p_driver_id: drv[driver], p_note: "" }))) as { assignment_id: string }).assignment_id;
   const deliver = async (loadId: string, lineId: string, date: string, time: string, ref: string) => {
     const t = (await must("ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: date, delivered_time: time, quantity: "1", unit_code: "load", external_reference: ref } }))) as { ticket_id: string };
     await must("review", db.rpc("review_delivery_ticket", { p_ticket_id: t.ticket_id, p_action: "accept", p_note: "" }));

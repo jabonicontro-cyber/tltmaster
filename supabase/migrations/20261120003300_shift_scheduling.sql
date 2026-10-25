@@ -201,10 +201,12 @@ end;
 $$;
 revoke all on function private.shift_on(uuid, uuid, date) from public, anon, authenticated;
 
--- The schedule of every visible person for a range of days (for the Schedule page, dispatch and My Day).
+-- The schedule of every visible person for a range of days (for the Schedule page, Smart Dispatch, Plan the day and
+-- My Day), with each shift's start and end as instants and the person's driver record when they drive.
 create or replace function public.schedule_range(p_from date, p_days integer)
 returns table (employee_id uuid, full_name text, department text, work_date date, status text,
-               start_time time, end_time time, overnight boolean, break_minutes integer, source text, reason text)
+               start_time time, end_time time, overnight boolean, break_minutes integer, source text, reason text,
+               start_at timestamptz, end_at timestamptz, driver_id uuid)
 language plpgsql
 stable
 security definer
@@ -218,7 +220,8 @@ begin
   end if;
   return query
     select e.id, e.full_name, e.department, d::date, s.status, s.start_time, s.end_time,
-           coalesce(s.end_time <= s.start_time, false), s.break_minutes, s.source, s.reason
+           coalesce(s.end_time <= s.start_time, false), s.break_minutes, s.source, s.reason,
+           s.start_at, s.end_at, e.driver_id
     from public.employees e
     cross join generate_series(p_from, p_from + (p_days - 1), interval '1 day') d
     cross join lateral private.shift_on(v_company, e.id, d::date) s

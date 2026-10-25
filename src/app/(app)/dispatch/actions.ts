@@ -92,6 +92,8 @@ const assignInput = z.object({
   note: z.string().trim().max(500).default(""),
   /** The assignment the user saw on the board (null when the load was unassigned). */
   replaceAssignmentId: optionalUuid,
+  /** Why the driver works outside their scheduled shift (20261120003300); only after the shift check refused it. */
+  offShiftReason: z.string().trim().max(500).optional(),
 });
 
 export async function assignLoad(input: z.input<typeof assignInput>): Promise<ActionResult<{ assignmentId: string; warnings: string[] }>> {
@@ -101,14 +103,19 @@ export async function assignLoad(input: z.input<typeof assignInput>): Promise<Ac
     if (!parsed.success) return validationFailure(parsed.error);
     const a = parsed.data;
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("assign_load", {
+    const args = {
       p_load_id: a.loadId,
       p_truck_id: a.truckId,
       p_trailer_id: a.trailerId,
       p_driver_id: a.driverId,
       p_note: a.note,
       p_replace_assignment_id: a.replaceAssignmentId,
-    });
+    };
+    const { data, error } = a.offShiftReason
+      ? await supabase.rpc("assign_load_off_shift", { ...args, p_reason: a.offShiftReason })
+      : await supabase.rpc("assign_load", args);
+    // The driver is scheduled off then: the dialog asks for a reason and tries again (fieldErrors.offShift).
+    if (error && error.hint === "off_shift") return fail(error.message, { offShift: error.message });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { assignment_id: string; warnings: string[] };
     revalidateBoard(a.orderId);

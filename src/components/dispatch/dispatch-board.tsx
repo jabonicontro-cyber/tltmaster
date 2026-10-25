@@ -576,6 +576,9 @@ function AssignDialog({
   const [trailerId, setTrailerId] = useState(current?.trailer_id ?? "");
   const [driverId, setDriverId] = useState(current?.driver_id ?? "");
   const [note, setNote] = useState("");
+  // Set when the shift check refused the driver: the problem shown and the reason typed (20261120003300).
+  const [offShift, setOffShift] = useState<string | null>(null);
+  const [offShiftReason, setOffShiftReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const interval: Interval = { starts_at: load.starts_at, ends_at: load.ends_at };
@@ -615,9 +618,14 @@ function AssignDialog({
   async function submit() {
     setPending(true);
     setError(null);
-    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note, replaceAssignmentId: current?.id ?? null });
+    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note, replaceAssignmentId: current?.id ?? null, offShiftReason: offShift ? offShiftReason : undefined });
     setPending(false);
     if (!r.ok) {
+      // Outside the driver's shift: show why and ask for a reason; the next Assign sends it.
+      if (r.fieldErrors?.offShift) {
+        setOffShift(r.fieldErrors.offShift);
+        return;
+      }
       setError(r.error);
       return;
     }
@@ -634,14 +642,23 @@ function AssignDialog({
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>Cancel</Button>
-          <Button onClick={submit} loading={pending} disabled={!truckId || !driverId || Boolean(unchanged) || (check ? !check.eligible : true)}>
-            {current ? "Reassign" : "Assign"}
+          <Button onClick={submit} loading={pending} disabled={!truckId || !driverId || Boolean(unchanged) || (check ? !check.eligible : true) || (Boolean(offShift) && offShiftReason.trim().length < 3)}>
+            {offShift ? "Assign anyway" : current ? "Reassign" : "Assign"}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <FormError message={error} />
+        {offShift && (
+          <div role="alert" className="space-y-2 rounded-md border border-line bg-surface p-3">
+            <p className="text-sm font-semibold text-ink">{offShift}</p>
+            <p className="text-sm text-muted">The driver is scheduled off then. To assign anyway, say why; the reason is recorded with the assignment.</p>
+            <Field label="Reason for working outside the shift" htmlFor="assign-off-shift" required>
+              <Input id="assign-off-shift" value={offShiftReason} maxLength={500} onChange={(e) => setOffShiftReason(e.target.value)} placeholder="e.g. Plant opens early for this pour" />
+            </Field>
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Field label="Truck" htmlFor="assign-truck" required>
             <Select id="assign-truck" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
@@ -656,7 +673,7 @@ function AssignDialog({
             </Select>
           </Field>
           <Field label="Driver" htmlFor="assign-driver" required hint={trailerId ? "Class A CDL needed with a trailer" : undefined}>
-            <Select id="assign-driver" value={driverId} onChange={(e) => setDriverId(e.target.value)}>
+            <Select id="assign-driver" value={driverId} onChange={(e) => { setDriverId(e.target.value); setOffShift(null); }}>
               <option value="">Choose a driver…</option>
               {grouped(day.drivers, (d) => driverState(d, Boolean(trailerId), interval, active, on, except), (d) => d.display_name)}
             </Select>

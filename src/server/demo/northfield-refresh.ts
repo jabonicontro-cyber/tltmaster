@@ -5,6 +5,7 @@ import { seedCommunicationSamples } from "./prairie-lantern";
 import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { AVATARS, CAPACITY, CHARGE_ITEMS, CUSTOMERS, DRIVER_TITLES, DRIVERS, MATERIALS, STAFF, TRAILERS, TRUCKS } from "./seed";
+import { demoAssign } from "./assign";
 
 /**
  * Keeps the presenter demo (Northfield Aggregates) current, the same way Refresh keeps Prairie Lantern Freight
@@ -170,7 +171,7 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
       loads++;
       if (day.kind === "tomorrow" && k === 1) continue; // one planned load stays open for the dispatcher
       if (!truck.has(unit) || !driver.has(name)) continue;
-      const a = await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: truck.get(unit), p_trailer_id: tr ? trailer.get(tr) ?? null : null, p_driver_id: driver.get(name), p_note: "" });
+      const a = await demoAssign(db, { p_load_id: loadId, p_truck_id: truck.get(unit), p_trailer_id: tr ? trailer.get(tr) ?? null : null, p_driver_id: driver.get(name), p_note: "" });
       if (a.error) continue; // refused by the rules (leave, shop, conflict): stays unassigned
       const finished = day.kind === "past" || (day.kind === "today" && end <= now);
       if (!finished) continue;

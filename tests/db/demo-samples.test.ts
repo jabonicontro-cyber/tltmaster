@@ -183,6 +183,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     const plan = await q<{ d: string; n: string }>("select scheduled_for::text as d, count(*) as n from public.work_orders where company_id = $1 and estimated_hours is not null and status not in ('completed', 'closed', 'canceled') and scheduled_for between current_date and current_date + 14 group by 1", [w.company]);
     expect(plan.rows.length).toBeGreaterThan(0);
     expect(Math.max(...plan.rows.map((r) => Number(r.n)))).toBeGreaterThan(2);
+    // Shift schedules (20261120003300): a day crew, a night rotation, the shop, two one-day changes, one driver without.
+    const kinds = await q<{ kind: string; n: string }>("select kind, count(*) as n from public.shift_patterns where company_id = $1 group by kind order by kind", [w.company]);
+    expect(kinds.rows.map((r) => r.kind)).toEqual(["rotation", "weekly"]);
+    const changes = await q<{ kind: string }>("select kind from public.shift_changes where company_id = $1 order by kind", [w.company]);
+    expect(changes.rows.map((r) => r.kind)).toEqual(["off", "shift"]);
     // Fictional VINs in the VIN format on all trucks but one (the missing case), and on trailers.
     const vins = await q<{ with_vin: string; no_vin: string }>("select count(*) filter (where vin <> '') as with_vin, count(*) filter (where vin = '') as no_vin from public.trucks where company_id = $1 and active", [w.company]);
     expect(Number(vins.rows[0].with_vin)).toBeGreaterThan(0);

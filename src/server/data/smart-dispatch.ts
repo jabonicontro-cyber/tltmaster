@@ -2,7 +2,7 @@ import "server-only";
 import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
 import { getTrailerInput } from "./trailer-input";
 import { addDays } from "@/lib/dates";
-import { recommend, toBoardPlan, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { recommend, toBoardPlan, type SmartShift, type SmartTimeOff, type SmartDocumentIssue, type SmartShopVisit, type SmartBooking, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { dispatchBaseContext } from "@/server/data/bases";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
@@ -29,10 +29,17 @@ const site = (o: LoadRow["orders"]) => (o ? (o.site_line1 || o.site_label || "")
  * loads dated `from` through `to`. Throws when the data cannot be read (for
  * example without fleet access) — recommendations are never made from partial data.
  */
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+/** "06:00:00" → "6:00 AM". */
+const clock = (t: string) => {
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`;
+};
+
 export async function getSmartDispatchInput(from: string, to: string): Promise<SmartInput> {
   const supabase = await createClient();
   const { today } = await businessToday();
-  const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries] = await Promise.all([
+  const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries, schedule] = await Promise.all([
     supabase
       .from("order_loads")
       .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customers(name))")
@@ -48,6 +55,8 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     supabase.from("employees").select("driver_id").eq("status", "on_leave").not("driver_id", "is", null),
     // Each driver's primary truck, for Keep crews together (a preference; nothing blocks on it).
     supabase.from("drivers").select("id, primary_truck_id").eq("active", true).not("primary_truck_id", "is", null),
+    // Drivers' scheduled shifts (20261120003300): from the day before (overnight shifts) to the day after the range.
+    supabase.rpc("schedule_range", { p_from: addDays(from, -1), p_days: Math.min(42, daysBetween(from, to) + 3) }),
   ]);
   const primaryOf = new Map(((primaries.data ?? []) as Array<{ id: string; primary_truck_id: string }>).map((d) => [d.id, d.primary_truck_id]));
   for (const r of [loads, trucks, drivers, quals, reports, urgencies]) {
@@ -138,6 +147,10 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     timeOff: leaveMissing ? [] : ((leave.data ?? []) as SmartTimeOff[]),
     timeOffChecked: !leaveMissing,
     driversOnLeave: onLeave.error ? [] : ((onLeave.data ?? []) as Array<{ driver_id: string }>).map((e) => e.driver_id),
+    // Before the scheduling update (or without access) no shifts: drivers are not checked, as the database does then.
+    shifts: schedule.error ? [] : ((schedule.data ?? []) as Array<{ driver_id: string | null; work_date: string; status: SmartShift["status"]; start_at: string | null; end_at: string | null; start_time: string | null; end_time: string | null }>)
+      .filter((r) => r.driver_id)
+      .map((r) => ({ driver_id: r.driver_id!, date: r.work_date, status: r.status, start_at: r.start_at, end_at: r.end_at, label: r.start_time && r.end_time ? `${clock(r.start_time)}–${clock(r.end_time)}` : "" })),
   };
 }
 

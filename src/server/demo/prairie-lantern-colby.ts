@@ -1,6 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
+import { demoAssign } from "./assign";
 
 /**
  * Personal touches for Colby Chapman's own demo, Prairie Lantern Freight (owner request 2026-10-14). Colby is not a
@@ -103,7 +104,7 @@ export async function ensureColbySamples(db: Db, today: string): Promise<number>
     added++;
     // The Sarasota run stays open for the dispatcher to plan; the others are Cam's.
     if (!lane.crew || !truck.has(lane.crew[0])) continue;
-    const a = await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: truck.get(lane.crew[0]), p_trailer_id: trailer.get(lane.crew[1]) ?? null, p_driver_id: cam, p_note: "" });
+    const a = await demoAssign(db, { p_load_id: loadId, p_truck_id: truck.get(lane.crew[0]), p_trailer_id: trailer.get(lane.crew[1]) ?? null, p_driver_id: cam, p_note: "" });
     if (a.error || lane.when >= 0) continue; // refused by the rules, or not delivered yet
     const lineId = ((await must("lines", db.from("order_lines").select("id").eq("order_id", o.order_id).order("line_no"))) as Array<{ id: string }>)[0].id;
     const t = await db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: date, delivered_time: "09:40", quantity: "1", unit_code: "load", external_reference: `PLF-${date.replaceAll("-", "").slice(2)}-CW` } });

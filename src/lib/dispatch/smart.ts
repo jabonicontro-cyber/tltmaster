@@ -113,6 +113,11 @@ export interface SmartInput {
   /** Drivers whose employee record says On leave (an HR status, separate from dated time off): a warning, never a block. */
   driversOnLeave?: string[];
   /**
+   * Scheduled shifts of drivers who have a schedule (20261120003300), one row per driver and date. A driver scheduled
+   * off for a load is excluded with the same words the database uses; drivers without a schedule are not checked.
+   */
+  shifts?: SmartShift[];
+  /**
    * Chooses a usable trailer for a tractor (the trailer rules of Plan the day; null = none usable). Without it a tractor
    * is excluded with "choose a trailer on the board", as before.
    */
@@ -143,6 +148,33 @@ export interface SmartDocumentIssue {
 
 /** Plain words for a document issue: "insurance expired 2026-09-30". */
 export const documentLabel = (d: Pick<SmartDocumentIssue, "kind" | "expires_on">) => `${d.kind.replace(/_/g, " ")} expired ${d.expires_on}`;
+
+export interface SmartShift {
+  driver_id: string;
+  date: string;
+  status: "shift" | "off" | "none";
+  start_at: string | null;
+  end_at: string | null;
+  /** "6:00 AM–4:30 PM" for a shift. */
+  label: string;
+}
+
+/**
+ * Why a driver is not on shift for a load, or null; the same rule as private.driver_shift_problem: a load with times
+ * must fit inside one shift (the previous day's overnight shift counts), a load with only a date needs a shift that day.
+ */
+export function shiftProblem(driverId: string, l: { load_date: string; starts_at: string | null; ends_at: string | null }, shifts: SmartShift[] | undefined): string | null {
+  if (!shifts?.length) return null;
+  const mine = shifts.filter((s) => s.driver_id === driverId && (s.date === l.load_date || s.date === addDays(l.load_date, -1)));
+  if (!mine.some((s) => s.status !== "none")) return null;
+  const today = mine.find((s) => s.date === l.load_date);
+  const when = new Date(`${l.load_date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  if (!l.starts_at) return today?.status === "shift" ? null : `Day off on ${when}`;
+  const start = Date.parse(l.starts_at);
+  const end = Date.parse(l.ends_at ?? l.starts_at);
+  if (mine.some((s) => s.status === "shift" && s.start_at && s.end_at && start >= Date.parse(s.start_at) && end <= Date.parse(s.end_at))) return null;
+  return today?.status === "shift" ? `Not on shift: works ${today.label} on ${when}` : `Day off on ${when}`;
+}
 
 export interface SmartTimeOff {
   driver_id: string;
@@ -361,6 +393,8 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, taken: Overlaps, input: 
   if (base.block) blockers.push(base.block);
   const leave = (ix.timeOffByDriver.get(d.id) ?? NONE).filter((t) => overlaps(t, l));
   if (leave.some((t) => t.status === "approved")) blockers.push("Approved time off covers this load's time.");
+  const shift = shiftProblem(d.id, l, input.shifts);
+  if (shift) blockers.push(shift);
   const pendingLeave = leave.some((t) => t.status === "pending");
   if ((ix.bookingsByDriver.get(d.id) ?? NONE).find((b) => b.load_id !== l.id && overlaps(b, l))) blockers.push("Already booked at an overlapping time.");
   const r = taken.driver.get(d.id);

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
 import { triageRules } from "@/lib/maintenance-triage";
+import { demoAssign } from "./assign";
 
 // Feature sample data shared by every demo (presenter seed, prospect seed and Refresh demo data), so each
 // released feature is demonstrable in every demo mode and existing demos receive it without being recreated
@@ -70,6 +71,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
   note("work schedules", await workSchedules(db));
+  note("shift schedules", await shiftSchedules(db, today));
   // Balances first: once a bank covers vacation and personal time, requests on it need hours and a balance.
   note("time-off balances", await ptoBalances(db, today));
   note("time off", await timeOff(db, today));
@@ -291,7 +293,7 @@ async function billing(db: Db, today: string): Promise<number> {
       for (const t of trucks) {
         for (const d of drivers) {
           for (const tr of trailers) {
-            if (!(await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" })).error) { ok = true; break; }
+            if (!(await demoAssign(db, { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" })).error) { ok = true; break; }
           }
           if (ok) break;
         }
@@ -589,7 +591,7 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
       let assigned = false;
       for (const t of trucks) {
         for (const tr of trailers) {
-          const a = await db.rpc("assign_load", { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" });
+          const a = await demoAssign(db, { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" });
           if (!a.error) { assigned = true; break; }
         }
         if (assigned) { n++; break; }
@@ -753,7 +755,7 @@ async function routePlanner(db: Db, today: string): Promise<number> {
         for (const t of trucks) {
           for (const d of drivers) {
             for (const tr of trailers) {
-              if ((await db.rpc("assign_load", { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "Demo: today's route sample." })).error) continue;
+              if ((await demoAssign(db, { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "Demo: today's route sample." })).error) continue;
               done = true;
               break;
             }
@@ -863,6 +865,40 @@ async function demoVins(db: Db): Promise<number> {
       if (!u.error) n++;
     }
   }
+  return n;
+}
+
+/**
+ * Shift schedules (20261120003300), so the Schedule page, the dispatch shift check and Plan the day have real cases:
+ * drivers on a Monday–Friday day crew (6:00 AM–4:30 PM, from last week so there is history), one driver on a 4 on /
+ * 4 off night rotation (8:00 PM–6:00 AM, overnight), one driver left without a schedule (not checked), the shop on
+ * 7:00 AM–3:30 PM, a day off and a Saturday shift as one-day changes. Owner and office logins (management) keep no
+ * schedule, so their own driver day is unaffected. Only while the demo has no schedules.
+ */
+async function shiftSchedules(db: Db, today: string): Promise<number> {
+  const existing = await count(db, "shift_patterns");
+  if (existing === null || existing > 0) return 0;
+  const people = ((await db.from("employees").select("id, department, driver_id").eq("status", "active").order("full_name")).data ?? []) as Array<{ id: string; department: string | null; driver_id: string | null }>;
+  const dow = new Date(`${today}T12:00:00Z`).getUTCDay();
+  const monday = addDays(today, -((dow + 6) % 7) - 7);
+  const weekday = (start: string, end: string) => [0, 1, 2, 3, 4].map((day) => ({ day, start, end, break: 30 }));
+  let n = 0;
+  const pattern = async (id: string, kind: "weekly" | "rotation", cycle: number, days: Array<{ day: number; start: string; end: string; break?: number }>, note: string) => {
+    const r = await db.rpc("schedule_set_pattern", { p_employee: id, p_kind: kind, p_cycle_days: cycle, p_anchor: kind === "rotation" ? monday : null, p_effective_from: monday, p_days: days, p_note: note });
+    if (!r.error) n++;
+  };
+  const drivers = people.filter((p) => p.driver_id && p.department !== "management");
+  for (const [i, d] of drivers.entries()) {
+    if (i === drivers.length - 1 && drivers.length > 2) continue; // no schedule: shown as "—", not checked by dispatch
+    if (i === 1) await pattern(d.id, "rotation", 8, [0, 1, 2, 3].map((day) => ({ day, start: "20:00", end: "06:00" })), "Demo: night rotation, 4 on / 4 off");
+    else await pattern(d.id, "weekly", 7, weekday("06:00", "16:30"), "Demo: day crew");
+  }
+  for (const s of people.filter((p) => p.department === "shop")) await pattern(s.id, "weekly", 7, weekday("07:00", "15:30"), "Demo: shop hours");
+  // One-day changes on the next weekday and the next Saturday.
+  const next = (want: (d: number) => boolean) => { let d = addDays(today, 1); while (!want(new Date(`${d}T12:00:00Z`).getUTCDay())) d = addDays(d, 1); return d; };
+  const dayCrew = drivers.filter((_, i) => i !== 1 && !(i === drivers.length - 1 && drivers.length > 2));
+  if (dayCrew[0] && !(await db.rpc("schedule_set_day", { p_employee: dayCrew[0].id, p_date: next((d) => d >= 1 && d <= 5), p_kind: "off", p_start: null, p_end: null, p_break: 0, p_reason: "Demo: doctor appointment" })).error) n++;
+  if (dayCrew[1] && !(await db.rpc("schedule_set_day", { p_employee: dayCrew[1].id, p_date: next((d) => d === 6), p_kind: "shift", p_start: "07:00", p_end: "12:00", p_break: 0, p_reason: "Demo: plant open Saturday" })).error) n++;
   return n;
 }
 

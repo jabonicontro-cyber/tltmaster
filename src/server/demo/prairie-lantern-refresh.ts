@@ -5,6 +5,7 @@ import { ensureColbySamples } from "./prairie-lantern-colby";
 import { PRAIRIE_LANTERN_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
+import { demoAssign } from "./assign";
 
 /**
  * Keeps the Prairie Lantern Freight prospect demo current. Additive only, through
@@ -160,7 +161,7 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
       if (day.kind === "tomorrow" && k === 1) continue; // one planned load stays open for the dispatcher
       const [unit, tr, name] = CREWS[(seed + k) % CREWS.length];
       if (!truck.has(unit) || !driver.has(name)) continue;
-      const a = await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: truck.get(unit), p_trailer_id: trailer.get(tr) ?? null, p_driver_id: driver.get(name), p_note: "" });
+      const a = await demoAssign(db, { p_load_id: loadId, p_truck_id: truck.get(unit), p_trailer_id: trailer.get(tr) ?? null, p_driver_id: driver.get(name), p_note: "" });
       if (a.error) continue; // refused by the rules (leave, shop, conflict): stays unassigned, as it would for a dispatcher
       const finished = day.kind === "past" || (day.kind === "today" && end <= now);
       if (!finished) continue;

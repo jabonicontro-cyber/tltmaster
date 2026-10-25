@@ -6,6 +6,7 @@ import { NORTHFIELD_LOGO_PNG_BASE64 } from "./northfield-logo";
 import { seedCommunicationSamples } from "./prairie-lantern";
 import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
+import { demoAssign } from "./assign";
 
 /**
  * Fills a freshly started demo company with fictional data, through the same
@@ -158,7 +159,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     return ((await must("load", db.rpc("save_order_load", { p_payload: { order_id: orderId, load_date: date, start_time: start, end_time: end, planned_quantity: qty, unit_code: unit } }))) as { load_id: string }).load_id;
   }
   const assign = async (loadId: string, truckId: string, driverId: string) =>
-    ((await must("assign", db.rpc("assign_load", { p_load_id: loadId, p_truck_id: truckId, p_trailer_id: null, p_driver_id: driverId, p_note: "" }))) as { assignment_id: string }).assignment_id;
+    ((await must("assign", demoAssign(db, { p_load_id: loadId, p_truck_id: truckId, p_trailer_id: null, p_driver_id: driverId, p_note: "" }))) as { assignment_id: string }).assignment_id;
   const ticket = async (loadId: string, lineId: string, date: string, time: string, qty: string, ref: string) =>
     ((await must("ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: date, delivered_time: time, quantity: qty, unit_code: "ton", external_reference: ref } }))) as { ticket_id: string }).ticket_id;
   const review = (id: string, action: "accept" | "flag", note = "") => must("review", db.rpc("review_delivery_ticket", { p_ticket_id: id, p_action: action, p_note: note }));
