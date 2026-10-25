@@ -78,7 +78,10 @@ describe("Ask Taviron reads within the person's company and dispatch bases", () 
       await s.as(w.owner);
       const all = await report(s, w.day, w.day);
       expect(all.deliveries!.tickets).toBeGreaterThanOrEqual(2);
-      expect(mine.deliveries!.tickets).toBe(all.deliveries!.tickets - 1);
+      // The new base has exactly its own ticket; the company total also counts any other tickets on that day
+      // (earlier test runs may have left some in the shared test company).
+      expect(mine.deliveries!.tickets).toBe(1);
+      expect(all.deliveries!.tickets).toBeGreaterThan(mine.deliveries!.tickets);
       expect(mine.fleet!.length).toBeLessThan(all.fleet!.length);
       expect((await orderByNumber(s, w.mainNumber)).rows).toHaveLength(1);
     });

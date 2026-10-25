@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { MapPin, Route, Truck } from "lucide-react";
 import { SiteLocationForm, YardLocationForm } from "@/components/routing/location-forms";
+import { LocationsPanel } from "@/components/routing/locations-panel";
+import { RouteBuilder } from "@/components/routing/route-builder";
+import { RouteMap } from "@/components/routing/route-map";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
@@ -10,17 +13,61 @@ import { addDays, formatDateLong, isIsoDate } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { buildRoutes, formatMinutes, routeTotals, YARD } from "@/lib/routing/route";
 import { requirePagePermission } from "@/server/auth";
+import { listLocations, listSavedRoutes, listSiteOptions, listTruckOptions } from "@/server/data/route-planner";
 import { getRouteDay } from "@/server/data/routes";
-import { businessToday } from "@/server/data/settings";
+import { businessToday, getSettings } from "@/server/data/settings";
 import { addRoadEstimates, routingStatus } from "@/server/routing/service";
 
 export const metadata = { title: "Route Planner" };
 
-type Search = { date?: string; truck?: string };
+type Search = { date?: string; truck?: string; view?: string; route?: string };
+
+const VIEWS = [
+  { key: "today", label: "Today's routes" },
+  { key: "plan", label: "Plan a route" },
+  { key: "locations", label: "Locations" },
+] as const;
+
+function ViewNav({ view }: { view: string }) {
+  return (
+    <nav aria-label="Route Planner views" className="mb-5 inline-flex flex-wrap gap-1 rounded-lg border border-line bg-card p-1">
+      {VIEWS.map((v) => (
+        <Link key={v.key} href={v.key === "today" ? "/route-planner" : `/route-planner?view=${v.key}`} aria-current={view === v.key ? "page" : undefined}
+          className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === v.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink"}`}>
+          {v.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
 
 export default async function RoutePlannerPage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("dispatch.view");
   const sp = await searchParams;
+  const view = sp.view === "plan" || sp.view === "locations" ? sp.view : "today";
+  if (view !== "today") {
+    const status = routingStatus(access);
+    const ready = status.state === "ready";
+    const [locs, sites, trucks, saved, settingsDay] = await Promise.all([
+      listLocations(), listSiteOptions(), listTruckOptions(), listSavedRoutes(), getSettings(),
+    ]);
+    const ys = settingsDay as unknown as { yard_latitude?: number | string | null; yard_longitude?: number | string | null };
+    const yard = ys.yard_latitude != null && ys.yard_longitude != null ? { lat: Number(ys.yard_latitude), lng: Number(ys.yard_longitude) } : null;
+    return (
+      <>
+        <PageHeader title="Route Planner" description="Plan truck routes between your yards, quarries and job sites, and keep the places your trucks use. Plans here never assign a load." />
+        <ViewNav view={view} />
+        {!ready && <div className="mb-5"><Notice title="Straight-line distances">{status.reason.replace(" Distances below are straight lines.", "")} Routes show straight-line distances and no driving time until then; address search and map backgrounds need it too.</Notice></div>}
+        {!locs.installed ? (
+          <Notice tone="warning" title="Saved locations are not installed yet">This part of the Route Planner needs a database update that has not been applied yet.</Notice>
+        ) : view === "plan" ? (
+          <RouteBuilder locations={locs.locations} sites={sites} trucks={trucks.trucks} saved={saved} initialRouteId={sp.route ?? null} canEdit={can(access, "dispatch.edit")} routingReady={ready} tiles={ready} />
+        ) : (
+          <LocationsPanel locations={locs.locations} canEdit={can(access, "dispatch.edit") || can(access, "settings.manage")} canSetYard={can(access, "settings.manage")} routingReady={ready} tiles={ready} yard={yard} />
+        )}
+      </>
+    );
+  }
   const { today } = await businessToday();
   const date = sp.date && isIsoDate(sp.date) && sp.date >= addDays(today, -30) && sp.date <= addDays(today, 30) ? sp.date : today;
   const day = await getRouteDay(date);
@@ -39,6 +86,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
         title="Route Planner"
         description={`${formatDateLong(date)}. Each truck's day as a route: from the yard to every delivery site in load order and back, read from the dispatch board. Routes change only when the board does.`}
       />
+      <ViewNav view="today" />
 
       <form method="get" className="mb-5 flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4" aria-label="Route settings">
         <label className="text-sm">
@@ -135,6 +183,15 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
                     )}
                   </div>
                 </div>
+                {r.legs.some((l) => l.fromPoint && l.toPoint) && (
+                  <div className="px-4 pt-3 sm:px-5">
+                    <RouteMap
+                      stops={[...(r.legs[0]?.fromPoint ? [{ point: r.legs[0].fromPoint, label: r.legs[0].from }] : []), ...r.legs.filter((l) => l.toPoint).map((l) => ({ point: l.toPoint!, label: l.to }))]}
+                      tiles={status.state === "ready"}
+                      title={`Map of truck ${r.unit}'s route`}
+                    />
+                  </div>
+                )}
                 <ol className="px-4 py-3 sm:px-5" aria-label="Stops and legs">
                   {r.legs.length === 0 && r.stops.map((s) => <StopRow key={s.loadId} label={`${s.orderNumber} · ${s.site}`} sub={`${s.customer} · ${s.start}–${s.end}`} located={Boolean(s.point)} />)}
                   {r.legs.map((l, i) => {

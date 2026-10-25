@@ -35,6 +35,7 @@ const TENANT_TABLES = [
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
+  "company_locations", "saved_routes", "saved_route_stops",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */

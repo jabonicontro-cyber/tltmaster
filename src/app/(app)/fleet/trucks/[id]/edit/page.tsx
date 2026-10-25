@@ -9,6 +9,8 @@ import { saveTruck } from "../../../actions";
 import { baseOptions, recordBase } from "@/server/data/bases";
 export const metadata = { title: "Edit truck" };
 
+const dimensionsOf = (t: Record<string, number | null>) => ({ height_cm: t.height_cm, width_cm: t.width_cm, length_cm: t.length_cm, gross_weight_kg: t.gross_weight_kg, axle_count: t.axle_count });
+
 export default async function EditTruckPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePagePermission("fleet.edit");
   const { id } = await params;
@@ -31,6 +33,7 @@ export default async function EditTruckPage({ params }: { params: Promise<{ id: 
             submitLabel="Save truck"
             bases={await baseOptions()}
             baseId={await recordBase("trucks", id)}
+            dimensions={"height_cm" in t ? dimensionsOf(t as unknown as Record<string, number | null>) : undefined}
           />
         </CardBody>
       </Card>

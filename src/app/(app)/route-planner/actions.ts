@@ -3,10 +3,11 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { parsePoint } from "@/lib/routing/route";
+import { parsePoint, type GeocodeCandidate } from "@/lib/routing/route";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard } from "@/server/errors";
+import type { RoutingProvider } from "@/server/routing/here";
 import { routingStatus } from "@/server/routing/service";
 import { createClient } from "@/server/supabase/server";
 
@@ -52,8 +53,11 @@ export async function setSiteLocation(input: z.input<typeof siteInput>): Promise
   });
 }
 
-/** Looks the site's address up with the routing provider's geocoder (an estimate of the address, labelled as such). */
-export async function locateSite(input: { siteId: string }): Promise<ActionResult> {
+/**
+ * Looks the site's address up with the routing provider's geocoder and returns the matches for a person to choose from.
+ * Nothing is saved here: confirmSiteLocation saves the match the person picked (never a silent substitute).
+ */
+export async function locateSite(input: { siteId: string }): Promise<ActionResult<GeocodeCandidate[]>> {
   return guard(async () => {
     const access = await assertPermission("customers.edit");
     const id = uuid.safeParse(input.siteId);
@@ -64,20 +68,38 @@ export async function locateSite(input: { siteId: string }): Promise<ActionResul
     const { data: site, error } = await supabase.from("customer_sites").select("line1, line2, city, state, postal_code").eq("id", id.data).maybeSingle();
     if (error || !site) return fail("Site not found.");
     const s = site as { line1: string; line2: string | null; city: string | null; state: string | null; postal_code: string | null };
-    const address = [s.line1, s.line2, s.city, s.state, s.postal_code].filter(Boolean).join(", ");
-    let found;
-    try {
-      // Kept behaviour until the confirmation step lands: the best match, labelled as an estimate (DIR-1).
-      found = (await status.provider.geocodeCandidates(address))[0] ?? null;
-    } catch (e) {
-      return fail(e instanceof Error ? e.message : "The routing provider failed.");
-    }
-    if (!found) return fail("The address could not be found. Enter the coordinates instead.");
-    const r = await writeSite(id.data, found.point.lat, found.point.lng, "here");
-    if (r.error) return fail(dbErrorMessage(r.error));
-    revalidatePath("/route-planner");
-    return ok(undefined, "Location found from the address (an estimate: check it on a map if the site is large or new).");
+    return lookUp(status.provider, [s.line1, s.line2, s.city, s.state, s.postal_code].filter(Boolean).join(", "));
   });
+}
+
+const confirmInput = z.object({ siteId: uuid, lat: z.number().min(-90).max(90), lng: z.number().min(-180).max(180) }).strict();
+
+/** Saves the geocoder match a person confirmed for a site (labelled as found from the address). */
+export async function confirmSiteLocation(input: z.input<typeof confirmInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("customers.edit");
+    const p = confirmInput.safeParse(input);
+    if (!p.success) return fail("Invalid location.");
+    const r = await writeSite(p.data.siteId, round6(p.data.lat), round6(p.data.lng), "here");
+    if (r.error) return fail(dbErrorMessage(r.error));
+    if (!r.data?.length) return fail("Site not found.");
+    revalidatePath("/route-planner");
+    return ok(undefined, "Location saved from the address you confirmed.");
+  });
+}
+
+const round6 = (n: number) => Math.round(n * 1e6) / 1e6;
+
+async function lookUp(provider: RoutingProvider, address: string): Promise<ActionResult<GeocodeCandidate[]>> {
+  if (address.trim().length < 4) return fail("Enter a street address, town and state first.");
+  let found: GeocodeCandidate[];
+  try {
+    found = await provider.geocodeCandidates(address.slice(0, 300));
+  } catch (e) {
+    return fail(e instanceof Error ? e.message : "The routing provider failed.");
+  }
+  if (!found.length) return fail("No match for that address. Check it, or enter the coordinates instead.");
+  return ok(found);
 }
 
 /** The yard: typed coordinates, or the company address looked up by the provider. Empty clears it. */
@@ -94,6 +116,7 @@ export async function setYardLocation(input: { location: string; fromAddress?: b
       const address = [s.address_line1, s.address_line2, s.city, s.state, s.postal_code].filter(Boolean).join(", ");
       if (!address) return fail("The company has no address in Settings → Company.");
       try {
+        // The company's own address, which the person asked to use; the match is shown on the page to check.
         point = (await status.provider.geocodeCandidates(address))[0]?.point ?? null;
       } catch (e) {
         return fail(e instanceof Error ? e.message : "The routing provider failed.");

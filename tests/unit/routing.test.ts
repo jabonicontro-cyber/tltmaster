@@ -196,3 +196,38 @@ describe("route builder: multi-stop truck routes", () => {
     expect(String(err.message)).not.toContain(key);
   });
 });
+
+describe("route builder: suggested stop order", () => {
+  it("keeps the start (and a fixed end), visits every stop once and never makes the path longer", async () => {
+    const { suggestOrder, straightLineMatrix, pathLength } = await import("@/lib/routing/optimize");
+    // A yard and five stops out of order along a line east of it.
+    const pts = [{ lat: 40, lng: -87 }, { lat: 40, lng: -86.6 }, { lat: 40, lng: -86.9 }, { lat: 40, lng: -86.5 }, { lat: 40, lng: -86.8 }, { lat: 40, lng: -86.7 }];
+    const d = straightLineMatrix(pts);
+    const open = suggestOrder(pts.length, d, false);
+    expect(open[0]).toBe(0);
+    expect([...open].sort()).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(open).toEqual([0, 2, 4, 5, 1, 3]);
+    expect(pathLength(open, d)).toBeLessThan(pathLength([0, 1, 2, 3, 4, 5], d));
+    const back = [...pts, pts[0]];
+    const closed = suggestOrder(back.length, straightLineMatrix(back), true);
+    expect(closed[0]).toBe(0);
+    expect(closed[closed.length - 1]).toBe(back.length - 1);
+    expect(new Set(closed).size).toBe(back.length);
+    expect(suggestOrder(3, d, true)).toEqual([0, 1, 2]);
+  });
+});
+
+describe("truck routing dimensions (feet and pounds in, cm and kg stored)", async () => {
+  const { truckDimensionsSchema, cmToFeet, kgToPounds } = await import("@/lib/routing/dimensions");
+  it("converts and round-trips", () => {
+    const r = truckDimensionsSchema.parse({ height_cm: "13.5", width_cm: "8.5", length_cm: "34", gross_weight_kg: "73,000", axle_count: "4" });
+    expect(r).toEqual({ height_cm: 411, width_cm: 259, length_cm: 1036, gross_weight_kg: 33112, axle_count: 4 });
+    expect([cmToFeet(r.height_cm), cmToFeet(r.width_cm), kgToPounds(r.gross_weight_kg)]).toEqual(["13.5", "8.5", "73000"]);
+  });
+  it("blank is unknown; out-of-range values are refused before the database", () => {
+    expect(truckDimensionsSchema.parse({})).toEqual({ height_cm: null, width_cm: null, length_cm: null, gross_weight_kg: null, axle_count: null });
+    const bad = truckDimensionsSchema.safeParse({ height_cm: "40", axle_count: "1", gross_weight_kg: "-5" });
+    expect(bad.success).toBe(false);
+    expect(bad.error?.issues.map((i) => i.path[0]).sort()).toEqual(["axle_count", "gross_weight_kg", "height_cm"]);
+  });
+});

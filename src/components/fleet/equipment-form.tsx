@@ -9,6 +9,7 @@ import type { ActionResult } from "@/lib/action-result";
 import { TRAILER_TYPE_LABELS, TRAILER_TYPES, TRUCK_TYPE_LABELS, TRUCK_TYPES, trimNumber } from "@/lib/fleet/labels";
 import type { EquipmentFormValues } from "./form-defaults";
 import { BaseField, type BaseOption } from "@/components/bases/base-field";
+import { cmToFeet, kgToPounds } from "@/lib/routing/dimensions";
 
 const trim = (v: string | number | null | undefined) => (v == null ? "" : trimNumber(v));
 
@@ -23,9 +24,11 @@ interface Props {
   /** Active dispatch bases (the picker shows only with two or more) and the current one. */
   bases?: BaseOption[];
   baseId?: string | null;
+  /** Trucks: routing dimensions (metric, as stored); omitted until the database has the columns. */
+  dimensions?: { height_cm: number | null; width_cm: number | null; length_cm: number | null; gross_weight_kg: number | null; axle_count: number | null };
 }
 
-export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [], bases, baseId }: Props) {
+export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [], bases, baseId, dimensions }: Props) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(action);
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
   const [weight, setWeight] = useState(trim(initial.weight_capacity));
@@ -117,6 +120,31 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
           </div>
         </div>
       </fieldset>
+
+      {kind === "truck" && dimensions && (
+        <fieldset className="grid grid-cols-2 gap-4 sm:grid-cols-6">
+          <legend className="mb-1 text-[15px] font-semibold text-ink sm:col-span-6">Routing dimensions</legend>
+          <p className="col-span-2 -mt-1 text-sm text-muted sm:col-span-6">
+            Used by the Route Planner to avoid low bridges and weight limits. Measure loaded, including the body; leave blank if not known.
+          </p>
+          <input type="hidden" name="routing_dimensions" value="1" />
+          <Field label="Height (ft)" htmlFor="height_cm" error={fieldError("height_cm")} className="sm:col-span-1" hint="13.5 = 13 ft 6 in">
+            <Input {...f("height_cm")} defaultValue={cmToFeet(dimensions.height_cm)} inputMode="decimal" className="text-right tabular" placeholder="Unknown" />
+          </Field>
+          <Field label="Width (ft)" htmlFor="width_cm" error={fieldError("width_cm")} className="sm:col-span-1">
+            <Input {...f("width_cm")} defaultValue={cmToFeet(dimensions.width_cm)} inputMode="decimal" className="text-right tabular" placeholder="Unknown" />
+          </Field>
+          <Field label="Length (ft)" htmlFor="length_cm" error={fieldError("length_cm")} className="sm:col-span-1">
+            <Input {...f("length_cm")} defaultValue={cmToFeet(dimensions.length_cm)} inputMode="decimal" className="text-right tabular" placeholder="Unknown" />
+          </Field>
+          <Field label="Gross weight (lb)" htmlFor="gross_weight_kg" error={fieldError("gross_weight_kg")} className="sm:col-span-2" hint="Loaded, truck and payload">
+            <Input {...f("gross_weight_kg")} defaultValue={kgToPounds(dimensions.gross_weight_kg)} inputMode="numeric" className="text-right tabular" placeholder="Unknown" />
+          </Field>
+          <Field label="Axles" htmlFor="axle_count" error={fieldError("axle_count")} className="sm:col-span-1">
+            <Input {...f("axle_count")} defaultValue={dimensions.axle_count ?? ""} inputMode="numeric" maxLength={2} className="text-right tabular" placeholder="Unknown" />
+          </Field>
+        </fieldset>
+      )}
 
       {kind === "trailer" && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">

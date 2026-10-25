@@ -153,6 +153,17 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(help.rows[0].n)).toBe(3);
     const portal = await q<{ n: string }>("select count(*) n from public.portal_settings where company_id = $1 and enabled", [w.company]);
     expect(Number(portal.rows[0].n)).toBe(0);
+    // Route Planner (20261120002600): saved places around the demo yard, two trucks with routing dimensions, one saved
+    // route of four stops, and some of today's loads assigned (through assign_load) so today's routes are not empty.
+    const places = await q<{ kind: string; located: boolean }>("select kind, latitude is not null located from public.company_locations where company_id = $1 order by kind, name", [w.company]);
+    expect(places.rows.map((r) => r.kind)).toEqual(["plant", "quarry", "quarry", "yard"]);
+    expect(places.rows.every((r) => r.located)).toBe(true);
+    const sized = await q<{ n: string }>("select count(*) n from public.trucks where company_id = $1 and height_cm is not null", [w.company]);
+    expect(Number(sized.rows[0].n)).toBe(2);
+    const stops = await q<{ n: string }>("select count(*) n from public.saved_route_stops s join public.saved_routes r on r.id = s.route_id where r.company_id = $1", [w.company]);
+    expect(Number(stops.rows[0].n)).toBe(4);
+    const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
+    expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {

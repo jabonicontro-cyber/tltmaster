@@ -79,6 +79,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
   note("guided onboarding", await guidedOnboarding(db));
+  // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
+  note("route planner", await routePlanner(db, today));
   return result;
 }
 
@@ -672,4 +674,87 @@ async function customerPortal(db: Db): Promise<number> {
     }
   }
   return added;
+}
+
+
+/**
+ * Route Planner (B10, 20261120002600): saved places around the demo's own yard (a yard, two fictional pits and a
+ * plant, placed a few miles out from the yard, not at real businesses), routing dimensions on two trucks, a saved
+ * route, and today's routes: up to three of today's open loads are assigned through assign_load (the dispatch rules
+ * decide; a refusal leaves the load open). Each part only while the demo has none of it.
+ */
+async function routePlanner(db: Db, today: string): Promise<number> {
+  const locCount = await count(db, "company_locations");
+  if (locCount === null) return 0;
+  let n = 0;
+  const settings = (await db.from("company_settings").select("yard_latitude, yard_longitude").maybeSingle()).data as { yard_latitude: number | null; yard_longitude: number | null } | null;
+  const yard = settings?.yard_latitude != null && settings.yard_longitude != null ? { lat: Number(settings.yard_latitude), lng: Number(settings.yard_longitude) } : null;
+  if (locCount === 0 && yard) {
+    const at = (dLat: number, dLng: number) => ({ latitude: Math.round((yard.lat + dLat) * 1e6) / 1e6, longitude: Math.round((yard.lng + dLng) * 1e6) / 1e6, location_source: "manual" });
+    const rows = [
+      { kind: "yard", name: "Main yard (demo)", ...at(0, 0), notes: "Demo: trucks start and end the day here." },
+      { kind: "quarry", name: "North Pit (fictional)", ...at(0.11, -0.04), notes: "Demo: scale house opens 6:00. Queue on the east lane." },
+      { kind: "quarry", name: "River Gravel Pit (fictional)", ...at(-0.08, 0.12), notes: "Demo: washed stone and sand." },
+      { kind: "plant", name: "Asphalt Plant 2 (fictional)", ...at(0.03, 0.19), notes: "Demo: hot mix loads by appointment." },
+    ];
+    await must("locations", db.from("company_locations").insert(rows));
+    n += rows.length;
+  }
+
+  // Routing dimensions on two trucks that have none (a typical tri-axle dump truck; fictional).
+  const dims = await db.from("trucks").select("id").eq("active", true).is("height_cm", null).order("unit_number").limit(2);
+  if (!dims.error && (await db.from("trucks").select("id", { count: "exact", head: true }).not("height_cm", "is", null)).count === 0) {
+    for (const t of (dims.data ?? []) as Array<{ id: string }>) {
+      const r = await db.from("trucks").update({ height_cm: 396, width_cm: 259, length_cm: 1036, gross_weight_kg: 33112, axle_count: 4 }).eq("id", t.id);
+      if (!r.error) n++;
+    }
+  }
+
+  // Today's routes: assign up to three of today's open loads to free trucks and drivers.
+  const loads = ((await db.from("order_loads").select("id").eq("load_date", today).eq("status", "planned").order("starts_at")).data ?? []) as Array<{ id: string }>;
+  if (loads.length) {
+    const active = new Set((((await db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", loads.map((l) => l.id))).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
+    if (active.size < 3) {
+      const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+      const drivers = ((await db.from("drivers").select("id").eq("active", true).order("name")).data ?? []) as Array<{ id: string }>;
+      const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
+      let made = active.size;
+      for (const load of loads.filter((l) => !active.has(l.id))) {
+        if (made >= 3) break;
+        let done = false;
+        for (const t of trucks) {
+          for (const d of drivers) {
+            for (const tr of trailers) {
+              if ((await db.rpc("assign_load", { p_load_id: load.id, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "Demo: today's route sample." })).error) continue;
+              done = true;
+              break;
+            }
+            if (done) break;
+          }
+          if (done) break;
+        }
+        if (done) { made++; n++; }
+      }
+    }
+  }
+
+  // A saved route: yard → first pit → a located customer site → yard.
+  const routes = await count(db, "saved_routes");
+  if (routes === 0) {
+    const places = ((await db.from("company_locations").select("id, kind").in("kind", ["yard", "quarry"]).order("name")).data ?? []) as Array<{ id: string; kind: string }>;
+    const yardLoc = places.find((p) => p.kind === "yard");
+    const pit = places.find((p) => p.kind === "quarry");
+    const site = (((await db.from("customer_sites").select("id").not("latitude", "is", null).eq("active", true).order("label").limit(1)).data ?? []) as Array<{ id: string }>)[0];
+    if (yardLoc && pit && site) {
+      const head = (await must("saved route", db.from("saved_routes").insert({ name: "Yard → North Pit → job site (demo)", notes: "Demo: a typical first load of the day." }).select("id").single())) as { id: string };
+      await must("saved route stops", db.from("saved_route_stops").insert([
+        { route_id: head.id, position: 1, company_location_id: yardLoc.id, label: "Main yard (demo)", service_minutes: 0 },
+        { route_id: head.id, position: 2, company_location_id: pit.id, label: "North Pit (fictional)", service_minutes: 25 },
+        { route_id: head.id, position: 3, customer_site_id: site.id, label: "Job site", service_minutes: 15 },
+        { route_id: head.id, position: 4, company_location_id: yardLoc.id, label: "Main yard (demo)", service_minutes: 0 },
+      ]));
+      n++;
+    }
+  }
+  return n;
 }

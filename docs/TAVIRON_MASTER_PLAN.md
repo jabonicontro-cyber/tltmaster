@@ -440,7 +440,7 @@ New local-only migration: `20261120002600_route_planner_core` (applies automatic
 | Area | Requirement | Status | Evidence / gap |
 | --- | --- | --- | --- |
 | Route Planner | Day routes from dispatch, straight line + HERE truck legs, yard, site locations | Verified | `src/lib/routing/route.ts`, `src/server/routing/*`, `tests/e2e/route-planner.spec.ts` |
-| Route Planner | Saved locations (yards, terminals, quarries, plants, pickups), geocode candidates with confirmation, truck dimensions, multi-stop routes, alternatives, map, saved routes | In progress (DIR-1) | Migration 002600 written; provider, UI, tests next |
+| Route Planner | Saved locations (yards, terminals, quarries, plants, pickups), geocode candidates with confirmation, truck dimensions, multi-stop routes, alternatives, map, saved routes, order suggestion, demo samples; yard save fixed (002700) | Written, tested locally; pushed to Preview (not verified live; migrations 002600–002700 not on hosted DB; HERE key is an owner step) | `tests/db/route-planner.test.ts`, `tests/e2e/route-planner.spec.ts` (5), `tests/db/demo-samples.test.ts` |
 | Route Planner | Optimization (sequence, windows, pickups, capacity, schedules, costs), dispatch integration | Not started | After the core |
 | Scheduling | Weekly hours per weekday, time off, PTO | Verified | `work_schedules`, `tests/db/work-schedules.test.ts`, time-off tests |
 | Scheduling | Clock-time shifts, breaks, overnight, rotation, effective dates + history, overrides with reason/audit, dispatch shift checks, timeline, shift offers, staffing forecast | Not started | Audit: no columns; dispatch never reads schedules |

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { truckDimensionsSchema, type TruckDimensions } from "@/lib/routing/dimensions";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isIsoDate } from "@/lib/dates";
 import { uuid } from "@/lib/schemas/common";
@@ -52,7 +53,14 @@ export async function saveTruck(id: string | null, formData: FormData): Promise<
     if (id && !uuid.safeParse(id).success) return fail("Invalid truck.");
     const parsed = truckSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
-    const row = { ...toEquipmentRow(parsed.data), ...baseFrom(formData) };
+    // Routing dimensions only when the form showed them (the fields exist once 20261120002600 is applied).
+    let dims: TruckDimensions | Record<string, never> = {};
+    if (formData.get("routing_dimensions") === "1") {
+      const d = truckDimensionsSchema.safeParse(Object.fromEntries(formData));
+      if (!d.success) return validationFailure(d.error);
+      dims = d.data;
+    }
+    const row = { ...toEquipmentRow(parsed.data), ...dims, ...baseFrom(formData) };
     const supabase = await createClient();
     const res = id ? await supabase.from("trucks").update(row).eq("id", id).select("id") : await supabase.from("trucks").insert(row).select("id");
     if (res.error) return uniqueFailure(res.error, "unit_number", "Another truck already uses this unit number.");
