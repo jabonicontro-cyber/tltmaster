@@ -105,3 +105,28 @@ Store-published apps are a separate, optional step (item 3 below).
    (Capacitor) around this same app. It needs an Apple Developer account ($99/year), a Google Play developer account
    (one-time $25), app signing keys, store listings and privacy labels. These are your decision and your accounts.
    Nothing will be published without them.
+
+
+### 7a. Store apps (owner decision 2026-10-25: publish to the App Store and Google Play)
+
+**Decision:** publish the companion app in the Apple App Store and Google Play, in addition to the home-screen install.
+**Approach:** a thin native shell (Capacitor) around the same app; one codebase, same sign-in, permissions and tenant
+isolation. Builds run in GitHub Actions (a macOS runner for iOS), so no Mac is needed. Signing keys are stored as GitHub
+secrets by the owner, never in the repository.
+
+**Owner steps (accounts are yours; neither exists yet, 2026-10-25):**
+1. **D-U-N-S number** (free, a few days): needed to enrol as a company so the stores show the company name, not a
+   person's. Request it through Apple's D-U-N-S lookup page (developer.apple.com/enroll/duns-lookup).
+2. **Apple Developer Program** ($99/year): developer.apple.com/programs/enroll, as an organization, with the D-U-N-S
+   number and a company website (mytaviron.com).
+3. **Google Play Console** ($25 once): play.google.com/console/signup, as an organization; Google asks for identity
+   and organization verification, and new personal accounts must run a closed test with testers before release.
+4. Tell Claude when both are approved; Claude then lists the exact keys to create (App Store Connect API key, Android
+   upload key) and where to save them as GitHub secrets.
+
+**What Claude builds meanwhile (no accounts needed):** the Capacitor project, app icons and splash screens, the build
+workflows (Android test build first), and the native features that make the app more than a website in a frame
+(lock-screen notifications, camera for tickets and defect photos). **Risk, stated plainly:** Apple can reject apps that
+are only a wrapped website (App Review guideline 4.2); native notifications and camera use reduce that risk, but approval
+is Apple's decision. Store listings need a privacy policy URL (the published privacy page), screenshots and a support
+contact, and Apple requires a way to request account deletion from inside the app.
