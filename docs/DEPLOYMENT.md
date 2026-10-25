@@ -102,6 +102,15 @@ other than the production branch already deploys to Preview; what is still missi
 branch, the domain assignments and the Preview variables below. Until then Claude pushes only to non-production
 branches (CLAUDE.md → Workflow).
 
+**Status (2026-10-25, owner: "do what you need for deployment split"):** Claude created `main` at the Production
+commit `aa4f251` and made the workflows treat it as the Production branch: database migrations run after CI on `main`
+(and, until Vercel tracks `main`, on the old branch too), and the release risk report compares against `main`. Until
+the owner finishes steps 2–6 below, every promotion fast-forwards **both** `main` and
+`claude/top-line-trucking-manager-vmw04i` to the same verified commit, so whichever branch Vercel tracks is current.
+Remaining owner steps: 2 (Vercel Production branch → `main`), 3 (domains), 4 (Preview variables), 5 (Supabase
+redirect URLs), optionally GitHub's default branch → `main`. After step 2 is confirmed, Claude removes the old branch
+from the migration workflow and stops updating it.
+
 **Target:** `mytaviron.com` = Production, built only from `main`; `tltmaster.vercel.app` = Preview of the
 working branch. No new project, no paid service, no code change (the app behaves the same in both; the
 gate is on for every Vercel build).

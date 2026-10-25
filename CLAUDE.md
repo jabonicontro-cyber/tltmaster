@@ -152,6 +152,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 ## Workflow
 
 - **Branches and environments (verified 2026-10-11 from GitHub's deployment records):**
+  - **Split in progress (2026-10-25, DEPLOYMENT §2b):** `main` exists and is the Production branch for the workflows.
+    Until the owner switches Vercel's Production Branch to `main`, every promotion fast-forwards both `main` and
+    `claude/top-line-trucking-manager-vmw04i` to the same verified commit.
   - `claude/top-line-trucking-manager-vmw04i` is still Vercel's **Production Branch**: a push to it deploys to
     Production (`tltmaster.vercel.app`, and any domain on that environment). Push to it only through the release
     rule below (standing owner authorization, 2026-10-11): fast-forward only, never force.
