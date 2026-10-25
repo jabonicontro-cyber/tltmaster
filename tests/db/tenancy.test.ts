@@ -7,6 +7,8 @@ import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Sessio
 afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
+const SERVICE_ONLY_TABLES = new Set(["accounting_connection_secrets"]);
+
 const TENANT_TABLES = [
   "dispatch_bases", "base_members", "customer_activities", "crm_opportunities", "crm_opportunity_events", "customer_tasks",
   "comm_settings", "conversations", "conversation_members", "messages", "message_revisions", "conversation_events",
@@ -39,6 +41,7 @@ const TENANT_TABLES = [
   "work_order_mechanics", "work_order_time_entries", "work_order_tasks",
   "maintenance_shop_settings", "mechanic_skills", "work_order_triage",
   "shift_patterns", "shift_pattern_days", "shift_changes", "schedule_events", "assignment_shift_overrides",
+  "billing_entities", "billing_entity_rules",
   "accounting_connections", "accounting_connection_secrets", "accounting_customer_links", "accounting_invoice_sends",
 ];
 
@@ -214,7 +217,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome",
   // AI usage ledger (docs/AI.md §6).
-  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_refresh_begin", "public.demo_refresh_end", "public.schedule_range", "public.accounting_save_connection", "public.accounting_set_status", "public.accounting_set_item", "public.accounting_disconnect", "public.accounting_link_customer", "public.accounting_begin_send", "public.accounting_finish_send", "public.schedule_set_pattern", "public.schedule_end_pattern", "public.schedule_set_day", "public.schedule_clear_day", "public.assign_load_off_shift", "private.can_see_schedule", "private.shift_on", "private.schedule_employee", "private.driver_shift_problem", "private.dispatch_shift_check", "private.dispatch_shift_record", "public.maintenance_add_mechanic", "public.maintenance_save_triage", "public.maintenance_decide_triage", "public.maintenance_save_shop", "public.maintenance_set_skills", "public.maintenance_set_estimate", "public.maintenance_capacity", "public.maintenance_remove_mechanic", "public.maintenance_set_my_status", "public.maintenance_start_timer", "public.maintenance_stop_timer", "public.maintenance_add_time", "public.maintenance_void_time", "public.maintenance_add_task", "public.maintenance_set_task", "private.wo_for_crew", "private.can_be_mechanic", "private.wo_person_name", "private.wo_sync_labor", "private.wo_sync_lead", "private.wo_no_running_timer", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
+  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_refresh_begin", "public.demo_refresh_end", "public.schedule_range", "public.billing_entity_save", "public.billing_entity_rules_save", "private.billing_entity_for", "private.billing_handoff_stamp_entities", "public.accounting_save_connection", "private.accounting_connection", "public.accounting_set_status", "public.accounting_set_item", "public.accounting_disconnect", "public.accounting_link_customer", "public.accounting_begin_send", "public.accounting_finish_send", "public.schedule_set_pattern", "public.schedule_end_pattern", "public.schedule_set_day", "public.schedule_clear_day", "public.assign_load_off_shift", "private.can_see_schedule", "private.shift_on", "private.schedule_employee", "private.driver_shift_problem", "private.dispatch_shift_check", "private.dispatch_shift_record", "public.maintenance_add_mechanic", "public.maintenance_save_triage", "public.maintenance_decide_triage", "public.maintenance_save_shop", "public.maintenance_set_skills", "public.maintenance_set_estimate", "public.maintenance_capacity", "public.maintenance_remove_mechanic", "public.maintenance_set_my_status", "public.maintenance_start_timer", "public.maintenance_stop_timer", "public.maintenance_add_time", "public.maintenance_void_time", "public.maintenance_add_task", "public.maintenance_set_task", "private.wo_for_crew", "private.can_be_mechanic", "private.wo_person_name", "private.wo_sync_labor", "private.wo_sync_lead", "private.wo_no_running_timer", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
   // N11: office scans of paper tickets.
   "public.begin_ticket_scan", "public.attach_ticket_scan",
   // N12: early-access site gate (service role only).
@@ -365,6 +368,11 @@ describe("reads are limited to the caller's company", () => {
       ] as const) {
         await s.as(user);
         for (const t of TENANT_TABLES) {
+          // Service-role-only tables (encrypted tokens): app users cannot read them at all.
+          if (SERVICE_ONLY_TABLES.has(t)) {
+            expect((await pgError(s.query(`select count(*) from public.${t}`))).code, `${t} readable by app users`).toBe("42501");
+            continue;
+          }
           const r = await s.query<{ n: number }>(`select count(*)::int as n from public.${t} where company_id = $1`, [other]);
           expect(r.rows[0].n, `${t} visible across companies`).toBe(0);
         }

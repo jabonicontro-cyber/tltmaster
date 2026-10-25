@@ -249,6 +249,14 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   const views = owner.getByRole("navigation", { name: "Billing views" });
   await expect(views.getByRole("link", { name: /Ready to bill\s*\d/ })).toBeVisible();
   await expect(views.getByRole("link", { name: /Handed off\s*\d/ })).toBeVisible();
+  // Two businesses (samples.ts billingEntities) and a simulated Send to QuickBooks: nothing leaves the demo.
+  await visit(owner, "/billing/setup");
+  await expect(owner.getByRole("heading", { name: /Stone & Sand \(demo\)/ })).toBeVisible();
+  await expect(owner.getByText(/QuickBooks is not connected in demo companies/).first()).toBeVisible();
+  await visit(owner, "/billing?view=handed_off");
+  await owner.getByRole("button", { name: "Send to QuickBooks" }).first().click();
+  await expect(owner.getByText(/Demo: simulated sending invoice/).first()).toBeVisible();
+  await expect(owner.getByText("Simulated").first()).toBeVisible();
   // Site directions verification (samples.ts siteDirections): a safety/access critical site nobody verified is flagged.
   const { data: flagged } = await admin.from("customer_sites").select("customer_id").eq("company_id", co!.id).eq("directions_risk", "safety_access").is("directions_verified_at", null).limit(1).single();
   await visit(owner, `/customers/${flagged!.customer_id}`);

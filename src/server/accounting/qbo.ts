@@ -5,7 +5,7 @@ import { env } from "@/server/env";
 import { createAdminClient } from "@/server/supabase/admin";
 
 // QuickBooks Online connection (master plan B82): OAuth, encrypted token storage, token refresh and API calls.
-// Tokens are encrypted here (AES-256-GCM, a key derived from the app's client secret and the company id) and stored in
+// Tokens are encrypted here (AES-256-GCM, a key derived from the app's client secret and the connection id) and stored in
 // accounting_connection_secrets, which no app user can read; only this server code reads it, through the service role,
 // after the caller's permission has been checked. Tokens and secrets never reach the browser, errors or logs.
 
@@ -27,21 +27,21 @@ export function setQboFetchForTests(f: typeof fetch) {
   fetcher = f;
 }
 
-function key(companyId: string) {
-  return Buffer.from(hkdfSync("sha256", env().QBO_CLIENT_SECRET ?? "", companyId, "taviron-qbo-tokens-v1", 32));
+function key(connectionId: string) {
+  return Buffer.from(hkdfSync("sha256", env().QBO_CLIENT_SECRET ?? "", connectionId, "taviron-qbo-tokens-v1", 32));
 }
 
-export function encryptTokens(companyId: string, tokens: QboTokens): string {
+export function encryptTokens(connectionId: string, tokens: QboTokens): string {
   const iv = randomBytes(12);
-  const c = createCipheriv("aes-256-gcm", key(companyId), iv);
+  const c = createCipheriv("aes-256-gcm", key(connectionId), iv);
   const body = Buffer.concat([c.update(JSON.stringify(tokens), "utf8"), c.final()]);
   return ["v1", iv.toString("base64"), c.getAuthTag().toString("base64"), body.toString("base64")].join(".");
 }
 
-export function decryptTokens(companyId: string, sealed: string): QboTokens {
+export function decryptTokens(connectionId: string, sealed: string): QboTokens {
   const [v, iv, tag, body] = sealed.split(".");
   if (v !== "v1") throw new Error("Unknown token format.");
-  const d = createDecipheriv("aes-256-gcm", key(companyId), Buffer.from(iv, "base64"));
+  const d = createDecipheriv("aes-256-gcm", key(connectionId), Buffer.from(iv, "base64"));
   d.setAuthTag(Buffer.from(tag, "base64"));
   return JSON.parse(Buffer.concat([d.update(Buffer.from(body, "base64")), d.final()]).toString("utf8")) as QboTokens;
 }
@@ -79,11 +79,15 @@ export function exchangeCode(code: string) {
   return tokenRequest({ grant_type: "authorization_code", code, redirect_uri: qboRedirectUri() });
 }
 
-export async function saveTokens(companyId: string, tokens: QboTokens) {
+export async function saveTokens(connectionId: string, tokens: QboTokens) {
   const now = Date.now();
-  const { error } = await createAdminClient().from("accounting_connection_secrets").upsert({
-    company_id: companyId,
-    tokens_ciphertext: encryptTokens(companyId, tokens),
+  const admin = createAdminClient();
+  const { data: conn } = await admin.from("accounting_connections").select("company_id").eq("id", connectionId).maybeSingle();
+  if (!conn) throw new Error("The QuickBooks connection could not be stored.");
+  const { error } = await admin.from("accounting_connection_secrets").upsert({
+    connection_id: connectionId,
+    company_id: (conn as { company_id: string }).company_id,
+    tokens_ciphertext: encryptTokens(connectionId, tokens),
     access_expires_at: new Date(now + tokens.expires_in * 1000).toISOString(),
     refresh_expires_at: tokens.x_refresh_token_expires_in ? new Date(now + tokens.x_refresh_token_expires_in * 1000).toISOString() : null,
     updated_at: new Date(now).toISOString(),
@@ -91,34 +95,34 @@ export async function saveTokens(companyId: string, tokens: QboTokens) {
   if (error) throw new Error("The QuickBooks connection could not be stored.");
 }
 
-/** A valid access token for the company, refreshed when it expires within two minutes. */
-export async function accessToken(companyId: string, force = false): Promise<string> {
-  const { data } = await createAdminClient().from("accounting_connection_secrets").select("tokens_ciphertext, access_expires_at").eq("company_id", companyId).maybeSingle();
+/** A valid access token for the connection, refreshed when it expires within two minutes. */
+export async function accessToken(connectionId: string, force = false): Promise<string> {
+  const { data } = await createAdminClient().from("accounting_connection_secrets").select("tokens_ciphertext, access_expires_at").eq("connection_id", connectionId).maybeSingle();
   const row = data as { tokens_ciphertext: string; access_expires_at: string } | null;
   if (!row) throw new QboReconnectError("QuickBooks is not connected.");
-  const tokens = decryptTokens(companyId, row.tokens_ciphertext);
+  const tokens = decryptTokens(connectionId, row.tokens_ciphertext);
   if (!force && Date.parse(row.access_expires_at) - Date.now() > 120_000) return tokens.access_token;
   const fresh = await tokenRequest({ grant_type: "refresh_token", refresh_token: tokens.refresh_token });
-  await saveTokens(companyId, fresh);
+  await saveTokens(connectionId, fresh);
   return fresh.access_token;
 }
 
 /** Revoke the authorization at Intuit (best effort) and forget the stored tokens. */
-export async function revokeTokens(companyId: string) {
+export async function revokeTokens(connectionId: string) {
   const admin = createAdminClient();
-  const { data } = await admin.from("accounting_connection_secrets").select("tokens_ciphertext").eq("company_id", companyId).maybeSingle();
+  const { data } = await admin.from("accounting_connection_secrets").select("tokens_ciphertext").eq("connection_id", connectionId).maybeSingle();
   if (data) {
     try {
-      const t = decryptTokens(companyId, (data as { tokens_ciphertext: string }).tokens_ciphertext);
+      const t = decryptTokens(connectionId, (data as { tokens_ciphertext: string }).tokens_ciphertext);
       await fetcher(QBO_REVOKE_URL, { method: "POST", headers: { Authorization: basicAuth(), Accept: "application/json", "Content-Type": "application/json" }, body: JSON.stringify({ token: t.refresh_token }) });
     } catch {
       // Revocation is best effort: the stored tokens are deleted either way.
     }
   }
-  await admin.from("accounting_connection_secrets").delete().eq("company_id", companyId);
+  await admin.from("accounting_connection_secrets").delete().eq("connection_id", connectionId);
 }
 
-export interface QboContext { companyId: string; realmId: string; environment: "sandbox" | "production" }
+export interface QboContext { connectionId: string; realmId: string; environment: "sandbox" | "production" }
 
 /** One QuickBooks API call; an expired access token is refreshed once. Errors carry QuickBooks' own message. */
 export async function qboRequest<T>(ctx: QboContext, method: "GET" | "POST", path: string, body?: unknown, params: Record<string, string> = {}): Promise<T> {
@@ -126,7 +130,7 @@ export async function qboRequest<T>(ctx: QboContext, method: "GET" | "POST", pat
   url.searchParams.set("minorversion", QBO_MINOR_VERSION);
   for (const [k, v] of Object.entries(params)) url.searchParams.set(k, v);
   for (let attempt = 0; attempt < 2; attempt++) {
-    const token = await accessToken(ctx.companyId, attempt > 0);
+    const token = await accessToken(ctx.connectionId, attempt > 0);
     const res = await fetcher(url, {
       method,
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) },

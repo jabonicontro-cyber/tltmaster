@@ -46,15 +46,30 @@ export interface QboInvoice {
   PrivateNote: string;
 }
 
-/**
- * The invoice for one handed-off order. Every charge line becomes a line on the company's chosen product/service item,
- * with the line's own description and amount; quantity and rate are included only when they multiply exactly to the
- * amount (QuickBooks refuses lines where they do not). Discounts become one discount line (QuickBooks allows one).
- * Tax is left to QuickBooks' own tax setup; the totals are compared after the send and a difference is reported.
- */
-export function buildQboInvoice(snapshot: HandoffSnapshot, refs: { customerId: string; itemId: string }, batchNumber: string): QboInvoice {
-  const lines: QboInvoiceLine[] = [];
+/** The businesses with lines on a handed-off order, in line order (null = the whole company, no businesses set up). */
+export function entitiesOf(snapshot: HandoffSnapshot): Array<{ id: string | null; name: string | null }> {
+  const seen = new Map<string | null, string | null>();
   for (const l of [...snapshot.lines].sort((a, b) => a.line_no - b.line_no)) {
+    const id = l.billing_entity_id ?? null;
+    if (!seen.has(id)) seen.set(id, l.billing_entity_name ?? null);
+  }
+  if (!seen.size) seen.set(null, null);
+  return [...seen].map(([id, name]) => ({ id, name }));
+}
+
+const linesFor = (snapshot: HandoffSnapshot, entity: string | null) =>
+  [...snapshot.lines].filter((l) => (l.billing_entity_id ?? null) === entity).sort((a, b) => a.line_no - b.line_no);
+
+/**
+ * The invoice one business sends for a handed-off order. Every charge line of that business becomes a line on its
+ * chosen product/service item, with the line's own description and amount; quantity and rate are included only when
+ * they multiply exactly to the amount (QuickBooks refuses lines where they do not). That business's discounts become one
+ * discount line (QuickBooks allows one). Tax is left to QuickBooks' own tax setup; totals are compared after the send.
+ */
+export function buildQboInvoice(snapshot: HandoffSnapshot, refs: { customerId: string; itemId: string }, batchNumber: string, entity: string | null = null): QboInvoice {
+  const mine = linesFor(snapshot, entity);
+  const lines: QboInvoiceLine[] = [];
+  for (const l of mine) {
     if (l.kind === "discount" || !l.amount_cents) continue;
     const qty = l.quantity === null || l.quantity === "" ? null : Number(l.quantity);
     const rate = l.unit_rate_cents === null ? null : l.unit_rate_cents / 100;
@@ -66,10 +81,10 @@ export function buildQboInvoice(snapshot: HandoffSnapshot, refs: { customerId: s
       SalesItemLineDetail: { ItemRef: { value: refs.itemId }, ...(exact ? { Qty: qty!, UnitPrice: rate! } : {}), ...(snapshot.order.service_start ? { ServiceDate: snapshot.order.service_start } : {}) },
     });
   }
-  if (snapshot.order.discount_cents > 0) {
-    lines.push({ DetailType: "DiscountLineDetail", Amount: dollars(snapshot.order.discount_cents), DiscountLineDetail: { PercentBased: false } });
-  }
-  const tickets = snapshot.tickets.map((t) => t.ticket_number).filter(Boolean);
+  const discount = mine.filter((l) => l.kind === "discount").reduce((sum, l) => sum + Math.abs(l.amount_cents), 0);
+  if (discount > 0) lines.push({ DetailType: "DiscountLineDetail", Amount: dollars(discount), DiscountLineDetail: { PercentBased: false } });
+  const lineIds = new Set(mine.map((l) => l.line_id));
+  const tickets = snapshot.tickets.filter((t) => lineIds.has(t.order_line_id)).map((t) => t.ticket_number).filter(Boolean);
   return {
     CustomerRef: { value: refs.customerId },
     DocNumber: qboDocNumber(snapshot.order.order_number),
@@ -79,9 +94,16 @@ export function buildQboInvoice(snapshot: HandoffSnapshot, refs: { customerId: s
   };
 }
 
-/** Taviron's total before tax (what the invoice lines add up to) and with tax, in cents. */
-export function snapshotTotals(snapshot: HandoffSnapshot) {
-  return { beforeTax: snapshot.order.subtotal_cents - snapshot.order.discount_cents, total: snapshot.order.total_cents };
+/**
+ * What one business's invoice should total, in cents. With a single business (or none) that is the order total
+ * including tax; when the order is split, tax is not divided by Taviron, so the comparison is before tax and QuickBooks'
+ * own tax is expected on top.
+ */
+export function snapshotTotals(snapshot: HandoffSnapshot, entity: string | null = null) {
+  const split = entitiesOf(snapshot).length > 1;
+  const mine = linesFor(snapshot, entity);
+  const beforeTax = mine.reduce((sum, l) => sum + (l.kind === "discount" ? -Math.abs(l.amount_cents) : l.amount_cents), 0);
+  return { beforeTax, total: split ? beforeTax : snapshot.order.total_cents, includesTax: !split };
 }
 
 /** Plain words for a total that QuickBooks calculated differently (usually its own sales tax setup). */

@@ -42,6 +42,10 @@ const ALLOWED = new Set([
   "src/server/accounting/send.ts",
   "src/app/api/accounting/qbo/connect/route.ts",
   "src/app/api/accounting/qbo/callback/route.ts",
+  "src/app/(app)/billing/setup/page.tsx",
+  "src/components/billing/accounting-setup.tsx",
+  "src/app/(app)/billing/accounting-actions.ts",
+  "src/server/data/accounting.ts", // Send is offered in demos without a QuickBooks connection (sends are simulated)
 ]);
 
 function files(dir: string): string[] {

@@ -337,6 +337,25 @@ separate decision.
 
 **Turn it off:** delete the `SUPABASE_DB_URL` secret (runs then do nothing), or disable the workflow under Actions.
 
+## 2d. QuickBooks Online (owner steps, master plan B82)
+
+Nothing reaches QuickBooks until these are done; until then the Businesses and QuickBooks page says QuickBooks is not
+set up, and demo companies only simulate sends.
+
+1. Create an app at developer.intuit.com (Accounting scope). Under its keys, add the redirect URI
+   `https://tltmaster.vercel.app/api/accounting/qbo/callback` (and the same path on any custom domain you use; it must
+   match `APP_BASE_URL`).
+2. In Vercel → Settings → Environment Variables (Production, and Preview if you test there), add
+   `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET` and `QBO_ENVIRONMENT` (`sandbox` first, `production` once verified). Keys stay in
+   Vercel only; never send them in chat. `SUPABASE_SERVICE_ROLE_KEY` must already be set (the token store uses it).
+3. Redeploy, then in Billing → Businesses and QuickBooks press **Connect QuickBooks** with Intuit's sandbox company,
+   choose the product or service for invoice lines, and send one handed-off order. Check the invoice in the sandbox.
+4. Switch `QBO_ENVIRONMENT` to `production`, redeploy, and connect each business's real QuickBooks company. Changing the
+   environment means connecting again.
+
+Rotating `QBO_CLIENT_SECRET` makes stored connections unreadable (the token key is derived from it): connect again
+afterwards.
+
 ## 3. Let yourself (and testers) in
 
 From your computer, with a `.env.staging` file containing only the staging

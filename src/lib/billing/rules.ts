@@ -213,6 +213,9 @@ export interface HandoffSnapshot {
     price_source: string;
     taxable: boolean;
     delivered_quantity: number | string | null;
+    /** The business that bills this line (20261120003400); absent when the company has no billing businesses. */
+    billing_entity_id?: string | null;
+    billing_entity_name?: string | null;
   }>;
   tickets: Array<{
     ticket_number: string;

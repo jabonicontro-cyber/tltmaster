@@ -55,7 +55,7 @@ async function demoCompany(db: Db): Promise<{ userId: string; companyId: string 
 
 /** Add every feature's samples that the demo does not have yet. Safe to run on every Refresh. */
 export async function ensureFeatureSamples(db: Db, today: string): Promise<SampleResult> {
-  const { userId } = await demoCompany(db);
+  const { userId, companyId } = await demoCompany(db);
   const result: SampleResult = { added: 0, features: [] };
   const note = (feature: string, n: number) => { if (n > 0) { result.added += n; result.features.push(feature); } };
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
@@ -81,6 +81,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("assigned attention item", await assignedItem(db, userId));
   note("order waiting for a date", await needsScheduling(db, today));
   note("planning day", await planningDay(db, today));
+  // Businesses before the billing samples, so a new demo's handoff is already split between them.
+  note("billing businesses", await billingEntities(db, companyId));
   note("billing: ready and handed off", await billing(db, today));
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
@@ -91,6 +93,25 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   return result;
+}
+
+/**
+ * Billing businesses (B89, 20261120003400): the demo bills materials from a fictional sand and gravel business and
+ * everything else (hauling, surcharges) from its trucking business, as a company with two businesses would. Only while
+ * the demo has no business. Handoffs made before this (in older demos) keep their single-business snapshot; new ones split.
+ */
+async function billingEntities(db: Db, companyId: string): Promise<number> {
+  const n = await count(db, "billing_entities");
+  if (n === null || n > 0) return 0;
+  const { data: c } = await db.from("companies").select("name").eq("id", companyId).maybeSingle();
+  const base = ((c as { name?: string } | null)?.name ?? "Demo").replace(/\b(freight|trucking|hauling|aggregates?|logistics|transport|inc\.?|llc)\b/gi, "").replace(/\s+/g, " ").trim() || "Demo";
+  const save = (p: Record<string, unknown>) => db.rpc("billing_entity_save", { p_id: null, p });
+  const hauling = await save({ name: `${base} Trucking (demo)`, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" });
+  if (hauling.error) return 0;
+  const materials = await save({ name: `${base} Stone & Sand (demo)`, invoice_prefix: "SS", city: "Fictional City", region: "ZZ" });
+  if (materials.error) return 1;
+  const rules = await db.rpc("billing_entity_rules_save", { p: { material: materials.data as string, hauling: hauling.data as string } });
+  return rules.error ? 2 : 3;
 }
 
 /**

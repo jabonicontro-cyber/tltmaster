@@ -4,6 +4,7 @@ import { CalendarRange, CheckCircle2, ChevronRight, Download, FilePlus2 } from "
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
 import { ExceptionTable } from "@/components/billing/exception-table";
 import { HandOffForm } from "@/components/billing/hand-off-form";
+import { QuickBooksSendButton, QuickBooksStatus } from "@/components/billing/quickbooks-send";
 import { ReadinessBadge } from "@/components/billing/readiness-badge";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,7 @@ import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
+import { getQuickBooksForHandoffs } from "@/server/data/accounting";
 import { BILLING_VIEWS, getBillingBoard, type BillingFilters, type BillingView } from "@/server/data/billing";
 
 export const metadata = { title: "Billing Readiness" };
@@ -62,7 +64,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Billing Readiness"
-        description="Which delivered work is documented, reviewed and ready to invoice. This is a checklist for the office — invoices are entered in your accounting system, and nothing here changes prices or marks anything paid."
+        description="Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."
+        actions={<ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>}
       />
       <nav aria-label="Billing views" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (
@@ -276,14 +279,19 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             )}
           </>
         ) : board.view === "handed_off" ? (
-          <HandedOff board={board} canManage={canManage} highlight={sp.batch} />
+          <HandedOff board={board} canManage={canManage} highlight={sp.batch}
+            qb={await getQuickBooksForHandoffs(board.batches.flatMap((b) => b.orders.map((o) => o.id)), access)} />
         ) : null}
       </Card>
     </>
   );
 }
 
-function HandedOff({ board, canManage, highlight }: { board: Extract<Awaited<ReturnType<typeof getBillingBoard>>, { view: "handed_off" }>; canManage: boolean; highlight?: string }) {
+function HandedOff({ board, canManage, highlight, qb }: {
+  board: Extract<Awaited<ReturnType<typeof getBillingBoard>>, { view: "handed_off" }>; canManage: boolean; highlight?: string;
+  qb: Awaited<ReturnType<typeof getQuickBooksForHandoffs>>;
+}) {
+  const unsent = (ids: Array<{ id: string; reverted_at: string | null }>) => ids.filter((o) => !o.reverted_at && !(qb.sends[o.id] ?? []).some((s) => s.status === "sent") ).map((o) => o.id);
   if (board.batches.length === 0) {
     return <EmptyState title="Nothing handed off yet" description="Batches of orders handed off for billing appear here with their file." />;
   }
@@ -301,11 +309,14 @@ function HandedOff({ board, canManage, highlight }: { board: Extract<Awaited<Ret
               </div>
               {b.notes && <div className="text-sm">{b.notes}</div>}
             </div>
-            {/* Plain link: the file is a download, not a page. */}
-            <a href={`/billing/batches/${b.id}/csv`} className={buttonClasses("secondary", "sm")}>
-              <Download className="size-4" />
-              {b.export_count > 0 ? "Download again (CSV)" : "Download file (CSV)"}
-            </a>
+            <div className="flex flex-wrap gap-2">
+              {qb.canSend && unsent(orders).length > 1 && <QuickBooksSendButton handoffOrderIds={unsent(orders)} label={`Send ${unsent(orders).length} to QuickBooks`} />}
+              {/* Plain link: the file is a download, not a page. */}
+              <a href={`/billing/batches/${b.id}/csv`} className={buttonClasses("secondary", "sm")}>
+                <Download className="size-4" />
+                {b.export_count > 0 ? "Download again (CSV)" : "Download file (CSV)"}
+              </a>
+            </div>
           </div>
           <TableWrap>
             <Table>
@@ -317,10 +328,12 @@ function HandedOff({ board, canManage, highlight }: { board: Extract<Awaited<Ret
                       <span className="text-sm text-muted"> · {r.order.customer_name}</span>
                       {r.reverted_at && <div className="text-sm text-muted">Undone by {board.people[r.reverted_by ?? ""] ?? "someone"}: {r.revert_reason}</div>}
                       {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff — check the invoice in your accounting system.</div>}
+                      {qb.shown && <QuickBooksStatus sends={qb.sends[r.id] ?? []} entityNames={qb.entityNames} />}
                     </Td>
                     <Td className="hidden sm:table-cell tabular">{serviceDates(r.order.service_start, r.order.service_end)}</Td>
                     <Td align="right" className="tabular">{formatCents(r.order.total_cents)}</Td>
                     <Td align="right">
+                      {qb.canSend && unsent([r]).length > 0 && <QuickBooksSendButton handoffOrderIds={[r.id]} label={(qb.sends[r.id] ?? []).some((s) => s.status === "failed") ? "Send again" : "Send to QuickBooks"} variant="ghost" />}
                       {canManage && !r.reverted_at && <RevertHandoffButton handoffOrderId={r.id} orderId={r.order_id} orderNumber={r.order.order_number} batchNumber={b.batch_number} />}
                     </Td>
                   </Tr>
