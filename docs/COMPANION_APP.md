@@ -107,7 +107,10 @@ Store-published apps are a separate, optional step (item 3 below).
    Nothing will be published without them.
 
 
-### 7a. Store apps (owner decision 2026-10-25: publish to the App Store and Google Play)
+### 7a. Store apps (deferred, owner 2026-10-25)
+
+**Current decision (owner, later on 2026-10-25):** keep the home-screen install on iPhone, iPad and Android for now;
+store apps come closer to launch. Nothing below is being built until the owner says so; the steps stay here for then.
 
 **Decision:** publish the companion app in the Apple App Store and Google Play, in addition to the home-screen install.
 **Approach:** a thin native shell (Capacitor) around the same app; one codebase, same sign-in, permissions and tenant
