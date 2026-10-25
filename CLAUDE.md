@@ -170,6 +170,10 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
     and deployment check; security, tenant isolation and data integrity reviewed; no unresolved new regression),
     fast-forward the Production branch to the verified Preview commit without asking again, then verify the
     Production deployment record and report it. Stop and report instead when a check fails or a blocker remains.
+  - **Auto-promotion (owner, 2026-10-25):** the owner authorized Claude to promote to Production automatically: once a
+    pushed Preview commit's CI and Preview deployment pass, fast-forward the Production branch to it without asking,
+    then verify CI, the migration workflow and the Production deployment record and report them. This does not cover
+    destructive migrations, secrets, environment variables, domains, paid services or anything else listed below.
   - Code that depends on an unapplied migration ships only if it works safely without it; document the limitation
     and never call the feature operational until the migration is applied and verified.
   - Promoting a commit with new migrations applies them automatically (DEPLOYMENT §2c), so a migration ships only when
