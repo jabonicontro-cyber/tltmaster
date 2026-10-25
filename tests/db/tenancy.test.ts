@@ -38,6 +38,7 @@ const TENANT_TABLES = [
   "company_locations", "saved_routes", "saved_route_stops",
   "work_order_mechanics", "work_order_time_entries", "work_order_tasks",
   "maintenance_shop_settings", "mechanic_skills", "work_order_triage",
+  "shift_patterns", "shift_pattern_days", "shift_changes", "schedule_events", "assignment_shift_overrides",
 ];
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
@@ -212,7 +213,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
   "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome",
   // AI usage ledger (docs/AI.md §6).
-  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_refresh_begin", "public.demo_refresh_end", "public.maintenance_add_mechanic", "public.maintenance_save_triage", "public.maintenance_decide_triage", "public.maintenance_save_shop", "public.maintenance_set_skills", "public.maintenance_set_estimate", "public.maintenance_capacity", "public.maintenance_remove_mechanic", "public.maintenance_set_my_status", "public.maintenance_start_timer", "public.maintenance_stop_timer", "public.maintenance_add_time", "public.maintenance_void_time", "public.maintenance_add_task", "public.maintenance_set_task", "private.wo_for_crew", "private.can_be_mechanic", "private.wo_person_name", "private.wo_sync_labor", "private.wo_sync_lead", "private.wo_no_running_timer", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
+  "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_refresh_begin", "public.demo_refresh_end", "public.schedule_range", "public.schedule_set_pattern", "public.schedule_end_pattern", "public.schedule_set_day", "public.schedule_clear_day", "public.assign_load_off_shift", "private.can_see_schedule", "private.shift_on", "private.schedule_employee", "private.driver_shift_problem", "private.dispatch_shift_check", "private.dispatch_shift_record", "public.maintenance_add_mechanic", "public.maintenance_save_triage", "public.maintenance_decide_triage", "public.maintenance_save_shop", "public.maintenance_set_skills", "public.maintenance_set_estimate", "public.maintenance_capacity", "public.maintenance_remove_mechanic", "public.maintenance_set_my_status", "public.maintenance_start_timer", "public.maintenance_stop_timer", "public.maintenance_add_time", "public.maintenance_void_time", "public.maintenance_add_task", "public.maintenance_set_task", "private.wo_for_crew", "private.can_be_mechanic", "private.wo_person_name", "private.wo_sync_labor", "private.wo_sync_lead", "private.wo_no_running_timer", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
   // N11: office scans of paper tickets.
   "public.begin_ticket_scan", "public.attach_ticket_scan",
   // N12: early-access site gate (service role only).

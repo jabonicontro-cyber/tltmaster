@@ -38,6 +38,7 @@ export const PERMISSIONS = [
   "time_off.view",
   "time_off.approve",
   "time_off.balances",
+  "schedules.manage",
   "maintenance.view",
   "maintenance.manage",
   "maintenance.costs",
