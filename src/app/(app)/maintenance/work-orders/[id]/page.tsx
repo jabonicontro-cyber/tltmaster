@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { fmtMoney, fmtNum, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
 import { ClearanceActions, CostForm, RemoveCostButton, StatusActions } from "@/components/maintenance/work-order-actions";
+import { CrewPanel, TaskChecklist } from "@/components/maintenance/crew-panel";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -16,6 +17,7 @@ import { CLEARANCE_STATUSES, COST_KINDS, WO_CATEGORIES, WO_STATUSES } from "@/li
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getWorkOrder } from "@/server/data/maintenance";
+import { getWorkOrderCrew } from "@/server/data/maintenance-crew";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -26,6 +28,7 @@ const EVENT_LABELS: Record<string, string> = {
   scheduled: "Scheduled", rescheduled: "Rescheduled", unscheduled: "Schedule removed", canceled: "Canceled",
   inspection_started: "Inspection started", inspection_failed: "Inspection failed", cleared: "Cleared for service",
   restricted: "Unit restricted", returned_to_service: "Unit returned to service",
+  crew: "Crew", time: "Labor time", task: "Checklist",
 };
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -39,7 +42,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone }] = await Promise.all([getUserNames(), businessToday()]);
+  const [people, { timezone, today }, crew] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId)]);
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const manage = can(access, "maintenance.manage");
   const canClear = can(access, "maintenance.clear");
@@ -89,13 +92,26 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             </Card>
           )}
 
+          {crew.installed && (
+            <div className="grid gap-5 xl:grid-cols-2">
+              <Card>
+                <CardHeader title="Crew and labor" description="Who is working on it and the time they logged. Labor hours come from this time." />
+                <CardBody><CrewPanel workOrderId={wo.id} status={wo.status} data={crew} me={access.userId} canManage={manage} today={today} timeZone={timezone} /></CardBody>
+              </Card>
+              <Card>
+                <CardHeader title="Checklist" />
+                <CardBody><TaskChecklist workOrderId={wo.id} status={wo.status} tasks={crew.tasks} canManage={manage} /></CardBody>
+              </Card>
+            </div>
+          )}
+
           <Card>
             <CardHeader title="Details" />
             <CardBody>
               <DescriptionList items={[
                 { label: "Description", value: wo.description || "—", wide: true },
                 { label: "Findings", value: wo.findings || "—", wide: true },
-                { label: "Mechanic", value: wo.assigned_to ? who(wo.assigned_to) : "Unassigned" },
+                { label: crew.installed ? "Lead mechanic" : "Mechanic", value: wo.assigned_to ? who(wo.assigned_to) : "Unassigned" },
                 { label: "Scheduled for", value: wo.scheduled_for ? formatDate(wo.scheduled_for) : "Not scheduled" },
                 { label: "Due by", value: wo.due_on ? formatDate(wo.due_on) : "—" },
                 { label: "Labor hours", value: fmtNum(wo.labor_hours, " h") },

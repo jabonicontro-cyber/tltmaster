@@ -44,8 +44,10 @@ interface Options {
  * safety-critical takes that unit out of service until an authorized
  * inspection clears it (the form says so before saving).
  */
-export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
+export function WorkOrderForm({ mode, initial, options, action, cancelHref, laborFromTime = false }: {
   mode: "create" | "edit";
+  /** Labor hours come from logged time (crew and labor on the work order), so they are not typed here. */
+  laborFromTime?: boolean;
   initial: WorkOrderFormValues;
   options: Options;
   action: (fd: FormData) => Promise<ActionResult<{ id: string }>>;
@@ -161,8 +163,8 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref }: {
           <Field label="Findings" htmlFor="findings" error={fieldError("findings")} className="sm:col-span-6">
             <Textarea {...f("findings")} defaultValue={initial.findings} rows={3} maxLength={4000} />
           </Field>
-          <Field label="Labor hours" htmlFor="labor_hours" error={fieldError("labor_hours")} className="sm:col-span-2">
-            <Input {...f("labor_hours")} inputMode="decimal" defaultValue={initial.labor_hours} />
+          <Field label="Labor hours" htmlFor="labor_hours" error={fieldError("labor_hours")} className="sm:col-span-2" hint={laborFromTime ? "From the time logged on the work order" : undefined}>
+            <Input {...f("labor_hours")} inputMode="decimal" defaultValue={initial.labor_hours} readOnly={laborFromTime} />
           </Field>
           <Field label="Odometer at service (mi)" htmlFor="odometer_at_service" error={fieldError("odometer_at_service")} className="sm:col-span-2">
             <Input {...f("odometer_at_service")} inputMode="decimal" defaultValue={initial.odometer_at_service} />

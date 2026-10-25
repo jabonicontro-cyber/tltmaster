@@ -4,6 +4,7 @@ import { Card, CardBody } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { requirePagePermission } from "@/server/auth";
 import { getWorkOrder, listAssignees, listDriverOptions } from "@/server/data/maintenance";
+import { createClient } from "@/server/supabase/server";
 import { updateWorkOrder } from "../../../actions";
 
 export const metadata = { title: "Edit work order" };
@@ -17,7 +18,12 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
   if (!detail) notFound();
   const { wo, truck, trailer } = detail;
   if (wo.status === "closed" || wo.status === "canceled") redirect(`/maintenance/work-orders/${id}`);
-  const [drivers, assignees] = await Promise.all([listDriverOptions(), listAssignees()]);
+  const supabase = await createClient();
+  const [drivers, assignees, logged] = await Promise.all([
+    listDriverOptions(), listAssignees(),
+    // Logged time (20261120002900) makes labor hours computed; before the migration the query fails and labor stays typed.
+    supabase.from("work_order_time_entries").select("id", { count: "exact", head: true }).eq("work_order_id", id),
+  ]);
   return (
     <>
       <PageHeader
@@ -29,6 +35,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
         <CardBody>
           <WorkOrderForm
             mode="edit"
+            laborFromTime={!logged.error && (logged.count ?? 0) > 0}
             action={updateWorkOrder.bind(null, id)}
             cancelHref={`/maintenance/work-orders/${id}`}
             options={{ trucks: [], drivers, assignees }}

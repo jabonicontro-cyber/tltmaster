@@ -1,0 +1,116 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { isIsoDate, zonedTimeToUtc } from "@/lib/dates";
+import { uuid } from "@/lib/schemas/common";
+import { assertPermission } from "@/server/auth";
+import { businessToday } from "@/server/data/settings";
+import { dbErrorMessage, guard } from "@/server/errors";
+import { createClient } from "@/server/supabase/server";
+
+// Crew, time and checklist changes on a work order (migration 20261120002900). Each calls one database function that
+// checks maintenance.manage, the company, the work order's state and the overlap rules again.
+
+const refresh = (id?: string) => {
+  revalidatePath("/maintenance", "layout");
+  if (id) revalidatePath(`/maintenance/work-orders/${id}`);
+};
+
+async function call(fn: string, args: Record<string, unknown>, workOrderId: string | undefined, message: string): Promise<ActionResult> {
+  await assertPermission("maintenance.manage");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) return fail(dbErrorMessage(error));
+  refresh(workOrderId ?? (typeof data === "string" ? data : undefined));
+  return ok(undefined, message);
+}
+
+const woId = z.object({ workOrderId: uuid });
+
+export async function addMechanic(input: { workOrderId: string; userId: string; lead?: boolean }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ userId: uuid, lead: z.boolean().default(false) }).safeParse(input);
+    if (!p.success) return fail("Choose a mechanic.");
+    return call("maintenance_add_mechanic", { p_wo: p.data.workOrderId, p_user: p.data.userId, p_lead: p.data.lead }, p.data.workOrderId, p.data.lead ? "Lead mechanic set." : "Mechanic added.");
+  });
+}
+
+export async function removeMechanic(input: { workOrderId: string; userId: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ userId: uuid }).safeParse(input);
+    if (!p.success) return fail("Invalid mechanic.");
+    return call("maintenance_remove_mechanic", { p_wo: p.data.workOrderId, p_user: p.data.userId }, p.data.workOrderId, "Removed from the crew. Their logged time stays on the work order.");
+  });
+}
+
+export async function setMyStatus(input: { workOrderId: string; status: "assigned" | "paused" | "done" }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ status: z.enum(["assigned", "paused", "done"]) }).safeParse(input);
+    if (!p.success) return fail("Invalid status.");
+    return call("maintenance_set_my_status", { p_wo: p.data.workOrderId, p_status: p.data.status }, p.data.workOrderId, p.data.status === "done" ? "Marked your part done." : "Status updated.");
+  });
+}
+
+export async function startTimer(input: { workOrderId: string; note?: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ note: z.string().trim().max(500).default("") }).safeParse(input);
+    if (!p.success) return fail("Invalid work order.");
+    return call("maintenance_start_timer", { p_wo: p.data.workOrderId, p_note: p.data.note }, p.data.workOrderId, "Timer started.");
+  });
+}
+
+export async function stopTimer(input: { note?: string } = {}): Promise<ActionResult> {
+  return guard(async () => {
+    const p = z.object({ note: z.string().trim().max(500).default("") }).safeParse(input);
+    if (!p.success) return fail("The note is too long.");
+    return call("maintenance_stop_timer", { p_note: p.data.note }, undefined, "Timer stopped.");
+  });
+}
+
+const timeInput = woId.extend({
+  userId: uuid,
+  date: z.string().refine(isIsoDate, "Enter a date."),
+  start: z.string().regex(/^\d{2}:\d{2}$/, "Enter a start time."),
+  end: z.string().regex(/^\d{2}:\d{2}$/, "Enter an end time."),
+  note: z.string().trim().max(500).default(""),
+});
+
+/** Time logged after the fact, in the company's time zone. An end before the start means it ran past midnight. */
+export async function addTime(input: z.input<typeof timeInput>): Promise<ActionResult> {
+  return guard(async () => {
+    const p = timeInput.safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Check the time.");
+    const { timezone } = await businessToday();
+    const started = zonedTimeToUtc(p.data.date, p.data.start, timezone);
+    let ended = zonedTimeToUtc(p.data.date, p.data.end, timezone);
+    if (!started || !ended) return fail("Check the date and times.");
+    if (Date.parse(ended) <= Date.parse(started)) ended = new Date(Date.parse(ended) + 86400000).toISOString();
+    return call("maintenance_add_time", { p_wo: p.data.workOrderId, p_user: p.data.userId, p_started: started, p_ended: ended, p_note: p.data.note }, p.data.workOrderId, "Time logged.");
+  });
+}
+
+export async function voidTime(input: { workOrderId: string; entryId: string; reason: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ entryId: uuid, reason: z.string().trim().min(3, "Say why this time is being removed.").max(300) }).safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Say why.");
+    return call("maintenance_void_time", { p_entry: p.data.entryId, p_reason: p.data.reason }, p.data.workOrderId, "Time entry removed. It stays in the history.");
+  });
+}
+
+export async function addTask(input: { workOrderId: string; title: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ title: z.string().trim().min(2, "Describe the task.").max(200) }).safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Describe the task.");
+    return call("maintenance_add_task", { p_wo: p.data.workOrderId, p_title: p.data.title }, p.data.workOrderId, "Task added.");
+  });
+}
+
+export async function setTask(input: { workOrderId: string; taskId: string; status: "open" | "done" | "skipped" }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ taskId: uuid, status: z.enum(["open", "done", "skipped"]) }).safeParse(input);
+    if (!p.success) return fail("Invalid task.");
+    return call("maintenance_set_task", { p_task: p.data.taskId, p_status: p.data.status }, p.data.workOrderId, "Task updated.");
+  });
+}
