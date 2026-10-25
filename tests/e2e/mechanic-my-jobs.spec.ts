@@ -11,7 +11,8 @@ test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
 test("a mechanic takes a job on a phone, starts it, times it and marks their part done", async ({ page }) => {
   const title = `My jobs test ${unique()}`;
   await asUser(USERS.owner.email, async (q) => {
-    const truck = (await q("select id from public.trucks where active and service_status = 'in_service' order by unit_number limit 1")).rows[0].id as string;
+    // Its own truck: a safety-critical job restricts the truck, which must not affect other tests' trucks.
+    const truck = (await q("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump') returning id", [`ZMJ-${unique()}`.slice(0, 20)])).rows[0].id as string;
     const wo = (await q("select public.maintenance_create_work_order($1::jsonb) r", [JSON.stringify({ truck_id: truck, title, category: "tires", urgency: "immediate", safety_critical: true })])).rows[0].r.id as string;
     await q("select public.maintenance_set_status($1, 'triaged')", [wo]);
   });
