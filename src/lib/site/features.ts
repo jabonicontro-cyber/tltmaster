@@ -308,6 +308,23 @@ export const FEATURES: Feature[] = [
     verified: "2026-10-13",
   },
   {
+    id: "schedules",
+    name: "Shift schedules",
+    category: "people",
+    problem: "Who works when lives on a whiteboard, and dispatch finds out a driver is off after the load is booked.",
+    how: "Weekly schedules, rotations (such as 4 on / 4 off), overnight shifts and one-day changes per person; dispatch is stopped when a driver is scheduled off and can assign only with a recorded reason.",
+    value: "Loads go to people who are working, and exceptions are explained.",
+    points: ["Weekly patterns, rotations and overnight shifts", "One-day changes: a shift or a day off, with a reason", "Dispatch, Smart Dispatch and Plan the day check the schedule"],
+    limitations: ["No timeline view, shift offers or staffing forecast yet"],
+    status: "available",
+    // Publishing is a person's decision (docs/MARKETING.md).
+    published: false,
+    routes: ["/schedule"],
+    screenshots: [],
+    related: ["people", "smart-dispatch", "plan-the-day"],
+    verified: "2026-10-25",
+  },
+  {
     id: "reports",
     name: "Reports",
     category: "insight",
