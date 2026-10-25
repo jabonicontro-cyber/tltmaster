@@ -14,9 +14,7 @@ on:
   workflow_run:
     workflows: [CI]
     types: [completed]
-    # `main` is the Production branch (DEPLOYMENT §2b). The old branch stays listed until Vercel tracks `main`; both
-    # point at the same commit while it does, and the second run finds nothing pending.
-    branches: [main, claude/top-line-trucking-manager-vmw04i]
+    branches: [claude/top-line-trucking-manager-vmw04i]
   workflow_dispatch:
     inputs:
       allow_destructive:
@@ -34,13 +32,13 @@ permissions:
 
 env:
   SUPABASE_CLI: supabase@2.120.0
-  PRODUCTION_BRANCH: main
+  PRODUCTION_BRANCH: claude/top-line-trucking-manager-vmw04i
 
 jobs:
   migrate:
     if: >-
       (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push')
-      || (github.event_name == 'workflow_dispatch' && (github.ref_name == 'main' || github.ref_name == 'claude/top-line-trucking-manager-vmw04i'))
+      || (github.event_name == 'workflow_dispatch' && github.ref_name == 'claude/top-line-trucking-manager-vmw04i')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: production-database

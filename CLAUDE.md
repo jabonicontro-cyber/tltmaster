@@ -152,15 +152,14 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 ## Workflow
 
 - **Branches and environments (verified 2026-10-11 from GitHub's deployment records):**
-  - **Split in progress (2026-10-25, DEPLOYMENT §2b):** `main` exists and is the Production branch for the workflows.
-    Until the owner switches Vercel's Production Branch to `main`, every promotion fast-forwards both `main` and
-    `claude/top-line-trucking-manager-vmw04i` to the same verified commit.
+  - **No split (owner, 2026-10-25):** the deployment stays as it is. The unused `main` branch (created briefly that day)
+    is not updated.
   - `claude/top-line-trucking-manager-vmw04i` is still Vercel's **Production Branch**: a push to it deploys to
     Production (`tltmaster.vercel.app`, and any domain on that environment). Push to it only through the release
     rule below (standing owner authorization, 2026-10-11): fast-forward only, never force.
   - Any other branch deploys to **Preview** only (first proven by `claude/ui-and-signin-checkpoint`, recorded as
-    Preview). Work and push on `claude/ui-and-signin-checkpoint` (or another non-production branch) until the owner
-    finishes the split in docs/DEPLOYMENT.md §2b (`main` → Production on `mytaviron.com`).
+    Preview). Work and push on `claude/ui-and-signin-checkpoint` (or another non-production branch) (the owner decided against a
+    `main` split, 2026-10-25).
   - Before any push, re-check which branch Production tracks (GitHub deployment records); if unsure, don't push.
 - **Deployment policy:**
   - Docs, plans, handoffs and test reports don't justify a deployment: commit them, and push them only together
