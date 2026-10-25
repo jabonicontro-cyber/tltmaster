@@ -36,7 +36,7 @@ export default async function AlertsPage({ searchParams }: { searchParams: Promi
         : "Alerts addressed to you."} />
       <CommunicationsTabs active="alerts" counts={{ alerts: counts?.open, critical: counts?.critical }} />
       {counts && counts.mine > 0 && (
-        <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+        <p className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
           {counts.mine} alert{counts.mine === 1 ? " is" : "s are"} waiting for your acknowledgment.
         </p>
       )}

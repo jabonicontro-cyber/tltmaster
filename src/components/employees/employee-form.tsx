@@ -68,7 +68,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
         </Field>
       </fieldset>
       {signIn && (
-        <fieldset className="space-y-3 rounded-lg border border-line bg-surface p-4">
+        <fieldset className="space-y-3 rounded-2xl border border-line bg-surface p-4">
           <legend className="sr-only">Taviron sign-in</legend>
           <label className="flex items-start gap-3">
             <input type="checkbox" name="send_signin" checked={sendSignIn} onChange={(e) => setSendSignIn(e.target.checked)} className="mt-1 size-4 rounded border-line accent-brand" />

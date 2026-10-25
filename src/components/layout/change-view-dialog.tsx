@@ -62,7 +62,7 @@ export function ChangeViewDialog({ open, onOpenChange, current }: { open: boolea
                     disabled={pending}
                     onClick={() => (selected ? onOpenChange(false) : choose(o))}
                     className={cn(
-                      "flex w-full items-center gap-3 rounded-md border px-3 py-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60",
+                      "flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:opacity-60",
                       selected ? "border-strong bg-surface" : "border-transparent hover:bg-surface",
                     )}
                   >

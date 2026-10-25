@@ -53,15 +53,15 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         title="Delivery Tickets"
         description="What was actually delivered, entered from paper or scale tickets. Separate from the dispatch plan and from billing."
       />
-      <nav aria-label="Ticket views" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Ticket views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(TICKET_VIEWS) as TicketView[]).map((k) => (
           <Link
             key={k}
             href={`/tickets?view=${k}`}
             aria-current={k === view ? "page" : undefined}
             className={cn(
-              "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap",
-              k === view ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink",
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+              k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
             {TICKET_VIEWS[k]}

@@ -55,7 +55,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
                 {...ctl("brand_logo", fe("brand_logo"))}
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
-                className="block w-full text-sm file:mr-3 file:rounded-md file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:font-semibold"
+                className="block w-full text-sm file:mr-3 file:rounded-xl file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:font-semibold"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   setRemoveLogo(false);
@@ -70,18 +70,18 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
             ) : null}
             <Field label="Accent color" htmlFor="brand_color" error={fe("brand_color") ?? live.brand_color} className="sm:col-span-3" hint="Buttons, links and highlights. Leave empty for the default blue.">
               <div className="flex gap-2">
-                <input type="color" aria-label="Pick the accent color" value={color || "#0f6fd6"} onChange={(e) => setColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <input type="color" aria-label="Pick the accent color" value={color || "#0f6fd6"} onChange={(e) => setColor(e.target.value)} className="h-11 w-12 rounded-xl border border-line" />
                 <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#0f6fd6" maxLength={7} />
               </div>
             </Field>
             <Field label="Navigation color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="The menu and top bar. Leave empty for the default navy.">
               <div className="flex gap-2">
-                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-md border border-line" />
+                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-xl border border-line" />
                 <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#0c1a2b" maxLength={7} />
               </div>
             </Field>
           </fieldset>
-          <div aria-label="Branding preview" className="app-root overflow-hidden rounded-lg border border-line" style={brandingStyle({ logo: "", color: /^#[0-9a-f]{6}$/i.test(color) ? color : "", sidebarColor: /^#[0-9a-f]{6}$/i.test(sidebarColor) ? sidebarColor : "" })}>
+          <div aria-label="Branding preview" className="app-root overflow-hidden rounded-2xl border border-line" style={brandingStyle({ logo: "", color: /^#[0-9a-f]{6}$/i.test(color) ? color : "", sidebarColor: /^#[0-9a-f]{6}$/i.test(sidebarColor) ? sidebarColor : "" })}>
             <div className="flex h-14 items-center gap-3 bg-charcoal px-4">
               {logo ? (
                 // eslint-disable-next-line @next/next/no-img-element -- local preview of the chosen file
@@ -92,7 +92,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
               <span className="ml-auto text-xs text-white/60">Preview</span>
             </div>
             <div className="flex items-center gap-3 bg-card p-4">
-              <span className="inline-flex h-9 items-center rounded-md bg-brand px-3 text-sm font-semibold text-white">Primary button</span>
+              <span className="inline-flex h-9 items-center rounded-xl bg-brand px-3 text-sm font-semibold text-white">Primary button</span>
               <span className="text-sm font-semibold text-brand-fg">A link</span>
             </div>
           </div>
@@ -490,7 +490,7 @@ export function SampleDataPanel({ counts }: { counts: Record<string, number> }) 
       <CardBody className="space-y-4">
         <ul className="grid grid-cols-2 gap-2 text-[15px] sm:grid-cols-5">
           {Object.entries(counts).map(([k, v]) => (
-            <li key={k} className="rounded-md border border-line px-3 py-2">
+            <li key={k} className="rounded-xl border border-line px-3 py-2">
               <div className="text-xl font-black tabular">{v}</div>
               <div className="text-sm text-muted capitalize">{k.replace("_", " ")}</div>
             </li>

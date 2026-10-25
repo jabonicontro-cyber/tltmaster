@@ -43,7 +43,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
             <Link
               href={`/order-to-cash?stage=${s.stage}&show=all`}
               aria-current={stage === s.stage ? "true" : undefined}
-              className="block rounded-lg border border-line bg-card px-3 py-2.5 hover:border-strong aria-[current=true]:border-strong"
+              className="block rounded-panel border border-line/70 bg-card shadow-card px-3 py-2.5 hover:border-strong aria-[current=true]:border-strong"
             >
               <span className="block text-xs font-medium text-muted">{STAGE_LABELS[s.stage]}</span>
               <span className="mt-0.5 block text-2xl font-semibold tabular">{s.total}</span>

@@ -35,7 +35,7 @@ export default async function PipelinePage() {
   return (
     <>
       <PageHeader title="Sales pipeline" description="Open opportunities by stage and the follow-ups due this week. Values are your own estimates." crumbs={[{ label: "Customers", href: "/customers" }, { label: "Pipeline" }]} />
-      <section aria-label="Pipeline summary" className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-lg border border-line bg-card px-4 py-3 text-sm shadow-xs sm:px-5">
+      <section aria-label="Pipeline summary" className="mb-5 flex flex-wrap items-baseline gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3 text-sm shadow-xs sm:px-5">
         <span><strong className="tabular">{totals.open}</strong> open opportunities</span>
         <span><strong className="tabular">{usd(totals.valueCents)}</strong> open value{totals.unvalued ? ` (${totals.unvalued} without a value)` : ""}</span>
         <span><strong className="tabular">{usd(totals.weightedCents)}</strong> weighted by probability</span>
@@ -50,11 +50,11 @@ export default async function PipelinePage() {
             const list = byStage.get(st) ?? [];
             const value = list.reduce((n, o) => n + (o.value_cents ?? 0), 0);
             return (
-              <section key={st} aria-label={STAGE_LABELS[st]} className="rounded-lg border border-line bg-surface/40 p-2">
+              <section key={st} aria-label={STAGE_LABELS[st]} className="rounded-2xl border border-line bg-surface/40 p-2">
                 <h2 className="flex items-baseline justify-between px-1 pb-2 text-sm font-semibold text-ink">{STAGE_LABELS[st]} <span className="text-xs font-normal text-muted">{list.length} · {usd(value)}</span></h2>
                 <ul className="space-y-2">
                   {list.map((o) => (
-                    <li key={o.id} className="rounded-md border border-line bg-card p-2.5 text-sm shadow-xs">
+                    <li key={o.id} className="rounded-control border border-line bg-card p-2.5 text-sm shadow-xs">
                       <Link href={`/customers/${o.customer_id}#opportunities`} className="font-semibold hover:underline">{o.title}</Link>
                       <p className="text-xs text-muted">{o.customers?.name}</p>
                       <p className="mt-1 flex flex-wrap gap-x-2 text-xs"><span className="tabular">{o.value_cents !== null ? usd(o.value_cents) : "No value"}</span>{o.probability !== null && <span className="text-muted">{o.probability}%</span>}

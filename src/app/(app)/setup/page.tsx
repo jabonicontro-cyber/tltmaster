@@ -62,11 +62,11 @@ export default async function SetupPage() {
           <OnboardingChecklist state={onboarding.data} side="customer" people={people} readiness={"error" in readiness ? [] : readiness.items} today={today} />
         </section>
       ) : !onboarding.ok && onboarding.reason === "error" ? (
-        <p role="alert" className="mb-6 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">{onboarding.message}</p>
+        <p role="alert" className="mb-6 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink">{onboarding.message}</p>
       ) : null}
       <h2 className="mb-2 text-base font-bold text-ink">Your records</h2>
       {"error" in readiness ? (
-        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{readiness.error}</p>
+        <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{readiness.error}</p>
       ) : (
         <>
           <p className="mb-4 text-sm text-ink" aria-live="polite">
@@ -76,7 +76,7 @@ export default async function SetupPage() {
             {readiness.items.map((item) => {
               const Icon = ICON[item.status];
               return (
-                <li key={item.id} className="rounded-lg border border-line bg-card p-4">
+                <li key={item.id} className="rounded-panel border border-line/70 bg-card shadow-card p-4">
                   <div className="flex items-start gap-3">
                     <Icon className={`mt-0.5 size-5 shrink-0 ${TONE[item.status]}`} aria-hidden />
                     <div className="min-w-0 flex-1">
@@ -111,7 +111,7 @@ export default async function SetupPage() {
         </p>
         <ul className="mt-3 space-y-3">
           {gates.map(({ capability: c, gate }) => (
-            <li key={c.id} className="rounded-lg border border-line bg-card p-4">
+            <li key={c.id} className="rounded-panel border border-line/70 bg-card shadow-card p-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-semibold text-ink">{c.label}</h3>
                 <span className={`text-xs font-semibold ${GATE_TONE[gate.state]}`}>{GATE_LABELS[gate.state]}</span>

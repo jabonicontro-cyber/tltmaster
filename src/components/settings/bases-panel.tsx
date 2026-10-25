@@ -103,7 +103,7 @@ export function BasesPanel({
                           ) : null}
                           <details className="group">
                             <summary className={buttonClasses("ghost", "sm", "cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>Edit</summary>
-                            <form action={updateBase} className="mt-2 w-[min(32rem,calc(100vw-4rem))] space-y-3 rounded-md border border-line bg-surface p-3">
+                            <form action={updateBase} className="mt-2 w-[min(32rem,calc(100vw-4rem))] space-y-3 rounded-xl border border-line bg-surface p-3">
                               <input type="hidden" name="id" value={b.id} />
                               <BaseFields base={b} idPrefix={`edit-${b.code}`} />
                               <Button type="submit" size="sm">Save Base</Button>
@@ -125,7 +125,7 @@ export function BasesPanel({
               Your plan includes {allowance!.limit} active base{allowance!.limit === 1 ? "" : "s"}. Deactivate a base to add another, or ask Taviron about a plan with more bases.
             </Notice>
           ) : (
-            <details className="rounded-md border border-line bg-card">
+            <details className="rounded-control border border-line bg-card">
               <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">Add a Base</summary>
               <form action={createBase} className="space-y-3 border-t border-line p-4">
                 <BaseFields idPrefix="new" />

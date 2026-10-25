@@ -62,7 +62,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
   return (
     <div className="space-y-5">
       {canManage && open && (
-        <div className="flex flex-wrap items-center gap-2 rounded-lg border border-line bg-surface p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-3">
           {myTimerHere ? (
             <>
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink"><Clock className="size-4" aria-hidden /> Working · <Elapsed since={data.myTimer!.startedAt} /></span>
@@ -82,7 +82,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
       )}
 
       <section aria-label="Crew">
-        <ul className="divide-y divide-line rounded-lg border border-line">
+        <ul className="divide-y divide-line rounded-2xl border border-line">
           {data.crew.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">No mechanic assigned yet.</li>}
           {data.crew.map((c) => (
             <li key={c.userId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -123,7 +123,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
         {log && (
           <form
             aria-label="Log time"
-            className="flex flex-wrap gap-2 rounded-lg border border-line bg-card p-3"
+            className="flex flex-wrap gap-2 rounded-panel border border-line/70 bg-card shadow-card p-3"
             onSubmit={(e) => { e.preventDefault(); run(() => addTime({ workOrderId, ...log }), () => setLog(null)); }}
           >
             <Select aria-label="Mechanic" value={log.userId} onChange={(e) => setLog({ ...log, userId: e.target.value })} className="min-w-0 basis-full">
@@ -140,7 +140,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
           </form>
         )}
         {data.time.length > 0 ? (
-          <ul className="divide-y divide-line rounded-lg border border-line text-sm">
+          <ul className="divide-y divide-line rounded-2xl border border-line text-sm">
             {data.time.map((t) => (
               <li key={t.id} className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${t.voided ? "text-muted" : "text-ink"}`}>
                 <span>

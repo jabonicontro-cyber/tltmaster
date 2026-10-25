@@ -57,7 +57,7 @@ export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, i
                   <Link href="/mfa?next=/profile" className={buttonClasses("secondary")}>Verify to Manage</Link>
                 )}
                 {codes ? (
-                  <ol className="grid grid-cols-2 gap-2 rounded-md border border-line bg-surface p-3 font-mono" aria-label="New recovery codes">
+                  <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-3 font-mono" aria-label="New recovery codes">
                     {codes.map((c) => <li key={c}>{c}</li>)}
                   </ol>
                 ) : null}

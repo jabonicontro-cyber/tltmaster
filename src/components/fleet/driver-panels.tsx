@@ -200,7 +200,7 @@ function QualificationDialog({ driverId, qualification, onClose, onSaved }: { dr
             <Input {...f("notes")} defaultValue={qualification?.notes ?? ""} maxLength={1000} />
           </Field>
         </div>
-        <div className="rounded-md border border-line bg-surface/60 p-3">
+        <div className="rounded-xl border border-line bg-surface/60 p-3">
           <Checkbox name="verified" checked={verified} onChange={(e) => setVerified(e.target.checked)} label="I have seen the original document and the details above match it" />
           <p className="mt-1 text-sm text-muted">Your name and the time are recorded. Unverified qualifications do not count toward eligibility.</p>
         </div>

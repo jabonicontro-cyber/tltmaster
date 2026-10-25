@@ -67,15 +67,15 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         description="Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."
         actions={<ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>}
       />
-      <nav aria-label="Billing views" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Billing views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (
           <Link
             key={k}
             href={keep(k)}
             aria-current={k === view ? "page" : undefined}
             className={cn(
-              "-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap",
-              k === view ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink",
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+              k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
             {BILLING_VIEWS[k]}

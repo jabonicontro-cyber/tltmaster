@@ -18,7 +18,7 @@ export default async function OnboardingPage() {
 
   return (
     <main id="main" className="flex min-h-dvh items-center justify-center bg-surface px-4 py-10">
-      <div className="w-full max-w-md rounded-lg border border-line bg-card p-6 shadow-sm">
+      <div className="w-full max-w-md rounded-panel border border-line/70 bg-card shadow-card p-6 shadow-sm">
         <div className="mb-4 flex justify-center"><BrandMark tone="dark" /></div>
         {state.pending_company ? (
           <>

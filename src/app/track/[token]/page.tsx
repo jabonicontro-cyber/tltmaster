@@ -22,7 +22,7 @@ export default async function TrackOrder({ params }: { params: Promise<{ token: 
   const loads = t?.loads.filter((l) => !l.canceled) ?? [];
   return (
     <main id="main" className="app-root min-h-dvh bg-surface px-4 py-10 text-ink" style={t ? brandingStyle({ logo: "", color: t.company.color, sidebarColor: "" }) : {}}>
-      <div className="mx-auto w-full max-w-lg rounded-lg border border-line bg-card p-6">
+      <div className="mx-auto w-full max-w-lg rounded-panel border border-line/70 bg-card shadow-card p-6">
         {!t ? (
           <>
             <h1 className="text-xl font-bold">This tracking link is not available</h1>

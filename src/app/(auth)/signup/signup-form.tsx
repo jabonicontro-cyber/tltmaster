@@ -23,7 +23,7 @@ export function SignupForm() {
     return (
       <div className="space-y-4">
         <h1 className="text-xl font-bold text-ink">Confirm your email</h1>
-        <div role="status" className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">{result.message}</div>
+        <div role="status" className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">{result.message}</div>
         <p className="text-center text-sm"><Link href="/login" className="text-muted hover:text-ink hover:underline">Go to sign in</Link></p>
       </div>
     );

@@ -43,7 +43,7 @@ export function ShopSettingsForm({ initial }: { initial: { bays: number; shiftSt
             const on = v.workDays.includes(d);
             return (
               <button key={d} type="button" aria-pressed={on} onClick={() => setV({ ...v, workDays: on ? v.workDays.filter((x) => x !== d) : [...v.workDays, d].sort() })}
-                className={`min-h-9 rounded-md border px-3 text-sm font-medium ${on ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:bg-surface"}`}>
+                className={`min-h-9 rounded-xl border px-3 text-sm font-medium ${on ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:bg-surface"}`}>
                 {label}
               </button>
             );

@@ -35,7 +35,7 @@ export function Freshness({ renderedAt, timeZone }: { renderedAt: number; timeZo
   const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(renderedAt);
   if (state === "current") return <p className="text-xs text-muted" data-freshness="current">Updated {time}</p>;
   return (
-    <div role="status" data-freshness={state} className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-md border px-3 py-2 text-sm", "border-line bg-surface text-ink")}>
+    <div role="status" data-freshness={state} className={cn("flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border px-3 py-2 text-sm", "border-line bg-surface text-ink")}>
       {state === "offline" && <WifiOff className="size-4 text-muted" aria-hidden />}
       <span>
         {state === "offline" ? "No connection." : "This may be out of date."} Shown as of {time}; check with dispatch before relying on it.

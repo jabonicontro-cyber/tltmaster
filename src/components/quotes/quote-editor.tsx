@@ -566,7 +566,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
               </Field>
 
               {state.siteId === "new" && (
-                <div className="grid grid-cols-1 gap-4 rounded-md border border-line bg-surface/60 p-4 md:col-span-6 md:grid-cols-6">
+                <div className="grid grid-cols-1 gap-4 rounded-xl border border-line bg-surface/60 p-4 md:col-span-6 md:grid-cols-6">
                   <Field label="Site name" htmlFor="siteLabel" error={fieldErrors.siteLabel} className="md:col-span-2">
                     <Input id="siteLabel" value={state.siteLabel} onChange={(e) => update({ siteLabel: e.target.value })} placeholder="e.g. Lot 14 driveway" />
                   </Field>

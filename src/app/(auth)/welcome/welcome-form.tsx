@@ -21,7 +21,7 @@ export function FirstSignInForm() {
   });
   if (done) {
     return (
-      <div role="status" className="flex items-start gap-2 rounded-md border border-line bg-surface p-3 text-sm text-ink">
+      <div role="status" className="flex items-start gap-2 rounded-xl border border-line bg-surface p-3 text-sm text-ink">
         <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-brand-fg" aria-hidden />
         <span>Your password is set. Taking you to your work…</span>
       </div>
@@ -30,7 +30,7 @@ export function FirstSignInForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <FormError message={formError} />
-      <div className="rounded-md bg-surface p-3 text-sm text-ink">
+      <div className="rounded-xl bg-surface p-3 text-sm text-ink">
         <p className="font-semibold">Your password needs:</p>
         <ul className="mt-1 list-disc space-y-0.5 pl-5">
           {PASSWORD_RULES.map((r) => <li key={r}>{r}</li>)}

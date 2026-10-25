@@ -31,7 +31,7 @@ export function CommSearch() {
       <FormError message={error} />
       {result && (
         result.messages.length + result.announcements.length === 0 ? <p className="text-sm text-muted">Nothing found.</p> : (
-          <ul className="divide-y divide-line rounded-md border border-line">
+          <ul className="divide-y divide-line rounded-xl border border-line">
             {result.announcements.map((a) => (
               <li key={a.id} className="px-3 py-2 text-sm">
                 <Link className="font-medium text-ink hover:underline" href={`/communications/announcements/${a.id}`}>Announcement: {a.title}</Link>

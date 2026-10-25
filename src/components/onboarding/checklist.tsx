@@ -33,7 +33,7 @@ export function OnboardingSummaryBar({ state, side }: { state: OnboardingState; 
     { label: "Overdue", value: s.overdue, tone: s.overdue ? "text-critical" : undefined },
   ];
   return (
-    <div className="rounded-lg border border-line bg-card p-4">
+    <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <p className="text-sm text-ink" aria-live="polite">
         <span className="font-semibold">{s.required_done} of {s.required}</span> required tasks finished
         {s.ready ? " — every required task is approved or not applicable. Taviron agrees the go-live date with you separately; finishing onboarding never changes it and never starts billing." : "."}
@@ -59,7 +59,7 @@ function TaskCard({ task, side, companyId, people, readiness, today, staff }: {
   const open = side === "staff" ? task.status === "submitted" || task.status === "blocked" : needsCustomer(task) && task.status !== "not_started";
   const canWork = side === "staff" || task.side !== "taviron";
   return (
-    <li id={`task-${task.key}`} className="scroll-mt-24 rounded-lg border border-line bg-card">
+    <li id={`task-${task.key}`} className="scroll-mt-24 rounded-panel border border-line/70 bg-card shadow-card">
       <details open={open} className="group">
         <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 p-4 [&::-webkit-details-marker]:hidden">
           <span className="min-w-0 flex-1">
@@ -78,7 +78,7 @@ function TaskCard({ task, side, companyId, people, readiness, today, staff }: {
         <div className="space-y-4 border-t border-line p-4">
           <p className="text-sm text-ink">{task.instructions}</p>
           {task.status_note ? (
-            <p className={`rounded-md border p-3 text-sm ${task.status === "blocked" || task.status === "changes_requested" ? "border-critical/30 bg-surface text-ink" : "border-line bg-surface text-ink"}`}>
+            <p className={`rounded-xl border p-3 text-sm ${task.status === "blocked" || task.status === "changes_requested" ? "border-critical/30 bg-surface text-ink" : "border-line bg-surface text-ink"}`}>
               <span className="font-semibold">{statusLabel(task.status, task.review_required)}:</span> {task.status_note}
             </p>
           ) : null}

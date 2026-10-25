@@ -35,11 +35,11 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
       <main id="main" className="flex flex-1 items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <a href={PUBLIC_WEBSITE_URL} aria-label="Taviron website" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+          <a href={PUBLIC_WEBSITE_URL} aria-label="Taviron website" className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
             <BrandMark className="scale-125" />
           </a>
         </div>
-      <div className="rounded-lg bg-card p-6 shadow-xl">
+      <div className="rounded-2xl bg-card p-6 shadow-xl">
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <ShieldCheck className="size-5 shrink-0 text-brand-fg" aria-hidden />
           {done ? "You are verified" : verified ? "Enter your code" : "Set up two-step verification"}

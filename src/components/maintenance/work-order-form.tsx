@@ -136,7 +136,7 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref, labo
           <Checkbox id="safety_critical" name="safety_critical" checked={safety} onChange={(e) => setSafety(e.target.checked)}
             label="Safety-critical defect (brakes, steering, tires, lights, load securement…)" />
           {safety && (
-            <p role="note" className="mt-2 rounded-md border border-critical/40 bg-critical/5 px-3 py-2 text-sm text-ink">
+            <p role="note" className="mt-2 rounded-xl border border-critical/40 bg-critical/5 px-3 py-2 text-sm text-ink">
               Saving takes the {unitWord} <strong>out of service</strong>. It returns to service only after someone authorized records a passed inspection.
             </p>
           )}

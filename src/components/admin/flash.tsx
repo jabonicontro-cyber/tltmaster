@@ -5,7 +5,7 @@ export function AdminFlash({ error, saved, savedText = "Saved." }: { error?: str
   if (error) return <div className="mb-4"><FormError message={error.slice(0, 300)} /></div>;
   if (saved)
     return (
-      <p role="status" className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+      <p role="status" className="mb-4 rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
         {savedText}
       </p>
     );

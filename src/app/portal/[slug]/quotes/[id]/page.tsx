@@ -51,7 +51,7 @@ export default async function PortalQuotePage({ params }: { params: Promise<{ sl
       </Card>
 
       {q.response ? (
-        <p className="rounded-md bg-surface p-3 text-sm text-ink">
+        <p className="rounded-xl bg-surface p-3 text-sm text-ink">
           {q.response.response === "accept" ? "You accepted" : "You declined"} this quote on {formatDay(q.response.at)} ({q.response.name}).{" "}
           {q.response.status === "pending" ? `${c.name} will confirm shortly.` : q.response.status === "confirmed" ? "Confirmed." : ""}
         </p>

@@ -23,7 +23,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <label htmlFor="global-q" className="sr-only">Search</label>
         <div className="relative">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
-          <input id="global-q" name="q" defaultValue={raw ?? ""} autoFocus placeholder="Order number, customer, PO, ticket, truck, driver…" className="h-11 w-full rounded-md border border-line bg-card pr-3 pl-9 text-[15px] text-ink" maxLength={80} />
+          <input id="global-q" name="q" defaultValue={raw ?? ""} autoFocus placeholder="Order number, customer, PO, ticket, truck, driver…" className="h-11 w-full rounded-control border border-line bg-card pr-3 pl-9 text-[15px] text-ink" maxLength={80} />
         </div>
       </form>
       {!q ? (

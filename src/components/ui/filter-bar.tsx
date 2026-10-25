@@ -10,15 +10,15 @@ import { Input } from "./form";
  */
 export function FilterBar({ action, query, placeholder = "Search…", children, clearHref }: { action: string; query?: string; placeholder?: string; children?: ReactNode; clearHref: string }) {
   return (
-    <form action={action} method="get" role="search" className="space-y-3 border-b border-line px-4 py-3 sm:px-5">
+    <form action={action} method="get" role="search" className="space-y-3 border-b border-line/60 px-5 py-4 sm:px-6">
       {/* Search and the actions on one line; filters, when there are any, on a quiet line below. */}
       <div className="flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <label htmlFor="q" className="sr-only">
             Search
           </label>
-          <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
-          <Input id="q" name="q" type="search" defaultValue={query} placeholder={placeholder} className="pl-9" />
+          <Search className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted" aria-hidden />
+          <Input id="q" name="q" type="search" defaultValue={query} placeholder={placeholder} className="rounded-full border-transparent bg-surface pl-10 shadow-none" />
         </div>
         <button type="submit" className={buttonClasses("secondary", "md")}>
           Apply
@@ -43,7 +43,7 @@ export function FilterSelect({ name, label, value, options }: { name: string; la
         id={`f-${name}`}
         name={name}
         defaultValue={value ?? ""}
-        className="h-10 max-w-full rounded-md border border-line bg-card px-3 text-[15px] focus:border-strong focus:outline-none sm:max-w-xs"
+        className="h-10 max-w-full rounded-control border border-line bg-card px-3 text-[15px] focus:border-brand focus:ring-4 focus:ring-brand/12 focus:outline-none sm:max-w-xs"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

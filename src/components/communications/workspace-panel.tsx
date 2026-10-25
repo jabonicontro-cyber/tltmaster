@@ -46,7 +46,7 @@ export function WorkspacePanel(props: {
       <div>
         <p className="text-xs font-semibold text-muted">Driver membership</p>
         {props.syncStatus === "failed" ? (
-          <div role="alert" className="mt-1 space-y-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-900">
+          <div role="alert" className="mt-1 space-y-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-900">
             <p><span className="font-semibold">Membership could not be updated after a dispatch change.</span> Posting is paused so nobody writes to the wrong people. Dispatch itself was not affected.</p>
             {props.syncError && <p className="text-xs">Reason: {props.syncError}</p>}
             {props.canManage && <Button size="sm" loading={busy} icon={<RefreshCw className="size-4" />} onClick={() => run(resyncWorkspace(props.conversationId))}>Resync now</Button>}

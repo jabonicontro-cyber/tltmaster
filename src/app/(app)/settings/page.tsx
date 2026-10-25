@@ -221,13 +221,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" />
       {saved && tab === "bases" ? <div className="mb-3"><Notice title="Saved">{BASE_SAVED[saved] ?? "Saved."}</Notice></div> : null}
       {actionError ? <div className="mb-3"><Notice tone="warning" title="Not saved">{actionError}</Notice></div> : null}
-      <nav aria-label="Settings groups" className="mb-3 flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Settings groups" className="mb-3 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {groups.map(({ g, first }) => (
           <Link
             key={g}
             href={`/settings?tab=${first!.key}`}
             aria-current={group === g ? "page" : undefined}
-            className={cn("-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap", group === g ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink")}
+            className={cn("flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150", group === g ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}
           >
             {g}
           </Link>
@@ -240,7 +240,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               key={t.key}
               href={`/settings?tab=${t.key}`}
               aria-current={tab === t.key ? "page" : undefined}
-              className={cn("rounded-md border px-3 py-1.5 text-sm font-medium whitespace-nowrap", tab === t.key ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink")}
+              className={cn("rounded-xl border px-3 py-1.5 text-sm font-medium whitespace-nowrap", tab === t.key ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink")}
             >
               {t.label}
             </Link>
@@ -248,7 +248,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </nav>
       )}
       {!can(access, "settings.manage") ? (
-        <p className="mb-3 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
+        <p className="mb-3 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink">
           You can view these settings. Changing them needs the company settings permission (an owner or administrator).
         </p>
       ) : null}

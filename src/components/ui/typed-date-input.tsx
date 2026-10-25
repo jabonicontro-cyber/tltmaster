@@ -84,7 +84,7 @@ export function TypedDateInput({
             setShown(true);
           }}
           onInvalid={() => setShown(true)}
-          className="h-10 w-[9.5rem] rounded-md border border-line bg-card pr-10 pl-2.5 text-[15px] text-ink tabular placeholder:text-muted/70 aria-invalid:border-critical"
+          className="h-10 w-[9.5rem] rounded-control border border-line bg-card pr-10 pl-2.5 text-[15px] text-ink tabular placeholder:text-muted/70 aria-invalid:border-critical"
         />
         <button
           type="button"

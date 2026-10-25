@@ -52,17 +52,17 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         }
       />
       {urgent === null ? (
-        <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Urgent orders could not be loaded. Check the Command Center before planning.</p>
+        <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Urgent orders could not be loaded. Check the Command Center before planning.</p>
       ) : (
         <UrgentOrders items={urgent} canAcknowledge={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} now={new Date().toISOString()} />
       )}
       {unscheduled === null ? (
-        <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
+        <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
       ) : (
         <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} />
       )}
       {"error" in smart ? (
-        <p role="alert" className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
+        <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
       ) : (
         <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} />
       )}

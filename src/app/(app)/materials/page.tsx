@@ -44,15 +44,15 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <PageHeader title="Materials & Pricing" description="Catalog and rates used to build quotes. Changing a rate never changes a saved quote." />
-      <nav aria-label="Catalog sections" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Catalog sections" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {TABS.map((t) => (
           <Link
             key={t.key}
             href={`/materials?tab=${t.key}`}
             aria-current={tab === t.key ? "page" : undefined}
             className={cn(
-              "-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap",
-              tab === t.key ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink",
+              "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+              tab === t.key ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
             {t.label}

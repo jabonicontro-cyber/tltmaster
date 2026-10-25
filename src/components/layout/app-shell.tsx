@@ -43,29 +43,35 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
   const driverOnly = isDriverOnly(navPermissions);
   const mechanicOnly = !driverOnly && isMechanicOnly(navPermissions);
   return (
-    <div className="app-root min-h-dvh lg:pl-[4.5rem] lg:data-[sidebar=pinned]:pl-64" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
+    <div className="app-root min-h-dvh lg:pl-[5.25rem] lg:data-[sidebar=pinned]:pl-[16.75rem]" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
       <UnsavedChangesGuard />
       <ServiceWorkerRegistration />
       <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} />
 
       {access.isDemo ? <DemoWelcome initiallyOpen={welcome} companyName={access.companyName} /> : null}
-      <header className="no-print sticky top-0 z-20 border-b border-line bg-card/95 backdrop-blur">
+      <header className="app-header no-print sticky top-0 z-20 bg-surface/80 backdrop-blur-md">
         <div className={cn(APP_CONTAINER, "flex h-14 items-center justify-between gap-3")}>
           <div className="flex min-w-0 items-center gap-1">
             <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} />
-            <Link href="/command-center" className="min-w-0 lg:hidden">
-              <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" />
+            {/* Shrinks with the header on narrow phones instead of running under the icons on the right. */}
+            <Link href="/command-center" className="block min-w-0 max-w-40 lg:hidden">
+              <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" className="max-w-full" />
               <span className="sr-only"> — home</span>
             </Link>
         </div>
         <div className="flex items-center gap-1">
-        <Link href="/search" className="inline-flex size-10 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Search records">
+        {/* A search pill on wider screens (the most used way in), an icon on phones. */}
+        <Link href="/search" className="hidden h-10 w-56 items-center gap-2.5 rounded-full border border-line bg-card px-4 text-sm text-muted shadow-xs transition-colors hover:border-ink/15 hover:text-ink focus-visible:outline-2 focus-visible:outline-strong md:inline-flex xl:w-72" aria-label="Search records">
+          <Search className="size-4" aria-hidden />
+          <span aria-hidden>Search records…</span>
+        </Link>
+        <Link href="/search" className="inline-flex size-10 items-center justify-center rounded-full text-muted hover:bg-card hover:text-ink focus-visible:outline-2 focus-visible:outline-strong md:hidden" aria-label="Search records">
           <Search className="size-5" aria-hidden />
         </Link>
         {/* Ask Taviron (docs/AI.md §12); not for driver-only logins, whose phone view stays free of distractions. */}
         {!driverOnly && mayUse(capability("ops_assistant"), navPermissions) && (
-          <Link href="/assistant" className="inline-flex size-10 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Ask Taviron">
+          <Link href="/assistant" className="inline-flex size-10 items-center justify-center rounded-full text-muted transition-colors hover:bg-card hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Ask Taviron">
             <Sparkles className="size-5" aria-hidden />
           </Link>
         )}
@@ -88,7 +94,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       </header>
       <GuidePlayer />
 
-      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly) && "pb-24 md:pb-6")}>
+      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly) && "pb-32 md:pb-6")}>
         {children}
       </main>
       {driverOnly && <DriverTabBar permissions={navPermissions} />}

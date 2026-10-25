@@ -46,7 +46,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
         title="Plan the day"
         description={`${formatDateLong(date)}. Taviron proposes an assignment for every open load, checking hard rules first. Nothing is assigned until you approve it.`}
       />
-      <form method="get" className="mb-5 rounded-lg border border-line bg-card px-4 py-3" aria-label="Plan settings">
+      <form method="get" className="mb-5 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3" aria-label="Plan settings">
         <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
           <label className="text-sm">
             <span className="mb-1 block font-semibold text-ink">Day</span>
@@ -55,7 +55,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           <fieldset className="text-sm">
             <legend className="mb-1 font-semibold text-ink">Planning mode</legend>
             {/* Each mode reloads the plan for the chosen day with that preset's priorities. */}
-            <div className="inline-flex flex-wrap gap-1 rounded-md border border-line bg-surface p-1">
+            <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-surface p-1">
               {Object.entries(PRESETS).map(([key, p]) => (
                 <button key={key} name="preset" value={key} aria-pressed={preset === key}
                   className={`h-8 rounded px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${preset === key ? "bg-strong text-white" : "text-muted hover:bg-card hover:text-ink"}`}>
@@ -65,7 +65,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
             </div>
           </fieldset>
           {/* Changing the day keeps the current preset or custom priorities. */}
-          <button name="preset" value={preset ?? ""} className="h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
+          <button name="preset" value={preset ?? ""} className="h-10 rounded-xl bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand">
             Show plan
           </button>
         </div>
@@ -80,18 +80,18 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
               </label>
             ))}
           </div>
-          <button className="mt-3 h-10 rounded-md bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">
+          <button className="mt-3 h-10 rounded-xl bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">
             <Sparkles className="mr-1.5 inline size-4" aria-hidden />Plan with these priorities
           </button>
         </details>
       </form>
       {dateReplaced && (
-        <p role="status" className="mb-4 rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink">
+        <p role="status" className="mb-4 rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink">
           Plans cover today through 14 days ahead, so this shows {formatDateLong(date)} instead of the day in the link.
         </p>
       )}
       {"error" in plan ? (
-        <p role="alert" className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{plan.error}</p>
+        <p role="alert" className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">{plan.error}</p>
       ) : (
         <OptimizationPlanner
           key={`${date}|${JSON.stringify(priorities)}`}

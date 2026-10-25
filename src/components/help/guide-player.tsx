@@ -104,7 +104,7 @@ export function GuidePlayer() {
   if (!guide || !step) return null;
   const last = index + 1 === guide.steps.length;
   return (
-    <aside aria-label="Guide" className="no-print fixed right-4 bottom-20 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-line bg-card p-4 shadow-xl md:bottom-6">
+    <aside aria-label="Guide" className="no-print fixed right-4 bottom-20 z-40 w-[min(22rem,calc(100vw-2rem))] rounded-panel border border-line/70 bg-card shadow-card p-4 shadow-xl md:bottom-6">
       <div className="flex items-start justify-between gap-3">
         <div aria-live="polite">
           <p className="text-xs font-semibold text-muted">
@@ -112,7 +112,7 @@ export function GuidePlayer() {
           </p>
           <h2 className="mt-0.5 text-base font-semibold text-ink">{step.title}</h2>
         </div>
-        <button type="button" onClick={() => write(null)} className="rounded-md p-1 text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label={`Exit the guide: ${guide.title}`}>
+        <button type="button" onClick={() => write(null)} className="rounded-xl p-1 text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label={`Exit the guide: ${guide.title}`}>
           <X className="size-4" aria-hidden />
         </button>
       </div>

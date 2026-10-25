@@ -56,7 +56,7 @@ export function LoginSheet({ c, includePassword }: { c: DeliveryCredential; incl
       </header>
       <h1 className="mt-6 text-2xl font-bold">Your {c.kind === "portal" ? "customer portal" : "Taviron"} sign-in</h1>
       <p className="mt-1 text-base">For <strong>{c.personName}</strong></p>
-      <dl className="mt-6 grid gap-3 rounded-lg border-2 border-[#0f172a] p-5 text-lg">
+      <dl className="mt-6 grid gap-3 rounded-2xl border-2 border-[#0f172a] p-5 text-lg">
         <div><dt className="text-sm font-semibold uppercase tracking-wide text-[#475569]">Website</dt><dd className="font-mono font-semibold break-all">{c.loginUrl}</dd></div>
         <div><dt className="text-sm font-semibold uppercase tracking-wide text-[#475569]">Username</dt><dd className="font-mono text-2xl font-bold">{c.username}</dd></div>
         <div>
@@ -77,7 +77,7 @@ export function LoginSheet({ c, includePassword }: { c: DeliveryCredential; incl
         <li>Forgot your password later? Ask {c.companyName} for a new sheet — nobody there can see your password.</li>
         <li>On a shared computer, tick &ldquo;This is a shared computer&rdquo; when you sign in, and sign out when you are done.</li>
       </ul>
-      <p className="mt-6 rounded-md bg-[#f1f5f9] p-3 text-sm">
+      <p className="mt-6 rounded-xl bg-[#f1f5f9] p-3 text-sm">
         Keep this sheet private and do not share your sign-in. Once you have created your own password, this temporary password no longer works.
       </p>
     </article>
@@ -136,12 +136,12 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
   }
 
   return (
-    <section aria-label="Sign-in instructions" className="space-y-4 rounded-lg border border-line bg-card p-4 sm:p-5">
+    <section aria-label="Sign-in instructions" className="space-y-4 rounded-panel border border-line/70 bg-card shadow-card p-4 sm:p-5">
       <div>
         <h2 className="text-base font-bold text-ink">Sign-in ready for {c.personName}</h2>
         <p className="mt-1 text-sm text-muted">Hand it over one of these ways. The temporary password works until {formatDateTime(c.expiresAt)} and must be replaced at first sign-in.</p>
       </div>
-      <dl className="grid gap-2 rounded-md bg-surface p-3 text-sm sm:grid-cols-3">
+      <dl className="grid gap-2 rounded-xl bg-surface p-3 text-sm sm:grid-cols-3">
         <div><dt className="text-muted">Username</dt><dd className="font-mono text-base font-semibold text-ink">{c.username}</dd></div>
         <div className="sm:col-span-2">
           <dt className="text-muted">Temporary password</dt>
@@ -155,12 +155,12 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
       </dl>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-md border border-line p-3">
+        <div className="rounded-xl border border-line p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Printer className="size-4" aria-hidden /> Print a sheet</h3>
           <p className="mt-1 text-xs text-muted">One page with the website, username, temporary password and simple steps.</p>
           <Button size="sm" className="mt-2" onClick={() => { setPrinting(true); void onRecord?.("print"); }}>Print Sign-in Sheet</Button>
         </div>
-        <div className="rounded-md border border-line p-3">
+        <div className="rounded-xl border border-line p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Copy className="size-4" aria-hidden /> Copy instructions</h3>
           <p className="mt-1 text-xs text-muted">To paste into a message you already use with this person.</p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -168,7 +168,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
             <Button size="sm" variant="secondary" onClick={() => setConfirmCopy(true)}>Copy With Password…</Button>
           </div>
           {confirmCopy ? (
-            <div role="alertdialog" aria-label="Copy the temporary password?" className="mt-2 rounded-md border border-line bg-surface p-2 text-xs text-ink">
+            <div role="alertdialog" aria-label="Copy the temporary password?" className="mt-2 rounded-xl border border-line bg-surface p-2 text-xs text-ink">
               <p className="flex gap-1.5"><AlertTriangle className="size-4 shrink-0 text-amber-600" aria-hidden /> The copied text contains the temporary password. Paste it only into a private message to {c.personName}.</p>
               <div className="mt-2 flex gap-2">
                 <Button size="sm" onClick={() => void copy(true)}>Copy It</Button>
@@ -177,7 +177,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
             </div>
           ) : null}
         </div>
-        <div className="rounded-md border border-line p-3">
+        <div className="rounded-xl border border-line p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Mail className="size-4" aria-hidden /> Email a setup link</h3>
           {email.available ? (
             <>
@@ -198,7 +198,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
       {printing
         ? createPortal(
             <div id="login-sheet-root" className="fixed inset-0 z-[60] overflow-y-auto bg-black/60 p-4">
-              <div className="no-print mx-auto mb-3 flex max-w-[7.5in] flex-wrap items-center justify-between gap-2 rounded-md bg-card p-3">
+              <div className="no-print mx-auto mb-3 flex max-w-[7.5in] flex-wrap items-center justify-between gap-2 rounded-xl bg-card p-3">
                 <label className="flex items-center gap-2 text-sm text-ink">
                   <input type="checkbox" checked={withPassword} onChange={(e) => setWithPassword(e.target.checked)} className="size-4 rounded border-line accent-brand" />
                   Print the temporary password on the sheet

@@ -35,7 +35,7 @@ export function HelpPanel({ index, guides }: { index: HelpIndexEntry[]; guides: 
 
   return (
     <D.Root open={open} onOpenChange={setOpen}>
-      <D.Trigger className="inline-flex size-10 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Help for this page">
+      <D.Trigger className="inline-flex size-10 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Help for this page">
         <CircleHelp className="size-5" aria-hidden />
       </D.Trigger>
       <D.Portal>
@@ -43,7 +43,7 @@ export function HelpPanel({ index, guides }: { index: HelpIndexEntry[]; guides: 
         <D.Content className="fixed inset-y-0 right-0 z-50 flex w-[min(26rem,100vw)] flex-col border-l border-line bg-card shadow-xl focus:outline-none">
           <div className="flex h-14 items-center justify-between border-b border-line px-4">
             <D.Title className="text-base font-semibold text-ink">Help</D.Title>
-            <D.Close className="rounded-md p-1 text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Close help">
+            <D.Close className="rounded-xl p-1 text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong" aria-label="Close help">
               <X className="size-5" aria-hidden />
             </D.Close>
           </div>
@@ -60,7 +60,7 @@ export function HelpPanel({ index, guides }: { index: HelpIndexEntry[]; guides: 
               <label htmlFor="help-q" className="sr-only">Search help</label>
               <div className="relative">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted" aria-hidden />
-                <input id="help-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search help…" className="h-10 w-full rounded-md border border-line bg-card pr-3 pl-9 text-[15px] text-ink" autoComplete="off" />
+                <input id="help-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search help…" className="h-10 w-full rounded-control border border-line bg-card pr-3 pl-9 text-[15px] text-ink" autoComplete="off" />
               </div>
             </form>
 
@@ -70,7 +70,7 @@ export function HelpPanel({ index, guides }: { index: HelpIndexEntry[]; guides: 
                 <ul className="space-y-1">
                   {shown.map((a) => (
                     <li key={a.id}>
-                      <Link href={`/help/${a.id}`} onClick={() => setOpen(false)} className="block rounded-md px-2 py-2 hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
+                      <Link href={`/help/${a.id}`} onClick={() => setOpen(false)} className="block rounded-xl px-2 py-2 hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
                         <span className="block text-[15px] font-semibold text-ink">{a.title}</span>
                         <span className="block text-sm text-muted">{a.summary}</span>
                       </Link>
@@ -87,7 +87,7 @@ export function HelpPanel({ index, guides }: { index: HelpIndexEntry[]; guides: 
                 <h3 id="help-guides" className="mb-2 text-sm font-semibold text-muted">Show Me How</h3>
                 <ul className="space-y-2">
                   {pageGuides.slice(0, 4).map((g) => (
-                    <li key={g.id} className="flex items-start justify-between gap-3 rounded-md border border-line p-3">
+                    <li key={g.id} className="flex items-start justify-between gap-3 rounded-xl border border-line p-3">
                       <span>
                         <span className="block text-sm font-semibold text-ink">{g.title}</span>
                         <span className="block text-xs text-muted">{g.summary}</span>

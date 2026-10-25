@@ -55,7 +55,7 @@ export function ScheduleGrid({ people, from, canManage, patterns }: { people: Sc
   const dates = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   return (
     <>
-      <div className="overflow-x-auto rounded-lg border border-line bg-card">
+      <div className="overflow-x-auto rounded-panel border border-line/70 bg-card shadow-card">
         <table className="w-full min-w-[760px] text-sm">
           <caption className="sr-only">Schedule for the week of {formatDate(from)}</caption>
           <thead className="bg-surface text-left text-xs font-semibold text-muted">

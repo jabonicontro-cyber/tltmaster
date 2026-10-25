@@ -75,7 +75,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
                       {v.evidence_note && <p className="text-muted">Source: {v.evidence_note}</p>}
                       {v.approved_at && <p className="text-xs text-muted">Activated {formatDateTime(v.approved_at)} by {v.approved_by ? names[v.approved_by] ?? "former user" : "—"}</p>}
                       {v.status === "draft" && (
-                        <div className="rounded-md border border-line bg-surface/50 p-3">
+                        <div className="rounded-xl border border-line bg-surface/50 p-3">
                           <p className="font-semibold">Preview on recent verified tickets</p>
                           {preview(v).length === 0 ? (
                             <p className="text-muted">No recent verified ticket matches this rule&apos;s unit and scope.</p>

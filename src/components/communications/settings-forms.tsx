@@ -71,7 +71,7 @@ export function CompanySettingsForm({ initial }: { initial: CommSettings }) {
       if (!r.ok) return setError(r.error);
       toast.success(r.message ?? "Saved.");
     }}>
-      <p className="rounded-md border border-line bg-surface px-3 py-2 text-sm text-muted">
+      <p className="rounded-xl border border-line bg-surface px-3 py-2 text-sm text-muted">
         Fixed policies: authors can edit or delete a message for {EDIT_WINDOW_MINUTES} minutes after sending (later edits never extend it);
         managers can remove any message with a reason, which is recorded. Message content, including replies and files, is removed
         {" "}{RETENTION_DAYS} days after it was sent unless legal hold is on. Audit records are kept separately.
@@ -184,7 +184,7 @@ export function AdminSearch() {
       </form>
       <FormError message={error} />
       {hits && (hits.length === 0 ? <p className="text-sm text-muted">Nothing found.</p> : (
-        <ul className="divide-y divide-line rounded-md border border-line">
+        <ul className="divide-y divide-line rounded-xl border border-line">
           {hits.map((h) => (
             <li key={h.id} className="px-3 py-2 text-sm">
               <p className="text-ink">{h.body}</p>

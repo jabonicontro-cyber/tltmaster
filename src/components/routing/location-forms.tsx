@@ -54,7 +54,7 @@ export function SiteLocationForm({ siteId, label, canLookUp }: { siteId: string;
         <Button type="submit" size="sm" variant="ghost" disabled={pending || !value.trim()}>Save</Button>
       </form>
       {matches && (
-        <ul className="rounded-md border border-line bg-surface text-sm" aria-label={`Address matches for ${label}`}>
+        <ul className="rounded-xl border border-line bg-surface text-sm" aria-label={`Address matches for ${label}`}>
           {matches.map((m, i) => (
             <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
               <span className="min-w-0 text-ink">{m.label} <span className="text-xs text-muted">({m.point.lat}, {m.point.lng}{m.precision ? `, ${m.precision}` : ""})</span></span>

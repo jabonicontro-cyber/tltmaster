@@ -16,7 +16,7 @@ export function MetricGrid({ cards }: { cards: MetricCard[] }) {
     <ul className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4" aria-label="Overview">
       {cards.map((c) => {
         const body = (
-          <div className={cn("flex h-full flex-col rounded-lg border border-line bg-card p-3 sm:p-4 transition-colors", c.href && "hover:border-strong/40 hover:bg-surface/40")}>
+          <div className={cn("flex h-full flex-col rounded-panel border border-line/70 bg-card shadow-card p-3 sm:p-4 transition-colors", c.href && "hover:border-strong/40 hover:bg-surface/40")}>
             <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
               {dotClasses[c.tone] && <span className={cn("size-1.5 rounded-full", dotClasses[c.tone])} aria-hidden />}
               {c.label}

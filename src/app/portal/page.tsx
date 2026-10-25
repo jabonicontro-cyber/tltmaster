@@ -14,7 +14,7 @@ export default async function PortalChooser() {
   if (portals.length === 1) redirect(`/portal/${portals[0].slug}`);
   return (
     <main id="main" className="app-root flex min-h-dvh items-center justify-center bg-surface px-4 py-10 text-ink">
-      <div className="w-full max-w-md rounded-lg border border-line bg-card p-6">
+      <div className="w-full max-w-md rounded-panel border border-line/70 bg-card shadow-card p-6">
         <h1 className="text-xl font-bold">Your Customer Portals</h1>
         {portals.length ? (
           <ul className="mt-4 divide-y divide-line">

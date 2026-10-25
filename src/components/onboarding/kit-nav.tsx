@@ -8,7 +8,7 @@ export function KitNav({ base, current }: { base: string; current: KitSectionKey
     <nav aria-label="Onboarding sections" className="mb-5 flex gap-1 overflow-x-auto pb-1">
       {KIT_SECTIONS.map((s) => (
         <Link key={s.key} href={`${base}?section=${s.key}`} aria-current={current === s.key ? "page" : undefined}
-          className={cn("shrink-0 rounded-md px-3 py-1.5 text-sm font-semibold whitespace-nowrap", current === s.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink")}>
+          className={cn("shrink-0 rounded-xl px-3 py-1.5 text-sm font-semibold whitespace-nowrap", current === s.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink")}>
           {s.label}
         </Link>
       ))}

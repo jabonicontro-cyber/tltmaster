@@ -22,10 +22,10 @@ export default async function FieldReportsPage({ searchParams }: { searchParams:
   return (
     <>
       <PageHeader title="Driver Reports" description="Delays, breakdowns and equipment or inspection problems sent from the driver portal. Reports never change equipment status or loads by themselves." />
-      <nav aria-label="Report views" className="mb-4 flex gap-1 overflow-x-auto border-b border-line">
+      <nav aria-label="Report views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(REPORT_VIEWS) as ReportView[]).map((k) => (
           <Link key={k} href={`/field-reports?view=${k}`} aria-current={k === view ? "page" : undefined}
-            className={cn("-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-[15px] font-semibold whitespace-nowrap", k === view ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink")}>
+            className={cn("flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150", k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
             {REPORT_VIEWS[k]}
             {k === "open" && counts.open ? <Badge tone="amber">{counts.open}</Badge> : k === "acknowledged" && counts.acknowledged ? <Badge tone="blue">{counts.acknowledged}</Badge> : null}
           </Link>

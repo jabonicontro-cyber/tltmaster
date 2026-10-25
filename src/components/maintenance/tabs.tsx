@@ -12,15 +12,15 @@ const TABS = [
 
 export function MaintenanceTabs({ active }: { active: (typeof TABS)[number]["key"] }) {
   return (
-    <nav aria-label="Maintenance sections" className="mb-5 flex gap-1 overflow-x-auto border-b border-line">
+    <nav aria-label="Maintenance sections" className="mb-5 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
       {TABS.map((t) => (
         <Link
           key={t.key}
           href={t.href}
           aria-current={t.key === active ? "page" : undefined}
           className={cn(
-            "-mb-px border-b-2 px-3 py-2 text-sm font-semibold whitespace-nowrap",
-            t.key === active ? "border-strong text-ink" : "border-transparent text-muted hover:text-ink",
+            "flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+            t.key === active ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
           )}
         >
           {t.label}

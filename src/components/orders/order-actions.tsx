@@ -135,7 +135,7 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
         }}
       >
         {target === "completed" && completionCheck && completionCheck.loadsWithoutTicket + completionCheck.ticketsAwaitingReview + completionCheck.loadsStillToRun > 0 && (
-          <div role="note" className="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+          <div role="note" className="mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
             <p className="font-semibold">Before you complete it:</p>
             <ul className="list-disc pl-5">
               {completionCheck.loadsStillToRun > 0 && <li>{completionCheck.loadsStillToRun} planned load(s) have not run yet.</li>}

@@ -86,14 +86,14 @@ export function AssistantPanel({ examples }: { examples: string[] }) {
       <div aria-live="polite" className="space-y-3">
         {busy && <p className="text-sm text-muted">Reading your records and asking the model…</p>}
         {error && (
-          <div role="alert" className="rounded-lg border border-line bg-card p-4 text-sm text-ink">
+          <div role="alert" className="rounded-panel border border-line/70 bg-card shadow-card p-4 text-sm text-ink">
             <p className="font-semibold">{error}</p>
             <p className="mt-1 text-muted">Nothing was changed. The Command Center, Dispatch and Maintenance pages show the same records directly.</p>
             {asked && <Button className="mt-3" size="sm" variant="secondary" onClick={() => void ask(asked)}>Try again</Button>}
           </div>
         )}
         {view && (
-          <article className="rounded-lg border border-line bg-card p-4" aria-labelledby="assistant-answer-title">
+          <article className="rounded-panel border border-line/70 bg-card shadow-card p-4" aria-labelledby="assistant-answer-title">
             <h2 id="assistant-answer-title" className="text-sm font-semibold text-muted">Answer to “{asked}”</h2>
             {KIND_NOTE[view.kind] && <p className="mt-2 text-sm font-semibold text-ink">{KIND_NOTE[view.kind]}</p>}
             <p className="mt-2 whitespace-pre-line text-[15px] leading-relaxed text-ink">{view.answer}</p>
@@ -104,11 +104,11 @@ export function AssistantPanel({ examples }: { examples: string[] }) {
                   {view.sources.map((s) => (
                     <li key={`${s.label}-${s.href}`}>
                       {s.href ? (
-                        <Link href={s.href} className="inline-flex min-h-9 items-center gap-1 rounded-md border border-line px-2.5 py-1 text-sm font-semibold text-brand-fg hover:bg-surface">
+                        <Link href={s.href} className="inline-flex min-h-9 items-center gap-1 rounded-xl border border-line px-2.5 py-1 text-sm font-semibold text-brand-fg hover:bg-surface">
                           {s.label} <ArrowUpRight className="size-3.5" aria-hidden />
                         </Link>
                       ) : (
-                        <span className="inline-flex min-h-9 items-center rounded-md border border-line px-2.5 py-1 text-sm text-ink">{s.label}</span>
+                        <span className="inline-flex min-h-9 items-center rounded-xl border border-line px-2.5 py-1 text-sm text-ink">{s.label}</span>
                       )}
                     </li>
                   ))}

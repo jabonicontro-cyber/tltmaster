@@ -141,7 +141,7 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules =
               </ul>
             )}
             {canEdit && (
-              <details className="rounded-md border border-line px-3 py-2">
+              <details className="rounded-xl border border-line px-3 py-2">
                 <summary className="cursor-pointer text-sm font-semibold">Add a document</summary>
                 <div className="mt-3"><DocumentForm vehicle={vehicle} /></div>
               </details>

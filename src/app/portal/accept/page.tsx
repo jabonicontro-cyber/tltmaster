@@ -16,7 +16,7 @@ export default async function AcceptInvitation({ searchParams }: { searchParams:
 
   return (
     <main id="main" className="app-root flex min-h-dvh items-center justify-center bg-surface px-4 py-10 text-ink">
-      <div className="w-full max-w-md rounded-lg border border-line bg-card p-6">
+      <div className="w-full max-w-md rounded-panel border border-line/70 bg-card shadow-card p-6">
         {!invite || invite.expired ? (
           <>
             <h1 className="text-xl font-bold">This invitation is not valid</h1>
@@ -28,14 +28,14 @@ export default async function AcceptInvitation({ searchParams }: { searchParams:
             <p className="mt-2 text-sm text-muted">
               You are invited to follow orders, deliveries and quotes for <strong className="text-ink">{invite.customer}</strong>.
             </p>
-            {!invite.open ? <p className="mt-3 rounded-md bg-surface p-3 text-sm text-muted">The portal is not open yet. You can set up your account now and sign in once it opens.</p> : null}
+            {!invite.open ? <p className="mt-3 rounded-xl bg-surface p-3 text-sm text-muted">The portal is not open yet. You can set up your account now and sign in once it opens.</p> : null}
             {!signedInAs && invite.open ? (
               <p className="mt-3 text-sm text-muted">
                 Already have an account? <a href={`/portal/${invite.slug}/login`} className="font-semibold text-brand-fg hover:underline">Sign in</a>, then open this link again.
               </p>
             ) : null}
             {signedInAs && signedInAs.toLowerCase() !== invite.email.toLowerCase() ? (
-              <p className="mt-4 rounded-md bg-surface p-3 text-sm text-ink">
+              <p className="mt-4 rounded-xl bg-surface p-3 text-sm text-ink">
                 You are signed in as {signedInAs}, but this invitation is for {invite.email}. Sign out first, then open the link again.
               </p>
             ) : (

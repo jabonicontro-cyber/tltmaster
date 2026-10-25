@@ -17,8 +17,8 @@ type Quotes = Awaited<ReturnType<typeof loadQuoteDashboard>>;
 
 function Stat({ label, value, sub, href, tone = "default", icon }: { label: string; value: ReactNode; sub?: ReactNode; href?: string; tone?: "default" | "warn" | "good"; icon: ReactNode }) {
   const body = (
-    <div className={cn("flex h-full items-start gap-3 rounded-lg border bg-card p-4 shadow-xs transition-colors", href && "hover:border-strong/40", tone === "warn" ? "border-amber-300" : "border-line")}>
-      <div className={cn("rounded-md p-2", tone === "warn" ? "bg-amber-50 text-amber-800" : tone === "good" ? "bg-green-50 text-green-800" : "bg-surface text-ink")}>{icon}</div>
+    <div className={cn("flex h-full items-start gap-3 rounded-2xl border bg-card p-4 shadow-xs transition-colors", href && "hover:border-strong/40", tone === "warn" ? "border-amber-300" : "border-line")}>
+      <div className={cn("rounded-xl p-2", tone === "warn" ? "bg-amber-50 text-amber-800" : tone === "good" ? "bg-green-50 text-green-800" : "bg-surface text-ink")}>{icon}</div>
       <div className="min-w-0">
         <p className="text-sm font-semibold text-muted">{label}</p>
         <p className="text-2xl font-black text-ink tabular">{value}</p>
@@ -60,7 +60,7 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
 }) {
   return (
     <div className="space-y-4">
-      <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-lg border border-line bg-card px-4 py-3" aria-label="Sales period">
+      <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3" aria-label="Sales period">
         <div>
           <label htmlFor="from" className="mb-1 block text-xs font-medium text-muted">Decisions from</label>
           <DateInput id="from" name="from" defaultValue={from} className="w-40" />

@@ -27,7 +27,7 @@ export function StatCard({ href, label, value, hint, alert }: { href: string; la
     <Link
       href={href}
       className={cn(
-        "group block rounded-lg border border-line bg-card p-4 transition-colors hover:border-strong/40 focus-visible:ring-2 focus-visible:ring-strong focus-visible:outline-none",
+        "group block rounded-panel border border-line/70 bg-card shadow-card p-4 transition-colors hover:border-strong/40 focus-visible:ring-2 focus-visible:ring-strong focus-visible:outline-none",
       )}
     >
       <div className="flex items-center gap-1.5 text-sm font-medium text-muted">{alert && <span className="size-1.5 rounded-full bg-critical" aria-hidden />}{label}</div>

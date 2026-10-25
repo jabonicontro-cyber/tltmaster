@@ -21,30 +21,30 @@ export function Dialog({ open, onOpenChange, title, description, children, foote
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
       <D.Portal>
-        <D.Overlay className="fixed inset-0 z-40 bg-black/50" />
+        <D.Overlay className="ui-fade fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <D.Content
           className={cn(
-            "fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-lg bg-card shadow-xl focus:outline-none",
+            "ui-pop fixed top-1/2 left-1/2 z-50 flex max-h-[92vh] w-[calc(100vw-1.5rem)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-3xl bg-card shadow-float ring-1 ring-line/60 focus:outline-none",
             size === "sm" && "max-w-md",
             size === "md" && "max-w-xl",
             size === "lg" && "max-w-3xl",
           )}
         >
-          <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
+          <div className="flex items-start justify-between gap-4 px-6 pt-6 pb-2">
             <div>
-              <D.Title className="text-lg font-bold text-ink">{title}</D.Title>
+              <D.Title className="text-lg font-semibold tracking-[-0.015em] text-ink">{title}</D.Title>
               {description ? (
                 <D.Description className="mt-0.5 text-sm text-muted">{description}</D.Description>
               ) : (
                 <D.Description className="sr-only">Dialog</D.Description>
               )}
             </div>
-            <D.Close className="rounded p-1 text-muted hover:bg-surface hover:text-ink" aria-label="Close">
+            <D.Close className="-mt-1 -mr-2 rounded-full p-2 text-muted transition-colors hover:bg-surface hover:text-ink" aria-label="Close">
               <X className="size-5" />
             </D.Close>
           </div>
-          <div className="overflow-y-auto px-5 py-4">{children}</div>
-          {footer && <div className="flex flex-wrap justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+          <div className="overflow-y-auto px-6 py-4">{children}</div>
+          {footer && <div className="flex flex-wrap justify-end gap-2 px-6 pt-2 pb-6">{footer}</div>}
         </D.Content>
       </D.Portal>
     </D.Root>

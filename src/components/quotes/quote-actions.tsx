@@ -261,13 +261,13 @@ function EmailDialog({ quoteId, editSeq, onClose }: { quoteId: string; editSeq: 
           <Notice tone="warning" title="Preview only — nothing was sent">
             {preview.reason} This is exactly what would be sent once email is configured.
           </Notice>
-          <dl className="space-y-1 rounded-md border border-line bg-surface p-3 text-sm">
+          <dl className="space-y-1 rounded-xl border border-line bg-surface p-3 text-sm">
             <div><dt className="inline font-semibold">To: </dt><dd className="inline">{preview.to.join(", ")}</dd></div>
             {preview.cc.length > 0 && <div><dt className="inline font-semibold">Cc: </dt><dd className="inline">{preview.cc.join(", ")}</dd></div>}
             <div><dt className="inline font-semibold">Subject: </dt><dd className="inline">{preview.subject}</dd></div>
             <div><dt className="inline font-semibold">Attachment: </dt><dd className="inline">{preview.filename}</dd></div>
           </dl>
-          <pre className="max-h-64 overflow-auto rounded-md border border-line bg-card p-3 font-sans text-sm whitespace-pre-wrap">{preview.message}</pre>
+          <pre className="max-h-64 overflow-auto rounded-control border border-line bg-card p-3 font-sans text-sm whitespace-pre-wrap">{preview.message}</pre>
           <p className="text-sm text-muted">
             If you emailed the quote yourself from another program, close this and use <strong>Mark as sent</strong>.
           </p>

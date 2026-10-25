@@ -118,7 +118,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                     <form action={setDemoPlan} className="flex items-center gap-2">
                       <input type="hidden" name="id" value={d.id} />
                       <label className="sr-only" htmlFor={`plan-${d.id}`}>Plan for {d.name}</label>
-                      <select id={`plan-${d.id}`} name="plan" defaultValue={d.demo_plan ?? "essential"} className="h-9 rounded-md border border-line bg-card px-2 text-sm">
+                      <select id={`plan-${d.id}`} name="plan" defaultValue={d.demo_plan ?? "essential"} className="h-9 rounded-control border border-line bg-card px-2 text-sm">
                         {Object.entries(PLAN_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                       </select>
                       <SubmitButton variant="secondary" size="sm" pendingLabel="Switching…">Show This Plan</SubmitButton>

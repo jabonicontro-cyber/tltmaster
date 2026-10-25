@@ -27,10 +27,10 @@ export default async function SupportThread({ params, searchParams }: { params: 
         </div>
         <Badge tone={t.status === "answered" ? "green" : t.status === "open" ? "brand" : "gray"}>{SUPPORT_STATUS_LABEL[t.status]}</Badge>
       </div>
-      {sent ? <p role="status" className="rounded-md bg-surface p-3 text-sm text-ink">Sent. {c.name} will reply here.</p> : null}
+      {sent ? <p role="status" className="rounded-xl bg-surface p-3 text-sm text-ink">Sent. {c.name} will reply here.</p> : null}
       <ol className="space-y-3">
         {t.messages.map((m, i) => (
-          <li key={i} className={cn("max-w-[42rem] rounded-lg border p-3", m.from === "customer" ? "ml-auto border-line bg-card" : "border-brand/30 bg-brand-light")}>
+          <li key={i} className={cn("max-w-[42rem] rounded-2xl border p-3", m.from === "customer" ? "ml-auto border-line bg-card" : "border-brand/30 bg-brand-light")}>
             <p className="mb-1 text-xs font-semibold text-muted">{m.from === "customer" ? "You" : c.name} · {formatMoment(m.at, c.timezone)}</p>
             <p className="text-sm whitespace-pre-line text-ink">{m.body}</p>
           </li>

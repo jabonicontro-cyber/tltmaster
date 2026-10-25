@@ -97,7 +97,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
       </div>
 
       {plan.proposal ? (
-        <div className="mt-2.5 rounded-lg border border-line bg-surface/60 p-3">
+        <div className="mt-2.5 rounded-2xl border border-line bg-surface/60 p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm">
               <span className="text-muted">Proposed: </span>
@@ -109,7 +109,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
               <div className="flex flex-wrap items-center gap-2">
                 {rejecting ? (
                   <>
-                    <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Why not? (optional)" aria-label="Reason for rejecting" className="h-8 rounded-md border border-line bg-card px-2 text-sm" />
+                    <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Why not? (optional)" aria-label="Reason for rejecting" className="h-8 rounded-control border border-line bg-card px-2 text-sm" />
                     <Button size="sm" variant="secondary" loading={busy === "reject"} onClick={reject}>Reject this option</Button>
                     <Button size="sm" variant="ghost" onClick={() => setRejecting(false)}>Cancel</Button>
                   </>
@@ -153,7 +153,7 @@ function PlanCard({ plan, canEdit, timezone, back }: { plan: BoardPlan; canEdit:
           </details>
         </div>
       ) : (
-        <details className="group mt-2 rounded-lg border border-line p-3 text-sm">
+        <details className="group mt-2 rounded-2xl border border-line p-3 text-sm">
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
             <Badge tone="amber">No option</Badge>
             <span className="text-ink">{plan.blocked?.why[0] ?? "No feasible truck and driver."}</span>
@@ -209,7 +209,7 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
   const FIRST = 6;
   const shown = all ? plans : plans.slice(0, FIRST);
   return (
-    <details open className="mb-4 rounded-lg border border-line bg-card" aria-label="Smart Dispatch">
+    <details open className="mb-4 rounded-panel border border-line/70 bg-card shadow-card" aria-label="Smart Dispatch">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 border-b border-line px-4 py-2">
         <Lightbulb className="size-5 text-brand-fg" aria-hidden />
         <span className="font-bold">Smart Dispatch</span>

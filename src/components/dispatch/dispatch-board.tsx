@@ -74,7 +74,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
   return (
     <div className="space-y-5">
       {/* Date navigation and summary */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-card px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
           <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")}>
             <ChevronLeft className="size-4" aria-hidden /> Prev<span className="sr-only">ious day</span>
@@ -651,7 +651,7 @@ function AssignDialog({
       <div className="space-y-4">
         <FormError message={error} />
         {offShift && (
-          <div role="alert" className="space-y-2 rounded-md border border-line bg-surface p-3">
+          <div role="alert" className="space-y-2 rounded-xl border border-line bg-surface p-3">
             <p className="text-sm font-semibold text-ink">{offShift}</p>
             <p className="text-sm text-muted">The driver is scheduled off then. To assign anyway, say why; the reason is recorded with the assignment.</p>
             <Field label="Reason for working outside the shift" htmlFor="assign-off-shift" required>
@@ -684,7 +684,7 @@ function AssignDialog({
         </Field>
 
         {check && (
-          <div role="status" className={cn("rounded-md border p-3 text-sm", check.eligible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50")}>
+          <div role="status" className={cn("rounded-xl border p-3 text-sm", check.eligible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50")}>
             {check.eligible ? (
               <p className="font-semibold text-green-900">{unchanged ? "This is the current assignment." : "This combination can be assigned."}</p>
             ) : (

@@ -9,7 +9,7 @@ export function EmptyState({ title, description, action, icon, className, as: Ti
 }) {
   return (
     <div className={cn("flex flex-col items-center justify-center px-6 py-12 text-center", className)}>
-      <div className="mb-3 rounded-full bg-surface p-3 text-muted">{icon ?? <Inbox className="size-6" aria-hidden />}</div>
+      <div className="mb-4 rounded-2xl bg-surface p-3.5 text-muted">{icon ?? <Inbox className="size-6" aria-hidden />}</div>
       <Title className="text-base font-semibold text-ink">{title}</Title>
       {description && <p className="mt-1 max-w-md text-sm text-muted">{description}</p>}
       {action && <div className="mt-4">{action}</div>}
@@ -19,7 +19,7 @@ export function EmptyState({ title, description, action, icon, className, as: Ti
 
 export function ErrorState({ title = "Something went wrong", description, action }: { title?: string; description?: ReactNode; action?: ReactNode }) {
   return (
-    <div role="alert" className="flex flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 px-6 py-10 text-center">
+    <div role="alert" className="flex flex-col items-center justify-center rounded-panel border border-red-200 bg-red-50 px-6 py-10 text-center">
       <AlertTriangle className="mb-2 size-7 text-red-700" aria-hidden />
       <p className="text-base font-semibold text-red-900">{title}</p>
       {description && <p className="mt-1 max-w-lg text-sm text-red-800">{description}</p>}
@@ -50,8 +50,8 @@ export function Notice({ tone = "info", title, children }: { tone?: "info" | "wa
   return (
     <div
       className={cn(
-        "rounded-md border px-4 py-3 text-sm",
-        tone === "info" ? "border-blue-200 bg-blue-50 text-blue-900" : "border-amber-300 bg-amber-50 text-amber-950",
+        "rounded-2xl border px-4 py-3.5 text-sm",
+        tone === "info" ? "border-blue-100 bg-blue-50 text-blue-900" : "border-amber-200 bg-amber-50 text-amber-950",
       )}
     >
       {title && <p className="font-semibold">{title}</p>}

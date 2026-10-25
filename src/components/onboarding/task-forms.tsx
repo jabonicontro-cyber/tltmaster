@@ -163,7 +163,7 @@ export function TaskDocumentUpload({ side, taskId }: { side: ChecklistSide; task
           const f = e.currentTarget.files?.[0];
           if (f) void upload(f);
         }}
-        className="block w-full text-sm text-ink file:mr-3 file:rounded-md file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink"
+        className="block w-full text-sm text-ink file:mr-3 file:rounded-xl file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-ink"
       />
       <p className="text-xs text-muted">{busy ? "Uploading…" : "PDF, JPEG, PNG or CSV (UTF-8), up to 10 MB. Only your company and Taviron can open it."}</p>
       {error ? <p role="alert" className="text-sm text-critical">{error}</p> : null}

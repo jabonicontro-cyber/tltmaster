@@ -52,14 +52,14 @@ export default async function HelpArticlePage({ params, searchParams }: { params
           </CardBody></Card>
         ) : null}
 
-        <section id="feedback" aria-labelledby="feedback-heading" className="rounded-lg border border-line bg-card p-4">
+        <section id="feedback" aria-labelledby="feedback-heading" className="rounded-panel border border-line/70 bg-card shadow-card p-4">
           <h2 id="feedback-heading" className="text-base font-semibold">Did this help?</h2>
           {sp.feedback === "yes" || sp.feedback === "no" ? <p role="status" className="mt-1 text-sm text-muted">Thanks — your answer is saved. You can change it any time.</p> : null}
           {sp.feedback === "error" ? <p role="status" className="mt-1 text-sm text-muted">Your answer could not be saved (feedback needs a database update that may not be installed yet).</p> : null}
           <form action={sendFeedback} className="mt-3 space-y-3">
             <input type="hidden" name="article" value={a.id} />
             <label htmlFor="fb-note" className="block text-sm font-semibold">What was missing or wrong? <span className="font-normal text-muted">(optional)</span></label>
-            <textarea id="fb-note" name="note" maxLength={1000} rows={2} className="w-full rounded-md border border-line bg-card px-3 py-2 text-[15px] text-ink" />
+            <textarea id="fb-note" name="note" maxLength={1000} rows={2} className="w-full rounded-control border border-line bg-card px-3 py-2 text-[15px] text-ink" />
             <div className="flex flex-wrap gap-2">
               <Button type="submit" name="helpful" value="yes" variant={feedback === true ? "primary" : "secondary"} size="sm" aria-pressed={feedback === true}>Yes, it helped</Button>
               <Button type="submit" name="helpful" value="no" variant={feedback === false ? "primary" : "secondary"} size="sm" aria-pressed={feedback === false}>No</Button>

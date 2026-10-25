@@ -7,21 +7,21 @@ import type { OrderStatus } from "@/server/data/types";
 type Tone = "gray" | "blue" | "green" | "amber" | "red" | "dark" | "brand" | "critical" | "critical-soft";
 
 const tones: Record<Tone, string> = {
-  gray: "bg-gray-100 text-gray-700 ring-gray-300",
-  blue: "bg-blue-50 text-blue-800 ring-blue-200",
-  green: "bg-green-50 text-green-800 ring-green-200",
-  amber: "bg-amber-50 text-amber-900 ring-amber-200",
-  red: "bg-red-50 text-red-800 ring-red-200",
+  gray: "bg-ink/[0.06] text-ink/75 ring-transparent",
+  blue: "bg-blue-50 text-blue-800 ring-blue-100",
+  green: "bg-green-50 text-green-800 ring-green-100",
+  amber: "bg-amber-50 text-amber-900 ring-amber-100",
+  red: "bg-red-50 text-red-800 ring-red-100",
   dark: "bg-strong text-white ring-strong",
   brand: "bg-brand-light text-brand-fg ring-brand/25",
   // Urgent and safety states: fixed red, never the company's brand colour.
   critical: "bg-critical text-white ring-critical",
-  "critical-soft": "bg-red-50 text-critical ring-red-200",
+  "critical-soft": "bg-red-50 text-critical ring-red-100",
 };
 
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded px-2 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap", tones[tone], className)}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap", tones[tone], className)}>
       {children}
     </span>
   );

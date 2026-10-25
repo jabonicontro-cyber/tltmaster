@@ -63,7 +63,7 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
     <Card>
       <CardHeader title="History" description="From this customer's orders, accepted delivery tickets and quotes." />
       <CardBody className="space-y-4 text-sm">
-        {history.quiet && <p className="rounded-md bg-amber-50 px-3 py-2 font-medium text-amber-900">No new order in more than 90 days (last on {formatDate(history.last_order_on!)}).</p>}
+        {history.quiet && <p className="rounded-xl bg-amber-50 px-3 py-2 font-medium text-amber-900">No new order in more than 90 days (last on {formatDate(history.last_order_on!)}).</p>}
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <div><dt className="text-xs text-muted">Orders</dt><dd className="text-lg font-semibold tabular">{history.orders}</dd><dd className="text-xs text-muted">{history.open_orders} open</dd></div>
           <div><dt className="text-xs text-muted">Ordered, last 12 months</dt><dd className="text-lg font-semibold tabular">{usd(history.ordered_cents_365d)}</dd><dd className="text-xs text-muted">order totals, not invoices</dd></div>
@@ -71,7 +71,7 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
           <div><dt className="text-xs text-muted">Quotes won</dt><dd className="text-lg font-semibold tabular">{winRate === null ? "—" : `${winRate}%`}</dd><dd className="text-xs text-muted">{history.quotes.accepted} of {history.quotes.decided} decided · {history.quotes.open} open</dd></div>
         </dl>
         {history.recent_orders.length > 0 && (
-          <ul className="divide-y divide-line rounded-md border border-line">
+          <ul className="divide-y divide-line rounded-xl border border-line">
             {history.recent_orders.map((o) => (
               <li key={o.id} className="flex flex-wrap items-center gap-x-3 px-3 py-2">
                 <Link href={`/orders/${o.id}`} className="font-semibold hover:underline">{o.order_number}</Link>

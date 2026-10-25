@@ -208,7 +208,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
       )}
 
       {confirmMessage && (
-        <div role="alert" className="rounded-md border border-amber-300 bg-amber-50 p-4 text-amber-950">
+        <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
           <p className="flex items-start gap-2 font-semibold">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {confirmMessage}
           </p>

@@ -182,7 +182,7 @@ export function ConversationView(props: {
               {m.attachments.map((a) => (
                 <li key={a.id}>
                   <a href={`/communications/files/${a.id}`} target="_blank" rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink hover:border-strong">
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-2 py-1 text-xs text-ink hover:border-strong">
                     {a.mime_type === "application/pdf" ? <FileText className="size-3.5" aria-hidden /> : <Paperclip className="size-3.5" aria-hidden />}
                     <span className="max-w-48 truncate">{a.file_name}</span>
                     <span className="text-muted">{formatBytes(a.size_bytes)}</span>
@@ -265,7 +265,7 @@ export function ConversationView(props: {
         ) : (
           <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
             {replyTo && (
-              <div className="flex items-center gap-2 rounded-md bg-surface px-3 py-1.5 text-xs text-muted">
+              <div className="flex items-center gap-2 rounded-xl bg-surface px-3 py-1.5 text-xs text-muted">
                 <CornerDownRight className="size-3.5" aria-hidden />
                 <span className="min-w-0 flex-1 truncate">Replying to {name(replyTo.author_id)}: {replyTo.body}</span>
                 <button type="button" aria-label="Cancel reply" onClick={() => setReplyTo(null)}><X className="size-3.5" /></button>
@@ -283,7 +283,7 @@ export function ConversationView(props: {
             {files.length > 0 && (
               <ul className="flex flex-wrap gap-2" aria-label="Files to send">
                 {files.map((f) => (
-                  <li key={f.key} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-xs", f.status === "failed" ? "border-red-300 text-red-800" : "border-line text-ink")}>
+                  <li key={f.key} className={cn("inline-flex items-center gap-1.5 rounded-xl border px-2 py-1 text-xs", f.status === "failed" ? "border-red-300 text-red-800" : "border-line text-ink")}>
                     <Paperclip className="size-3.5" aria-hidden />
                     <span className="max-w-40 truncate">{f.name}</span>
                     <span className="text-muted">{f.status === "uploading" ? "Uploading…" : f.status === "failed" ? f.error : formatBytes(f.size)}</span>
@@ -296,7 +296,7 @@ export function ConversationView(props: {
             <div className="flex items-center justify-between gap-2">
               <div>
                 <input ref={fileInput} type="file" multiple accept="image/jpeg,image/png,image/webp,application/pdf" className="sr-only" id="comm-file" onChange={(e) => void upload(e.target.files)} />
-                <label htmlFor="comm-file" className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-md px-2 text-sm font-semibold text-muted hover:bg-surface hover:text-ink">
+                <label htmlFor="comm-file" className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-xl px-2 text-sm font-semibold text-muted hover:bg-surface hover:text-ink">
                   <Paperclip className="size-4" aria-hidden />Attach
                 </label>
                 <span className="ml-2 hidden text-xs text-muted sm:inline">Photos or PDF, up to 10 MB. Enter sends; Shift+Enter adds a line.</span>

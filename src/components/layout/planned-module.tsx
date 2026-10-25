@@ -14,7 +14,7 @@ export function PlannedModule({ title, phase, summary, features, dependsOn }: { 
       <PageHeader title={title} description={summary} />
       <Card>
         <CardBody className="space-y-4">
-          <div className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-amber-950">
             <Construction className="mt-0.5 size-5 shrink-0" aria-hidden />
             <div>
               <p className="font-semibold">Coming soon — scheduled for {phase}</p>

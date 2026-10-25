@@ -77,7 +77,7 @@ export default async function LaunchpadPage() {
       <ul className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4" aria-label="Business KPIs">
         {kpis.map((m) => (
           <li key={m.label}>
-            <Link href={m.href} className="flex h-full flex-col rounded-lg border border-line bg-card p-4 shadow-xs transition-colors hover:border-strong/40 sm:p-5">
+            <Link href={m.href} className="flex h-full flex-col rounded-panel border border-line/70 bg-card shadow-card p-4 shadow-xs transition-colors hover:border-strong/40 sm:p-5">
               <p className="text-[13px] font-medium text-muted">{m.label}</p>
               <p className="mt-1 text-3xl font-semibold tracking-tight tabular text-ink">{m.value}</p>
               <p className="mt-auto pt-1 text-xs text-muted">{m.sub}</p>
@@ -86,7 +86,7 @@ export default async function LaunchpadPage() {
         ))}
       </ul>
 
-      <section aria-label="Platform status" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", urgent ? "border-l-critical" : p.attention.total ? "border-l-amber-400" : "border-l-green-500")}>
+      <section aria-label="Platform status" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", urgent ? "border-l-critical" : p.attention.total ? "border-l-amber-400" : "border-l-green-500")}>
         <p className="text-base font-semibold text-ink">{p.attention.total === 0 ? "Nothing needs attention" : `${p.attention.total} item${p.attention.total === 1 ? "" : "s"} need attention`}</p>
         {urgent > 0 && <span className="rounded bg-critical px-2 py-0.5 text-sm font-semibold text-white">{urgent} urgent</span>}
         {p.email_failures_7d > 0 && <span className="text-sm font-semibold text-critical">{p.email_failures_7d} lead email{p.email_failures_7d === 1 ? "" : "s"} failed this week</span>}
@@ -96,7 +96,7 @@ export default async function LaunchpadPage() {
       <ul className="mb-6 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5" aria-label="Platform overview">
         {metrics.map((m) => (
           <li key={m.label}>
-            <Link href={m.href} className="flex h-full flex-col rounded-lg border border-line bg-card p-3 transition-colors hover:border-strong/40 hover:bg-surface/40 sm:p-4">
+            <Link href={m.href} className="flex h-full flex-col rounded-panel border border-line/70 bg-card shadow-card p-3 transition-colors hover:border-strong/40 hover:bg-surface/40 sm:p-4">
               <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
                 {(m.bad || m.warn) && <span className={cn("size-1.5 rounded-full", m.bad ? "bg-critical" : "bg-amber-500")} aria-hidden />}
                 {m.label}

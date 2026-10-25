@@ -43,7 +43,7 @@ export function RunningTimer({ timer }: { timer: { workOrderId: string; number: 
     return () => clearInterval(t);
   }, []);
   return (
-    <section aria-label="Your running timer" className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-strong bg-card p-4">
+    <section aria-label="Your running timer" className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-strong bg-card p-4">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-ink">Working on <Link href={`/maintenance/work-orders/${timer.workOrderId}`} className="underline">{timer.number}</Link></p>
         <p className="text-sm text-muted">Timer running · <span className="tabular">{clock(minutesSince(timer.startedAt, now))}</span></p>
@@ -72,7 +72,7 @@ export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; time
   const { pending, run } = useRun();
   const canStart = ["reported", "triaged", "scheduled", "awaiting_parts"].includes(job.status);
   return (
-    <li className="rounded-lg border border-line bg-card p-4">
+    <li className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <div className="flex items-start justify-between gap-3">
         <JobHeader job={job} />
         <Link href={`/maintenance/work-orders/${job.id}`} aria-label={`Open ${job.number}`} className="-m-2 flex min-h-11 min-w-11 items-center justify-center rounded text-muted hover:text-ink">
@@ -105,7 +105,7 @@ export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; time
 export function OpenJobCard({ job, me }: { job: OpenJob; me: string }) {
   const { pending, run } = useRun();
   return (
-    <li className="rounded-lg border border-line bg-card p-4">
+    <li className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <div className="flex items-start justify-between gap-3">
         <JobHeader job={job} />
         <Link href={`/maintenance/work-orders/${job.id}`} aria-label={`Open ${job.number}`} className="-m-2 flex min-h-11 min-w-11 items-center justify-center rounded text-muted hover:text-ink">

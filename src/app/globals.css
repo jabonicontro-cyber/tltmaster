@@ -11,10 +11,10 @@
   --color-charcoal-2: #10233a;
   --color-charcoal-3: #17304e;
   --color-critical: #b91c1c; /* urgent / safety states: white text 6.5:1 */
-  --color-ink: #1f2328;
+  --color-ink: #16191d;
   --color-muted: #5f6670;
-  --color-line: #dfe2e6;
-  --color-surface: #f4f5f7;
+  --color-line: #e3e6eb;
+  --color-surface: #f3f4f7;
   --color-card: #ffffff; /* cards, panels, inputs, menus */
   --color-strong: #0c1a2b; /* selected chips, emphasis borders (follows the navigation color) */
   --color-brand-fg: #0f6fd6; /* brand-colored text and icons */
@@ -32,6 +32,13 @@
   --color-cloud: #f7f9fc;
   --color-safety: #e5484d; /* critical alerts and safety states only */
 
+  /* Shape and depth (redesign 2026-10-25, master plan B90): soft, rounded panels that float a little above the page,
+     pill-shaped controls, one shadow scale. Panels: rounded-panel + shadow-card; menus and floating bars: shadow-float. */
+  --radius-panel: 1.25rem;
+  --radius-control: 0.75rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -16px rgb(15 23 42 / 0.12);
+  --shadow-float: 0 2px 6px rgb(15 23 42 / 0.06), 0 18px 40px -16px rgb(15 23 42 / 0.28);
+
   --font-sans: "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -43,6 +50,8 @@
   body {
     @apply bg-surface text-ink antialiased;
     font-size: 15px;
+    /* Inter's alternate digits and straight-sided shapes: calmer numbers in tables and figures. */
+    font-feature-settings: "cv11", "ss01", "ss03";
   }
   :focus-visible {
     outline: 2px solid var(--color-brand-fg);
@@ -58,6 +67,31 @@
 @layer utilities {
   .tabular {
     font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Motion (redesign, master plan B90): dialogs and menus arrive from slightly smaller and transparent, quickly and
+   without bounce; reduced motion keeps a plain fade. scale is animated on its own so centering transforms stay intact. */
+.ui-pop[data-state="open"] {
+  animation: ui-pop-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.ui-fade[data-state="open"] {
+  animation: ui-fade-in 180ms ease-out;
+}
+@keyframes ui-pop-in {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+@keyframes ui-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-pop[data-state="open"] {
+    animation: ui-fade-in 120ms ease-out;
   }
 }
 
@@ -122,6 +156,8 @@
     color-scheme: dark;
   }
   html[data-theme="dark"] body {
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+    --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -16px rgb(0 0 0 / 0.7);
     --color-surface: #0b1522;
     --color-card: #111d2c;
     --color-ink: #e6edf5;

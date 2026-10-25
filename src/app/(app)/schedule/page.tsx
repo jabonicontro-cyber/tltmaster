@@ -44,7 +44,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             <form className="ml-auto" action="/schedule">
               <input type="hidden" name="week" value={from} />
               <label className="sr-only" htmlFor="schedule-q">Find a person</label>
-              <input id="schedule-q" name="q" defaultValue={sp.q ?? ""} placeholder="Find a person…" className="h-9 rounded-md border border-line bg-card px-3 text-sm" />
+              <input id="schedule-q" name="q" defaultValue={sp.q ?? ""} placeholder="Find a person…" className="h-9 rounded-control border border-line bg-card px-3 text-sm" />
             </form>
           </div>
           {today >= from && today <= addDays(from, 6) && (

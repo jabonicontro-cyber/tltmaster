@@ -110,7 +110,7 @@ export function InviteForm({ customers, contacts }: { customers: Array<{ id: str
         <Button type="submit" loading={pending}>Create Invitation</Button>
       </form>
       {link ? (
-        <div role="status" className="space-y-2 rounded-md border border-line bg-surface p-3 text-sm">
+        <div role="status" className="space-y-2 rounded-xl border border-line bg-surface p-3 text-sm">
           <p className="font-semibold text-ink">Send this one-time link to the customer yourself. It works once and expires in 7 days.</p>
           <div className="flex flex-wrap gap-2">
             <Input readOnly value={full} aria-label="Invitation link" className="min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
@@ -258,7 +258,7 @@ export function TrackingLinks({ order, links, enabled }: { order: string; links:
         </form>
       ) : null}
       {created ? (
-        <div role="status" className="space-y-2 rounded-md bg-surface p-3">
+        <div role="status" className="space-y-2 rounded-xl bg-surface p-3">
           <p className="font-semibold text-ink">Share this link. It shows only status, schedule and confirmed quantities, and is not shown again.</p>
           <div className="flex flex-wrap gap-2">
             <Input readOnly value={created} aria-label="Tracking link" className="min-w-0 flex-1 font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />

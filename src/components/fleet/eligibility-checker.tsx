@@ -74,7 +74,7 @@ export function EligibilityChecker({ trucks, trailers, drivers, today }: { truck
         </div>
         <FormError message={error} />
         {result && (
-          <div role="status" className={`rounded-md border p-4 ${result.eligible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
+          <div role="status" className={`rounded-xl border p-4 ${result.eligible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50"}`}>
             <p className={`flex items-center gap-2 font-bold ${result.eligible ? "text-green-900" : "text-red-900"}`}>
               {result.eligible ? <CheckCircle2 className="size-5" aria-hidden /> : <XCircle className="size-5" aria-hidden />}
               {result.eligible ? "Eligible" : "Not eligible"} on {formatDate(result.on)}

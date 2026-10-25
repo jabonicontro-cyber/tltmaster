@@ -110,7 +110,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
 
 function Info({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-lg border border-line bg-card p-4">
+    <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-1 font-semibold text-ink">{value}</p>
     </div>

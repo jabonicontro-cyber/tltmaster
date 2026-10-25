@@ -93,13 +93,13 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         }
       }}
       className={cn(
-        "no-print fixed inset-y-0 left-0 z-30 hidden flex-col overflow-x-hidden bg-charcoal lg:flex",
+        "no-print fixed inset-y-3 left-3 z-30 hidden flex-col overflow-x-hidden rounded-[1.5rem] bg-charcoal shadow-card lg:flex",
         "transition-[width,box-shadow] duration-200 ease-out motion-reduce:transition-none",
         expanded ? "w-64" : "w-[4.5rem]",
-        expanded && !pinned && "shadow-2xl",
+        expanded && !pinned && "shadow-float",
       )}
     >
-      <Link href="/command-center" className="flex h-16 shrink-0 items-center border-b border-white/10 px-4">
+      <Link href="/command-center" className="flex h-16 shrink-0 items-center px-4">
         {expanded ? <CompanyIdentity name={companyName} logoUrl={logoUrl} /> : <CompanyIdentity name={companyName} logoUrl={logoUrl} compact />}
         {/* The name comes from what is shown (company name or its mark), so voice control matches it (WCAG 2.5.3). */}
         <span className="sr-only"> — home</span>
@@ -111,7 +111,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
           aria-expanded={expanded}
           aria-controls="sidebar-nav"
           title={!expanded ? "Expand navigation" : undefined}
-          className="flex min-h-11 w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-white/80 hover:bg-white/[0.06] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
         >
           {expanded ? <PanelLeftClose className="size-[18px] shrink-0" aria-hidden /> : <PanelLeftOpen className="size-[18px] shrink-0" aria-hidden />}
           <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "sr-only")}>{expanded ? "Collapse navigation" : "Expand navigation"}</span>
@@ -120,13 +120,13 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
       <div id="sidebar-nav" className="relative flex-1 overflow-x-hidden overflow-y-auto py-3">
         <SidebarNav permissions={permissions} collapsed={!expanded} onNavigate={close} />
       </div>
-      <div className="shrink-0 border-t border-white/10 px-3 py-2">
+      <div className="shrink-0 px-3 pt-1 pb-3">
         <button
           type="button"
           onClick={togglePin}
           aria-pressed={pinned}
           title={!expanded ? "Keep sidebar open" : undefined}
-          className="flex min-h-10 w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap text-white/70 hover:bg-white/[0.06] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
+          className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
         >
           {pinned ? <PinOff className="size-[18px] shrink-0" aria-hidden /> : <Pin className="size-[18px] shrink-0" aria-hidden />}
           <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "opacity-0")}>{pinned ? "Unpin sidebar" : "Keep sidebar open"}</span>

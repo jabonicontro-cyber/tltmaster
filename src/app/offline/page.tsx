@@ -16,7 +16,7 @@ export default function OfflinePage() {
         Taviron could not be reached, so nothing is shown here. Your loads and messages appear again once you are back
         online. If you need something now, call dispatch.
       </p>
-      <a href="/dashboard" className="inline-flex min-h-12 items-center rounded-md bg-action px-6 text-base font-semibold text-white">Try again</a>
+      <a href="/dashboard" className="inline-flex min-h-12 items-center rounded-xl bg-action px-6 text-base font-semibold text-white">Try again</a>
     </main>
   );
 }

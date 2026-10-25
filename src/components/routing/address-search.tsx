@@ -77,7 +77,7 @@ export function AddressSearch({
             {candidates.length === 1 ? "One match." : `${candidates.length} matches: pick the right one.`} Matches are the provider&apos;s estimate of the address; check the pin before using it.
           </p>
           <RouteMap stops={candidates.map((c) => ({ point: c.point, label: c.label }))} tiles={tiles} title="Address matches" connect={false} />
-          <ol className="divide-y divide-line rounded-lg border border-line bg-card">
+          <ol className="divide-y divide-line rounded-panel border border-line/70 bg-card shadow-card">
             {candidates.map((c, i) => (
               <li key={i} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
                 <div className="min-w-0">

@@ -23,7 +23,7 @@ interface Props {
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string };
 
-const field = "min-h-12 w-full rounded-lg border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
+const field = "min-h-12 w-full rounded-2xl border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
 
 export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing }: Props) {
   const router = useRouter();
@@ -79,7 +79,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   return (
     <form onSubmit={(ev) => { ev.preventDefault(); if (!sending) void send(); }} className="space-y-5" noValidate>
       {existing.length > 0 && (
-        <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-200">
+        <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-200">
           This load already has ticket {existing.map((t) => t.number).join(", ")}. Only add one if this is a separate delivery.
         </p>
       )}
@@ -139,7 +139,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       </div>
 
       {state.kind === "confirm" && (
-        <div role="alert" className="space-y-2 rounded-md bg-amber-50 px-4 py-3 text-amber-950 ring-1 ring-amber-300">
+        <div role="alert" className="space-y-2 rounded-xl bg-amber-50 px-4 py-3 text-amber-950 ring-1 ring-amber-300">
           <p className="font-semibold">{state.message}</p>
           <label className="flex min-h-12 items-center gap-3 font-semibold">
             <input type="checkbox" className="size-6 accent-brand" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
@@ -148,7 +148,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         </div>
       )}
       {state.kind === "failed" && (
-        <p role="alert" className="rounded-md bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{state.message}</p>
+        <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{state.message}</p>
       )}
 
       <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">

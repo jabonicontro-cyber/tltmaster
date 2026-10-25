@@ -129,7 +129,7 @@ export function SignInManager({ s, personName, companyName, email, kind = "emplo
         ) : null}
         {s.active ? (
           confirmOff ? (
-            <span className="flex flex-wrap items-center gap-2 rounded-md border border-line bg-surface p-2">
+            <span className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface p-2">
               <span className="text-xs text-ink">Turn off {personName}&apos;s sign-in? {kind === "portal" ? "Their requests" : "Their records"} and history are kept.</span>
               <Button size="sm" variant="danger" loading={busy} onClick={() => { setConfirmOff(false); run(() => act.off(s.userId)); }}>Turn Off</Button>
               <Button size="sm" variant="ghost" onClick={() => setConfirmOff(false)}>Cancel</Button>

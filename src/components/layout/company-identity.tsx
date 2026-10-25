@@ -13,13 +13,13 @@ export function CompanyIdentity({ name, logoUrl, tone = "light", compact = false
   if (logoUrl && !compact) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- a small per-company image served by our own route
-      <img src={logoUrl} alt={label} className={cn("h-8 max-w-40 rounded bg-white object-contain p-1", className)} />
+      <img src={logoUrl} alt={label} className={cn("h-8 w-auto max-w-40 min-w-0 rounded-lg bg-white object-contain object-left p-1", className)} />
     );
   }
   const initials = label.replace(/\(.*?\)/g, "").trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("") || "C";
   return (
     <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
-      <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-brand text-[13px] font-semibold text-white" aria-hidden={!compact} role={compact ? "img" : undefined} aria-label={compact ? label : undefined}>
+      <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-brand text-[13px] font-semibold text-white" aria-hidden={!compact} role={compact ? "img" : undefined} aria-label={compact ? label : undefined}>
         {initials}
       </span>
       {!compact && <span className={cn("line-clamp-2 text-sm leading-tight font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>}

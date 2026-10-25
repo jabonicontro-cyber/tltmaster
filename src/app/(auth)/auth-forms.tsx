@@ -33,7 +33,7 @@ export function LoginForm({ next, gate = false }: { next?: string; gate?: boolea
           Forgot your password?
         </Link>
       </p>
-      <details className="rounded-md bg-surface px-3 py-2 text-sm text-ink">
+      <details className="rounded-xl bg-surface px-3 py-2 text-sm text-ink">
         <summary className="cursor-pointer font-semibold">First time signing in?</summary>
         <p className="mt-2">
           Use the username and temporary password from the sheet or message your company gave you. Taviron then asks you to create
@@ -64,7 +64,7 @@ export function ForgotPasswordForm() {
       <p className="text-sm text-muted">Enter the email you sign in with. We will send a link to choose a new password. If you sign in with a username, ask your administrator for a new link.</p>
       {state && !state.ok && <FormError message={state.error} />}
       {state?.ok && (
-        <div role="status" className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+        <div role="status" className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
           {state.message}
         </div>
       )}

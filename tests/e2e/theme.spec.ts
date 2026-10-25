@@ -21,7 +21,7 @@ test("the appearance choice switches the app to dark, survives a reload, and kee
   await signIn(page, "owner");
   await page.goto("/command-center");
   expect(await theme(page)).toBe("light");
-  expect(await bg(page, "body")).toBe("rgb(244, 245, 247)");
+  expect(await bg(page, "body")).toBe("rgb(243, 244, 247)");
 
   await choose(page, "Dark");
   await expect.poll(() => theme(page)).toBe("dark");

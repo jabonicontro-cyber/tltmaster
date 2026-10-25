@@ -96,7 +96,7 @@ export function SubscriptionCard({ companyId, life, plans }: { companyId: string
               </Field>
               <SubmitButton variant="secondary" pendingLabel="Saving…">{life.go_live_on ? "Move earlier" : "Set go-live date"}</SubmitButton>
             </form>
-            <form action={goLiveNow} className="space-y-2 rounded-md border border-line p-3">
+            <form action={goLiveNow} className="space-y-2 rounded-xl border border-line p-3">
               <input type="hidden" name="company" value={companyId} />
               <p className="font-semibold">Go live now</p>
               <p className="text-xs text-muted">Starts the subscription today. Enter your password to confirm.</p>

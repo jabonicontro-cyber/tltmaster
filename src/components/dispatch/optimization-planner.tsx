@@ -23,7 +23,7 @@ const short = (r: string) => r.replace(/\s*\([^)]*\)\.?$/, "").replace(/\.$/, ""
 
 function Stat({ label, value, note }: { label: string; value: string; note?: string }) {
   return (
-    <div className="rounded-md border border-line px-3 py-2.5">
+    <div className="rounded-xl border border-line px-3 py-2.5">
       <dt className="text-xs font-medium text-muted">{label}</dt>
       <dd className="mt-0.5 text-xl font-semibold text-ink tabular">{value}</dd>
       {note && <dd className="text-xs text-muted">{note}</dd>}
@@ -113,7 +113,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
 
   if (!loads.length) {
     return (
-      <div className="rounded-lg border border-line bg-card p-6 text-sm" role="status">
+      <div className="rounded-panel border border-line/70 bg-card shadow-card p-6 text-sm" role="status">
         <p className="font-semibold text-ink">Nothing to plan on {formatDateLong(date)}: every load that day already has a truck and driver, or no loads are planned yet.</p>
         {upcoming === null ? (
           <p className="mt-2 text-muted">Other days could not be checked right now.</p>
@@ -123,7 +123,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
             <ul className="mt-2 flex flex-wrap gap-2">
               {upcoming.map((d) => (
                 <li key={d.date}>
-                  <Link href={`/dispatch/plan?date=${d.date}${preset ? `&preset=${preset}` : ""}`} className="inline-flex min-h-10 items-center rounded-md border border-line px-3 font-semibold text-ink hover:bg-surface">
+                  <Link href={`/dispatch/plan?date=${d.date}${preset ? `&preset=${preset}` : ""}`} className="inline-flex min-h-10 items-center rounded-xl border border-line px-3 font-semibold text-ink hover:bg-surface">
                     {formatDateLong(d.date)} · {d.open} open
                   </Link>
                 </li>
@@ -178,13 +178,13 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
 
   return (
     <div className="space-y-5">
-      <section aria-labelledby="plans-title" className="rounded-lg border border-line bg-card p-4">
+      <section aria-labelledby="plans-title" className="rounded-panel border border-line/70 bg-card shadow-card p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="plans-title" className="text-base font-bold text-ink">Plans</h2>
           <div role="tablist" aria-label="Plans" className="flex flex-wrap gap-2">
             {result.plans.map((p, i) => (
               <button key={p.key} role="tab" aria-selected={i === active} onClick={() => choose(i)}
-                className={`rounded-md border px-3 py-1.5 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${i === active ? "border-strong bg-surface" : "border-line hover:bg-surface"}`}>
+                className={`rounded-xl border px-3 py-1.5 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${i === active ? "border-strong bg-surface" : "border-line hover:bg-surface"}`}>
                 <span className="block font-semibold text-ink">{p.label}{i === 0 ? " (your priorities)" : ""}</span>
                 <span className="block text-xs text-muted">{p.metrics.covered} of {p.metrics.loads} loads · {money(p.metrics.revenueCoveredCents)} est.</span>
               </button>
@@ -202,7 +202,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
       </section>
 
       {result.dataNotes.length > 0 && (
-        <section aria-labelledby="data-title" className="rounded-lg border border-line bg-surface px-4 py-3">
+        <section aria-labelledby="data-title" className="rounded-2xl border border-line bg-surface px-4 py-3">
           <h2 id="data-title" className="text-sm font-semibold text-ink">Missing or estimated information</h2>
           <p className="mt-0.5 text-sm text-muted">
             Information Taviron does not have yet, not problems with this plan. Checks that depend on it show as Needs review on each assignment.
@@ -217,7 +217,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
         </section>
       )}
 
-      <section aria-labelledby="assign-title" className="rounded-lg border border-line bg-card">
+      <section aria-labelledby="assign-title" className="rounded-panel border border-line/70 bg-card shadow-card">
         <div className="border-b border-line px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="assign-title" className="text-base font-bold text-ink">Proposed assignments · {plan.label}</h2>
@@ -333,7 +333,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
       <PlanExplanation ai={ai} date={date} preset={preset} priorities={priorities} planKey={plan.key} planLabel={plan.label} />
 
       {unavailable.length > 0 && (
-        <section aria-labelledby="unavailable-title" className="rounded-lg border border-line bg-card px-4 py-3">
+        <section aria-labelledby="unavailable-title" className="rounded-panel border border-line/70 bg-card shadow-card px-4 py-3">
           <details>
             <summary className="cursor-pointer">
               <h2 id="unavailable-title" className="inline text-sm font-semibold text-ink">Unavailable resources · {unavailable.length}</h2>

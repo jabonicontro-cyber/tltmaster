@@ -20,8 +20,8 @@ export default async function PortalOrders({ params, searchParams }: { params: P
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold text-ink">Orders</h1>
         <nav aria-label="Order filter" className="flex gap-1 text-sm">
-          <Link href={`/portal/${slug}/orders`} aria-current={!past ? "page" : undefined} className={`rounded-md px-3 py-1.5 font-semibold ${!past ? "bg-strong text-white" : "text-muted hover:text-ink"}`}>Open</Link>
-          <Link href={`/portal/${slug}/orders?show=past`} aria-current={past ? "page" : undefined} className={`rounded-md px-3 py-1.5 font-semibold ${past ? "bg-strong text-white" : "text-muted hover:text-ink"}`}>Delivered and Canceled</Link>
+          <Link href={`/portal/${slug}/orders`} aria-current={!past ? "page" : undefined} className={`rounded-xl px-3 py-1.5 font-semibold ${!past ? "bg-strong text-white" : "text-muted hover:text-ink"}`}>Open</Link>
+          <Link href={`/portal/${slug}/orders?show=past`} aria-current={past ? "page" : undefined} className={`rounded-xl px-3 py-1.5 font-semibold ${past ? "bg-strong text-white" : "text-muted hover:text-ink"}`}>Delivered and Canceled</Link>
         </nav>
       </div>
       {orders.length === 0 ? (
@@ -30,7 +30,7 @@ export default async function PortalOrders({ params, searchParams }: { params: P
         <ul className="space-y-3">
           {orders.map((o) => (
             <li key={o.id}>
-              <Link href={`/portal/${slug}/orders/${o.id}`} className="block rounded-lg border border-line bg-card p-4 hover:border-strong focus-visible:outline-2 focus-visible:outline-strong">
+              <Link href={`/portal/${slug}/orders/${o.id}`} className="block rounded-panel border border-line/70 bg-card shadow-card p-4 hover:border-strong focus-visible:outline-2 focus-visible:outline-strong">
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <p className="font-semibold text-ink">Order {o.number}{o.materials ? ` · ${o.materials}` : ""}</p>

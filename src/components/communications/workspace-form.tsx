@@ -115,7 +115,7 @@ export function WorkspaceForm(props: {
       </div>
 
       {preview && (
-        <section aria-label="Recipient preview" className="space-y-3 rounded-md border border-line bg-surface/60 p-4 text-sm">
+        <section aria-label="Recipient preview" className="space-y-3 rounded-xl border border-line bg-surface/60 p-4 text-sm">
           <p className="font-semibold text-ink">Who will be in this workspace now</p>
           <div>
             <p className="text-xs font-semibold text-muted">Drivers from dispatch ({preview.drivers.length})</p>

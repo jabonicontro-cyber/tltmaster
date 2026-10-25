@@ -46,10 +46,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         )}
       />
       {manageUsers && (
-        <nav aria-label="People views" className="mb-4 flex gap-1 border-b border-line">
+        <nav aria-label="People views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
           {[{ key: "directory", label: "Directory", href: "/employees" }, { key: "access", label: "Sign-ins & roles", href: "/employees?view=access" }].map((t) => (
             <Link key={t.key} href={t.href} aria-current={view === t.key ? "page" : undefined}
-              className={cn("-mb-px border-b-2 px-4 py-2.5 text-[15px] font-semibold whitespace-nowrap", view === t.key ? "border-brand text-ink" : "border-transparent text-muted hover:text-ink")}>
+              className={cn("flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150", view === t.key ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
               {t.label}
             </Link>
           ))}

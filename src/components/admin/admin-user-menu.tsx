@@ -13,7 +13,7 @@ export function AdminUserMenu({ name, email, photo, roleTitle }: { name: string;
   const shown = name || email;
   return (
     <M.Root>
-      <M.Trigger className="flex items-center gap-2 rounded-md px-2 py-1.5 text-left text-white hover:bg-white/10">
+      <M.Trigger className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-white hover:bg-white/10">
         <span className="sr-only">Account menu: {shown}</span>
         <span aria-hidden><Avatar key={photo} name={shown} src={photo} size={32} /></span>
         <span className="hidden min-w-0 sm:block" aria-hidden>
@@ -23,7 +23,7 @@ export function AdminUserMenu({ name, email, photo, roleTitle }: { name: string;
         <ChevronDown className="size-4 text-white/70" aria-hidden />
       </M.Trigger>
       <M.Portal>
-        <M.Content align="end" sideOffset={6} className="z-50 min-w-56 rounded-md border border-line bg-card p-1 text-ink shadow-lg">
+        <M.Content align="end" sideOffset={6} className="ui-pop z-50 min-w-56 origin-top-right rounded-2xl border border-line/70 bg-card p-1.5 text-ink shadow-float">
           <div className="px-3 py-2">
             <p className="truncate text-sm font-semibold">{shown}</p>
             <p className="truncate text-xs text-muted">{roleTitle}</p>

@@ -18,7 +18,7 @@ export function Th({ className, align, ...props }: ComponentProps<"th"> & { alig
     <th
       scope="col"
       className={cn(
-        "border-b border-line bg-surface/70 px-3 py-2.5 text-xs font-medium text-muted first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5",
+        "border-b border-line px-3 py-3 text-xs font-medium text-muted first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6",
         align === "right" && "text-right",
         align === "center" && "text-center",
         className,
@@ -32,7 +32,7 @@ export function Td({ className, align, ...props }: ComponentProps<"td"> & { alig
   return (
     <td
       className={cn(
-        "border-b border-line px-3 py-3 align-top first:pl-4 last:pr-4 sm:first:pl-5 sm:last:pr-5",
+        "border-b border-line/60 px-3 py-3.5 align-top first:pl-5 last:pr-5 sm:first:pl-6 sm:last:pr-6",
         align === "right" && "text-right tabular",
         align === "center" && "text-center",
         className,
@@ -43,5 +43,5 @@ export function Td({ className, align, ...props }: ComponentProps<"td"> & { alig
 }
 
 export function Tr({ className, ...props }: ComponentProps<"tr">) {
-  return <tr className={cn("hover:bg-surface/60", className)} {...props} />;
+  return <tr className={cn("transition-colors hover:bg-surface/70 [&:last-child>td]:border-b-0", className)} {...props} />;
 }

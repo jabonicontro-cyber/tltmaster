@@ -66,7 +66,7 @@ export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, t
 
       {draft && (
         <form
-          className="space-y-4 rounded-lg border border-line bg-card p-4"
+          className="space-y-4 rounded-panel border border-line/70 bg-card shadow-card p-4"
           aria-label={draft.id ? "Edit location" : "New location"}
           onSubmit={(e) => {
             e.preventDefault();
@@ -117,7 +117,7 @@ export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, t
         </form>
       )}
 
-      <ul className="divide-y divide-line rounded-lg border border-line bg-card" aria-label="Saved locations">
+      <ul className="divide-y divide-line rounded-panel border border-line/70 bg-card shadow-card" aria-label="Saved locations">
         {locations.map((l) => {
           const isYard = Boolean(yard && l.point && Math.abs(yard.lat - l.point.lat) < 1e-6 && Math.abs(yard.lng - l.point.lng) < 1e-6);
           return (

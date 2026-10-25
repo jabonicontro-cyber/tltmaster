@@ -30,10 +30,10 @@ const VIEWS = [
 
 function ViewNav({ view }: { view: string }) {
   return (
-    <nav aria-label="Route Planner views" className="mb-5 inline-flex flex-wrap gap-1 rounded-lg border border-line bg-card p-1">
+    <nav aria-label="Route Planner views" className="mb-5 inline-flex flex-wrap gap-1 rounded-panel border border-line/70 bg-card shadow-card p-1">
       {VIEWS.map((v) => (
         <Link key={v.key} href={v.key === "today" ? "/route-planner" : `/route-planner?view=${v.key}`} aria-current={view === v.key ? "page" : undefined}
-          className={`rounded-md px-3 py-1.5 text-sm font-semibold ${view === v.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink"}`}>
+          className={`rounded-xl px-3 py-1.5 text-sm font-semibold ${view === v.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink"}`}>
           {v.label}
         </Link>
       ))}
@@ -88,19 +88,19 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
       />
       <ViewNav view="today" />
 
-      <form method="get" className="mb-5 flex flex-wrap items-end gap-3 rounded-lg border border-line bg-card p-4" aria-label="Route settings">
+      <form method="get" className="mb-5 flex flex-wrap items-end gap-3 rounded-panel border border-line/70 bg-card shadow-card p-4" aria-label="Route settings">
         <label className="text-sm">
           <span className="mb-1 block font-semibold text-ink">Day</span>
           <DateInput name="date" defaultValue={date} min={addDays(today, -30)} max={addDays(today, 30)} />
         </label>
         <label className="text-sm">
           <span className="mb-1 block font-semibold text-ink">Truck</span>
-          <select name="truck" defaultValue={sp.truck ?? ""} className="h-10 rounded-md border border-line bg-card px-3 text-sm text-ink">
+          <select name="truck" defaultValue={sp.truck ?? ""} className="h-10 rounded-control border border-line bg-card px-3 text-sm text-ink">
             <option value="">All trucks</option>
             {trucks.map((t) => <option key={t.id} value={t.id}>Truck {t.unit}</option>)}
           </select>
         </label>
-        <button className="h-10 rounded-md bg-action px-4 text-sm font-semibold text-white hover:opacity-90">Show routes</button>
+        <button className="h-10 rounded-xl bg-action px-4 text-sm font-semibold text-white hover:opacity-90">Show routes</button>
       </form>
 
       {status.state !== "ready" ? (
@@ -161,7 +161,7 @@ export default async function RoutePlannerPage({ searchParams }: { searchParams:
               <Card>
                 <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3.5 sm:px-5">
                   <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-lg bg-surface text-ink"><Truck className="size-4" aria-hidden /></span>
+                    <span className="grid size-9 place-items-center rounded-2xl bg-surface text-ink"><Truck className="size-4" aria-hidden /></span>
                     <div>
                       <h2 className="font-semibold text-ink">Truck {r.unit}{r.trailer ? ` + ${r.trailer}` : ""}</h2>
                       <p className="text-xs text-muted">{r.driver} · {r.stops.length} load{r.stops.length === 1 ? "" : "s"}</p>

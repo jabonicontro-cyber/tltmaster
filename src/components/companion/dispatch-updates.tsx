@@ -30,7 +30,7 @@ export function DispatchUpdates({ items, timeZone }: { items: Array<{ id: string
       </div>
       <ul className="space-y-2">
         {items.map((n) => (
-          <li key={n.id} className="flex items-start gap-3 rounded-md bg-card px-4 py-3 text-sm ring-1 ring-line">
+          <li key={n.id} className="flex items-start gap-3 rounded-xl bg-card px-4 py-3 text-sm ring-1 ring-line">
             <BellRing className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden />
             <span className="min-w-0 flex-1"><strong className="block">{n.title}</strong><span className="text-muted">{when(n.created_at)}</span></span>
             <Button size="sm" variant="secondary" className="min-h-11" disabled={pending} onClick={() => dismiss([n.id])}>Got it</Button>

@@ -88,7 +88,7 @@ export default async function CustomerPortalPage({ searchParams }: { searchParam
       ) : null}
       <nav aria-label="Customer portal sections" className="mb-4 flex flex-wrap gap-1">
         {TABS.map((t) => (
-          <Link key={t.key} href={`/customer-portal?tab=${t.key}`} aria-current={tab === t.key ? "page" : undefined} className={cn("rounded-md px-3 py-1.5 text-sm font-semibold", tab === t.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink")}>
+          <Link key={t.key} href={`/customer-portal?tab=${t.key}`} aria-current={tab === t.key ? "page" : undefined} className={cn("rounded-xl px-3 py-1.5 text-sm font-semibold", tab === t.key ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink")}>
             {t.label}
           </Link>
         ))}
@@ -194,7 +194,7 @@ async function Inbox(canSeeQuotes: boolean, canReply: boolean, canEditQuotes: bo
                     </summary>
                     <ol className="mt-3 space-y-2">
                       {msgs.filter((m) => m.request_id === t.id).map((m, i) => (
-                        <li key={i} className={cn("rounded-md border p-2 text-sm", m.author_kind === "customer" ? "border-line bg-card" : "border-brand/30 bg-brand-light")}>
+                        <li key={i} className={cn("rounded-xl border p-2 text-sm", m.author_kind === "customer" ? "border-line bg-card" : "border-brand/30 bg-brand-light")}>
                           <p className="text-xs font-semibold text-muted">{m.author_kind === "customer" ? "Customer" : "Your team"} · {WHEN.format(new Date(m.created_at))}</p>
                           <p className="whitespace-pre-line text-ink">{m.body}</p>
                         </li>

@@ -30,7 +30,7 @@ export function PortalLoginForm({ slug, next, company }: { slug: string; next?: 
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign In"}
       </Button>
-      <details className="rounded-md bg-surface p-3 text-sm text-ink">
+      <details className="rounded-xl bg-surface p-3 text-sm text-ink">
         <summary className="cursor-pointer font-semibold">First time signing in, or forgot your password?</summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
           <li>If {company} gave you a username and a temporary password, type them here. You will then create your own password.</li>
@@ -56,7 +56,7 @@ export function AcceptInviteForm({ token, email, signedInAs }: { token: string; 
     );
   }
   if (sent) {
-    return <p role="status" className="rounded-md border border-line bg-surface p-3 text-sm text-ink">{sent}</p>;
+    return <p role="status" className="rounded-xl border border-line bg-surface p-3 text-sm text-ink">{sent}</p>;
   }
   return (
     <form onSubmit={request.onSubmit} className="space-y-4">

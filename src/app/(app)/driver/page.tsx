@@ -35,7 +35,7 @@ function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; tod
   const risk = a.site.directions_risk ?? "standard";
   const checkDirections = directionsNeedAttention(a.site.directions_status, risk);
   return (
-    <li className={cn("rounded-lg border bg-card shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
+    <li className={cn("rounded-2xl border bg-card shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
         <p className="text-2xl font-black tabular">
           {formatTime(a.load.start_time)}<span className="text-base font-semibold text-muted"> – {formatTime(a.load.end_time)}</span>
@@ -57,7 +57,7 @@ function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; tod
           </p>
         )}
         {(a.order.job_instructions || a.site.directions || a.load.notes || a.assignment_note || a.order.contact_name) && (
-          <details className="rounded-md bg-surface px-3 py-2 text-sm">
+          <details className="rounded-xl bg-surface px-3 py-2 text-sm">
             <summary className="cursor-pointer py-1 font-semibold">Instructions and directions</summary>
             <dl className="mt-1 space-y-1.5">
               {a.order.job_instructions && <div><dt className="font-semibold">Job</dt><dd className="whitespace-pre-line">{a.order.job_instructions}</dd></div>}
@@ -159,13 +159,13 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       </div>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
       {sp.sent && (
-        <p role="status" className="rounded-md bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
+        <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
       )}
 
       {reminders.length > 0 && (
         <section aria-label="Reminders" className="space-y-2">
           {reminders.map((r) => (
-            <p key={r.text} className={cn("rounded-md px-4 py-3 text-sm font-semibold ring-1", r.tone === "bad" ? "bg-red-50 text-red-900 ring-red-200" : "bg-amber-50 text-amber-950 ring-amber-200")}>{r.text}</p>
+            <p key={r.text} className={cn("rounded-xl px-4 py-3 text-sm font-semibold ring-1", r.tone === "bad" ? "bg-red-50 text-red-900 ring-red-200" : "bg-amber-50 text-amber-950 ring-amber-200")}>{r.text}</p>
           ))}
         </section>
       )}
@@ -174,7 +174,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         <section aria-label={shop.some((n) => n.equipment === "trailer") ? "Truck and trailer maintenance" : "Truck maintenance"} className="space-y-2">
           <h2 className="text-lg font-bold">{shop.some((n) => n.equipment === "trailer") ? "Truck and trailer maintenance" : "Truck maintenance"}</h2>
           {shop.map((n) => (
-            <p key={n.number} className={cn("flex gap-3 rounded-md px-4 py-3 text-sm ring-1", n.notice === "canceled" ? "bg-surface text-ink ring-line" : "bg-amber-50 text-amber-950 ring-amber-200")}>
+            <p key={n.number} className={cn("flex gap-3 rounded-xl px-4 py-3 text-sm ring-1", n.notice === "canceled" ? "bg-surface text-ink ring-line" : "bg-amber-50 text-amber-950 ring-amber-200")}>
               <Wrench className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 <strong>{n.equipment === "trailer" ? "Trailer" : "Truck"} {n.unit_number}: {n.title}</strong>

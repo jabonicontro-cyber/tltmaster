@@ -33,7 +33,7 @@ export function CompanyLifecycleControls({
         <form action={classifyCompany} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="id" value={company.id} />
           <Field label="Classification" htmlFor="classification">
-            <select id="classification" name="classification" defaultValue={company.classification} className="h-10 rounded-md border border-line bg-card px-3 text-[15px] text-ink">
+            <select id="classification" name="classification" defaultValue={company.classification} className="h-10 rounded-control border border-line bg-card px-3 text-[15px] text-ink">
               {(Object.entries(COMPANY_CLASS_LABELS) as Array<[CompanyClass, string]>).map(([k, l]) => (
                 <option key={k} value={k}>{l}</option>
               ))}

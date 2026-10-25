@@ -56,7 +56,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not done">{sp.error}</Notice></div>}
 
-      <section aria-label="Readiness" className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-line bg-card px-4 py-3 text-sm shadow-xs sm:px-5">
+      <section aria-label="Readiness" className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3 text-sm shadow-xs sm:px-5">
         <span><strong className="tabular">{work.payable.length}</strong> verified ticket{work.payable.length === 1 ? "" : "s"} not yet calculated</span>
         <span className={exceptions.length ? "font-semibold text-amber-800" : ""}><strong className="tabular">{exceptions.length}</strong> exception{exceptions.length === 1 ? "" : "s"} to resolve</span>
         <span><strong className="tabular">{work.not_payable.length}</strong> ticket{work.not_payable.length === 1 ? "" : "s"} not payable yet</span>
@@ -204,7 +204,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
                   <a href={`/payroll/periods/${period.id}/export?format=detail_csv`} className={buttonClasses("secondary")}>Download ticket detail (CSV)</a>
                 </div>
                 {exports.length > 0 && (
-                  <ul className="divide-y divide-line rounded-md border border-line text-sm">
+                  <ul className="divide-y divide-line rounded-xl border border-line text-sm">
                     {exports.map((x) => (
                       <li key={x.id} className="space-y-2 px-3 py-2">
                         <p>{x.format === "summary_csv" ? "Summary" : "Detail"} · {x.row_count} rows · {money(x.total_cents)} · {formatDateTime(x.created_at)} · <Badge tone={x.status === "accepted" ? "green" : x.status === "prepared" ? "gray" : "amber"}>{x.status}</Badge>{x.reference ? ` · ${x.reference}` : ""}</p>

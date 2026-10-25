@@ -15,7 +15,7 @@ export function UsernameField({ u, id, error }: { u: ReturnType<typeof useUserna
           <Input id={id} value={u.username} maxLength={32} autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-describedby={`${id}-status`}
             onChange={(e) => u.type(e.target.value)} />
           <button type="button" onClick={u.suggestAgain}
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-md border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-line px-3 text-sm font-semibold text-ink hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
             <RefreshCw className={`size-4 ${u.suggesting ? "animate-spin motion-reduce:animate-none" : ""}`} aria-hidden /> Suggest one
           </button>
         </div>

@@ -84,7 +84,7 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
       <p className="mb-2 text-base font-bold">Photo of the paper ticket (optional)</p>
       <ul className="space-y-2" aria-label="Ticket photos">
         {photos.map((p, i) => (
-          <li key={p.key} className={cn("flex items-center gap-3 rounded-lg border-2 bg-card p-2", p.status === "failed" ? "border-red-300" : "border-line")} aria-label={`Photo ${i + 1}`}>
+          <li key={p.key} className={cn("flex items-center gap-3 rounded-2xl border-2 bg-card p-2", p.status === "failed" ? "border-red-300" : "border-line")} aria-label={`Photo ${i + 1}`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- local preview of the photo being sent */}
             <img src={p.preview} alt={`Photo ${i + 1} preview`} className="size-16 rounded object-cover" />
             <div className="min-w-0 flex-1 text-sm">

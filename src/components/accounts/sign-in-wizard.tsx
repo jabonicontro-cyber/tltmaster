@@ -127,12 +127,12 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
       <FormError message={error} />
 
       {step === "details" ? (
-        <div className="space-y-5 rounded-lg border border-line bg-card p-4 sm:p-6">
+        <div className="space-y-5 rounded-panel border border-line/70 bg-card shadow-card p-4 sm:p-6">
           <fieldset>
             <legend className="text-sm font-semibold text-ink">What do they do?</legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-4">
               {presets.map((p) => (
-                <label key={p.id} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-md border px-3 py-2 text-sm ${preset === p.id ? "border-strong bg-surface font-semibold" : "border-line"}`}>
+                <label key={p.id} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${preset === p.id ? "border-strong bg-surface font-semibold" : "border-line"}`}>
                   <input type="radio" name="preset" value={p.id} checked={preset === p.id} onChange={() => choosePreset(p.id)} className="size-4 accent-brand" />
                   {p.label}
                 </label>
@@ -186,7 +186,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
           </div>
         </div>
       ) : (
-        <div className="space-y-4 rounded-lg border border-line bg-card p-4 sm:p-6">
+        <div className="space-y-4 rounded-panel border border-line/70 bg-card shadow-card p-4 sm:p-6">
           <h2 className="text-base font-bold text-ink">Check before creating</h2>
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">Name</dt><dd className="font-semibold text-ink">{name}</dd></div>

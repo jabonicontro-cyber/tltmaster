@@ -14,11 +14,11 @@ export default async function PortalLogin({ params, searchParams }: { params: Pr
     return <PortalUnavailable />;
   }
   return (
-    <div className="mx-auto max-w-sm rounded-lg border border-line bg-card p-6">
+    <div className="mx-auto max-w-sm rounded-panel border border-line/70 bg-card shadow-card p-6">
       <h1 className="mb-1 text-xl font-bold text-ink">Sign In</h1>
       <p className="mb-5 text-sm text-muted">to the {gate.company.name} customer portal</p>
       {gate.kind === "no-access" ? (
-        <p className="mb-4 rounded-md bg-surface p-3 text-sm text-muted">The account you are signed in with has no access here. Sign in with the email or username {gate.company.name} gave you.</p>
+        <p className="mb-4 rounded-xl bg-surface p-3 text-sm text-muted">The account you are signed in with has no access here. Sign in with the email or username {gate.company.name} gave you.</p>
       ) : null}
       <PortalLoginForm slug={slug} next={next} company={gate.company.name} />
       <p className="mt-4 text-center text-sm text-muted">No sign-in yet? Ask {gate.company.name} for one.</p>

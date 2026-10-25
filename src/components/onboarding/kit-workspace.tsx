@@ -129,7 +129,7 @@ function Overview({ kit, missing, blockers, issuesOpen, checklistHref, staff }: 
     <Card>
       <CardHeader title="Your path to go-live" description="Setup, training and testing happen before go-live. Your subscription starts at your actual go-live, per your signed agreement — not when onboarding starts or data is imported." />
       <CardBody className="space-y-4">
-        <ol className="divide-y divide-line rounded-md border border-line">
+        <ol className="divide-y divide-line rounded-xl border border-line">
           {steps.map((s, i) => (
             <li key={s.label} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm">
               <span className="font-semibold text-ink">{i + 1}. {s.label}</span>
@@ -176,7 +176,7 @@ function WelcomeEmail({ f, staff, values }: { f: ReturnType<typeof useForm>; sta
         ) : null}
         <div>
           <h3 className="mb-2 text-sm font-semibold text-ink">Preview</h3>
-          <pre className="max-h-[28rem] overflow-auto rounded-md border border-line bg-surface p-4 text-sm whitespace-pre-wrap text-ink">{rendered}</pre>
+          <pre className="max-h-[28rem] overflow-auto rounded-xl border border-line bg-surface p-4 text-sm whitespace-pre-wrap text-ink">{rendered}</pre>
           <p className="mt-2 text-xs text-muted">Anything in [brackets] still needs a value.</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -243,7 +243,7 @@ function DataImport({ templatesBase, checklistHref }: { templatesBase: string; c
         <ul className="grid gap-2 sm:grid-cols-2">
           {files.map((t) => (
             <li key={t.key}>
-              <a href={`${templatesBase}/${t.key}`} download className="flex min-h-11 items-center gap-2 rounded-md border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-surface">
+              <a href={`${templatesBase}/${t.key}`} download className="flex min-h-11 items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-surface">
                 <Download className="size-4" aria-hidden /> {t.label} template (CSV)
               </a>
             </li>
@@ -293,7 +293,7 @@ function Worksheet({ f }: { f: ReturnType<typeof useForm> }) {
         <CardBody className="space-y-4">
           {scenarios.length === 0 ? <p className="text-sm text-muted">No scenarios yet. Example: “Truck 12 is out of service → it is not proposed for tomorrow&apos;s loads.”</p> : null}
           {scenarios.map((s, i) => (
-            <fieldset key={i} className="grid gap-3 rounded-md border border-line p-3 sm:grid-cols-2">
+            <fieldset key={i} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
               <legend className="px-1 text-xs font-semibold text-muted">Scenario {i + 1}</legend>
               <Field label="Rule" htmlFor={`s_rule_${i}`}>
                 <Select id={`s_rule_${i}`} value={s.rule} onChange={(e) => setScenarios(scenarios.map((x, j) => (j === i ? { ...x, rule: e.target.value } : x)))}>
@@ -353,7 +353,7 @@ function Integrations({ f, checks, staff, config }: { f: ReturnType<typeof useFo
               </div>
               <p className="text-sm text-muted">If it fails: {d.fallback}</p>
               {staff ? (
-                <div className="grid gap-3 rounded-md bg-surface p-3 sm:grid-cols-3">
+                <div className="grid gap-3 rounded-xl bg-surface p-3 sm:grid-cols-3">
                   <Field label="Verification" htmlFor={`c_st_${d.key}`}>
                     <Select id={`c_st_${d.key}`} value={status} onChange={(e) => setCheck(d.key, { status: e.target.value, ...(e.target.value === "verified" ? { verified_at: new Date().toISOString() } : {}) })}>
                       {(Object.keys(CHECK_STATUS_LABEL) as CheckStatus[]).filter((s) => d.available ? s !== "unavailable" : ["unavailable", "not_needed", "not_started"].includes(s))
@@ -385,7 +385,7 @@ function Testing({ f }: { f: ReturnType<typeof useForm> }) {
       <CardBody className="space-y-4">
         {issues.length === 0 ? <p className="text-sm text-muted">No issues recorded.</p> : null}
         {issues.map((x, i) => (
-          <fieldset key={i} className={cn("grid gap-3 rounded-md border p-3 sm:grid-cols-4", x.critical && x.status !== "resolved" ? "border-critical" : "border-line")}>
+          <fieldset key={i} className={cn("grid gap-3 rounded-xl border p-3 sm:grid-cols-4", x.critical && x.status !== "resolved" ? "border-critical" : "border-line")}>
             <legend className="px-1 text-xs font-semibold text-muted">Issue {i + 1}{x.critical && x.status !== "resolved" ? " — blocks go-live" : ""}</legend>
             <Field label="What happened" htmlFor={`t_ti_${i}`} className="sm:col-span-2"><Input id={`t_ti_${i}`} value={x.title} maxLength={200} onChange={(e) => set(issues.map((y, j) => (j === i ? { ...y, title: e.target.value } : y)))} /></Field>
             <Field label="Owner" htmlFor={`t_ow_${i}`}><Input id={`t_ow_${i}`} value={x.owner} maxLength={120} onChange={(e) => set(issues.map((y, j) => (j === i ? { ...y, owner: e.target.value } : y)))} /></Field>
@@ -452,7 +452,7 @@ function GoLive({ f, kit, staff, blockers, canSign, sign }: { f: ReturnType<type
         <CardHeader title="Sign-off" description="A recorded confirmation with your typed name, not a digital signature. Both the company owner and Taviron sign the same version." />
         <CardBody className="space-y-4">
           {blockers.length ? (
-            <div role="status" className="rounded-md border border-line bg-surface p-3 text-sm">
+            <div role="status" className="rounded-xl border border-line bg-surface p-3 text-sm">
               <p className="font-semibold text-ink">Not ready to sign:</p>
               <ul className="mt-1 list-disc pl-5 text-ink">{blockers.map((b) => <li key={b}>{b}</li>)}</ul>
             </div>
@@ -512,7 +512,7 @@ function After({ f, live }: { f: ReturnType<typeof useForm>; live: boolean }) {
       <CardHeader title="After launch" description={live ? "Follow-ups after going live." : "These follow-ups start once the company is live."} />
       <CardBody className="space-y-3">
         {list.map((x, i) => (
-          <div key={i} className="grid gap-2 rounded-md border border-line p-3 sm:grid-cols-[1fr_16rem]">
+          <div key={i} className="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_16rem]">
             <Checkbox label={x.title} checked={x.done} onChange={(e) => set(list.map((y, j) => (j === i ? { ...y, done: e.currentTarget.checked } : y)))} />
             <Input aria-label={`Notes: ${x.title}`} value={x.notes} maxLength={500} placeholder="Notes" onChange={(e) => set(list.map((y, j) => (j === i ? { ...y, notes: e.target.value } : y)))} />
           </div>

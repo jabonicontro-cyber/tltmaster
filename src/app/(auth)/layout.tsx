@@ -11,11 +11,11 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
         <div className="w-full max-w-sm">
           <div className="mb-8 flex justify-center">
             {/* The public website, in the same tab — not the app or this page. */}
-            <a href={PUBLIC_WEBSITE_URL} aria-label="Taviron website" className="rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
+            <a href={PUBLIC_WEBSITE_URL} aria-label="Taviron website" className="rounded-xl focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white">
               <BrandMark className="scale-125" />
             </a>
           </div>
-          <div className="rounded-lg bg-card p-6 shadow-xl">{children}</div>
+          <div className="rounded-2xl bg-card p-6 shadow-xl">{children}</div>
           <p className="mt-6 text-center text-xs text-white/50">{PRODUCT_NAME} · Authorized users only</p>
         </div>
       </main>

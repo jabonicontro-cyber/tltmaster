@@ -38,7 +38,7 @@ export default async function PortalHelp({ params, searchParams }: { params: Pro
         <h1 className="text-2xl font-bold text-ink">Help</h1>
         <form role="search" className="w-full sm:w-72">
           <label htmlFor="help-q" className="sr-only">Search help</label>
-          <input id="help-q" name="q" defaultValue={q} placeholder="Search help…" className="h-10 w-full rounded-md border border-line bg-card px-3 text-[15px] text-ink" />
+          <input id="help-q" name="q" defaultValue={q} placeholder="Search help…" className="h-10 w-full rounded-control border border-line bg-card px-3 text-[15px] text-ink" />
         </form>
       </div>
 
@@ -46,7 +46,7 @@ export default async function PortalHelp({ params, searchParams }: { params: Pro
         <section key={cat} aria-labelledby={`cat-${cat}`} className="space-y-3">
           <h2 id={`cat-${cat}`} className="text-sm font-semibold text-muted">{cat}</h2>
           {own.filter((a) => a.category === cat).map((a) => (
-            <details key={a.id} className="rounded-lg border border-line bg-card p-4">
+            <details key={a.id} className="rounded-panel border border-line/70 bg-card shadow-card p-4">
               <summary className="cursor-pointer font-semibold text-ink">{a.title}</summary>
               <div className="mt-3 space-y-3">
                 <p className="text-sm whitespace-pre-line text-ink">{a.body}</p>
@@ -60,7 +60,7 @@ export default async function PortalHelp({ params, searchParams }: { params: Pro
       <section aria-labelledby="general-help" className="space-y-3">
         <h2 id="general-help" className="text-sm font-semibold text-muted">Using This Portal</h2>
         {general.map((a) => (
-          <details key={a.id} className="rounded-lg border border-line bg-card p-4">
+          <details key={a.id} className="rounded-panel border border-line/70 bg-card shadow-card p-4">
             <summary className="cursor-pointer font-semibold text-ink">{a.title}</summary>
             <p className="mt-3 text-sm whitespace-pre-line text-ink">{a.body}</p>
           </details>
@@ -69,7 +69,7 @@ export default async function PortalHelp({ params, searchParams }: { params: Pro
 
       {own.length + general.length === 0 ? <p className="text-sm text-muted">Nothing matches “{q}”.</p> : null}
 
-      <p className="rounded-md bg-surface p-4 text-sm text-ink">
+      <p className="rounded-xl bg-surface p-4 text-sm text-ink">
         Still have a question?{" "}
         {gate.kind === "customer" && gate.context.features.support ? (
           <Link href={`/portal/${slug}/support/new`} className="font-semibold text-brand-fg hover:underline">Ask {companyName}</Link>

@@ -68,7 +68,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       <ReturnLink back={returnTo ?? undefined} />
       {queue && <QueueKeys nextHref={queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null} prevHref={queue.prevId ? queueHref(queue.prevId) : null} />}
       {queue && (
-        <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-md border border-line bg-card px-3 py-2 text-sm">
+        <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-control border border-line bg-card px-3 py-2 text-sm">
           <span className="font-semibold">
             {queue.position ? `Review queue: ${queue.position} of ${queue.total}` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
           </span>
@@ -226,7 +226,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                     const rev = revisions.find((r) => r.id === p.ticket_id)?.revision;
                     return (
                       <li key={p.id}>
-                        <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-md border border-line hover:border-strong">
+                        <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-line hover:border-strong">
                           {/* eslint-disable-next-line @next/next/no-img-element -- served through an authorized, short-lived link */}
                           <img src={`/tickets/photos/${p.id}`} alt={`Paper ticket photo ${i + 1}`} loading="lazy" className="aspect-[3/4] w-full bg-surface object-cover" />
                         </a>

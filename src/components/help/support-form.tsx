@@ -18,7 +18,7 @@ export function SupportForm({ from, article }: { from: string; article?: string 
     return (
       <form action={sendSupportRequest} className="space-y-4">
         <h2 className="text-base font-semibold">Review Before Sending</h2>
-        <div className="rounded-md border border-line bg-surface p-3">
+        <div className="rounded-xl border border-line bg-surface p-3">
           <p className="text-sm font-semibold text-muted">Message</p>
           <p className="mt-1 text-[15px] whitespace-pre-wrap">{message.trim()}</p>
           <p className="mt-3 text-sm font-semibold text-muted">Also sent</p>
@@ -38,7 +38,7 @@ export function SupportForm({ from, article }: { from: string; article?: string 
     <div className="space-y-4">
       <div className="space-y-1">
         <label htmlFor="support-message" className="block text-sm font-semibold">What do you need help with?</label>
-        <textarea id="support-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={4000} rows={6} className="w-full rounded-md border border-line bg-card px-3 py-2 text-[15px] text-ink" />
+        <textarea id="support-message" value={message} onChange={(e) => setMessage(e.target.value)} maxLength={4000} rows={6} className="w-full rounded-control border border-line bg-card px-3 py-2 text-[15px] text-ink" />
         <p className="text-sm text-muted">Do not include passwords or card numbers.</p>
       </div>
       {from ? (

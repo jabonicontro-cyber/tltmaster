@@ -31,7 +31,7 @@ export default async function ContactSupportPage({ searchParams }: { searchParam
       {mine && mine.length ? (
         <section aria-labelledby="my-requests" className="mt-6">
           <h2 id="my-requests" className="mb-2 text-base font-semibold">Your Recent Requests</h2>
-          <ul className="divide-y divide-line rounded-lg border border-line bg-card text-sm">
+          <ul className="divide-y divide-line rounded-panel border border-line/70 bg-card shadow-card text-sm">
             {mine.map((r) => (
               <li key={r.id} className="px-4 py-3">
                 <span className="text-muted">{formatDateTime(r.created_at)} · {r.status === "new" ? "Waiting for Taviron" : r.status === "answered" ? "Answered" : "Closed"}</span>

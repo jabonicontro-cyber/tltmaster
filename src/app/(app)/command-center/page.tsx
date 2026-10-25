@@ -339,7 +339,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {/* Pinned status strip: not movable, not collapsible, urgent counts always visible. */}
       {ops &&
         (s ? (
-          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-lg border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
+          <section aria-label="Attention summary" className={cn("mb-6 flex flex-wrap items-center gap-x-5 gap-y-2 rounded-2xl border border-line border-l-4 bg-card px-4 py-3 shadow-xs sm:px-5", s.exceptions.urgent > 0 ? "border-l-critical" : s.exceptions.total > 0 ? "border-l-amber-400" : "border-l-green-500")}>
             <p className="text-base font-semibold text-ink">
               {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
             </p>

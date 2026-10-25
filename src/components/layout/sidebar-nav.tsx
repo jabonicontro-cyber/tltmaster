@@ -25,7 +25,7 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
         return (
           <Fragment key={item.href}>
           {heading && (
-            <p className={cn("relative mt-4 mb-1 h-4 px-3 text-[11px] font-semibold tracking-[0.08em] whitespace-nowrap text-white/40 uppercase")}>
+            <p className={cn("relative mt-5 mb-1.5 h-4 px-3 text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-white/40 uppercase")}>
               <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-0" : "opacity-100")}>{heading}</span>
               <span className={cn("absolute inset-x-3 top-1/2 h-px bg-white/10 transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-100" : "opacity-0")} aria-hidden />
             </p>
@@ -37,15 +37,15 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
             // Tooltip on the collapsed rail (the accessible name is the visible label either way).
             title={collapsed ? item.label + (item.planned ? " (planned)" : "") : undefined}
             className={cn(
-              "group relative flex min-h-10 items-center gap-3 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-              active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/[0.06] hover:text-white",
+              "group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150",
+              // The current page is a solid light pill: the clearest "you are here" on any navigation colour.
+              active ? "bg-white text-charcoal shadow-xs" : "text-white/70 hover:bg-white/[0.07] hover:text-white",
             )}
           >
-            <span className={cn("absolute top-1.5 bottom-1.5 -left-2 w-1 rounded-r bg-brand", active ? "opacity-100" : "opacity-0")} aria-hidden />
-            <Icon className={cn("size-[18px] shrink-0", active ? "text-white" : "text-white/55 group-hover:text-white/85")} aria-hidden />
+                        <Icon className={cn("size-[18px] shrink-0", active ? "text-charcoal" : "text-white/55 group-hover:text-white/85")} aria-hidden />
             <span className={cn("flex-1 truncate transition-opacity duration-150 motion-reduce:transition-none", collapsed && "opacity-0")}>{item.label}</span>
             {item.planned && !collapsed && (
-              <span className="rounded border border-white/15 px-1.5 py-px text-[10px] font-medium tracking-wide text-white/55 uppercase">
+              <span className={cn("rounded-full border px-1.5 py-px text-[10px] font-medium tracking-wide uppercase", active ? "border-charcoal/20 text-charcoal/60" : "border-white/15 text-white/55")}>
                 Coming soon
               </span>
             )}

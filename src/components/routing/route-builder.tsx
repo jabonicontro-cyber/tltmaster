@@ -121,7 +121,7 @@ export function RouteBuilder({
   return (
     <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <section aria-labelledby="stops-title" className="space-y-4">
-        <div className="rounded-lg border border-line bg-card p-4">
+        <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 id="stops-title" className="font-semibold text-ink">Stops</h2>
             {saved.length > 0 && (
@@ -136,7 +136,7 @@ export function RouteBuilder({
           ) : (
             <ol className="space-y-2" aria-label="Stops in order">
               {stops.map((s, i) => (
-                <li key={s.key} className="flex items-start gap-2 rounded-md border border-line bg-surface p-2">
+                <li key={s.key} className="flex items-start gap-2 rounded-xl border border-line bg-surface p-2">
                   <span className="mt-1 grid size-6 shrink-0 place-items-center rounded-full bg-strong text-xs font-bold text-white">{i + 1}</span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-ink">{s.label}</p>
@@ -157,7 +157,7 @@ export function RouteBuilder({
           )}
         </div>
 
-        <div className="space-y-3 rounded-lg border border-line bg-card p-4">
+        <div className="space-y-3 rounded-panel border border-line/70 bg-card shadow-card p-4">
           <h3 className="text-sm font-semibold text-ink">Add a place</h3>
           <Select aria-label="Saved location or customer site" value={pick} onChange={(e) => {
             const [kind, id] = e.target.value.split(":");
@@ -180,7 +180,7 @@ export function RouteBuilder({
           <AddressSearch routingReady={routingReady} tiles={tiles} pickLabel="Add to route" onPick={(p) => add({ key: nextKey(), kind: "point", label: p.label, point: p.point, serviceMinutes: 0 })} />
         </div>
 
-        <div className="space-y-3 rounded-lg border border-line bg-card p-4">
+        <div className="space-y-3 rounded-panel border border-line/70 bg-card shadow-card p-4">
           <Field label="Truck" htmlFor="route-truck" hint={truck ? (hasVehicleProfile(truck.vehicle) ? "Its recorded height, width, length, weight and axles go to the routing provider." : "This truck has no recorded dimensions: the provider's standard truck is used.") : "Without a truck, the provider's standard truck is used."}>
             <Select id="route-truck" value={truckId} onChange={(e) => { setTruckId(e.target.value); setResult(null); }}>
               <option value="">No specific truck</option>
@@ -208,7 +208,7 @@ export function RouteBuilder({
       <section aria-labelledby="result-title" className="min-w-0 space-y-4">
         <h2 id="result-title" className="sr-only">Route</h2>
         {mapStops.length > 0 ? <RouteMap stops={mapStops} line={route?.line ?? []} tiles={tiles} title="Route map" /> : (
-          <div className="grid aspect-video place-items-center rounded-lg border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
+          <div className="grid aspect-video place-items-center rounded-2xl border border-dashed border-line bg-card p-6 text-center text-sm text-muted">
             <div><RouteIcon className="mx-auto mb-2 size-6" aria-hidden />Add two or more places to see the route.</div>
           </div>
         )}
@@ -222,11 +222,11 @@ function RouteSummary({ result, route, routeIndex, setRouteIndex }: { result: Pl
   const critical = route?.notices.filter((n) => n.severity === "critical") ?? [];
   const info = route?.notices.filter((n) => n.severity === "info") ?? [];
   return (
-    <div className="space-y-3 rounded-lg border border-line bg-card p-4">
+    <div className="space-y-3 rounded-panel border border-line/70 bg-card shadow-card p-4">
       {result.routes && result.routes.length > 1 && (
         <div role="tablist" aria-label="Route options" className="flex flex-wrap gap-2">
           {result.routes.map((r, i) => (
-            <button key={i} role="tab" aria-selected={i === routeIndex} onClick={() => setRouteIndex(i)} className={`rounded-md border px-3 py-1.5 text-sm ${i === routeIndex ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:bg-surface"}`}>
+            <button key={i} role="tab" aria-selected={i === routeIndex} onClick={() => setRouteIndex(i)} className={`rounded-xl border px-3 py-1.5 text-sm ${i === routeIndex ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:bg-surface"}`}>
               {i === 0 ? "Provider's choice" : `Alternative ${i}`} · {r.miles} mi · {formatMinutes(r.minutes)}
             </button>
           ))}
@@ -254,7 +254,7 @@ function RouteSummary({ result, route, routeIndex, setRouteIndex }: { result: Pl
       )}
       {result.roadMissing && <p className="text-sm text-muted">Road routing: {result.roadMissing}</p>}
       {critical.length > 0 && (
-        <div role="alert" className="rounded-md border border-critical/40 bg-critical/5 p-3 text-sm text-critical">
+        <div role="alert" className="rounded-xl border border-critical/40 bg-critical/5 p-3 text-sm text-critical">
           <p className="font-semibold">The provider reports restrictions this route could not avoid:</p>
           <ul className="mt-1 list-disc pl-5">{critical.map((n) => <li key={n.text}>{n.text}</li>)}</ul>
         </div>

@@ -27,7 +27,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
         <Link href={`/portal/${slug}/orders/${id}`} className="text-muted hover:text-ink hover:underline">← Order {t.order.number}</Link>
         <PrintButton />
       </div>
-      <article className="force-light rounded-lg border border-line bg-card p-6 text-ink">
+      <article className="force-light rounded-panel border border-line/70 bg-card shadow-card p-6 text-ink">
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">
           <div>
             <p className="text-lg font-bold">{t.company.name}</p>

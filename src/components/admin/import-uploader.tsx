@@ -73,7 +73,7 @@ export function ImportUploader({ companyId, initial }: {
           </Select>
         </Field>
         <Field label="Spreadsheet file (CSV)" htmlFor="import-file" hint="From Excel or Google Sheets, save or download as CSV. The first row must be the column names.">
-          <input id="import-file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange={onFile} className="block w-full text-sm file:mr-3 file:rounded-md file:border-0 file:bg-strong file:px-3 file:py-2 file:font-semibold file:text-white" />
+          <input id="import-file" type="file" accept=".csv,.tsv,.txt,text/csv" onChange={onFile} className="block w-full text-sm file:mr-3 file:rounded-xl file:border-0 file:bg-strong file:px-3 file:py-2 file:font-semibold file:text-white" />
         </Field>
       </div>
       <FormError message={readError} />
@@ -111,7 +111,7 @@ export function ImportUploader({ companyId, initial }: {
                 <strong>{rows.length}</strong> rows · <strong>{rows.length - withErrors}</strong> pass the first checks · <strong className={withErrors ? "text-red-700" : undefined}>{withErrors}</strong> need fixing.
                 Duplicates are checked against the company&apos;s records on the next step.
               </p>
-              <div className="max-h-80 overflow-auto rounded-md border border-line bg-card">
+              <div className="max-h-80 overflow-auto rounded-control border border-line bg-card">
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-surface">
                     <tr>

@@ -30,7 +30,7 @@ export function PeoplePicker({ people, selected, onChange, multiple = true, excl
   return (
     <div className="space-y-2">
       <Input type="search" placeholder="Search people…" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
-      <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-md border border-line" role="listbox" aria-multiselectable={multiple}>
+      <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-xl border border-line" role="listbox" aria-multiselectable={multiple}>
         {shown.length === 0 && <li className="px-3 py-3 text-sm text-muted">Nobody matches.</li>}
         {shown.map((p) => {
           const on = selected.includes(p.user_id);

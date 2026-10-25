@@ -140,7 +140,7 @@ export function DocumentRowActions({ vehicle, doc, canVerify = false }: { vehicl
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
-  if (editing) return <div className="mt-3 rounded-md border border-line p-3"><DocumentForm vehicle={vehicle} doc={doc} onDone={() => setEditing(false)} /></div>;
+  if (editing) return <div className="mt-3 rounded-xl border border-line p-3"><DocumentForm vehicle={vehicle} doc={doc} onDone={() => setEditing(false)} /></div>;
   return (
     <div className="flex gap-1">
       {canVerify && (

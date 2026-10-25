@@ -24,8 +24,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label: string; value: ReactNode; sub?: ReactNode; href: string; warn?: boolean }) {
   return (
     <Link href={href} className="block h-full">
-      <div className="flex h-full items-start gap-3 rounded-lg border border-line bg-card p-4 transition-colors hover:border-strong/40">
-        <div className={cn("rounded-md p-2", warn ? "bg-amber-50 text-amber-800" : "bg-surface text-ink")}>{icon}</div>
+      <div className="flex h-full items-start gap-3 rounded-panel border border-line/70 bg-card shadow-card p-4 transition-colors hover:border-strong/40">
+        <div className={cn("rounded-xl p-2", warn ? "bg-amber-50 text-amber-800" : "bg-surface text-ink")}>{icon}</div>
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-medium text-muted">{warn && <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />}{label}</p>
           <p className="text-2xl font-semibold tracking-tight text-ink tabular">{value}</p>

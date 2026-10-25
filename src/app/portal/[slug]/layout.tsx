@@ -28,12 +28,12 @@ export default async function PortalLayout({ children, params }: { children: Rea
     <div className="app-root min-h-dvh bg-surface text-ink" style={style}>
       <header className="border-b border-line bg-card">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-4">
-          <Link href={`/portal/${slug}`} className="flex min-w-0 items-center gap-3 rounded-md focus-visible:outline-2 focus-visible:outline-strong">
+          <Link href={`/portal/${slug}`} className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-strong">
             {company?.logo ? (
               // eslint-disable-next-line @next/next/no-img-element -- a data URL from the company's settings
               <img src={company.logo} alt="" className="h-9 w-auto max-w-[8rem] object-contain" />
             ) : company?.name ? (
-              <span aria-hidden className="flex size-9 items-center justify-center rounded-md bg-brand text-sm font-bold text-white">
+              <span aria-hidden className="flex size-9 items-center justify-center rounded-xl bg-brand text-sm font-bold text-white">
                 {company.name.slice(0, 1)}
               </span>
             ) : null}
@@ -44,7 +44,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
               <span className="hidden truncate text-sm text-muted sm:inline">{gate.context.customer.name}</span>
               <form action={signOutOfPortal}>
                 <input type="hidden" name="slug" value={slug} />
-                <button type="submit" className="rounded-md px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">
+                <button type="submit" className="rounded-xl px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">
                   Sign out
                 </button>
               </form>

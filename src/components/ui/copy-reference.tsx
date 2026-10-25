@@ -18,7 +18,7 @@ export function CopyReference({ value, label = "reference" }: { value: string; l
           setCopied(false);
         }
       }}
-      className="inline-flex size-8 items-center justify-center rounded-md text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong"
+      className="inline-flex size-8 items-center justify-center rounded-xl text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong"
       aria-label={copied ? `Copied ${value}` : `Copy ${label} ${value}`}
       title={copied ? "Copied" : `Copy ${value}`}
     >

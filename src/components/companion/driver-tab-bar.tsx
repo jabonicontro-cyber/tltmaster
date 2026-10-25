@@ -16,15 +16,15 @@ export function DriverTabBar({ permissions, kind = "driver" }: { permissions: re
   const path = usePathname() ?? "";
   const tabs = kind === "mechanic" ? mechanicTabs(permissions) : driverTabs(permissions);
   return (
-    <nav aria-label={kind === "mechanic" ? "Mechanic tabs" : "Driver tabs"} className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-card pb-[env(safe-area-inset-bottom)] md:hidden">
-      <ul className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+    <nav aria-label={kind === "mechanic" ? "Mechanic tabs" : "Driver tabs"} className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-30 rounded-full border border-line/70 bg-card/90 p-1.5 shadow-float backdrop-blur-md md:hidden">
+      <ul className="grid gap-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
           const Icon = ICONS[t.href] ?? Route;
           const active = t.match(path);
           return (
             <li key={t.href}>
               <Link href={t.href} aria-current={active ? "page" : undefined}
-                className={cn("flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold", active ? "text-brand-fg" : "text-muted")}>
+                className={cn("flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-semibold transition-colors duration-150", active ? "bg-strong text-white" : "text-muted active:bg-surface")}>
                 <Icon className="size-5" aria-hidden />
                 {t.label}
               </Link>

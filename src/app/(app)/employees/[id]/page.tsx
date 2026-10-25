@@ -101,7 +101,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                 {driver.qualifications.length === 0 ? (
                   <p className="text-sm text-muted">No qualifications recorded. Add them on the driver record.</p>
                 ) : (
-                  <ul className="divide-y divide-line rounded-md border border-line" aria-label="Qualifications">
+                  <ul className="divide-y divide-line rounded-xl border border-line" aria-label="Qualifications">
                     {driver.qualifications.map((q) => {
                       const expired = q.expires_on !== null && q.expires_on < today;
                       return (

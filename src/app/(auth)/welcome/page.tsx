@@ -39,7 +39,7 @@ export default async function WelcomePage() {
           Ask {setup.company ?? "your administrator"} for a new sign-in sheet. The new one replaces this temporary password.
         </p>
         <SignOutForm slug={setup.kind === "portal" ? setup.slug ?? null : null}>
-          <button type="submit" className="w-full rounded-md border border-line px-4 py-3 text-base font-semibold text-ink hover:bg-surface">Sign out</button>
+          <button type="submit" className="w-full rounded-xl border border-line px-4 py-3 text-base font-semibold text-ink hover:bg-surface">Sign out</button>
         </SignOutForm>
       </div>
     );

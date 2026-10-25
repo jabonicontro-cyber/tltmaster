@@ -81,7 +81,7 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
           <CardBody>
             {fromDocument && "error" in fromDocument ? <p role="alert" className="mb-3 text-sm text-critical">{fromDocument.error}</p> : null}
             {fromDocument && !("error" in fromDocument) ? (
-              <p className="mb-3 rounded-md border border-line bg-surface p-3 text-sm text-ink">
+              <p className="mb-3 rounded-xl border border-line bg-surface p-3 text-sm text-ink">
                 Opened <strong>{fromDocument.fileName}</strong> from the company&apos;s onboarding checklist. Check the columns and the preview; staging creates nothing until you approve the batch.
               </p>
             ) : null}

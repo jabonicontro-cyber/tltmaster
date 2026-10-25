@@ -59,7 +59,7 @@ export function RouteMap({ stops, line = [], tiles, title, connect = true }: { s
   }
   const linePts = sample(line).map((p) => px(p).join(",")).join(" ");
   return (
-    <figure className="overflow-hidden rounded-lg border border-line bg-surface">
+    <figure className="overflow-hidden rounded-2xl border border-line bg-surface">
       <div className="relative w-full" style={{ aspectRatio: `${W} / ${H}` }}>
         {tileImgs.map((t) => (
           // eslint-disable-next-line @next/next/no-img-element -- map tiles from our own tile proxy, positioned by hand

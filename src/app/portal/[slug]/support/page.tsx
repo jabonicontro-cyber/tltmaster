@@ -23,7 +23,7 @@ export default async function PortalSupport({ params }: { params: Promise<{ slug
         <ul className="space-y-2">
           {rows.map((r) => (
             <li key={r.id}>
-              <Link href={`/portal/${slug}/support/${r.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-card p-4 hover:border-strong focus-visible:outline-2 focus-visible:outline-strong">
+              <Link href={`/portal/${slug}/support/${r.id}`} className="flex flex-wrap items-center justify-between gap-2 rounded-panel border border-line/70 bg-card shadow-card p-4 hover:border-strong focus-visible:outline-2 focus-visible:outline-strong">
                 <span>
                   <span className="block font-semibold text-ink">{r.subject}</span>
                   <span className="block text-sm text-muted">{r.order_number ? `Order ${r.order_number} · ` : ""}Updated {formatDay(r.updated_at)}</span>
