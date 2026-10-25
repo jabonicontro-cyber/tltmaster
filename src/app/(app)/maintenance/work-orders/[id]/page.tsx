@@ -5,6 +5,7 @@ import { Pencil } from "lucide-react";
 import { fmtMoney, fmtNum, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
 import { ClearanceActions, CostForm, RemoveCostButton, StatusActions } from "@/components/maintenance/work-order-actions";
 import { CrewPanel, TaskChecklist } from "@/components/maintenance/crew-panel";
+import { EstimateForm } from "@/components/maintenance/shop-forms";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -96,7 +97,12 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
             <div className="grid gap-5 xl:grid-cols-2">
               <Card>
                 <CardHeader title="Crew and labor" description="Who is working on it and the time they logged. Labor hours come from this time." />
-                <CardBody><CrewPanel workOrderId={wo.id} status={wo.status} data={crew} me={access.userId} canManage={manage} today={today} timeZone={timezone} /></CardBody>
+                <CardBody className="space-y-4">
+                  {"estimated_hours" in wo && (manage && editable
+                    ? <EstimateForm workOrderId={wo.id} hours={(wo as { estimated_hours: number | null }).estimated_hours} />
+                    : <p className="text-sm text-muted">Estimate: {(wo as { estimated_hours: number | null }).estimated_hours ?? "not set"}{(wo as { estimated_hours: number | null }).estimated_hours ? " h" : ""}</p>)}
+                  <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} me={access.userId} canManage={manage} today={today} timeZone={timezone} />
+                </CardBody>
               </Card>
               <Card>
                 <CardHeader title="Checklist" />

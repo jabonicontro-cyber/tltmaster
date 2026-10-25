@@ -60,6 +60,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("maintenance", await maintenance(db, today, trucks));
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
+  note("shop capacity", await shopCapacity(db));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
@@ -811,5 +812,28 @@ async function maintenanceCrews(db: Db, today: string): Promise<number> {
     if (!r.error) { ids.push(r.data as string); n++; }
   }
   for (const id of ids.slice(0, 2)) await db.rpc("maintenance_set_task", { p_task: id, p_status: "done" });
+  return n;
+}
+
+
+/**
+ * Shop capacity (20261120003000): a two-bay shop open 7:00–15:30 Monday to Friday, estimates on open work orders that
+ * have none (one left without, to show the warning), and the demo owner's skills. Only while the demo has no shop set.
+ */
+async function shopCapacity(db: Db): Promise<number> {
+  const shop = await db.from("maintenance_shop_settings").select("company_id").maybeSingle();
+  if (shop.error || shop.data) return 0;
+  const saved = await db.rpc("maintenance_save_shop", { p_bays: 2, p_shift_start: "07:00", p_shift_end: "15:30", p_work_days: [1, 2, 3, 4, 5] });
+  if (saved.error) return 0;
+  let n = 1;
+  const open = ((await db.from("work_orders").select("id, category").is("estimated_hours", null).not("status", "in", "(completed,closed,canceled)").order("created_at")).data ?? []) as Array<{ id: string; category: string }>;
+  const hours: Record<string, number> = { brakes: 6, tires: 3, electrical: 2.5, inspection: 2, preventive: 1.5, engine: 8 };
+  for (const w of open.slice(0, Math.max(0, open.length - 1))) {
+    const r = await db.rpc("maintenance_set_estimate", { p_wo: w.id, p_hours: hours[w.category] ?? 4 });
+    if (!r.error) n++;
+  }
+  const { userId } = await demoCompany(db);
+  const skills = await db.rpc("maintenance_set_skills", { p_user: userId, p_categories: ["brakes", "tires", "preventive", "inspection"] });
+  if (!skills.error) n++;
   return n;
 }

@@ -61,3 +61,35 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await expect(page.getByText("Labor time").first()).toBeVisible();
   await expect(page.getByText("Task added: Cage the spring brake")).toBeVisible();
 });
+
+test("shop capacity: set up the shop, record skills, and estimate a job", async ({ page }) => {
+  await signIn(page, "owner");
+  await page.goto("/maintenance/shop");
+  await expect(page.getByRole("link", { name: "Shop capacity" })).toHaveAttribute("aria-current", "page");
+  const form = page.getByRole("form", { name: "Shop settings" });
+  await form.getByLabel("Service bays").fill("3");
+  await form.getByRole("button", { name: /Set up the shop|Save shop settings/ }).click();
+  await expectToast(page, "Shop settings saved.");
+  await expect(page.getByRole("table")).toContainText("Mechanics");
+  await expect(page.getByRole("table")).toContainText("/ 3");
+
+  // A skill for the mechanic.
+  const skills = page.getByRole("group", { name: `${USERS.mechanic.name}'s skills` });
+  const brakes = skills.getByRole("button", { name: "Brakes" });
+  const wasOn = (await brakes.getAttribute("aria-pressed")) === "true";
+  await brakes.click();
+  await page.getByRole("listitem").filter({ has: skills }).getByRole("button", { name: "Save" }).click();
+  await expectToast(page, "Skills saved.");
+  await expect(brakes).toHaveAttribute("aria-pressed", wasOn ? "false" : "true");
+
+  // An estimate on a work order.
+  const { id } = await asUser(USERS.owner.email, async (q) => {
+    const truck = (await q("select id from public.trucks where active order by unit_number limit 1")).rows[0].id as string;
+    return { id: (await q("select public.maintenance_create_work_order($1::jsonb) r", [JSON.stringify({ truck_id: truck, title: `Estimate ${unique()}`, category: "tires" })])).rows[0].r.id as string };
+  });
+  await page.goto(`/maintenance/work-orders/${id}`);
+  await page.getByLabel("Estimated hours").fill("3.5");
+  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  await expectToast(page, "Estimate saved.");
+  await expect(page.getByText("Estimate: 3.5 h")).toBeVisible();
+});

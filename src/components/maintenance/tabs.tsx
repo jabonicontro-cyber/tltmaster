@@ -6,6 +6,7 @@ const TABS = [
   { key: "work-orders", label: "Work orders", href: "/maintenance/work-orders" },
   { key: "clearance", label: "Clearance queue", href: "/maintenance/clearance" },
   { key: "preventive", label: "Preventive", href: "/maintenance/preventive" },
+  { key: "shop", label: "Shop capacity", href: "/maintenance/shop" },
 ] as const;
 
 export function MaintenanceTabs({ active }: { active: (typeof TABS)[number]["key"] }) {

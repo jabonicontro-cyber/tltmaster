@@ -102,3 +102,40 @@ export async function listShopWorkload(openWorkOrderIds: string[], weekStartIso:
     mechanics: [...byId.values()].sort((a, b) => Number(Boolean(b.working)) - Number(Boolean(a.working)) || (b.leadJobs + b.helperJobs) - (a.leadJobs + a.helperJobs) || a.name.localeCompare(b.name)),
   };
 }
+
+export interface CapacityDay {
+  date: string;
+  working_day: boolean;
+  mechanics: number;
+  available_hours: number;
+  planned_hours: number;
+  jobs: number;
+  unestimated: number;
+  bays: number;
+  skill_gaps: Array<{ id: string; number: string; category: string }>;
+}
+
+export type ShopCapacity =
+  | { installed: false }
+  | { installed: true; configured: false }
+  | { installed: true; configured: true; bays: number; shift_start: string; shift_end: string; work_days: number[]; skills_recorded: boolean; days: CapacityDay[] };
+
+/** The shop's daily capacity (20261120003000): available mechanic-hours against estimated scheduled work and bays. */
+export async function getShopCapacity(from: string, days: number): Promise<ShopCapacity> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("maintenance_capacity", { p_from: from, p_days: days });
+  if (error) {
+    if (MISSING.has(error.code ?? "")) return { installed: false };
+    throw new Error(`Could not load shop capacity: ${error.message}`);
+  }
+  return { installed: true, ...(data as { configured: boolean }) } as ShopCapacity;
+}
+
+/** Each mechanic's recorded skills (work order categories). */
+export async function listMechanicSkills(): Promise<Map<string, string[]>> {
+  const supabase = await createClient();
+  const { data } = await supabase.from("mechanic_skills").select("user_id, category");
+  const out = new Map<string, string[]>();
+  for (const r of (data ?? []) as Array<{ user_id: string; category: string }>) out.set(r.user_id, [...(out.get(r.user_id) ?? []), r.category]);
+  return out;
+}

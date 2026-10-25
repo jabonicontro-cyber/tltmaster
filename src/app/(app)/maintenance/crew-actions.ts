@@ -114,3 +114,40 @@ export async function setTask(input: { workOrderId: string; taskId: string; stat
     return call("maintenance_set_task", { p_task: p.data.taskId, p_status: p.data.status }, p.data.workOrderId, "Task updated.");
   });
 }
+
+const shopInput = z.object({
+  bays: z.coerce.number().int().min(1, "Enter at least 1 bay.").max(100),
+  shiftStart: z.string().regex(/^\d{2}:\d{2}$/, "Enter the shift start."),
+  shiftEnd: z.string().regex(/^\d{2}:\d{2}$/, "Enter the shift end."),
+  workDays: z.array(z.coerce.number().int().min(1).max(7)).min(1, "Choose at least one working day."),
+});
+
+/** Shop bays, shift and working days (20261120003000). */
+export async function saveShop(input: z.input<typeof shopInput>): Promise<ActionResult> {
+  return guard(async () => {
+    const p = shopInput.safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Check the shop settings.");
+    return call("maintenance_save_shop", { p_bays: p.data.bays, p_shift_start: p.data.shiftStart, p_shift_end: p.data.shiftEnd, p_work_days: p.data.workDays }, undefined, "Shop settings saved.");
+  });
+}
+
+const CATEGORIES = ["preventive", "repair", "inspection", "brakes", "tires", "engine", "electrical", "hydraulics", "body", "other"] as const;
+
+export async function saveSkills(input: { userId: string; categories: string[] }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = z.object({ userId: uuid, categories: z.array(z.enum(CATEGORIES)) }).safeParse(input);
+    if (!p.success) return fail("Invalid skills.");
+    return call("maintenance_set_skills", { p_user: p.data.userId, p_categories: p.data.categories }, undefined, "Skills saved.");
+  });
+}
+
+export async function setEstimate(input: { workOrderId: string; hours: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const raw = input.hours.trim();
+    const hours = raw === "" ? null : Number(raw);
+    if (hours !== null && (!Number.isFinite(hours) || hours <= 0 || hours > 1000)) return fail("Enter hours between 0 and 1,000, or leave it empty.");
+    const p = woId.safeParse(input);
+    if (!p.success) return fail("Invalid work order.");
+    return call("maintenance_set_estimate", { p_wo: p.data.workOrderId, p_hours: hours }, p.data.workOrderId, hours === null ? "Estimate cleared." : "Estimate saved.");
+  });
+}

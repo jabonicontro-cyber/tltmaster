@@ -173,6 +173,12 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(labor.rows[0].entries)).toBeGreaterThanOrEqual(1);
     expect(Number(labor.rows[0].running)).toBe(0);
     expect(Number(labor.rows[0].hours)).toBeGreaterThan(0);
+    // Shop capacity (20261120003000): a configured shop, estimates on all but one open work order, and recorded skills.
+    const shop = await q<{ bays: number }>("select bays from public.maintenance_shop_settings where company_id = $1", [w.company]);
+    expect(shop.rows).toEqual([{ bays: 2 }]);
+    const est = await q<{ estimated: string; unestimated: string }>("select count(*) filter (where estimated_hours is not null) estimated, count(*) filter (where estimated_hours is null) unestimated from public.work_orders where company_id = $1 and status not in ('completed', 'closed', 'canceled')", [w.company]);
+    expect(Number(est.rows[0].estimated)).toBeGreaterThan(0);
+    expect(Number(est.rows[0].unestimated)).toBe(1);
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
