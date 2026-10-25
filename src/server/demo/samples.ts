@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
+import { triageRules } from "@/lib/maintenance-triage";
 
 // Feature sample data shared by every demo (presenter seed, prospect seed and Refresh demo data), so each
 // released feature is demonstrable in every demo mode and existing demos receive it without being recreated
@@ -61,6 +62,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
   note("shop capacity", await shopCapacity(db));
+  note("maintenance triage", await maintenanceTriage(db));
   note("vehicle documents", await documents(db, today, trucks));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
@@ -835,5 +837,26 @@ async function shopCapacity(db: Db): Promise<number> {
   const { userId } = await demoCompany(db);
   const skills = await db.rpc("maintenance_set_skills", { p_user: userId, p_categories: ["brakes", "tires", "preventive", "inspection"] });
   if (!skills.error) n++;
+  return n;
+}
+
+
+/**
+ * Maintenance triage (20261120003100): a rules suggestion waiting for review on up to two reported work orders, made by
+ * the same rules and function as the page. Nothing is accepted: a person decides in the demo. Only while the demo has
+ * no triage yet.
+ */
+async function maintenanceTriage(db: Db): Promise<number> {
+  const existing = await count(db, "work_order_triage");
+  if (existing === null || existing > 0) return 0;
+  const reported = ((await db.from("work_orders").select("id, title, description, truck_id, trailer_id").eq("status", "reported").order("created_at").limit(2)).data ?? []) as Array<{ id: string; title: string; description: string; truck_id: string | null; trailer_id: string | null }>;
+  let n = 0;
+  for (const w of reported) {
+    let others = db.from("work_orders").select("id, number, title, category").neq("id", w.id).not("status", "in", "(completed,closed,canceled)").limit(20);
+    others = w.trailer_id ? others.eq("trailer_id", w.trailer_id) : others.eq("truck_id", w.truck_id ?? "");
+    const suggestion = triageRules({ title: w.title, description: w.description, openOnUnit: ((await others).data ?? []) as Array<{ id: string; number: string; title: string; category: string }> });
+    const r = await db.rpc("maintenance_save_triage", { p_wo: w.id, p_source: "rules", p_model: "", p_suggestion: suggestion });
+    if (!r.error) n++;
+  }
   return n;
 }

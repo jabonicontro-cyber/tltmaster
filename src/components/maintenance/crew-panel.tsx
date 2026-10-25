@@ -123,17 +123,17 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
         {log && (
           <form
             aria-label="Log time"
-            className="grid gap-2 rounded-lg border border-line bg-card p-3 sm:grid-cols-[1fr_9rem_6rem_6rem]"
+            className="flex flex-wrap gap-2 rounded-lg border border-line bg-card p-3"
             onSubmit={(e) => { e.preventDefault(); run(() => addTime({ workOrderId, ...log }), () => setLog(null)); }}
           >
-            <Select aria-label="Mechanic" value={log.userId} onChange={(e) => setLog({ ...log, userId: e.target.value })}>
+            <Select aria-label="Mechanic" value={log.userId} onChange={(e) => setLog({ ...log, userId: e.target.value })} className="min-w-0 basis-full">
               {data.crew.map((c) => <option key={c.userId} value={c.userId}>{c.name}</option>)}
             </Select>
-            <DateInput aria-label="Date" value={log.date} max={today} onChange={(e) => setLog({ ...log, date: e.target.value })} />
-            <Input aria-label="Start time" type="time" value={log.start} onChange={(e) => setLog({ ...log, start: e.target.value })} />
-            <Input aria-label="End time" type="time" value={log.end} onChange={(e) => setLog({ ...log, end: e.target.value })} />
-            <Input aria-label="Note" placeholder="What was done (optional)" value={log.note} maxLength={500} onChange={(e) => setLog({ ...log, note: e.target.value })} className="sm:col-span-4" />
-            <div className="flex gap-2 sm:col-span-4">
+            <DateInput aria-label="Date" value={log.date} max={today} onChange={(e) => setLog({ ...log, date: e.target.value })} className="w-40" />
+            <Input aria-label="Start time" type="time" value={log.start} onChange={(e) => setLog({ ...log, start: e.target.value })} className="w-32" />
+            <Input aria-label="End time" type="time" value={log.end} onChange={(e) => setLog({ ...log, end: e.target.value })} className="w-32" />
+            <Input aria-label="Note" placeholder="What was done (optional)" value={log.note} maxLength={500} onChange={(e) => setLog({ ...log, note: e.target.value })} className="min-w-0 basis-full" />
+            <div className="flex basis-full gap-2">
               <Button type="submit" size="sm" disabled={pending || !log.start || !log.end}>Save time</Button>
               <Button size="sm" variant="ghost" onClick={() => setLog(null)}>Cancel</Button>
             </div>

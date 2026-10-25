@@ -6,6 +6,7 @@ import { fmtMoney, fmtNum, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/co
 import { ClearanceActions, CostForm, RemoveCostButton, StatusActions } from "@/components/maintenance/work-order-actions";
 import { CrewPanel, TaskChecklist } from "@/components/maintenance/crew-panel";
 import { EstimateForm } from "@/components/maintenance/shop-forms";
+import { TriageCard } from "@/components/maintenance/triage-card";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -18,7 +19,7 @@ import { CLEARANCE_STATUSES, COST_KINDS, WO_CATEGORIES, WO_STATUSES } from "@/li
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getWorkOrder } from "@/server/data/maintenance";
-import { getWorkOrderCrew } from "@/server/data/maintenance-crew";
+import { getLatestTriage, getWorkOrderCrew } from "@/server/data/maintenance-crew";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -29,7 +30,7 @@ const EVENT_LABELS: Record<string, string> = {
   scheduled: "Scheduled", rescheduled: "Rescheduled", unscheduled: "Schedule removed", canceled: "Canceled",
   inspection_started: "Inspection started", inspection_failed: "Inspection failed", cleared: "Cleared for service",
   restricted: "Unit restricted", returned_to_service: "Unit returned to service",
-  crew: "Crew", time: "Labor time", task: "Checklist",
+  crew: "Crew", time: "Labor time", task: "Checklist", triage: "Triage",
 };
 
 export default async function WorkOrderPage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,7 +44,7 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone, today }, crew] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId)]);
+  const [people, { timezone, today }, crew, triage] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id)]);
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const manage = can(access, "maintenance.manage");
   const canClear = can(access, "maintenance.clear");
@@ -90,6 +91,13 @@ export default async function WorkOrderPage({ params }: { params: Promise<{ id: 
                   ? <ClearanceActions id={wo.id} clearance={wo.clearance_status === "in_progress" ? "in_progress" : "awaiting"} unit={trailer ? "trailer" : "truck"} />
                   : <p className="text-sm text-muted">Only people allowed to clear vehicles for service (Maintenance → clear) can record the inspection.</p>}
               </CardBody>
+            </Card>
+          )}
+
+          {triage.installed && (triage.triage || ["reported", "triaged"].includes(wo.status)) && (
+            <Card>
+              <CardHeader title="Triage" description="What was reported, what is still unknown, and a suggestion. Nothing changes until someone accepts it." />
+              <CardBody><TriageCard workOrderId={wo.id} triage={triage.triage} canManage={manage} open={editable} decidedByName={triage.triage?.decidedBy ? who(triage.triage.decidedBy) : null} /></CardBody>
             </Card>
           )}
 

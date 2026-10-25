@@ -31,8 +31,8 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await page.getByLabel("Add a mechanic").selectOption({ label: USERS.owner.name });
   await page.getByRole("button", { name: "Add to crew" }).click();
   await expectToast(page, "Mechanic added.");
-  // Yesterday in the company's time zone, so the times are never in the future.
-  const yesterday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(Date.now() - 86400000));
+  // A past day (a different one each run, so repeated runs never overlap), in the company's time zone.
+  const yesterday = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Chicago" }).format(new Date(Date.now() - (2 + Math.floor(Math.random() * 300)) * 86400000));
   const logTime = async (start: string, end: string) => {
     await page.getByRole("button", { name: "Log time" }).click();
     const form = page.getByRole("form", { name: "Log time" });
@@ -91,5 +91,32 @@ test("shop capacity: set up the shop, record skills, and estimate a job", async 
   await page.getByLabel("Estimated hours").fill("3.5");
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
   await expectToast(page, "Estimate saved.");
-  await expect(page.getByText("Estimate: 3.5 h")).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Estimated hours")).toHaveValue("3.5");
+});
+
+test("triage: rules suggest, quote the report and ask questions; a person edits, and the safety flag is added", async ({ page }) => {
+  const { id } = await asUser(USERS.mechanic.email, async (q) => {
+    const truck = (await q("select id from public.trucks where active and service_status = 'in_service' order by unit_number desc limit 1")).rows[0].id as string;
+    return { id: (await q("select public.maintenance_create_work_order($1::jsonb) r", [JSON.stringify({ truck_id: truck, title: `Air leak ${unique()}`, description: "Hissing near the rear brake chamber since this morning. It is getting worse.", category: "repair" })])).rows[0].r.id as string };
+  });
+  await signIn(page, "mechanic");
+  await page.goto(`/maintenance/work-orders/${id}`);
+  await page.getByRole("button", { name: "Suggest triage" }).click();
+  await expectToast(page, "Triage suggested.");
+  await expect(page.getByText("Suggested by rules", { exact: true })).toBeVisible();
+  await expect(page.getByText("“Hissing near the rear brake chamber since this morning.”")).toBeVisible();
+  await expect(page.getByText(/Safety review recommended/)).toBeVisible();
+  await expect(page.getByText("What does the air pressure gauge show, and does it drop when the brakes are applied?")).toBeVisible();
+
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const form = page.getByRole("form", { name: "Edit suggestion" });
+  await form.getByLabel("Urgency").selectOption("immediate");
+  await form.getByRole("button", { name: "Apply my changes" }).click();
+  await expectToast(page, "Your changes were applied.");
+  await expect(page.getByText("Accepted with changes")).toBeVisible();
+  // The work order now carries the decision: brakes, immediate, safety-critical (the truck is restricted).
+  await expect(page.getByText("Immediate").first()).toBeVisible();
+  await expect(page.getByText("Safety-critical").first()).toBeVisible();
+  await expect(page.getByText(/restricted/i).first()).toBeVisible();
 });

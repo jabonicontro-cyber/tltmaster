@@ -151,3 +151,46 @@ export async function setEstimate(input: { workOrderId: string; hours: string })
     return call("maintenance_set_estimate", { p_wo: p.data.workOrderId, p_hours: hours }, p.data.workOrderId, hours === null ? "Estimate cleared." : "Estimate saved.");
   });
 }
+
+/**
+ * Suggest triage for a work order with the deterministic rules (src/lib/maintenance-triage.ts). The report itself is
+ * read from the database, never from the browser. AI triage is not connected: it would need its own capability,
+ * evaluation and switch (docs/AI.md) and would be labelled as AI.
+ */
+export async function suggestTriage(input: { workOrderId: string }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.safeParse(input);
+    if (!p.success) return fail("Invalid work order.");
+    await assertPermission("maintenance.manage");
+    const supabase = await createClient();
+    const { data: wo, error } = await supabase.from("work_orders").select("id, title, description, truck_id, trailer_id").eq("id", p.data.workOrderId).maybeSingle();
+    if (error || !wo) return fail("Work order not found.");
+    const w = wo as { id: string; title: string; description: string; truck_id: string | null; trailer_id: string | null };
+    let others = supabase.from("work_orders").select("id, number, title, category").neq("id", w.id).not("status", "in", "(completed,closed,canceled)").limit(20);
+    others = w.trailer_id ? others.eq("trailer_id", w.trailer_id) : others.eq("truck_id", w.truck_id ?? "");
+    const { triageRules } = await import("@/lib/maintenance-triage");
+    const suggestion = triageRules({ title: w.title, description: w.description, openOnUnit: ((await others).data ?? []) as Array<{ id: string; number: string; title: string; category: string }> });
+    return call("maintenance_save_triage", { p_wo: w.id, p_source: "rules", p_model: "", p_suggestion: suggestion }, w.id, "Triage suggested. Check it before accepting.");
+  });
+}
+
+const decideInput = z.object({
+  workOrderId: uuid,
+  triageId: uuid,
+  decision: z.enum(["accepted", "edited", "rejected"]),
+  category: z.string().optional(),
+  urgency: z.string().optional(),
+  safety: z.boolean().optional(),
+  note: z.string().trim().max(1000).default(""),
+});
+
+export async function decideTriage(input: z.input<typeof decideInput>): Promise<ActionResult> {
+  return guard(async () => {
+    const p = decideInput.safeParse(input);
+    if (!p.success) return fail("Invalid decision.");
+    const d = p.data;
+    return call("maintenance_decide_triage", {
+      p_triage: d.triageId, p_decision: d.decision, p_category: d.category ?? null, p_urgency: d.urgency ?? null, p_safety: d.safety ?? null, p_note: d.note,
+    }, d.workOrderId, d.decision === "rejected" ? "Suggestion rejected." : d.decision === "edited" ? "Your changes were applied." : "Suggestion accepted.");
+  });
+}

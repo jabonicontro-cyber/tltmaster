@@ -139,3 +139,30 @@ export async function listMechanicSkills(): Promise<Map<string, string[]>> {
   for (const r of (data ?? []) as Array<{ user_id: string; category: string }>) out.set(r.user_id, [...(out.get(r.user_id) ?? []), r.category]);
   return out;
 }
+
+export interface TriageRow {
+  id: string;
+  source: "rules" | "ai";
+  model: string;
+  status: "suggested" | "accepted" | "edited" | "rejected" | "superseded";
+  suggestion: import("@/lib/maintenance-triage").TriageSuggestion;
+  decision: { category?: string | null; urgency?: string | null; safety_critical?: boolean | null };
+  decisionNote: string;
+  decidedBy: string | null;
+  decidedAt: string | null;
+  createdAt: string;
+}
+
+/** The latest triage suggestion on a work order (20261120003100), or null; installed false before the migration. */
+export async function getLatestTriage(workOrderId: string): Promise<{ installed: boolean; triage: TriageRow | null }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("work_order_triage")
+    .select("id, source, model, status, suggestion, decision, decision_note, decided_by, decided_at, created_at")
+    .eq("work_order_id", workOrderId).neq("status", "superseded").order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (error) return { installed: !MISSING.has(error.code ?? ""), triage: null };
+  const r = data as { id: string; source: TriageRow["source"]; model: string; status: TriageRow["status"]; suggestion: TriageRow["suggestion"]; decision: TriageRow["decision"]; decision_note: string; decided_by: string | null; decided_at: string | null; created_at: string } | null;
+  return {
+    installed: true,
+    triage: r && { id: r.id, source: r.source, model: r.model, status: r.status, suggestion: r.suggestion, decision: r.decision, decisionNote: r.decision_note, decidedBy: r.decided_by, decidedAt: r.decided_at, createdAt: r.created_at },
+  };
+}

@@ -267,7 +267,7 @@ as $$
 declare
   v_wo public.work_orders%rowtype := private.wo_for_crew(p_wo);
 begin
-  if p_status not in ('assigned', 'paused', 'done') then
+  if coalesce(p_status, '') not in ('assigned', 'paused', 'done') then
     raise exception 'Choose assigned, paused or done.' using errcode = '22023';
   end if;
   if exists (select 1 from public.work_order_time_entries where work_order_id = p_wo and user_id = auth.uid() and ended_at is null and voided_at is null) then
@@ -457,7 +457,7 @@ as $$
 declare
   v_task public.work_order_tasks%rowtype;
 begin
-  if p_status not in ('open', 'done', 'skipped') then
+  if coalesce(p_status, '') not in ('open', 'done', 'skipped') then
     raise exception 'Choose open, done or skipped.' using errcode = '22023';
   end if;
   select * into v_task from public.work_order_tasks where id = p_task and company_id = private.require_company();

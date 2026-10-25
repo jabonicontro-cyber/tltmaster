@@ -179,6 +179,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     const est = await q<{ estimated: string; unestimated: string }>("select count(*) filter (where estimated_hours is not null) estimated, count(*) filter (where estimated_hours is null) unestimated from public.work_orders where company_id = $1 and status not in ('completed', 'closed', 'canceled')", [w.company]);
     expect(Number(est.rows[0].estimated)).toBeGreaterThan(0);
     expect(Number(est.rows[0].unestimated)).toBe(1);
+    // Triage (20261120003100): suggestions from the rules waiting for a person's review; nothing accepted for them.
+    const tri = await q<{ source: string; status: string }>("select source, status from public.work_order_triage where company_id = $1", [w.company]);
+    expect(tri.rows.length).toBeGreaterThan(0);
+    expect(tri.rows.every((r) => r.source === "rules" && r.status === "suggested")).toBe(true);
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
