@@ -49,7 +49,8 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await expectToast(page, /already has time logged/);
   await page.getByRole("form", { name: "Log time" }).getByRole("button", { name: "Cancel" }).click();
 
-  // Checklist.
+  // Checklist (the Tasks tab; the work order opens on Labor while in progress).
+  await page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Tasks/ }).click();
   await page.getByLabel("New task").fill("Cage the spring brake");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expectToast(page, "Task added.");
@@ -58,6 +59,7 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await expect(page.getByText("1 of 1 done")).toBeVisible();
 
   // The history records it all.
+  await page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Activity/ }).click();
   await expect(page.getByText("Labor time").first()).toBeVisible();
   await expect(page.getByText("Task added: Cage the spring brake")).toBeVisible();
 });
@@ -87,7 +89,7 @@ test("shop capacity: set up the shop, record skills, and estimate a job", async 
     const truck = (await q("select id from public.trucks where active order by unit_number limit 1")).rows[0].id as string;
     return { id: (await q("select public.maintenance_create_work_order($1::jsonb) r", [JSON.stringify({ truck_id: truck, title: `Estimate ${unique()}`, category: "tires" })])).rows[0].r.id as string };
   });
-  await page.goto(`/maintenance/work-orders/${id}`);
+  await page.goto(`/maintenance/work-orders/${id}?tab=labor`);
   await page.getByLabel("Estimated hours").fill("3.5");
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
   await expectToast(page, "Estimate saved.");

@@ -120,7 +120,7 @@ test("costs are visible only to people with cost access", async ({ page, browser
     (await q("select public.maintenance_create_work_order($1::jsonb) as r", [JSON.stringify({ truck_id: truckId, title: `Alternator ${tag}` })])).rows[0].r as { id: string });
 
   await signIn(page, "office");
-  await page.goto(`/maintenance/work-orders/${wo.id}`);
+  await page.goto(`/maintenance/work-orders/${wo.id}?tab=costs`);
   await page.waitForLoadState("networkidle"); // a click before the form hydrates submits nothing on a slow dev server
   await page.getByLabel("Description").fill("Alternator 160A");
   await page.getByLabel("Vendor").fill("Parts counter");
@@ -134,7 +134,8 @@ test("costs are visible only to people with cost access", async ({ page, browser
   await signIn(mech, "mechanic");
   await mech.goto(`/maintenance/work-orders/${wo.id}`);
   await expect(mech.getByRole("heading", { name: new RegExp(`Alternator ${tag}`) })).toBeVisible();
-  await expect(mech.getByText("Parts, labor and costs")).toHaveCount(0);
+  await expect(mech.getByRole("link", { name: /Parts and costs/ })).toHaveCount(0);
+  await mech.goto(`/maintenance/work-orders/${wo.id}?tab=costs`);
   await expect(mech.getByText("$415.00")).toHaveCount(0);
   await mech.close();
 });
