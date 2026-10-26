@@ -148,19 +148,18 @@ test("keyboard: the toggle is reachable, labelled and works with Enter", async (
 });
 
 // Unfinished modules are labelled "Coming soon" (owner 2026-10-13). Route Planner was the last one; it went live
-// 2026-10-14 (straight-line distances until the owner adds a HERE key), so the sidebar has no Coming soon label now.
-test("Route Planner is live: no Coming soon label; without a routing key it says distances are straight lines", async ({ page }) => {
+// 2026-10-14 and moved into Dispatch on 2026-10-26 (one page for the board and the routes), so it has no entry of its own.
+test("routes live on Dispatch: no Route Planner entry; the old address opens the Routes view, straight lines without a key", async ({ page }) => {
   await signIn(page, "owner");
   await page.goto("/command-center");
   const sidebar = page.getByRole("complementary", { name: "Sidebar" });
-  await expect(async () => {
-    await page.mouse.move(900, 450);
-    await sidebar.hover();
-    await expect(sidebar).toHaveAttribute("data-expanded", "true", { timeout: 1_500 });
-  }).toPass({ timeout: 15_000 });
-  await expect(sidebar.getByRole("link", { name: /Route Planner/ })).not.toContainText("Coming soon");
+  await expect(sidebar.getByRole("link", { name: /Dispatch/ })).toHaveCount(1);
+  await expect(sidebar.getByRole("link", { name: /Route Planner/ })).toHaveCount(0);
+  await expect(sidebar).not.toContainText("Coming soon");
   await page.goto("/route-planner");
-  await expect(page.getByRole("heading", { name: "Route Planner", level: 1 })).toBeVisible();
+  await expect(page).toHaveURL(/\/dispatch\?view=routes/);
+  await expect(page.getByRole("heading", { name: "Dispatch", level: 1 })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Dispatch views" }).getByRole("link", { name: "Routes" })).toHaveAttribute("aria-current", "page");
   await expect(page.getByText("Straight-line distances")).toBeVisible();
 });
 

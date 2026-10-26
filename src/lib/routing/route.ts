@@ -198,3 +198,22 @@ export const MAX_ROUTE_STOPS = 25;
 export function totalMinutes(route: Pick<PlannedRoute, "minutes">, stopMinutes: number[]): number {
   return route.minutes + stopMinutes.reduce((a, b) => a + Math.max(0, b), 0);
 }
+
+/**
+ * Where a truck sets off for a load (owner 2026-10-26): from base for its first load of the day, otherwise from the
+ * site of its previous delivery that day. `start` is the load's "HH:MM" start; the load itself is never its own start.
+ */
+export function legStart(
+  day: RouteAssignment[],
+  truckId: string,
+  load: { loadId: string; start: string; loadNumber: number },
+  yard: Point | null,
+): { kind: "base" | "previous"; label: string; point: Point | null } {
+  const before = day
+    .filter((a) => a.truckId === truckId && a.stop.loadId !== load.loadId)
+    .filter((a) => a.stop.start < load.start || (a.stop.start === load.start && a.stop.loadNumber < load.loadNumber))
+    .sort((x, y) => x.stop.start.localeCompare(y.stop.start) || x.stop.loadNumber - y.stop.loadNumber);
+  const prev = before[before.length - 1];
+  if (!prev) return { kind: "base", label: YARD, point: yard };
+  return { kind: "previous", label: `${prev.stop.orderNumber} · ${prev.stop.site}`, point: prev.stop.point };
+}

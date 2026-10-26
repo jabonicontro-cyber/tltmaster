@@ -39,8 +39,8 @@ test("an assigned load shows on its truck's route; giving its site a location gi
   });
 
   await signIn(page, "owner");
-  await page.goto(`/route-planner?date=${date}`);
-  await expect(page.getByRole("heading", { name: "Route Planner", level: 1 })).toBeVisible();
+  await page.goto(`/dispatch?view=routes&date=${date}`);
+  await expect(page.getByRole("heading", { name: "Dispatch", level: 1 })).toBeVisible();
   const route = page.locator(`[aria-label="Route for truck ${unit}"]`);
   await expect(route).toContainText(project);
   const missing = page.getByRole("listitem").filter({ hasText: project }).filter({ has: page.getByPlaceholder("Latitude, longitude") });
@@ -50,17 +50,17 @@ test("an assigned load shows on its truck's route; giving its site a location gi
   await expect(page.getByRole("listitem").filter({ hasText: project }).filter({ has: page.getByPlaceholder("Latitude, longitude") })).toHaveCount(0);
 });
 
-test("people without dispatch access cannot open the Route Planner", async ({ page }) => {
+test("people without dispatch access cannot open the routes", async ({ page }) => {
   await signIn(page, "driver");
-  await page.goto("/route-planner");
+  await page.goto("/dispatch?view=routes");
   await page.waitForURL(/\/no-access|\/driver/);
 });
 
 test("locations: a dispatcher adds a quarry by coordinates, edits it and archives it", async ({ page }) => {
   const name = `Test Pit ${unique()}`;
   await signIn(page, "dispatcher");
-  await page.goto("/route-planner?view=locations");
-  await expect(page.getByRole("link", { name: "Locations" })).toHaveAttribute("aria-current", "page");
+  await page.goto("/dispatch?view=locations");
+  await expect(page.getByRole("navigation", { name: "Dispatch views" }).getByRole("link", { name: "Locations" })).toHaveAttribute("aria-current", "page");
   await page.getByRole("button", { name: "Add a location" }).click();
   const form = page.getByRole("form", { name: "New location" });
   await form.getByLabel("Kind").selectOption("quarry");
@@ -90,7 +90,7 @@ test("plan a route: two places give a straight-line estimate without inventing a
     await q("insert into public.company_locations (kind, name, latitude, longitude, location_source) values ('quarry', $1, 40.9, -87.1, 'manual')", [place]);
   });
   await signIn(page, "dispatcher");
-  await page.goto("/route-planner?view=plan");
+  await page.goto("/dispatch?view=plan");
   await page.getByLabel("Saved location or customer site").selectOption({ label: place });
   await page.getByLabel("Coordinates").fill("41.0, -87.1");
   await page.getByRole("button", { name: "Use coordinates" }).click();

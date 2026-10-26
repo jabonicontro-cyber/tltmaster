@@ -77,7 +77,7 @@ export async function saveLocation(input: z.input<typeof locationInput>): Promis
       : await supabase.from("company_locations").insert(row).select("id").single();
     if (r.error) return fail(dbErrorMessage(r.error));
     if (!r.data) return fail("Location not found.");
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok({ id: (r.data as { id: string }).id }, d.id ? "Location updated." : "Location saved.");
   });
 }
@@ -91,7 +91,7 @@ export async function setLocationActive(input: { id: string; active: boolean }):
     const r = await supabase.from("company_locations").update({ active: Boolean(input.active) }).eq("id", id.data).select("id");
     if (r.error) return fail(dbErrorMessage(r.error));
     if (!r.data?.length) return fail("Location not found.");
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok(undefined, input.active ? "Location restored." : "Location archived. Saved routes that use it keep it.");
   });
 }
@@ -108,7 +108,7 @@ export async function setYardFromLocation(input: { id: string }): Promise<Action
     if (!l || l.latitude == null || l.longitude == null) return fail("This location has no coordinates yet.");
     const r = await supabase.from("company_settings").update({ yard_latitude: l.latitude, yard_longitude: l.longitude }).not("company_id", "is", null).select("company_id");
     if (r.error) return fail(dbErrorMessage(r.error));
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok(undefined, "Daily routes now start and end at this yard.");
   });
 }
@@ -278,7 +278,7 @@ export async function saveRoute(input: z.input<typeof saveRouteInput>): Promise<
     }));
     const ins = await supabase.from("saved_route_stops").insert(rows);
     if (ins.error) return fail(dbErrorMessage(ins.error));
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok({ id: routeId }, p.data.id ? "Route updated." : "Route saved.");
   });
 }
@@ -292,7 +292,7 @@ export async function archiveRoute(input: { id: string }): Promise<ActionResult>
     const r = await supabase.from("saved_routes").update({ active: false }).eq("id", id.data).select("id");
     if (r.error) return fail(dbErrorMessage(r.error));
     if (!r.data?.length) return fail("Route not found.");
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok(undefined, "Route archived.");
   });
 }

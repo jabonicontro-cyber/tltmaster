@@ -37,6 +37,7 @@ export async function getRouteDay(date: string): Promise<RouteDay> {
   const asg = (assignments.data ?? []) as Array<{ load_id: string; truck_id: string; trailer_id: string | null; driver_id: string }>;
   const ord = new Map(((orders.data ?? []) as Array<{ id: string; order_number: string; customer_id: string; site_id: string | null; site_label: string; site_line1: string; site_city: string; site_state: string }>).map((o) => [o.id, o]));
 
+  await matchSavedSites(supabase, [...ord.values()]);
   const siteIds = [...new Set([...ord.values()].map((o) => o.site_id).filter((x): x is string => Boolean(x)))];
   const customerIds = [...new Set([...ord.values()].map((o) => o.customer_id))];
   const [sites, customers, trucks, trailers, drivers] = await Promise.all([
@@ -77,4 +78,29 @@ export async function getRouteDay(date: string): Promise<RouteDay> {
     });
   }
   return { assignments: out, yard, installed, unlocated: [...unlocated.values()] };
+}
+
+/**
+ * Orders whose site was typed rather than picked have no site_id. When the customer has a saved site with exactly
+ * that label, use it (its location), so routes are not missing a stop the company already located. Fills site_id in
+ * place; orders without a matching saved site are left as they are.
+ */
+export async function matchSavedSites(supabase: Awaited<ReturnType<typeof createClient>>, orders: Array<{ customer_id: string; site_id: string | null; site_label: string }>) {
+  const loose = orders.filter((o) => !o.site_id && o.site_label);
+  if (!loose.length) return;
+  const { data, error } = await supabase
+    .from("customer_sites")
+    .select("id, customer_id, label")
+    .in("customer_id", [...new Set(loose.map((o) => o.customer_id))])
+    .in("label", [...new Set(loose.map((o) => o.site_label))]);
+  if (error) return;
+  const byKey = new Map<string, string[]>();
+  for (const r of (data ?? []) as Array<{ id: string; customer_id: string; label: string }>) {
+    const k = `${r.customer_id}|${r.label}`;
+    byKey.set(k, [...(byKey.get(k) ?? []), r.id]);
+  }
+  for (const o of loose) {
+    const ids = byKey.get(`${o.customer_id}|${o.site_label}`);
+    if (ids?.length === 1) o.site_id = ids[0];
+  }
 }

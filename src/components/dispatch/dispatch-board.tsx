@@ -4,8 +4,8 @@ import Link from "next/link";
 import type { BaseOption } from "@/components/bases/base-field";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, CopyCheck, GripVertical, Keyboard, MapPin, Pencil, Plus, Truck, XCircle } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, CopyCheck, GripVertical, Keyboard, MapPin, Navigation, Pencil, Plus, Truck, XCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import type { Face } from "@/server/data/faces";
 import { toast } from "sonner";
@@ -19,6 +19,7 @@ import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { bookingsFor, combinationCheck, driverState, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type Interval, type ResourceState } from "@/lib/dispatch/board";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
+import { OrderRoutePanel } from "./order-route-panel";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS, trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
@@ -62,6 +63,9 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
   const [bulkOpen, setBulkOpen] = useState(false);
   const [copyOpen, setCopyOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  // The order whose route shows beside the board (owner 2026-10-26: Dispatch and the Route Planner on one page).
+  const [routeOrder, setRouteOrder] = useState<string | null>(null);
+  const closeRoute = useCallback(() => setRouteOrder(null), []);
   const [cancelTarget, setCancelTarget] = useState<{ kind: "assignment" | "load"; id: string; orderId: string; title: string } | null>(null);
   const [reason, setReason] = useState("");
 
@@ -190,6 +194,8 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
                 key={o.id}
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
+                routeOpen={routeOrder === o.id}
+                onRoute={() => setRouteOrder((cur) => (cur === o.id ? null : o.id))}
                 selected={selected}
                 onToggle={toggle}
                 onDropResource={onDropResource}
@@ -218,8 +224,14 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
           )}
         </div>
 
-        {/* Resources for the day */}
-        <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} />
+        {/* Resources for the day, or the selected order's route in their place */}
+        {routeOrder ? (
+          <div>
+            <OrderRoutePanel orderId={routeOrder} date={day.date} onClose={closeRoute} inline />
+          </div>
+        ) : (
+          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} />
+        )}
       </div>
 
       {loadDialog && (
@@ -313,6 +325,8 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
 function OrderCard({
   order: o,
   urgent,
+  routeOpen,
+  onRoute,
   selected,
   onToggle,
   onDropResource,
@@ -333,6 +347,8 @@ function OrderCard({
 }: {
   order: OrderListRow;
   urgent: boolean;
+  routeOpen: boolean;
+  onRoute: () => void;
   selected: Set<string>;
   onToggle: (loadId: string) => void;
   onDropResource: (load: OrderLoadRow, r: { kind: "driver" | "truck"; id: string }) => void;
@@ -359,8 +375,14 @@ function OrderCard({
   const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   return (
-    <Card urgent={urgent}>
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-3 sm:px-6">
+    <Card urgent={urgent} className={cn(routeOpen && !urgent && "ring-2 ring-strong")}>
+      {/* Clicking the order (not its links or buttons) opens its route beside the board. */}
+      <div
+        className="flex cursor-pointer flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-3 sm:px-6"
+        onClick={(e) => {
+          if (!(e.target as HTMLElement).closest("a, button, input, select, label")) onRoute();
+        }}
+      >
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
@@ -382,11 +404,16 @@ function OrderCard({
           </div>
           {o.material_summary && <p className="text-sm">{o.material_summary}</p>}
         </div>
-        {canEdit && dispatchable && (
-          <Button size="sm" variant="secondary" icon={<Plus className="size-4" />} onClick={onAddLoad}>
-            Add load
+        <div className="flex flex-wrap gap-2">
+          <Button size="sm" variant={routeOpen ? "dark" : "secondary"} icon={<Navigation className="size-4" />} onClick={onRoute} aria-pressed={routeOpen} aria-label={`Route for ${o.order_number}`}>
+            Route
           </Button>
-        )}
+          {canEdit && dispatchable && (
+            <Button size="sm" variant="secondary" icon={<Plus className="size-4" />} onClick={onAddLoad}>
+              Add load
+            </Button>
+          )}
+        </div>
       </div>
 
       {!dispatchable && (

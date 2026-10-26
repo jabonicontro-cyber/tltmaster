@@ -929,14 +929,15 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "route-planner",
-    title: "Route Planner",
-    summary: "See each truck's day as a route from the yard to every delivery site and back.",
+    title: "Routes on Dispatch",
+    summary: "See each truck's day as a route, and an order's suggested route beside the board.",
     category: "dispatch",
-    routes: ["/route-planner"],
+    routes: ["/dispatch"],
     permissions: ["dispatch.view"],
     audience: "Dispatchers.",
     whatYouSee: [
-      "A **Day** (30 days back to 30 days ahead) and a **Truck** filter, with **Show routes**.",
+      "On **Dispatch**, select **Route** on an order: a panel beside the board shows the trip from the yard to the site and back, and the day of each truck already carrying the order.",
+      "The **Routes** view: a **Day** (30 days back to 30 days ahead) and a **Truck** filter, with **Show routes**.",
       "One card per truck with its trailer, driver, number of loads, and stops in load order.",
       "Distances by road with driving times when truck routing is set up, otherwise straight-line distances marked as estimates.",
       "Sites without a location and, if not set, the **Yard location**.",
@@ -944,7 +945,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     tasks: [
       {
         title: "View routes for a day",
-        steps: ["Choose the **Day** and, optionally, one **Truck**.", "Select **Show routes**."],
+        steps: ["On **Dispatch**, open the **Routes** view.", "Choose the **Day** and, optionally, one **Truck**.", "Select **Show routes**."],
       },
       {
         title: "Add a site's location",

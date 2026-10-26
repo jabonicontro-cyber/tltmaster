@@ -383,7 +383,7 @@ export const FEATURES: Feature[] = [
     limitations: ["Without a routing key, distances are straight lines (labelled)", "Truck dimensions are not recorded yet, so routing uses a standard truck profile", "Routes follow the board's load order; no automatic re-sequencing"],
     status: "available",
     published: false,
-    routes: ["/route-planner"],
+    routes: ["/dispatch"],
     screenshots: [],
     related: ["plan-the-day", "smart-dispatch"],
     verified: "2026-10-14",
@@ -473,7 +473,6 @@ export const NOT_YET: string[] = [
 
 /** App navigation entries deliberately not marketed as a feature of their own, with the reason. */
 export const NOT_MARKETED: Record<string, string> = {
-  "/route-planner": "Not built (shown as Coming soon in the app); listed in NOT_YET instead.",
 };
 
 export const publishedFeatures = () => FEATURES.filter((f) => f.published);

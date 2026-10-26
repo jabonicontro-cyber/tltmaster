@@ -125,7 +125,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
         <fieldset className="grid grid-cols-2 gap-4 sm:grid-cols-6">
           <legend className="mb-1 text-[15px] font-semibold text-ink sm:col-span-6">Routing dimensions</legend>
           <p className="col-span-2 -mt-1 text-sm text-muted sm:col-span-6">
-            Used by the Route Planner to avoid low bridges and weight limits. Measure loaded, including the body; leave blank if not known.
+            Used by route planning on Dispatch to avoid low bridges and weight limits. Measure loaded, including the body; leave blank if not known.
           </p>
           <input type="hidden" name="routing_dimensions" value="1" />
           <Field label="Height (ft)" htmlFor="height_cm" error={fieldError("height_cm")} className="sm:col-span-1" hint="13.5 = 13 ft 6 in">

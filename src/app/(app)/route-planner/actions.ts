@@ -40,7 +40,7 @@ export async function setSiteLocation(input: z.input<typeof siteInput>): Promise
       const supabase = await createClient();
       const r = await supabase.from("customer_sites").update({ latitude: null, longitude: null }).eq("id", p.data.siteId).select("id");
       if (r.error) return fail(dbErrorMessage(r.error));
-      revalidatePath("/route-planner");
+      revalidatePath("/dispatch");
       return ok(undefined, "Location cleared.");
     }
     const point = parsePoint(p.data.location);
@@ -48,7 +48,7 @@ export async function setSiteLocation(input: z.input<typeof siteInput>): Promise
     const r = await writeSite(p.data.siteId, point.lat, point.lng, "manual");
     if (r.error) return fail(dbErrorMessage(r.error));
     if (!r.data?.length) return fail("Site not found.");
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok(undefined, "Location saved.");
   });
 }
@@ -83,7 +83,7 @@ export async function confirmSiteLocation(input: z.input<typeof confirmInput>): 
     const r = await writeSite(p.data.siteId, round6(p.data.lat), round6(p.data.lng), "here");
     if (r.error) return fail(dbErrorMessage(r.error));
     if (!r.data?.length) return fail("Site not found.");
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     return ok(undefined, "Location saved from the address you confirmed.");
   });
 }
@@ -128,7 +128,7 @@ export async function setYardLocation(input: { location: string; fromAddress?: b
     }
     const r = await supabase.from("company_settings").update({ yard_latitude: point?.lat ?? null, yard_longitude: point?.lng ?? null }).not("company_id", "is", null).select("company_id");
     if (r.error) return fail(MISSING_COLUMN.has(r.error.code ?? "") ? "The yard location needs a database update that has not been installed yet." : dbErrorMessage(r.error));
-    revalidatePath("/route-planner");
+    revalidatePath("/dispatch");
     revalidatePath("/settings");
     return ok(undefined, point ? "Yard location saved." : "Yard location cleared.");
   });

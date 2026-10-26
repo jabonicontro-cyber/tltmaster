@@ -142,7 +142,6 @@ test("every demo mode opens its pages and each feature shows sample data", async
     "/time-off": /No requests yet/,
     "/quotes": /No quotes yet/,
     "/communications": /No conversations yet/,
-    "/route-planner": /No assigned loads on this day/,
     "/schedule": /No people yet/,
   };
   try {
@@ -157,6 +156,13 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await expect(page.getByRole("heading", { level: 1 }).first(), `${role} ${href}`).toBeVisible();
         const empty = filled[href];
         if (empty) await expect(page.getByText(empty), `${role} ${href} has sample data`).toHaveCount(0);
+      }
+      // Dispatch and the Route Planner are one page (owner 2026-10-26): its timeline and routes views have the day too.
+      if (nav.includes("/dispatch")) {
+        await visit(page, "/dispatch?view=routes");
+        await expect(page.getByText(/No assigned loads on this day/), `${role} routes view has routes`).toHaveCount(0);
+        await visit(page, "/dispatch?view=timeline");
+        await expect(page.getByRole("table", { name: "Trucks by hour" }).getByRole("button").first(), `${role} timeline has loads`).toBeVisible();
       }
       // Time-off balances (20261112000100): the owner mode manages a real bank with balances and history.
       if (role === "owner") {
@@ -267,7 +273,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByText("Southfield Crossing Distribution").first()).toBeVisible();
   await visit(owner, "/employees?q=Cam");
   await expect(owner.getByText("Cam Webster").first()).toBeVisible();
-  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/, "/route-planner": /No assigned loads on this day/ };
+  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
   const ownerContext = owner.context();
   try {
     for (const role of PREVIEW_ROLES) {
@@ -279,6 +285,12 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
         await expect(owner.getByText("This page could not be loaded"), `${role} ${href}`).toHaveCount(0);
         const empty = filled[href];
         if (empty) await expect(owner.getByText(empty), `${role} ${href} has sample data`).toHaveCount(0);
+      }
+      if (nav.includes("/dispatch")) {
+        await visit(owner, "/dispatch?view=routes");
+        await expect(owner.getByText(/No assigned loads on this day/), `${role} routes view has routes`).toHaveCount(0);
+        await visit(owner, "/dispatch?view=timeline");
+        await expect(owner.getByRole("table", { name: "Trucks by hour" }).getByRole("button").first(), `${role} timeline has loads`).toBeVisible();
       }
       if (role === "driver" || role === "multi") {
         await visit(owner, "/driver");
