@@ -50,7 +50,7 @@ export function MobileMenu({ children }: { children: ReactNode }) {
   return (
     <details ref={ref} className="site-menu group relative lg:hidden">
       {/* 44 × 44: the smallest comfortable touch target. */}
-      <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-md text-silver hover:text-cloud [&::-webkit-details-marker]:hidden" aria-label="Menu">
+      <summary className="flex size-11 cursor-pointer list-none items-center justify-center rounded-xl text-silver hover:text-cloud [&::-webkit-details-marker]:hidden" aria-label="Menu">
         <Menu className="size-6" aria-hidden />
       </summary>
       {children}

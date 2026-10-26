@@ -113,7 +113,7 @@ export function QuickBooksPanel({ entityId, connection, items, itemsError, canMa
         <p className="text-sm text-muted">Not connected.</p>
         {canManage && (configured
           ? <ButtonLink href={connectHref} size="sm" icon={<Link2 className="size-4" aria-hidden />}>Connect QuickBooks</ButtonLink>
-          : <p className="text-sm text-muted">QuickBooks is not set up for Taviron yet: the Taviron administrator adds the QuickBooks app keys first.</p>)}
+          : <p className="flex flex-wrap items-center gap-2 text-sm text-muted"><Badge tone="blue">Coming soon</Badge> QuickBooks Online sync is switched on closer to launch. Businesses and the billing split work now.</p>)}
       </div>
     );
   }

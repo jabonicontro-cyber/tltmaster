@@ -12,6 +12,20 @@
 import { chromium } from "@playwright/test";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
+import { createHmac } from "node:crypto";
+
+/** RFC 6238 code (30 s, 6 digits, SHA-1) from a base32 secret. */
+function totp(secret) {
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+  let bits = "";
+  for (const ch of secret.replace(/=+$/, "").toUpperCase()) { const v = alphabet.indexOf(ch); if (v >= 0) bits += v.toString(2).padStart(5, "0"); }
+  const key = Buffer.from(bits.match(/.{8}/g).map((b) => parseInt(b, 2)));
+  const counter = Buffer.alloc(8);
+  counter.writeBigUInt64BE(BigInt(Math.floor(Date.now() / 30000)));
+  const h = createHmac("sha1", key).update(counter).digest();
+  const o = h[h.length - 1] & 0xf;
+  return String((((h[o] & 0x7f) << 24) | (h[o + 1] << 16) | (h[o + 2] << 8) | h[o + 3]) % 1_000_000).padStart(6, "0");
+}
 
 const args = process.argv.slice(2);
 const outDir = args.find((a) => !a.startsWith("--")) ?? "public/site";
@@ -41,6 +55,15 @@ await page.getByLabel("Email or username").fill(email);
 await page.getByLabel("Password").fill(password);
 await page.getByRole("button", { name: "Sign in" }).click();
 await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+// Two-step sign-in (platform accounts): the code is computed from CAPTURE_TOTP_SECRET, set in the environment only.
+// The two-step page follows a redirect: give it a moment to arrive before deciding the account has none.
+await page.waitForURL((u) => u.pathname === "/mfa", { timeout: 8_000 }).catch(() => {});
+if (new URL(page.url()).pathname === "/mfa") {
+  if (!process.env.CAPTURE_TOTP_SECRET) throw new Error("This account uses two-step sign-in: set CAPTURE_TOTP_SECRET.");
+  await page.getByLabel("6-digit code").fill(totp(process.env.CAPTURE_TOTP_SECRET));
+  await page.getByRole("button", { name: "Verify" }).click();
+  await page.waitForURL((u) => u.pathname !== "/mfa");
+}
 await page.goto(`${base}/command-center`, { waitUntil: "networkidle" });
 
 // Keep the mouse off the navigation rail: it expands on hover and would cover what is clicked or captured.

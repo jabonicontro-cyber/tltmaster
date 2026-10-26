@@ -56,7 +56,7 @@ export function SiteNav() {
               aria-controls={`site-nav-${g.label}`}
               onClick={() => setOpen(open === g.label ? null : g.label)}
               className={cn(
-                "site-link inline-flex items-center gap-1 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium hover:text-cloud",
+                "site-link inline-flex items-center gap-1 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium hover:text-cloud",
                 g.links.some((l) => active(l.href)) ? "text-cloud" : "text-silver",
               )}
             >
@@ -74,7 +74,7 @@ export function SiteNav() {
                     <Link
                       href={l.href}
                       aria-current={active(l.href) ? "page" : undefined}
-                      className="block rounded-lg px-3 py-2.5 hover:bg-white/5 aria-[current=page]:bg-white/[0.06]"
+                      className="block rounded-2xl px-3 py-2.5 hover:bg-white/5 aria-[current=page]:bg-white/[0.06]"
                     >
                       <span className="block text-sm font-semibold text-cloud">{l.label}</span>
                       {l.text ? <span className="mt-0.5 block text-xs leading-snug text-silver/80">{l.text}</span> : null}
@@ -89,7 +89,7 @@ export function SiteNav() {
             key={g.label}
             href={g.href!}
             aria-current={active(g.href!) ? "page" : undefined}
-            className="site-link whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium text-silver hover:text-cloud aria-[current=page]:text-cloud"
+            className="site-link whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-silver hover:text-cloud aria-[current=page]:text-cloud"
           >
             {g.label}
           </Link>

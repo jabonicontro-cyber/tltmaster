@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { AVAILABLE, PLANNED } from "@/lib/site/capabilities";
+import { COMING_SOON } from "@/lib/site/features";
 
 // The public website may only describe what the app can show. Every available
 // capability names app pages that exist; planned items stay in the "Not yet" list.
@@ -20,7 +21,8 @@ describe("public website capabilities", () => {
     for (const word of ["quickbooks", "gps", "ocr", "payroll integration", "online payment", "drive time", "automatic assignment"]) {
       expect(available).not.toContain(word);
     }
-    expect(PLANNED.join(" ")).toMatch(/QuickBooks/);
+    // QuickBooks is announced as coming soon (owner 2026-10-25), never as available.
+    expect(COMING_SOON.map((c) => c.name).join(" ")).toMatch(/QuickBooks/);
     expect(PLANNED.join(" ")).toMatch(/Travel distance/);
   });
 });

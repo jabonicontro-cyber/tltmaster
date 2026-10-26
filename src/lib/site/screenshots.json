@@ -37,7 +37,7 @@
       "file": "order.png",
       "feature": "orders",
       "path": "/orders",
-      "open": "^O-\\d{4}-0002$",
+      "open": "^ORD-\\d{4}$",
       "viewport": "desktop",
       "ready": "History",
       "alt": "An order in a demo company with its progress across dispatch, delivery tickets and billing readiness, and its history",

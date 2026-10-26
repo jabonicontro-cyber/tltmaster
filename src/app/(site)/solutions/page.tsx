@@ -44,7 +44,7 @@ export default function SolutionsPage() {
         <Container className="py-16">
           <div className="grid gap-4 md:grid-cols-3">
             {COMPANIES.map((c) => (
-              <div key={c.title} className="rounded-lg border border-silver/10 bg-navy-2 p-6">
+              <div key={c.title} className="rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card">
                 <c.icon className="size-7 text-electric" aria-hidden />
                 <h2 className="mt-4 text-lg font-bold text-cloud">{c.title}</h2>
                 <p className="mt-2 text-sm text-silver">{c.text}</p>
@@ -61,7 +61,7 @@ export default function SolutionsPage() {
           </SectionHeading>
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             {ROLES.map((r) => (
-              <div key={r.title} className="rounded-lg border border-silver/10 bg-navy p-5">
+              <div key={r.title} className="rounded-2xl border border-silver/10 bg-navy p-5">
                 <r.icon className="size-6 text-electric" aria-hidden />
                 <h3 className="mt-3 font-bold text-cloud">{r.title}</h3>
                 <ul className="mt-2 space-y-1.5 text-sm text-silver">

@@ -30,7 +30,7 @@ export function CtaLink({ href, children, variant = "primary", className }: { hr
     <Link
       href={href}
       className={cn(
-        "site-press inline-flex h-11 items-center justify-center gap-2 rounded-md px-5 text-[15px] font-semibold",
+        "site-press inline-flex h-11 items-center justify-center gap-2 rounded-full px-5 text-[15px] font-semibold",
         variant === "primary" ? "bg-action text-white hover:bg-action-hover" : "border border-silver/25 text-cloud hover:border-silver/50 hover:bg-white/[0.04]",
         className,
       )}

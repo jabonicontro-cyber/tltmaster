@@ -3,8 +3,8 @@ import pg from "pg";
 import { expectToast, signIn, unique } from "./helpers";
 
 // Billing businesses and QuickBooks (B82, B89): the owner opens Businesses and QuickBooks from Billing, adds a second
-// business and sends materials to it. QuickBooks keys are not set in tests, so the page says so instead of offering a
-// connection that cannot work. The simulated demo send is covered in demo-parity.spec.ts.
+// business and sends materials to it. QuickBooks keys are not set (owner: closer to launch), so the page shows it as
+// coming soon instead of offering a connection that cannot work. The simulated demo send is covered in demo-parity.spec.ts.
 
 const TOP_LINE = "00000000-0000-4000-8000-000000000001";
 
@@ -15,7 +15,7 @@ test("the owner adds a business and chooses which charges it bills", async ({ pa
     await page.goto("/billing");
     await page.getByRole("link", { name: "Businesses and QuickBooks" }).click();
     await expect(page.getByRole("heading", { name: "Businesses and QuickBooks", level: 1 })).toBeVisible();
-    await expect(page.getByText("QuickBooks is not set up for Taviron yet").first()).toBeVisible();
+    await expect(page.getByText("QuickBooks Online sync is switched on closer to launch.").first()).toBeVisible();
 
     await page.getByRole("button", { name: "Add a business" }).click();
     const dialog = page.getByRole("dialog");

@@ -108,7 +108,7 @@ export default function PricingPage() {
           </div>
         </Container>
         <Container>
-          <p className="flex gap-2 rounded-lg border border-silver/15 bg-white/[0.03] p-4 text-sm text-silver">
+          <p className="flex gap-2 rounded-2xl border border-silver/15 bg-white/[0.03] p-4 text-sm text-silver">
             <Info className="mt-0.5 size-4 shrink-0 text-silver/70" aria-hidden />
             Prices are per company, in US dollars, before applicable taxes. Your tier, prices and terms are confirmed in a written service agreement; nothing is charged
             through this website.
@@ -121,7 +121,7 @@ export default function PricingPage() {
           <h2 className="text-2xl font-semibold text-cloud">Questions</h2>
           <dl className="mt-6 grid gap-4 md:grid-cols-2">
             {FAQ.map((f) => (
-              <div key={f.q} className="rounded-lg border border-silver/15 bg-navy-2 p-5">
+              <div key={f.q} className="rounded-2xl border border-silver/15 bg-navy-2 p-5 shadow-card">
                 <dt className="font-semibold text-cloud">{f.q}</dt>
                 <dd className="mt-2 text-sm leading-relaxed text-silver">{f.a}</dd>
               </div>

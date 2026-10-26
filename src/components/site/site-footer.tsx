@@ -6,7 +6,7 @@ import { FOOTER_GROUPS } from "@/lib/site/nav";
 
 export function SiteFooter() {
   return (
-    <footer className="border-t border-silver/10 bg-[#091422]">
+    <footer className="site-dark border-t border-silver/10 !bg-[#091422]">
       <div className={cn(SITE_CONTAINER, "grid gap-10 py-12 sm:grid-cols-2 lg:grid-cols-[1.3fr_repeat(5,1fr)]")}>
         <div className="space-y-3">
           <TavironLogo />

@@ -305,6 +305,29 @@
    The marketing pages use the Taviron palette: inside .site, "brand" utilities
    resolve to electric blue (text, icons, borders on navy); filled buttons use
    bg-action. Company workspaces keep their own tokens and tenant branding. */
+/* Light website with navy moments (owner 2026-10-25, master plan B90). The site's utilities keep their names but are
+   re-pointed here: navy = page background, navy-2 = cards, cloud = strongest text, silver = secondary text and
+   hairlines, electric = accent. Sections marked .site-dark (hero, feature bands, footer) restore the navy palette, so
+   one class switches a whole section and every component inside it follows. Contrast on white: cloud 16:1,
+   silver 6.9:1, electric 4.9:1. */
+.site {
+  --color-navy: #f5f7fb;
+  --color-navy-2: #ffffff;
+  --color-navy-3: #e9eef5;
+  --color-cloud: #0c1a2b;
+  --color-silver: #4a5a6f;
+  --color-electric: #0f6fd6;
+}
+.site-dark {
+  --color-navy: #0c1a2b;
+  --color-navy-2: #10233a;
+  --color-navy-3: #17304e;
+  --color-cloud: #f7f9fc;
+  --color-silver: #c7d1de;
+  --color-electric: #168bff;
+  background-color: var(--color-navy);
+  color: var(--color-cloud);
+}
 .site {
   --color-brand: var(--color-electric);
   --color-brand-fg: var(--color-electric);
@@ -331,14 +354,14 @@
   }
   @keyframes site-header-edge {
     to {
-      border-bottom-color: rgb(199 209 222 / 0.1);
-      box-shadow: 0 10px 28px -18px rgb(0 0 0 / 0.65);
+      border-bottom-color: rgb(12 26 43 / 0.07);
+      box-shadow: 0 10px 28px -20px rgb(12 26 43 / 0.25);
     }
   }
 }
 @supports not (animation-timeline: scroll()) {
   .site-header {
-    border-bottom-color: rgb(199 209 222 / 0.1);
+    border-bottom-color: rgb(12 26 43 / 0.07);
   }
 }
 /* The mobile menu materializes from the button that opened it (origin top right), never from nowhere. The page
@@ -409,37 +432,6 @@
   }
 }
 
-/* Homepage product showcase: layered CSS perspective, static (no ongoing motion). */
-.showcase-stage {
-  perspective: 2400px;
-}
-@media (min-width: 768px) {
-  .showcase-screen {
-    transform: rotateX(7deg) rotateY(-9deg) rotateZ(0.6deg);
-    transform-origin: 60% 100%;
-  }
-  .showcase-phone {
-    transform: translateZ(80px) rotateY(-14deg) rotateX(4deg);
-  }
-  .showcase-truck {
-    transform: scaleX(-1); /* cab facing out, body running under the screen */
-    filter: drop-shadow(0 30px 40px rgb(0 0 0 / 0.55));
-  }
-}
-.showcase-glow {
-  background:
-    radial-gradient(42% 46% at 55% 42%, rgb(22 139 255 / 0.20), transparent 70%),
-    radial-gradient(30% 30% at 18% 78%, rgb(22 139 255 / 0.12), transparent 70%);
-}
-.showcase-road {
-  transform: perspective(700px) rotateX(64deg);
-  transform-origin: 50% 100%;
-  background:
-    repeating-linear-gradient(to top, rgb(22 139 255 / 0.45) 0 18px, transparent 18px 44px) 50% 0 / 0.6% 100% no-repeat,
-    repeating-linear-gradient(90deg, rgb(199 209 222 / 0.07) 0 1px, transparent 1px 64px),
-    linear-gradient(to top, rgb(16 35 58 / 0.95), transparent);
-  mask-image: linear-gradient(to top, black 30%, transparent);
-}
 .site-grid-bg {
   background-image:
     linear-gradient(rgb(199 209 222 / 0.05) 1px, transparent 1px),

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Clock, ShieldCheck } from "lucide-react";
+import { Clock, ShieldCheck, Sparkles } from "lucide-react";
 import { FeatureBrief, FeatureStory, featureAnchor } from "@/components/site/feature-story";
 import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
-import { NOT_YET, publishedFeatures } from "@/lib/site/features";
+import { COMING_SOON, NOT_YET, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: "Platform",
@@ -68,11 +68,26 @@ export default function PlatformPage() {
           </SectionHeading>
           <div>
             <h2 className="flex items-center gap-2 text-xl font-bold text-cloud">
+              <Sparkles className="size-5 text-electric" aria-hidden /> Coming soon
+            </h2>
+            <ul className="mt-4 space-y-3">
+              {COMING_SOON.map((c) => (
+                <li key={c.name} className="rounded-2xl border border-silver/10 bg-navy-2 px-5 py-4 shadow-card">
+                  <p className="flex flex-wrap items-center gap-2 font-semibold text-cloud">
+                    {c.name}
+                    <span className="rounded-full bg-electric/15 px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-electric">Coming soon</span>
+                    {c.addOn && <span className="rounded-full border border-silver/20 px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-silver">Optional add-on</span>}
+                  </p>
+                  <p className="mt-1.5 text-sm text-silver">{c.text}</p>
+                </li>
+              ))}
+            </ul>
+            <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-cloud">
               <Clock className="size-5 text-electric" aria-hidden /> Not yet, and we will say so
             </h2>
             <ul className="mt-4 space-y-2">
               {NOT_YET.map((n) => (
-                <li key={n} className="rounded-md border border-silver/10 bg-navy-2 px-4 py-2.5 text-sm text-silver">{n}</li>
+                <li key={n} className="rounded-xl border border-silver/10 bg-navy-2 px-4 py-2.5 text-sm text-silver">{n}</li>
               ))}
             </ul>
           </div>

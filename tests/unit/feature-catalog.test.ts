@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { NAV_ITEMS } from "@/components/layout/nav";
-import { FEATURES, NOT_MARKETED, NOT_YET, SCREENSHOTS, publishedFeatures } from "@/lib/site/features";
+import { FEATURES, NOT_MARKETED, COMING_SOON, NOT_YET, SCREENSHOTS, publishedFeatures } from "@/lib/site/features";
 
 // The feature catalog drives the public website (docs/MARKETING.md). These checks stop the site from drifting away
 // from the product: unbuilt work cannot be published, published claims point at real pages and real screenshots,
@@ -71,6 +71,9 @@ describe("feature catalog", () => {
     for (const word of ["quickbooks", "gps tracking", "ocr", "payroll integration", "online payment", "drive time", "automatic assignment", "edi", "optimal", "guarantee"]) {
       expect(new RegExp(`\\b${word}\\b`).test(text), word).toBe(false);
     }
-    expect(NOT_YET.join(" ")).toMatch(/QuickBooks/);
+    // Announced as coming soon (owner 2026-10-25), never as available; the hired-truck offers are an add-on.
+    expect(COMING_SOON.map((c) => c.name).join(" ")).toMatch(/QuickBooks/);
+    expect(COMING_SOON.find((c) => /hired trucks/i.test(c.name))?.addOn).toBe(true);
+    expect(NOT_YET.length).toBeGreaterThan(0);
   });
 });

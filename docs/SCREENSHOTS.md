@@ -41,7 +41,9 @@ catalog's screenshots, docs/MARKETING.md).
 - `--only id,id` captures a subset.
 - Credentials come from environment variables only. The signed-in person's name appears in the screens (header, greeting, and as a driver in the
 demo), so capture with an account whose display name is a plain person's name — not a test label such as
-"Platform" or "e2e".
+"Platform" or "e2e". Platform-team accounts always show their own name and "Taviron Administrator" (never a demo
+persona), so capture with an ordinary owner sign-in of the demo company linked to the demo's owner persona (its employee
+and driver records). Platform-team accounts that use two-step sign-in can capture with CAPTURE_TOTP_SECRET set.
 
 Manual:
 

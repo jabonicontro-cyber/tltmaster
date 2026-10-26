@@ -111,29 +111,29 @@ function Points({ items }: { items: string[] }) {
 export default function HomePage() {
   return (
     <>
-      {/* Opening: the message and the real product (src/components/site/product-showcase.tsx). A static hero replaced
-          the scroll-driven 3D truck (owner 2026-10-19: reliable on every screen, no WebGL, nothing drawn that the
-          product does not do). */}
-      <section className="relative overflow-x-clip" aria-labelledby="hero-title">
-        <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[620px] bg-[radial-gradient(60%_60%_at_60%_0%,rgb(22_139_255/0.16),transparent)]" aria-hidden />
-        <Container className="relative pt-16 pb-20 sm:pt-24 sm:pb-28">
-          <div className="max-w-3xl">
-            <h1 id="hero-title" className="site-display text-[2.6rem] font-bold text-cloud sm:text-6xl">
+      {/* Opening (owner 2026-10-25, references Highnote / Squarespace / Lyft): a light hero with a soft brand-blue glow,
+          the message on the left and the real product running off the right edge. No truck scene. */}
+      <section className="relative overflow-hidden" aria-labelledby="hero-title">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_85%_10%,rgb(15_111_214/0.18),transparent_70%),radial-gradient(45%_60%_at_10%_90%,rgb(199_209_222/0.55),transparent_70%),linear-gradient(180deg,#ffffff,#f5f7fb)]" aria-hidden />
+        <Container className="relative grid items-center gap-x-14 pt-14 pb-24 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24 lg:pb-32">
+          <div className="max-w-xl">
+            <p className="inline-flex items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 pt-1 pb-[5px] text-[13px] leading-5 font-semibold text-silver backdrop-blur">
+              <span className="size-1.5 rounded-full bg-electric" aria-hidden /> Built for hauling and aggregate companies
+            </p>
+            <h1 id="hero-title" className="site-display mt-6 text-[2.75rem] font-semibold text-cloud sm:text-[4rem]">
               Your entire trucking operation. Connected.
             </h1>
-            <p className="mt-6 text-xl font-medium text-cloud sm:text-2xl">See what&apos;s happening. Know what to do next.</p>
-            <p className="mt-4 text-lg leading-relaxed text-silver">
-              Quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness in one set of connected records. Taviron checks your
-              safety, qualification and capacity rules before it suggests anything — and nothing moves until a person approves it.
+            <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
+              Orders, dispatch, drivers, delivery tickets, maintenance and billing in one place. Taviron checks your safety,
+              qualification and capacity rules first, and nothing moves until a person approves it.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <CtaLink href="/platform">Explore the Platform</CtaLink>
-              <CtaLink href="/demo" variant="ghost">
-                Request a Demo
+              <CtaLink href="/demo">Request a Demo</CtaLink>
+              <CtaLink href="/platform" variant="ghost">
+                Explore the Platform
               </CtaLink>
             </div>
-            <p className="mt-4 text-sm text-silver/75">Early access. A free walkthrough with fictional demo data — no trial to set up.</p>
+            <p className="mt-4 text-sm text-silver">Early access · a guided walkthrough with fictional data.</p>
           </div>
           <ProductShowcase />
         </Container>
@@ -145,7 +145,7 @@ export default function HomePage() {
           <SectionHeading id="story-title" title="One plan for the whole day." />
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             {STORY.map((c) => (
-              <article key={c.id} className="rounded-xl border border-silver/10 bg-navy-2 p-6 sm:p-7">
+              <article key={c.id} className="rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card sm:p-7 md:last:odd:col-span-2">
                 <h3 className="text-xl font-semibold text-cloud">{c.title}</h3>
                 <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-silver">{c.body}</div>
               </article>
@@ -156,7 +156,7 @@ export default function HomePage() {
 
 
       {/* Intelligence in action: one real situation from the demo company, the evidence and the human decision. */}
-      <section aria-labelledby="intel-title" className="border-t border-silver/10 bg-navy-2">
+      <section aria-labelledby="intel-title" className="site-dark border-t border-silver/10 bg-navy-2">
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <SectionHeading id="intel-title" title="Know what's happening. Understand why. Decide what comes next.">

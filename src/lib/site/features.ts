@@ -438,10 +438,32 @@ export const FEATURES: Feature[] = [
   },
 ];
 
+/**
+ * Announced as "Coming soon" on the website (owner 2026-10-25): work that is being finished or is planned, shown so
+ * visitors know it is on the way, never as available. Connections that need keys are switched on closer to launch.
+ */
+export interface ComingSoon {
+  name: string;
+  text: string;
+  /** An optional add-on, not part of the base plans. */
+  addOn?: boolean;
+}
+export const COMING_SOON: ComingSoon[] = [
+  {
+    name: "QuickBooks Online sync",
+    text: "Send handed-off orders to QuickBooks Online as invoices after billing review, with customers matched for you. When you bill from more than one business (materials from one, hauling from another), each sends its own invoices from its own QuickBooks.",
+  },
+  {
+    name: "Hired trucks and owner-operators",
+    text: "Text load offers to hired trucks and owner-operators, see who accepts, and keep their loads on the same dispatch board as your own fleet.",
+    addOn: true,
+  },
+];
+
 /** Planned or unreleased work, said plainly on the website ("Not yet — and we will say so"). */
 export const NOT_YET: string[] = [
   "Driver pay calculations — waiting on each company's written pay rules",
-  "Issuing or sending invoices, and accounting or payroll integrations (QuickBooks Online is the first target, to be verified with a test company)",
+  "Issuing or sending invoices from Taviron itself, and payroll integrations",
   "Travel distance and drive time in dispatch suggestions — truck locations are not recorded yet",
   "Parts inventory and purchasing for maintenance",
   "GPS tracking, offline mode and route or weather intelligence",
