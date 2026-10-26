@@ -162,7 +162,6 @@ export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   driver_time_off: "Driver has approved time off on this date.",
   driver_partial_time_off: "Driver has approved partial-day time off on this date — check the load times.",
   driver_time_off_pending: "Driver has a pending time-off request on this date.",
-  driver_off_shift: "Assigned outside the driver's scheduled shift (a reason was recorded).",
   cdl_missing: "No CDL is recorded for this driver.",
   cdl_class_insufficient: "Driver's CDL class is not high enough for this combination.",
   cdl_expired: "Driver's CDL has expired.",
@@ -177,8 +176,17 @@ export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   medical_card_expiring_soon: `Driver's medical card expires within ${EXPIRY_WARNING_DAYS} days.`,
 };
 
+/**
+ * Warnings stored on an assignment that are not eligibility rules (so not in ELIGIBILITY_MESSAGES, which must match
+ * the database's private.eligibility_message): the shift check adds driver_off_shift when a dispatcher assigns
+ * outside the driver's shift with a reason (migration 20261120003300).
+ */
+export const ASSIGNMENT_WARNING_MESSAGES: Record<string, string> = {
+  driver_off_shift: "Assigned outside the driver's scheduled shift (a reason was recorded).",
+};
+
 export function eligibilityMessage(code: string): string {
-  return ELIGIBILITY_MESSAGES[code] ?? code;
+  return ELIGIBILITY_MESSAGES[code] ?? ASSIGNMENT_WARNING_MESSAGES[code] ?? code;
 }
 
 /** Driver readiness without a specific truck: needs at least a class B CDL and a medical card. */
