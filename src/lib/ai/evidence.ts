@@ -45,4 +45,35 @@ export const EVAL_EVIDENCE: EvalEvidence[] = [
     "passed": 6,
     "criticalFailures": 0
   },
+  // npm run ai:eval at fa73397, GitHub Actions run 40367873194 ("AI evaluation (manual, paid)"), 2026-10-26.
+  {
+    "capability": "plan_explanation",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "evalVersion": 2,
+    "ranAt": "2026-10-26T17:22:04.015Z",
+    "cases": 3,
+    "passed": 3,
+    "criticalFailures": 0
+  },
+  {
+    "capability": "ops_assistant",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "evalVersion": 3,
+    "ranAt": "2026-10-26T17:22:26.069Z",
+    "cases": 6,
+    "passed": 6,
+    "criticalFailures": 0
+  },
+  {
+    "capability": "ticket_reading",
+    "provider": "openai",
+    "model": "gpt-5-mini",
+    "evalVersion": 1,
+    "ranAt": "2026-10-26T17:22:50.948Z",
+    "cases": 5,
+    "passed": 5,
+    "criticalFailures": 0
+  },
 ];
