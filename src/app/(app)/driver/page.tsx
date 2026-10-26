@@ -145,15 +145,18 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const [shop, updates] = await Promise.all([loadMaintenanceNotices(), loadDispatchUpdates()]);
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
+  const whose = access.isDemo && shown && !platformAdmin ? shown : h.driver.name;
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
         <h1 className="text-2xl font-black">My Day</h1>
-        {/* Whose day this is: the driver record (the platform team member previewing a demo keeps their own name only in the header and greeting). */}
-        <p className="text-muted">{access.isDemo && shown && !platformAdmin ? shown : h.driver.name} · {formatDate(h.today)}</p>
-        <Link href="/time-off" className="mt-1 inline-block text-sm font-semibold underline">Request time off</Link>
+        {/* Whose day this is: the driver record (the platform team member previewing a demo keeps their own name only in
+            the header and greeting). Named only when the greeting does not already say it. */}
+        <p className="text-muted">{whose && !hello.includes(whose.split(" ")[0]) ? `${whose} · ` : ""}{formatDate(h.today)}</p>
+        {/* On phones the Time off tab is one tap away; the link is for wider screens without the tab bar. */}
+        <Link href="/time-off" className="mt-1 hidden text-sm font-semibold underline md:inline-block">Request time off</Link>
         <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
         <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
       </div>
@@ -228,7 +231,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
                   <span className="ml-auto font-semibold tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
                 </div>
                 <p className="text-sm text-muted">{t.order_number} · load {t.load_number} · {formatDateTime(t.delivered_at, h.timezone)}</p>
-                <p className="text-sm">{DRIVER_TICKET_STATUS[t.status]}</p>
+                {/* The badge already says Accepted or Voided; the line explains only the in-between states. */}
+                {t.status !== "accepted" && t.status !== "voided" && <p className="text-sm">{DRIVER_TICKET_STATUS[t.status]}</p>}
                 {t.status === "needs_review" && t.review_reasons[0] && <p className="text-xs text-muted">{reviewReasonLabel(t.review_reasons[0])}</p>}
               </li>
             ))}

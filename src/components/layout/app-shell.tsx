@@ -60,7 +60,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
               <span className="sr-only"> — home</span>
             </Link>
         </div>
-        <div className="flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-0 sm:gap-1">
         {/* A search pill on wider screens (the most used way in), an icon on phones. */}
         <Link href="/search" className="hidden h-10 w-56 items-center gap-2.5 rounded-full border border-line bg-card px-4 text-sm text-muted shadow-xs transition-colors hover:border-ink/15 hover:text-ink focus-visible:outline-2 focus-visible:outline-strong md:inline-flex xl:w-72" aria-label="Search records">
           <Search className="size-4" aria-hidden />

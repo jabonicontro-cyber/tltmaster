@@ -45,33 +45,25 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
   // A converted quote's status is fixed (enforced by the database).
   const transitions = permissions.status && !order ? allowedTransitions(status) : [];
 
+  const statusButton = (t: QuoteStatus, variant: "primary" | "ghost", className?: string) => (
+    <Button
+      key={t}
+      variant={variant}
+      className={className}
+      icon={t === "accepted" ? <CheckCircle2 className="size-4" /> : t === "canceled" || t === "declined" ? <XCircle className="size-4" /> : undefined}
+      onClick={() => { setNote(""); setStatusTarget(t); }}
+    >
+      {STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
+    </Button>
+  );
+
   return (
-    <div className="flex flex-wrap gap-2">
+    // One filled next step, editing outlined, the rest quiet, cancelling apart and red (docs/DESIGN_SYSTEM.md, Actions).
+    <div className="flex flex-wrap items-center gap-2">
       {permissions.edit && canEditDraft(status, versionLocked) && (
         <Link href={`/quotes/${quoteId}/edit`} className={buttonClasses("primary")}>
           <Pencil className="size-4" aria-hidden /> Edit draft
         </Link>
-      )}
-      {permissions.send && canSend(status) && (
-        <Button variant={status === "draft" ? "dark" : "secondary"} icon={<Mail className="size-4" />} onClick={() => setEmailOpen(true)}>
-          {status === "sent" ? "Email again" : "Email quote"}
-        </Button>
-      )}
-      {permissions.send && status === "draft" && (
-        <Button variant="secondary" icon={<Send className="size-4" />} onClick={() => { setNote(""); setMarkOpen(true); }}>
-          Mark as sent
-        </Button>
-      )}
-      <Link href={`/quotes/${quoteId}/versions/${versionId}`} className={buttonClasses("secondary")}>
-        <Printer className="size-4" aria-hidden /> Preview / print
-      </Link>
-      <a href={`/quotes/${quoteId}/versions/${versionId}/pdf?download=1`} className={buttonClasses("secondary")}>
-        <Download className="size-4" aria-hidden /> PDF
-      </a>
-      {permissions.edit && canRevise(status, versionLocked) && (
-        <Button variant="secondary" icon={<Copy className="size-4" />} onClick={() => { setReason(""); setReviseOpen(true); }}>
-          Revise
-        </Button>
       )}
       {order && (
         <Link href={`/orders/${order.id}`} className={buttonClasses("primary")}>
@@ -83,16 +75,30 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
           Convert to order
         </Button>
       )}
-      {transitions.map((t) => (
-        <Button
-          key={t}
-          variant={t === "accepted" ? "primary" : t === "canceled" ? "danger" : "secondary"}
-          icon={t === "accepted" ? <CheckCircle2 className="size-4" /> : t === "canceled" || t === "declined" ? <XCircle className="size-4" /> : undefined}
-          onClick={() => { setNote(""); setStatusTarget(t); }}
-        >
-          {STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
+      {transitions.includes("accepted") && statusButton("accepted", "primary")}
+      {permissions.send && canSend(status) && (
+        <Button variant={status === "draft" ? "dark" : "secondary"} icon={<Mail className="size-4" />} onClick={() => setEmailOpen(true)}>
+          {status === "sent" ? "Email again" : "Email quote"}
         </Button>
-      ))}
+      )}
+      {permissions.send && status === "draft" && (
+        <Button variant="secondary" icon={<Send className="size-4" />} onClick={() => { setNote(""); setMarkOpen(true); }}>
+          Mark as sent
+        </Button>
+      )}
+      {permissions.edit && canRevise(status, versionLocked) && (
+        <Button variant="secondary" icon={<Copy className="size-4" />} onClick={() => { setReason(""); setReviseOpen(true); }}>
+          Revise
+        </Button>
+      )}
+      <Link href={`/quotes/${quoteId}/versions/${versionId}`} className={buttonClasses("ghost")}>
+        <Printer className="size-4" aria-hidden /> Preview / print
+      </Link>
+      <a href={`/quotes/${quoteId}/versions/${versionId}/pdf?download=1`} className={buttonClasses("ghost")}>
+        <Download className="size-4" aria-hidden /> PDF
+      </a>
+      {transitions.filter((t) => t !== "accepted" && t !== "canceled").map((t) => statusButton(t, "ghost"))}
+      {transitions.includes("canceled") && <span className="sm:ml-auto">{statusButton("canceled", "ghost", "text-red-700 hover:bg-red-50")}</span>}
 
       <ConfirmDialog
         open={convertOpen}

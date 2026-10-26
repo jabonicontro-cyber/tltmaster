@@ -67,7 +67,9 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
           <DocumentsCard vehicle={{ kind: "trailer", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
           <MaintenanceCard kind="trailer" vehicleId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} timezone={timezone} />
           <p className="text-sm text-muted">Out of service for {downtimeDays(events, t, new Date(), 90)} days in the last 90 (recorded status changes).</p>
-          <CapacityCard e={t} timezone={timezone} who={who} />
+        </div>
+        {/* Reference facts beside the day-to-day cards, so both columns carry weight (redesign 2026-10-26). */}
+        <div className="space-y-5">
           <EquipmentDetails
             e={t}
             timezone={timezone}
@@ -88,9 +90,10 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
               { label: "Compatibility notes", value: t.compatibility_notes, wide: true },
             ]}
           />
+          <CapacityCard e={t} timezone={timezone} who={who} />
           <OwnershipCard vehicle={{ kind: "trailer", id: t.id }} value={t.ownership} canEdit={can(access, "fleet.edit")} />
+          <EquipmentHistory events={events} audit={audit} timezone={timezone} who={who} />
         </div>
-        <EquipmentHistory events={events} audit={audit} timezone={timezone} who={who} />
       </div>
     </>
   );

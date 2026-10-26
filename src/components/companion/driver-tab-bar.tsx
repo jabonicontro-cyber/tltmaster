@@ -24,9 +24,10 @@ export function DriverTabBar({ permissions, kind = "driver" }: { permissions: re
           return (
             <li key={t.href}>
               <Link href={t.href} aria-current={active ? "page" : undefined}
-                className={cn("flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full text-xs font-semibold transition-colors duration-150", active ? "bg-strong text-white" : "text-muted active:bg-surface")}>
+                className={cn("flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-full px-1 text-[11px] leading-tight font-semibold transition-colors duration-150", active ? "bg-strong text-white" : "text-muted active:bg-surface")}>
                 <Icon className="size-5" aria-hidden />
-                {t.label}
+                {/* One line per label (labels are kept short: five tabs share a 360px phone). */}
+                <span className="max-w-full truncate whitespace-nowrap">{t.label}</span>
               </Link>
             </li>
           );

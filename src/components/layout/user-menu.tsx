@@ -38,7 +38,7 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
   return (
     <>
       <M.Root>
-        <M.Trigger className="flex items-center gap-2 rounded-full py-1 pr-2.5 pl-1 text-left text-ink transition-colors hover:bg-card">
+        <M.Trigger className="flex items-center gap-1.5 rounded-full py-1 pr-1 pl-1 text-left text-ink transition-colors hover:bg-card sm:gap-2 sm:pr-2.5">
           {/* Spoken name starts with what is shown (the person's name), not a hidden aria-label (WCAG 2.5.3). */}
           <span className="sr-only">Account menu: {name || email}{demo && !demo.presentation ? " (demo company)" : ""}</span>
           <span className="relative shrink-0">
@@ -55,7 +55,8 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
               Demo{currentView ? <span className="hidden sm:inline"> · {PREVIEW_LABELS[currentView]}</span> : null}
             </span>
           )}
-          <ChevronDown className="size-4 text-muted" aria-hidden />
+          {/* The picture is the button on phones; the arrow returns where there is room. */}
+          <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden />
         </M.Trigger>
         <M.Portal>
           <M.Content align="end" sideOffset={6} onCloseAutoFocus={(e) => { if (viewOpen) e.preventDefault(); }} className="ui-pop z-50 min-w-56 origin-top-right rounded-2xl border border-line/70 bg-card p-1.5 shadow-float">

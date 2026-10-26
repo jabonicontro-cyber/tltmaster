@@ -31,8 +31,8 @@ describe("mechanic phone workspace", () => {
     expect(isMechanicOnly([...mechanic, "dispatch.view"])).toBe(false);
     expect(isMechanicOnly([...mechanic, "driver.portal"])).toBe(false);
     expect(isMechanicOnly(["fleet.view"])).toBe(false);
-    expect(mechanicTabs(mechanic).map((t) => t.label)).toEqual(["My jobs", "Work orders", "Messages", "Time off", "Profile"]);
-    expect(mechanicTabs(["maintenance.view"]).map((t) => t.label)).toEqual(["My jobs", "Work orders", "Time off", "Profile"]);
+    expect(mechanicTabs(mechanic).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Messages", "Time off", "Profile"]);
+    expect(mechanicTabs(["maintenance.view"]).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Time off", "Profile"]);
     expect(mechanicTabs(mechanic)[0].match("/maintenance/my-jobs")).toBe(true);
   });
 });

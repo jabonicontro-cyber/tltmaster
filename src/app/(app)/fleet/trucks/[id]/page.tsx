@@ -80,8 +80,11 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
           <MaintenanceCard vehicleId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} timezone={timezone} />
           <DocumentsCard vehicle={{ kind: "truck", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
           <CostsCard records={records} downtime90={downtimeDays(events, t, new Date(), 90)} canSeeCosts={can(access, "maintenance.costs")} />
-          <CapacityCard e={t} timezone={timezone} who={who} />
+        </div>
+        {/* Reference facts beside the day-to-day cards, so both columns carry weight (redesign 2026-10-26). */}
+        <div className="space-y-5">
           <EquipmentDetails e={t} timezone={timezone} who={who} />
+          <CapacityCard e={t} timezone={timezone} who={who} />
           <OwnershipCard vehicle={{ kind: "truck", id: t.id }} value={t.ownership} canEdit={can(access, "fleet.edit")} />
           <Card>
             <CardHeader title="Trailers usually paired with this truck" description="Each trailer keeps its own service status." />
@@ -101,8 +104,8 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
               )}
             </CardBody>
           </Card>
+          <EquipmentHistory events={events} audit={audit} timezone={timezone} who={who} />
         </div>
-        <EquipmentHistory events={events} audit={audit} timezone={timezone} who={who} />
       </div>
     </>
   );

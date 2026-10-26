@@ -21,7 +21,7 @@ test("a mechanic takes a job on a phone, starts it, times it and marks their par
   await page.goto("/maintenance/my-jobs");
   const tabs = page.getByRole("navigation", { name: "Mechanic tabs" });
   await expect(tabs.getByRole("link", { name: "My jobs" })).toHaveAttribute("aria-current", "page");
-  await expect(tabs.getByRole("link", { name: "Work orders" })).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "All jobs" })).toBeVisible();
 
   // Take it: the mechanic becomes the lead, the same as being assigned on the work order.
   const open = page.getByRole("listitem").filter({ hasText: title });

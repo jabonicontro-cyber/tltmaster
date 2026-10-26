@@ -41,7 +41,7 @@ export function driverTabs(permissions: readonly string[]): DriverTab[] {
 export function mechanicTabs(permissions: readonly string[]): DriverTab[] {
   const tabs: DriverTab[] = [
     { href: "/maintenance/my-jobs", label: "My jobs", match: (p) => p.startsWith("/maintenance/my-jobs") },
-    { href: "/maintenance/work-orders", label: "Work orders", match: (p) => p.startsWith("/maintenance/work-orders") },
+    { href: "/maintenance/work-orders", label: "All jobs", match: (p) => p.startsWith("/maintenance/work-orders") },
   ];
   if (permissions.includes("comms.message")) tabs.push({ href: "/communications", label: "Messages", match: (p) => p.startsWith("/communications") });
   tabs.push({ href: "/time-off", label: "Time off", match: (p) => p.startsWith("/time-off") });
