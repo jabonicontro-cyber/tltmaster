@@ -14,6 +14,9 @@ import type { ActionResult } from "@/lib/action-result";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate } from "@/lib/dates";
 import type { CurrentPattern, ScheduleDay, SchedulePerson } from "@/server/data/schedules";
+import type { TimeOffMark } from "@/server/data/time-off";
+import Link from "next/link";
+import { TIME_OFF_CATEGORIES } from "@/lib/time-off";
 
 // The week's schedule: one row per person, one cell per day. People who manage schedules open a day to change it
 // (a shift, a day off, or back to the regular schedule) or a person's repeating pattern (weekly or a rotation).
@@ -51,7 +54,7 @@ function useRun(onDone?: () => void) {
   return { pending, error, run };
 }
 
-export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, today = null }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern>; /** Pictures by employee id (initials when missing). */ faces?: Record<string, Face>; /** The business day today: its column is marked. */ today?: string | null }) {
+export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, today = null, timeOff = [] }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern>; /** Pictures by employee id (initials when missing). */ faces?: Record<string, Face>; /** The business day today: its column is marked. */ today?: string | null; /** Pending, approved and denied time off in the week (owner 2026-10-26). */ timeOff?: TimeOffMark[] }) {
   const [day, setDay] = useState<{ person: SchedulePerson; d: ScheduleDay } | null>(null);
   const [pattern, setPattern] = useState<SchedulePerson | null>(null);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(from, i));
@@ -95,11 +98,13 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, to
                       {cellText(d)}{d.overnight && <span aria-hidden className="ml-0.5">☾</span>}
                     </span>
                   );
+                  const off = timeOff.filter((t) => t.employeeId === p.employeeId && t.start <= d.date && t.end >= d.date);
                   return (
-                    <td key={d.date} className={cn("px-1 py-1 text-center", d.date === today && "bg-surface/60")} title={d.reason || undefined}>
+                    <td key={d.date} className={cn("px-1 py-1 text-center align-top", d.date === today && "bg-surface/60")} title={d.reason || undefined}>
                       {canManage ? (
                         <button type="button" aria-label={`${label}. Change`} className="w-full rounded hover:bg-surface" onClick={() => setDay({ person: p, d })}>{body}</button>
                       ) : <span aria-label={label}>{body}</span>}
+                      {off.map((t) => <TimeOffChip key={t.id} t={t} />)}
                     </td>
                   );
                 })}
@@ -109,6 +114,12 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, to
         </table>
       </div>
       <p className="mt-2 text-xs text-muted">☾ ends the next morning (overnight). A framed day was changed for that date only. — means no schedule: dispatch does not check that person.</p>
+      <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Time off key">
+        <span>Time off:</span>
+        <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-green-600" aria-hidden /> Approved</span>
+        <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full border border-dashed border-amber-600 bg-amber-100" aria-hidden /> Pending</span>
+        <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-red-300" aria-hidden /> Denied (still expected at work)</span>
+      </p>
       {day && <DayDialog person={day.person} day={day.d} onClose={() => setDay(null)} />}
       {pattern && <PatternDialog person={pattern} current={patterns[pattern.employeeId] ?? null} weekStart={from} onClose={() => setPattern(null)} />}
     </>
@@ -223,5 +234,27 @@ function PatternDialog({ person, current, weekStart, onClose }: { person: Schedu
         </fieldset>
       </div>
     </Dialog>
+  );
+}
+
+/** A time-off request on a day: approved (solid), pending (dashed, waiting for a decision) or denied (struck through). */
+function TimeOffChip({ t }: { t: TimeOffMark }) {
+  const what = TIME_OFF_CATEGORIES[t.category];
+  const hours = !t.fullDay && t.startTime && t.endTime ? ` ${short(t.startTime.slice(0, 5))}–${short(t.endTime.slice(0, 5))}` : "";
+  const state = t.status === "approved" ? "Approved" : t.status === "pending" ? "Pending" : "Denied";
+  return (
+    <Link
+      href={`/time-off/${t.id}`}
+      aria-label={`${what} time off${hours}: ${state.toLowerCase()}`}
+      className={cn(
+        "mt-1 flex w-full flex-col items-center rounded-md border px-1 py-1 text-[11px] leading-tight font-semibold",
+        t.status === "approved" && "border-green-200 bg-green-50 text-green-800",
+        t.status === "pending" && "border-dashed border-amber-400 bg-amber-50 text-amber-900",
+        t.status === "denied" && "border-red-200 bg-red-50 text-red-800",
+      )}
+    >
+      <span className={cn(t.status === "denied" && "line-through")}>{what}{hours}</span>
+      <span className="font-normal opacity-80">{state}</span>
+    </Link>
   );
 }

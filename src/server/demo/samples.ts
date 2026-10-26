@@ -75,6 +75,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Balances first: once a bank covers vacation and personal time, requests on it need hours and a balance.
   note("time-off balances", await ptoBalances(db, today));
   note("time off", await timeOff(db, today));
+  note("time off on the schedule", await scheduleTimeOff(db, today));
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
   note("operational workspace", await workspace(db, today, userId));
@@ -552,6 +553,37 @@ async function timeOff(db: Db, today: string): Promise<number> {
     if (mine.length) continue;
     await must("time off", db.rpc("time_off_save", { p: { employee_id: v.id, category: "personal", start_date: addDays(today, 21), end_date: addDays(today, 21), hours: 8, reason: "" } }));
     n++;
+  }
+  return n;
+}
+
+/**
+ * Time off on the Schedule (owner 2026-10-26): one approved, one pending and one denied request starting today, for
+ * three different people, so the Schedule shows all three states. Through time_off_save and time_off_decide (the
+ * page's own functions); found again by their reason, so Refresh adds nothing twice.
+ */
+async function scheduleTimeOff(db: Db, today: string): Promise<number> {
+  if ((await count(db, "time_off_requests")) === null) return 0;
+  const REASON = "Demo: shows on the Schedule.";
+  const done = (await must("time off", db.from("time_off_requests").select("id").eq("reason", REASON).neq("status", "canceled"))) as Array<{ id: string }>;
+  if (done.length) return 0;
+  const people = (await must("employees", db.from("employees").select("id").eq("status", "active").order("full_name"))) as Array<{ id: string }>;
+  const plan: Array<{ category: string; day: number; decision: "approved" | "denied" | null; note: string }> = [
+    { category: "sick", day: 0, decision: "approved", note: "Approved. Feel better." },
+    { category: "unpaid", day: 1, decision: null, note: "" },
+    { category: "other", day: 2, decision: "denied", note: "Denied: two crews already off that day." },
+  ];
+  let n = 0;
+  let i = 0;
+  for (const step of plan) {
+    while (i < people.length) {
+      const who = people[i++];
+      const saved = await db.rpc("time_off_save", { p: { employee_id: who.id, category: step.category, start_date: addDays(today, step.day), end_date: addDays(today, step.day), hours: 8, reason: REASON } });
+      if (saved.error) continue;
+      n++;
+      if (step.decision) await db.rpc("time_off_decide", { p_id: (saved.data as { id: string }).id, p_decision: step.decision, p_note: step.note });
+      break;
+    }
   }
   return n;
 }

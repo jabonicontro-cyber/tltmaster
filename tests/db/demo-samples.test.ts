@@ -88,7 +88,7 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(c.workOrders).toBeGreaterThanOrEqual(3);
     expect(c.schedules).toBeGreaterThan(0);
     expect(c.documents).toBeGreaterThan(0);
-    expect(c.timeOff).toBe(2);
+    expect(c.timeOff).toBe(5); // two earlier samples and three on the Schedule (approved, pending, denied)
     expect(c.quotes).toBeGreaterThanOrEqual(1);
     expect(c.workspaces).toBe(1);
     // Plan the day has open loads to plan tomorrow (docs/OPTIMIZATION.md §4).
@@ -176,6 +176,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(routes.rows.map((r) => [Number(r.stops), r.truck])).toEqual([[5, true], [4, false]]);
     const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
     expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // Time off on the Schedule (2026-10-26): approved, pending and denied requests, all three states.
+    const offStates = await q<{ status: string }>("select distinct status from public.time_off_requests where company_id = $1 and reason = 'Demo: shows on the Schedule.' order by status", [w.company]);
+    expect(offStates.rows.map((r) => r.status)).toEqual(["approved", "denied", "pending"]);
     // One truck delivers twice today, so its second drive starts where the first delivery left it (2026-10-26).
     const twice = await q<{ n: string }>("select count(*) n from (select a.truck_id from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date group by a.truck_id having count(*) >= 2) t", [w.company, TZ]);
     expect(Number(twice.rows[0].n)).toBeGreaterThanOrEqual(1);

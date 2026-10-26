@@ -81,3 +81,37 @@ export async function approvalChain(): Promise<Array<{ step_no: number; role: st
   if (error) return null;
   return (data ?? []) as Array<{ step_no: number; role: string; label: string }>;
 }
+
+export interface TimeOffMark {
+  id: string;
+  employeeId: string;
+  category: TimeOffCategory;
+  status: Exclude<TimeOffStatus, "canceled">;
+  start: string;
+  end: string;
+  fullDay: boolean;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+/**
+ * Pending, approved and denied time off overlapping [from, to], for the Schedule (owner 2026-10-26). RLS decides whose:
+ * time_off.view sees everyone's, anyone else their own. Canceled requests are left out. null = not installed yet.
+ */
+export async function timeOffInRange(from: string, to: string): Promise<TimeOffMark[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("time_off_requests")
+    .select("id, employee_id, category, status, start_date, end_date, full_day, start_time, end_time")
+    .in("status", ["pending", "approved", "denied"])
+    .lte("start_date", to)
+    .gte("end_date", from)
+    .order("start_date");
+  if (error) {
+    if (error.code === "PGRST205" || error.code === "42P01") return null;
+    throw new Error(`Could not load time off: ${error.message}`);
+  }
+  return ((data ?? []) as Array<{ id: string; employee_id: string; category: TimeOffCategory; status: TimeOffMark["status"]; start_date: string; end_date: string; full_day: boolean; start_time: string | null; end_time: string | null }>).map((r) => ({
+    id: r.id, employeeId: r.employee_id, category: r.category, status: r.status, start: r.start_date, end: r.end_date, fullDay: r.full_day, startTime: r.start_time, endTime: r.end_time,
+  }));
+}

@@ -91,3 +91,23 @@ test("drivers cannot open the Schedule page", async ({ page }) => {
   await page.goto("/schedule");
   await expect(page).toHaveURL(/no-access/);
 });
+
+// Time off on the Schedule (owner 2026-10-26): pending, approved and denied requests show on the person's days.
+test("the week shows a person's pending, approved and denied time off", async ({ page }) => {
+  const monday = futureMonday();
+  const day = (n: number) => { const d = new Date(`${monday}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  const name = `Time Off Person ${unique()}`;
+  await asUser(USERS.owner.email, async (q) => {
+    const emp = (await q("insert into public.employees (full_name, department) values ($1, 'operations') returning id", [name])).rows[0].id as string;
+    const save = async (category: string, date: string) => (await q("select public.time_off_save($1::jsonb) as r", [JSON.stringify({ employee_id: emp, category, start_date: date, end_date: date, hours: 8 })])).rows[0].r.id as string;
+    await save("unpaid", day(0));
+    await q("select public.time_off_decide($1, 'approved', '')", [await save("sick", day(1))]);
+    await q("select public.time_off_decide($1, 'denied', 'Two crews already off.')", [await save("other", day(2))]);
+  });
+  await signIn(page, "owner");
+  await page.goto(`/schedule?week=${monday}&q=${encodeURIComponent(name)}`);
+  const row = page.getByRole("row").filter({ hasText: name });
+  await expect(row.getByRole("link", { name: "Unpaid leave time off: pending" })).toBeVisible();
+  await expect(row.getByRole("link", { name: "Sick time off: approved" })).toBeVisible();
+  await expect(row.getByRole("link", { name: "Other time off: denied" })).toBeVisible();
+});
