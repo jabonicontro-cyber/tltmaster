@@ -2,12 +2,13 @@ import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { pillChildren } from "./pill-text";
 
 type Variant = "primary" | "secondary" | "danger" | "ghost" | "dark";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-full pb-px font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 " +
+  "inline-flex items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap transition-[color,background-color,border-color,transform] duration-150 ease-out active:scale-[0.98] motion-reduce:active:scale-100 " +
   "disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-2 focus-visible:outline-offset-2";
 
 const variants: Record<Variant, string> = {
@@ -45,7 +46,7 @@ export function Button({ variant = "primary", size = "md", loading, icon, classN
       {...props}
     >
       {loading ? <Loader2 className="size-4 animate-spin" aria-hidden /> : icon}
-      {children}
+      {pillChildren(children)}
     </button>
   );
 }
@@ -60,7 +61,7 @@ export function ButtonLink({ variant = "primary", size = "md", icon, className, 
   return (
     <Link className={buttonClasses(variant, size, className)} {...props}>
       {icon}
-      {children}
+      {pillChildren(children)}
     </Link>
   );
 }

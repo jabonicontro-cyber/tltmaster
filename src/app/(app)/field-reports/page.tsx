@@ -25,8 +25,8 @@ export default async function FieldReportsPage({ searchParams }: { searchParams:
       <nav aria-label="Report views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(REPORT_VIEWS) as ReportView[]).map((k) => (
           <Link key={k} href={`/field-reports?view=${k}`} aria-current={k === view ? "page" : undefined}
-            className={cn("flex items-center gap-1.5 rounded-full px-4 pt-1.5 pb-[7px] text-sm leading-5 font-semibold whitespace-nowrap transition-colors duration-150", k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
-            {REPORT_VIEWS[k]}
+            className={cn("flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150", k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
+            <span className="pill-text">{REPORT_VIEWS[k]}</span>
             {k === "open" && counts.open ? <Badge tone="amber">{counts.open}</Badge> : k === "acknowledged" && counts.acknowledged ? <Badge tone="blue">{counts.acknowledged}</Badge> : null}
           </Link>
         ))}

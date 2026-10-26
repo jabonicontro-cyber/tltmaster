@@ -51,8 +51,8 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
             <span className="block max-w-[16rem] truncate text-xs text-muted">{roleLabel}</span>
           </span>
           {demo && !demo.presentation && (
-            <span aria-hidden className="rounded-full bg-surface px-2 pt-0.5 pb-[3px] text-[11px] leading-4 font-semibold text-muted ring-1 ring-line" title="Demo company: fictional data, nothing is sent">
-              Demo{currentView ? <span className="hidden sm:inline"> · {PREVIEW_LABELS[currentView]}</span> : null}
+            <span aria-hidden className="inline-flex h-5 items-center rounded-full bg-surface px-2 text-[11px] font-semibold text-muted ring-1 ring-line" title="Demo company: fictional data, nothing is sent">
+              <span className="pill-text">Demo{currentView ? <span className="hidden sm:inline"> · {PREVIEW_LABELS[currentView]}</span> : null}</span>
             </span>
           )}
           {/* The picture is the button on phones; the arrow returns where there is room. */}

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { PRODUCT_NAME } from "@/lib/product";
@@ -18,6 +19,10 @@ export const metadata: Metadata = {
   },
 };
 
+// Inter is shipped with the app (self-hosted by next/font at build time; no request to Google from the browser).
+// Before 2026-10-26 the app only named it, so computers without Inter drew another font and pill text sat off-centre.
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
+
 export const viewport: Viewport = {
   themeColor: "#0c1a2b",
 };
@@ -25,7 +30,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     // data-theme is set before paint by THEME_SCRIPT, so the server and client markup differ on <html> only.
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
       <body>
         <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded focus:bg-card focus:px-3 focus:py-2">
           Skip to content

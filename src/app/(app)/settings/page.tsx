@@ -227,9 +227,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             key={g}
             href={`/settings?tab=${first!.key}`}
             aria-current={group === g ? "page" : undefined}
-            className={cn("flex items-center gap-1.5 rounded-full px-4 pt-1.5 pb-[7px] text-sm leading-5 font-semibold whitespace-nowrap transition-colors duration-150", group === g ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}
+            className={cn("flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150", group === g ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}
           >
-            {g}
+            <span className="pill-text">{g}</span>
           </Link>
         ))}
       </nav>
@@ -240,9 +240,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               key={t.key}
               href={`/settings?tab=${t.key}`}
               aria-current={tab === t.key ? "page" : undefined}
-              className={cn("rounded-full px-3.5 pt-1.5 pb-[7px] text-sm leading-5 font-medium whitespace-nowrap transition-colors", tab === t.key ? "bg-ink/[0.07] text-ink" : "text-muted hover:text-ink")}
+              className={cn("inline-flex h-8 items-center rounded-full px-3.5 text-sm font-medium whitespace-nowrap transition-colors", tab === t.key ? "bg-ink/[0.07] text-ink" : "text-muted hover:text-ink")}
             >
-              {t.label}
+              <span className="pill-text">{t.label}</span>
             </Link>
           ))}
         </nav>

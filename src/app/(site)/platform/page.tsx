@@ -75,8 +75,8 @@ export default function PlatformPage() {
                 <li key={c.name} className="rounded-2xl border border-silver/10 bg-navy-2 px-5 py-4 shadow-card">
                   <p className="flex flex-wrap items-center gap-2 font-semibold text-cloud">
                     {c.name}
-                    <span className="rounded-full bg-electric/15 px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-electric">Coming soon</span>
-                    {c.addOn && <span className="rounded-full border border-silver/20 px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-silver">Optional add-on</span>}
+                    <span className="inline-flex h-[22px] items-center rounded-full bg-electric/15 px-2.5 text-xs font-semibold text-electric"><span className="pill-text">Coming soon</span></span>
+                    {c.addOn && <span className="inline-flex h-[22px] items-center rounded-full border border-silver/20 px-2.5 text-xs font-semibold text-silver"><span className="pill-text">Optional add-on</span></span>}
                   </p>
                   <p className="mt-1.5 text-sm text-silver">{c.text}</p>
                 </li>

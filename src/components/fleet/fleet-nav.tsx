@@ -20,11 +20,11 @@ export function FleetNav({ active }: { active: FleetTab }) {
           href={t.href}
           aria-current={t.label === active ? "page" : undefined}
           className={cn(
-            "flex items-center gap-1.5 rounded-full px-4 pt-1.5 pb-[7px] text-sm leading-5 font-semibold whitespace-nowrap transition-colors duration-150",
+            "flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
             t.label === active ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
           )}
         >
-          {t.label}
+          <span className="pill-text">{t.label}</span>
         </Link>
       ))}
     </nav>

@@ -43,8 +43,8 @@ export function DemoWelcome({ initiallyOpen, companyName }: { initiallyOpen: boo
           <D.Close className="absolute top-3 right-3 rounded p-1 text-muted hover:bg-surface hover:text-ink" aria-label="Close">
             <X className="size-5" aria-hidden />
           </D.Close>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-surface px-2.5 pt-1 pb-[5px] text-xs leading-4 font-semibold text-muted ring-1 ring-line">
-            <Info className="size-3.5" aria-hidden /> Demo company{companyName ? ` · ${companyName}` : ""}
+          <span className="inline-flex h-[26px] items-center gap-1.5 rounded-full bg-surface px-2.5 text-xs font-semibold text-muted ring-1 ring-line">
+            <Info className="size-3.5" aria-hidden /> <span className="pill-text">Demo company{companyName ? ` · ${companyName}` : ""}</span>
           </span>
           <D.Title className="mt-3 text-xl font-bold text-ink">Welcome to the Taviron demo</D.Title>
           <div id="demo-welcome-body" className="mt-3 space-y-3 text-sm leading-relaxed text-ink">

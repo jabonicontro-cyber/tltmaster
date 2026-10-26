@@ -117,8 +117,8 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_85%_10%,rgb(15_111_214/0.18),transparent_70%),radial-gradient(45%_60%_at_10%_90%,rgb(199_209_222/0.55),transparent_70%),linear-gradient(180deg,#ffffff,#f5f7fb)]" aria-hidden />
         <Container className="relative grid items-center gap-x-14 pt-14 pb-24 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24 lg:pb-32">
           <div className="max-w-xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 pt-1 pb-[5px] text-[13px] leading-5 font-semibold text-silver backdrop-blur">
-              <span className="size-1.5 rounded-full bg-electric" aria-hidden /> Built for hauling and aggregate companies
+            <p className="inline-flex h-[30px] items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 text-[13px] font-semibold text-silver backdrop-blur">
+              <span className="size-1.5 rounded-full bg-electric" aria-hidden /> <span className="pill-text">Built for hauling and aggregate companies</span>
             </p>
             <h1 id="hero-title" className="site-display mt-6 text-[2.75rem] font-semibold text-cloud sm:text-[4rem]">
               Your entire trucking operation. Connected.

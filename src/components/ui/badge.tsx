@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { pillChildren } from "./pill-text";
 import { cn } from "@/lib/cn";
 import { QUOTE_STATUS_LABELS, type QuoteStatus } from "@/lib/quotes/status";
 import { ORDER_STATUS_LABELS } from "@/lib/orders/status";
@@ -19,12 +20,12 @@ const tones: Record<Tone, string> = {
   "critical-soft": "bg-red-50 text-critical ring-red-100",
 };
 
-// Optical centring (measured 2026-10-25): with Inter, lowercase text sits about 0.75 px low in a symmetric pill, so the
-// text is lifted half a pixel: 2 px above and 3 px below (21 px tall), which the browser renders as a true half-pixel lift.
+// Pill centring (owner 2026-10-26): a fixed height with the words trimmed to capitals and baseline (pill-text), so the
+// text sits in the exact middle in every browser. Words are wrapped in their own span; icons stay beside them.
 export function Badge({ tone = "gray", children, className }: { tone?: Tone; children: ReactNode; className?: string }) {
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold ring-1 ring-inset whitespace-nowrap", tones[tone], className)}>
-      {children}
+    <span className={cn("inline-flex h-[22px] items-center gap-1 rounded-full px-2.5 text-xs font-semibold ring-1 ring-inset whitespace-nowrap align-middle", tones[tone], className)}>
+      {pillChildren(children)}
     </span>
   );
 }
@@ -81,5 +82,5 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
 
 /** The solid "Urgent" pill that goes with the red edge (urgent orders, loads and attention items). Fixed red. */
 export function UrgentPill({ label = "Urgent" }: { label?: string }) {
-  return <span className="rounded-full bg-critical px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-white">{label}</span>;
+  return <span className="inline-flex h-[22px] items-center rounded-full bg-critical px-2.5 text-xs font-semibold text-white align-middle"><span className="pill-text">{label}</span></span>;
 }

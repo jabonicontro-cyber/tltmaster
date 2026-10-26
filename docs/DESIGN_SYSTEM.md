@@ -33,9 +33,12 @@ driver/mechanic phone views and the platform console (`/admin`). The public webs
   in a flex row: a badge after a variable-width number or date drifts from row to row.
 - **Show labels, not raw values:** statuses go through their badge component (`OrderStatusBadge`, …), never
   `status.replaceAll("_", " ")`.
-- **Optical centring of pill text:** with Inter, lowercase text sits about 0.75 px low in a pill with equal padding.
-  Pills lift the text by giving 1 px more padding below than above (badges `pt-0.5 pb-[3px] leading-4`; small chips
-  `pt-1 pb-[5px]`; tab pills `pt-1.5 pb-[7px] leading-5`). Fractional padding (`pt-[1.5px]`) is rounded away by the
-  browser and has no effect. All-caps labels keep equal padding (capitals already sit high).
-  Measured with a 4× screenshot of each pill, comparing the ink's top and bottom margins.
+- **Centred text in every pill and button (owner 2026-10-26, applies everywhere):** Inter is shipped with the app
+  (`next/font` in `src/app/layout.tsx`); before that it was only named, so computers without Inter (most Macs) drew
+  Helvetica Neue and the old one-pixel padding nudges put the words off-centre. Rules: pills and buttons have a fixed
+  height and `items-center`, with even padding (never a `pt-…`/`pb-…` nudge); the words go in a span with `pill-text`
+  (`globals.css`: trims the text box to capitals and baseline, so the middle is exact in every browser). `Badge`,
+  `Button` and `ButtonLink` do this themselves (`src/components/ui/pill-text.tsx`); a hand-made pill wraps its words
+  the same way. Not on truncated text (trimming clips the line); those keep a fixed height and `items-center`.
+  Checked from layout: the trimmed text box's centre equals the pill's centre (`off-centre 0.00`).
 - Dates and figures in lists: `whitespace-nowrap tabular`; numbers right-aligned in their column.

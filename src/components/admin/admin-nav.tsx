@@ -36,11 +36,11 @@ export function AdminNav() {
             href={n.href}
             aria-current={current ? "page" : undefined}
             className={cn(
-              "snap-start rounded-full px-3.5 pt-1.5 pb-[7px] text-sm leading-5 font-semibold whitespace-nowrap transition-colors duration-150",
+              "inline-flex h-8 snap-start items-center rounded-full px-3.5 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
               current ? "bg-white text-charcoal shadow-xs" : "text-white/70 hover:bg-white/[0.08] hover:text-white",
             )}
           >
-            {n.label}
+            <span className="pill-text">{n.label}</span>
           </Link>
         );
       })}

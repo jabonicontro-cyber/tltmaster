@@ -33,7 +33,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
       aria-label={title}
     >
       <div className="flex items-center gap-2">
-        <span className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-ink/[0.05] px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-medium text-ink/75">
+        <span className="inline-flex h-[22px] min-w-0 items-center gap-1.5 rounded-full bg-ink/[0.05] px-2.5 text-xs leading-4 font-medium text-ink/75">
           <span className={cn("size-1.5 shrink-0 rounded-full", dotTone[item.priority] ?? dotTone[3])} aria-hidden />
           <span className="truncate">{KIND_LABELS[item.kind]}</span>
         </span>
