@@ -176,6 +176,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(routes.rows.map((r) => [Number(r.stops), r.truck])).toEqual([[5, true], [4, false]]);
     const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
     expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // The Maintenance board's later columns (2026-10-26): in progress, awaiting parts, awaiting inspection.
+    const board = await q<{ status: string }>("select distinct status::text as status from public.work_orders where company_id = $1 and status in ('in_progress', 'awaiting_parts', 'awaiting_inspection') order by 1", [w.company]);
+    expect(board.rows.map((r) => r.status)).toEqual(["awaiting_inspection", "awaiting_parts", "in_progress"]);
     // Time off on the Schedule (2026-10-26): approved, pending and denied requests, all three states.
     const offStates = await q<{ status: string }>("select distinct status from public.time_off_requests where company_id = $1 and reason = 'Demo: shows on the Schedule.' order by status", [w.company]);
     expect(offStates.rows.map((r) => r.status)).toEqual(["approved", "denied", "pending"]);

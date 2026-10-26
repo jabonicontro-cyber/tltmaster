@@ -60,6 +60,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   const note = (feature: string, n: number) => { if (n > 0) { result.added += n; result.features.push(feature); } };
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   note("maintenance", await maintenance(db, today, trucks));
+  note("maintenance board", await maintenanceBoard(db, trucks));
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
   note("my jobs for each demo owner", await ownerCrews(db));
@@ -493,6 +494,40 @@ async function maintenance(db: Db, today: string, trucks: Array<{ id: string; un
     }
     await must("schedule", db.rpc("maintenance_save_schedule", { p: { truck_id: trucks[0].id, name: "Annual inspection", interval_days: 365, warn_days: 30, last_done_on: addDays(today, -350) } }));
     n++;
+  }
+  return n;
+}
+
+/**
+ * The Maintenance board's later columns (owner 2026-10-26: demos showcase everything): one job in progress, one waiting
+ * for parts and one waiting for inspection, on trucks that are in service. Created and moved through
+ * maintenance_create_work_order and maintenance_set_status (the work order page's own functions); found again by
+ * title, so Refresh adds nothing twice. A step the rules refuse is skipped, never forced.
+ */
+async function maintenanceBoard(db: Db, trucks: Array<{ id: string; unit_number: string }>): Promise<number> {
+  if ((await count(db, "work_orders")) === null) return 0;
+  const jobs = [
+    { title: "Alternator belt squeal", category: "electrical", path: ["in_progress"] },
+    { title: "Replace DEF level sensor", category: "engine", path: ["in_progress", "awaiting_parts"] },
+    { title: "Brake adjustment after shoe replacement", category: "brakes", path: ["in_progress", "awaiting_inspection"] },
+  ];
+  const inService = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  const pool = inService.length ? inService : trucks;
+  let n = 0;
+  for (const [i, job] of jobs.entries()) {
+    const found = ((await db.from("work_orders").select("id").eq("title", job.title).limit(1)).data ?? []) as Array<{ id: string }>;
+    if (found.length || !pool.length) continue;
+    const created = await db.rpc("maintenance_create_work_order", {
+      p: { submission_key: randomUUID(), truck_id: pool[(i + 3) % pool.length].id, title: job.title, category: job.category, urgency: "normal", safety_critical: false, description: "Demo work order for the Maintenance board." },
+    });
+    if (created.error) continue;
+    n++;
+    for (const status of job.path) {
+      const row = ((await db.from("work_orders").select("id, edit_seq").eq("title", job.title).limit(1)).data ?? [])[0] as { id: string; edit_seq: number } | undefined;
+      if (!row) break;
+      const moved = await db.rpc("maintenance_set_status", { p_id: row.id, p_status: status, p_note: "Demo", p_expected_seq: row.edit_seq });
+      if (moved.error) break;
+    }
   }
   return n;
 }
