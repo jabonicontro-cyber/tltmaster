@@ -95,6 +95,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
   note("guided onboarding", await guidedOnboarding(db));
+  // After the planning day (tomorrow's open loads exist): hired trucks with an open and a confirmed offer (B83).
+  note("hired trucks", await hiredTrucks(db, today, companyId));
   // Last: spreads this demo's past assignment and review times so Command Center "Speed" has measurements (B86).
   note("speed history", await speedHistory(db));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
@@ -1253,4 +1255,58 @@ async function speedHistory(db: Db): Promise<number> {
   if (error) throw new Error(`Demo samples (speed history): ${error.message}`);
   const r = (data ?? {}) as { assignments?: number; tickets?: number };
   return (r.assignments ?? 0) + (r.tickets ?? 0);
+}
+
+/**
+ * Hired trucks (20261120003700, B83): switched on by the platform owner refreshing the demo (as the customer portal is;
+ * skipped for anyone else), then two fictional haulers — one ready, one with expired insurance — each with a truck and
+ * a driver, an offer waiting for the hauler on one of tomorrow's open loads, and one accepted by phone and confirmed
+ * (through assign_load) on another. Added once; nothing is texted or sent.
+ */
+async function hiredTrucks(db: Db, today: string, companyId: string): Promise<number> {
+  const on = await db.rpc("hired_trucks_enabled");
+  if (missing(on.error)) return 0;
+  let added = 0;
+  if (!on.data) {
+    const r = await db.rpc("platform_hired_trucks_set", { p_company: companyId, p_entitled: true, p_note: "Demo company (sample data)" });
+    if (r.error) return 0;
+    added++;
+  }
+  if (((await count(db, "haulers")) ?? 0) > 0) return added;
+  const far = addDays(today, 240);
+  const makeHauler = async (name: string, contact: string, unit: string, driver: string, insuranceUntil: string) => {
+    const h = await must("hauler", db.rpc("hauler_save", { p_id: null, p_name: name, p_contact_name: contact, p_phone: "555-0142", p_email: "", p_notes: "Demo hauler (fictional).", p_active: true })) as string;
+    const truck = await must("hauler truck", db.rpc("hauler_add_truck", { p_hauler: h, p_unit: unit, p_type: "tri_axle_dump", p_plate: "" })) as string;
+    const d = await must("hauler driver", db.rpc("hauler_add_driver", { p_hauler: h, p_name: driver, p_phone: "555-0143" })) as string;
+    await must("hauler driver qualifications", db.from("driver_qualifications").insert([
+      { driver_id: d, kind: "cdl", cdl_class: "A", expires_on: far, verified_at: new Date().toISOString() },
+      { driver_id: d, kind: "medical_card", expires_on: far, verified_at: new Date().toISOString() },
+    ]));
+    for (const [kind, truckId, exp] of [["insurance", null, insuranceUntil], ["w9", null, null], ["agreement", null, null], ["registration", truck, far], ["inspection", truck, far]] as const) {
+      await must("hauler document", db.rpc("hauler_record_document", { p_hauler: h, p_truck: truckId, p_kind: kind, p_reference: "Demo (fictional)", p_expires_on: exp }));
+    }
+    return { h, truck, d };
+  };
+  const ready = await makeHauler("Ridgeline Hauling (demo)", "Pat Ridge", "H-21", "Casey Hollis", far);
+  await makeHauler("Bluestem Owner-Operator (demo)", "Lee Bluestem", "H-35", "Morgan Vale", addDays(today, -6));
+  added += 2;
+
+  // Tomorrow's open loads (no truck, no offer yet).
+  const tomorrow = addDays(today, 1);
+  const loads = ((await db.from("order_loads").select("id").eq("load_date", tomorrow).eq("status", "planned").order("start_time")).data ?? []) as Array<{ id: string }>;
+  const assigned = loads.length ? new Set((((await db.from("dispatch_assignments").select("load_id").in("load_id", loads.map((l) => l.id)).eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id)) : new Set<string>();
+  const open = loads.filter((l) => !assigned.has(l.id));
+  let offers = 0;
+  for (const [i, l] of open.entries()) {
+    if (offers >= 2) break;
+    const sent = await db.rpc("hauler_offer_send", { p_load: l.id, p_truck: ready.truck, p_trailer: null, p_driver: ready.d, p_rate_cents: i === 0 ? 1450 : 9500, p_rate_unit: i === 0 ? "ton" : "load", p_note: "Demo offer (nothing is texted)." });
+    if (sent.error) continue; // the rules refused this load (overlap, eligibility): try the next one
+    offers++;
+    if (offers === 2) {
+      // The second: accepted by phone and confirmed by dispatch, so the board and hauler pay show a hired load.
+      const answered = await db.rpc("hauler_offer_respond", { p_offer: sent.data, p_accept: true, p_note: "Answered by phone (demo)" });
+      if (!answered.error) await db.rpc("hauler_offer_confirm", { p_offer: sent.data });
+    }
+  }
+  return added + offers;
 }

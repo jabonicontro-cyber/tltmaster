@@ -70,6 +70,8 @@ describe.skipIf(!available)("demo feature samples", () => {
   beforeAll(async () => {
     w.company = (await q<{ id: string }>("select private.create_company($1, $2) as id", [`Samples Demo ${randomUUID().slice(0, 6)}`, `prospect-samples-${randomUUID().slice(0, 6)}`])).rows[0].id;
     await q("update public.companies set is_demo = true, demo_kind = 'prospect', timezone = $2 where id = $1", [w.company, TZ]).catch(() => q("update public.companies set is_demo = true, demo_kind = 'prospect' where id = $1", [w.company]));
+    // Hired trucks is the platform owner's switch (B83); switched on here as the console would.
+    await q("insert into private.hired_trucks_entitlements (company_id, entitled) values ($1, true) on conflict do nothing", [w.company]).catch(() => undefined);
     w.owner = await newUser("demo-owner");
     await q("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, 'owner', true)", [w.company, w.owner]);
     await q("update public.profiles set active_company_id = $1 where id = $2", [w.company, w.owner]);
@@ -213,7 +215,7 @@ describe.skipIf(!available)("demo feature samples", () => {
     const changes = await q<{ kind: string }>("select kind from public.shift_changes where company_id = $1 order by kind", [w.company]);
     expect(changes.rows.map((r) => r.kind)).toEqual(["off", "shift"]);
     // Fictional VINs in the VIN format on all trucks but one (the missing case), and on trailers.
-    const vins = await q<{ with_vin: string; no_vin: string }>("select count(*) filter (where vin <> '') as with_vin, count(*) filter (where vin = '') as no_vin from public.trucks where company_id = $1 and active", [w.company]);
+    const vins = await q<{ with_vin: string; no_vin: string }>("select count(*) filter (where vin <> '') as with_vin, count(*) filter (where vin = '') as no_vin from public.trucks where company_id = $1 and active and hauler_id is null", [w.company]);
     expect(Number(vins.rows[0].with_vin)).toBeGreaterThan(0);
     expect(Number(vins.rows[0].no_vin)).toBe(1);
     // Triage (20261120003100): suggestions from the rules waiting for a person's review; nothing accepted for them.
@@ -250,6 +252,14 @@ describe.skipIf(!available)("demo feature samples", () => {
       await client.query("rollback");
       client.release();
     }
+
+    // Hired trucks (B83): a ready hauler and one with expired insurance; an open offer and a confirmed one, assigned.
+    const haulers = await q<{ n: string }>("select count(*) n from public.haulers where company_id = $1", [w.company]);
+    expect(Number(haulers.rows[0].n)).toBe(2);
+    const offerStates = await q<{ status: string }>("select status from public.hauler_offers where company_id = $1 order by status", [w.company]);
+    expect(offerStates.rows.map((r) => r.status)).toEqual(["confirmed", "offered"]);
+    const hiredAssigned = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.trucks t on t.id = a.truck_id where a.company_id = $1 and a.status = 'active' and t.hauler_id is not null", [w.company]);
+    expect(Number(hiredAssigned.rows[0].n)).toBe(1);
 
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));

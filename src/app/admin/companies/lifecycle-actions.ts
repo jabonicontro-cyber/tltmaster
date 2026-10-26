@@ -74,3 +74,14 @@ export async function setPortalEntitlement(formData: FormData) {
   revalidatePath("/admin", "layout");
   redirect(`/admin/companies/${id}?saved=${entitled ? "portal_on" : "portal_off"}`);
 }
+
+/** Hired trucks add-on (B83): the platform owner's switch per company. */
+export async function setHiredTrucks(formData: FormData) {
+  const id = idOf(formData);
+  const supabase = await db();
+  const entitled = formData.get("entitled") === "yes";
+  const { error } = await supabase.rpc("platform_hired_trucks_set", { p_company: id, p_entitled: entitled, p_note: String(formData.get("note") ?? "") });
+  if (error) to(id, "error", error.message);
+  revalidatePath("/admin", "layout");
+  redirect(`/admin/companies/${id}?saved=${entitled ? "hired_on" : "hired_off"}`);
+}

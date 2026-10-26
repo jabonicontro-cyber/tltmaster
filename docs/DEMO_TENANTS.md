@@ -142,3 +142,12 @@ Proof: `tests/e2e/demo-parity.spec.ts` opens every navigation page in every demo
 a prospect demo after **Refresh demo data**, and checks Maintenance, Time off, Quotes, Communications, My Day (including the site directions status) and a
 flagged job site show sample data; `tests/db/demo-samples.test.ts` checks the samples, that a second run adds nothing and keeps every demo
 user, and that a real company is refused.
+
+### Hired trucks (B83, 2026-10-26)
+
+Not an intentional difference: the add-on is the platform owner's switch for every company. "Refresh demo data" run by
+the platform team switches it on for the demo (as the customer portal entitlement) and adds two fictional haulers (one
+ready, one with expired insurance), each with a truck and a driver, an offer waiting for the hauler on one of tomorrow's
+open loads and one accepted by phone and confirmed through `assign_load` (`src/server/demo/samples.ts` `hiredTrucks`).
+Nothing is texted. A refresh by anyone else skips it.
+

@@ -10,6 +10,7 @@ import { FlashToast } from "@/components/ui/flash-toast";
 import { ErrorState, Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
 import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
+import { HiredTrucksCard, type HiredTrucksEntitlement } from "@/components/admin/hired-trucks-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { activityText } from "@/lib/platform/launchpad";
@@ -45,6 +46,8 @@ const SAVED: Record<string, string> = {
   archived: "Company archived. Its people cannot open it until it is restored.",
   restored: "Company restored.",
   portal_on: "Customer portal entitlement granted. The company turns its portal on itself.",
+  hired_on: "Hired trucks switched on for this company.",
+  hired_off: "Hired trucks switched off. Haulers and past offers are kept.",
   portal_off: "Customer portal entitlement removed. The portal is off; accounts and records are kept.",
 };
 
@@ -77,6 +80,9 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   // Customer portal entitlement (20261120000700); not shown before that update.
   const pe = await supabase.rpc("platform_portal_entitlement", { p_company: id });
   const portal = pe.error ? null : (pe.data as PortalEntitlement);
+  // Hired trucks add-on (20261120003700); not shown before that update.
+  const he = await supabase.rpc("platform_hired_trucks_entitlement", { p_company: id });
+  const hired = he.error ? null : (he.data as HiredTrucksEntitlement);
   const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
   const steps = [
     { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
@@ -165,6 +171,12 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       {portal ? (
         <Card className="mt-5">
           <PortalEntitlementCard companyId={c.id} state={portal} />
+        </Card>
+      ) : null}
+
+      {hired ? (
+        <Card className="mt-5">
+          <HiredTrucksCard companyId={c.id} state={hired} />
         </Card>
       ) : null}
       {preview ? (

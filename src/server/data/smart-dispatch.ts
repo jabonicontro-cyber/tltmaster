@@ -7,6 +7,7 @@ import { dispatchBaseContext } from "@/server/data/bases";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
+import { hiredIds } from "./hired-trucks";
 
 export const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
 
@@ -127,18 +128,20 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     for (const l of smartLoads) l.base_id = bases.order.get(l.order_id) ?? null;
   }
 
+  const hired = await hiredIds();
   return {
     today,
     bases: bases ? { crossBase: bases.crossBase, names: bases.names } : undefined,
     loads: smartLoads,
     bookings,
-    trucks: ((trucks.data ?? []) as Array<SmartTruck & { weight_capacity: number | string | null; volume_capacity: number | string | null }>).map((t) => ({
+    // Hired trucks and drivers (B83) are offered, never planned: Plan the day and Smart Dispatch leave them out.
+    trucks: ((trucks.data ?? []) as Array<SmartTruck & { weight_capacity: number | string | null; volume_capacity: number | string | null }>).filter((t) => !hired.trucks.has(t.id)).map((t) => ({
       ...t,
       weight_capacity: t.weight_capacity === null ? null : Number(t.weight_capacity),
       volume_capacity: t.volume_capacity === null ? null : Number(t.volume_capacity),
       base_id: bases?.truck.get(t.id) ?? null,
     })),
-    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [], primary_truck_id: primaryOf.get(d.id) ?? null, base_id: bases?.driver.get(d.id) ?? null })),
+    drivers: ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).filter((d) => !hired.drivers.has(d.id)).map<SmartDriver>((d) => ({ id: d.id, name: d.display_name, active: d.active, qualifications: qualsBy.get(d.id) ?? [], primary_truck_id: primaryOf.get(d.id) ?? null, base_id: bases?.driver.get(d.id) ?? null })),
     truckReports: ((reports.data ?? []) as Array<{ truck_id: string | null; kind: string }>).filter((r) => r.truck_id).map((r) => ({ truck_id: r.truck_id as string, kind: r.kind })),
     rejections: (rejections.data ?? []) as SmartInput["rejections"],
     shopVisits: shopMissing ? [] : ((shop.data ?? []) as SmartShopVisit[]),

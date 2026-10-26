@@ -3,6 +3,7 @@ import { addDays } from "@/lib/dates";
 import type { PastCrew } from "@/lib/dispatch/board";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
+import { hiredIds } from "./hired-trucks";
 import { liveTicketsForLoads } from "./tickets";
 import type { DriverListRow, OrderListRow, QualificationRow, TrailerRow, TruckRow, UnitRow } from "./types";
 
@@ -123,6 +124,11 @@ export async function getDispatchDay(date: string, base: string | null = null) {
     .filter((a) => pastById.has(a.load_id))
     .map((a) => ({ order_id: pastById.get(a.load_id)!.order_id, load_date: pastById.get(a.load_id)!.load_date, starts_at: pastById.get(a.load_id)!.starts_at, truck_id: a.truck_id, trailer_id: a.trailer_id, driver_id: a.driver_id }));
 
+  const hired = await hiredIds();
+  const activeRows = ((assignments.data ?? []) as AssignmentRow[]).filter((a) => a.status === "active");
+  const usedTrucks = new Set(activeRows.map((a) => a.truck_id));
+  const usedDrivers = new Set(activeRows.map((a) => a.driver_id));
+
   const qualsByDriver = new Map<string, BoardDriver["qualifications"]>();
   for (const q of (quals.data ?? []) as Array<QualificationRow>) {
     qualsByDriver.set(q.driver_id, [...(qualsByDriver.get(q.driver_id) ?? []), { kind: q.kind, cdl_class: q.cdl_class, expires_on: q.expires_on, verified_at: q.verified_at }]);
@@ -137,9 +143,10 @@ export async function getDispatchDay(date: string, base: string | null = null) {
     /** The base filter applied, if any. */
     base,
     assignments: (assignments.data ?? []) as AssignmentRow[],
-    trucks: (trucks.data ?? []) as BoardTruck[],
+    // Hired trucks and drivers (B83) appear only on the loads they were confirmed for: they are offered, not assigned.
+    trucks: ((trucks.data ?? []) as BoardTruck[]).filter((t) => !hired.trucks.has(t.id) || usedTrucks.has(t.id)),
     trailers: (trailers.data ?? []) as BoardTrailer[],
-    drivers: ((drivers.data ?? []) as Array<Pick<DriverListRow, "id" | "display_name" | "active">>).map((d) => ({ ...d, qualifications: qualsByDriver.get(d.id) ?? [], primary_truck_id: primaryByDriver.get(d.id) ?? null })),
+    drivers: ((drivers.data ?? []) as Array<Pick<DriverListRow, "id" | "display_name" | "active">>).filter((d) => !hired.drivers.has(d.id) || usedDrivers.has(d.id)).map((d) => ({ ...d, qualifications: qualsByDriver.get(d.id) ?? [], primary_truck_id: primaryByDriver.get(d.id) ?? null })),
     /** Crews of the day's orders on their most recent earlier day (B85). */
     pastCrews,
     units: (units.data ?? []) as UnitRow[],

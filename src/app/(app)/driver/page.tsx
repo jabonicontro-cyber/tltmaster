@@ -21,6 +21,11 @@ import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type Drive
 import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
 import { Freshness } from "@/components/companion/freshness";
+import { myOffers } from "@/server/data/hired-trucks";
+import { RATE_UNIT_LABELS } from "@/lib/hired-trucks";
+import { formatCents } from "@/lib/money";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { answerMyOffer } from "@/app/(app)/hired-trucks/actions";
 
 export const metadata = { title: "My Day" };
 
@@ -109,7 +114,7 @@ function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; tod
   );
 }
 
-export default async function DriverHomePage({ searchParams }: { searchParams: Promise<{ sent?: string }> }) {
+export default async function DriverHomePage({ searchParams }: { searchParams: Promise<{ sent?: string; saved?: string; error?: string }> }) {
   const access = await requirePagePermission("driver.portal");
   const sp = await searchParams;
   const home = await loadDriverHome();
@@ -142,7 +147,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates] = await Promise.all([loadMaintenanceNotices(), loadDispatchUpdates()]);
+  const [shop, updates, offers] = await Promise.all([loadMaintenanceNotices(), loadDispatchUpdates(), myOffers()]);
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
   const whose = access.isDemo && shown && !platformAdmin ? shown : h.driver.name;
@@ -163,6 +168,36 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       <DispatchUpdates items={updates} timeZone={h.timezone} />
       {sp.sent && (
         <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
+      )}
+
+      {sp.saved === "offer_accepted" && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">Offer accepted. Dispatch confirms it before the load is yours.</p>}
+      {sp.saved === "offer_declined" && <p role="status" className="rounded-xl bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-line">Offer declined.</p>}
+      {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
+
+      {/* Hired trucks (B83): loads offered to this hauler's driver. Answering never assigns by itself: dispatch confirms. */}
+      {offers.length > 0 && (
+        <section aria-label="Load offers" className="space-y-2">
+          <h2 className="text-lg font-bold">Load offers</h2>
+          <ul className="space-y-3">
+            {offers.map((o) => (
+              <li key={o.id} className="rounded-2xl border border-line bg-card p-4" aria-label={`Offer ${o.order_number} load ${o.load_number}`}>
+                <p className="font-semibold text-ink">{formatDate(o.load_date)} · {formatTime(o.start_time)}–{formatTime(o.end_time)}</p>
+                <p className="text-sm text-ink">{o.order_number} load {o.load_number}{o.site ? ` · ${o.site}` : ""}</p>
+                <p className="text-sm text-muted">Truck {o.truck}{o.planned_quantity ? ` · ${trimNumber(o.planned_quantity)} ${o.unit_code ?? ""}` : ""} · {formatCents(o.rate_cents)} {RATE_UNIT_LABELS[o.rate_unit]}</p>
+                {o.note && <p className="mt-1 text-sm text-ink">“{o.note}”</p>}
+                {o.status === "offered" ? (
+                  <form action={answerMyOffer} className="mt-3 flex flex-wrap gap-2">
+                    <input type="hidden" name="offer_id" value={o.id} />
+                    <SubmitButton name="answer" value="accept" className={big}>Accept</SubmitButton>
+                    <SubmitButton name="answer" value="decline" variant="secondary" className={big}>Decline</SubmitButton>
+                  </form>
+                ) : (
+                  <p className="mt-2"><Badge tone={o.status === "confirmed" ? "green" : "blue"}>{o.status === "confirmed" ? "Confirmed by dispatch" : "Accepted — waiting for dispatch"}</Badge></p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
 
       {reminders.length > 0 && (

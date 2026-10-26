@@ -8,7 +8,8 @@ import { SmartDispatch } from "@/components/dispatch/smart-dispatch";
 import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { ButtonLink } from "@/components/ui/button";
-import { CalendarRange, GanttChart, MapPinned, Route, Sparkles, Users } from "lucide-react";
+import { CalendarRange, GanttChart, MapPinned, Route, Sparkles, Truck, Users } from "lucide-react";
+import { createClient } from "@/server/supabase/server";
 import { cn } from "@/lib/cn";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { PageHeader } from "@/components/ui/page-header";
@@ -57,6 +58,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   const view: View = VIEWS.some((v) => v.key === sp.view) ? (sp.view as View) : "board";
   const { today, timezone } = await businessToday();
   const date = param && isIsoDate(param) ? param : today;
+  // Hired trucks (B83) is an add-on: its link shows only where the platform owner switched it on.
+  const hired = await (await createClient()).rpc("hired_trucks_enabled").then((r) => r.data === true, () => false);
   const header = (description: string) => (
     <>
       <ReturnLink back={back} />
@@ -67,6 +70,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
           <div className="flex flex-wrap gap-2">
             <ButtonLink href={`/dispatch/plan?back=${encodeURIComponent(`/dispatch?date=${date}`)}`} icon={<Sparkles className="size-4" />}>Plan the day</ButtonLink>
             <ButtonLink href={`/dispatch/resources?date=${date}`} variant="secondary" icon={<Users className="size-4" />}>Driver &amp; truck availability</ButtonLink>
+            {hired && <ButtonLink href="/hired-trucks" variant="secondary" icon={<Truck className="size-4" />}>Hired trucks</ButtonLink>}
           </div>
         }
       />
