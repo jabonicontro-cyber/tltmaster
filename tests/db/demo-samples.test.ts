@@ -176,6 +176,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(routes.rows.map((r) => [Number(r.stops), r.truck])).toEqual([[5, true], [4, false]]);
     const routed = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date", [w.company, TZ]);
     expect(Number(routed.rows[0].n)).toBeGreaterThanOrEqual(1);
+    // One truck delivers twice today, so its second drive starts where the first delivery left it (2026-10-26).
+    const twice = await q<{ n: string }>("select count(*) n from (select a.truck_id from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and l.load_date = (now() at time zone $2)::date group by a.truck_id having count(*) >= 2) t", [w.company, TZ]);
+    expect(Number(twice.rows[0].n)).toBeGreaterThanOrEqual(1);
     // Maintenance crews (20261120002900): a half-done checklist and logged labor that counts toward labor hours.
     const checklist = await q<{ status: string; n: string }>("select status, count(*) n from public.work_order_tasks where company_id = $1 group by status order by status", [w.company]);
     expect(checklist.rows.map((r) => [r.status, Number(r.n)])).toEqual([["done", 2], ["open", 2]]);

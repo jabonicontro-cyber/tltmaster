@@ -94,6 +94,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("guided onboarding", await guidedOnboarding(db));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
+  // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
+  note("second delivery for one truck", await secondDelivery(db, today));
   return result;
 }
 
@@ -886,6 +888,43 @@ async function routePlanner(db: Db, today: string): Promise<number> {
   return n;
 }
 
+
+/**
+ * One truck with two deliveries today (owner 2026-10-26: a load's drive starts where the truck's previous delivery left
+ * it). Skipped when a truck already has two; otherwise a load on another of today's orders, an hour after a crewed
+ * truck's only load ends, assigned to the same crew through assign_load. Found again by its note, so Refresh never
+ * duplicates it.
+ */
+async function secondDelivery(db: Db, today: string): Promise<number> {
+  const NOTE = "Demo: this truck's second delivery today.";
+  const loads = ((await db.from("order_loads").select("id, order_id, start_time, end_time, notes").eq("load_date", today).eq("status", "planned").order("start_time")).data ?? []) as Array<{ id: string; order_id: string; start_time: string; end_time: string; notes: string }>;
+  if (!loads.length) return 0;
+  const asg = ((await db.from("dispatch_assignments").select("load_id, truck_id, trailer_id, driver_id").eq("status", "active").in("load_id", loads.map((l) => l.id))).data ?? []) as Array<{ load_id: string; truck_id: string; trailer_id: string | null; driver_id: string }>;
+  const perTruck = new Map<string, typeof asg>();
+  for (const a of asg) perTruck.set(a.truck_id, [...(perTruck.get(a.truck_id) ?? []), a]);
+  if ([...perTruck.values()].some((l) => l.length >= 2)) return 0;
+  const minutes = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5));
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const running = ((await db.from("orders").select("id, site_id").in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).lte("scheduled_start", today).or(`scheduled_end.gte.${today},and(scheduled_end.is.null,scheduled_start.eq.${today})`).order("order_number")).data ?? []) as Array<{ id: string; site_id: string | null }>;
+  let n = 0;
+  let mine = loads.find((l) => l.notes === NOTE);
+  for (const [, [a]] of perTruck) {
+    const first = loads.find((l) => l.id === a.load_id)!;
+    const start = minutes(first.end_time) + 60;
+    if (start + 60 > 18 * 60) continue;
+    const other = running.find((o) => o.id !== first.order_id && o.site_id) ?? running.find((o) => o.id !== first.order_id);
+    if (!other) continue;
+    if (!mine) {
+      const saved = await db.rpc("save_order_load", { p_payload: { order_id: other.id, load_date: today, start_time: hhmm(start), end_time: hhmm(start + 60), planned_quantity: "", unit_code: "", notes: NOTE } });
+      if (saved.error) continue;
+      mine = { id: (saved.data as { load_id: string }).load_id, order_id: other.id, start_time: hhmm(start), end_time: hhmm(start + 60), notes: NOTE };
+      n++;
+    } else if (minutes(mine.start_time) < start) continue;
+    const r = await demoAssign(db, { p_load_id: mine.id, p_truck_id: a.truck_id, p_trailer_id: a.trailer_id, p_driver_id: a.driver_id, p_note: "Demo: second delivery of the day." });
+    if (!r.error) return n + 1;
+  }
+  return n;
+}
 
 /**
  * Maintenance crews, labor time and checklists (20261120002900): on up to three open work orders, the demo's owner (a
