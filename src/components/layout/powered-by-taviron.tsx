@@ -17,7 +17,7 @@ export function PoweredByTaviron({ labelHidden = false, className }: { labelHidd
         className,
       )}
     >
-      <TavironEmblem className="size-4 shrink-0 opacity-80 transition-opacity group-hover:opacity-100" />
+      <TavironEmblem className="size-[18px] opacity-80 transition-opacity group-hover:opacity-100" />
       <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", labelHidden && "opacity-0")}>Powered by Taviron</span>
     </a>
   );

@@ -5,7 +5,7 @@ import { PanelLeftClose, PanelLeftOpen, Pin, PinOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/cn";
 import { PoweredByTaviron } from "./powered-by-taviron";
-import { CompanyIdentity } from "./company-identity";
+import { SidebarLogo } from "./sidebar-logo";
 import { SidebarNav } from "./sidebar-nav";
 import type { Permission } from "@/lib/permissions";
 import { SIDEBAR_COOKIE } from "./sidebar-cookie";
@@ -99,8 +99,9 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         expanded && !pinned && "shadow-float",
       )}
     >
-      <Link href="/command-center" className="flex h-16 shrink-0 items-center px-4">
-        {expanded ? <CompanyIdentity name={companyName} logoUrl={logoUrl} /> : <CompanyIdentity name={companyName} logoUrl={logoUrl} compact />}
+      {/* Collapsed, the mark sits on the rail's icon line (36px from the edge, like every icon below). */}
+      <Link href="/command-center" className={cn("flex h-[5rem] shrink-0 items-center", expanded ? "px-3" : "px-4")}>
+        <SidebarLogo name={companyName} logoUrl={logoUrl} compact={!expanded} />
         {/* The name comes from what is shown (company name or its mark), so voice control matches it (WCAG 2.5.3). */}
         <span className="sr-only"> — home</span>
       </Link>
@@ -111,7 +112,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
           aria-expanded={expanded}
           aria-controls="sidebar-nav"
           title={!expanded ? "Expand navigation" : undefined}
-          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
+          className="flex min-h-11 w-full items-center gap-3 rounded-xl px-[15px] py-2 text-sm font-medium whitespace-nowrap text-white/70 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
         >
           {expanded ? <PanelLeftClose className="size-[18px] shrink-0" aria-hidden /> : <PanelLeftOpen className="size-[18px] shrink-0" aria-hidden />}
           <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "sr-only")}>{expanded ? "Collapse navigation" : "Expand navigation"}</span>
@@ -126,12 +127,12 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
           onClick={togglePin}
           aria-pressed={pinned}
           title={!expanded ? "Keep sidebar open" : undefined}
-          className="flex min-h-10 w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
+          className="flex min-h-10 w-full items-center gap-3 rounded-xl px-[15px] py-2 text-sm font-medium whitespace-nowrap text-white/60 transition-colors hover:bg-white/[0.07] hover:text-white focus-visible:outline-2 focus-visible:outline-white/60"
         >
           {pinned ? <PinOff className="size-[18px] shrink-0" aria-hidden /> : <Pin className="size-[18px] shrink-0" aria-hidden />}
           <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", !expanded && "opacity-0")}>{pinned ? "Unpin sidebar" : "Keep sidebar open"}</span>
         </button>
-        <PoweredByTaviron labelHidden={!expanded} className="px-3 py-2" />
+        <PoweredByTaviron labelHidden={!expanded} className="px-[15px] py-2" />
       </div>
     </aside>
     </>

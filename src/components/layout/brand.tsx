@@ -8,7 +8,7 @@ import { cn } from "@/lib/cn";
  */
 export function TavironEmblem({ className }: { className?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={cn("size-8 shrink-0", className)} aria-hidden focusable="false">
+    <svg viewBox="0 0 32 32" className={cn("shrink-0", className ?? "size-8")} aria-hidden focusable="false">
       <rect x="0.5" y="0.5" width="31" height="31" rx="7" fill="#10233a" stroke="#c7d1de" strokeOpacity="0.28" />
       <path d="M7 8h12.5v5H18.5v12h-5V13H7z" fill="#f7f9fc" />
       <path d="M20.5 8H25v5h-4.5z" fill="#168bff" />

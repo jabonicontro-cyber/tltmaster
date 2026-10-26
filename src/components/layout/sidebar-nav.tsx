@@ -25,7 +25,7 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
         return (
           <Fragment key={item.href}>
           {heading && (
-            <p className={cn("relative mt-5 mb-1.5 h-4 px-3 text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-white/40 uppercase")}>
+            <p className={cn("relative mt-5 mb-1.5 h-4 px-[15px] text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-white/40 uppercase")}>
               <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-0" : "opacity-100")}>{heading}</span>
               <span className={cn("absolute inset-x-3 top-1/2 h-px bg-white/10 transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-100" : "opacity-0")} aria-hidden />
             </p>
@@ -37,7 +37,7 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
             // Tooltip on the collapsed rail (the accessible name is the visible label either way).
             title={collapsed ? item.label + (item.planned ? " (planned)" : "") : undefined}
             className={cn(
-              "group relative flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150",
+              "group relative flex min-h-10 items-center gap-3 rounded-xl px-[15px] py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150",
               // The current page is a solid light pill: the clearest "you are here" on any navigation colour.
               active ? "bg-white text-charcoal shadow-xs" : "text-white/70 hover:bg-white/[0.07] hover:text-white",
             )}
