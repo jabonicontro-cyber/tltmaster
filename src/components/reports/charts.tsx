@@ -78,7 +78,7 @@ export function niceMax(n: number) {
 }
 
 /** Shares of a whole, with the total in the middle. */
-export function Donut({ parts, center, sub, label }: { parts: Array<{ label: string; value: number }>; center: string; sub: string; label: string }) {
+export function Donut({ parts, center, sub, label }: { parts: Array<{ label: string; value: number; color?: string }>; center: string; sub: string; label: string }) {
   const total = parts.reduce((t, p) => t + p.value, 0);
   const R = 52;
   const C = 2 * Math.PI * R;
@@ -90,7 +90,7 @@ export function Donut({ parts, center, sub, label }: { parts: Array<{ label: str
         parts.map((p, i) => {
           const len = (p.value / total) * C;
           const el = (
-            <circle key={i} cx={70} cy={70} r={R} fill="none" stroke={SERIES[i % SERIES.length]} strokeWidth={16} strokeDasharray={`${Math.max(len - 2, 0)} ${C}`} strokeDashoffset={-offset} transform="rotate(-90 70 70)">
+            <circle key={i} cx={70} cy={70} r={R} fill="none" stroke={p.color ?? SERIES[i % SERIES.length]} strokeWidth={16} strokeDasharray={`${Math.max(len - 2, 0)} ${C}`} strokeDashoffset={-offset} transform="rotate(-90 70 70)">
               <title>{`${p.label}: ${Math.round((p.value / total) * 100)}%`}</title>
             </circle>
           );

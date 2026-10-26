@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { CalendarClock, Plus, Wrench } from "lucide-react";
-import { StatCard, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
+import { SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
 import { MaintenanceTabs } from "@/components/maintenance/tabs";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -16,8 +16,31 @@ import { businessToday } from "@/server/data/settings";
 import { listShopWorkload } from "@/server/data/maintenance-crew";
 import { zonedTimeToUtc } from "@/lib/dates";
 import { Badge } from "@/components/ui/badge";
+import { Donut } from "@/components/reports/charts";
+import { cn } from "@/lib/cn";
+import { PM_STATES, WO_URGENCIES, type WoStatus } from "@/lib/maintenance";
+import type { PmRow } from "@/server/data/maintenance";
+import { ChevronRight, ShieldAlert } from "lucide-react";
 
 export const metadata = { title: "Maintenance" };
+
+// The work-order board's columns (redesign 2026-10-26): every open status lands in exactly one column.
+const COLUMNS: Array<{ key: string; label: string; statuses: WoStatus[]; bar: string }> = [
+  { key: "new", label: "New", statuses: ["reported", "triaged"], bar: "bg-sky-400" },
+  { key: "scheduled", label: "Scheduled", statuses: ["scheduled"], bar: "bg-indigo-400" },
+  { key: "in_progress", label: "In progress", statuses: ["in_progress"], bar: "bg-brand" },
+  { key: "awaiting_parts", label: "Awaiting parts", statuses: ["awaiting_parts"], bar: "bg-amber-400" },
+  { key: "awaiting_inspection", label: "Awaiting inspection", statuses: ["awaiting_inspection"], bar: "bg-violet-400" },
+];
+
+/** How much of a preventive interval is used (the furthest of days, miles and hours); null when nothing is recorded. */
+function intervalUsed(p: PmRow, today: string): number | null {
+  const parts: number[] = [];
+  if (p.interval_days && p.last_done_on) parts.push(daysBetween(p.last_done_on, today) / p.interval_days);
+  if (p.interval_miles && p.last_done_miles !== null && p.current_miles !== null) parts.push((p.current_miles - p.last_done_miles) / p.interval_miles);
+  if (p.interval_hours && p.last_done_hours !== null && p.current_hours !== null) parts.push((p.current_hours - p.last_done_hours) / p.interval_hours);
+  return parts.length ? Math.max(0, ...parts) : null;
+}
 
 function daysBetween(fromIso: string, today: string) {
   return Math.max(0, Math.round((Date.parse(today) - Date.parse(fromIso.slice(0, 10))) / 86400_000));
@@ -55,7 +78,20 @@ export default async function MaintenancePage() {
       return { ...w, truck_out_of_service: unit?.service_status === "out_of_service", truck_has_driver: Boolean(pulledBy && heldTrucks.has(pulledBy)) };
     }),
     today,
-  ).slice(0, 8);
+  );
+  const rankOf = new Map(ranked.map((r, i) => [r.item.id, i]));
+  const top = ranked.slice(0, 8);
+  // Fleet availability (trucks): out of service, in the shop (open work in progress, waiting for parts or inspection),
+  // or available. Each active truck counts once.
+  const activeTrucks = trucks.filter((t) => t.active);
+  const shopWork = new Set(open.filter((w) => w.truck_id && ["in_progress", "awaiting_parts", "awaiting_inspection"].includes(w.status)).map((w) => w.truck_id));
+  const oosTrucks = activeTrucks.filter((t) => t.service_status === "out_of_service").length;
+  const inShopTrucks = activeTrucks.filter((t) => t.service_status !== "out_of_service" && shopWork.has(t.id)).length;
+  const availableTrucks = activeTrucks.length - oosTrucks - inShopTrucks;
+  const pmHealth = pm
+    .map((p) => ({ p, used: intervalUsed(p, today) }))
+    .sort((a, b) => (b.used ?? -1) - (a.used ?? -1))
+    .slice(0, 6);
 
   const names = new Map(assignees.map((a) => [a.id, a.name]));
   const workload = new Map<string, { open: number; inProgress: number; hours: number }>();
@@ -82,13 +118,92 @@ export default async function MaintenancePage() {
       />
       <MaintenanceTabs active="overview" />
 
-      <section aria-label="Overview" className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-        <StatCard href="/maintenance/work-orders?view=immediate" label="Immediate / safety" value={immediate.length} alert={immediate.length > 0} hint="Open, immediate urgency or safety-critical" />
-        <StatCard href="/maintenance/preventive?state=overdue" label="Overdue PM" value={overdue.length} alert={overdue.length > 0} hint="Preventive services past due" />
-        <StatCard href="/maintenance/preventive?state=due_soon" label="Due soon" value={dueSoon.length} hint="Inside the warning window" />
-        <StatCard href="/maintenance/work-orders?view=open" label="Open work orders" value={open.length} />
-        <StatCard href="#out-of-service" label="Out of service" value={outOfService.length} hint="Trucks not available to dispatch" />
-        <StatCard href="/maintenance/clearance" label="Awaiting clearance" value={awaiting.length} hint="Repairs waiting for inspection" />
+      <section aria-label="Overview" className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+        <Card>
+          <CardHeader title="Availability" description={`${activeTrucks.length} active truck${activeTrucks.length === 1 ? "" : "s"}${trailers.filter((t) => t.active).length ? ` · ${trailers.filter((t) => t.active && t.service_status === "out_of_service").length} of ${trailers.filter((t) => t.active).length} trailers out of service` : ""}`} />
+          <div className="flex flex-wrap items-center gap-6 px-5 pb-5 sm:px-6">
+            <Donut
+              parts={[{ label: "Available", value: availableTrucks, color: "#16a34a" }, { label: "In the shop", value: inShopTrucks, color: "#f59e0b" }, { label: "Out of service", value: oosTrucks, color: "#64748b" }]}
+              center={String(activeTrucks.length)}
+              sub="trucks"
+              label={`Trucks: ${availableTrucks} available, ${inShopTrucks} in the shop, ${oosTrucks} out of service`}
+            />
+            <ul className="min-w-44 flex-1 space-y-2.5 text-sm" aria-label="Truck availability">
+              {[
+                { label: "Available", n: availableTrucks, color: "#16a34a", href: "/fleet/trucks" },
+                { label: "In the shop", n: inShopTrucks, color: "#f59e0b", href: "/maintenance/work-orders?view=open" },
+                { label: "Out of service", n: oosTrucks, color: "#64748b", href: "#out-of-service" },
+              ].map((x) => (
+                <li key={x.label}>
+                  <Link href={x.href} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2.5 rounded-lg px-1 py-0.5 hover:bg-surface">
+                    <span className="size-2.5 rounded-full" style={{ background: x.color }} aria-hidden />
+                    <span className="text-ink">{x.label}</span>
+                    <span className="font-semibold tabular">{x.n}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Card>
+        <Card>
+          <CardHeader title="Needs attention" description="Each line opens the records behind it." />
+          <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Needs attention">
+            {[
+              { label: "Immediate or safety-critical", n: immediate.length, href: "/maintenance/work-orders?view=immediate", tone: "critical" as const, chip: "Act now" },
+              { label: "Preventive service overdue", n: overdue.length, href: "/maintenance/preventive?state=overdue", tone: "critical" as const, chip: "Overdue" },
+              { label: "Preventive service due soon", n: dueSoon.length, href: "/maintenance/preventive?state=due_soon", tone: "amber" as const, chip: "Due soon" },
+              { label: "Repairs awaiting clearance", n: awaiting.length, href: "/maintenance/clearance", tone: "amber" as const, chip: "Inspection" },
+              { label: "Open work orders with no lead mechanic", n: (workload.get("")?.open ?? 0), href: "/maintenance/work-orders?assigned=none", tone: "amber" as const, chip: "Unassigned" },
+              { label: "Schedules missing data", n: unknownPm.length, href: "/maintenance/preventive?state=unknown", tone: "gray" as const, chip: "Needs data" },
+            ].map((x) => (
+              <li key={x.label}>
+                <Link href={x.href} className="grid grid-cols-[minmax(0,1fr)_3rem_7rem_auto] items-center gap-3 px-5 py-2.5 text-sm hover:bg-surface sm:px-6">
+                  <span className="truncate text-ink">{x.label}</span>
+                  <span className={cn("text-right font-semibold tabular", x.n > 0 && x.tone === "critical" && "text-critical")}>{x.n}</span>
+                  <span className="flex justify-end">{x.n > 0 ? <Badge tone={x.tone === "critical" ? "critical-soft" : x.tone}>{x.chip}</Badge> : <span className="text-xs text-muted">None</span>}</span>
+                  <ChevronRight className="size-4 text-muted" aria-hidden />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      </section>
+
+      <section aria-label="Work order board" className="mb-5">
+        <div className="mb-3 flex items-baseline justify-between gap-3">
+          <h2 className="text-lg font-semibold text-ink">Open work orders</h2>
+          <Link href="/maintenance/work-orders?view=open" className="text-sm font-semibold text-ink hover:underline">List view</Link>
+        </div>
+        <div className="flex gap-3 overflow-x-auto pb-2">
+          {COLUMNS.map((col) => {
+            const items = open.filter((w) => col.statuses.includes(w.status)).sort((x, y) => (rankOf.get(x.id) ?? 99) - (rankOf.get(y.id) ?? 99));
+            return (
+              <div key={col.key} role="group" aria-label={`${col.label} (${items.length})`} className="flex w-64 shrink-0 flex-col rounded-panel bg-ink/[0.035] xl:w-auto xl:min-w-0 xl:flex-1">
+                <span className={cn("h-1 rounded-t-panel", col.bar)} aria-hidden />
+                <h3 className="px-3 pt-3 pb-2 text-sm font-semibold text-ink">{col.label} <span className="font-normal text-muted">({items.length})</span></h3>
+                <ul className="flex-1 space-y-2 px-2 pb-2">
+                  {items.map((w) => (
+                    <li key={w.id}>
+                      <Link href={`/maintenance/work-orders/${w.id}`} className={cn("block rounded-2xl border bg-card p-3 shadow-xs transition-colors hover:border-strong/30", w.safety_critical || w.urgency === "immediate" ? "urgent-edge" : "border-line/70")}>
+                        <p className="flex items-center gap-1.5 text-xs font-semibold text-muted tabular">
+                          {w.safety_critical && <ShieldAlert className="size-3.5 text-critical" aria-label="Safety-critical" />}
+                          {w.number}
+                        </p>
+                        <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink">{w.title}</p>
+                        <p className="mt-1 truncate text-xs text-muted">{workOrderUnit(w, truckUnits, trailerUnits)}</p>
+                        <div className="mt-2 flex items-center justify-between gap-2">
+                          <Badge tone={w.urgency === "immediate" ? "critical" : w.urgency === "high" ? "amber" : "gray"}>{WO_URGENCIES[w.urgency]}</Badge>
+                          <span className="truncate text-xs text-muted">{w.assigned_to ? names.get(w.assigned_to) ?? "Former member" : "No lead"}</span>
+                        </div>
+                      </Link>
+                    </li>
+                  ))}
+                  {items.length === 0 && <li className="px-1 py-3 text-center text-xs text-muted">Nothing here</li>}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -98,11 +213,11 @@ export default async function MaintenancePage() {
               title="Suggested shop order"
               description={<>Ranked by fixed rules: safety, urgency, downtime, due dates and parts. It only suggests — nothing is assigned or scheduled automatically. <span className="whitespace-nowrap">No AI service is connected.</span></>}
             />
-            {ranked.length === 0 ? (
+            {top.length === 0 ? (
               <EmptyState title="No open work orders" description="New work orders and due preventive services appear here." icon={<Wrench className="size-6" />} />
             ) : (
               <ol className="divide-y divide-line">
-                {ranked.map(({ item: w, reasons }, i) => (
+                {top.map(({ item: w, reasons }, i) => (
                   <li key={w.id} className="flex gap-3 px-5 py-3 sm:px-6">
                     <span className="mt-0.5 w-5 shrink-0 text-right text-sm font-bold text-muted tabular">{i + 1}</span>
                     <div className="min-w-0 flex-1">
@@ -221,16 +336,28 @@ export default async function MaintenancePage() {
           )}
 
           <Card>
-            <CardHeader title="Preventive maintenance data" />
-            <CardBody className="space-y-2 text-sm">
-              <p>{pm.length} active schedule{pm.length === 1 ? "" : "s"}.</p>
-              {unknownPm.length > 0 ? (
-                <p>
-                  <Link href="/maintenance/preventive?state=unknown" className="font-medium text-ink underline">{unknownPm.length} need data</Link>
-                  <span className="text-muted"> — no last-service record, no reading, or a reading older than 30 days. They are not shown as “OK”.</span>
-                </p>
-              ) : pm.length > 0 && <p className="text-muted">Every schedule has the data it needs.</p>}
-            </CardBody>
+            <CardHeader title="Service due" description="How much of each preventive interval is used (days, miles or hours, whichever is furthest)." />
+            {pmHealth.length === 0 ? (
+              <CardBody><p className="text-sm text-muted">No preventive schedules yet.</p></CardBody>
+            ) : (
+              <ul className="space-y-3.5 px-5 pb-5 sm:px-6" aria-label="Service due">
+                {pmHealth.map(({ p, used }) => (
+                  <li key={p.schedule_id}>
+                    <div className="flex items-baseline justify-between gap-2 text-sm">
+                      <span className="min-w-0 truncate"><span className="font-semibold text-ink">Truck {p.unit_number}</span> <span className="text-muted">· {p.name}</span></span>
+                      <span className={cn("shrink-0 text-xs font-semibold tabular", p.state === "overdue" ? "text-critical" : p.state === "due_soon" ? "text-amber-800" : "text-muted")}>
+                        {used === null ? PM_STATES[p.state] : `${Math.round(used * 100)}%`}
+                      </span>
+                    </div>
+                    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-line/70" aria-hidden>
+                      {used !== null && <span className={cn("block h-full rounded-full", p.state === "overdue" ? "bg-critical" : p.state === "due_soon" ? "bg-amber-400" : "bg-green-600")} style={{ width: `${Math.min(100, Math.round(used * 100))}%` }} />}
+                    </span>
+                    <p className="mt-1 text-xs text-muted">{used === null ? "No last service or reading recorded" : p.next_due_on ? `Due by ${formatDate(p.next_due_on)}${p.next_due_miles ? ` or ${p.next_due_miles.toLocaleString("en-US")} mi` : ""}` : p.next_due_miles ? `Due at ${p.next_due_miles.toLocaleString("en-US")} mi` : PM_STATES[p.state]}</p>
+                  </li>
+                ))}
+                <li><Link href="/maintenance/preventive" className="text-sm font-semibold text-ink hover:underline">All {pm.length} schedule{pm.length === 1 ? "" : "s"}</Link></li>
+              </ul>
+            )}
           </Card>
 
         </div>
