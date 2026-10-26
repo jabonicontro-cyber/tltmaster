@@ -53,7 +53,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             <p className="mb-3 text-sm text-muted">Today: <strong className="text-ink">{counts.on}</strong> on shift · <strong className="text-ink">{counts.off}</strong> off · <strong className="text-ink">{counts.none}</strong> without a schedule</p>
           )}
           {people.length ? (
-            <ScheduleGrid people={people} from={from} canManage={manage} patterns={patterns} faces={faces} />
+            <ScheduleGrid people={people} from={from} canManage={manage} patterns={patterns} faces={faces} today={today} />
           ) : (
             <EmptyState title={q ? "Nobody matches" : "No people yet"} description={q ? "Try another name." : "Add people under People; their schedules show here."} action={q ? <Link href={`/schedule?week=${from}`} className="underline">Show everyone</Link> : undefined} />
           )}

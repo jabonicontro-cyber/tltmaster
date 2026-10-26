@@ -51,7 +51,7 @@ function useRun(onDone?: () => void) {
   return { pending, error, run };
 }
 
-export function ScheduleGrid({ people, from, canManage, patterns, faces = {} }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern>; /** Pictures by employee id (initials when missing). */ faces?: Record<string, Face> }) {
+export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, today = null }: { people: SchedulePerson[]; from: string; canManage: boolean; patterns: Record<string, CurrentPattern>; /** Pictures by employee id (initials when missing). */ faces?: Record<string, Face>; /** The business day today: its column is marked. */ today?: string | null }) {
   const [day, setDay] = useState<{ person: SchedulePerson; d: ScheduleDay } | null>(null);
   const [pattern, setPattern] = useState<SchedulePerson | null>(null);
   const dates = Array.from({ length: 7 }, (_, i) => addDays(from, i));
@@ -63,7 +63,12 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {} }: 
           <thead className="bg-surface text-left text-xs font-semibold text-muted">
             <tr>
               <th scope="col" className="px-3 py-2">Person</th>
-              {dates.map((d, i) => <th key={d} scope="col" className="px-2 py-2 text-center">{WEEKDAYS[i]} <span className="font-normal">{d.slice(5).replace("-", "/")}</span></th>)}
+              {dates.map((d, i) => (
+                <th key={d} scope="col" aria-current={d === today ? "date" : undefined} className={cn("px-2 py-2 text-center", d === today && "text-ink")}>
+                  <span className={cn(d === today && "rounded-full bg-strong px-2 py-0.5 text-white")}>{WEEKDAYS[i]} <span className="font-normal">{d.slice(5).replace("-", "/")}</span></span>
+                  {d === today && <span className="sr-only"> (today)</span>}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -91,7 +96,7 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {} }: 
                     </span>
                   );
                   return (
-                    <td key={d.date} className="px-1 py-1 text-center" title={d.reason || undefined}>
+                    <td key={d.date} className={cn("px-1 py-1 text-center", d.date === today && "bg-surface/60")} title={d.reason || undefined}>
                       {canManage ? (
                         <button type="button" aria-label={`${label}. Change`} className="w-full rounded hover:bg-surface" onClick={() => setDay({ person: p, d })}>{body}</button>
                       ) : <span aria-label={label}>{body}</span>}
