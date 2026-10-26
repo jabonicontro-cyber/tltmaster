@@ -32,19 +32,19 @@ export function SiteHeader() {
                 <div key={g.label} className="py-1">
                   <p className="px-3 pt-2 pb-1 text-xs font-semibold text-silver/70">{g.label}</p>
                   {g.links.map((l) => (
-                    <Link key={l.href} href={l.href} className="site-link block rounded-xl px-3 py-2.5 text-[15px] font-medium text-cloud hover:bg-white/5">
+                    <Link key={l.href} href={l.href} className="site-link block rounded-xl px-3 py-2.5 text-[15px] font-medium text-cloud hover:bg-[#0c1a2b]/[0.04]">
                       {l.label}
                     </Link>
                   ))}
                 </div>
               ) : (
-                <Link key={g.label} href={g.href!} className="site-link block rounded-xl px-3 py-3 text-[15px] font-medium text-cloud hover:bg-white/5">
+                <Link key={g.label} href={g.href!} className="site-link block rounded-xl px-3 py-3 text-[15px] font-medium text-cloud hover:bg-[#0c1a2b]/[0.04]">
                   {g.label}
                 </Link>
               ),
             )}
             <div className="my-2 border-t border-silver/10" />
-            <Link href="/login" className="site-link block rounded-xl px-3 py-3 text-[15px] font-medium text-cloud hover:bg-white/5">
+            <Link href="/login" className="site-link block rounded-xl px-3 py-3 text-[15px] font-medium text-cloud hover:bg-[#0c1a2b]/[0.04]">
               Sign in
             </Link>
             <Link href="/demo" className="site-press mt-1 block rounded-full bg-action px-3 py-3 text-center text-[15px] font-semibold text-white hover:bg-action-hover">

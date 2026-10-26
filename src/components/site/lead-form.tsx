@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 type Kind = "demo" | "contact";
 
 const input =
-  "mt-1.5 block w-full rounded-xl border border-silver/20 bg-white/[0.04] px-3 py-2.5 text-base text-white placeholder:text-white/35 focus:border-electric focus:ring-2 focus:ring-electric/35 focus:outline-none aria-[invalid=true]:border-red-300";
+  "mt-1.5 block w-full rounded-xl border border-[#0c1a2b]/15 bg-white px-3 py-2.5 text-base text-cloud placeholder:text-silver/60 focus:border-electric focus:ring-2 focus:ring-electric/35 focus:outline-none aria-[invalid=true]:border-red-600";
 
 /**
  * Demo request / contact form. Posts JSON to /api/leads; without JavaScript
@@ -77,24 +77,24 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
 
   if (done) {
     return (
-      <div role="status" className="rounded-xl border border-white/10 bg-white/[0.03] p-8">
+      <div role="status" className="rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-8 shadow-card">
         <CheckCircle2 className="size-8 text-brand" aria-hidden />
-        <h2 className="mt-4 text-xl font-bold text-white">Thank you — your message reached the Taviron team.</h2>
-        <p className="mt-2 text-white/65">{kind === "demo" ? "We will follow up by email to arrange the walkthrough." : "We will reply by email."}</p>
+        <h2 className="mt-4 text-xl font-bold text-cloud">Thank you — your message reached the Taviron team.</h2>
+        <p className="mt-2 text-silver">{kind === "demo" ? "We will follow up by email to arrange the walkthrough." : "We will reply by email."}</p>
       </div>
     );
   }
 
   const err = (name: string) =>
     fields[name] ? (
-      <p id={`${name}-error`} className="mt-1 text-sm text-red-300">
+      <p id={`${name}-error`} className="mt-1 text-sm text-red-600">
         {fields[name]}
       </p>
     ) : null;
   const aria = (name: string) => ({ "aria-invalid": Boolean(fields[name]) || undefined, "aria-describedby": fields[name] ? `${name}-error` : undefined });
 
   return (
-    <form action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} onBlur={onFieldBlur} onInput={onFieldInput} className="space-y-5 rounded-xl border border-white/10 bg-white/[0.03] p-6 sm:p-8" noValidate>
+    <form action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} onBlur={onFieldBlur} onInput={onFieldInput} className="space-y-5 rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-6 shadow-card sm:p-8" noValidate>
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="source_path" value={kind === "demo" ? "/demo" : "/contact"} />
       {/* Left empty by people; filled in by form-filling bots. */}
@@ -105,51 +105,51 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
         </label>
       </div>
       {error ? (
-        <p role="alert" className="rounded-xl border border-red-300/50 bg-red-500/10 px-4 py-3 text-sm text-white">
+        <p role="alert" className="rounded-xl border border-red-600/30 bg-red-50 px-4 py-3 text-sm text-red-800">
           {error}
         </p>
       ) : null}
       <div className="grid gap-5 sm:grid-cols-2">
-        <label className="block text-sm font-medium text-white/85">
+        <label className="block text-sm font-medium text-cloud">
           Full name
           <input name="name" required maxLength={120} autoComplete="name" className={input} {...aria("name")} />
           {err("name")}
         </label>
-        <label className="block text-sm font-medium text-white/85">
+        <label className="block text-sm font-medium text-cloud">
           Work email
           <input name="email" type="email" required maxLength={254} autoComplete="email" className={input} {...aria("email")} />
           {err("email")}
         </label>
-        <label className="block text-sm font-medium text-white/85">
-          Company{kind === "contact" ? <span className="text-white/60"> (optional)</span> : null}
+        <label className="block text-sm font-medium text-cloud">
+          Company{kind === "contact" ? <span className="text-silver"> (optional)</span> : null}
           <input name="company_name" required={kind === "demo"} maxLength={160} autoComplete="organization" className={input} {...aria("company_name")} />
           {err("company_name")}
         </label>
-        <label className="block text-sm font-medium text-white/85">
-          Phone <span className="text-white/60">(optional)</span>
+        <label className="block text-sm font-medium text-cloud">
+          Phone <span className="text-silver">(optional)</span>
           <PhoneInput bare name="phone" maxLength={40} className={input} {...aria("phone")} />
           {err("phone")}
         </label>
         {kind === "demo" ? (
           <>
-            <label className="block text-sm font-medium text-white/85">
+            <label className="block text-sm font-medium text-cloud">
               Number of hauling trucks
               <input name="truck_count" type="number" inputMode="numeric" required min={0} max={100000} step={1} className={input} {...aria("truck_count")} />
               {err("truck_count")}
             </label>
-            <label className="block text-sm font-medium text-white/85">
+            <label className="block text-sm font-medium text-cloud">
               Number of dispatch bases
               <input name="base_count" type="number" inputMode="numeric" required min={1} max={1000} step={1} className={input} {...aria("base_count")} />
               {err("base_count")}
-              <span className="mt-1 block text-xs text-white/60">Locations your trucks are dispatched from.</span>
+              <span className="mt-1 block text-xs text-silver">Locations your trucks are dispatched from.</span>
             </label>
           </>
         ) : null}
       </div>
-      <label className="block text-sm font-medium text-white/85">
+      <label className="block text-sm font-medium text-cloud">
         {kind === "demo" ? (
           <>
-            What would you most like Taviron to improve? <span className="text-white/60">(optional)</span>
+            What would you most like Taviron to improve? <span className="text-silver">(optional)</span>
           </>
         ) : (
           "Message"
@@ -158,9 +158,9 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
         {err("message")}
       </label>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-xs text-white/60">
+        <p className="text-xs text-silver">
           We use these details only to reply to you. See the{" "}
-          <a href="/privacy" className="underline hover:text-white">
+          <a href="/privacy" className="underline hover:text-cloud">
             privacy notice
           </a>
           .

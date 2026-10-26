@@ -108,7 +108,7 @@ export default function PricingPage() {
           </div>
         </Container>
         <Container>
-          <p className="flex gap-2 rounded-2xl border border-silver/15 bg-white/[0.03] p-4 text-sm text-silver">
+          <p className="flex gap-2 rounded-2xl border border-[#0c1a2b]/[0.06] bg-navy-2 p-4 text-sm text-silver">
             <Info className="mt-0.5 size-4 shrink-0 text-silver/70" aria-hidden />
             Prices are per company, in US dollars, before applicable taxes. Your tier, prices and terms are confirmed in a written service agreement; nothing is charged
             through this website.

@@ -11,7 +11,11 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false, nocache: true },
   // Companion app (docs/COMPANION_APP.md): installable from the phone's browser; the manifest is src/app/manifest.ts.
   appleWebApp: { capable: true, title: PRODUCT_NAME, statusBarStyle: "default" },
-  icons: { apple: "/app-icons/apple-touch-icon.png" },
+  // Browser tab: the Taviron emblem as SVG where supported; Next adds src/app/favicon.ico (same emblem) itself.
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: "/app-icons/apple-touch-icon.png",
+  },
 };
 
 export const viewport: Viewport = {
