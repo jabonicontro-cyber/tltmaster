@@ -122,3 +122,21 @@ test("triage: rules suggest, quote the report and ask questions; a person edits,
   await expect(page.getByText("Safety-critical").first()).toBeVisible();
   await expect(page.getByText(/restricted/i).first()).toBeVisible();
 });
+
+// B91: estimates that learn from recorded labor; estimate against actual for people with cost access only.
+test("time estimates: owners see estimate against actual, mechanics do not get the page", async ({ page, browser }) => {
+  await signIn(page, "owner");
+  await page.goto("/maintenance/estimates");
+  await expect(page.getByRole("navigation", { name: "Maintenance sections" }).getByRole("link", { name: "Time estimates" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByText("What each kind of job takes")).toBeVisible();
+  await expect(page.getByText("Estimate against actual by mechanic")).toBeVisible();
+  await expect(page.getByText(/nothing comes from AI/)).toBeVisible();
+
+  const mech = await browser.newPage();
+  await signIn(mech, "mechanic");
+  await mech.goto("/maintenance");
+  await expect(mech.getByRole("navigation", { name: "Maintenance sections" }).getByRole("link", { name: "Time estimates" })).toHaveCount(0);
+  await mech.goto("/maintenance/estimates");
+  await mech.waitForURL(/no-access/);
+  await mech.close();
+});

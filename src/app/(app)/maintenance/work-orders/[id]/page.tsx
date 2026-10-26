@@ -19,6 +19,8 @@ import { CLEARANCE_STATUSES, COST_KINDS, WO_CATEGORIES, WO_STATUSES } from "@/li
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getWorkOrder } from "@/server/data/maintenance";
+import { completedJobs } from "@/server/data/maintenance-estimates";
+import { learnedEstimate, type LearnedEstimate } from "@/lib/maintenance-estimate";
 import { getLatestTriage, getWorkOrderCrew } from "@/server/data/maintenance-crew";
 import { facesForUsers } from "@/server/data/faces";
 import { getUserNames } from "@/server/data/quotes";
@@ -48,7 +50,11 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone, today }, crew, triage] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id)]);
+  const [people, { timezone, today }, crew, triage, history] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] }))]);
+  // B91: what comparable completed jobs took, from the company's own recorded labor. Shown beside the shop's estimate,
+  // never written over it.
+  const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
+  const learned = learnedEstimate({ id: wo.id, category: wo.category, equipment, title: wo.title }, history.jobs);
   const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
   const manage = can(access, "maintenance.manage");
   const canClear = can(access, "maintenance.clear");
@@ -123,7 +129,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 ["Status", <WoStatusBadge key="s" status={wo.status} />],
                 ["Scheduled for", wo.scheduled_for ? formatDate(wo.scheduled_for) : "Not scheduled"],
                 ["Due by", wo.due_on ? formatDate(wo.due_on) : "—"],
-                ["Estimate", estimate !== null ? `${trimHours(estimate)} h` : "Not set"],
+                ["Estimate", <EstimateValue key="e" shop={estimate} learned={learned} />],
                 [unitWord, <span key="u">{unit?.unit_number ?? "—"} · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}{can(access, "fleet.view") && unitHref ? <> · <Link href={unitHref} className="underline">Record</Link></> : null}</span>],
                 [crew.installed ? "Lead mechanic" : "Mechanic", wo.assigned_to ? who(wo.assigned_to) : "Unassigned"],
                 ...(driver ? [["Driver", driver.name] as const] : []),
@@ -179,6 +185,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             {tab === "tasks" && (crew.installed ? <TaskChecklist workOrderId={wo.id} status={wo.status} tasks={crew.tasks} canManage={manage} /> : <p className="text-sm text-muted">Checklists need a database update that has not been installed yet.</p>)}
             {tab === "labor" && (crew.installed ? (
               <div className="space-y-4">
+                {learned && <LearnedNote learned={learned} />}
                 {"estimated_hours" in wo && (manage && editable
                   ? <EstimateForm workOrderId={wo.id} hours={estimate} />
                   : <p className="text-sm text-muted">Estimate: {estimate ?? "not set"}{estimate ? " h" : ""}</p>)}
@@ -236,6 +243,28 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
         </Card>
       </div>
     </>
+  );
+}
+
+function EstimateValue({ shop, learned }: { shop: number | null; learned: LearnedEstimate | null }) {
+  return (
+    <div className="space-y-0.5">
+      <p>{shop !== null ? `${trimHours(shop)} h` : "Not set"}{shop !== null && <span className="text-muted"> · shop</span>}</p>
+      {learned && <p className="text-xs text-muted">Learned: {trimHours(learned.hours)} h from {learned.jobs} completed job{learned.jobs === 1 ? "" : "s"}</p>}
+    </div>
+  );
+}
+
+/** Where the learned estimate comes from, in plain words (B91). */
+function LearnedNote({ learned }: { learned: LearnedEstimate }) {
+  return (
+    <div className="rounded-2xl bg-surface px-4 py-3 text-sm">
+      <p className="font-semibold text-ink">Learned estimate: {trimHours(learned.hours)} h <span className="font-normal text-muted">(usually {trimHours(learned.low)}–{trimHours(learned.high)} h)</span></p>
+      <p className="mt-0.5 text-xs text-muted">
+        From the labor recorded on {learned.jobs} completed {learned.match === "same job" ? "jobs like this one" : learned.match === "same category and equipment" ? "jobs of this category on the same kind of equipment" : "jobs of this category"}
+        {learned.outliers ? `; ${learned.outliers} unusual job${learned.outliers === 1 ? "" : "s"} left out` : ""}. It updates as jobs are finished and never replaces the shop&apos;s own estimate.
+      </p>
+    </div>
   );
 }
 

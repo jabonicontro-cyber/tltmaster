@@ -241,10 +241,10 @@ export async function getWorkOrder(id: string, opts: { costs: boolean }) {
       ? supabase.from("work_order_costs").select("id, kind, description, part_number, vendor_name, quantity, unit_cost_cents, created_at").eq("work_order_id", id).order("created_at")
       : Promise.resolve({ data: null, error: null }),
     wo.truck_id
-      ? supabase.from("trucks").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date").eq("id", wo.truck_id).maybeSingle()
+      ? supabase.from("trucks").select("id, unit_number, truck_type, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date").eq("id", wo.truck_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     wo.trailer_id
-      ? supabase.from("trailers").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, default_truck_id").eq("id", wo.trailer_id).maybeSingle()
+      ? supabase.from("trailers").select("id, unit_number, trailer_type, active, service_status, out_of_service_reason, out_of_service_since, default_truck_id").eq("id", wo.trailer_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     wo.driver_id ? supabase.from("drivers").select("id, name").eq("id", wo.driver_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     wo.schedule_id ? supabase.from("maintenance_schedules").select("id, name").eq("id", wo.schedule_id).maybeSingle() : Promise.resolve({ data: null, error: null }),

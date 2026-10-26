@@ -61,6 +61,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   note("maintenance", await maintenance(db, today, trucks));
   note("maintenance board", await maintenanceBoard(db, trucks));
+  note("maintenance history for learned estimates", await maintenanceHistory(db, today));
   note("trailer maintenance", await trailerMaintenance(db, today));
   note("maintenance crews", await maintenanceCrews(db, today));
   note("my jobs for each demo owner", await ownerCrews(db));
@@ -499,6 +500,21 @@ async function maintenance(db: Db, today: string, trucks: Array<{ id: string; un
 }
 
 /**
+ * A demo status change through maintenance_set_status with the work order's current edit counter; a "changed by
+ * someone else" answer (the counter read just before was not the latest) is read again and retried, twice at most.
+ */
+async function moveWorkOrder(db: Db, id: string, status: string): Promise<boolean> {
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const seq = (((await db.from("work_orders").select("edit_seq").eq("id", id).maybeSingle()).data ?? null) as { edit_seq: number } | null)?.edit_seq;
+    if (seq === undefined) return false;
+    const r = await db.rpc("maintenance_set_status", { p_id: id, p_status: status, p_note: "Demo", p_expected_seq: seq });
+    if (!r.error) return true;
+    if (r.error.code !== "PT409") return false;
+  }
+  return false;
+}
+
+/**
  * The Maintenance board's later columns (owner 2026-10-26: demos showcase everything): one job in progress, one waiting
  * for parts and one waiting for inspection, on trucks that are in service. Created and moved through
  * maintenance_create_work_order and maintenance_set_status (the work order page's own functions); found again by
@@ -522,12 +538,48 @@ async function maintenanceBoard(db: Db, trucks: Array<{ id: string; unit_number:
     });
     if (created.error) continue;
     n++;
-    for (const status of job.path) {
-      const row = ((await db.from("work_orders").select("id, edit_seq").eq("title", job.title).limit(1)).data ?? [])[0] as { id: string; edit_seq: number } | undefined;
-      if (!row) break;
-      const moved = await db.rpc("maintenance_set_status", { p_id: row.id, p_status: status, p_note: "Demo", p_expected_seq: row.edit_seq });
-      if (moved.error) break;
-    }
+    const createdId = (created.data as { id: string }).id;
+    for (const status of job.path) if (!(await moveWorkOrder(db, createdId, status))) break;
+  }
+  return n;
+}
+
+/**
+ * Completed jobs with recorded labor (B91, owner 2026-10-26), so Time estimates and each work order's learned estimate
+ * have history in demos: four kinds of job, three to four of each, on past days, led by the demo's own logins (crew
+ * must be real people). Through the work order functions (estimate, start, crew, time, complete); found again by
+ * their description, so Refresh adds nothing twice. Fictional hours, recorded the same way a shop records them.
+ */
+async function maintenanceHistory(db: Db, today: string): Promise<number> {
+  if ((await count(db, "work_order_time_entries")) === null) return 0;
+  const MARK = "Demo: a completed job, so maintenance estimates have history.";
+  const done = ((await db.from("work_orders").select("id").eq("description", MARK).limit(1)).data ?? []) as Array<{ id: string }>;
+  if (done.length) return 0;
+  const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  const people = (((await db.rpc("maintenance_assignee_options")).data ?? []) as Array<{ user_id: string }>).map((p) => p.user_id).slice(0, 2);
+  if (!trucks.length || !people.length) return 0;
+  const jobs: Array<[string, string, number, number]> = [
+    ["brakes", "Replace brake shoes", 3.5, 3.2], ["brakes", "Replace brake shoes, rear axle", 3.5, 3.6], ["brakes", "Replace brake shoes and drums", 3.5, 4.1], ["brakes", "Replace brake shoes", 3.5, 2.9],
+    ["tires", "Replace steer tires", 1.5, 1.4], ["tires", "Replace steer tires", 1.5, 1.8], ["tires", "Replace drive tires", 1.5, 2.6], ["tires", "Replace steer tire, cut sidewall", 1.5, 1.6],
+    ["electrical", "Trace lighting fault", 2, 2.2], ["electrical", "Trace lighting fault, trailer plug", 2, 1.1], ["electrical", "Replace alternator", 2, 3],
+    ["engine", "Oil leak repair, valve cover", 5, 4.5], ["engine", "Oil leak repair, rear main seal", 5, 5.2], ["engine", "Oil leak repair", 5, 3.8],
+  ];
+  let n = 0;
+  for (const [i, [category, title, estimate, hours]] of jobs.entries()) {
+    const created = await db.rpc("maintenance_create_work_order", { p: { submission_key: randomUUID(), truck_id: trucks[i % trucks.length].id, title, category, urgency: "normal", safety_critical: false, description: MARK } });
+    if (created.error) continue;
+    const id = (created.data as { id?: string } | null)?.id;
+    if (!id) continue;
+    n++;
+    await db.rpc("maintenance_set_estimate", { p_wo: id, p_hours: estimate });
+    if (!(await moveWorkOrder(db, id, "in_progress"))) continue;
+    const lead = people[i % people.length];
+    await db.rpc("maintenance_add_mechanic", { p_wo: id, p_user: lead, p_lead: true });
+    // Each job on its own past day, so no two time blocks of one person overlap.
+    const day = addDays(today, -(6 + i));
+    const start = new Date(`${day}T13:00:00Z`);
+    await db.rpc("maintenance_add_time", { p_wo: id, p_user: lead, p_started: start.toISOString(), p_ended: new Date(start.getTime() + hours * 3_600_000).toISOString(), p_note: "Demo: recorded labor" });
+    await moveWorkOrder(db, id, "completed");
   }
   return n;
 }

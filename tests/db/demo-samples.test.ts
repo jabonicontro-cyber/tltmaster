@@ -179,6 +179,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     // The Maintenance board's later columns (2026-10-26): in progress, awaiting parts, awaiting inspection.
     const board = await q<{ status: string }>("select distinct status::text as status from public.work_orders where company_id = $1 and status in ('in_progress', 'awaiting_parts', 'awaiting_inspection') order by 1", [w.company]);
     expect(board.rows.map((r) => r.status)).toEqual(["awaiting_inspection", "awaiting_parts", "in_progress"]);
+    // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
+    const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
+    expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);
+    expect(Number(history.rows[0].kinds)).toBe(4);
     // Time off on the Schedule (2026-10-26): approved, pending and denied requests, all three states.
     const offStates = await q<{ status: string }>("select distinct status from public.time_off_requests where company_id = $1 and reason = 'Demo: shows on the Schedule.' order by status", [w.company]);
     expect(offStates.rows.map((r) => r.status)).toEqual(["approved", "denied", "pending"]);
