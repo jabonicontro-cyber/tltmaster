@@ -28,12 +28,14 @@ export interface OrderFilters {
   /** A dispatch base id. */
   base?: string;
   page: number;
+  /** Only the number of matching orders (the Orders page's view tiles). */
+  countOnly?: boolean;
 }
 
 export async function listOrders(filters: OrderFilters) {
   const supabase = await createClient();
   const when = filters.when && filters.when in ORDER_SCHEDULE_FILTERS ? (filters.when as OrderScheduleFilter) : null;
-  let query = supabase.from("order_list").select("*", { count: "exact" });
+  let query = filters.countOnly ? supabase.from("order_list").select("id", { count: "exact", head: true }) : supabase.from("order_list").select("*", { count: "exact" });
   query =
     when === "today" || when === "week"
       ? query.order("scheduled_start", { ascending: true }).order("window_start", { ascending: true, nullsFirst: false }).order("order_number")
@@ -62,6 +64,11 @@ export async function listOrders(filters: OrderFilters) {
     } else {
       query = query.is("scheduled_start", null).in("status", OPEN_ORDER_STATUSES);
     }
+  }
+  if (filters.countOnly) {
+    const { error, count } = await query;
+    if (error) throw new Error(`Could not count orders: ${error.message}`);
+    return { rows: [] as OrderListRow[], total: count ?? 0 };
   }
   const from = (filters.page - 1) * PAGE_SIZE;
   const { data, error, count } = await query.range(from, from + PAGE_SIZE - 1);
