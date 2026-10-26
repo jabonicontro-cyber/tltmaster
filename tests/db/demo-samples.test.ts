@@ -7,6 +7,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { planningSpeed, reviewPace, billingReadySpeed } from "@/lib/command-center/speed";
 import { todayIn } from "@/lib/dates";
 import { seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
@@ -219,6 +220,26 @@ describe.skipIf(!available)("demo feature samples", () => {
     const tri = await q<{ source: string; status: string }>("select source, status from public.work_order_triage where company_id = $1", [w.company]);
     expect(tri.rows.length).toBeGreaterThan(0);
     expect(tri.rows.every((r) => r.source === "rules" && r.status === "suggested")).toBe(true);
+    // Speed (B86, 20261120003600): past planning and review times are realistic, so every figure has measurements.
+    const plans = await q<{ starts_at: Date; created_at: Date }>("select starts_at, created_at from public.dispatch_assignments where company_id = $1", [w.company]);
+    const local = (d: Date) => todayIn(TZ, d);
+    expect(planningSpeed(plans.rows.map((r) => ({ loadDate: local(r.starts_at), createdAt: r.created_at.toISOString() })), TZ)).not.toBeNull();
+    const reviewed = await q<{ status: string; delivered_at: Date; reviewed_at: Date; reviewed_by: string }>("select status, delivered_at, reviewed_at, reviewed_by from public.delivery_tickets where company_id = $1 and reviewed_at is not null", [w.company]);
+    expect(reviewPace(reviewed.rows.map((r) => ({ reviewer: r.reviewed_by, reviewedAt: r.reviewed_at.toISOString() })))).not.toBeNull();
+    const ready = billingReadySpeed(reviewed.rows.filter((r) => r.status === "accepted").map((r) => ({ deliveredAt: r.delivered_at.toISOString(), reviewedAt: r.reviewed_at.toISOString() })));
+    expect(ready!.medianHours).toBeLessThan(120); // twice-weekly review sittings: days, not the seed's week or more
+    // History entries follow the moved times; a second run moves nothing.
+    const order = await q<{ n: string }>("select count(*) n from public.delivery_tickets t join public.delivery_ticket_events e on e.ticket_id = t.id and e.action = 'accepted' where t.company_id = $1 and e.occurred_at <> t.reviewed_at and t.created_at < t.delivered_at + interval '1 day'", [w.company]);
+    expect(Number(order.rows[0].n)).toBe(0);
+    const { data: rerun } = await as(w.owner).rpc("demo_speed_history");
+    expect(rerun).toEqual({ assignments: 0, tickets: 0 });
+    // Real companies are refused, and outside the function the records stay unchangeable.
+    const refused = await as(w.realOwner).rpc("demo_speed_history");
+    expect(refused.error?.message).toMatch(/only added to a demo company/);
+    await expect(q("update public.dispatch_assignments set created_at = created_at - interval '1 day' where company_id = $1 and status = 'active'", [w.company])).rejects.toThrow(/cannot be edited/);
+    await expect(q("update public.delivery_ticket_events set occurred_at = occurred_at - interval '1 day' where company_id = $1", [w.company])).rejects.toThrow(/append-only/);
+    await expect(q("update public.dispatch_assignments set created_at = created_at - interval '1 day' where company_id = $1 and status = 'active'", [TOP_LINE])).rejects.toThrow(/cannot be edited/);
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);

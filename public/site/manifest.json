@@ -116,6 +116,24 @@
       "capturedAt": "2026-10-26T00:05:34.748Z",
       "source": "localhost:3000",
       "checks": "passed"
+    },
+    "speed-metrics": {
+      "file": "speed-metrics.png",
+      "feature": "speed-metrics",
+      "path": "/command-center",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-26T17:37:33.849Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "maintenance-estimates": {
+      "file": "maintenance-estimates.png",
+      "feature": "maintenance-estimates",
+      "path": "/maintenance/estimates",
+      "viewport": "desktop",
+      "capturedAt": "2026-10-26T17:37:52.232Z",
+      "source": "localhost:3000",
+      "checks": "passed"
     }
   }
 }

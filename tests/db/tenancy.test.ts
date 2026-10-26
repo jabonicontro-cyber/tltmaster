@@ -47,6 +47,7 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  "public.demo_speed_history", "private.demo_timing_allowed",
   // Communications hardening (20261108000100): legal-hold lookup is internal; housekeeping_all and the expired-file
   // functions are service role only (no company argument; they act on every company by design, from the scheduler);
   // seed_demo_samples needs require_company(), comms.admin and a demo company.

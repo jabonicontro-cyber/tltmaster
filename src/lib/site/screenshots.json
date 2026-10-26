@@ -132,6 +132,27 @@
       "ready": "steps complete",
       "alt": "Company setup in a demo company: a checklist of what Taviron needs before its checks and plans can rely on the data — company profile, people and roles, customers, materials and rates, trucks and drivers — with what is still missing",
       "caption": "Company setup — demo company, fictional data."
+    },
+    {
+      "id": "maintenance-estimates",
+      "file": "maintenance-estimates.png",
+      "feature": "maintenance-estimates",
+      "path": "/maintenance/estimates",
+      "viewport": "desktop",
+      "ready": "What each kind of job takes",
+      "alt": "Time estimates in a demo company: typical hours per kind of job learned from logged labor, and estimate against actual by job and by mechanic",
+      "caption": "Time estimates — demo company, fictional data."
+    },
+    {
+      "id": "speed-metrics",
+      "file": "speed-metrics.png",
+      "feature": "speed-metrics",
+      "path": "/command-center",
+      "scroll": "Speed",
+      "viewport": "desktop",
+      "ready": "Time to plan tomorrow",
+      "alt": "Command Center speed figures in a demo company: time to plan tomorrow, delivery to billing-ready and ticket review pace, measured from recorded work",
+      "caption": "Speed on the Command Center — demo company, fictional data."
     }
   ]
 }

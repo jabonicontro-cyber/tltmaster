@@ -468,6 +468,8 @@ New local-only migration: `20261120002600_route_planner_core` (applies automatic
 
 ## 12. Feature backlog (living; process in docs/DEVELOPMENT_WORKFLOW.md)
 
+**Owner answers 2026-10-26 (noon):** B84 — ticket photos may go to OpenAI after the evaluation passes (evaluation run started the same day); B83 — build hired trucks with in-app offers first, texts once Twilio keys exist; B87 — GPS provider not decided (on hold); demos get realistic speed timings (migration `20261120003600` approved); website catalog lists B91 and B86 now, B84 once it is switched on; `ROUTING_IN_DEMOS=on` already set in Production; Refresh demo data: remind later.
+
 **Order (owner 2026-10-26):** finish the redesign (B90), then B85, B84 and B86 as priorities, then B91; B83 and B87 are low priority.
 
 One row per independently deliverable feature. Status follows DEVELOPMENT_WORKFLOW §2 (requested → specified →

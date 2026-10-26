@@ -95,6 +95,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
   note("guided onboarding", await guidedOnboarding(db));
+  // Last: spreads this demo's past assignment and review times so Command Center "Speed" has measurements (B86).
+  note("speed history", await speedHistory(db));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
@@ -1237,4 +1239,18 @@ async function maintenanceTriage(db: Db): Promise<number> {
     if (!r.error) n++;
   }
   return n;
+}
+
+/**
+ * Demo speed history (20261120003600, owner 2026-10-26): the seed writes every record in seconds, so the Speed figures
+ * (time to plan tomorrow, delivery to billing-ready, review pace) would have nothing to measure. The database function
+ * moves only the times of this demo's past seeded assignments and clean accepted tickets to realistic ones; it refuses
+ * real companies and a second run moves nothing.
+ */
+async function speedHistory(db: Db): Promise<number> {
+  const { data, error } = await db.rpc("demo_speed_history");
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (speed history): ${error.message}`);
+  const r = (data ?? {}) as { assignments?: number; tickets?: number };
+  return (r.assignments ?? 0) + (r.tickets ?? 0);
 }
