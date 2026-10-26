@@ -153,7 +153,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 <p className="px-5 py-6 text-sm text-muted sm:px-6">Nothing is assigned to you right now.</p>
               ) : (
                 <>
-                  <ul className="divide-y divide-line" aria-label="Assigned to you">
+                  <ul className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6" aria-label="Assigned to you">
                     {myItems.items.map((item) => (
                       <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
                     ))}
@@ -234,7 +234,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           ) : (
             <>
               {hidden && <p className="border-b border-line bg-surface px-5 py-2 text-sm sm:px-6">These are still open for everyone else. They return to your queue when the time runs out.</p>}
-              <ul className="divide-y divide-line" aria-label="Attention items">
+              <ul className="grid grid-cols-1 gap-4 bg-surface/60 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3" aria-label="Attention items">
                 {queue.data.items.map((item) => (
                   <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
                 ))}

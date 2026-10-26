@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { hideException, unhideException } from "@/app/(app)/command-center/actions";
 
 /** Hide a non-urgent item from your own view for a while (it stays open for everyone), or show it again. */
-export function HideControl({ itemKey, hiddenUntil }: { itemKey: string; hiddenUntil: string | null }) {
+/** `compact`: icon-only buttons (the queue tiles); the label stays the accessible name and the tooltip. */
+export function HideControl({ itemKey, hiddenUntil, compact = false }: { itemKey: string; hiddenUntil: string | null; compact?: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(false);
@@ -22,15 +23,15 @@ export function HideControl({ itemKey, hiddenUntil }: { itemKey: string; hiddenU
   };
   if (hiddenUntil) {
     return (
-      <Button size="sm" variant="ghost" loading={busy} icon={<Eye className="size-4" />} onClick={() => run(() => unhideException({ key: itemKey }))}>
-        Show again
+      <Button size="sm" variant="ghost" loading={busy} icon={<Eye className="size-4" />} title={compact ? "Show again" : undefined} className={compact ? "px-2.5" : undefined} onClick={() => run(() => unhideException({ key: itemKey }))}>
+        <span className={compact ? "sr-only" : undefined}>Show again</span>
       </Button>
     );
   }
   return (
     <div className="relative">
-      <Button size="sm" variant="ghost" icon={<EyeOff className="size-4" />} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        Hide for me
+      <Button size="sm" variant="ghost" icon={<EyeOff className="size-4" />} title={compact ? "Hide for me" : undefined} className={compact ? "px-2.5" : undefined} aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className={compact ? "sr-only" : undefined}>Hide for me</span>
       </Button>
       {open && (
         <div role="group" aria-label="Hide for how long" className="absolute right-0 z-10 mt-1 w-56 rounded-2xl border border-line/70 bg-card p-2 text-sm shadow-float">

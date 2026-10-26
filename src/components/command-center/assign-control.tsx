@@ -17,7 +17,8 @@ export interface Person {
 }
 
 /** Assign an open item to someone who can resolve it. This never closes the item. */
-export function AssignControl({ itemKey, kind, title, assignedTo, people }: { itemKey: string; kind: ExceptionKind; title: string; assignedTo: string | null; people: Person[] }) {
+/** `compact`: icon-only buttons (the queue tiles); the label stays the accessible name and the tooltip. */
+export function AssignControl({ itemKey, kind, title, assignedTo, people, compact = false }: { itemKey: string; kind: ExceptionKind; title: string; assignedTo: string | null; people: Person[]; compact?: boolean }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState("");
@@ -25,22 +26,24 @@ export function AssignControl({ itemKey, kind, title, assignedTo, people }: { it
   const eligible = people.filter((p) => p.kinds.includes(kind) && p.user_id !== assignedTo);
 
   return (
-    <div className="flex flex-wrap gap-2">
-      <Button size="sm" variant="ghost" icon={<UserRoundPlus className="size-4" />} onClick={() => { setUserId(""); setNote(""); setOpen(true); }}>
-        {assignedTo ? "Reassign" : "Assign"}
+    <div className={compact ? "flex gap-0.5" : "flex flex-wrap gap-2"}>
+      <Button size="sm" variant="ghost" icon={<UserRoundPlus className="size-4" />} title={compact ? (assignedTo ? "Reassign" : "Assign") : undefined} className={compact ? "px-2.5" : undefined} onClick={() => { setUserId(""); setNote(""); setOpen(true); }}>
+        <span className={compact ? "sr-only" : undefined}>{assignedTo ? "Reassign" : "Assign"}</span>
       </Button>
       {assignedTo && (
         <Button
           size="sm"
           variant="ghost"
           icon={<UserRoundX className="size-4" />}
+          title={compact ? "Remove assignee" : undefined}
+          className={compact ? "px-2.5" : undefined}
           onClick={async () => {
             const r = await unassignException({ key: itemKey });
             if (!r.ok) toast.error(r.error);
             else { toast.success(r.message ?? "Saved"); router.refresh(); }
           }}
         >
-          Remove assignee
+          <span className={compact ? "sr-only" : undefined}>Remove assignee</span>
         </Button>
       )}
       <ConfirmDialog
