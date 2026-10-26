@@ -236,9 +236,20 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Real companies are refused, and outside the function the records stay unchangeable.
     const refused = await as(w.realOwner).rpc("demo_speed_history");
     expect(refused.error?.message).toMatch(/only added to a demo company/);
-    await expect(q("update public.dispatch_assignments set created_at = created_at - interval '1 day' where company_id = $1 and status = 'active'", [w.company])).rejects.toThrow(/cannot be edited/);
-    await expect(q("update public.delivery_ticket_events set occurred_at = occurred_at - interval '1 day' where company_id = $1", [w.company])).rejects.toThrow(/append-only/);
-    await expect(q("update public.dispatch_assignments set created_at = created_at - interval '1 day' where company_id = $1 and status = 'active'", [TOP_LINE])).rejects.toThrow(/cannot be edited/);
+    const oneAssignment = (await q<{ id: string }>("select id from public.dispatch_assignments where company_id = $1 and status = 'active' limit 1", [w.company])).rows[0].id;
+    await expect(q("update public.dispatch_assignments set created_at = created_at - interval '1 day' where id = $1", [oneAssignment])).rejects.toThrow(/cannot be edited/);
+    const oneEvent = (await q<{ id: string }>("select id from public.delivery_ticket_events where company_id = $1 limit 1", [w.company])).rows[0].id;
+    await expect(q("update public.delivery_ticket_events set occurred_at = occurred_at - interval '1 day' where id = $1", [oneEvent])).rejects.toThrow(/append-only/);
+    // Even with the time-only switch on, anything other than the time is still refused.
+    const client = await pool.connect();
+    try {
+      await client.query("begin");
+      await client.query("select set_config('tlt.demo_timing', 'on', true)");
+      await expect(client.query("update public.dispatch_assignments set note = 'changed', created_at = created_at - interval '1 day' where id = $1", [oneAssignment])).rejects.toThrow(/cannot be edited/);
+    } finally {
+      await client.query("rollback");
+      client.release();
+    }
 
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
