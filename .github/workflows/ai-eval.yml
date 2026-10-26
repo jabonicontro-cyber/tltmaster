@@ -40,6 +40,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           AI_MODEL_PLAN_EXPLANATION: ${{ inputs.model }}
           AI_MODEL_OPS_ASSISTANT: ${{ inputs.model }}
+          AI_MODEL_TICKET_READING: ${{ inputs.model }}
         run: |
           set -o pipefail
           npm run ai:eval 2>&1 | tee eval.log

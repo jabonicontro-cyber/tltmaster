@@ -18,6 +18,9 @@ import { businessToday } from "@/server/data/settings";
 import { getTicket, getTicketContext, reviewQueuePosition } from "@/server/data/tickets";
 import { QueueKeys } from "@/components/tickets/queue-keys";
 import { TicketScanUpload } from "@/components/tickets/ticket-scan-upload";
+import { TicketReading } from "@/components/tickets/ticket-reading";
+import { GATE_LABELS } from "@/lib/ai/capabilities";
+import { capabilityGate } from "@/server/ai/gates";
 import { lineProgress } from "@/lib/tickets/context";
 import { REVIEW_REASON_HELP } from "@/lib/tickets/rules";
 import { formatCents } from "@/lib/money";
@@ -53,6 +56,9 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=review`, returnTo) : `/tickets/${ticketId}?queue=review`);
   const { ticket: t, revisions, events, units, people, photos } = detail;
   const { timezone } = await businessToday();
+  // B84: reading the photo with AI is offered to reviewers of live tickets that have a photo; the gate decides if it runs.
+  const reviewer = can(access, "tickets.review") && t.status !== "voided" && t.status !== "superseded" && photos.length > 0;
+  const readGate = reviewer ? await capabilityGate("ticket_reading", access).catch(() => null) : null;
   const who = (uid: string | null) => (uid ? people[uid] ?? "Former user" : "System");
   const unitLabel = (code: string | null) => units.find((u) => u.code === code)?.label.toLowerCase() ?? code ?? "";
   const current = revisions.find((r) => r.status !== "superseded");
@@ -238,6 +244,14 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                   })}
                 </ul>
               </CardBody>
+            )}
+            {readGate && (
+              <TicketReading
+                ticketId={t.id}
+                photos={photos.map((p, i) => ({ id: p.id, label: `Photo ${i + 1}` }))}
+                ai={{ state: readGate.state, label: GATE_LABELS[readGate.state], canRun: readGate.canRun, reasons: can(access, "settings.manage") ? readGate.reasons : null }}
+                correctHref={can(access, "tickets.edit") ? `/tickets/${t.id}/correct` : null}
+              />
             )}
           </Card>
 

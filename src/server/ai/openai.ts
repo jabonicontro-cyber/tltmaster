@@ -13,11 +13,13 @@ import { isReasoningModel, outputTokenCap, REASONING_EFFORT } from "@/lib/ai/rea
 
 type OpenAiItem =
   | { role: "user" | "assistant"; content: string }
+  | { role: "user"; content: Array<{ type: "input_image"; image_url: string; detail: "high" }> }
   | { type: "function_call"; call_id: string; name: string; arguments: string }
   | { type: "function_call_output"; call_id: string; output: string };
 
 function toItem(i: ConversationItem): OpenAiItem {
   if (i.kind === "message") return { role: i.role, content: i.text };
+  if (i.kind === "image") return { role: "user", content: [{ type: "input_image", image_url: `data:${i.mediaType};base64,${i.base64}`, detail: "high" }] };
   if (i.kind === "tool_call") return { type: "function_call", call_id: i.callId, name: i.name, arguments: i.arguments };
   return { type: "function_call_output", call_id: i.callId, output: i.output };
 }

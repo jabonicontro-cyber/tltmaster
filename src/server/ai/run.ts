@@ -1,7 +1,7 @@
 import "server-only";
 import type { AiCapability, Gate } from "@/lib/ai/capabilities";
 import { runToolCall, toolDefinitions, type PendingApproval, type Proposal, type Tool, type ToolContext } from "./tools";
-import { AiError, type AiErrorKind, type AiProvider, type CompletionResponse, type ConversationItem, type JsonSchema } from "./types";
+import { AiError, type AiErrorKind, type AiProvider, type CompletionResponse, type ConversationItem, type ImageMediaType, type JsonSchema } from "./types";
 import { outputTokenCap } from "@/lib/ai/reasoning";
 
 // Runs one AI capability request (docs/AI.md §2): gate → budget and rate limit → provider calls with approved tools →
@@ -74,10 +74,15 @@ const REFUSED: Record<ReserveRefusal, AiError> = {
   unavailable: new AiError("not_configured", "AI usage cannot be tracked right now, so nothing was sent."),
 };
 
+/** Tokens projected per image before the call (the provider reports the real count afterwards). */
+export const IMAGE_TOKENS = 1600;
+
 export interface CapabilityRequest<C, O> {
   capability: AiCapability;
   instructions: string;
   input: string;
+  /** Images sent after the input, only for capabilities that allow them (the gate checks AI_SEND_PHOTOS). */
+  images?: Array<{ mediaType: ImageMediaType; base64: string }>;
   output: { name: string; schema: JsonSchema };
   tools: Tool<C>[];
   /** Validates the parsed answer (schema, grounding, forbidden claims). */
@@ -157,7 +162,8 @@ export async function runCapability<C, O>(req: CapabilityRequest<C, O>, deps: Ru
   if (usage.user.callsToday >= s.userDailyRequests) throw new AiError("user_limit", "You have reached today's limit of AI requests.");
   if (usage.callsLastMinute >= s.requestsPerMinute) throw new AiError("rate_limit", "Too many AI requests in the last minute for this company. Try again shortly.");
   if (s.monthlyCostLimitMicroUsd !== null && usage.costThisMonthMicroUsd >= s.monthlyCostLimitMicroUsd) throw new AiError("budget", "This month's estimated AI cost limit is reached.");
-  const projected = Math.ceil((req.instructions.length + req.input.length) / 3) + outputTokenCap(deps.gate.model, req.maxOutputTokens);
+  if (req.images?.length && !req.capability.sendsImages) throw new AiError("sensitive_data", "This capability may not send images; nothing was sent.");
+  const projected = Math.ceil((req.instructions.length + req.input.length) / 3) + (req.images?.length ?? 0) * IMAGE_TOKENS + outputTokenCap(deps.gate.model, req.maxOutputTokens);
   if (usage.tokensThisMonth + projected > s.monthlyTokenLimit) throw new AiError("budget", "This month's AI token limit would be exceeded.");
   if (usage.user.tokensThisMonth + projected > s.userMonthlyTokenLimit) throw new AiError("user_limit", "Your own AI token limit for this month would be exceeded.");
 
@@ -177,7 +183,8 @@ export async function runCapability<C, O>(req: CapabilityRequest<C, O>, deps: Ru
 async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, model: string, usedFallback: boolean, usedBefore: { company: number; user: number }): Promise<RunResult<O>> {
   const clock = deps.clock ?? Date.now;
   const key = deps.requestKey ?? (() => crypto.randomUUID());
-  const items: ConversationItem[] = [{ kind: "message", role: "user", text: req.input }];
+  const items: ConversationItem[] = [{ kind: "message", role: "user", text: req.input }, ...(req.images ?? []).map((i) => ({ kind: "image" as const, ...i }))];
+  const imageTokens = (req.images?.length ?? 0) * IMAGE_TOKENS;
   const proposals: Proposal[] = [];
   const pendingApprovals: PendingApproval[] = [];
   let inTokens: number | null = 0;
@@ -196,7 +203,9 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
       output: req.output,
       maxOutputTokens: req.maxOutputTokens,
     };
-    const payload = JSON.stringify(request);
+    // Text checks and the size limit apply to everything but the image data itself (it cannot be read for names; the
+    // gate requires the owner's AI_SEND_PHOTOS=on before any image is sent).
+    const payload = JSON.stringify({ ...request, input: items.map((i) => (i.kind === "image" ? { kind: "image", mediaType: i.mediaType } : i)) });
     const leak = findSensitive(payload, req.secrets);
     if (leak) throw new AiError("sensitive_data", `The request would have sent ${leak}; nothing was sent.`);
     if (payload.length > deps.settings.maxRequestChars) throw new AiError("too_large", "The question needs more data than one AI request may carry. Ask about a shorter period or one record.");
@@ -208,7 +217,7 @@ async function attempt<C, O>(req: CapabilityRequest<C, O>, deps: RunDeps<C>, mod
     const callKey = key();
     const reservation = await deps.ledger.reserve({
       requestKey: callKey, capability: req.capability.id, provider: deps.provider.name, model,
-      tokens: Math.ceil(payload.length / 3) + outputTokenCap(model, req.maxOutputTokens), settings: deps.settings,
+      tokens: Math.ceil(payload.length / 3) + imageTokens + outputTokenCap(model, req.maxOutputTokens), settings: deps.settings,
     }).catch(() => ({ ok: false as const, reason: "unavailable" as const }));
     if (!reservation.ok) throw REFUSED[reservation.reason];
 

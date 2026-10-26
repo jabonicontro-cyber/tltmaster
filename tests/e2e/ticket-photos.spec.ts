@@ -102,6 +102,10 @@ test("a driver attaches paper-ticket photos (with a failed upload and a retry) a
   expect(file.status()).toBe(200);
   expect(file.headers()["content-type"]).toBe("image/jpeg"); // re-encoded on the phone
   expect((await page.request.get(`/tickets/photos/${crypto.randomUUID()}`)).status()).toBe(404);
+  // B84: reviewers are offered the AI reading only when its gate is open; without AI it says so and nothing is sent.
+  const reading = page.getByRole("region", { name: "Read the photo with AI" });
+  await expect(reading).toContainText("AI ticket reading is not switched on for this company");
+  await expect(reading.getByRole("button", { name: "Read the photo" })).toHaveCount(0);
 
   // A mechanic (no ticket access) cannot open it.
   await page.context().clearCookies();

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { parseAiConfig } from "@/server/ai/config";
-import { runAssistantEval, runPlanExplanationEval } from "@/server/ai/evals";
+import { runAssistantEval, runPlanExplanationEval, runTicketReadingEval } from "@/server/ai/evals";
 import { OpenAiProvider } from "@/server/ai/openai";
 
 // Live evaluation (docs/AI.md §5). Not part of the core suite: run with `npm run ai:eval` and a key in the environment.
@@ -27,4 +27,15 @@ describe.skipIf(!config.apiKey || !assistantModel)("live evaluation: Ask Taviron
     console.log(`Evidence:\n${JSON.stringify(report.evidence, null, 2)}`);
     expect(report.cases.length).toBeGreaterThan(0);
   }, 180_000);
+});
+
+const ticketModel = config.models.ticket_reading;
+
+describe.skipIf(!config.apiKey || !ticketModel)("live evaluation: Read a ticket photo", () => {
+  it("grades every case with the production checks", async () => {
+    const report = await runTicketReadingEval(new OpenAiProvider(config.apiKey!), ticketModel!);
+    for (const c of report.cases) console.log(`${c.passed ? "PASS" : "FAIL"} ${c.name}${c.error ? ` — ${c.error}` : ""}${c.findings.map((f) => `\n  - ${f.rule}: ${f.detail}`).join("")}${c.answer ? `\n  answer: ${c.answer}` : ""}`);
+    console.log(`Evidence:\n${JSON.stringify(report.evidence, null, 2)}`);
+    expect(report.cases.length).toBeGreaterThan(0);
+  }, 300_000);
 });

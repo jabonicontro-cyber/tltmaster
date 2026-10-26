@@ -24,6 +24,10 @@ const settings = {
   AI_FALLBACK_MODEL_PLAN_EXPLANATION: MODEL,
   AI_MODEL_OPS_ASSISTANT: MODEL,
   AI_FALLBACK_MODEL_OPS_ASSISTANT: MODEL,
+  AI_MODEL_TICKET_READING: MODEL,
+  AI_FALLBACK_MODEL_TICKET_READING: MODEL,
+  // Ticket photos go to the provider only when the owner says so: an image cannot be checked for names like text can.
+  AI_SEND_PHOTOS: z.enum(["on", "off"]),
   AI_MONTHLY_TOKEN_LIMIT: z.coerce.number().int().min(1000).max(1_000_000_000),
   AI_REQUESTS_PER_MINUTE: z.coerce.number().int().min(1).max(600),
   AI_TIMEOUT_MS: z.coerce.number().int().min(2000).max(60000),
@@ -64,6 +68,8 @@ export interface AiConfig {
   timeoutMs: number;
   pricing: z.infer<typeof PRICE>;
   inDemos: boolean;
+  /** AI_SEND_PHOTOS=on: capabilities that send ticket photos may run. Off by default. */
+  sendPhotos: boolean;
   /** Real (non-demo) companies allowed to run AI. Empty: none. */
   companyAllowlist: string[];
   userMonthlyTokenLimit: number | null;
@@ -100,16 +106,19 @@ export function parseAiConfig(source: Record<string, string | undefined>): AiCon
     models: {
       ...(v.AI_MODEL_PLAN_EXPLANATION ? { plan_explanation: v.AI_MODEL_PLAN_EXPLANATION } : {}),
       ...(v.AI_MODEL_OPS_ASSISTANT ? { ops_assistant: v.AI_MODEL_OPS_ASSISTANT } : {}),
+      ...(v.AI_MODEL_TICKET_READING ? { ticket_reading: v.AI_MODEL_TICKET_READING } : {}),
     },
     fallbackModels: {
       ...(v.AI_FALLBACK_MODEL_PLAN_EXPLANATION ? { plan_explanation: v.AI_FALLBACK_MODEL_PLAN_EXPLANATION } : {}),
       ...(v.AI_FALLBACK_MODEL_OPS_ASSISTANT ? { ops_assistant: v.AI_FALLBACK_MODEL_OPS_ASSISTANT } : {}),
+      ...(v.AI_FALLBACK_MODEL_TICKET_READING ? { ticket_reading: v.AI_FALLBACK_MODEL_TICKET_READING } : {}),
     },
     monthlyTokenLimit: v.AI_MONTHLY_TOKEN_LIMIT ? Number(v.AI_MONTHLY_TOKEN_LIMIT) : null,
     requestsPerMinute: v.AI_REQUESTS_PER_MINUTE ? Number(v.AI_REQUESTS_PER_MINUTE) : 6,
     timeoutMs: v.AI_TIMEOUT_MS ? Number(v.AI_TIMEOUT_MS) : 20000,
     pricing: v.AI_PRICING_JSON ? PRICE.parse(JSON.parse(v.AI_PRICING_JSON)) : {},
     inDemos: v.AI_IN_DEMOS === "on",
+    sendPhotos: v.AI_SEND_PHOTOS === "on",
     companyAllowlist: v.AI_COMPANY_ALLOWLIST ? v.AI_COMPANY_ALLOWLIST.toLowerCase().split(",") : [],
     userMonthlyTokenLimit: v.AI_USER_MONTHLY_TOKEN_LIMIT ? Number(v.AI_USER_MONTHLY_TOKEN_LIMIT) : null,
     userRequestsPerMinute: v.AI_USER_REQUESTS_PER_MINUTE ? Number(v.AI_USER_REQUESTS_PER_MINUTE) : 6,

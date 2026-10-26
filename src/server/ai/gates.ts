@@ -80,6 +80,7 @@ export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "p
       companyAllowed: Boolean(access.companyId && config.companyAllowlist.includes(access.companyId.toLowerCase())),
       userMonthlyTokenLimit: config.userMonthlyTokenLimit,
       monthlyCostLimitMicroUsd: config.monthlyCostLimitUsd === null ? null : Math.round(config.monthlyCostLimitUsd * 1_000_000),
+      imagesAllowed: config.sendPhotos,
     },
     evidence: EVAL_EVIDENCE,
     usage: summary ? { tokensThisMonth: summary.tokensThisMonth, costThisMonthMicroUsd: summary.costThisMonthMicroUsd, userTokensThisMonth: summary.user.tokensThisMonth, paused: summary.paused } : null,

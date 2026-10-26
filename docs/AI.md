@@ -399,3 +399,45 @@ Taviron stores no prompts or answers; the ledger keeps counts only.
    decide whether to apply for Zero Data Retention.
 
 No public page was changed in this round: public wording is a person's decision (CLAUDE.md).
+
+## 18. Read a ticket photo (B84, third capability, 2026-10-26)
+
+**What it does.** On a delivery ticket with a paper-ticket photo, a reviewer (`tickets.review`) can press **Read the
+photo**. The server downloads that photo with the reviewer's own session (RLS and storage policy), sends it to the
+model with fixed instructions and a strict schema (ticket number, date, material, quantity and unit, gross / tare / net
+weights, truck), validates the answer (`checkReading`: schema, calendar date, no contact details, nothing returned for
+an unreadable photo) and cross-checks it (`crossCheck`, `src/lib/ai/ticket-reading.ts`) against what was entered and
+the order: paper ticket number, delivery date (and the planned load date), material against the order line, quantity
+and unit (never converted), gross − tare = net arithmetic, truck, and whether the paper number is on another live
+ticket. Each row says Matches, Check, Not read or Nothing to compare.
+
+**What it never does.** It never changes, accepts, flags or bills a ticket. The panel is labelled as an AI reading to
+check against the photo; a difference is fixed by a person through **Correct** and accepted through the normal review.
+Without AI the page works exactly as before.
+
+**Gate (fail closed).** The usual gate (§4) plus one more condition: `AI_SEND_PHOTOS=on`. A photo cannot be checked for
+names the way text is (§10) — a paper ticket can show a customer, a driver or a signature — so sending photos is a
+separate, explicit owner decision. Off by default; any other value is ignored and listed as malformed. Model:
+`AI_MODEL_TICKET_READING` (optional `AI_FALLBACK_MODEL_TICKET_READING`). Capability name for `AI_CAPABILITIES`:
+`ticket_reading`. Demo companies follow `AI_IN_DEMOS` as for every capability; demo tickets show the "not switched on"
+state until then.
+
+**Images in the runtime.** `ConversationItem` has an `image` kind (JPEG, PNG or WebP as base64); the OpenAI adapter sends
+it as `input_image` with `detail: "high"`. Only capabilities marked `sendsImages` may include images (`runCapability`
+refuses otherwise, before any call). The text checks and `AI_MAX_REQUEST_CHARS` apply to everything except the image
+data; the budget projection adds `IMAGE_TOKENS` (1600) per image, and the ledger records the tokens OpenAI reports.
+Photos larger than 6 MB or in another format are not sent.
+
+**Evaluation.** Five fictional tickets rendered by `scripts/ai/render-ticket-fixtures.mjs` into
+`tests/fixtures/ai-tickets/` (scale ticket, load-count ticket, smudged date that must not be guessed, cubic yards
+without a ticket number, a photo that is not a ticket). `gradeReading`: an invented or wrong value is critical; a
+printed value left out fails the case without being critical. Run with `npm run ai:eval` or the "AI evaluation
+(manual, paid)" workflow (it now sets `AI_MODEL_TICKET_READING`); copy the evidence only from a passing run.
+
+**Owner steps to turn it on:** (1) decide that ticket photos may go to OpenAI (§17 disclosures apply, with photos named
+explicitly); (2) run the evaluation and commit its evidence; (3) set `AI_SEND_PHOTOS=on`, add `ticket_reading` to
+`AI_CAPABILITIES` and set `AI_MODEL_TICKET_READING`; the company must be on `AI_COMPANY_ALLOWLIST`.
+
+**Tests:** `tests/unit/ai-ticket-reading.test.ts` (mocked provider: gate, image encoding, refusal for other
+capabilities, checks, cross-checks, grading, evaluation runner), `tests/e2e/ticket-photos.spec.ts` (the panel's closed
+state on a ticket with photos).

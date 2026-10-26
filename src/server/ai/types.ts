@@ -28,6 +28,8 @@ export class AiError extends Error {
   }
 }
 
+export type ImageMediaType = "image/jpeg" | "image/png" | "image/webp";
+
 /** A JSON Schema object (the subset providers accept for structured outputs and tool parameters). */
 export type JsonSchema = Record<string, unknown>;
 
@@ -41,6 +43,8 @@ export interface ToolDefinition {
 /** One turn of a conversation in provider-neutral form. */
 export type ConversationItem =
   | { kind: "message"; role: "user" | "assistant"; text: string }
+  /** An image from the person's own records (a ticket photo), sent only by capabilities whose gate allows images. */
+  | { kind: "image"; mediaType: ImageMediaType; base64: string }
   | { kind: "tool_call"; callId: string; name: string; arguments: string }
   | { kind: "tool_result"; callId: string; output: string };
 

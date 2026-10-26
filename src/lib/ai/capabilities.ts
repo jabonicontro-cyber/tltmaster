@@ -4,7 +4,7 @@ import type { Permission } from "@/lib/permissions";
 // same rules decide what the server runs and what the setup page shows. A capability runs only when its gate is Ready
 // or Limited; Needs review and Blocked never call a model.
 
-export type AiCapabilityId = "plan_explanation" | "ops_assistant";
+export type AiCapabilityId = "plan_explanation" | "ops_assistant" | "ticket_reading";
 
 export interface AiCapability {
   id: AiCapabilityId;
@@ -23,6 +23,11 @@ export interface AiCapability {
   /** Evidence older than this needs a new run (models and prompts drift). */
   evidenceMaxAgeDays: number;
   needsStructuredOutput: boolean;
+  /**
+   * Sends images (ticket photos). A photo cannot be checked for names the way text is, so these capabilities also need
+   * the owner's explicit AI_SEND_PHOTOS=on.
+   */
+  sendsImages?: boolean;
 }
 
 export const AI_CAPABILITIES: AiCapability[] = [
@@ -50,6 +55,18 @@ export const AI_CAPABILITIES: AiCapability[] = [
     minPassRate: 0.9,
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,
+  },
+  {
+    id: "ticket_reading",
+    label: "Read a ticket photo",
+    description: "Reads the paper or scale ticket photo on a delivery ticket — ticket number, date, material, quantity, weights and truck — and compares each value with what was entered and with the order. Shown to the reviewer as an AI reading to check; it never changes, accepts or bills a ticket.",
+    permission: "tickets.review",
+    maxToolKind: "read",
+    evalVersion: 1,
+    minPassRate: 0.9,
+    evidenceMaxAgeDays: 90,
+    needsStructuredOutput: true,
+    sendsImages: true,
   },
 ];
 
@@ -105,6 +122,8 @@ export interface GateInput {
     userMonthlyTokenLimit: number | null;
     /** Millionths of a US dollar per company per month; null: no cost ceiling. */
     monthlyCostLimitMicroUsd: number | null;
+    /** The owner allowed sending photos to the provider (AI_SEND_PHOTOS=on). */
+    imagesAllowed?: boolean;
   };
   evidence: EvalEvidence[];
   /**
@@ -154,6 +173,7 @@ export function evaluateGate(input: GateInput): Gate {
   if (config.invalid.length) blocked.push(`Some AI settings are malformed and ignored: ${config.invalid.join(", ")}.`);
   if (!config.enabled) blocked.push("This capability is not switched on (AI_CAPABILITIES).");
   if (!config.model) blocked.push("No model is chosen for this capability.");
+  if (c.sendsImages && !config.imagesAllowed) blocked.push("Sending ticket photos to the AI provider is not approved (AI_SEND_PHOTOS). Photos can show names that cannot be replaced by codes.");
   if (c.needsStructuredOutput && config.provider && !config.providerSupportsStructuredOutput) blocked.push("The provider does not support structured output.");
   if (!config.monthlyTokenLimit) blocked.push("No monthly token limit is set (AI_MONTHLY_TOKEN_LIMIT).");
   if (!config.userMonthlyTokenLimit) blocked.push("No monthly token limit per person is set (AI_USER_MONTHLY_TOKEN_LIMIT).");
