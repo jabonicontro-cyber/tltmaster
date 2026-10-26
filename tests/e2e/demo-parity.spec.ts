@@ -270,7 +270,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByText("Safety or access critical").first()).toBeVisible();
   // Colby's own touches (prairie-lantern-colby.ts): the Southfield lane and his friend Cam Webster as a driver.
   await visit(owner, `/orders?q=${encodeURIComponent("Southfield Crossing")}`);
-  await expect(owner.getByText("Southfield Crossing Distribution").first()).toBeVisible();
+  await expect(owner.getByText("Southfield Crossing Distribution").filter({ visible: true }).first()).toBeVisible();
   await visit(owner, "/employees?q=Cam");
   await expect(owner.getByText("Cam Webster").first()).toBeVisible();
   const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };

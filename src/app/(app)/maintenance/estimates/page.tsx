@@ -15,8 +15,6 @@ import { completedJobs } from "@/server/data/maintenance-estimates";
 
 export const metadata = { title: "Time estimates" };
 
-const pct = (v: number | null) => (v === null ? "—" : `${v > 0 ? "+" : ""}${Math.round(v * 100)}%`);
-
 /** Over or under, in words, without judging a single job: within 10% counts as on estimate. */
 function Verdict({ v }: { v: number | null }) {
   if (v === null) return <span className="text-muted">—</span>;

@@ -148,6 +148,8 @@ test("dispatchers and mechanics see only what their role covers", async ({ page 
   await expect(overview.getByRole("listitem", { name: "Orders ready to bill" })).toHaveCount(0);
   await expect(page.getByRole("navigation", { name: "Filter the queue" }).getByRole("link", { name: /Billing blocked/ })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Assign" })).toHaveCount(0);
+  // B86: dispatchers see how long planning takes, measured from their own assignments.
+  await expect(page.getByRole("list", { name: "Speed" }).getByRole("listitem", { name: "Time to plan tomorrow" })).toBeVisible();
 
   await page.context().clearCookies();
   await signIn(page, "mechanic");
@@ -159,6 +161,7 @@ test("dispatchers and mechanics see only what their role covers", async ({ page 
   await expect(overview.getByRole("listitem", { name: "Missing delivery tickets" })).toHaveCount(0);
   const kinds = await page.getByRole("list", { name: "Attention items" }).getByRole("listitem").filter({ hasText: /Missing delivery ticket|Ticket to review|Billing blocked|Load without a truck/ }).count();
   expect(kinds).toBe(0);
+  await expect(page.getByRole("list", { name: "Speed" })).toHaveCount(0);
 });
 
 test("users without an operational role and signed-out visitors are refused", async ({ page }) => {
@@ -175,4 +178,8 @@ test("another company sees only its own (empty) command center", async ({ page }
   await expect(page.getByRole("region", { name: "Attention summary" })).toContainText("Nothing needs attention");
   await expect(page.getByText("Nothing needs attention", { exact: true }).last()).toBeVisible();
   await expect(page.getByText(/Command e2e/)).toHaveCount(0);
+  // Speed is measured from this company's own records only: nothing recorded, nothing shown as a figure.
+  const speed = page.getByRole("list", { name: "Speed" });
+  await expect(speed.getByRole("listitem", { name: "Ticket review pace" })).toContainText("Not enough measured yet");
+  await expect(speed.getByRole("listitem", { name: "Delivery to billing-ready" })).toContainText("Not enough measured yet");
 });

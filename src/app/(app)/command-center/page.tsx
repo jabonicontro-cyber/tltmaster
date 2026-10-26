@@ -6,6 +6,7 @@ import { LiveOutlook } from "@/components/command-center/live-outlook";
 import { MetricGrid } from "@/components/command-center/metric-grid";
 import { RefreshButton } from "@/components/command-center/refresh-button";
 import { SalesSection } from "@/components/command-center/sales-section";
+import { SpeedSection } from "@/components/command-center/speed-section";
 import { SectionLayout, type Section } from "@/components/command-center/section-layout";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
@@ -30,6 +31,7 @@ import { fleetOverview } from "@/server/data/fleet";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
+import { loadSpeed } from "@/server/data/speed";
 import { outlookTotals } from "@/lib/live/outlook";
 
 export const metadata = { title: "Command Center" };
@@ -79,7 +81,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const none = Promise.resolve(null);
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
-  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook] = await Promise.all([
+  const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
+  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed] = await Promise.all([
     ops ? loadSummary() : none,
     ops ? loadQueue({ kind, mine, page, hidden }) : none,
     ops ? loadQueue({ mine: true, page: 1, limit: 5 }) : none,
@@ -92,6 +95,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("fleet.view") ? fleetOverview().catch(() => null) : none,
     has("driver.portal") ? loadDriverHome() : none,
     outlookP,
+    speedCan.dispatch || speedCan.tickets ? loadSpeed(timezone, speedCan).catch(() => null) : none,
   ]);
   const now = new Date();
 
@@ -265,6 +269,15 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ) : (
         <ErrorState title="The overview could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
       ),
+    });
+  }
+
+  // B86: speed measured from recorded actions, for roles that see dispatch or tickets.
+  if (speedCan.dispatch || speedCan.tickets) {
+    sections.push({
+      id: "speed",
+      title: "Speed",
+      content: speed ? <SpeedSection speed={speed} /> : <ErrorState title="Speed figures could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." />,
     });
   }
 
