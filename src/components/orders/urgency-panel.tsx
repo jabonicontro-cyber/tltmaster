@@ -48,7 +48,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
   if (!open && (orderClosed || !can("orders.edit")) && events.length === 0) return null;
 
   return (
-    <Card className={open ? "border-brand" : undefined}>
+    <Card urgent={Boolean(open)}>
       <CardHeader
         title={open ? "Urgent order" : "Urgency"}
         description={open ? "Visible to dispatch on the board and in the Command Center until resolved." : "Flag this order when the customer needs it sooner than planned. Dispatch is asked to acknowledge; nothing is assigned automatically."}

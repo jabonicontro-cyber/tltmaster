@@ -7,6 +7,11 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
 import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow } from "@/lib/portal";
 import { portalCall, portalGate } from "@/server/portal";
+import { previewPortalAs } from "@/app/admin/testing-lab/actions";
+import { Field, Select } from "@/components/ui/form";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { isPlatformAdmin } from "@/server/platform";
+import { createClient } from "@/server/supabase/server";
 
 export default async function PortalHome({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -17,7 +22,7 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
     if (!company) {
       return <PortalUnavailable />;
     }
-    return <PublicPage slug={slug} company={company} noAccess={gate.kind === "no-access"} />;
+    return <PublicPage slug={slug} company={company} noAccess={gate.kind === "no-access"} demoPreview={gate.kind === "no-access" ? await demoPreviewOptions(slug) : null} />;
   }
 
   const c = gate.context;
@@ -107,14 +112,45 @@ function Stat({ label, value, href }: { label: string; value: number; href: stri
   );
 }
 
-function PublicPage({ slug, company, noAccess }: { slug: string; company: PortalCompany & { public_page: boolean }; noAccess: boolean }) {
+/**
+ * A demo company's portal opened by the platform owner (signed in as staff, not as a customer): offer the Testing Lab
+ * preview right here, so the portal shows a demo customer's fictional orders, quotes and requests. The database allows
+ * previews only for demo companies and the platform owner, for one hour, and audits them. Null for everyone else.
+ */
+async function demoPreviewOptions(slug: string): Promise<{ companyId: string; customers: Array<{ id: string; name: string; orders: number }> } | null> {
+  if (!(await isPlatformAdmin())) return null;
+  const supabase = await createClient();
+  const { data: company } = await supabase.from("companies").select("id").eq("slug", slug).eq("is_demo", true).maybeSingle();
+  if (!company) return null;
+  const { data } = await supabase.rpc("platform_testing_demo", { p_company: company.id });
+  const customers = ((data as { customers?: Array<{ id: string; name: string; orders: number }> } | null)?.customers ?? []).slice().sort((a, b) => b.orders - a.orders);
+  return customers.length ? { companyId: company.id as string, customers } : null;
+}
+
+function PublicPage({ slug, company, noAccess, demoPreview = null }: { slug: string; company: PortalCompany & { public_page: boolean }; noAccess: boolean; demoPreview?: Awaited<ReturnType<typeof demoPreviewOptions>> }) {
   return (
     <div className="space-y-6">
       <div className="rounded-panel border border-line/70 bg-card shadow-card p-6 sm:p-8">
         <h1 className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">{company.name} Customer Portal</h1>
         {company.public_page && company.welcome ? <p className="mt-3 max-w-2xl whitespace-pre-line text-[15px] text-muted">{company.welcome}</p> : null}
         <p className="mt-3 max-w-2xl text-[15px] text-muted">Customers can sign in to follow their orders and deliveries, see quotes, and ask us questions.</p>
-        {noAccess ? (
+        {noAccess && demoPreview ? (
+          <form action={previewPortalAs} className="mt-5">
+            <input type="hidden" name="company" value={demoPreview.companyId} />
+            {/* The hint sits under the whole row so the button lines up with the field, not with the hint. */}
+            <div className="flex flex-wrap items-end gap-2">
+              <Field label="See the portal as a demo customer" htmlFor="portal-preview-customer">
+                <Select id="portal-preview-customer" name="customer" required defaultValue={demoPreview.customers[0]?.id}>
+                  {demoPreview.customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}{c.orders ? ` · ${c.orders} ${c.orders === 1 ? "order" : "orders"}` : ""}</option>
+                  ))}
+                </Select>
+              </Field>
+              <SubmitButton pendingLabel="Opening…">Preview as customer</SubmitButton>
+            </div>
+            <p className="mt-1.5 text-sm text-muted">Fictional records. One hour, recorded in the platform audit; nothing is sent.</p>
+          </form>
+        ) : noAccess ? (
           <p className="mt-4 text-sm text-muted">You are signed in, but this account has no access to this portal. Ask {company.name} for an invitation, or sign out and use the invited email.</p>
         ) : (
           <Link href={`/portal/${slug}/login`} className={buttonClasses("primary", "lg", "mt-5 inline-flex")}>

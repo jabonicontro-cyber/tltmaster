@@ -19,15 +19,15 @@ export function UrgentOrders({ items, canAcknowledge, timezone, back, now }: { i
   const [busy, setBusy] = useState<string | null>(null);
   if (items.length === 0) return null;
   return (
-    <section aria-label="Urgent orders" className="mb-4 rounded-2xl border-2 border-critical bg-card">
-      <h2 className="flex items-center gap-2 border-b border-line px-4 py-2 font-bold text-ink">
+    <section aria-label="Urgent orders" className="mb-4 rounded-panel border border-critical/40 bg-card shadow-card">
+      <h2 className="flex items-center gap-2 border-b border-line/70 px-5 py-3 font-semibold text-ink sm:px-6">
         <Siren className="size-5 text-critical" aria-hidden /> Urgent orders ({items.length})
       </h2>
       <ul className="divide-y divide-line">
         {items.map((u) => {
           const late = u.needed_by && new Date(u.needed_by).getTime() < new Date(now).getTime();
           return (
-            <li key={u.id} className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+            <li key={u.id} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3.5 sm:px-6">
               <div className="min-w-0 space-y-1">
                 <p className="flex flex-wrap items-center gap-2">
                   <Link href={withReturn(`/orders/${u.order_id}`, back)} className="font-bold tabular hover:underline">{u.orders?.order_number ?? "Order"}</Link>

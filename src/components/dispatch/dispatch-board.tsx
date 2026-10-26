@@ -9,7 +9,7 @@ import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, 
 import { Avatar } from "@/components/ui/avatar";
 import type { Face } from "@/server/data/faces";
 import { toast } from "sonner";
-import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
+import { Badge, OrderStatusBadge, SampleBadge, UrgentPill } from "@/components/ui/badge";
 import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
@@ -46,7 +46,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {} }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face> }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [] }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -137,6 +137,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
               <OrderCard
                 key={o.id}
                 order={o}
+                urgent={urgentOrderIds.includes(o.id)}
                 date={day.date}
                 loads={day.loads.filter((l) => l.order_id === o.id)}
                 assignments={day.assignments}
@@ -226,6 +227,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
 
 function OrderCard({
   order: o,
+  urgent,
   date,
   loads,
   assignments,
@@ -242,6 +244,7 @@ function OrderCard({
   onCancelLoad,
 }: {
   order: OrderListRow;
+  urgent: boolean;
   date: string;
   loads: OrderLoadRow[];
   assignments: AssignmentRow[];
@@ -263,12 +266,13 @@ function OrderCard({
   const window = o.window_start && o.window_end ? `${formatTime(o.window_start)} – ${formatTime(o.window_end)}` : null;
 
   return (
-    <Card>
+    <Card urgent={urgent}>
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-line px-5 py-3 sm:px-6">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
             <OrderStatusBadge status={o.status} />
+            {urgent && <UrgentPill />}
             <SampleBadge show={o.is_sample} />
             {outsideSchedule && <Badge tone="amber">Outside the order&apos;s scheduled dates</Badge>}
           </div>

@@ -1,8 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn("rounded-panel border border-line/70 bg-card shadow-card", className)}>{children}</section>;
+/** `urgent`: the red edge for urgent records (owner 2026-10-26), the same edge as urgent tiles in the attention queue. */
+export function Card({ className, children, urgent = false }: { className?: string; children: ReactNode; urgent?: boolean }) {
+  return <section className={cn("rounded-panel border bg-card shadow-card", urgent ? "border-critical/40" : "border-line/70", className)}>{children}</section>;
 }
 
 /** Without a title (the section above already names it), only the description and actions show. */

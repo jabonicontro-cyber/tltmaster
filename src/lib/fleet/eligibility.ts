@@ -162,6 +162,7 @@ export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   driver_time_off: "Driver has approved time off on this date.",
   driver_partial_time_off: "Driver has approved partial-day time off on this date — check the load times.",
   driver_time_off_pending: "Driver has a pending time-off request on this date.",
+  driver_off_shift: "Assigned outside the driver's scheduled shift (a reason was recorded).",
   cdl_missing: "No CDL is recorded for this driver.",
   cdl_class_insufficient: "Driver's CDL class is not high enough for this combination.",
   cdl_expired: "Driver's CDL has expired.",

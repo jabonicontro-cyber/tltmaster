@@ -1,5 +1,5 @@
 import { ArrowRight, Clock } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge, UrgentPill } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import {
   KIND_LABELS, PRIORITY_LABELS, ageLabel, exceptionAction, exceptionOwner, exceptionReasons, exceptionTitle, type ExceptionItem,
@@ -37,7 +37,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
           <span className={cn("size-1.5 shrink-0 rounded-full", dotTone[item.priority] ?? dotTone[3])} aria-hidden />
           <span className="truncate">{KIND_LABELS[item.kind]}</span>
         </span>
-        {urgent && <span className="rounded-full bg-critical px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-white">{PRIORITY_LABELS[1] ?? "Urgent"}</span>}
+        {urgent && <UrgentPill label={PRIORITY_LABELS[1] ?? "Urgent"} />}
         {age && (
           <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted tabular" title={item.since ? formatDateTime(item.since, timezone) : undefined}>
             <Clock className="size-3" aria-hidden /> {age === "upcoming" ? "due later" : `open ${age}`}

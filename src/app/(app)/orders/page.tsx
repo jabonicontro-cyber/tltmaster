@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus } from "lucide-react";
-import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
+import { Badge, OrderStatusBadge, SampleBadge, UrgentPill } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
@@ -15,6 +15,7 @@ import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/lib/orders/status";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listOrders, ORDER_SCHEDULE_FILTERS } from "@/server/data/orders";
+import { listOpenUrgencies } from "@/server/data/urgency";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 import { businessToday } from "@/server/data/settings";
 
@@ -30,10 +31,13 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   const page = pageParam(sp.page);
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
-  const [{ rows, total }, { today }] = await Promise.all([
+  const [{ rows, total }, { today }, urgencies] = await Promise.all([
     listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base: bases.length > 1 ? sp.base : undefined, page }),
     businessToday(),
+    listOpenUrgencies(),
   ]);
+  // Orders with an open urgent flag get the red edge (owner 2026-10-26); if flags cannot be read, rows stay plain.
+  const urgentIds = new Set((urgencies ?? []).map((u) => u.order_id));
   const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base);
   const canCreate = can(access, "orders.edit");
   const hrefFor = (p: number) => {
@@ -124,12 +128,14 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     const scheduled = formatScheduleDates(o.scheduled_start, o.scheduled_end);
                     const window = formatWindow(o.window_start, o.window_end);
                     const late = isPastRequested(o, today);
+                    const urgent = urgentIds.has(o.id);
                     return (
                       <Tr key={o.id}>
-                        <Td>
+                        <Td className={urgent ? "shadow-[inset_3px_0_0_var(--color-critical)]" : undefined}>
                           <Link href={`/orders/${o.id}`} className="font-semibold whitespace-nowrap tabular hover:text-brand-fg hover:underline">
                             {o.order_number}
                           </Link>
+                          {urgent && <span className="ml-2 align-[1px]"><UrgentPill /></span>}
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted">
                             <span className="whitespace-nowrap">{formatDate(o.order_date)}</span>
                             {o.customer_po && <span>PO {o.customer_po}</span>}

@@ -13,6 +13,7 @@ const ALLOWED = new Set([
   "src/app/portal/[slug]/layout.tsx",
   "src/lib/portal.ts",
   "src/app/admin/testing-lab/page.tsx",
+  "src/app/portal/[slug]/page.tsx",
   "src/app/admin/support/page.tsx",
   "src/components/admin/company-lifecycle-controls.tsx",
   "src/app/admin/companies/[id]/page.tsx",

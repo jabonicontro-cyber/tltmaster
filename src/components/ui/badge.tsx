@@ -78,3 +78,8 @@ export function OrderStatusBadge({ status }: { status: OrderStatus }) {
     </Badge>
   );
 }
+
+/** The solid "Urgent" pill that goes with the red edge (urgent orders, loads and attention items). Fixed red. */
+export function UrgentPill({ label = "Urgent" }: { label?: string }) {
+  return <span className="rounded-full bg-critical px-2.5 pt-0.5 pb-[3px] text-xs leading-4 font-semibold text-white">{label}</span>;
+}
