@@ -1,11 +1,26 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-23 (clean verification and base-level security audit; Phase B is 17 migrations). Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 000000000000000. 2026-10-26 — redesign rounds, B91, B86, B84 (owner at work; promotion authorized "as long as testing is good")
+
+- **Production (each with Preview CI, Preview deploy, Production CI, migration workflow and Production deploy green):**
+  `ffba4f7`, `ddc5048`, `f43cf47`, `bcc39ce`, `5ad99e0` (work order page redesign + B91). `cfed52b` (B86) and
+  `fa73397` (B84) were pushed and handed to the same promotion script; see the final report in the chat for their
+  outcome. Live site not reachable from the session: not verified in a browser.
+- **Built this day:** Dispatch and Route Planner merged (order route panel, legs from the yard or the previous
+  delivery); Schedule shows pending, approved and denied time off; pill centring rule everywhere (DESIGN_SYSTEM);
+  Reports and Maintenance redesigns; work order detail redesign (WO #18282 reference); B91 time estimates that learn
+  (`/maintenance/estimates`); B86 Speed section on Command Center (measured only); B84 AI ticket reading (off: needs
+  `AI_SEND_PHOTOS=on` and evaluation evidence, docs/AI.md §18). B85 was already built (commit 1097838).
+- **Owner decisions waiting:** may ticket photos go to OpenAI (B84); Twilio account and keys (B83); GPS provider (B87);
+  website catalog lines for B84/B86/B91 (publishing is the owner's call); press **Refresh demo data** in each demo so
+  the new samples (second deliveries, time off, maintenance board and history) appear.
 
 ## 00000000000000. 2026-10-23 — Production release `84707ae` (pushed, not verified live)
 
