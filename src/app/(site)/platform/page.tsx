@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { Clock, ShieldCheck, Sparkles } from "lucide-react";
+import { ShieldCheck, Sparkles } from "lucide-react";
 import { FeatureBrief, FeatureStory, featureAnchor } from "@/components/site/feature-story";
 import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
-import { COMING_SOON, NOT_YET, publishedFeatures } from "@/lib/site/features";
+import { COMING_SOON, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: "Platform",
@@ -80,14 +80,6 @@ export default function PlatformPage() {
                   </p>
                   <p className="mt-1.5 text-sm text-silver">{c.text}</p>
                 </li>
-              ))}
-            </ul>
-            <h2 className="mt-10 flex items-center gap-2 text-xl font-bold text-cloud">
-              <Clock className="size-5 text-electric" aria-hidden /> Not yet, and we will say so
-            </h2>
-            <ul className="mt-4 space-y-2">
-              {NOT_YET.map((n) => (
-                <li key={n} className="rounded-xl border border-silver/10 bg-navy-2 px-4 py-2.5 text-sm text-silver">{n}</li>
               ))}
             </ul>
           </div>

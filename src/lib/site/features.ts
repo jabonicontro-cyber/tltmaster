@@ -2,7 +2,7 @@ import shotData from "./screenshots.json";
 
 // Taviron's feature catalog for the public website (docs/MARKETING.md). One entry per capability, with what it solves,
 // where the app shows it, its screenshots and — kept apart on purpose — its build status and whether it may be described
-// publicly. The website, the "Not yet" list and the capability checks all read from here, so a feature is described
+// publicly. The website, the internal "Not yet" list and the capability checks all read from here, so a feature is described
 // the same way everywhere and nothing unbuilt becomes a public claim.
 //
 // tests/unit/feature-catalog.test.ts keeps this honest: published features must be available, point at app pages that
@@ -460,7 +460,7 @@ export const COMING_SOON: ComingSoon[] = [
   },
 ];
 
-/** Planned or unreleased work, said plainly on the website ("Not yet — and we will say so"). */
+/** Planned or unreleased work: the internal record behind the capability checks (PLANNED). Not shown on the website (owner 2026-10-26). */
 export const NOT_YET: string[] = [
   "Driver pay calculations — waiting on each company's written pay rules",
   "Issuing or sending invoices from Taviron itself, and payroll integrations",
