@@ -942,18 +942,30 @@ async function secondDelivery(db: Db, today: string): Promise<number> {
   let mine = loads.find((l) => l.notes === NOTE);
   for (const [, [a]] of perTruck) {
     const first = loads.find((l) => l.id === a.load_id)!;
-    const start = minutes(first.end_time) + 60;
-    if (start + 60 > 18 * 60) continue;
-    const other = running.find((o) => o.id !== first.order_id && o.site_id) ?? running.find((o) => o.id !== first.order_id);
-    if (!other) continue;
-    if (!mine) {
-      const saved = await db.rpc("save_order_load", { p_payload: { order_id: other.id, load_date: today, start_time: hhmm(start), end_time: hhmm(start + 60), planned_quantity: "", unit_code: "", notes: NOTE } });
-      if (saved.error) continue;
-      mine = { id: (saved.data as { load_id: string }).load_id, order_id: other.id, start_time: hhmm(start), end_time: hhmm(start + 60), notes: NOTE };
-      n++;
-    } else if (minutes(mine.start_time) < start) continue;
-    const r = await demoAssign(db, { p_load_id: mine.id, p_truck_id: a.truck_id, p_trailer_id: a.trailer_id, p_driver_id: a.driver_id, p_note: "Demo: second delivery of the day." });
-    if (!r.error) return n + 1;
+    // An hour after the truck's only delivery, or, late in the day, two hours before it (between 05:00 and 23:00, as demo days can run late).
+    const slots = [minutes(first.end_time) + 60, minutes(first.start_time) - 120].filter((m) => m >= 5 * 60 && m + 60 <= 23 * 60);
+    // Another of today's orders (located ones first); every truck, slot and order is tried in turn, since a rule
+    // (the order's window, the driver's hours) can refuse one combination.
+    const others = [...running.filter((o) => o.id !== first.order_id && o.site_id), ...running.filter((o) => o.id !== first.order_id && !o.site_id)];
+    for (const other of others.slice(0, 3)) for (const start of slots) {
+      let load = mine && minutes(mine.start_time) === start ? mine : undefined;
+      if (!load) {
+        if (mine && mine.order_id === other.id) {
+          // Move the earlier attempt to this slot rather than leaving a second open load behind.
+          const moved = await db.rpc("save_order_load", { p_payload: { load_id: mine.id, load_date: today, start_time: hhmm(start), end_time: hhmm(start + 60), planned_quantity: "", unit_code: "", notes: NOTE } });
+          if (moved.error) continue;
+          load = { ...mine, start_time: hhmm(start), end_time: hhmm(start + 60) };
+        } else if (!mine) {
+          const saved = await db.rpc("save_order_load", { p_payload: { order_id: other.id, load_date: today, start_time: hhmm(start), end_time: hhmm(start + 60), planned_quantity: "", unit_code: "", notes: NOTE } });
+          if (saved.error) continue;
+          load = { id: (saved.data as { load_id: string }).load_id, order_id: other.id, start_time: hhmm(start), end_time: hhmm(start + 60), notes: NOTE };
+          n++;
+        } else continue;
+        mine = load;
+      }
+      const r = await demoAssign(db, { p_load_id: load.id, p_truck_id: a.truck_id, p_trailer_id: a.trailer_id, p_driver_id: a.driver_id, p_note: "Demo: second delivery of the day." });
+      if (!r.error) return n + 1;
+    }
   }
   return n;
 }
