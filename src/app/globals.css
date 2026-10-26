@@ -72,6 +72,19 @@
 
 /* Motion (redesign, master plan B90): dialogs and menus arrive from slightly smaller and transparent, quickly and
    without bounce; reduced motion keeps a plain fade. scale is animated on its own so centering transforms stay intact. */
+/*
+ * Urgent records (owner 2026-10-26): a 2px red edge with a soft red glow, the same everywhere urgency is shown
+ * (attention tiles, dispatch and order cards, the urgent-orders panel). Fixed red in both themes (CLAUDE.md:
+ * urgency is never the company colour). Unlayered so it wins over the card's 1px border and neutral shadow.
+ */
+.urgent-edge {
+  border-width: 2px;
+  border-color: color-mix(in srgb, var(--color-critical) 60%, transparent);
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--color-critical) 7%, transparent),
+    0 12px 28px -12px color-mix(in srgb, var(--color-critical) 45%, transparent);
+}
+
 .ui-pop[data-state="open"] {
   animation: ui-pop-in 220ms cubic-bezier(0.23, 1, 0.32, 1);
 }

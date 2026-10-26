@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 import { cn } from "@/lib/cn";
 
-/** `urgent`: the red edge for urgent records (owner 2026-10-26), the same edge as urgent tiles in the attention queue. */
+/** `urgent`: the red edge and glow for urgent records (owner 2026-10-26; `.urgent-edge` in globals.css). */
 export function Card({ className, children, urgent = false }: { className?: string; children: ReactNode; urgent?: boolean }) {
-  return <section className={cn("rounded-panel border bg-card shadow-card", urgent ? "border-critical/40" : "border-line/70", className)}>{children}</section>;
+  return <section className={cn("rounded-panel border bg-card shadow-card", urgent ? "urgent-edge" : "border-line/70", className)}>{children}</section>;
 }
 
 /** Without a title (the section above already names it), only the description and actions show. */

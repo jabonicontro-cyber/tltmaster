@@ -21,9 +21,20 @@ test("the office finds an order by number and a customer by name; other companie
   const other = await one<{ name: string }>(
     "select cu.name from public.customers cu join public.companies co on co.id = cu.company_id where co.slug = $1 limit 1", [OTHER_COMPANY.slug]);
   await signIn(page, "office");
-  await page.getByRole("link", { name: "Search records" }).click();
-  await page.getByRole("searchbox", { name: "Search" }).or(page.locator("#global-q")).first().fill(order.order_number);
-  await page.keyboard.press("Enter");
+  // Search as you type in the header: results appear under the box, without opening the Search page.
+  const box = page.getByRole("combobox", { name: "Search records" });
+  await box.fill(order.order_number);
+  const results = page.getByRole("listbox", { name: "Search results" });
+  const hit = results.getByRole("option", { name: new RegExp(`Order ${order.order_number}`) });
+  await expect(hit).toBeVisible();
+  await expect(page).not.toHaveURL(/\/search/);
+  await hit.click();
+  await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}/);
+  // Enter with nothing highlighted opens the full results page.
+  await box.fill(order.order_number);
+  await expect(hit).toBeVisible();
+  await box.press("Enter");
+  await expect(page).toHaveURL(/\/search\?q=/);
   await expect(page.getByRole("link", { name: new RegExp(`Order ${order.order_number}`) })).toBeVisible();
   await page.goto(`/search?q=${encodeURIComponent(order.customer)}`);
   await expect(page.getByRole("heading", { name: "Customers" })).toBeVisible();

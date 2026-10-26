@@ -19,7 +19,7 @@ export function UrgentOrders({ items, canAcknowledge, timezone, back, now }: { i
   const [busy, setBusy] = useState<string | null>(null);
   if (items.length === 0) return null;
   return (
-    <section aria-label="Urgent orders" className="mb-4 rounded-panel border border-critical/40 bg-card shadow-card">
+    <section aria-label="Urgent orders" className="urgent-edge mb-4 rounded-panel border bg-card">
       <h2 className="flex items-center gap-2 border-b border-line/70 px-5 py-3 font-semibold text-ink sm:px-6">
         <Siren className="size-5 text-critical" aria-hidden /> Urgent orders ({items.length})
       </h2>

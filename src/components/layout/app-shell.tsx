@@ -13,6 +13,7 @@ import { isDriverOnly, isMechanicOnly } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
+import { QuickSearch } from "./quick-search";
 import { ROLE_LABELS, type Access } from "@/lib/permissions";
 import type { MyCompany } from "@/server/data/companies";
 import { brandingStyle } from "@/lib/branding";
@@ -61,11 +62,8 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
             </Link>
         </div>
         <div className="flex shrink-0 items-center gap-0 sm:gap-1">
-        {/* A search pill on wider screens (the most used way in), an icon on phones. */}
-        <Link href="/search" className="hidden h-10 w-56 items-center gap-2.5 rounded-full border border-line bg-card px-4 text-sm text-muted shadow-xs transition-colors hover:border-ink/15 hover:text-ink focus-visible:outline-2 focus-visible:outline-strong md:inline-flex xl:w-72" aria-label="Search records">
-          <Search className="size-4" aria-hidden />
-          <span aria-hidden>Search records…</span>
-        </Link>
+        {/* Search as you type on wider screens (the most used way in); an icon to the Search page on phones. */}
+        <QuickSearch />
         <Link href="/search" className="inline-flex size-10 items-center justify-center rounded-full text-muted hover:bg-card hover:text-ink focus-visible:outline-2 focus-visible:outline-strong md:hidden" aria-label="Search records">
           <Search className="size-5" aria-hidden />
         </Link>

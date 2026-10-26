@@ -28,7 +28,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
     <li
       className={cn(
         "group flex min-w-0 flex-col rounded-panel border bg-card p-5 shadow-card transition-shadow duration-150 hover:shadow-float",
-        urgent ? "border-critical/40" : "border-line/70",
+        urgent ? "urgent-edge" : "border-line/70",
       )}
       aria-label={title}
     >
