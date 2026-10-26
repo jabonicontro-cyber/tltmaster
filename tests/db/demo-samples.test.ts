@@ -97,6 +97,16 @@ describe.skipIf(!available)("demo feature samples", () => {
       [w.company, todayIn(TZ)],
     );
     expect(Number(open.rows[0].n)).toBeGreaterThanOrEqual(4);
+    // Copy the previous crew (B85): at least one of tomorrow's open loads belongs to an order a crew worked earlier.
+    const copyable = await q<{ n: string }>(
+      `select count(*) n from public.order_loads l
+        where l.company_id = $1 and l.load_date = ($2::date + 1) and l.status = 'planned'
+          and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')
+          and exists (select 1 from public.order_loads e join public.dispatch_assignments a on a.load_id = e.id and a.status = 'active'
+                       where e.order_id = l.order_id and e.load_date < l.load_date and e.load_date >= l.load_date - 14)`,
+      [w.company, todayIn(TZ)],
+    );
+    expect(Number(copyable.rows[0].n)).toBeGreaterThanOrEqual(1);
     // Time-off balances (20261112000100): one Paid time off bank and an opening grant (demo data) per current employee.
     const banks = await q<{ name: string }>("select name from public.pto_banks where company_id = $1 and active", [w.company]);
     expect(banks.rows.map((r) => r.name)).toEqual(["Paid time off"]);

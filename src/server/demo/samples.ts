@@ -81,6 +81,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("assigned attention item", await assignedItem(db, userId));
   note("order waiting for a date", await needsScheduling(db, today));
   note("planning day", await planningDay(db, today));
+  // After the planning day: one of tomorrow's open loads gets a crew to copy from today (B85).
+  note("previous crew to copy", await previousCrew(db, today));
   // Businesses before the billing samples, so a new demo's handoff is already split between them.
   note("billing businesses", await billingEntities(db, companyId));
   note("billing: ready and handed off", await billing(db, today));
@@ -387,6 +389,82 @@ async function planningDay(db: Db, today: string): Promise<number> {
       planned_quantity: like?.planned_quantity != null ? String(like.planned_quantity) : "", unit_code: like?.planned_quantity != null ? like.unit_code ?? "" : "",
     } }));
     n++;
+  }
+  return n;
+}
+
+/**
+ * "Copy the previous crew" (B85): tomorrow needs an open load on an order a crew worked today. Picks an order scheduled
+ * over today and tomorrow, gives it a crew today if it has none (a free truck and driver; assign_load checks them and
+ * candidates that fail are skipped) and an open load tomorrow. Nothing when such a load already exists, and the
+ * sample's own loads are found again by their note, so Refresh never adds a second one.
+ */
+async function previousCrew(db: Db, today: string): Promise<number> {
+  const day = addDays(today, 1);
+  const copyable = async () => {
+    const tomorrow = ((await must("loads", db.from("order_loads").select("id, order_id").eq("load_date", day).eq("status", "planned"))) as Array<{ id: string; order_id: string }>);
+    if (!tomorrow.length) return false;
+    const taken = new Set((((await must("assignments", db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", tomorrow.map((l) => l.id)))) as Array<{ load_id: string }>)).map((a) => a.load_id));
+    const orderIds = [...new Set(tomorrow.filter((l) => !taken.has(l.id)).map((l) => l.order_id))];
+    if (!orderIds.length) return false;
+    const earlier = ((await must("earlier loads", db.from("order_loads").select("id").in("order_id", orderIds).lt("load_date", day).gte("load_date", addDays(day, -14)).neq("status", "canceled"))) as Array<{ id: string }>);
+    if (!earlier.length) return false;
+    return ((await must("earlier crews", db.from("dispatch_assignments").select("id").eq("status", "active").in("load_id", earlier.map((l) => l.id)).limit(1))) as unknown[]).length > 0;
+  };
+  if (await copyable()) return 0;
+
+  type Row = { id: string; scheduled_start: string; scheduled_end: string | null; window_start: string | null; window_end: string | null; scheduling_notes: string | null };
+  const running = ((await must("orders", db.from("orders").select("id, scheduled_start, scheduled_end, window_start, window_end, scheduling_notes").in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).lte("scheduled_start", today).order("order_number"))) as Row[])
+    .filter((o) => (o.scheduled_end ?? o.scheduled_start) >= today);
+  let orders = running.filter((o) => (o.scheduled_end ?? o.scheduled_start) >= day);
+  let n = 0;
+  if (!orders.length) {
+    // Demo orders are single-day: one that a crew works today becomes a two-day job (as multi-day hauls are), through
+    // the same schedule function the order page uses.
+    const loadsToday = ((await must("today loads", db.from("order_loads").select("id, order_id").eq("load_date", today).neq("status", "canceled").in("order_id", running.length ? running.map((o) => o.id) : ["00000000-0000-0000-0000-000000000000"]))) as Array<{ id: string; order_id: string }>);
+    const crewed = new Set((((await must("today crews", db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", loadsToday.length ? loadsToday.map((l) => l.id) : ["00000000-0000-0000-0000-000000000000"]))) as Array<{ load_id: string }>)).map((a) => a.load_id));
+    const pick = running.find((o) => loadsToday.some((l) => l.order_id === o.id && crewed.has(l.id)));
+    if (!pick) return 0;
+    const r = await db.rpc("update_order_schedule", { p_order_id: pick.id, p_expected_edit_seq: null, p_payload: { scheduled_start: pick.scheduled_start, scheduled_end: day, window_start: pick.window_start ?? "", window_end: pick.window_end ?? "", scheduling_notes: pick.scheduling_notes ?? "" } });
+    if (r.error) return 0;
+    orders = [{ ...pick, scheduled_end: day }];
+    n++;
+  }
+  const todayLoads = ((await must("today loads", db.from("order_loads").select("id, order_id").eq("load_date", today).neq("status", "canceled").in("order_id", orders.map((o) => o.id)))) as Array<{ id: string; order_id: string }>);
+  const staffed = new Set((((await must("today crews", db.from("dispatch_assignments").select("load_id").eq("status", "active").in("load_id", todayLoads.length ? todayLoads.map((l) => l.id) : ["00000000-0000-0000-0000-000000000000"]))) as Array<{ load_id: string }>)).map((a) => a.load_id));
+  const withCrew = orders.find((o) => todayLoads.some((l) => l.order_id === o.id && staffed.has(l.id)));
+  const order = withCrew ?? orders[0];
+
+  if (!withCrew) {
+    const TODAY_NOTE = "Demo: worked today, so tomorrow can copy this crew.";
+    const mine = ((await db.from("order_loads").select("id").eq("order_id", order.id).eq("load_date", today).eq("notes", TODAY_NOTE).neq("status", "canceled").limit(1)).data ?? [])[0] as { id: string } | undefined;
+    let loadId = mine?.id;
+    if (!loadId) {
+      const saved = await db.rpc("save_order_load", { p_payload: { order_id: order.id, load_date: today, start_time: "06:00", end_time: "07:00", planned_quantity: "", unit_code: "", notes: TODAY_NOTE } });
+      if (saved.error) return 0;
+      loadId = (saved.data as { load_id: string }).load_id;
+      n++;
+    }
+    const busy = new Set((((await db.from("dispatch_assignments").select("truck_id, driver_id").eq("status", "active").gte("starts_at", `${today}T00:00:00`).lt("starts_at", `${day}T00:00:00`)).data ?? []) as Array<{ truck_id: string; driver_id: string }>).flatMap((a) => [a.truck_id, a.driver_id]));
+    const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").neq("truck_type", "tractor").order("unit_number")).data ?? []) as Array<{ id: string }>;
+    const drivers = ((await db.from("driver_list").select("id").eq("active", true).order("display_name")).data ?? []) as Array<{ id: string }>;
+    let staffedNow = false;
+    for (const t of trucks.filter((t) => !busy.has(t.id)).slice(0, 6)) {
+      for (const d of drivers.filter((d) => !busy.has(d.id)).slice(0, 6)) {
+        const r = await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: null, p_driver_id: d.id, p_note: "Demo sample", p_replace_assignment_id: null });
+        if (!r.error) { staffedNow = true; break; }
+      }
+      if (staffedNow) break;
+    }
+    if (!staffedNow) return n;
+    n++;
+  }
+
+  const TOMORROW_NOTE = "Demo: open — copy today's crew from the board.";
+  const exists = ((await db.from("order_loads").select("id").eq("order_id", order.id).eq("load_date", day).eq("notes", TOMORROW_NOTE).neq("status", "canceled").limit(1)).data ?? []).length > 0;
+  if (!exists) {
+    const saved = await db.rpc("save_order_load", { p_payload: { order_id: order.id, load_date: day, start_time: "07:30", end_time: "09:00", planned_quantity: "", unit_code: "", notes: TOMORROW_NOTE } });
+    if (!saved.error) n++;
   }
   return n;
 }

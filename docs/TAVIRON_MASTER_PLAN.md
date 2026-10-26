@@ -468,7 +468,7 @@ New local-only migration: `20261120002600_route_planner_core` (applies automatic
 
 ## 12. Feature backlog (living; process in docs/DEVELOPMENT_WORKFLOW.md)
 
-**Order (owner 2026-10-26):** finish the redesign (B90), then B85, B84 and B86 as priorities; B91 is requested; B83 and B87 are low priority.
+**Order (owner 2026-10-26):** finish the redesign (B90), then B85, B84 and B86 as priorities, then B91; B83 and B87 are low priority.
 
 One row per independently deliverable feature. Status follows DEVELOPMENT_WORKFLOW §2 (requested → specified →
 implemented → tested → committed → pushed → deployed → verified). Risk tier from §3 there. New requests are added

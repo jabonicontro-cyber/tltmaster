@@ -5,7 +5,7 @@ import type { BaseOption } from "@/components/bases/base-field";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, MapPin, Pencil, Plus, Truck, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, CopyCheck, GripVertical, Keyboard, MapPin, Pencil, Plus, Truck, XCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import type { Face } from "@/server/data/faces";
 import { toast } from "sonner";
@@ -17,7 +17,8 @@ import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form"
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { bookingsFor, combinationCheck, driverState, shiftDate, trailerState, truckState, type ActiveAssignment, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { bookingsFor, combinationCheck, driverState, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS, trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
@@ -27,6 +28,8 @@ import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { assignLoad, cancelAssignment, cancelLoad, saveLoad } from "@/app/(app)/dispatch/actions";
 
 const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
+/** Drag payload type for drivers and trucks dragged onto a load (B85). */
+const DRAG_TYPE = "application/x-taviron-resource";
 
 interface Lookup {
   loads: Map<string, OrderLoadRow>;
@@ -53,7 +56,12 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
     if (focusLoadId) document.getElementById(`load-${focusLoadId}`)?.scrollIntoView({ block: "center" });
   }, [focusLoadId]);
   const [loadDialog, setLoadDialog] = useState<{ order: OrderListRow; load: OrderLoadRow | null } | null>(null);
-  const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null } | null>(null);
+  const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null; initial?: { truckId?: string; trailerId?: string; driverId?: string } } | null>(null);
+  // Faster dispatching (B85): selected open loads, the batch dialogs and the shortcuts list.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [copyOpen, setCopyOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<{ kind: "assignment" | "load"; id: string; orderId: string; title: string } | null>(null);
   const [reason, setReason] = useState("");
 
@@ -75,6 +83,42 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
   const refresh = () => router.refresh();
   // Day links keep the chosen base.
   const dayHref = (date: string) => `/dispatch?date=${date}${day.base ? `&base=${day.base}` : ""}`;
+
+  // Open loads (planned, no active assignment, on an order that can be dispatched): what batches work on.
+  const openLoads = plannedLoads.filter((l) => !activeByLoad.has(l.id) && DISPATCHABLE.includes(lk.orders.get(l.order_id)?.status ?? ""));
+  const proposals = useMemo(() => proposePreviousCrews(openLoads, day.pastCrews ?? []), [openLoads, day.pastCrews]);
+  const selectedLoads = openLoads.filter((l) => selected.has(l.id));
+  const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+
+  // Dropping a driver or truck on a load opens the assign dialog with that crew filled in (the driver's usual truck,
+  // the truck's usual driver, and the trailer usually paired with the truck); the dispatcher confirms.
+  const onDropResource = (load: OrderLoadRow, r: { kind: "driver" | "truck"; id: string }) => {
+    const truckId = r.kind === "truck" ? r.id : day.drivers.find((d) => d.id === r.id)?.primary_truck_id ?? undefined;
+    const driverId = r.kind === "driver" ? r.id : day.drivers.find((d) => d.primary_truck_id === r.id)?.id;
+    const trailerId = truckId ? day.trailers.find((t) => t.default_truck_id === truckId)?.id : undefined;
+    setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: truckId && lk.trucks.has(truckId) ? truckId : undefined, driverId, trailerId } });
+  };
+
+  // Keyboard shortcuts, only when no field or dialog has the keyboard.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.closest("input, textarea, select, [contenteditable=true]") || t.closest("[role=dialog]"))) return;
+      if (document.querySelector("[role=dialog]")) return;
+      if (e.key === "ArrowLeft") router.push(dayHref(shiftDate(day.date, -1)));
+      else if (e.key === "ArrowRight") router.push(dayHref(shiftDate(day.date, 1)));
+      else if (e.key === "t" || e.key === "T") router.push(dayHref(day.today));
+      else if (e.key === "?") setShortcutsOpen(true);
+      else if ((e.key === "c" || e.key === "C") && canEdit && proposals.length) setCopyOpen(true);
+      else if ((e.key === "a" || e.key === "A") && canEdit && selectedLoads.length) setBulkOpen(true);
+      else if (e.key === "Escape") setSelected(new Set());
+      else return;
+      e.preventDefault();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   return (
     <div className="space-y-5">
@@ -105,6 +149,14 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
             <button type="submit" className={buttonClasses("secondary", "sm", "h-9")}>Go</button>
           </form>
         </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          {canEdit && proposals.length > 0 && (
+            <Button size="sm" variant="secondary" icon={<CopyCheck className="size-4" />} onClick={() => setCopyOpen(true)}>
+              Copy previous crew ({proposals.length})
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" icon={<Keyboard className="size-4" />} onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" />
+        </div>
         <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
           <div><dt className="inline text-muted">Orders </dt><dd className="inline font-bold tabular">{day.orders.length}</dd></div>
           <div><dt className="inline text-muted">Loads </dt><dd className="inline font-bold tabular">{plannedLoads.length}</dd></div>
@@ -138,6 +190,9 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
                 key={o.id}
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
+                selected={selected}
+                onToggle={toggle}
+                onDropResource={onDropResource}
                 date={day.date}
                 loads={day.loads.filter((l) => l.order_id === o.id)}
                 assignments={day.assignments}
@@ -164,7 +219,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
         </div>
 
         {/* Resources for the day */}
-        <ResourcePanel day={day} active={active} lk={lk} />
+        <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} />
       </div>
 
       {loadDialog && (
@@ -185,6 +240,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
         <AssignDialog
           load={assignDialog.load}
           current={assignDialog.current}
+          initial={assignDialog.initial}
           day={day}
           active={active}
           lk={lk}
@@ -221,6 +277,35 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
           <Input id="cancel-reason" value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} placeholder="e.g. Customer pushed to tomorrow" />
         </Field>
       </ConfirmDialog>
+
+      {/* B85: the selection bar, the batch dialogs and the shortcuts list. */}
+      {canEdit && selectedLoads.length > 0 && (
+        <div role="region" aria-label="Selected loads" className="ui-pop fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+1rem)] z-30 mx-auto flex w-fit max-w-[calc(100vw-2rem)] items-center gap-2 rounded-full border border-line/70 bg-card/95 py-1.5 pr-1.5 pl-5 shadow-float backdrop-blur-md">
+          <span className="text-sm font-semibold whitespace-nowrap">{selectedLoads.length} {selectedLoads.length === 1 ? "load" : "loads"} selected</span>
+          <Button size="sm" icon={<Truck className="size-4" />} onClick={() => setBulkOpen(true)}>Assign selected</Button>
+          <Button size="sm" variant="ghost" onClick={() => setSelected(new Set())}>Clear</Button>
+        </div>
+      )}
+      {bulkOpen && (
+        <BulkAssignDialog
+          loads={selectedLoads}
+          active={active}
+          lk={lk}
+          onClose={() => setBulkOpen(false)}
+          onDone={() => { setBulkOpen(false); setSelected(new Set()); refresh(); }}
+        />
+      )}
+      {copyOpen && (
+        <CopyCrewsDialog
+          proposals={proposals}
+          loads={lk.loads}
+          active={active}
+          lk={lk}
+          onClose={() => setCopyOpen(false)}
+          onDone={() => { setCopyOpen(false); refresh(); }}
+        />
+      )}
+      {shortcutsOpen && <ShortcutsDialog onClose={() => setShortcutsOpen(false)} />}
     </div>
   );
 }
@@ -228,6 +313,9 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
 function OrderCard({
   order: o,
   urgent,
+  selected,
+  onToggle,
+  onDropResource,
   date,
   loads,
   assignments,
@@ -245,6 +333,9 @@ function OrderCard({
 }: {
   order: OrderListRow;
   urgent: boolean;
+  selected: Set<string>;
+  onToggle: (loadId: string) => void;
+  onDropResource: (load: OrderLoadRow, r: { kind: "driver" | "truck"; id: string }) => void;
   date: string;
   loads: OrderLoadRow[];
   assignments: AssignmentRow[];
@@ -264,6 +355,8 @@ function OrderCard({
   const outsideSchedule = !o.scheduled_start || o.scheduled_start > date || (o.scheduled_end ?? o.scheduled_start) < date;
   const site = [o.site_label || o.site_line1, o.site_city].filter(Boolean).join(", ");
   const window = o.window_start && o.window_end ? `${formatTime(o.window_start)} – ${formatTime(o.window_end)}` : null;
+  // The load a driver or truck is being dragged over (B85 drag and drop).
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
 
   return (
     <Card urgent={urgent}>
@@ -314,15 +407,54 @@ function OrderCard({
             const current = assignments.find((a) => a.load_id === l.id && a.status === "active") ?? null;
             const previous = assignments.filter((a) => a.load_id === l.id && a.status === "canceled");
             const canceled = l.status === "canceled";
+            const droppable = canEdit && dispatchable && !canceled;
+            const selectable = droppable && !current && l.status === "planned";
             return (
               <li
                 key={l.id}
                 id={`load-${l.id}`}
                 aria-current={focusLoadId === l.id ? "true" : undefined}
-                className={cn("grid grid-cols-1 gap-3 px-5 py-3 sm:grid-cols-12 sm:px-6", canceled && "bg-surface/60 text-muted", focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset")}
+                className={cn(
+                  "grid grid-cols-1 gap-3 px-5 py-3 transition-colors sm:grid-cols-12 sm:px-6",
+                  canceled && "bg-surface/60 text-muted",
+                  focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset",
+                  selected.has(l.id) && "bg-strong/[0.04]",
+                  dropTarget === l.id && "bg-strong/[0.06] ring-2 ring-strong/40 ring-inset",
+                )}
                 aria-label={`Load ${l.load_number}`}
+                onDragOver={droppable ? (e) => {
+                  if (!e.dataTransfer.types.includes(DRAG_TYPE)) return;
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "copy";
+                  if (dropTarget !== l.id) setDropTarget(l.id);
+                } : undefined}
+                onDragLeave={droppable ? (e) => {
+                  if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropTarget(null);
+                } : undefined}
+                onDrop={droppable ? (e) => {
+                  setDropTarget(null);
+                  const raw = e.dataTransfer.getData(DRAG_TYPE);
+                  if (!raw) return;
+                  e.preventDefault();
+                  try {
+                    const r = JSON.parse(raw) as { kind: "driver" | "truck"; id: string };
+                    if ((r.kind === "driver" || r.kind === "truck") && typeof r.id === "string") onDropResource(l, r);
+                  } catch {
+                    // Not a Taviron drag: ignore.
+                  }
+                } : undefined}
               >
-                <div className="sm:col-span-3">
+                <div className="flex gap-3 sm:col-span-3">
+                  {selectable && (
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 shrink-0 accent-[var(--color-strong)]"
+                      aria-label={`Select load ${l.load_number} of ${o.order_number}`}
+                      checked={selected.has(l.id)}
+                      onChange={() => onToggle(l.id)}
+                    />
+                  )}
+                  <div>
                   <p className="font-bold">Load {l.load_number}</p>
                   <p className="text-sm tabular">{timeRange(l)}</p>
                   {l.planned_quantity !== null && (
@@ -331,6 +463,7 @@ function OrderCard({
                     </p>
                   )}
                   {canceled && <Badge tone="gray">Canceled: {l.cancel_reason}</Badge>}
+                  </div>
                 </div>
                 <div className="sm:col-span-6">
                   {current ? (
@@ -421,7 +554,18 @@ function stateLabel(s: ResourceState, lk: Lookup) {
   return s.warnings.length ? `Available — ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
-function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup }) {
+function ResourcePanel({ day, active, lk, canEdit }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean }) {
+  // Drivers and trucks can be dragged onto a load to assign them (B85); the Assign button stays the keyboard way.
+  const drag = (kind: "driver" | "truck", id: string) =>
+    canEdit
+      ? {
+          draggable: true,
+          onDragStart: (e: React.DragEvent) => {
+            e.dataTransfer.setData(DRAG_TYPE, JSON.stringify({ kind, id }));
+            e.dataTransfer.effectAllowed = "copy";
+          },
+        }
+      : {};
   return (
     <div className="space-y-4 self-start">
       <Card>
@@ -433,9 +577,10 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
             {day.trucks.map((t) => {
               const bookings = bookingsFor(active, "truck", t.id);
               return (
-                <li key={t.id} className="px-5 py-2 sm:px-6">
+                <li key={t.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && t.service_status !== "out_of_service" && "cursor-grab active:cursor-grabbing")} {...(t.service_status !== "out_of_service" ? drag("truck", t.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/fleet/trucks/${t.id}`} className="min-w-0 font-semibold break-words hover:underline">{t.unit_number}</Link>
+                    {canEdit && t.service_status !== "out_of_service" && <GripVertical className="absolute top-3 left-1.5 size-3.5 text-muted/60 opacity-0 transition-opacity group-hover/drag:opacity-100" aria-hidden />}
+                    <Link href={`/fleet/trucks/${t.id}`} draggable={false} className="min-w-0 font-semibold break-words hover:underline">{t.unit_number}</Link>
                     {t.service_status === "out_of_service" ? (
                       <Badge tone="red">Out of service</Badge>
                     ) : bookings.length ? (
@@ -464,9 +609,10 @@ function ResourcePanel({ day, active, lk }: { day: DispatchDay; active: Assignme
               const r = driverChecks(d, false, day.date);
               const bookings = bookingsFor(active, "driver", d.id);
               return (
-                <li key={d.id} className="px-5 py-2 sm:px-6">
+                <li key={d.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && r.eligible && "cursor-grab active:cursor-grabbing")} {...(r.eligible ? drag("driver", d.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
-                    <Link href={`/fleet/drivers/${d.id}`} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} />{d.display_name}</Link>
+                    {canEdit && r.eligible && <GripVertical className="absolute top-3 left-1.5 size-3.5 text-muted/60 opacity-0 transition-opacity group-hover/drag:opacity-100" aria-hidden />}
+                    <Link href={`/fleet/drivers/${d.id}`} draggable={false} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} />{d.display_name}</Link>
                     {!r.eligible ? (
                       <Badge tone="red">Not eligible</Badge>
                     ) : bookings.length ? (
@@ -566,6 +712,7 @@ function LoadDialog({ order, load, date, units, onClose, onSaved }: { order: Ord
 function AssignDialog({
   load,
   current,
+  initial,
   day,
   active,
   lk,
@@ -574,6 +721,8 @@ function AssignDialog({
 }: {
   load: OrderLoadRow;
   current: AssignmentRow | null;
+  /** Prefill from a drag and drop (B85); the dispatcher still confirms. */
+  initial?: { truckId?: string; trailerId?: string; driverId?: string };
   day: DispatchDay;
   active: AssignmentRow[];
   lk: Lookup;
@@ -581,9 +730,9 @@ function AssignDialog({
   onSaved: (m: string, warnings: string[]) => void;
 }) {
   const order = lk.orders.get(load.order_id);
-  const [truckId, setTruckId] = useState(current?.truck_id ?? "");
-  const [trailerId, setTrailerId] = useState(current?.trailer_id ?? "");
-  const [driverId, setDriverId] = useState(current?.driver_id ?? "");
+  const [truckId, setTruckId] = useState(initial?.truckId ?? current?.truck_id ?? "");
+  const [trailerId, setTrailerId] = useState(initial?.trailerId ?? current?.trailer_id ?? "");
+  const [driverId, setDriverId] = useState(initial?.driverId ?? current?.driver_id ?? "");
   const [note, setNote] = useState("");
   // Set when the shift check refused the driver: the problem shown and the reason typed (20261120003300).
   const [offShift, setOffShift] = useState<string | null>(null);

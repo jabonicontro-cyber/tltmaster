@@ -101,3 +101,59 @@ export function shiftDate(isoDate: string, days: number): string {
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString().slice(0, 10);
 }
+
+/** A crew that worked one load: truck, trailer (optional) and driver. */
+export interface Crew {
+  truck_id: string;
+  trailer_id: string | null;
+  driver_id: string;
+}
+
+/** A load's assignment on an earlier day (B85 "copy the previous crew"). */
+export interface PastCrew extends Crew {
+  order_id: string;
+  load_date: string;
+  starts_at: string;
+}
+
+export interface CrewProposal extends Crew {
+  load_id: string;
+  /** The day the crew is copied from. */
+  from_date: string;
+}
+
+/**
+ * Proposals for today's loads that have no truck yet, from the same order's most recent earlier day: that day's
+ * crews in time order (each truck/driver pair once), handed to today's open loads in time order, cycling when today
+ * has more loads than that day had crews. Only proposals: each still goes through assign_load after a dispatcher
+ * approves, so eligibility, overlaps and shifts are checked there (and pre-checked on the board).
+ */
+export function proposePreviousCrews(open: Array<{ id: string; order_id: string; starts_at: string }>, past: PastCrew[]): CrewProposal[] {
+  const byOrder = new Map<string, PastCrew[]>();
+  for (const p of past) byOrder.set(p.order_id, [...(byOrder.get(p.order_id) ?? []), p]);
+  const out: CrewProposal[] = [];
+  const loadsByOrder = new Map<string, typeof open>();
+  for (const l of open) loadsByOrder.set(l.order_id, [...(loadsByOrder.get(l.order_id) ?? []), l]);
+  for (const [orderId, loads] of loadsByOrder) {
+    const history = byOrder.get(orderId);
+    if (!history?.length) continue;
+    const lastDay = history.reduce((d, p) => (p.load_date > d ? p.load_date : d), "");
+    const seen = new Set<string>();
+    const crews = history
+      .filter((p) => p.load_date === lastDay)
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      .filter((p) => {
+        const key = `${p.truck_id}|${p.driver_id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    [...loads]
+      .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
+      .forEach((l, i) => {
+        const c = crews[i % crews.length];
+        out.push({ load_id: l.id, truck_id: c.truck_id, trailer_id: c.trailer_id, driver_id: c.driver_id, from_date: lastDay });
+      });
+  }
+  return out;
+}
