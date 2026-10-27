@@ -40,8 +40,8 @@ export const RELEASES: ReleaseHighlight[] = [
     releasedOn: "2026-10-26",
     evidence: ["/command-center"],
     image: { src: "/site/speed-metrics.png", alt: "Speed measured on the Command Center of the demo company" },
-    status: "draft",
-    approval: null,
+    status: "published",
+    approval: { by: "Owner", on: "2026-10-27" },
   },
   {
     id: "maintenance-estimates",
@@ -56,8 +56,8 @@ export const RELEASES: ReleaseHighlight[] = [
     releasedOn: "2026-10-26",
     evidence: ["/maintenance/estimates"],
     image: { src: "/site/maintenance-estimates.png", alt: "Learned shop time estimates in the demo company" },
-    status: "draft",
-    approval: null,
+    status: "published",
+    approval: { by: "Owner", on: "2026-10-27" },
   },
   {
     id: "faster-dispatching",
@@ -72,8 +72,8 @@ export const RELEASES: ReleaseHighlight[] = [
     releasedOn: "2026-10-26",
     evidence: ["/dispatch"],
     image: { src: "/site/dispatch.png", alt: "The dispatch board of the demo company" },
-    status: "draft",
-    approval: null,
+    status: "published",
+    approval: { by: "Owner", on: "2026-10-27" },
   },
   {
     id: "plan-the-day",
