@@ -48,6 +48,8 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Driver scorecard (20261120003800): read-only; a driver gets their own row, dispatch or employee access gets all.
+  "public.driver_scorecard",
   // Hired trucks (20261120003700): add-on switch, haulers, documents, offers; a hired truck is assigned only via an offer.
   "private.guard_hired_assignment", "private.hauler_document_problems", "private.hired_trucks_on", "private.my_driver_id",
   "private.require_hired_trucks", "public.hauler_add_driver", "public.hauler_add_truck", "public.hauler_offer_confirm",

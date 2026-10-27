@@ -72,7 +72,7 @@ export async function unhideException(input: { key: string }): Promise<ActionRes
   });
 }
 
-const SECTION_IDS = ["outlook", "my_work", "attention", "operations", "speed", "sales", "activity"] as const;
+const SECTION_IDS = ["outlook", "weather", "my_work", "attention", "operations", "speed", "sales", "activity"] as const;
 const layoutInput = z.object({
   order: z.array(z.enum(SECTION_IDS)).max(SECTION_IDS.length),
   collapsed: z.array(z.enum(SECTION_IDS)).max(SECTION_IDS.length),

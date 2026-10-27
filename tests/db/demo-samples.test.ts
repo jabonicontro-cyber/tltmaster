@@ -261,10 +261,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     const hiredAssigned = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.trucks t on t.id = a.truck_id where a.company_id = $1 and a.status = 'active' and t.hauler_id is not null", [w.company]);
     expect(Number(hiredAssigned.rows[0].n)).toBe(1);
 
+    // Quote history (B95): eight decided quotes — three won, three declined with a reason, two expired.
+    const decided = await q<{ status: string; n: string }>("select q.status, count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%' group by q.status order by q.status", [w.company]);
+    expect(decided.rows.map((r) => [r.status, Number(r.n)])).toEqual([["accepted", 3], ["declined", 3], ["expired", 2]]);
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
+    const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);
+    expect(Number(decidedAgain.rows[0].n)).toBe(8);
     // A demo shown as Growth gets a yard for its second dispatch base, tied to that base.
     await q("update public.companies set demo_plan = 'growth' where id = $1", [w.company]);
     const base = (await q<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone) values ($1, 'EAST', 'East Yard', $2) returning id", [w.company, TZ])).rows[0].id;

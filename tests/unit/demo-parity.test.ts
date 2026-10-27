@@ -47,6 +47,10 @@ const ALLOWED = new Set([
   "src/components/billing/accounting-setup.tsx",
   "src/app/(app)/billing/accounting-actions.ts",
   "src/server/data/accounting.ts", // Send is offered in demos without a QuickBooks connection (sends are simulated)
+  // Weather alerts (B92): demo sites are fictional places, so demos read a labelled sample forecast instead of NWS.
+  "src/server/weather.ts",
+  "src/app/(app)/command-center/page.tsx",
+  "src/app/(app)/dispatch/page.tsx",
 ]);
 
 function files(dir: string): string[] {

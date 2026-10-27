@@ -21,6 +21,8 @@ import { cn } from "@/lib/cn";
 import { PM_STATES, WO_URGENCIES, type WoStatus } from "@/lib/maintenance";
 import type { PmRow } from "@/server/data/maintenance";
 import { ChevronRight, ShieldAlert } from "lucide-react";
+import { TruckHealthCard } from "@/components/maintenance/truck-health";
+import { loadTruckHealth } from "@/server/data/truck-health";
 
 export const metadata = { title: "Maintenance" };
 
@@ -48,8 +50,10 @@ function daysBetween(fromIso: string, today: string) {
 
 export default async function MaintenancePage() {
   const access = await requirePagePermission("maintenance.view");
-  const [{ today, timezone }, open, pm, trucks, trailers, drivers, assignees] = await Promise.all([
+  const [{ today, timezone }, open, pm, trucks, trailers, drivers, assignees, health] = await Promise.all([
     businessToday(), listOpenWorkOrders(), listPmStatus(), listTrucks(), listTrailers(), listDriverOptions(), listAssignees(),
+    // Truck health (B93); left out if it cannot be read rather than shown wrong.
+    loadTruckHealth().catch(() => null),
   ]);
   // Monday of this week, in the company's time zone.
   const weekStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
@@ -168,6 +172,8 @@ export default async function MaintenancePage() {
           </ul>
         </Card>
       </section>
+
+      {health ? <TruckHealthCard rows={health.rows} canSetRules={can(access, "settings.manage")} /> : null}
 
       <section aria-label="Work order board" className="mb-5">
         <div className="mb-3 flex items-baseline justify-between gap-3">

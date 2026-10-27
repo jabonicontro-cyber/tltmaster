@@ -80,6 +80,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("time off on the schedule", await scheduleTimeOff(db, today));
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
+  // Decided quotes for Reports → Quotes won and lost (B95): wins, losses with reasons, across materials and customers.
+  note("quote history", await quoteHistory(db, today));
   note("operational workspace", await workspace(db, today, userId));
   note("assigned attention item", await assignedItem(db, userId));
   note("order waiting for a date", await needsScheduling(db, today));
@@ -778,6 +780,50 @@ async function issuedQuote(db: Db, today: string): Promise<number> {
   } }))) as { quote_id: string; edit_seq: number };
   await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: printed and handed to the customer at the yard (fictional — nothing was sent)." }));
   return 1;
+}
+
+/**
+ * Quote win/loss history (B95): eight fictional quotes, issued through the app's manual path (nothing is sent), then
+ * decided — three accepted (each becomes its Confirmed order, as in the app), three declined with a reason and two
+ * expired — across the demo's customers and up to three catalog materials or charges, with won rates a little under lost ones. Added once
+ * (marked by the project name).
+ */
+async function quoteHistory(db: Db, today: string): Promise<number> {
+  const done = await db.from("quote_versions").select("id").like("project_name", "Quote history (demo)%").limit(1);
+  if (missing(done.error)) return 0;
+  if (done.error) throw new Error(`Demo samples (quote history): ${done.error.message}`);
+  if ((done.data ?? []).length) return 0;
+  // Catalog lines of the demo's own orders: materials for a supplier, hauling charges for a freight hauler.
+  const lines = (await must("order lines", db.from("order_lines").select("kind, material_id, charge_item_id, description, unit_code, unit_rate_cents").eq("calc_method", "per_unit").or("material_id.not.is.null,charge_item_id.not.is.null").order("line_no").limit(60))) as Array<{ kind: string; material_id: string | null; charge_item_id: string | null; description: string; unit_code: string; unit_rate_cents: number }>;
+  const materials = [...new Map(lines.map((l) => [l.material_id ?? l.charge_item_id, l])).values()].slice(0, 3);
+  const customers = (await must("customers", db.from("customers").select("id").order("name").limit(4))) as Array<{ id: string }>;
+  if (!materials.length || !customers.length) return 0;
+  const plan: Array<{ outcome: "accepted" | "declined" | "expired"; reason: string; markup: number }> = [
+    { outcome: "accepted", reason: "", markup: 0.97 },
+    { outcome: "declined", reason: "Went with a supplier closer to the site (demo).", markup: 1.08 },
+    { outcome: "accepted", reason: "", markup: 1.0 },
+    { outcome: "declined", reason: "Price per ton too high for the budget (demo).", markup: 1.12 },
+    { outcome: "expired", reason: "No answer before the quote expired (demo).", markup: 1.05 },
+    { outcome: "accepted", reason: "", markup: 0.98 },
+    { outcome: "declined", reason: "Project postponed to next season (demo).", markup: 1.02 },
+    { outcome: "expired", reason: "", markup: 1.1 },
+  ];
+  let n = 0;
+  for (const [i, p] of plan.entries()) {
+    const m = materials[i % materials.length];
+    const customer = customers[i % customers.length];
+    const site = ((await db.from("customer_sites").select("id, label, line1, city").eq("customer_id", customer.id).limit(1)).data ?? [])[0] as { id: string; label: string; line1: string; city: string } | undefined;
+    const saved = (await must("history quote", db.rpc("save_quote_draft", { p_payload: {
+      customer_id: customer.id, quote_date: addDays(today, -40 + i * 4), valid_until: addDays(today, -10 + i * 4), tax_rate_bp: 0,
+      project_name: `Quote history (demo) ${i + 1}`,
+      ...(site ? { site_id: site.id, site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
+      lines: [{ kind: m.kind, calc_method: "per_unit", ...(m.material_id ? { material_id: m.material_id } : { charge_item_id: m.charge_item_id }), description: m.description, unit_code: m.unit_code, quantity: String(m.unit_code === "load" ? 2 + (i % 3) : 18 + i * 6), unit_rate_cents: Math.max(100, Math.round(Number(m.unit_rate_cents) * p.markup)) }],
+    } }))) as { quote_id: string; edit_seq: number };
+    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional — nothing was sent)." }));
+    await must("decide", db.rpc("set_quote_status", { p_quote_id: saved.quote_id, p_status: p.outcome, p_note: p.reason }));
+    n++;
+  }
+  return n;
 }
 
 /**

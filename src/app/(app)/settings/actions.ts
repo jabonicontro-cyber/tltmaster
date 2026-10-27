@@ -149,6 +149,27 @@ export async function saveDocumentRules(formData: FormData): Promise<ActionResul
   });
 }
 
+/** Truck health rules (B93; settings.manage, checked again by RLS and the column's check). Safety facts stay mandatory. */
+export async function saveTruckHealthRules(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    const n = (k: string) => {
+      const v = String(formData.get(k) ?? "").trim();
+      return /^\d{1,2}$/.test(v) ? Number(v) : null;
+    };
+    const rules = { at_risk_repairs: n("at_risk_repairs"), watch_repairs: n("watch_repairs"), watch_open: n("watch_open"), service_overdue: String(formData.get("service_overdue") ?? "") };
+    if (rules.at_risk_repairs === null || rules.watch_repairs === null || rules.watch_open === null) return fail("Enter whole numbers from 0 to 99 (0 turns a rule off).");
+    if (!["watch", "at_risk", "off"].includes(rules.service_overdue)) return fail("Choose what overdue service does.");
+    const supabase = await createClient();
+    const { error } = await supabase.from("company_settings").update({ truck_health_rules: rules }).eq("company_id", access.companyId!);
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/settings");
+    revalidatePath("/maintenance", "layout");
+    revalidatePath("/fleet", "layout");
+    return ok(undefined, "Truck health rules saved.");
+  });
+}
+
 /** Replace the time-off approval chain (settings.manage; checked again by the database). */
 export async function saveApprovalChain(formData: FormData): Promise<ActionResult> {
   return guard(async () => {

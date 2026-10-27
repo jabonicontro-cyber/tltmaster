@@ -20,6 +20,8 @@ import { getDispatchDay, listUnscheduledOrders } from "@/server/data/dispatch";
 import { facesForDrivers } from "@/server/data/faces";
 import { baseOptions, parseBaseFilter } from "@/server/data/bases";
 import { businessToday } from "@/server/data/settings";
+import { loadTruckHealth } from "@/server/data/truck-health";
+import { loadSiteWeather } from "@/server/weather";
 
 export const metadata = { title: "Dispatch" };
 
@@ -90,7 +92,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
   const base = bases.length > 1 ? parseBaseFilter(baseParam) : null;
-  const [day, urgent, unscheduled, smart] = await Promise.all([
+  const [day, urgent, unscheduled, smart, health, weather] = await Promise.all([
     getDispatchDay(date, base),
     listOpenUrgencies(),
     view === "board" ? listUnscheduledOrders() : Promise.resolve([]),
@@ -99,6 +101,10 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       console.error("Smart Dispatch failed", e);
       return { error: "Smart Dispatch suggestions are unavailable right now. The board below still works; try again in a moment." };
     }),
+    // Truck health (B93) beside each truck; never blocks, and left out if it cannot be read.
+    view === "board" ? loadTruckHealth().catch(() => null) : Promise.resolve(null),
+    // Weather at this day's job sites (B92); a demo reads a sample forecast (DEMO_TENANTS §2).
+    view === "board" ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : Promise.resolve(null),
   ]);
   // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
   const faces = await facesForDrivers(day.drivers.map((d) => d.id));
@@ -136,7 +142,18 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces} />
       )}
       <div data-guide="dispatch-board">
-        <DispatchBoard day={day} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        {(() => {
+          const onDay = weather?.alerts.filter((a) => a.day === date) ?? [];
+          return onDay.length ? (
+            <section aria-label="Weather at job sites" className="mb-4 rounded-panel border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <p className="font-semibold">Weather at job sites{weather?.sample ? " (sample forecast, demo)" : ""}</p>
+              <ul className="mt-1 space-y-0.5">
+                {onDay.map((a) => <li key={a.siteId}>{a.hazards.map((h) => h.label).join(" · ")} at {a.site} — {a.loads} load{a.loads === 1 ? "" : "s"} ({a.orders.join(", ")})</li>)}
+              </ul>
+            </section>
+          ) : null;
+        })()}
+        <DispatchBoard day={day} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

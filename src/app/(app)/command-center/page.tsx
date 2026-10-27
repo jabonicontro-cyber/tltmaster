@@ -7,6 +7,8 @@ import { MetricGrid } from "@/components/command-center/metric-grid";
 import { RefreshButton } from "@/components/command-center/refresh-button";
 import { SalesSection } from "@/components/command-center/sales-section";
 import { SpeedSection } from "@/components/command-center/speed-section";
+import { WeatherSection } from "@/components/command-center/weather-section";
+import { loadSiteWeather } from "@/server/weather";
 import { SectionLayout, type Section } from "@/components/command-center/section-layout";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
@@ -82,7 +84,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
-  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed] = await Promise.all([
+  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather] = await Promise.all([
     ops ? loadSummary() : none,
     ops ? loadQueue({ kind, mine, page, hidden }) : none,
     ops ? loadQueue({ mine: true, page: 1, limit: 5 }) : none,
@@ -96,6 +98,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("driver.portal") ? loadDriverHome() : none,
     outlookP,
     speedCan.dispatch || speedCan.tickets ? loadSpeed(timezone, speedCan).catch(() => null) : none,
+    // Weather at job sites with loads (B92), for dispatch; a demo reads a sample forecast (DEMO_TENANTS §2).
+    has("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
   ]);
   const now = new Date();
 
@@ -135,6 +139,16 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ) : (
         <ErrorState title="The next 7 days could not be loaded" description="No figures are shown rather than guessed. Open Dispatch directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
       ),
+    });
+  }
+
+  // Weather at job sites with planned loads in the next three days (B92).
+  if (has("dispatch.view")) {
+    sections.push({
+      id: "weather",
+      title: "Weather at job sites",
+      collapsedSummary: weather ? (weather.alerts.length ? `${weather.alerts.length} alert${weather.alerts.length === 1 ? "" : "s"}` : "No concerns") : "Could not be loaded",
+      content: weather ? <WeatherSection weather={weather} today={today} /> : <ErrorState title="The forecast could not be loaded" description="No weather is shown rather than guessed. Try again in a moment." />,
     });
   }
 

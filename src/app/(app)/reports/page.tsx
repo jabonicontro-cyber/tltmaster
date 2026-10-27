@@ -12,6 +12,11 @@ import { addDays, formatDate, isIsoDate } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
 import { requireAccess } from "@/server/auth";
+import { can } from "@/lib/permissions";
+import { QuoteOutcomesSection } from "@/components/reports/quote-outcomes";
+import { loadQuoteOutcomes } from "@/server/data/quote-outcomes";
+import { DriverScorecardTable } from "@/components/drivers/scorecard";
+import { loadScorecard } from "@/server/data/driver-scorecard";
 import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 
@@ -111,7 +116,7 @@ async function run(supabase: Awaited<ReturnType<typeof createClient>>, from: str
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ days?: string; from?: string; to?: string }> }) {
-  await requireAccess();
+  const access = await requireAccess();
   const sp = await searchParams;
   const { today } = await businessToday();
   const days = PERIODS.find((p) => String(p) === sp.days) ?? 30;
@@ -133,6 +138,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const { r, error } = main;
   const prev = previous.r;
   const bases = await listBases();
+  // Quote win/loss (B95) for people who can see quotes; a failure leaves the rest of the report standing.
+  const quoteOutcomes = can(access, "quotes.view") ? await loadQuoteOutcomes(from, to).catch(() => null) : null;
+  // Driver scorecard (B96): every driver, for people with dispatch or employee access (the database checks it again).
+  const scorecard = can(access, "dispatch.view") || can(access, "employees.view") ? await loadScorecard(from, to).catch(() => null) : null;
   const byBase = bases && bases.length > 1 ? await baseSummary(from, to) : [];
   const short = (d: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
   const trend = series.map((x, i) => ({
@@ -317,6 +326,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               </Card>
             </section>
           ) : null}
+
+          {scorecard ? <DriverScorecardTable rows={scorecard} period={`${formatDate(from)} – ${formatDate(to)}`} /> : null}
+
+          {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} periodLabel={`${formatDate(from)} – ${formatDate(to)}`} /> : null}
 
           <Notice title="Profitability is not calculated yet">
             Profit per load, truck, customer or material needs cost data Taviron does not have: {r.profitability.missing.join(", ")}. Revenue figures above are verified delivered value only, and no savings or

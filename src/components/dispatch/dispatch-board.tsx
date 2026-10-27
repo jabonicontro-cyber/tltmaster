@@ -50,7 +50,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [] }: { day: DispatchDay; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {} }: { day: DispatchDay; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -230,7 +230,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
             <OrderRoutePanel orderId={routeOrder} date={day.date} onClose={closeRoute} inline />
           </div>
         ) : (
-          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} />
+          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} health={health} />
         )}
       </div>
 
@@ -581,7 +581,7 @@ function stateLabel(s: ResourceState, lk: Lookup) {
   return s.warnings.length ? `Available — ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
-function ResourcePanel({ day, active, lk, canEdit }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean }) {
+function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }> }) {
   // Drivers and trucks can be dragged onto a load to assign them (B85); the Assign button stays the keyboard way.
   const drag = (kind: "driver" | "truck", id: string) =>
     canEdit
@@ -617,6 +617,11 @@ function ResourcePanel({ day, active, lk, canEdit }: { day: DispatchDay; active:
                     )}
                   </div>
                   <p className="text-xs text-muted">{TRUCK_TYPE_LABELS[t.truck_type]}{t.service_status === "out_of_service" && t.out_of_service_reason ? ` · ${t.out_of_service_reason}` : ""}</p>
+                  {health[t.id] && t.service_status !== "out_of_service" ? (
+                    <p className={cn("text-xs", health[t.id].level === "at_risk" ? "text-critical" : "text-amber-800")}>
+                      <span className="font-semibold">{health[t.id].level === "at_risk" ? "At risk" : "Watch"}</span>: {health[t.id].reasons.join(" · ")}
+                    </p>
+                  ) : null}
                   {bookings.map((b) => (
                     <p key={b.id} className="text-xs tabular">{describeBooking(b, lk)}</p>
                   ))}

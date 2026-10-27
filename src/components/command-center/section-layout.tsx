@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { saveCommandCenterLayout } from "@/app/(app)/command-center/actions";
 import { cn } from "@/lib/cn";
 
-export type SectionId = "outlook" | "my_work" | "attention" | "operations" | "speed" | "sales" | "activity";
+export type SectionId = "outlook" | "weather" | "my_work" | "attention" | "operations" | "speed" | "sales" | "activity";
 
 export interface Section {
   id: SectionId;

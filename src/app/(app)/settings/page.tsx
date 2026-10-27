@@ -23,6 +23,8 @@ import { businessToday, getSettings } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
+import { TruckHealthForm } from "@/components/settings/truck-health-form";
+import { parseRules } from "@/lib/fleet/health";
 import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
 import { BasesPanel } from "@/components/settings/bases-panel";
@@ -88,7 +90,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </>
     );
   } else if (tab === "dispatch") {
-    const rules = await documentRules();
+    const [rules, health] = await Promise.all([documentRules(), supabase.from("company_settings").select("truck_health_rules").maybeSingle()]);
     content = (
       <>
         <CardHeader
@@ -97,6 +99,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
         <CardBody>
           {rules ? <DocumentRulesForm rules={rules} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Document rules need a database update that has not been installed yet. Until then expired documents are review notes only.</p>}
+        </CardBody>
+        <CardHeader
+          title="Truck health"
+          description="When a truck reads Watch or At risk on Maintenance and Fleet. An open safety-critical defect or Out of service is always At risk; these rules add the rest. The level is information: only safety restrictions block dispatch."
+        />
+        <CardBody>
+          {health.error ? <p className="text-sm text-muted">Truck health needs a database update that has not been installed yet.</p> : <TruckHealthForm rules={parseRules((health.data as { truck_health_rules?: unknown } | null)?.truck_health_rules)} canEdit={can(access, "settings.manage")} />}
         </CardBody>
       </>
     );

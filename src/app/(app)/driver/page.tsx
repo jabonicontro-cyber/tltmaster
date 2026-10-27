@@ -10,7 +10,7 @@ import { cn } from "@/lib/cn";
 import { greeting } from "@/lib/people/greeting";
 import { shownName } from "@/server/data/profile";
 import { isPlatformAdmin } from "@/server/platform";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { addDays, formatDate, formatDateTime } from "@/lib/dates";
 import { DRIVER_TICKET_STATUS, REPORT_KIND_LABELS, REPORT_STATUS_LABELS, qualificationReminders, siteAddress } from "@/lib/driver/rules";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
@@ -22,6 +22,9 @@ import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
 import { Freshness } from "@/components/companion/freshness";
 import { myOffers } from "@/server/data/hired-trucks";
+import { MyScorecard } from "@/components/drivers/scorecard";
+import { SCORECARD_DAYS } from "@/lib/drivers/scorecard";
+import { loadScorecard } from "@/server/data/driver-scorecard";
 import { RATE_UNIT_LABELS } from "@/lib/hired-trucks";
 import { formatCents } from "@/lib/money";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -147,7 +150,11 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates, offers] = await Promise.all([loadMaintenanceNotices(), loadDispatchUpdates(), myOffers()]);
+  const [shop, updates, offers, score] = await Promise.all([
+    loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
+    // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
+    loadScorecard(addDays(h.today, -(SCORECARD_DAYS - 1)), h.today, true).catch(() => null),
+  ]);
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
   const whose = access.isDemo && shown && !platformAdmin ? shown : h.driver.name;
@@ -274,6 +281,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           </ul>
         )}
       </Card>
+
+      {score?.[0] ? <MyScorecard row={score[0]} days={SCORECARD_DAYS} /> : null}
 
       {h.reports.length > 0 && (
         <Card>
