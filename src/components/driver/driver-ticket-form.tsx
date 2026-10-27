@@ -8,7 +8,7 @@ import { Loader2, Send } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { quantityError } from "@/lib/tickets/rules";
-import { submitDriverTicket } from "@/app/(app)/driver/actions";
+import { recordTicketLocation, submitDriverTicket } from "@/app/(app)/driver/actions";
 import { Choice } from "./choice";
 import { PhotoAttachments, type PhotoState } from "./photo-attachments";
 
@@ -57,12 +57,17 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
     setErrors(e);
     if (Object.keys(e).length) return;
     setState({ kind: "sending" });
+    // Where the ticket is submitted (proof of delivery, B98): asked for now so any permission prompt shows while
+    // sending; never blocks the ticket, and nothing is recorded if the driver says no or the phone cannot tell.
+    const position = currentPosition();
     try {
       const r = await submitDriverTicket({
         assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
         externalReference: reference, notes, submissionKey, confirmDuplicate: confirmed, photoIds: photos.ids,
       });
       if (r.ok) {
+        const pos = await position;
+        if (pos && r.data.created) await recordTicketLocation({ ticketId: r.data.ticketId, ...pos }).catch(() => undefined);
         // Only now, after the server confirmed it.
         router.push(`/driver?sent=${encodeURIComponent(`Ticket ${r.data.ticketNumber} sent to the office.`)}`);
         return;
@@ -151,6 +156,8 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{state.message}</p>
       )}
 
+      <p className="text-sm text-muted">When you send, your phone&apos;s location is saved once with this ticket, as the customer&apos;s proof of delivery. It is not tracked, and the ticket goes through if you say no.</p>
+
       <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
         <button type="submit" disabled={sending || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
@@ -159,4 +166,17 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       </div>
     </form>
   );
+}
+
+/** The phone's position once (at most 8 seconds), or null: denied, unavailable or too slow. */
+function currentPosition(): Promise<{ latitude: number; longitude: number; accuracy: number | null } | null> {
+  if (typeof navigator === "undefined" || !navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 8000);
+    navigator.geolocation.getCurrentPosition(
+      (p) => { clearTimeout(timer); resolve({ latitude: p.coords.latitude, longitude: p.coords.longitude, accuracy: Number.isFinite(p.coords.accuracy) ? Math.round(p.coords.accuracy) : null }); },
+      () => { clearTimeout(timer); resolve(null); },
+      { enableHighAccuracy: true, timeout: 7500, maximumAge: 60_000 },
+    );
+  });
 }

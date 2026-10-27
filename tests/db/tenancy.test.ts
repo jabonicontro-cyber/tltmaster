@@ -34,7 +34,7 @@ const TENANT_TABLES = [
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
-  "field_reports", "ticket_attachments",
+  "field_reports", "ticket_attachments", "ticket_locations",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -50,6 +50,9 @@ const TENANT_TABLES = [
 const REVIEWED_DEFINER_FUNCTIONS = [
   // Driver scorecard (20261120003800): read-only; a driver gets their own row, dispatch or employee access gets all.
   "public.driver_scorecard",
+  // Proof of delivery (20261120004000): the ticket's own driver records its position once; the customer's portal reads
+  // proof and photo paths only for their own confirmed tickets; demo owners place sample positions in their demo.
+  "public.driver_record_ticket_location", "public.portal_ticket_proof", "public.portal_ticket_photo", "public.demo_ticket_locations",
   // Hired trucks (20261120003700): add-on switch, haulers, documents, offers; a hired truck is assigned only via an offer.
   "private.guard_hired_assignment", "private.hauler_document_problems", "private.hired_trucks_on", "private.my_driver_id",
   "private.require_hired_trucks", "public.hauler_add_driver", "public.hauler_add_truck", "public.hauler_offer_confirm",

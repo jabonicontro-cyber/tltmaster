@@ -265,6 +265,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     const decided = await q<{ status: string; n: string }>("select q.status, count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%' group by q.status order by q.status", [w.company]);
     expect(decided.rows.map((r) => [r.status, Number(r.n)])).toEqual([["accepted", 3], ["declined", 3], ["expired", 2]]);
 
+    // Proof of delivery (B98): confirmed tickets at a located job site get a position (up to five).
+    const pod = await q<{ located: string; placed: string }>(
+      `select (select count(*) from public.delivery_tickets t join public.orders o on o.id = t.order_id join public.customer_sites cs on cs.id = o.site_id
+                where t.company_id = $1 and t.status = 'accepted' and cs.latitude is not null) located,
+              (select count(*) from public.ticket_locations where company_id = $1) placed`, [w.company]);
+    expect(Number(pod.rows[0].placed)).toBe(Math.min(5, Number(pod.rows[0].located)));
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);

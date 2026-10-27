@@ -31,7 +31,7 @@ const ticketInput = z
     if (q) ctx.addIssue({ code: "custom", message: q, path: ["quantity"] });
   });
 
-type Sent = { ticketNumber: string; status: string; created: boolean };
+type Sent = { ticketId: string; ticketNumber: string; status: string; created: boolean };
 type Outcome = ActionResult<Sent> | { ok: false; error: string; needsConfirmation: true };
 
 /** Driver ticket: the server checks the load is the driver's own and applies every office rule. */
@@ -61,10 +61,34 @@ export async function submitDriverTicket(input: z.input<typeof ticketInput>): Pr
       if (error.code === "PT422") return { ok: false as const, error: error.message, needsConfirmation: true as const };
       return fail(dbErrorMessage(error));
     }
-    const r = data as { ticket_number: string; status: string; created: boolean };
+    const r = data as { ticket_id: string; ticket_number: string; status: string; created: boolean };
     revalidatePath("/driver");
-    return ok({ ticketNumber: r.ticket_number, status: r.status, created: r.created }, `Ticket ${r.ticket_number} sent to the office.`);
+    return ok({ ticketId: r.ticket_id, ticketNumber: r.ticket_number, status: r.status, created: r.created }, `Ticket ${r.ticket_number} sent to the office.`);
   }) as Promise<Outcome>;
+}
+
+const locationInput = z.object({
+  ticketId: z.uuid(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  accuracy: z.number().min(0).max(100000).nullable(),
+});
+
+/**
+ * Where the ticket was submitted (B98, owner 2026-10-27): the phone's position once, right after the driver sent the
+ * ticket, for the customer's proof of delivery. Never tracked; the database accepts it only from the ticket's own
+ * driver within 15 minutes, once. A refusal or failure changes nothing about the ticket.
+ */
+export async function recordTicketLocation(input: z.input<typeof locationInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("driver.portal");
+    const parsed = locationInput.safeParse(input);
+    if (!parsed.success) return fail("That position is not valid.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("driver_record_ticket_location", { p_ticket: parsed.data.ticketId, p_lat: parsed.data.latitude, p_lng: parsed.data.longitude, p_accuracy: parsed.data.accuracy });
+    if (error) return fail(dbErrorMessage(error));
+    return ok(undefined, "Position saved with the ticket.");
+  });
 }
 
 const reportInput = z.object({

@@ -14,6 +14,7 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
+import { createClient } from "@/server/supabase/server";
 import { businessToday } from "@/server/data/settings";
 import { getTicket, getTicketContext, reviewQueuePosition } from "@/server/data/tickets";
 import { QueueKeys } from "@/components/tickets/queue-keys";
@@ -56,6 +57,8 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=review`, returnTo) : `/tickets/${ticketId}?queue=review`);
   const { ticket: t, revisions, events, units, people, photos } = detail;
   const { timezone } = await businessToday();
+  // Where the driver's phone was when the ticket was sent (B98); missing update or none recorded: nothing shown.
+  const located = (await (await createClient()).from("ticket_locations").select("latitude, longitude, accuracy_m, recorded_at").in("ticket_id", revisions.map((r) => r.id)).limit(1).maybeSingle()).data as { latitude: number; longitude: number; accuracy_m: number | null; recorded_at: string } | null;
   // B84: reading the photo with AI is offered to reviewers of live tickets that have a photo; the gate decides if it runs.
   const reviewer = can(access, "tickets.review") && t.status !== "voided" && t.status !== "superseded" && photos.length > 0;
   const readGate = reviewer ? await capabilityGate("ticket_reading", access).catch(() => null) : null;
@@ -216,6 +219,20 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               </dl>
             </CardBody>
           </Card>
+
+          {located ? (
+            <Card>
+              <CardHeader title="Where it was sent" description={`Recorded by the driver's phone when the ticket was sent, ${formatDateTime(located.recorded_at, timezone)}. Shown to the customer with the confirmed ticket.`} />
+              <CardBody>
+                <p className="text-sm">
+                  <span className="font-semibold tabular">{Number(located.latitude).toFixed(5)}, {Number(located.longitude).toFixed(5)}</span>
+                  {located.accuracy_m ? <span className="text-muted"> (within about {Math.round(Number(located.accuracy_m))} m)</span> : null}
+                  {" · "}
+                  <a className="underline" href={`https://www.openstreetmap.org/?mlat=${located.latitude}&mlon=${located.longitude}#map=17/${located.latitude}/${located.longitude}`} target="_blank" rel="noopener noreferrer">Show on a map</a>
+                </p>
+              </CardBody>
+            </Card>
+          ) : null}
 
           <Card>
             <CardHeader
