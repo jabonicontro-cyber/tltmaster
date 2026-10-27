@@ -796,7 +796,7 @@ async function quoteHistory(db: Db, today: string): Promise<number> {
   const done = await db.from("quote_versions").select("id").like("project_name", "Quote history (demo)%").limit(1);
   if (missing(done.error)) return 0;
   if (done.error) throw new Error(`Demo samples (quote history): ${done.error.message}`);
-  if ((done.data ?? []).length) return 0;
+  if ((done.data ?? []).length) return closeHistoryOrders(db);
   // Catalog lines of the demo's own orders: materials for a supplier, hauling charges for a freight hauler.
   const lines = (await must("order lines", db.from("order_lines").select("kind, material_id, charge_item_id, description, unit_code, unit_rate_cents").eq("calc_method", "per_unit").or("material_id.not.is.null,charge_item_id.not.is.null").order("line_no").limit(60))) as Array<{ kind: string; material_id: string | null; charge_item_id: string | null; description: string; unit_code: string; unit_rate_cents: number }>;
   const materials = [...new Map(lines.map((l) => [l.material_id ?? l.charge_item_id, l])).values()].slice(0, 3);
@@ -827,7 +827,21 @@ async function quoteHistory(db: Db, today: string): Promise<number> {
     await must("decide", db.rpc("set_quote_status", { p_quote_id: saved.quote_id, p_status: p.outcome, p_note: p.reason }));
     n++;
   }
+  await closeHistoryOrders(db);
   return n;
+}
+
+/**
+ * The accepted history quotes became Confirmed orders (as in the app). They are past sales kept for the win rate, not
+ * work to schedule, so they are canceled with a note — otherwise they would fill "Needs scheduling" on the board.
+ * Idempotent: only history orders still Confirmed; existing demos are tidied by Refresh.
+ */
+async function closeHistoryOrders(db: Db): Promise<number> {
+  const open = (await must("history orders", db.from("orders").select("id").like("project_name", "Quote history (demo)%").eq("status", "confirmed"))) as Array<{ id: string }>;
+  for (const o of open) {
+    await must("close history order", db.rpc("set_order_status", { p_order_id: o.id, p_status: "canceled", p_note: "Sample quote history: kept to show the win rate, not work to schedule (demo)." }));
+  }
+  return 0;
 }
 
 /**

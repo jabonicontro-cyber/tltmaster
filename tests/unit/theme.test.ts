@@ -33,10 +33,12 @@ describe("light and dark mode", () => {
         expect(contrast(dark[`${hue}-${shade}`], dark.card), `${hue}-${shade} on card`).toBeGreaterThanOrEqual(4.5);
       }
     }
-    // Selected chips: white text on "strong", and the chip visible against a card (3:1).
-    const strong = /--color-strong:\s*(#[0-9a-f]{6})/.exec(css.slice(css.indexOf('html[data-theme="dark"] .app-root')))![1];
-    expect(contrast(strong, "#ffffff")).toBeGreaterThanOrEqual(4.5);
-    expect(contrast(strong, dark.card)).toBeGreaterThanOrEqual(3);
+    // Selected chips use the company's colour (2026-10-27): white text on it, and the chip visible against a dark card
+    // (3:1) for the default Taviron blue. A company's own colour is checked for white text when it is saved.
+    expect(css.slice(css.indexOf('html[data-theme="dark"] .app-root'))).toMatch(/--color-strong:\s*var\(--color-brand\)/);
+    const brand = /--color-brand:\s*(#[0-9a-f]{6})/.exec(css)![1];
+    expect(contrast(brand, "#ffffff")).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(brand, dark.card)).toBeGreaterThanOrEqual(3);
   });
 
   it("never re-colors the critical (urgency) red", () => {
