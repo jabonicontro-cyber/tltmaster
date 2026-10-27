@@ -161,16 +161,27 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
           )}
           <Button size="sm" variant="ghost" icon={<Keyboard className="size-4" />} onClick={() => setShortcutsOpen(true)} aria-label="Keyboard shortcuts" title="Keyboard shortcuts (?)" />
         </div>
-        <dl className="flex flex-wrap gap-x-5 gap-y-1 text-sm">
-          <div><dt className="inline text-muted">Orders </dt><dd className="inline font-bold tabular">{day.orders.length}</dd></div>
-          <div><dt className="inline text-muted">Loads </dt><dd className="inline font-bold tabular">{plannedLoads.length}</dd></div>
-          <div><dt className="inline text-muted">Assigned </dt><dd className="inline font-bold tabular">{plannedLoads.length - unassigned}</dd></div>
-          <div>
-            <dt className="inline text-muted">Need a truck </dt>
-            <dd className={cn("inline font-bold tabular", unassigned > 0 && "text-amber-800")}>{unassigned}</dd>
-          </div>
-        </dl>
       </div>
+
+      {/* The day at a glance (owner's references 2026-10-27): the figures first, coverage as a bar. */}
+      <dl aria-label="Day summary" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {[
+          { label: "Orders", value: day.orders.length },
+          { label: "Loads", value: plannedLoads.length },
+          { label: "Assigned", value: plannedLoads.length - unassigned },
+          { label: "Need a truck", value: unassigned, warn: unassigned > 0 },
+        ].map((f) => (
+          <div key={f.label} className="rounded-panel bg-card px-4 py-3.5 shadow-card ring-1 ring-line/60">
+            <dt className="text-sm font-medium text-muted">{f.label}</dt>
+            <dd className={cn("mt-1 text-[1.75rem] leading-none font-semibold tracking-[-0.03em] tabular", f.warn ? "text-amber-700" : "text-ink")}>{f.value}</dd>
+            {f.label === "Assigned" && plannedLoads.length > 0 && (
+              <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-ink/[0.07]" aria-hidden>
+                <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(((plannedLoads.length - unassigned) / plannedLoads.length) * 100)}%` }} />
+              </div>
+            )}
+          </div>
+        ))}
+      </dl>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         {/* Orders and loads */}
