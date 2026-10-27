@@ -25,9 +25,9 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
         return (
           <Fragment key={item.href}>
           {heading && (
-            <p className={cn("relative mt-5 mb-1.5 h-4 px-[15px] text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-white/40 uppercase")}>
+            <p className={cn("relative mt-5 mb-1.5 h-4 px-[15px] text-[11px] font-medium tracking-[0.06em] whitespace-nowrap text-nav-fg/50 uppercase")}>
               <span className={cn("transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-0" : "opacity-100")}>{heading}</span>
-              <span className={cn("absolute inset-x-3 top-1/2 h-px bg-white/10 transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-100" : "opacity-0")} aria-hidden />
+              <span className={cn("absolute inset-x-3 top-1/2 h-px bg-nav-fg/10 transition-opacity duration-150 motion-reduce:transition-none", collapsed ? "opacity-100" : "opacity-0")} aria-hidden />
             </p>
           )}
           <Link
@@ -39,13 +39,13 @@ export function SidebarNav({ permissions, onNavigate, collapsed = false }: { per
             className={cn(
               "group relative flex min-h-10 items-center gap-3 rounded-xl px-[15px] py-2 text-sm font-medium whitespace-nowrap transition-colors duration-150",
               // The current page is a solid light pill: the clearest "you are here" on any navigation colour.
-              active ? "bg-white text-charcoal shadow-xs" : "text-white/70 hover:bg-white/[0.07] hover:text-white",
+              active ? "bg-nav-active text-nav-active-fg shadow-xs" : "text-nav-fg/70 hover:bg-nav-fg/[0.07] hover:text-nav-fg",
             )}
           >
-                        <Icon className={cn("size-[18px] shrink-0", active ? "text-charcoal" : "text-white/55 group-hover:text-white/85")} aria-hidden />
+                        <Icon className={cn("size-[18px] shrink-0", active ? "text-nav-active-fg" : "text-nav-fg/55 group-hover:text-nav-fg/85")} aria-hidden />
             <span className={cn("flex-1 truncate transition-opacity duration-150 motion-reduce:transition-none", collapsed && "opacity-0")}>{item.label}</span>
             {item.planned && !collapsed && (
-              <span className={cn("rounded-full border px-1.5 py-px text-[10px] font-medium tracking-wide uppercase", active ? "border-charcoal/20 text-charcoal/60" : "border-white/15 text-white/55")}>
+              <span className={cn("rounded-full border px-1.5 py-px text-[10px] font-medium tracking-wide uppercase", active ? "border-nav-active-fg/30 text-nav-active-fg/70" : "border-nav-fg/15 text-nav-fg/55")}>
                 Coming soon
               </span>
             )}

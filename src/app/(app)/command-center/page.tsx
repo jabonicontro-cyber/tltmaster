@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, Plus, Route } from "lucide-react";
+import { CheckCircle2, ListChecks, Plus, Route, Siren, Truck, UserCheck } from "lucide-react";
+import { StatTile } from "@/components/ui/stat-tile";
 import { ExceptionCard } from "@/components/command-center/exception-card";
 import { LiveOutlook } from "@/components/command-center/live-outlook";
 import { MetricGrid } from "@/components/command-center/metric-grid";
@@ -102,6 +103,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
   ]);
   const now = new Date();
+  const todayDay = outlook?.ok ? outlook.data.days.find((d) => d.date === today) ?? null : null;
 
   // The URL of exactly this view: records opened from here return to it.
   const href = (p: { kind?: ExceptionKind; mine?: boolean; hidden?: boolean; page?: number; activity?: number }, anchor = "#attention") => {
@@ -346,7 +348,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       <p className="mb-0.5 text-[15px] font-medium text-muted" data-testid="greeting">{greeting(await shownName(access))}</p>
       <PageHeader
         title="Command Center"
-        description={`Today is ${formatDate(today)}. What needs attention, what is yours, and where to fix it — read live from the records.`}
+        description={`Today is ${formatDate(today)}. What needs attention, what is yours, and where to fix it.`}
         actions={
           <>
             <RefreshButton />
@@ -366,47 +368,45 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {/* Pinned status strip: not movable, not collapsible, urgent counts always visible. */}
       {ops &&
         (s ? (
-          <section aria-label="Attention summary" className="mb-9 rounded-panel border border-line/70 bg-card shadow-card">
-            {/* Today at a glance: three large figures, each a way in. Urgent keeps the fixed critical red, never the brand. */}
-            <div className="grid grid-cols-1 divide-y divide-line/70 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-              <div className="px-5 py-5 sm:px-6">
-                <p className="text-sm font-medium text-muted">Needs attention</p>
-                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.total === 0 ? "text-muted" : "text-ink")} aria-hidden>{s.exceptions.total}</p>
-                <p className="mt-2 text-sm font-semibold text-ink">
+          <section aria-label="Attention summary" className="mb-9">
+            {/* Today at a glance (owner's references 2026-10-27): a figure per tile, each a way in. Urgent keeps the fixed
+                critical red, never the brand. */}
+            <div className={cn("grid grid-cols-2 gap-3 sm:gap-4", todayDay ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+              <StatTile icon={<ListChecks />} tone="brand" label="Needs attention" value={s.exceptions.total} muted={s.exceptions.total === 0}>
+                <p className="font-semibold text-ink">
                   {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
                 </p>
-                {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-sm text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
-              </div>
-              <div className="px-5 py-5 sm:px-6">
-                <p className="text-sm font-medium text-muted">Urgent</p>
-                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.urgent > 0 ? "text-critical" : "text-muted")} aria-hidden>{s.exceptions.urgent}</p>
-                <div className="mt-2 text-sm">
-                  {/* One urgent indicator: each urgent item counted once, under its own kind (no separate "urgent orders" label). */}
-                  {s.exceptions.urgent > 0 ? (() => {
-                    const u = urgentSummary(s.urgent_by_kind);
-                    if (!u || u.total !== s.exceptions.urgent) {
-                      return <Link href={href({})} className="inline-flex h-[26px] items-center rounded-full bg-critical px-2.5 text-sm font-semibold text-white"><span className="pill-text">{s.exceptions.urgent} urgent</span></Link>;
-                    }
-                    return (
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
-                        <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="inline-flex h-[26px] items-center rounded-full bg-critical px-2.5 text-sm font-semibold text-white"><span className="pill-text">{u.lead}</span></Link>
-                        {u.parts.map((p, i) => (
-                          <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
-                        ))}
-                      </span>
-                    );
-                  })() : <span className="text-muted">Nothing urgent</span>}
-                </div>
-              </div>
-              <div className="px-5 py-5 sm:px-6">
-                <p className="text-sm font-medium text-muted">Assigned to you</p>
-                <p className={cn("mt-1 text-[2.5rem] leading-none font-semibold tracking-[-0.03em] tabular", s.exceptions.mine > 0 ? "text-ink" : "text-muted")} aria-hidden>{s.exceptions.mine}</p>
-                <div className="mt-2 text-sm">
-                  {s.exceptions.mine > 0 ? <Link href={href({ mine: true })} className="font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link> : <span className="text-muted">Nothing assigned to you</span>}
-                </div>
-              </div>
+                {(s.exceptions.hidden ?? 0) > 0 && <Link href={href({ hidden: true })} className="text-muted underline-offset-2 hover:underline">{s.exceptions.hidden} hidden by you</Link>}
+              </StatTile>
+              <StatTile icon={<Siren />} tone={s.exceptions.urgent > 0 ? "critical" : "neutral"} label="Urgent" value={s.exceptions.urgent} muted={s.exceptions.urgent === 0}>
+                {/* One urgent indicator: each urgent item counted once, under its own kind (no separate "urgent orders" label). */}
+                {s.exceptions.urgent > 0 ? (() => {
+                  const u = urgentSummary(s.urgent_by_kind);
+                  if (!u || u.total !== s.exceptions.urgent) {
+                    return <Link href={href({})} className="inline-flex h-[26px] items-center rounded-full bg-critical px-2.5 text-sm font-semibold text-white"><span className="pill-text">{s.exceptions.urgent} urgent</span></Link>;
+                  }
+                  return (
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="urgent-indicator">
+                      <Link href={href(u.kind ? { kind: u.kind as ExceptionKind } : {})} className="inline-flex h-[26px] items-center rounded-full bg-critical px-2.5 text-sm font-semibold text-white"><span className="pill-text">{u.lead}</span></Link>
+                      {u.parts.map((p, i) => (
+                        <Link key={p.kind} href={href({ kind: p.kind as ExceptionKind })} className="text-sm font-semibold text-critical underline-offset-2 hover:underline">{i ? "· " : ""}{p.text}</Link>
+                      ))}
+                    </span>
+                  );
+                })() : <span className="text-muted">Nothing urgent</span>}
+              </StatTile>
+              <StatTile icon={<UserCheck />} tone={s.exceptions.mine > 0 ? "amber" : "neutral"} label="Assigned to you" value={s.exceptions.mine} muted={s.exceptions.mine === 0}>
+                {s.exceptions.mine > 0 ? <Link href={href({ mine: true })} className="font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link> : <span className="text-muted">Nothing assigned to you</span>}
+              </StatTile>
+              {todayDay && (
+                <StatTile icon={<Truck />} tone={todayDay.unassigned ? "amber" : "green"} label="Loads today" value={todayDay.loads} muted={todayDay.loads === 0}>
+                  {todayDay.loads === 0 ? <span className="text-muted">Nothing planned today</span>
+                    : todayDay.unassigned ? <Link href={`/dispatch?date=${today}`} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{todayDay.unassigned} still need{todayDay.unassigned === 1 ? "s" : ""} a truck</Link>
+                    : <span className="font-semibold text-green-700">All covered</span>}
+                </StatTile>
+              )}
             </div>
-            <p className="border-t border-line/70 px-5 py-2.5 text-xs text-muted sm:px-6">As of {formatDateTime(s.as_of, timezone)} · read live from the records</p>
+            <p className="mt-3 px-1 text-xs text-muted">As of {formatDateTime(s.as_of, timezone)} · read live from the records</p>
           </section>
         ) : (
           <div className="mb-5">

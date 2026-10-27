@@ -72,7 +72,7 @@ export function SidebarLogo({ name, logoUrl, compact }: { name: string | null; l
     return compact || !logoUrl ? <CompanyIdentity name={name} logoUrl="" compact={compact} /> : <LogoTile src={logoUrl} label={label} />;
   }
   if (compact) {
-    if (parts === null) return <span className="block size-10 rounded-xl bg-white/[0.06]" aria-hidden />;
+    if (parts === null) return <span className="block size-10 rounded-xl bg-nav-fg/[0.06]" aria-hidden />;
     if (!parts.mark) return <CompanyIdentity name={name} logoUrl="" compact />;
     return (
       // eslint-disable-next-line @next/next/no-img-element -- cropped in the browser from the company's own logo
@@ -84,7 +84,7 @@ export function SidebarLogo({ name, logoUrl, compact }: { name: string | null; l
 
 function LogoTile({ src, label }: { src: string | null; label: string }) {
   return (
-    <span className="flex h-16 w-full min-w-0 items-center justify-center rounded-2xl bg-white px-4">
+    <span className="flex h-16 w-full min-w-0 items-center justify-center rounded-2xl bg-white px-4 ring-1 ring-line">
       {src ? (
         // eslint-disable-next-line @next/next/no-img-element -- a small per-company image
         <img src={src} alt={label} className="ui-fade max-h-11 w-auto max-w-full min-w-0 object-contain" />

@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
-import { Card, CardHeader } from "@/components/ui/card";
+import { AlertTriangle, ArrowRight, CalendarClock } from "lucide-react";
+import { InfoTip } from "@/components/ui/info-tip";
+import { Ring } from "@/components/ui/ring";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { nextSteps, outlookTotals, type OutlookDay } from "@/lib/live/outlook";
@@ -13,99 +14,134 @@ const dayNumber = (date: string) => Number(date.slice(8, 10));
 /**
  * Taviron Live: the next seven days at a glance — coverage, equipment that cannot run, drivers off — and what to do
  * next. Every figure comes from the records dispatch uses; nothing is predicted. Estimated revenue is labelled as such.
+ * Layout (owner's references 2026-10-27): the figures first, the week as a bar chart (covered and open loads, today
+ * highlighted), today's capacity as rings, and the next steps as cards.
  */
 export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: string }) {
   const totals = outlookTotals(outlook.days);
   const steps = nextSteps(outlook.days, today);
   const busiest = Math.max(1, ...outlook.days.map((d) => d.loads));
+  const t = outlook.days.find((d) => d.date === today) ?? outlook.days[0];
   return (
-    <Card>
-      <CardHeader
-        description="Planned loads, trucks that can run and drivers available, day by day — read from dispatch, the shop schedule and time off."
-      />
-      <div className="flex flex-wrap items-baseline gap-x-6 gap-y-2 border-b border-line/70 px-5 py-3 text-sm sm:px-6" aria-label="Outlook summary">
-        <p><span className="text-lg font-semibold tabular text-ink">{totals.loads}</span> <span className="text-muted">loads planned</span></p>
-        <p>
-          <span className={cn("text-lg font-semibold tabular", totals.unassigned > 0 ? "text-amber-700" : "text-ink")}>{totals.unassigned}</span>{" "}
-          <span className="text-muted">without a truck{totals.firstGap ? `, first on ${totals.firstGap === today ? "today" : formatDate(totals.firstGap)}` : ""}</span>
-        </p>
-        {totals.conflicts > 0 && (
-          <p><span className="text-lg font-semibold tabular text-critical">{totals.conflicts}</span> <span className="text-muted">booked on equipment that cannot run</span></p>
-        )}
-        {outlook.valueShown && totals.unassigned > 0 && (
-          <p title="Estimate: each open load's planned quantity × its order's material and hauling rates in that unit. Surcharges are not included.">
-            <span className="text-lg font-semibold tabular text-ink">≈ {formatCents(totals.uncoveredValueCents)}</span>{" "}
-            <span className="text-muted">
-              of work not yet covered (estimate{totals.uncoveredWithoutRate ? `; ${totals.uncoveredWithoutRate} load${totals.uncoveredWithoutRate === 1 ? "" : "s"} without a rate not included` : ""})
-            </span>
-          </p>
-        )}
-      </div>
+    <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+      <section aria-label="Loads this week" className="min-w-0 rounded-panel bg-card shadow-card ring-1 ring-line/60">
+        <div className="flex flex-wrap items-start justify-between gap-x-8 gap-y-4 px-5 pt-5 sm:px-6">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:flex sm:flex-wrap sm:gap-x-8" aria-label="Outlook summary">
+            <Figure value={totals.loads} label="loads planned" />
+            <Figure value={totals.unassigned} label={`without a truck${totals.firstGap ? `, first on ${totals.firstGap === today ? "today" : formatDate(totals.firstGap)}` : ""}`} tone={totals.unassigned > 0 ? "amber" : undefined} />
+            {totals.conflicts > 0 && <Figure value={totals.conflicts} label="booked on equipment that cannot run" tone="critical" />}
+            {outlook.valueShown && totals.unassigned > 0 && (
+              <Figure
+                value={`≈ ${formatCents(totals.uncoveredValueCents)}`}
+                label={`of work not yet covered (estimate${totals.uncoveredWithoutRate ? `; ${totals.uncoveredWithoutRate} load${totals.uncoveredWithoutRate === 1 ? "" : "s"} without a rate not included` : ""})`}
+              />
+            )}
+          </div>
+          <InfoTip label="Next 7 days">
+            Planned loads, trucks that can run and drivers available, day by day — read from dispatch, the shop schedule and time off. Nothing is predicted.
+            {outlook.valueShown && " The value is an estimate: each open load's planned quantity × its order's rates; surcharges are not included."}
+          </InfoTip>
+        </div>
 
-      <ol className="grid auto-cols-[minmax(8.75rem,1fr)] grid-flow-col overflow-x-auto" aria-label="Day by day">
-        {outlook.days.map((d) => (
-          <DayColumn key={d.date} day={d} today={today} busiest={busiest} shopChecked={outlook.shopChecked} />
-        ))}
-      </ol>
+        <ol className="mt-4 grid grid-cols-7 gap-1 px-3 sm:gap-2 sm:px-4" aria-label="Day by day">
+          {outlook.days.map((d) => (
+            <DayBar key={d.date} day={d} today={today} busiest={busiest} />
+          ))}
+        </ol>
 
-      <div className="border-t border-line px-5 py-3 sm:px-6">
-        <h3 className="text-sm font-semibold text-ink">What to do next</h3>
-        {steps.length === 0 ? (
-          <p className="mt-1 text-sm text-muted">Every load in the next 7 days has a truck and driver, and none is booked on equipment that cannot run.</p>
-        ) : (
-          <ul className="mt-1.5 space-y-1.5" aria-label="Next steps">
-            {steps.map((s) => (
-              <li key={s.key}>
-                <Link href={s.href} className={cn("group inline-flex items-start gap-1.5 text-sm hover:underline", s.urgent ? "font-semibold text-critical" : "text-ink")}>
-                  <ArrowRight className="mt-0.5 size-3.5 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                  {s.text}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-        {(!outlook.shopChecked || !outlook.timeOffChecked) && (
-          <p className="mt-2 text-xs text-muted">
-            Not checked: {[!outlook.shopChecked && "shop dates (maintenance update not installed)", !outlook.timeOffChecked && "time off (time-off update not installed)"].filter(Boolean).join(", ")}.
-          </p>
-        )}
+        <div className="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 pt-3 pb-5 text-xs text-muted sm:px-6" aria-hidden>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-brand" />Covered</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-amber-400" />Still open</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-sm bg-critical" />Open today</span>
+          {(!outlook.shopChecked || !outlook.timeOffChecked) && (
+            <span className="ml-auto">Not checked: {[!outlook.shopChecked && "shop dates", !outlook.timeOffChecked && "time off"].filter(Boolean).join(", ")} (update not installed)</span>
+          )}
+        </div>
+      </section>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-1">
+        <section aria-label="Today's capacity" className="rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60">
+          <h3 className="text-sm font-semibold text-ink">Today</h3>
+          <div className="mt-4 grid grid-cols-3 gap-2">
+            <Ring size={84} part={t.assigned} whole={t.loads} label="Covered" caption={t.loads ? `${t.unassigned} open` : "no loads"} tone={t.unassigned ? "critical" : "green"} />
+            <Ring size={84} part={t.trucksReady} whole={t.trucksReady + t.trucksDown} label="Trucks" caption={t.trucksDown ? `${t.trucksDown} down` : "all can run"} tone={t.trucksDown ? "amber" : "brand"} />
+            <Ring size={84} part={t.driversAvailable} whole={t.driversAvailable + t.driversOff} label="Drivers" caption={t.driversOff ? `${t.driversOff} off` : "none off"} />
+          </div>
+        </section>
+
+        <section aria-label="What to do next" className="rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60">
+          <h3 className="text-sm font-semibold text-ink">What to do next</h3>
+          {steps.length === 0 ? (
+            <p className="mt-2 text-sm text-muted">Every load in the next 7 days has a truck and driver, and none is booked on equipment that cannot run.</p>
+          ) : (
+            <ul className="mt-3 space-y-2" aria-label="Next steps">
+              {steps.map((s) => (
+                <li key={s.key}>
+                  <Link
+                    href={s.href}
+                    className={cn(
+                      "group flex items-start gap-3 rounded-2xl px-3 py-2.5 text-sm transition-colors",
+                      s.urgent ? "bg-red-50 text-critical hover:bg-red-100" : "bg-ink/[0.035] text-ink hover:bg-ink/[0.06]",
+                    )}
+                  >
+                    <span className={cn("mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full", s.urgent ? "bg-critical text-white" : "bg-card text-muted shadow-xs")} aria-hidden>
+                      {s.urgent ? <AlertTriangle className="size-3.5" /> : <CalendarClock className="size-3.5" />}
+                    </span>
+                    <span className={cn("min-w-0 flex-1", s.urgent && "font-semibold")}>{s.text}</span>
+                    <ArrowRight className="mt-1 size-3.5 shrink-0 opacity-60 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
-    </Card>
+    </div>
   );
 }
 
-function DayColumn({ day: d, today, busiest, shopChecked }: { day: OutlookDay; today: string; busiest: number; shopChecked: boolean }) {
+function Figure({ value, label, tone }: { value: string | number; label: string; tone?: "amber" | "critical" }) {
+  return (
+    <p className="min-w-0">
+      <span className={cn("block text-[1.75rem] leading-none font-semibold tracking-[-0.03em] tabular", tone === "amber" ? "text-amber-700" : tone === "critical" ? "text-critical" : "text-ink")}>{value}</span>
+      <span className="mt-1.5 block max-w-[16rem] text-sm text-muted">{label}</span>
+    </p>
+  );
+}
+
+/**
+ * One day's bar: height relative to the busiest day, covered loads below in the company colour, open loads on top
+ * (red today, amber later). The link opens that day's board. The accessible name starts with the visible words
+ * (day, date, loads) and then the spoken details (WCAG 2.5.3).
+ */
+function DayBar({ day: d, today, busiest }: { day: OutlookDay; today: string; busiest: number }) {
   const isToday = d.date === today;
-  const gapTone = d.unassigned === 0 ? "" : isToday ? "bg-critical" : "bg-amber-400";
-  // Spoken details after what is shown (day, date, loads), so the name starts with the visible words (WCAG 2.5.3).
+  const height = d.loads ? Math.max(8, Math.round((d.loads / busiest) * 100)) : 0;
   const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
   return (
-    <li className="relative border-r border-line last:border-r-0">
-      <Link href={`/dispatch?date=${d.date}`} className={cn("flex h-full flex-col gap-2 px-3 py-3 transition-colors hover:bg-surface/60", isToday && "bg-surface/40")}>
-        <p className="flex items-baseline justify-between gap-1">
-          <span className={cn("text-xs font-semibold uppercase tracking-wide", isToday ? "text-brand-fg" : "text-muted")}>{isToday ? "Today" : weekday(d.date)}</span>
+    <li className="min-w-0">
+      <Link href={`/dispatch?date=${d.date}`} className={cn("group flex flex-col items-center rounded-2xl px-1 pt-2 pb-2.5 transition-colors hover:bg-ink/[0.035] focus-visible:outline-2 focus-visible:outline-brand-fg", isToday && "bg-brand-light/60 hover:bg-brand-light")}>
+        <span className="order-last mt-2.5 flex flex-col items-center leading-tight">
+          <span className={cn("text-xs font-semibold", isToday ? "text-brand-fg" : "text-muted")}>{isToday ? "Today" : weekday(d.date)}</span>
           <span className="text-xs tabular text-muted">{dayNumber(d.date)}</span>
-        </p>
-        <div>
-          <p className="text-xl font-semibold tabular leading-none text-ink">{d.loads}</p>
-          <p className="text-xs text-muted">load{d.loads === 1 ? "" : "s"}</p>
-        </div>
-        {/* Coverage: assigned in a neutral tone, open loads coloured; width relative to the busiest day. */}
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-line" aria-hidden>
-          <div className="flex h-full" style={{ width: `${Math.round((d.loads / busiest) * 100)}%` }}>
-            <div className="h-full bg-strong/70" style={{ width: d.loads ? `${(d.assigned / d.loads) * 100}%` : "0%" }} />
-            <div className={cn("h-full", gapTone)} style={{ width: d.loads ? `${(d.unassigned / d.loads) * 100}%` : "0%" }} />
-          </div>
-        </div>
-        <p className={cn("text-xs", d.unassigned ? (isToday ? "font-semibold text-critical" : "font-semibold text-amber-700") : "text-muted")}>
-          {d.loads === 0 ? "Nothing planned" : d.unassigned ? `${d.unassigned} open` : "All covered"}
-        </p>
-        <dl className="mt-auto space-y-0.5 text-xs text-muted">
-          <div className="flex justify-between gap-1"><dt>Trucks</dt><dd className="whitespace-nowrap tabular text-ink">{d.trucksReady}{d.trucksDown ? <span className="text-muted"> · {d.trucksDown} down</span> : null}</dd></div>
-          <div className="flex justify-between gap-1"><dt>Drivers</dt><dd className="whitespace-nowrap tabular text-ink">{d.driversAvailable}{d.driversOff ? <span className="text-muted"> · {d.driversOff} off</span> : null}</dd></div>
-          {d.conflicts > 0 && <div className="flex justify-between gap-1 font-semibold text-critical"><dt>Conflicts</dt><dd className="tabular">{d.conflicts}</dd></div>}
-          {!shopChecked && <div className="text-[11px]">Shop dates not checked</div>}
-        </dl>
+        </span>
+        <span className="flex flex-col items-center leading-none">
+          <span className={cn("text-base font-semibold tabular", d.loads ? "text-ink" : "text-muted/70")}>{d.loads}</span>
+          <span className="sr-only"> loads</span>
+        </span>
+        <span className="mt-2 flex h-36 w-full max-w-11 flex-col justify-end xl:h-48" aria-hidden>
+          {d.loads === 0 ? (
+            <span className="h-1.5 w-full rounded-full bg-ink/[0.07]" />
+          ) : (
+            <span className="flex w-full flex-col overflow-hidden rounded-xl transition-[filter] group-hover:brightness-105" style={{ height: `${height}%` }}>
+              {d.unassigned > 0 && <span className={cn("w-full", isToday ? "bg-critical" : "bg-amber-400")} style={{ flexGrow: d.unassigned }} />}
+              {d.assigned > 0 && <span className={cn("w-full bg-brand", !isToday && "opacity-80")} style={{ flexGrow: d.assigned }} />}
+            </span>
+          )}
+        </span>
+        <span className={cn("mt-1.5 h-4 text-[11px] font-semibold tabular", d.unassigned ? (isToday ? "text-critical" : "text-amber-700") : "text-transparent")} aria-hidden>
+          {d.unassigned ? <>{d.unassigned}<span className="max-sm:hidden"> open</span></> : "·"}
+        </span>
         <span className="sr-only">{detail}</span>
       </Link>
     </li>

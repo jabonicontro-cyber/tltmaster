@@ -17,12 +17,12 @@ export function MobileNav({ permissions, companyName, logoUrl }: { permissions: 
       </D.Trigger>
       <D.Portal>
         <D.Overlay className="ui-fade fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] lg:hidden" />
-        <D.Content className="fixed inset-y-2 left-2 z-50 flex w-72 max-w-[85vw] flex-col rounded-[1.5rem] bg-charcoal shadow-float focus:outline-none lg:hidden">
+        <D.Content className="fixed inset-y-2 left-2 z-50 flex w-72 max-w-[85vw] flex-col rounded-[1.5rem] bg-nav shadow-float focus:outline-none lg:hidden">
           <D.Title className="sr-only">Main menu</D.Title>
           <D.Description className="sr-only">Navigate between sections</D.Description>
           <div className="flex h-16 items-center justify-between gap-2 px-4">
             <CompanyIdentity name={companyName} logoUrl={logoUrl} />
-            <D.Close className="rounded p-1 text-white/80 hover:bg-white/10" aria-label="Close menu">
+            <D.Close className="rounded p-1 text-nav-fg/80 hover:bg-nav-fg/10" aria-label="Close menu">
               <X className="size-6" />
             </D.Close>
           </div>

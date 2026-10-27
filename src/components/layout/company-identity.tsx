@@ -22,7 +22,7 @@ export function CompanyIdentity({ name, logoUrl, tone = "light", compact = false
       <span className="flex size-8 shrink-0 items-center justify-center rounded-xl bg-brand text-[13px] font-semibold text-white" aria-hidden={!compact} role={compact ? "img" : undefined} aria-label={compact ? label : undefined}>
         {initials}
       </span>
-      {!compact && <span className={cn("line-clamp-2 text-sm leading-tight font-semibold", tone === "light" ? "text-white" : "text-ink")}>{label}</span>}
+      {!compact && <span className={cn("line-clamp-2 text-sm leading-tight font-semibold", tone === "light" ? "text-nav-fg" : "text-ink")}>{label}</span>}
     </span>
   );
 }

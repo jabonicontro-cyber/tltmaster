@@ -18,6 +18,12 @@
   --color-card: #ffffff; /* cards, panels, inputs, menus */
   --color-strong: #0c1a2b; /* selected chips, emphasis borders (follows the navigation color) */
   --color-brand-fg: #0f6fd6; /* brand-colored text and icons */
+  /* Navigation (sidebar, phone menu). Light mode: a light rail with the company's colour as the current-page pill
+     (owner 2026-10-27); dark mode: the dark navigation colour with a light pill. Set per theme below. */
+  --color-nav: #ffffff;
+  --color-nav-fg: #16191d;
+  --color-nav-active: #0f6fd6;
+  --color-nav-active-fg: #ffffff;
 
   /* Taviron brand (public website and platform area). Contrast, measured:
      white on action 4.9:1; electric on navy 5.2:1; silver on navy 11.4:1.
@@ -36,7 +42,7 @@
      pill-shaped controls, one shadow scale. Panels: rounded-panel + shadow-card; menus and floating bars: shadow-float. */
   --radius-panel: 1.25rem;
   --radius-control: 0.75rem;
-  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 8px 24px -16px rgb(15 23 42 / 0.12);
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.03), 0 14px 34px -20px rgb(15 23 42 / 0.18);
   --shadow-float: 0 2px 6px rgb(15 23 42 / 0.06), 0 18px 40px -16px rgb(15 23 42 / 0.28);
 
   --font-sans: var(--font-inter), "Inter", "Segoe UI", Roboto, "Helvetica Neue", Arial, system-ui, sans-serif;
@@ -163,6 +169,10 @@
   --color-brand-light: color-mix(in srgb, var(--color-brand) 10%, white);
   --color-brand-fg: var(--color-brand);
   --color-strong: var(--color-charcoal);
+  --color-nav: var(--color-card);
+  --color-nav-fg: var(--color-ink);
+  --color-nav-active: var(--color-brand);
+  --color-nav-active-fg: #ffffff;
 }
 @media screen {
   html[data-theme="dark"] {
@@ -218,6 +228,10 @@
     /* lightened so brand text stays readable on dark panels (white text still sits on bg-brand) */
     --color-brand-fg: color-mix(in srgb, var(--color-brand) 40%, white);
     --color-strong: #5b6b80; /* white text 5.5:1, against panels 3.1:1 */
+    --color-nav: var(--color-charcoal);
+    --color-nav-fg: #ffffff;
+    --color-nav-active: #ffffff;
+    --color-nav-active-fg: var(--color-charcoal);
   }
   /* Critical stays the same fixed red for fills (white text on it), but as text on dark panels the light-mode shade
      is unreadable (2.6:1), so text uses a lighter red here. Still red and never the tenant's brand. */
