@@ -22,6 +22,7 @@ import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
 import { Freshness } from "@/components/companion/freshness";
 import { myOffers } from "@/server/data/hired-trucks";
+import { createClient } from "@/server/supabase/server";
 import { MyScorecard } from "@/components/drivers/scorecard";
 import { SCORECARD_DAYS } from "@/lib/drivers/scorecard";
 import { loadScorecard } from "@/server/data/driver-scorecard";
@@ -37,7 +38,7 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
-function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean }) {
+function AssignmentCard({ a, today, timeZone, past, photos = [] }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Job-site photos the office applied (B94). */ photos?: string[] }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -64,7 +65,7 @@ function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; tod
             <span>{a.site.directions_status === "due" ? "Site directions are due for a re-check." : "Safety or access directions not verified."} Confirm them with dispatch before relying on them.</span>
           </p>
         )}
-        {(a.order.job_instructions || a.site.directions || a.load.notes || a.assignment_note || a.order.contact_name) && (
+        {(a.order.job_instructions || a.site.directions || a.load.notes || a.assignment_note || a.order.contact_name || photos.length > 0) && (
           <details className="rounded-xl bg-surface px-3 py-2 text-sm">
             <summary className="cursor-pointer py-1 font-semibold">Instructions and directions</summary>
             <dl className="mt-1 space-y-1.5">
@@ -80,6 +81,19 @@ function AssignmentCard({ a, today, timeZone, past }: { a: DriverAssignment; tod
                         : "Not checked by the office yet"}
                     </dd>
                   ) : null}
+                </div>
+              )}
+              {photos.length > 0 && (
+                <div>
+                  <dt className="font-semibold">Site photos</dt>
+                  <dd className="mt-1 flex gap-2">
+                    {photos.map((p, i) => (
+                      <a key={p} href={`/site-photos/${p}`} target="_blank" rel="noopener noreferrer" className="block size-20 overflow-hidden rounded-lg border border-line">
+                        {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed link */}
+                        <img src={`/site-photos/${p}`} alt={`Site photo ${i + 1}`} loading="lazy" className="size-full object-cover" />
+                      </a>
+                    ))}
+                  </dd>
                 </div>
               )}
               {a.load.notes && <div><dt className="font-semibold">Load notes</dt><dd className="whitespace-pre-line">{a.load.notes}</dd></div>}
@@ -150,10 +164,12 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates, offers, score] = await Promise.all([
+  const [shop, updates, offers, score, sitePhotos] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
     loadScorecard(addDays(h.today, -(SCORECARD_DAYS - 1)), h.today, true).catch(() => null),
+    // Job-site photos customers sent and the office applied (B94); none before the update is installed.
+    (async () => { const r = await (await createClient()).rpc("driver_site_photos"); return (r.error ? {} : (r.data ?? {})) as Record<string, string[]>; })(),
   ]);
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
@@ -239,7 +255,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} />)}</ul>
         </section>
       )}
 
@@ -248,14 +264,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} />)}</ul>
         )}
       </section>
 
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} />)}</ul>
         </section>
       )}
 

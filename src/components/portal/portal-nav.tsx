@@ -13,6 +13,7 @@ export function PortalNav({ slug, features }: { slug: string; features: PortalFe
     { href: base, label: "Overview", on: true },
     { href: `${base}/orders`, label: "Orders", on: features.orders },
     { href: `${base}/quotes`, label: "Quotes", on: features.quotes },
+    { href: `${base}/sites`, label: "Job sites", on: features.orders },
     { href: `${base}/support`, label: "Support", on: features.support },
     { href: `${base}/help`, label: "Help", on: features.help },
   ].filter((i) => i.on);

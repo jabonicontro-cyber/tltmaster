@@ -103,6 +103,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("speed history", await speedHistory(db));
   // Proof of delivery (B98): some confirmed tickets placed at their job site, as a driver's phone would record them.
   note("proof of delivery positions", await ticketLocations(db));
+  // Site notes from customers (B94): one pending note for the office to review.
+  note("site note from a customer", await siteNote(db));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
@@ -1297,6 +1299,13 @@ async function maintenanceTriage(db: Db): Promise<number> {
  * moves only the times of this demo's past seeded assignments and clean accepted tickets to realistic ones; it refuses
  * real companies and a second run moves nothing.
  */
+async function siteNote(db: Db): Promise<number> {
+  const { data, error } = await db.rpc("demo_site_note");
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (site note): ${error.message}`);
+  return Number(data ?? 0);
+}
+
 async function ticketLocations(db: Db): Promise<number> {
   const { data, error } = await db.rpc("demo_ticket_locations");
   if (missing(error)) return 0;

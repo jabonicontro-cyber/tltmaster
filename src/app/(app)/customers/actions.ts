@@ -204,3 +204,20 @@ export async function setSiteActive(customerId: string, siteId: string, active: 
     return ok(undefined, active ? "Job site restored." : "Job site archived.");
   });
 }
+
+/** Review a job-site note from a customer (B94; customers.edit, checked again by the database). */
+export async function reviewSiteNote(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("customers.edit");
+    const id = String(formData.get("id") ?? "");
+    const apply = formData.get("decision") === "apply";
+    if (!uuid.safeParse(id).success) return fail("Note not found.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("site_info_review", { p_id: id, p_apply: apply, p_directions: String(formData.get("directions") ?? ""), p_note: String(formData.get("note") ?? "") });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/customers/site-notes");
+    revalidatePath("/customers", "layout");
+    return ok(undefined, apply ? "Applied: drivers see the new directions. Verify them on the site when you have checked them." : "Declined: nothing was changed.");
+  });
+}
+

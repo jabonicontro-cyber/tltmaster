@@ -173,3 +173,16 @@ export async function voteOnArticle(formData: FormData): Promise<ActionResult> {
   if (error) return fail(portalError(error));
   return ok(undefined, "Thanks for the feedback.");
 }
+
+/** Job-site notes from the customer (B94): goes to the office for review; nothing reaches drivers until applied. */
+export async function submitSiteInfo(formData: FormData): Promise<ActionResult<{ id: string }>> {
+  const slug = slugOf(formData);
+  const text = (k: string) => String(formData.get(k) ?? "");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("portal_site_info_submit", {
+    p_slug: slug, p_site: text("site"), p_gate: text("gate"), p_drop: text("drop"), p_contact: text("contact"), p_phone: text("phone"), p_notes: text("notes"),
+  });
+  if (error) return fail(portalError(error));
+  revalidatePath(`/portal/${slug}/sites`);
+  return ok({ id: data as string }, "Sent to the office. They check it before drivers see it.");
+}

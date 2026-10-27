@@ -272,6 +272,10 @@ describe.skipIf(!available)("demo feature samples", () => {
               (select count(*) from public.ticket_locations where company_id = $1) placed`, [w.company]);
     expect(Number(pod.rows[0].placed)).toBe(Math.min(5, Number(pod.rows[0].located)));
 
+    // Site notes from customers (B94): one pending note for the office.
+    const notes = await q<{ n: string }>("select count(*) n from public.site_info_submissions where company_id = $1 and status = 'pending'", [w.company]);
+    expect(Number(notes.rows[0].n)).toBe(1);
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);

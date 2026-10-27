@@ -34,7 +34,7 @@ const TENANT_TABLES = [
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
-  "field_reports", "ticket_attachments", "ticket_locations",
+  "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -53,6 +53,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Proof of delivery (20261120004000): the ticket's own driver records its position once; the customer's portal reads
   // proof and photo paths only for their own confirmed tickets; demo owners place sample positions in their demo.
   "public.driver_record_ticket_location", "public.portal_ticket_proof", "public.portal_ticket_photo", "public.demo_ticket_locations",
+  // Site notes from customers (20261120004100): portal functions act only on the customer's own sites and pending
+  // submissions; review needs customers.edit; site_photo_path answers only staff allowed to see that photo.
+  "public.portal_sites", "public.portal_site_info_submit", "public.portal_site_photo_begin", "public.site_info_review", "public.site_photo_path", "public.driver_site_photos", "public.demo_site_note",
   // Hired trucks (20261120003700): add-on switch, haulers, documents, offers; a hired truck is assigned only via an offer.
   "private.guard_hired_assignment", "private.hauler_document_problems", "private.hired_trucks_on", "private.my_driver_id",
   "private.require_hired_trucks", "public.hauler_add_driver", "public.hauler_add_truck", "public.hauler_offer_confirm",

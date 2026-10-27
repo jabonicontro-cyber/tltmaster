@@ -11,6 +11,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listCustomers } from "@/server/data/customers";
+import { pendingSiteNotes } from "@/server/data/site-notes";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 
 export const metadata = { title: "Customers" };
@@ -21,7 +22,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
   const access = await requirePagePermission("customers.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const { rows, total, crm } = await listCustomers({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag, sort: sp.sort, page });
+  const [{ rows, total, crm }, notes] = await Promise.all([
+    listCustomers({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag, sort: sp.sort, page }),
+    // Site notes customers sent from their portal (B94), waiting for review.
+    pendingSiteNotes().catch(() => null),
+  ]);
+  const siteNotes = notes?.length ?? 0;
   const filtered = Boolean(sp.q || sp.type || sp.relationship || sp.tag || (sp.status && sp.status !== "active"));
   const exportParams = new URLSearchParams(Object.entries({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag }).filter((e): e is [string, string] => Boolean(e[1])));
 
@@ -45,6 +51,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
         actions={
           <>
             {crm && <ButtonLink href="/customers/pipeline" variant="secondary">Pipeline</ButtonLink>}
+            <ButtonLink href="/customers/site-notes" variant="secondary">Site notes{siteNotes ? ` (${siteNotes})` : ""}</ButtonLink>
             <ButtonLink href={`/customers/export${exportParams.size ? `?${exportParams}` : ""}`} variant="secondary">Export CSV</ButtonLink>
             {can(access, "customers.edit") && (
               <ButtonLink href="/customers/new" icon={<Plus className="size-4" />} data-guide="customers-new">
