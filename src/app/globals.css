@@ -168,7 +168,8 @@
 .app-root {
   --color-brand-light: color-mix(in srgb, var(--color-brand) 10%, white);
   --color-brand-fg: var(--color-brand);
-  --color-strong: var(--color-charcoal);
+  /* Selected states (chips, tabs, the current view) in the company's colour, like the navigation pill (2026-10-27). */
+  --color-strong: var(--color-brand);
   --color-nav: var(--color-card);
   --color-nav-fg: var(--color-ink);
   --color-nav-active: var(--color-brand);
@@ -229,7 +230,7 @@
     --color-brand-light: color-mix(in srgb, var(--color-brand) 24%, #18191c);
     /* lightened so brand text stays readable on dark panels (white text still sits on bg-brand) */
     --color-brand-fg: color-mix(in srgb, var(--color-brand) 40%, white);
-    --color-strong: #5a5d66; /* white text 6.4:1 */
+    --color-strong: var(--color-brand);
     /* A graphite rail, or the company's own navigation colour when it set one (--nav-dark, src/lib/branding.ts); the
        current page in the company's accent, as in light mode. */
     --color-nav: var(--nav-dark, #131417);

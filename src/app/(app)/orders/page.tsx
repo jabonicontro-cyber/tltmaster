@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Avatar } from "@/components/ui/avatar";
 import { CalendarClock, CalendarDays, CalendarX, CirclePause, ClipboardList, FilePen, Plus } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { Badge, OrderStatusBadge, SampleBadge, UrgentPill } from "@/components/ui/badge";
@@ -187,7 +188,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                           </div>
                         </Td>
                         <Td>
-                          <Link href={`/customers/${o.customer_id}`} className="hover:underline">{o.customer_name}</Link>
+                          <Link href={`/customers/${o.customer_id}`} className="flex items-start gap-2.5 hover:underline"><Avatar name={o.customer_name} size={28} className="mt-[-2px] shrink-0" /><span className="min-w-0">{o.customer_name}</span></Link>
                           {o.contact_name && <div className="text-sm text-muted">{o.contact_name}</div>}
                         </Td>
                         <Td className="hidden max-w-xs md:table-cell">

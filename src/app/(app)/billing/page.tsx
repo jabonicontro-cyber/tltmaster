@@ -67,6 +67,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         description="Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."
         actions={<ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>}
       />
+      <BillingPipeline counts={board.counts} href={keep} current={view} />
       <nav aria-label="Billing views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (
           <Link
@@ -344,5 +345,48 @@ function HandedOff({ board, canManage, highlight, qb }: {
         </li>
       ))}
     </ul>
+  );
+}
+
+/**
+ * Where delivered work stands (owner's references 2026-10-27: progress bars per stage). Each bar is that view's count
+ * out of all orders on the board; an order can sit in more than one stage (missing tickets and an exception), so the
+ * bars are not meant to add up. Each opens its view.
+ */
+function BillingPipeline({ counts, href, current }: { counts: Partial<Record<BillingView, number>>; href: (k: BillingView) => string; current: BillingView }) {
+  const total = counts.orders ?? 0;
+  if (!total) return null;
+  const stages: Array<{ key: BillingView; bar: string }> = [
+    { key: "missing", bar: "bg-critical" },
+    { key: "exceptions", bar: "bg-amber-400" },
+    { key: "review", bar: "bg-blue-500" },
+    { key: "ready", bar: "bg-green-600" },
+    { key: "handed_off", bar: "bg-brand" },
+  ];
+  return (
+    <section aria-label="Billing pipeline" className="mb-5 rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60 sm:p-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-base font-semibold tracking-[-0.01em] text-ink">Where delivered work stands</h2>
+        <p className="text-sm text-muted"><span className="font-semibold tabular text-ink">{total}</span> orders on the board</p>
+      </div>
+      <ul className="mt-4 grid grid-cols-1 gap-x-8 gap-y-3 md:grid-cols-2 xl:grid-cols-5">
+        {stages.map((st) => {
+          const n = counts[st.key] ?? 0;
+          return (
+            <li key={st.key}>
+              <Link href={href(st.key)} aria-current={st.key === current ? "page" : undefined} className="group block rounded-xl py-1 focus-visible:outline-2 focus-visible:outline-brand-fg">
+                <span className="flex items-baseline justify-between gap-2 text-sm">
+                  <span className={cn("font-medium group-hover:underline", st.key === current ? "text-ink" : "text-muted")}>{BILLING_VIEWS[st.key]}</span>
+                  <span className="font-semibold tabular text-ink">{n}</span>
+                </span>
+                <span className="mt-2 block h-2.5 overflow-hidden rounded-full bg-ink/[0.06]" aria-hidden>
+                  <span className={cn("block h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none", st.bar)} style={{ width: `${n ? Math.max(3, Math.round((n / total) * 100)) : 0}%` }} />
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }

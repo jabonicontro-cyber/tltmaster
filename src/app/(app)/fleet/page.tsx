@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { Ring } from "@/components/ui/ring";
 import type { ReactNode } from "react";
-import { AlertTriangle, CalendarClock, Container, FileWarning, ShieldAlert, Truck, UserRound, Wrench } from "lucide-react";
+import { AlertTriangle, CalendarClock, FileWarning, ShieldAlert, Wrench } from "lucide-react";
 import { EligibilityChecker } from "@/components/fleet/eligibility-checker";
 import { QualificationBadge } from "@/components/fleet/fleet-badges";
 import { FleetNav } from "@/components/fleet/fleet-nav";
@@ -24,8 +25,8 @@ const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label: string; value: ReactNode; sub?: ReactNode; href: string; warn?: boolean }) {
   return (
     <Link href={href} className="block h-full">
-      <div className="flex h-full items-start gap-3 rounded-panel border border-line/70 bg-card shadow-card p-4 transition-colors hover:border-strong/40">
-        <div className={cn("rounded-xl p-2", warn ? "bg-amber-50 text-amber-800" : "bg-surface text-ink")}>{icon}</div>
+      <div className="flex h-full items-start gap-3 rounded-panel bg-card p-4 shadow-card ring-1 ring-line/60 transition-shadow hover:shadow-float sm:p-5">
+        <div className={cn("grid size-9 shrink-0 place-items-center rounded-full [&_svg]:size-4", warn ? "bg-amber-50 text-amber-800" : "bg-brand-light text-brand-fg")}>{icon}</div>
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 text-sm font-medium text-muted">{warn && <span className="size-1.5 rounded-full bg-amber-500" aria-hidden />}{label}</p>
           <p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink tabular">{value}</p>
@@ -76,10 +77,16 @@ export default async function FleetPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={<Truck className="size-5" />} label="Trucks in service" value={`${o.trucks.inService} / ${o.trucks.active}`} sub={o.trucks.capacityUnknown ? `${o.trucks.capacityUnknown} with unknown capacity` : "Active trucks"} href="/fleet/trucks?status=in_service" />
-        <Stat icon={<Container className="size-5" />} label="Trailers in service" value={`${o.trailers.inService} / ${o.trailers.active}`} sub={o.trailers.capacityUnknown ? `${o.trailers.capacityUnknown} with unknown capacity` : "Active trailers"} href="/fleet/trailers?status=in_service" />
-        <Stat icon={<UserRound className="size-5" />} label="Drivers eligible today" value={`${o.drivers.ready} / ${o.drivers.active}`} sub="Verified CDL and medical card" href="/fleet/drivers?status=ready" warn={o.drivers.notReady.length > 0} />
+      {/* Ready for work at a glance (owner's references 2026-10-27): a ring per kind of resource, each a way in. */}
+      <div className="grid grid-cols-1 gap-3 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+        <section aria-label="Ready for work" className="rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60 sm:p-6">
+          <h2 className="text-base font-semibold tracking-[-0.01em] text-ink">Ready for work</h2>
+          <ul className="mt-4 grid grid-cols-3 gap-2">
+            <li><Link href="/fleet/trucks?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.trucks.inService} whole={o.trucks.active} label="Trucks in service" caption={o.trucks.capacityUnknown ? `${o.trucks.capacityUnknown} with unknown capacity` : "Active trucks"} tone={o.trucks.inService < o.trucks.active ? "amber" : "brand"} /></Link></li>
+            <li><Link href="/fleet/trailers?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.trailers.inService} whole={o.trailers.active} label="Trailers in service" caption={o.trailers.capacityUnknown ? `${o.trailers.capacityUnknown} with unknown capacity` : "Active trailers"} tone={o.trailers.inService < o.trailers.active ? "amber" : "brand"} /></Link></li>
+            <li><Link href="/fleet/drivers?status=ready" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.drivers.ready} whole={o.drivers.active} label="Drivers eligible today" caption="Verified CDL and medical card" tone={o.drivers.notReady.length > 0 ? "amber" : "green"} /></Link></li>
+          </ul>
+        </section>
         <Stat icon={<Wrench className="size-5" />} label="Out of service" value={down.length} sub={`${plural(o.trucks.outOfService.length, "truck")} · ${plural(o.trailers.outOfService.length, "trailer")}`} href={o.trucks.outOfService.length === 0 && o.trailers.outOfService.length > 0 ? "/fleet/trailers?status=out_of_service" : "/fleet/trucks?status=out_of_service"} warn={down.length > 0} />
       </div>
 

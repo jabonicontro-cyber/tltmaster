@@ -42,17 +42,25 @@ const compactMoney = (cents: number) => {
   return d >= 1_000_000 ? `$${trimNumber(Math.round(d / 100_000) / 10)}M` : d >= 10_000 ? `$${trimNumber(Math.round(d / 100) / 10)}k` : `$${Math.round(d).toLocaleString("en-US")}`;
 };
 
-/** Change against the previous period of the same length; honest about having nothing to compare with. */
+/** Change against the previous period of the same length, as a chip (owner's references 2026-10-27); honest about
+ * having nothing to compare with. */
 function Delta({ now, before, period }: { now: number; before: number | null; period: string }) {
-  if (before === null) return <p className="text-xs text-muted">No earlier period to compare</p>;
-  if (before === 0) return <p className="text-xs text-muted">{now === 0 ? "Same as" : "Up from none in"} the previous {period}</p>;
+  if (before === null) return <p className="mt-1.5 text-xs text-muted">No earlier period to compare</p>;
+  if (before === 0) {
+    return (
+      <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        {now > 0 && <span className="inline-flex h-[22px] items-center gap-0.5 rounded-md bg-green-50 px-1.5 font-semibold text-green-700"><ArrowUpRight className="size-3.5" aria-hidden /><span className="pill-text">New</span></span>}
+        {now === 0 ? "Same as" : "none in"} the previous {period}
+      </p>
+    );
+  }
   const change = Math.round(((now - before) / before) * 100);
   return (
-    <p className="text-xs text-muted">
-      <span className={cn("inline-flex items-center gap-0.5 font-semibold", change > 0 ? "text-green-700" : change < 0 ? "text-amber-800" : "text-muted")}>
+    <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+      <span className={cn("inline-flex h-[22px] items-center gap-0.5 rounded-md px-1.5 font-semibold tabular", change > 0 ? "bg-green-50 text-green-700" : change < 0 ? "bg-amber-50 text-amber-800" : "bg-ink/[0.05] text-muted")}>
         {change > 0 ? <ArrowUpRight className="size-3.5" aria-hidden /> : change < 0 ? <ArrowDownRight className="size-3.5" aria-hidden /> : null}
-        {change > 0 ? "+" : ""}{change}%
-      </span>{" "}
+        <span className="pill-text">{change > 0 ? "+" : ""}{change}%</span>
+      </span>
       vs previous {period}
     </p>
   );
@@ -60,9 +68,9 @@ function Delta({ now, before, period }: { now: number; before: number | null; pe
 
 function Kpi({ icon, label, value, children, spark, sparkLabel }: { icon: ReactNode; label: string; value: string; children?: ReactNode; spark?: number[]; sparkLabel?: string }) {
   return (
-    <div className="flex flex-col gap-3 rounded-panel border border-line/70 bg-card p-5 shadow-card">
-      <div className="flex items-center gap-2 text-sm text-muted">
-        <span className="grid size-8 place-items-center rounded-xl bg-surface text-ink">{icon}</span>
+    <div className="flex flex-col gap-3 rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60">
+      <div className="flex items-center gap-2.5 text-sm font-medium text-muted">
+        <span className="grid size-8 place-items-center rounded-full bg-brand-light text-brand-fg [&_svg]:size-4">{icon}</span>
         {label}
       </div>
       <div className="flex items-end justify-between gap-3">
