@@ -7,6 +7,7 @@ import { PRICING_FAQ as FAQ } from "@/lib/site/pricing-faq";
 export const metadata: Metadata = {
   title: "Pricing",
   description: "Taviron pricing by fleet size and dispatch bases: Essential, Growth, Professional, Enterprise and Custom, with annual-commitment pricing and a one-time onboarding fee.",
+  alternates: { canonical: "/pricing" },
 };
 
 // Every tier includes the same software; tiers differ by how many hauling trucks and

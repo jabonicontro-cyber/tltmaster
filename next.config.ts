@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { SITE_PAGES } from "./src/lib/site/paths";
 
 const securityHeaders = [
   // Private operational data: never index.
@@ -10,8 +11,8 @@ const securityHeaders = [
 ];
 
 // The public website may be indexed only when SITE_INDEXING=on (read at build
-// time). The later rule wins for the same header key.
-const SITE_PAGES = ["/", "/platform", "/solutions", "/pricing", "/about", "/contact", "/demo", "/privacy", "/terms"];
+// time). The later rule wins for the same header key. The pages come from the one public list (src/lib/site/paths.ts):
+// a copy here once fell behind and told search engines not to index the FAQ, Trust and every area page.
 const siteIndexHeaders = process.env.SITE_INDEXING?.trim().toLowerCase() === "on"
   ? SITE_PAGES.map((source) => ({ source, headers: [{ key: "X-Robots-Tag", value: "index, follow" }] }))
   : [];

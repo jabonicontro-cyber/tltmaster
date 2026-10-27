@@ -7,6 +7,7 @@ import { COMING_SOON, publishedFeatures } from "@/lib/site/features";
 export const metadata: Metadata = {
   title: "Platform",
   description: "What Taviron does today, feature by feature: Command Center, Plan the day, dispatch with Smart Dispatch, quotes and orders, the driver portal, delivery tickets, maintenance, fleet, billing readiness, communications and security — and what it does not do yet.",
+  alternates: { canonical: "/platform" },
 };
 
 // Generated from the feature catalog (src/lib/site/features.ts; docs/MARKETING.md). Features with a screen get a full

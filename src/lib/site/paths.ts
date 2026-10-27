@@ -6,6 +6,8 @@ export const SITE_PAGES = [
   // Platform areas and solutions (src/lib/site/areas.ts; tests/unit/site-areas.test.ts keeps these lists in step).
   "/platform/dispatch", "/platform/fleet", "/platform/customers", "/platform/intelligence", "/platform/automation", "/platform/control",
   "/solutions/small-fleets", "/solutions/growing-fleets", "/solutions/enterprise",
+  // Resources (B88): comparisons (src/lib/site/compare.ts), release highlights, the paperwork calculator, guides.
+  "/compare/spreadsheets", "/compare/dispatch-only", "/whats-new", "/calculator", "/guides",
 ] as const;
 export type SitePage = (typeof SITE_PAGES)[number];
 

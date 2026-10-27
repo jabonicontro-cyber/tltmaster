@@ -43,7 +43,7 @@ export function CtaLink({ href, children, variant = "primary", className }: { hr
 /** A real screenshot of the app (fictional demo data), framed like a window. */
 export function Screenshot({ src, alt, width, height, caption, className, priority }: { src: string; alt: string; width: number; height: number; caption?: string; className?: string; priority?: boolean }) {
   return (
-    <figure className={cn("overflow-hidden rounded-xl border border-silver/15 bg-navy-2 shadow-[0_30px_80px_-30px_rgb(0_0_0/0.7)]", className)}>
+    <figure className={cn("overflow-hidden rounded-xl border border-silver/15 bg-navy-2 shadow-[0_30px_80px_-30px_rgb(0_0_0/0.7)]", !priority && "site-reveal", className)}>
       <div className="flex items-center gap-1.5 border-b border-silver/10 px-3.5 py-2.5" aria-hidden>
         <span className="size-2.5 rounded-full bg-silver/20" />
         <span className="size-2.5 rounded-full bg-silver/20" />

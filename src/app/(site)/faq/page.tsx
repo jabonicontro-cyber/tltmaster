@@ -32,8 +32,15 @@ function Group({ id, title, items }: { id: string; title: string; items: Faq[] }
 }
 
 export default function FaqPage() {
+  // The questions and answers as structured data, so search results can show them (schema.org FAQPage).
+  const faqLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [...PRODUCT_FAQ, ...PRICING_FAQ].map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+  };
   return (
     <>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd).replace(/</g, "\\u003c") }} />
       <PageIntro title="Questions, answered plainly.">
         <p>If yours is not here, <Link href="/contact" className="font-semibold text-electric hover:underline">ask us</Link>.</p>
       </PageIntro>

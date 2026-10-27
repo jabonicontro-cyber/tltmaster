@@ -72,7 +72,7 @@ repeats the same steps with new projects — never point staging at production d
    | `EARLY_ACCESS_PASSWORD_MAX_DEVICES` | `500` (optional): devices admitted with the password at the same time, 1–1000 |
    | `EMAIL_PROVIDER` | `preview` (quote emails are shown, not sent, until Resend is set up) |
    | `PUBLIC_SITE` | `on` when you decide the public website (home, pricing, demo request…) should be open to everyone. Empty (default): it stays behind the Early Access page like the rest |
-   | `SITE_INDEXING` | leave empty on staging (search engines are told not to index anything). `on` lets them index the nine public pages only — decide before launch |
+   | `SITE_INDEXING` | leave empty on staging (search engines are told not to index anything). `on` lets them index the public pages only (`SITE_PAGES` in `src/lib/site/paths.ts`) — decide before launch |
 
    Without `SITE_ACCESS_SECRET` the app deliberately answers **503** to everything.
 4. **Settings → Deployment Protection**: turn *Vercel Authentication* off for this project

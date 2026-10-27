@@ -32,8 +32,8 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["pho
     await page.getByRole("navigation", { name: "Capabilities" }).getByRole("link", { name: "Maintenance" }).click();
     await expect(page).toHaveURL(/#feature-maintenance$/);
     await expect(page.getByRole("heading", { name: "Maintenance", level: 2 })).toBeInViewport();
-    // The "Not yet" list is still there, said plainly.
-    await expect(page.getByRole("heading", { name: /Not yet/ })).toBeVisible();
+    // The "Not yet" list was taken off the Platform page (owner 2026-10-26); it stays in the catalog as the internal record.
+    await expect(page.getByRole("heading", { name: /Not yet/ })).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
   });

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/legal";
 
-export const metadata: Metadata = { title: "Privacy", description: "How Taviron handles information from this website and the app (draft)." };
+export const metadata: Metadata = { title: "Privacy", description: "How Taviron handles information from this website and the app (draft).", alternates: { canonical: "/privacy" } };
 
 export default function PrivacyPage() {
   return (

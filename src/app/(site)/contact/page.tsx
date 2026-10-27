@@ -5,6 +5,7 @@ import { Container, PageIntro } from "@/components/site/ui";
 export const metadata: Metadata = {
   title: "Contact",
   description: "Send the Taviron team a message.",
+  alternates: { canonical: "/contact" },
 };
 
 export default async function ContactPage({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string }> }) {

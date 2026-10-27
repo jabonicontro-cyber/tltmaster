@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/legal";
 
-export const metadata: Metadata = { title: "Terms", description: "Terms for using the Taviron website and early access (draft)." };
+export const metadata: Metadata = { title: "Terms", description: "Terms for using the Taviron website and early access (draft).", alternates: { canonical: "/terms" } };
 
 export default function TermsPage() {
   return (

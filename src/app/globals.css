@@ -445,6 +445,25 @@
   }
 }
 
+/* Scroll reveal (2026-10-27): content settles into place as it enters the view, driven by the scroll position itself
+   (a view timeline), so it is never stuck hidden, works without JavaScript and reverses as the person scrolls back.
+   Browsers without view timelines and anyone who asks for reduced motion get the content as it is, with no motion. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .site-reveal {
+      animation: site-reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+    @keyframes site-reveal {
+      from {
+        opacity: 0.001;
+        transform: translateY(18px) scale(0.985);
+      }
+    }
+  }
+}
+
 .site-grid-bg {
   background-image:
     linear-gradient(rgb(199 209 222 / 0.05) 1px, transparent 1px),

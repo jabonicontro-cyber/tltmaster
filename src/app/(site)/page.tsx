@@ -145,7 +145,7 @@ export default function HomePage() {
           <SectionHeading id="story-title" title="One plan for the whole day." />
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             {STORY.map((c) => (
-              <article key={c.id} className="rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card sm:p-7 md:last:odd:col-span-2">
+              <article key={c.id} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card sm:p-7 md:last:odd:col-span-2">
                 <h3 className="text-xl font-semibold text-cloud">{c.title}</h3>
                 <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-silver">{c.body}</div>
               </article>
@@ -314,7 +314,7 @@ export default function HomePage() {
           </SectionHeading>
           <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
             {ROLES.map((r) => (
-              <li key={r.title} className="border-t border-silver/15 pt-5">
+              <li key={r.title} className="site-reveal border-t border-silver/15 pt-5">
                 <r.icon className="size-5 text-electric" aria-hidden />
                 <h3 className="mt-4 font-semibold text-cloud">{r.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-silver/90">{r.text}</p>

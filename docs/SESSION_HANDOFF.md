@@ -7,6 +7,17 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0000000000000000. 2026-10-27 — website round (B88, owner "do it all")
+
+- **Built and tested locally (production build):** comparison pages, paperwork calculator, public guides, What's new
+  (drafts await the owner's approval; not linked until then), link previews and canonical addresses, structured data,
+  site-styled 404, scroll reveals, and the `next.config.ts` fix that had sent `noindex` on FAQ, Trust and every
+  area/solution page. Every public page loads under 1 s locally with no sideways scroll at 390 px.
+- **Pre-existing, not from this round:** `tests/e2e/platform.spec.ts` "live demo" fails locally on demo order data
+  (same result without these changes); the marketing spec still expected the removed "Not yet" list (updated).
+- **Owner:** approve the three What's new drafts (speed metrics, shop time estimates, faster dispatching) to show the
+  page; `SITE_INDEXING=on` on Production when the site should appear in Google.
+
 ## 000000000000000. 2026-10-26 — redesign rounds, B91, B86, B84 (owner at work; promotion authorized "as long as testing is good")
 
 - **Production (each with Preview CI, Preview deploy, Production CI, migration workflow and Production deploy green):**

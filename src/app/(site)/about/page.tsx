@@ -4,6 +4,7 @@ import { Container, FinalCta, PageIntro } from "@/components/site/ui";
 export const metadata: Metadata = {
   title: "About",
   description: "Why Taviron exists and the principles it is built on.",
+  alternates: { canonical: "/about" },
 };
 
 const PRINCIPLES = [

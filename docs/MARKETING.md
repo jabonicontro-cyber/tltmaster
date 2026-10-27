@@ -120,6 +120,15 @@ public page with a page file; solutions name real plans; no percentages, testimo
 and on a phone, a demo request keeps the visitor's interest (`/demo?interest=<area or solution>` prefills the message),
 and nothing scrolls sideways.
 
+**Resources (2026-10-27, B88):** comparisons `src/lib/site/compare.ts` (each Taviron row names its published feature;
+no competitor names, figures or testimonials), the paperwork calculator `src/lib/site/calculator.ts` (pure arithmetic on
+the visitor's numbers, nothing pre-filled or sent), public guides `src/lib/site/guides.ts` (an allowlist of Help Center
+articles for published features; settings and administration stay in the app), and What's new from
+`src/lib/site/releases.ts` (only `published` entries with an approval; the menu links it once one exists). Checked by
+`tests/unit/site-pages.test.ts` and `tests/e2e/website.spec.ts`. Link previews use `public/og/taviron.png`
+(`node scripts/site/render-og-image.mjs` after the Command Center screenshot changes); every page has a canonical
+address on `PUBLIC_WEBSITE_URL`.
+
 Not done, needing a decision: analytics (the privacy notice says the site sets no analytics cookies), publishing the
 hosting providers and data locations, a public Help Center, an interactive guided demo on the website (today the demo is
 a walkthrough led by the Taviron team), and new screenshots for areas without one.

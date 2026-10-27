@@ -6,6 +6,7 @@ import { AREAS, SEGMENTS } from "@/lib/site/areas";
 export const metadata: Metadata = {
   title: "Request a demo",
   description: "Ask for a walkthrough of Taviron with the live demo company and fictional data.",
+  alternates: { canonical: "/demo" },
 };
 
 const STEPS = [

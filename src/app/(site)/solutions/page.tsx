@@ -5,6 +5,7 @@ import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/sit
 export const metadata: Metadata = {
   title: "Solutions",
   description: "How Taviron fits aggregate and material haulers, dump truck fleets and growing operations — and each role inside them.",
+  alternates: { canonical: "/solutions" },
 };
 
 const COMPANIES = [
