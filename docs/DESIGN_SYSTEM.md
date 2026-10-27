@@ -14,7 +14,15 @@ driver/mechanic phone views and the platform console (`/admin`). The public webs
 
 ## Patterns
 
-- **Navigation:** the floating sidebar marks the current page with a solid light pill. Section tabs are a segmented
+- **Navigation (owner 2026-10-27):** light mode has a light rail, dark mode a graphite one (`--color-nav`), in every
+  workspace; the current page is a filled pill in the company's accent (`bg-nav-active`). Selected chips, tabs and the
+  current view use `bg-strong`, which is the company's accent too. The company's "document color" only colours printed
+  quote headings.
+- **Dark mode (owner's references 2026-10-27):** neutral graphite, cards one step lighter than the page with a hairline
+  top highlight, a faint accent glow at the top of the page; colour only where it means something.
+- **Figures and charts:** `StatTile` (icon chip, label, large figure, one line of context), `Ring` for a share of a whole,
+  bars for a week or a pipeline, change chips only against a measured earlier period. Explanations go behind `InfoTip`.
+- **Tabs:** section tabs are a segmented
   control: `rounded-full bg-ink/[0.05] p-1`; the current tab `bg-card text-ink shadow-xs`. Second-level tabs are quieter
   (`bg-ink/[0.07]` on the current one, no container).
 - **Figures:** summary numbers are large and tight: `text-[1.875rem]` to `text-[2.5rem]`, `leading-none`/`leading-tight`,

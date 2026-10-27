@@ -74,9 +74,9 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
                 <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#0f6fd6" maxLength={7} />
               </div>
             </Field>
-            <Field label="Navigation color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="The menu and top bar. Leave empty for the default navy.">
+            <Field label="Document color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="Headings on printed quotes. The menu follows light or dark mode and marks the current page with the accent color. Leave empty for the default navy.">
               <div className="flex gap-2">
-                <input type="color" aria-label="Pick the navigation color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-xl border border-line" />
+                <input type="color" aria-label="Pick the document color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-xl border border-line" />
                 <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#0c1a2b" maxLength={7} />
               </div>
             </Field>

@@ -231,9 +231,9 @@
     /* lightened so brand text stays readable on dark panels (white text still sits on bg-brand) */
     --color-brand-fg: color-mix(in srgb, var(--color-brand) 40%, white);
     --color-strong: var(--color-brand);
-    /* A graphite rail, or the company's own navigation colour when it set one (--nav-dark, src/lib/branding.ts); the
-       current page in the company's accent, as in light mode. */
-    --color-nav: var(--nav-dark, #131417);
+    /* A graphite rail in every workspace (owner 2026-10-27: matches the graphite cards); the company shows through its
+       accent on the current page, as in light mode. */
+    --color-nav: #131417;
     --color-nav-fg: #ffffff;
     --color-nav-active: var(--color-brand);
     --color-nav-active-fg: #ffffff;
