@@ -179,13 +179,15 @@
     color-scheme: dark;
   }
   html[data-theme="dark"] body {
-    --shadow-card: 0 1px 2px rgb(0 0 0 / 0.35);
+    /* Graphite dark mode (owner's references 2026-10-27): neutral near-black, cards one step lighter with a hairline
+       top highlight instead of heavy shadows. */
+    --shadow-card: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 1px 2px rgb(0 0 0 / 0.4), 0 14px 34px -22px rgb(0 0 0 / 0.7);
     --shadow-float: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -16px rgb(0 0 0 / 0.7);
-    --color-surface: #0b1522;
-    --color-card: #111d2c;
-    --color-ink: #e6edf5;
-    --color-muted: #9aa8b9;
-    --color-line: #263548;
+    --color-surface: #0e0f11;
+    --color-card: #18191c;
+    --color-ink: #ececee;
+    --color-muted: #9d9fa7;
+    --color-line: #2a2c31;
     --color-red-50: #2c1517;
     --color-red-100: #3a1a1d;
     --color-red-200: #5c2328;
@@ -218,20 +220,29 @@
     --color-blue-800: #a3cbf6;
     --color-blue-900: #bad8f8;
     --color-blue-950: #d6e8fb;
-    --color-gray-100: #1a2635;
-    --color-gray-300: #3a4a5e;
+    --color-gray-100: #222326;
+    --color-gray-300: #3c3e45;
     --color-gray-700: #c2ccd8;
   }
   html[data-theme="dark"] body,
   html[data-theme="dark"] .app-root {
-    --color-brand-light: color-mix(in srgb, var(--color-brand) 24%, #111d2c);
+    --color-brand-light: color-mix(in srgb, var(--color-brand) 24%, #18191c);
     /* lightened so brand text stays readable on dark panels (white text still sits on bg-brand) */
     --color-brand-fg: color-mix(in srgb, var(--color-brand) 40%, white);
-    --color-strong: #5b6b80; /* white text 5.5:1, against panels 3.1:1 */
-    --color-nav: var(--color-charcoal);
+    --color-strong: #5a5d66; /* white text 6.4:1 */
+    /* A graphite rail, or the company's own navigation colour when it set one (--nav-dark, src/lib/branding.ts); the
+       current page in the company's accent, as in light mode. */
+    --color-nav: var(--nav-dark, #131417);
     --color-nav-fg: #ffffff;
-    --color-nav-active: #ffffff;
-    --color-nav-active-fg: var(--color-charcoal);
+    --color-nav-active: var(--color-brand);
+    --color-nav-active-fg: #ffffff;
+  }
+  /* A faint glow of the company's colour behind the top of every page (owner's dark references 2026-10-27). Fixed to
+     the viewport so long pages do not stretch it; decoration only. */
+  html[data-theme="dark"] .app-root {
+    background-image: radial-gradient(70rem 26rem at 60% -8rem, color-mix(in srgb, var(--color-brand) 13%, transparent), transparent 70%);
+    background-attachment: fixed;
+    background-repeat: no-repeat;
   }
   /* Critical stays the same fixed red for fills (white text on it), but as text on dark panels the light-mode shade
      is unreadable (2.6:1), so text uses a lighter red here. Still red and never the tenant's brand. */

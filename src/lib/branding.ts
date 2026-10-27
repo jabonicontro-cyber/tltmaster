@@ -64,6 +64,8 @@ export function brandingStyle(b: Branding): Record<string, string> {
     style["--color-charcoal"] = b.sidebarColor;
     style["--color-charcoal-2"] = mix(b.sidebarColor, 255, 0.08);
     style["--color-charcoal-3"] = mix(b.sidebarColor, 255, 0.16);
+    // Dark mode's navigation rail uses the company's own colour (light mode keeps a light rail; globals.css).
+    style["--nav-dark"] = b.sidebarColor;
   }
   return style;
 }

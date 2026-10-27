@@ -27,8 +27,8 @@ test("the appearance choice switches the app to dark, survives a reload, and kee
   await expect.poll(() => theme(page)).toBe("dark");
   await page.reload();
   expect(await theme(page)).toBe("dark");
-  expect(await bg(page, "body")).toBe("rgb(11, 21, 34)");
-  expect(await bg(page, "#main .bg-card")).toBe("rgb(17, 29, 44)"); // cards and panels
+  expect(await bg(page, "body")).toBe("rgb(14, 15, 17)");
+  expect(await bg(page, "#main .bg-card")).toBe("rgb(24, 25, 28)"); // cards and panels
 
   // The company's accent stays its own; urgency stays the fixed critical red.
   const brand = await page.locator("#main").evaluate((el) => getComputedStyle(el).getPropertyValue("--color-brand").trim());
