@@ -19,18 +19,20 @@ export function DailySummaryForm({ enabled, hour, canEdit, demo }: { enabled: bo
     },
   });
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-end gap-4" noValidate data-guard-unsaved aria-label="End-of-day summary">
+    <form onSubmit={onSubmit} className="space-y-4" noValidate data-guard-unsaved aria-label="End-of-day summary">
       <FormError message={formError} />
       <label className="flex min-h-10 items-center gap-2 text-sm font-semibold">
         <input type="checkbox" name="enabled" defaultChecked={enabled} disabled={!canEdit || demo} className="size-4" />
         Email the owners an end-of-day summary
       </label>
+      <div className="flex flex-wrap items-end gap-4">
       <Field label="Not before" htmlFor="ds-hour" hint="Company time.">
         <Select id="ds-hour" name="hour" defaultValue={String(hour)} disabled={!canEdit || demo}>
           {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{hourLabel(h)}</option>)}
         </Select>
       </Field>
       {canEdit && !demo ? <Button type="submit" loading={pending}>Save</Button> : null}
+      </div>
     </form>
   );
 }

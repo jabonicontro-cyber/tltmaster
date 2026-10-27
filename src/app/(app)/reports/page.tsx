@@ -118,7 +118,7 @@ async function run(supabase: Awaited<ReturnType<typeof createClient>>, from: str
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ days?: string; from?: string; to?: string }> }) {
   const access = await requireAccess();
   const sp = await searchParams;
-  const { today } = await businessToday();
+  const { today, timezone } = await businessToday();
   const days = PERIODS.find((p) => String(p) === sp.days) ?? 30;
   const custom = sp.from && sp.to && isIsoDate(sp.from) && isIsoDate(sp.to) && sp.from <= sp.to;
   const from = custom ? sp.from! : addDays(today, -(days - 1));
@@ -139,7 +139,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const prev = previous.r;
   const bases = await listBases();
   // Quote win/loss (B95) for people who can see quotes; a failure leaves the rest of the report standing.
-  const quoteOutcomes = can(access, "quotes.view") ? await loadQuoteOutcomes(from, to).catch(() => null) : null;
+  const quoteOutcomes = can(access, "quotes.view") ? await loadQuoteOutcomes(from, to, timezone).catch(() => null) : null;
   // Driver scorecard (B96): every driver, for people with dispatch or employee access (the database checks it again).
   const scorecard = can(access, "dispatch.view") || can(access, "employees.view") ? await loadScorecard(from, to).catch(() => null) : null;
   const byBase = bases && bases.length > 1 ? await baseSummary(from, to) : [];
