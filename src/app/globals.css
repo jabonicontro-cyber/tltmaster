@@ -238,6 +238,10 @@
     --color-nav-active: var(--color-brand);
     --color-nav-active-fg: #ffffff;
   }
+  /* Selected tabs in segmented controls (bg-card + shadow-xs) need an edge to stand out from the track in dark mode. */
+  html[data-theme="dark"] body .bg-card.shadow-xs:not(:is(.site, .force-light) *) {
+    box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 1px 2px rgb(0 0 0 / 0.5);
+  }
   /* A faint glow of the company's colour behind the top of every page (owner's dark references 2026-10-27). Fixed to
      the viewport so long pages do not stretch it; decoration only. */
   html[data-theme="dark"] .app-root {
