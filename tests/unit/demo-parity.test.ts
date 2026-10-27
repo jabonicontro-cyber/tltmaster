@@ -51,6 +51,8 @@ const ALLOWED = new Set([
   "src/server/weather.ts",
   "src/app/(app)/command-center/page.tsx",
   "src/app/(app)/dispatch/page.tsx",
+  // End-of-day summary (B97): demos never send it; Settings shows the figures without the switch.
+  "src/app/(app)/settings/page.tsx",
 ]);
 
 function files(dir: string): string[] {

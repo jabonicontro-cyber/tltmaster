@@ -193,3 +193,19 @@ export async function saveApprovalChain(formData: FormData): Promise<ActionResul
     return ok(undefined, steps.length ? "Approval chain saved. Pending requests start again at step 1." : "Approval chain removed: one approval decides.");
   });
 }
+
+/** End-of-day owner summary (B97; settings.manage, checked again by RLS): on or off, and the earliest hour. */
+export async function saveDailySummary(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    const enabled = formData.get("enabled") === "on";
+    const hour = Number(formData.get("hour"));
+    if (!Number.isInteger(hour) || hour < 0 || hour > 23) return fail("Choose an hour.");
+    const supabase = await createClient();
+    const { error } = await supabase.from("company_settings").update({ daily_summary_enabled: enabled, daily_summary_hour: hour }).eq("company_id", access.companyId!);
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/settings");
+    return ok(undefined, enabled ? "End-of-day summary is on. Owners receive it once a day." : "End-of-day summary is off.");
+  });
+}
+

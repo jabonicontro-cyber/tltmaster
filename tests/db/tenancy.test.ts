@@ -34,7 +34,7 @@ const TENANT_TABLES = [
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
-  "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos",
+  "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -56,6 +56,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Site notes from customers (20261120004100): portal functions act only on the customer's own sites and pending
   // submissions; review needs customers.edit; site_photo_path answers only staff allowed to see that photo.
   "public.portal_sites", "public.portal_site_info_submit", "public.portal_site_photo_begin", "public.site_info_review", "public.site_photo_path", "public.driver_site_photos", "public.demo_site_note",
+  // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
+  // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
+  "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",
   // Hired trucks (20261120003700): add-on switch, haulers, documents, offers; a hired truck is assigned only via an offer.
   "private.guard_hired_assignment", "private.hauler_document_problems", "private.hired_trucks_on", "private.my_driver_id",
   "private.require_hired_trucks", "public.hauler_add_driver", "public.hauler_add_truck", "public.hauler_offer_confirm",
@@ -260,7 +263,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  * tests/db/platform.test.ts) and refuse demo and inactive companies.
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_hired_trucks_set", "public.platform_hired_trucks_entitlement", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo", "public.platform_onboarding_generate", "public.platform_onboarding", "public.platform_onboarding_kit", "public.platform_onboarding_form_save", "public.platform_onboarding_go_live_sign"];
+// daily_summary_record: service role only (the scheduled job records each company's outcome; authenticated cannot execute it).
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.daily_summary_record", "public.platform_hired_trucks_set", "public.platform_hired_trucks_entitlement", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo", "public.platform_onboarding_generate", "public.platform_onboarding", "public.platform_onboarding_kit", "public.platform_onboarding_form_save", "public.platform_onboarding_go_live_sign"];
 
 interface World {
   ids: Awaited<ReturnType<typeof sampleIds>>;

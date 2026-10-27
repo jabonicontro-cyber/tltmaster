@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizedCron, housekeepingFailed } from "@/server/cron";
 import { createAdminClient } from "@/server/supabase/admin";
+import { runDailySummaries } from "@/server/daily-summary";
 
 // Scheduled Communications housekeeping (Vercel Cron, vercel.json): escalations, document alerts, workspace
 // archiving and the 14-day message retention for every company (public.comm_housekeeping_all), then removal of
@@ -46,11 +47,21 @@ export async function GET(request: Request) {
     const marked = await admin.rpc("comm_mark_attachment_files_removed", { p_ids: chunk.map((r) => r.attachment_id) });
     if (marked.error) fileErrors += chunk.length; else removed += Number(marked.data ?? 0);
   }
+  // End-of-day owner summaries (B97) ride on this evening run: the Hobby plan allows two daily jobs, both in use. Each
+  // company gets at most one per day, from its chosen hour on (an hourly job on a paid plan would honour the hour exactly).
+  let summaries: Awaited<ReturnType<typeof runDailySummaries>> | { error: string };
+  try {
+    summaries = await runDailySummaries(admin);
+  } catch (e) {
+    console.error("daily-summary failed", e instanceof Error ? e.message : "unknown");
+    summaries = { error: "Daily summaries failed; they are retried on the next run." };
+  }
+
   // Partial failures must be visible: Vercel marks a non-2xx cron run as failed, and the log names what failed
   // (company ids and counts only — never message content or secrets). The next run retries everything.
   if (housekeepingFailed(run.data as { failed?: unknown[] } | null, fileErrors)) {
     console.error("comm-housekeeping: partial failure", JSON.stringify({ failedCompanies: (run.data as { failed?: unknown[] }).failed ?? [], fileErrors }));
-    return json({ ok: false, housekeeping: run.data, filesRemoved: removed, fileErrors }, 500);
+    return json({ ok: false, housekeeping: run.data, filesRemoved: removed, fileErrors, summaries }, 500);
   }
-  return json({ ok: true, housekeeping: run.data, filesRemoved: removed, fileErrors });
+  return json({ ok: true, housekeeping: run.data, filesRemoved: removed, fileErrors, summaries });
 }

@@ -157,7 +157,7 @@ content disappears on the next refresh because the database stops returning it.
 
 Housekeeping (escalation, document checks, workspace archiving, retention) runs in three ways:
 1. while people use Communications: the inbox load runs it for that company, at most once a minute;
-2. **Vercel Cron** (`vercel.json`, daily at 04:17 UTC) calls `/api/cron/comm-housekeeping`, which runs
+2. **Vercel Cron** (`vercel.json`, daily at 23:17 UTC since 2026-10-27, so the end-of-day owner summary rides on it) calls `/api/cron/comm-housekeeping`, which runs
    `public.comm_housekeeping_all()` for every company and then removes expired attachment files. **Owner action:**
    set `CRON_SECRET` (at least 16 random characters) in the Vercel environment; without it the route refuses every
    request (503) and nothing runs. It also needs `SUPABASE_SERVICE_ROLE_KEY`, which is used there only for those

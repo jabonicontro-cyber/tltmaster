@@ -7,6 +7,16 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000000000000000. 2026-10-27 (later) — seven owner ideas (B92–B98)
+
+- **Built and tested locally:** quote win/loss (B95), driver scorecard (B96, `20261120003800`), truck health (B93,
+  `20261120003900`), weather at job sites (B92, NWS, no migration), proof of delivery (B98, `20261120004000`), job-site
+  notes and photos from customers (B94, `20261120004100`), end-of-day owner summary (B97, `20261120004200`). Every
+  migration has a tested rollback and works with the code before it. Catalog entries added, unpublished.
+- **Owner:** switch on the end-of-day summary per company (Settings → Email); it emails only when email delivery is
+  live (Resend). Press **Refresh demo data** in each demo for the new samples (quote history, site note, proof positions).
+  Publishing any of the seven on the website is your call.
+
 ## 0000000000000000. 2026-10-27 — website round (B88, owner "do it all")
 
 - **Built and tested locally (production build):** comparison pages, paperwork calculator, public guides, What's new

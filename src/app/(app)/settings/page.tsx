@@ -24,6 +24,8 @@ import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
 import { TruckHealthForm } from "@/components/settings/truck-health-form";
+import { DailySummaryForm } from "@/components/settings/daily-summary-form";
+import { summaryLines, type DailySummary } from "@/lib/summary/daily";
 import { parseRules } from "@/lib/fleet/health";
 import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
@@ -168,6 +170,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     content = <PermissionsMatrix permissions={perms ?? []} granted={granted} />;
   } else if (tab === "email") {
     const status = emailStatusSummary();
+    // End-of-day owner summary (B97): settings, today's figures as they stand, and the last sends.
+    const [ds, preview, log] = await Promise.all([
+      supabase.from("company_settings").select("daily_summary_enabled, daily_summary_hour").maybeSingle(),
+      supabase.rpc("my_daily_summary", { p_day: today }),
+      supabase.from("daily_summary_log").select("day, status, recipients").order("day", { ascending: false }).limit(5),
+    ]);
+    const dsRow = ds.error ? null : (ds.data as { daily_summary_enabled: boolean; daily_summary_hour: number } | null);
     content = (
       <>
         <CardHeader title="Email delivery" description="How quote emails are handled. Configured by environment variables on the server." />
@@ -183,6 +192,29 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               Create a Resend account, verify your sending domain, then set <code>EMAIL_PROVIDER=resend</code>, <code>RESEND_API_KEY</code> and{" "}
               <code>EMAIL_FROM</code> on the server. Use <code>EMAIL_TEST_RECIPIENT</code> first to send everything to a test inbox. See docs/SETUP.md.
             </Notice>
+          )}
+        </CardBody>
+        <CardHeader
+          title="End-of-day summary"
+          description={access.isDemo ? "Demo companies never send it; the figures below are what it would say today." : "One short email a day to the company's owners: loads delivered, tickets missing or waiting, trucks down, open driver reports and tomorrow's loads without a truck. Counts only. Text messages come once Twilio is set up."}
+        />
+        <CardBody className="space-y-4">
+          {dsRow ? (
+            <>
+              <DailySummaryForm enabled={dsRow.daily_summary_enabled} hour={dsRow.daily_summary_hour} canEdit={can(access, "settings.manage")} demo={Boolean(access.isDemo)} />
+              <p className="text-xs text-muted">Sent with the evening run (about 6 PM Central on the current hosting plan), once the chosen hour has passed; never twice a day.</p>
+              {preview.data ? (
+                <div className="rounded-xl bg-surface px-4 py-3 text-sm">
+                  <p className="font-semibold">Today so far</p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5">{summaryLines(preview.data as DailySummary).map((l) => <li key={l}>{l}</li>)}</ul>
+                </div>
+              ) : null}
+              {(log.data ?? []).length ? (
+                <p className="text-xs text-muted">Last sends: {((log.data ?? []) as Array<{ day: string; status: string; recipients: number }>).map((l) => `${l.day} ${l.status === "sent" ? `sent to ${l.recipients}` : l.status.replace("_", " ")}`).join(" · ")}</p>
+              ) : null}
+            </>
+          ) : (
+            <p className="text-sm text-muted">The end-of-day summary needs a database update that has not been installed yet.</p>
           )}
         </CardBody>
       </>
