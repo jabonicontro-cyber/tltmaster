@@ -57,7 +57,7 @@ test("office works a prospect from first call to won, and the pipeline follows",
   await page.getByLabel("Stage").first().selectOption("won");
   await page.getByRole("button", { name: "Save", exact: true }).first().click();
   await expect(page.getByText("Opportunity saved.")).toBeVisible();
-  await expect(account.locator("span").filter({ hasText: /^Customer$/ })).toBeVisible();
+  await expect(account.locator(".pill-text", { hasText: /^Customer$/ })).toBeVisible();
 
   // The list filters by tag and exports the same rows as CSV.
   await page.goto("/customers?tag=quarry");

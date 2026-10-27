@@ -327,9 +327,9 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </section>
           ) : null}
 
-          {scorecard ? <DriverScorecardTable rows={scorecard} period={`${formatDate(from)} – ${formatDate(to)}`} /> : null}
+          {scorecard ? <DriverScorecardTable rows={scorecard} /> : null}
 
-          {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} periodLabel={`${formatDate(from)} – ${formatDate(to)}`} /> : null}
+          {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} /> : null}
 
           <Notice title="Profitability is not calculated yet">
             Profit per load, truck, customer or material needs cost data Taviron does not have: {r.profitability.missing.join(", ")}. Revenue figures above are verified delivered value only, and no savings or

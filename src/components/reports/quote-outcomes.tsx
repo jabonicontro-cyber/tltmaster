@@ -42,13 +42,13 @@ function GroupTable({ label, rows, first }: { label: string; rows: Group[]; firs
   );
 }
 
-export function QuoteOutcomesSection({ data, periodLabel }: { data: QuoteOutcomes; periodLabel: string }) {
+export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
   return (
     <section aria-label="Quotes won and lost" className="space-y-4">
       <Card>
         <CardHeader
           title="Quotes won and lost"
-          description={`Quotes accepted (won), declined or expired (lost) during ${periodLabel}, from your own quote history. Canceled quotes are left out. Nothing here changes a price.`}
+          description={`Quotes accepted (won), declined or expired (lost) in the period above, from your own quote history. Canceled quotes are left out. Nothing here changes a price.`}
         />
         {data.decided === 0 ? (
           <CardBody><p className="text-sm text-muted">No quotes were decided in this period. <Link href="/quotes" className="font-semibold text-brand-fg hover:underline">Open quotes</Link></p></CardBody>

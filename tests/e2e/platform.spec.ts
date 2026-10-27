@@ -190,7 +190,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.getByRole("link", { name: "Lena Park" }).click();
   await expect(page.getByText("Pay (confidential)")).toBeVisible();
   await page.goto("/orders");
-  await expect(page.getByText("Brightwater office park — topsoil")).toBeVisible();
+  await expect(page.getByText("Brightwater office park — topsoil", { exact: true })).toBeVisible();
   await expect(page.getByText(/Prairie View|Top Line/)).toHaveCount(0); // nothing from any other company
 
   // The owner sees Billing; the dispatcher preview hides it, and the page itself refuses.

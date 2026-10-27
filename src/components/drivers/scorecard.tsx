@@ -6,11 +6,11 @@ import { share, type ScoreRow } from "@/lib/drivers/scorecard";
 
 const fmt = (p: number | null) => (p === null ? "—" : `${p}%`);
 
-export function DriverScorecardTable({ rows, period }: { rows: ScoreRow[]; period: string }) {
+export function DriverScorecardTable({ rows }: { rows: ScoreRow[] }) {
   return (
     <section aria-label="Driver scorecard">
       <Card>
-        <CardHeader title="Drivers" description={`${period}. On time: delivered by the end of the load's planned window. Same day: tickets the driver entered on the delivery day. A share needs three behind it. Drivers see only their own figures; there is no ranking.`} />
+        <CardHeader title="Drivers" description={`For the period above. On time: delivered by the end of the load's planned window. Same day: tickets the driver entered on the delivery day. A share needs three behind it. Drivers see only their own figures; there is no ranking.`} />
         {rows.length === 0 ? (
           <CardBody><p className="text-sm text-muted">No drivers yet.</p></CardBody>
         ) : (

@@ -644,7 +644,7 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
                 <li key={d.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && r.eligible && "cursor-grab active:cursor-grabbing")} {...(r.eligible ? drag("driver", d.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
                     {canEdit && r.eligible && <GripVertical className="absolute top-3 left-1.5 size-3.5 text-muted/60 opacity-0 transition-opacity group-hover/drag:opacity-100" aria-hidden />}
-                    <Link href={`/fleet/drivers/${d.id}`} draggable={false} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} />{d.display_name}</Link>
+                    <Link href={`/fleet/drivers/${d.id}`} draggable={false} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} /><span className="min-w-0 [overflow-wrap:anywhere]">{d.display_name}</span></Link>
                     {!r.eligible ? (
                       <Badge tone="red">Not eligible</Badge>
                     ) : bookings.length ? (
