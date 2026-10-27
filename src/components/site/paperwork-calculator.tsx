@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { paperworkCost, type PaperworkInput } from "@/lib/site/calculator";
 
 // The visitor's own numbers in, their own estimate out. Nothing is sent anywhere and nothing is pre-filled: Taviron
@@ -16,6 +16,32 @@ const FIELDS: Array<{ key: keyof PaperworkInput; label: string; hint: string; st
 
 const nf = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
+
+/** A figure that counts to its new value (about 450 ms, easing out) instead of jumping; instant with reduced motion. */
+function Figure({ value, format }: { value: number; format: (n: number) => string }) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = from.current;
+    if (start === value || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      from.current = value;
+      setShown(value);
+      return;
+    }
+    const t0 = performance.now();
+    let frame = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - t0) / 450);
+      const v = start + (value - start) * (1 - Math.pow(1 - k, 4));
+      from.current = v;
+      setShown(v);
+      if (k < 1) frame = requestAnimationFrame(step);
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{format(shown)}</>;
+}
 
 export function PaperworkCalculator() {
   const id = useId();
@@ -47,19 +73,19 @@ export function PaperworkCalculator() {
       <div className="rounded-2xl border border-silver/12 bg-navy-2 p-6 sm:p-8" aria-live="polite">
         <h2 className="text-sm font-semibold text-silver">Your estimate</h2>
         {result ? (
-          <dl className="mt-5 grid gap-6">
+          <dl className="site-enter mt-5 grid gap-6">
             <div>
               <dt className="text-sm text-silver">Delivery tickets a week</dt>
-              <dd className="site-title mt-1 text-4xl font-bold text-cloud tabular-nums">{nf.format(result.ticketsPerWeek)}</dd>
+              <dd className="site-title mt-1 text-4xl font-bold text-cloud tabular-nums"><Figure value={result.ticketsPerWeek} format={(n) => nf.format(n)} /></dd>
             </div>
             <div>
               <dt className="text-sm text-silver">Office hours a week on tickets</dt>
-              <dd className="site-title mt-1 text-4xl font-bold text-cloud tabular-nums">{nf.format(result.hoursPerWeek)}</dd>
+              <dd className="site-title mt-1 text-4xl font-bold text-cloud tabular-nums"><Figure value={result.hoursPerWeek} format={(n) => nf.format(n)} /></dd>
             </div>
             {result.costPerYear !== null ? (
               <div>
                 <dt className="text-sm text-silver">Cost a year</dt>
-                <dd className="site-title mt-1 text-4xl font-bold text-electric tabular-nums">{usd.format(result.costPerYear)}</dd>
+                <dd className="site-title mt-1 text-4xl font-bold text-electric tabular-nums"><Figure value={result.costPerYear} format={(n) => usd.format(n)} /></dd>
               </div>
             ) : null}
           </dl>

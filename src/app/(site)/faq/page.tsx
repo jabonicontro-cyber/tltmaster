@@ -20,10 +20,10 @@ function Group({ id, title, items }: { id: string; title: string; items: Faq[] }
             <summary className="cursor-pointer list-none text-[17px] font-semibold text-cloud [&::-webkit-details-marker]:hidden">
               <span className="flex items-start justify-between gap-4">
                 {f.q}
-                <span className="mt-0.5 text-electric transition-transform group-open:rotate-45" aria-hidden>+</span>
+                <span className="mt-0.5 text-electric transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-open:rotate-45" aria-hidden>+</span>
               </span>
             </summary>
-            <p className="mt-3 text-[15px] leading-relaxed text-silver">{f.a}</p>
+            <p className="site-disclose mt-3 text-[15px] leading-relaxed text-silver">{f.a}</p>
           </details>
         ))}
       </div>

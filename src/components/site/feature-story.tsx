@@ -25,7 +25,7 @@ export const featureAnchor = (id: string) => `feature-${id}`;
 function Media({ shot }: { shot: Shot }) {
   if (shot.viewport === "phone") {
     return (
-      <figure className="mx-auto w-[min(300px,70%)]">
+      <figure className="site-reveal mx-auto w-[min(300px,70%)]">
         <div className="overflow-hidden rounded-[30px] border-[6px] border-[#1d2b3d] bg-black shadow-[0_40px_80px_-24px_rgb(0_0_0/0.8)] ring-1 ring-silver/25">
           <Image src={`/site/${shot.file}`} alt={shot.alt} width={780} height={1688} className="h-auto w-full" sizes="300px" />
         </div>
@@ -43,7 +43,7 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
   return (
     <section id={featureAnchor(feature.id)} aria-labelledby={titleId} className="scroll-mt-24 border-t border-silver/10 py-16 sm:py-20">
       <div className={`grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14 ${flip ? "lg:[&>*:first-child]:order-last" : ""}`}>
-        <div>
+        <div className="site-reveal">
           {/* The category is information (where the capability sits in the day), so it stays, in sentence case. */}
           <p className="text-sm font-medium text-silver/75">{CATEGORY[feature.category]}</p>
           <h2 id={titleId} className="mt-3 site-title text-3xl font-bold text-cloud sm:text-4xl">{feature.name}</h2>

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Building2, Gauge, Receipt, Route, Truck, Users, Wrench } from "lucide-react";
-import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
+import { Container, FinalCta, PageIntro, SectionHeading, order } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "Solutions",
@@ -44,8 +44,8 @@ export default function SolutionsPage() {
       <section>
         <Container className="py-16">
           <div className="grid gap-4 md:grid-cols-3">
-            {COMPANIES.map((c) => (
-              <div key={c.title} className="rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card">
+            {COMPANIES.map((c, n) => (
+              <div key={c.title} style={order(n % 3)} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card">
                 <c.icon className="size-7 text-electric" aria-hidden />
                 <h2 className="mt-4 text-lg font-bold text-cloud">{c.title}</h2>
                 <p className="mt-2 text-sm text-silver">{c.text}</p>
@@ -61,8 +61,8 @@ export default function SolutionsPage() {
             <p>People who wear more than one hat — an owner who also dispatches, an office manager who also drives — get each role&apos;s tools without extra logins.</p>
           </SectionHeading>
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-            {ROLES.map((r) => (
-              <div key={r.title} className="rounded-2xl border border-silver/10 bg-navy p-5">
+            {ROLES.map((r, n) => (
+              <div key={r.title} style={order(n % 3)} className="site-reveal rounded-2xl border border-silver/10 bg-navy p-5">
                 <r.icon className="size-6 text-electric" aria-hidden />
                 <h3 className="mt-3 font-bold text-cloud">{r.title}</h3>
                 <ul className="mt-2 space-y-1.5 text-sm text-silver">

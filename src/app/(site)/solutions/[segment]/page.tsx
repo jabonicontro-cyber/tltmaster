@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
 import { AreaCards } from "@/components/site/area-sections";
-import { Container, CtaLink, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
+import { Container, CtaLink, FinalCta, PageIntro, SectionHeading, order } from "@/components/site/ui";
 import { SEGMENTS, segmentBySlug } from "@/lib/site/areas";
 import { TIERS, usd } from "@/lib/site/pricing";
 
@@ -34,8 +34,8 @@ export default async function SolutionPage({ params }: { params: Promise<{ segme
         <Container className="py-16 sm:py-20">
           <SectionHeading id="needs-title" title="What matters at this size." />
           <ul className="mt-8 grid gap-4 md:grid-cols-3">
-            {seg.needs.map((n) => (
-              <li key={n.title} className="rounded-xl border border-silver/12 bg-navy-2/50 p-5">
+            {seg.needs.map((n, k) => (
+              <li key={n.title} style={order(k % 3)} className="site-reveal rounded-xl border border-silver/12 bg-navy-2/50 p-5">
                 <h3 className="text-[17px] font-semibold text-cloud">{n.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-silver">{n.text}</p>
               </li>
@@ -51,7 +51,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ segme
           </SectionHeading>
           <ol className="space-y-4">
             {seg.scenario.steps.map((s, i) => (
-              <li key={s} className="flex gap-4 rounded-xl border border-silver/12 bg-navy/60 p-5">
+              <li key={s} style={order(i % 3)} className="site-reveal flex gap-4 rounded-xl border border-silver/12 bg-navy/60 p-5">
                 <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-electric/15 text-sm font-semibold text-electric tabular" aria-hidden>{i + 1}</span>
                 <span className="text-[15px] leading-relaxed text-silver">{s}</span>
               </li>
@@ -66,8 +66,8 @@ export default async function SolutionPage({ params }: { params: Promise<{ segme
             <p>Plans differ by the number of trucks and dispatch bases. The written service agreement confirms the price; nothing is charged through the website.</p>
           </SectionHeading>
           <ul className="mt-8 grid gap-4 md:grid-cols-2">
-            {plans.map((t) => (
-              <li key={t.key} className="rounded-xl border border-silver/12 bg-navy-2/50 p-6">
+            {plans.map((t, k) => (
+              <li key={t.key} style={order(k)} className="site-reveal rounded-xl border border-silver/12 bg-navy-2/50 p-6">
                 <h3 className="text-xl font-semibold text-cloud">{t.name}</h3>
                 <p className="mt-2 text-2xl font-bold text-cloud tabular">{t.from ? "From " : ""}{usd(t.monthlyCents)}<span className="text-base font-medium text-silver"> / month</span></p>
                 <ul className="mt-4 space-y-2 text-sm text-silver">

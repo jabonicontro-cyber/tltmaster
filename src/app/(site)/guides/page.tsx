@@ -37,12 +37,12 @@ export default function GuidesPage() {
         </nav>
         <div className="max-w-3xl space-y-16">
           {guides.map((g) => (
-            <section key={g.id} id={g.id} aria-labelledby={`${g.id}-title`} className="site-reveal scroll-mt-24">
+            <section key={g.id} id={g.id} aria-labelledby={`${g.id}-title`} className="scroll-mt-24">
               <h2 id={`${g.id}-title`} className="site-title text-2xl font-bold text-cloud sm:text-3xl">{g.title}</h2>
               <p className="mt-3 text-[17px] leading-relaxed text-silver">{g.summary}</p>
               <div className="mt-6 space-y-6">
                 {g.tasks.map((t) => (
-                  <div key={t.title} className="rounded-xl border border-silver/12 bg-navy-2/60 p-5 sm:p-6">
+                  <div key={t.title} className="site-reveal rounded-xl border border-silver/12 bg-navy-2/60 p-5 sm:p-6">
                     <h3 className="font-semibold text-cloud">{t.title}</h3>
                     <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[15px] leading-relaxed text-silver marker:text-silver/60">
                       {t.steps.map((s) => <li key={s}><Rich text={s} /></li>)}

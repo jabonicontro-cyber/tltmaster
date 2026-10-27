@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleDashed, ShieldCheck } from "lucide-react";
-import { Container, FinalCta, PageIntro } from "@/components/site/ui";
+import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "Trust & Security",
@@ -74,8 +74,8 @@ export default function TrustPage() {
         <p>What Taviron does today to protect each company&apos;s records — and, just as plainly, what is not in place yet.</p>
       </PageIntro>
       <Container className="grid gap-6 py-16 sm:py-20 md:grid-cols-2">
-        {SECTIONS.map((s) => (
-          <section key={s.title} aria-label={s.title} className="rounded-xl border border-silver/12 bg-navy-2/50 p-6">
+        {SECTIONS.map((s, n) => (
+          <section key={s.title} aria-label={s.title} style={order(n % 2)} className="site-reveal rounded-xl border border-silver/12 bg-navy-2/50 p-6">
             <h2 className="text-xl font-semibold text-cloud">{s.title}</h2>
             <ul className="mt-4 space-y-3">
               {s.items.map((i) => (

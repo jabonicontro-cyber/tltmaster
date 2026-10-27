@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { FeatureBrief, FeatureStory, featureAnchor } from "@/components/site/feature-story";
-import { Container, FinalCta, PageIntro, SectionHeading } from "@/components/site/ui";
+import { Container, FinalCta, PageIntro, SectionHeading, order } from "@/components/site/ui";
 import { COMING_SOON, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
@@ -72,8 +72,8 @@ export default function PlatformPage() {
               <Sparkles className="size-5 text-electric" aria-hidden /> Coming soon
             </h2>
             <ul className="mt-4 space-y-3">
-              {COMING_SOON.map((c) => (
-                <li key={c.name} className="rounded-2xl border border-silver/10 bg-navy-2 px-5 py-4 shadow-card">
+              {COMING_SOON.map((c, n) => (
+                <li key={c.name} style={order(n % 3)} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 px-5 py-4 shadow-card">
                   <p className="flex flex-wrap items-center gap-2 font-semibold text-cloud">
                     {c.name}
                     <span className="inline-flex h-[22px] items-center rounded-full bg-electric/15 px-2.5 text-xs font-semibold text-electric"><span className="pill-text">Coming soon</span></span>

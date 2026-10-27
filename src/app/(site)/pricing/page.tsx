@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Check, Info } from "lucide-react";
-import { Container, CtaLink, FinalCta, PageIntro } from "@/components/site/ui";
+import { Container, CtaLink, FinalCta, PageIntro, order } from "@/components/site/ui";
 import { CUSTOM, EXTRA_TRAINING_CENTS, TIERS, annualMonthlyCents, usd } from "@/lib/site/pricing";
 import { PRICING_FAQ as FAQ } from "@/lib/site/pricing-faq";
 
@@ -42,8 +42,8 @@ export default function PricingPage() {
         <h2 id="tiers-title" className="sr-only">Tiers</h2>
         <Container className="pt-14">
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {TIERS.map((t) => (
-              <li key={t.key} aria-label={t.name} className="flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
+            {TIERS.map((t, n) => (
+              <li key={t.key} aria-label={t.name} style={order(n % 5)} className="site-reveal site-lift flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
                 <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
                 <p className="mt-1 text-sm text-silver/85">
                   Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}

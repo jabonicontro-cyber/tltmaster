@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Container, FinalCta, PageIntro } from "@/components/site/ui";
+import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "About",
@@ -28,8 +28,8 @@ export default function AboutPage() {
         <Container className="py-16">
           <h2 className="text-2xl font-black text-cloud">What we hold ourselves to</h2>
           <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {PRINCIPLES.map((p) => (
-              <div key={p.title} className="rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card">
+            {PRINCIPLES.map((p, n) => (
+              <div key={p.title} style={order(n % 3)} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card">
                 <h3 className="font-bold text-cloud">{p.title}</h3>
                 <p className="mt-2 text-sm text-silver">{p.text}</p>
               </div>

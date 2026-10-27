@@ -139,3 +139,14 @@ test("comparisons, guides and the link preview", async ({ page, request }) => {
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://mytaviron.com/pricing");
   expect((await request.get("/og/taviron.png")).status()).toBe(200);
 });
+
+test("motion: the opening animates, and nothing moves for people who ask for reduced motion", async ({ browser }) => {
+  for (const reducedMotion of ["no-preference", "reduce"] as const) {
+    const ctx = await browser.newContext({ reducedMotion });
+    const page = await ctx.newPage();
+    await page.goto("/");
+    const name = await page.locator("#hero-title").evaluate((e) => getComputedStyle(e).animationName);
+    expect(name, reducedMotion).toBe(reducedMotion === "reduce" ? "none" : "site-enter");
+    await ctx.close();
+  }
+});

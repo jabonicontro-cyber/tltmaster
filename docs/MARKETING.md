@@ -129,6 +129,12 @@ articles for published features; settings and administration stay in the app), a
 (`node scripts/site/render-og-image.mjs` after the Command Center screenshot changes); every page has a canonical
 address on `PUBLIC_WEBSITE_URL`.
 
+**Motion (2026-10-27):** one CSS vocabulary in `globals.css` ("Website motion"): `.site-enter` page-load entrances
+(staggered with `delay()`), `.site-enter-img` for opening images (transform only, so the largest image paints at once),
+`.site-reveal` scroll reveals (view timeline; `order()` staggers a row), `.site-parallax` on the hero, `.site-lift` card
+hover, `.site-disclose` for FAQ answers; the calculator's figures count to new values. Nothing loops; none of it runs
+with reduced motion (`tests/e2e/website.spec.ts`).
+
 Not done, needing a decision: analytics (the privacy notice says the site sets no analytics cookies), publishing the
 hosting providers and data locations, a public Help Center, an interactive guided demo on the website (today the demo is
 a walkthrough led by the Taviron team), and new screenshots for areas without one.

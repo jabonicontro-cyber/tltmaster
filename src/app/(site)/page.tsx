@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { CatalogShot } from "@/components/site/feature-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
-import { Container, CtaLink, FinalCta, SectionHeading } from "@/components/site/ui";
+import { Container, CtaLink, FinalCta, SectionHeading, delay, order } from "@/components/site/ui";
 import { SEGMENTS } from "@/lib/site/areas";
 import { TIERS, usd } from "@/lib/site/pricing";
 import { publishedFeatures } from "@/lib/site/features";
@@ -98,8 +98,8 @@ const TRUST = [
 function Points({ items }: { items: string[] }) {
   return (
     <ul className="mt-6 space-y-3">
-      {items.map((t) => (
-        <li key={t} className="flex gap-3 text-[15px] leading-relaxed text-silver">
+      {items.map((t, i) => (
+        <li key={t} style={order(i)} className="site-reveal flex gap-3 text-[15px] leading-relaxed text-silver">
           <Check className="mt-1 size-4 shrink-0 text-electric" aria-hidden />
           <span>{t}</span>
         </li>
@@ -117,23 +117,23 @@ export default function HomePage() {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_85%_10%,rgb(15_111_214/0.18),transparent_70%),radial-gradient(45%_60%_at_10%_90%,rgb(199_209_222/0.55),transparent_70%),linear-gradient(180deg,#ffffff,#f5f7fb)]" aria-hidden />
         <Container className="relative grid items-center gap-x-14 pt-14 pb-24 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24 lg:pb-32">
           <div className="max-w-xl">
-            <p className="inline-flex h-[30px] items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 text-[13px] font-semibold text-silver backdrop-blur">
+            <p className="site-enter inline-flex h-[30px] items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 text-[13px] font-semibold text-silver backdrop-blur">
               <span className="size-1.5 rounded-full bg-electric" aria-hidden /> <span className="pill-text">Built for hauling and aggregate companies</span>
             </p>
-            <h1 id="hero-title" className="site-display mt-6 text-[2.75rem] font-semibold text-cloud sm:text-[4rem]">
+            <h1 id="hero-title" style={delay(70)} className="site-enter site-display mt-6 text-[2.75rem] font-semibold text-cloud sm:text-[4rem]">
               Your entire trucking operation. Connected.
             </h1>
-            <p className="mt-6 text-lg leading-relaxed text-silver sm:text-xl">
+            <p style={delay(150)} className="site-enter mt-6 text-lg leading-relaxed text-silver sm:text-xl">
               Orders, dispatch, drivers, delivery tickets, maintenance and billing in one place. Taviron checks your safety,
               qualification and capacity rules first, and nothing moves until a person approves it.
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+            <div style={delay(230)} className="site-enter mt-9 flex flex-col gap-3 sm:flex-row">
               <CtaLink href="/demo">Request a Demo</CtaLink>
               <CtaLink href="/platform" variant="ghost">
                 Explore the Platform
               </CtaLink>
             </div>
-            <p className="mt-4 text-sm text-silver">Early access · a guided walkthrough with fictional data.</p>
+            <p style={delay(290)} className="site-enter mt-4 text-sm text-silver">Early access · a guided walkthrough with fictional data.</p>
           </div>
           <ProductShowcase />
         </Container>
@@ -144,8 +144,8 @@ export default function HomePage() {
         <Container className="py-16 sm:py-20">
           <SectionHeading id="story-title" title="One plan for the whole day." />
           <div className="mt-10 grid gap-6 md:grid-cols-2">
-            {STORY.map((c) => (
-              <article key={c.id} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card sm:p-7 md:last:odd:col-span-2">
+            {STORY.map((c, i) => (
+              <article key={c.id} style={order(i % 2)} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 p-6 shadow-card sm:p-7 md:last:odd:col-span-2">
                 <h3 className="text-xl font-semibold text-cloud">{c.title}</h3>
                 <div className="mt-3 space-y-3 text-[15px] leading-relaxed text-silver">{c.body}</div>
               </article>
@@ -169,7 +169,7 @@ export default function HomePage() {
                 ["Compare", "Smart Dispatch lists the trucks and drivers that can still take each load — and the ones it left out, with the rule."],
                 ["Decide", "A dispatcher approves the reassignment; approval re-checks it against the latest data. The truck stays restricted until an authorized inspection clears it."],
               ].map(([t, d], i) => (
-                <li key={t} className="flex gap-4">
+                <li key={t} style={order(i)} className="site-reveal flex gap-4">
                   <span className="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-electric/15 text-sm font-semibold text-electric tabular" aria-hidden>{i + 1}</span>
                   <p className="text-[15px] leading-relaxed text-silver"><span className="font-semibold text-cloud">{t}. </span>{d}</p>
                 </li>
@@ -190,7 +190,7 @@ export default function HomePage() {
           </h2>
           <ol className="mt-6 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-6">
             {FLOW.map((f, i) => (
-              <li key={f.title} className="bg-navy-2 p-5">
+              <li key={f.title} style={order(i % 6)} className="site-reveal bg-navy-2 p-5">
                 <div className="flex items-center justify-between">
                   <f.icon className="size-5 text-electric" aria-hidden />
                   <span className="text-xs text-silver/60 tabular-nums">{i + 1}</span>
@@ -248,8 +248,8 @@ export default function HomePage() {
             <p>Each of these is in the app today, shown with the demo company&apos;s fictional data on the platform page.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-3">
-            {publishedFeatures().map((f) => (
-              <li key={f.id} className="bg-navy">
+            {publishedFeatures().map((f, i) => (
+              <li key={f.id} style={order(i % 3)} className="site-reveal bg-navy">
                 <Link href={`/platform#feature-${f.id}`} className="group flex h-full flex-col p-5 hover:bg-navy-2 focus-visible:bg-navy-2">
                   <span className="font-semibold text-cloud group-hover:text-electric">{f.name}</span>
                   <span className="mt-1.5 text-sm leading-relaxed text-silver/85">{f.value}</span>
@@ -275,9 +275,9 @@ export default function HomePage() {
             <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform.</p>
           </SectionHeading>
           <ul className="mt-10 grid gap-4 md:grid-cols-3">
-            {SEGMENTS.map((s) => (
-              <li key={s.slug}>
-                <Link href={`/solutions/${s.slug}`} className="group flex h-full flex-col rounded-xl border border-silver/12 bg-navy-2/60 p-6 hover:border-electric/50">
+            {SEGMENTS.map((s, i) => (
+              <li key={s.slug} style={order(i)} className="site-reveal">
+                <Link href={`/solutions/${s.slug}`} className="site-lift group flex h-full flex-col rounded-xl border border-silver/12 bg-navy-2/60 p-6 hover:border-electric/50">
                   <span className="text-lg font-semibold text-cloud">{s.label}</span>
                   <span className="mt-2 flex-1 text-sm leading-relaxed text-silver">{s.summary}</span>
                   <span className="mt-4 text-sm font-semibold text-electric group-hover:underline">For {s.label.toLowerCase()}</span>
@@ -313,8 +313,8 @@ export default function HomePage() {
             <p>Each person sees what their role allows. Permissions are enforced on the server and in the database.</p>
           </SectionHeading>
           <ul className="mt-12 grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-5">
-            {ROLES.map((r) => (
-              <li key={r.title} className="site-reveal border-t border-silver/15 pt-5">
+            {ROLES.map((r, i) => (
+              <li key={r.title} style={order(i)} className="site-reveal border-t border-silver/15 pt-5">
                 <r.icon className="size-5 text-electric" aria-hidden />
                 <h3 className="mt-4 font-semibold text-cloud">{r.title}</h3>
                 <p className="mt-1.5 text-sm leading-relaxed text-silver/90">{r.text}</p>
@@ -336,8 +336,8 @@ export default function HomePage() {
             </Link>
           </div>
           <dl className="grid gap-8 sm:grid-cols-3 lg:gap-6">
-            {TRUST.map((t) => (
-              <div key={t.title} className="border-t border-silver/15 pt-5">
+            {TRUST.map((t, i) => (
+              <div key={t.title} style={order(i)} className="site-reveal border-t border-silver/15 pt-5">
                 <dt className="font-semibold text-cloud">{t.title}</dt>
                 <dd className="mt-1.5 text-sm leading-relaxed text-silver/90">{t.text}</dd>
               </div>

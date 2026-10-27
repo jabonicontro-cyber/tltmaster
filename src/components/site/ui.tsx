@@ -1,11 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/cn";
 import { SITE_CONTAINER } from "@/lib/layout";
 
 // Shared building blocks of the public website (Taviron palette: navy, silver,
 // electric blue accents, action blue for filled buttons — see globals.css).
+
+/** Motion helpers (globals.css "Website motion"): an entrance delay, and an item's place in a row for scroll reveals. */
+export const delay = (ms: number) => ({ "--d": `${ms}ms` }) as CSSProperties;
+export const order = (i: number) => ({ "--i": i }) as CSSProperties;
 
 export function Container({ className, children }: { className?: string; children: ReactNode }) {
   return <div className={cn(SITE_CONTAINER, className)}>{children}</div>;
@@ -18,8 +22,8 @@ export function PageIntro({ title, children }: { title: string; children?: React
     <section className="relative overflow-hidden border-b border-silver/10">
       <div className="site-grid-bg pointer-events-none absolute inset-0" aria-hidden />
       <Container className="relative py-16 sm:py-20">
-        <h1 className="site-display max-w-3xl text-4xl font-bold text-cloud sm:text-5xl">{title}</h1>
-        {children ? <div className="mt-5 max-w-2xl text-lg leading-relaxed text-silver">{children}</div> : null}
+        <h1 className="site-enter site-display max-w-3xl text-4xl font-bold text-cloud sm:text-5xl">{title}</h1>
+        {children ? <div className="site-enter mt-5 max-w-2xl text-lg leading-relaxed text-silver" style={delay(110)}>{children}</div> : null}
       </Container>
     </section>
   );
@@ -57,7 +61,7 @@ export function Screenshot({ src, alt, width, height, caption, className, priori
 
 export function SectionHeading({ title, children, className, id }: { title: string; children?: ReactNode; className?: string; /** The heading's id, for aria-labelledby. */ id?: string }) {
   return (
-    <div className={cn("max-w-2xl", className)}>
+    <div className={cn("site-reveal max-w-2xl", className)}>
       <h2 id={id} className="site-title text-3xl font-bold text-cloud sm:text-[2.5rem]">{title}</h2>
       {children ? <div className="mt-4 text-[17px] leading-relaxed text-silver">{children}</div> : null}
     </div>
@@ -67,7 +71,7 @@ export function SectionHeading({ title, children, className, id }: { title: stri
 export function FinalCta() {
   return (
     <section className="border-t border-silver/10 bg-navy-2">
-      <Container className="flex flex-col items-start justify-between gap-6 py-16 md:flex-row md:items-center">
+      <Container className="site-reveal flex flex-col items-start justify-between gap-6 py-16 md:flex-row md:items-center">
         <div>
           <h2 className="site-title text-3xl font-bold text-cloud">See it with your own operation in mind.</h2>
           <p className="mt-2 max-w-xl text-silver">A free walkthrough of the live demo company, with fictional data, led by the Taviron team.</p>

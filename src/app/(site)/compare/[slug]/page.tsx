@@ -46,7 +46,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
             </thead>
             <tbody>
               {c.rows.map((r) => (
-                <tr key={r.topic} className="grid gap-2 border-t border-silver/12 py-5 md:table-row">
+                <tr key={r.topic} className="site-reveal grid gap-2 border-t border-silver/12 py-5 md:table-row">
                   <th scope="row" className="font-semibold text-cloud md:border-t md:border-silver/12 md:py-5 md:pr-6 md:align-top">{r.topic}</th>
                   <td className="flex gap-2.5 text-[15px] leading-relaxed text-silver md:table-cell md:border-t md:border-silver/12 md:py-5 md:pr-6 md:align-top">
                     <Minus className="mt-1 size-4 shrink-0 text-silver/60 md:hidden" aria-hidden />
@@ -90,7 +90,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
 
       {other ? (
         <Container className="py-12">
-          <Link href={`/compare/${other.slug}`} className="group block rounded-xl border border-silver/12 bg-navy-2/60 p-6 hover:border-electric/50">
+          <Link href={`/compare/${other.slug}`} className="site-lift group block rounded-xl border border-silver/12 bg-navy-2/60 p-6 hover:border-electric/50">
             <span className="text-sm text-silver">Another comparison</span>
             <span className="mt-1 block text-lg font-semibold text-cloud group-hover:text-electric">{other.label}</span>
           </Link>
