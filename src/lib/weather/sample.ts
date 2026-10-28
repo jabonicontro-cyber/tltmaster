@@ -14,3 +14,13 @@ export function sampleForecast(index: number, today: string): ForecastPeriod[] {
   });
 }
 
+
+/** Fictional current conditions for a demo base. */
+export function sampleNow(index: number): { temperatureF: number; conditions: string } {
+  return [{ temperatureF: 63, conditions: "Partly Cloudy" }, { temperatureF: 58, conditions: "Light Rain" }, { temperatureF: 61, conditions: "Cloudy" }, { temperatureF: 66, conditions: "Sunny" }][index % 4];
+}
+
+/** A fictional NWS-style alert for a demo delivery site, ending this evening. */
+export function sampleAlert(today: string): { event: string; severity: string; headline: string; endsAt: string } {
+  return { event: "Wind Advisory", severity: "Moderate", headline: "Wind Advisory until 7:00 PM — gusts up to 45 mph (sample, demo)", endsAt: `${today}T19:00:00-05:00` };
+}

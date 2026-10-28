@@ -8,7 +8,7 @@ import { MetricGrid } from "@/components/command-center/metric-grid";
 import { RefreshButton } from "@/components/command-center/refresh-button";
 import { SalesSection } from "@/components/command-center/sales-section";
 import { SpeedSection } from "@/components/command-center/speed-section";
-import { WeatherSection } from "@/components/command-center/weather-section";
+import { WeatherStrip } from "@/components/command-center/weather-strip";
 import { loadSiteWeather } from "@/server/weather";
 import { SectionLayout, type Section } from "@/components/command-center/section-layout";
 import { Badge } from "@/components/ui/badge";
@@ -141,16 +141,6 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ) : (
         <ErrorState title="The next 7 days could not be loaded" description="No figures are shown rather than guessed. Open Dispatch directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
       ),
-    });
-  }
-
-  // Weather at job sites with planned loads in the next three days (B92).
-  if (has("dispatch.view")) {
-    sections.push({
-      id: "weather",
-      title: "Weather at job sites",
-      collapsedSummary: weather ? (weather.alerts.length ? `${weather.alerts.length} alert${weather.alerts.length === 1 ? "" : "s"}` : "No concerns") : "Could not be loaded",
-      content: weather ? <WeatherSection weather={weather} today={today} /> : <ErrorState title="The forecast could not be loaded" description="No weather is shown rather than guessed. Try again in a moment." />,
     });
   }
 
@@ -356,6 +346,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           </>
         }
       />
+
+      {/* Weather under the date (owner 2026-10-28): conditions now at the bases, alerts at today's delivery sites. */}
+      {weather && <WeatherStrip weather={weather} today={today} timezone={timezone} />}
 
       {sp.welcome === "1" && (
         <div className="mb-5">
