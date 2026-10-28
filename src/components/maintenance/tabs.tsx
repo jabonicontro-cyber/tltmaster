@@ -9,6 +9,7 @@ const TABS = [
   { key: "work-orders", label: "Work orders", href: "/maintenance/work-orders" },
   { key: "clearance", label: "Clearance queue", href: "/maintenance/clearance" },
   { key: "preventive", label: "Preventive", href: "/maintenance/preventive" },
+  { key: "parts", label: "Parts", href: "/maintenance/parts" },
   { key: "shop", label: "Shop capacity", href: "/maintenance/shop" },
   // Estimate against actual per job, kind of job and mechanic (B91): people with cost access (owner, office).
   { key: "estimates", label: "Time estimates", href: "/maintenance/estimates", permission: "maintenance.costs" },

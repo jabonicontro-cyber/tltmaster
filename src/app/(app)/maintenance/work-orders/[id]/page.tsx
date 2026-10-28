@@ -1,5 +1,7 @@
 import { CopyReference } from "@/components/ui/copy-reference";
 import Link from "next/link";
+import { UsePartForm } from "@/components/maintenance/parts-controls";
+import { listParts, recentMovements, type PartRow } from "@/server/data/parts";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { fmtMoney, fmtNum, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
@@ -36,7 +38,7 @@ const EVENT_LABELS: Record<string, string> = {
   crew: "Crew", time: "Labor time", task: "Checklist", triage: "Triage",
 };
 
-type Tab = "tasks" | "labor" | "costs" | "triage" | "activity";
+type Tab = "tasks" | "labor" | "parts" | "costs" | "triage" | "activity";
 
 export default async function WorkOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
   const access = await requirePagePermission("maintenance.view");
@@ -50,7 +52,9 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone, today }, crew, triage, history] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] }))]);
+  const [people, { timezone, today }, crew, triage, history, stock, partsUsed] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] })),
+    // Shop parts (B105): what is in stock and what this work order used.
+    listParts().catch(() => ({ installed: false, parts: [] as PartRow[] })), recentMovements(100, id)]);
   // B91: what comparable completed jobs took, from the company's own recorded labor. Shown beside the shop's estimate,
   // never written over it.
   const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
@@ -68,6 +72,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
     ...(showTriage ? [{ key: "triage" as const, label: "Triage" }] : []),
     { key: "tasks", label: "Tasks", count: crew.installed ? crew.tasks.length : undefined },
     { key: "labor", label: "Labor" },
+    ...(stock.installed ? [{ key: "parts" as const, label: "Parts used", count: partsUsed.filter((m) => m.kind === "used").length }] : []),
     ...(canCosts && costs ? [{ key: "costs" as const, label: "Parts and costs", count: costs.length }] : []),
     { key: "activity", label: "Activity", count: events.length },
   ];
@@ -221,6 +226,26 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
               <div className="space-y-3">
                 <p className="text-sm text-muted">What was reported, what is still unknown, and a suggestion. Nothing changes until someone accepts it.</p>
                 <TriageCard workOrderId={wo.id} triage={triage.triage} canManage={manage} open={editable} decidedByName={triage.triage?.decidedBy ? who(triage.triage.decidedBy) : null} />
+              </div>
+            )}
+            {tab === "parts" && stock.installed && (
+              <div className="space-y-4">
+                {partsUsed.filter((m) => m.kind === "used").length > 0 ? (
+                  <ul className="divide-y divide-line rounded-xl ring-1 ring-line/60" aria-label="Parts used">
+                    {partsUsed.filter((m) => m.kind === "used").map((m) => {
+                      const p = stock.parts.find((x) => x.id === m.part_id);
+                      return (
+                        <li key={m.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5 text-sm">
+                          <span className="font-medium">{p?.name ?? "Part"}</span>
+                          {p?.part_number && <span className="text-muted tabular">{p.part_number}</span>}
+                          <span className="tabular">{-m.quantity} {p?.unit}</span>
+                          <span className="ml-auto text-xs text-muted">{who(m.created_by)} · {formatDateTime(m.created_at, timezone)}</span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : <p className="text-sm text-muted">No parts used from stock yet.</p>}
+                {manage && !["completed", "closed", "canceled"].includes(wo.status) && <UsePartForm workOrderId={wo.id} parts={stock.parts.filter((p) => p.active)} />}
               </div>
             )}
             {tab === "activity" && (
