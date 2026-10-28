@@ -120,16 +120,16 @@ export const FEATURES: Feature[] = [
     name: "Weather at job sites",
     category: "dispatch",
     problem: "Rain or ice at a job site is found out the morning of, after trucks are already rolling.",
-    how: "For every job site with loads in the next three days, Taviron reads the National Weather Service forecast and lists rain, snow or ice, storms, strong wind, heat and cold on the Command Center and the dispatch board, with the loads affected.",
+    how: "The Command Center opens with the conditions now at each base, any National Weather Service alert in effect at a job site with a delivery today, and the forecast concerns (rain, snow or ice, storms, strong wind, heat, cold) for job sites with loads in the next three days, with the loads affected. The dispatch board shows the same for its day.",
     value: "Dispatch sees tomorrow's weather problems while there is still time to move loads.",
-    points: ["Forecast per job site with loads in the next three days", "The loads and orders affected", "Information only: nothing is moved automatically"],
-    limitations: ["US job sites with a map position only", "Forecasts refresh every three hours"],
+    points: ["Conditions now at each base", "Weather alerts in effect at today's delivery sites", "Forecast concerns per job site with loads in the next three days", "Information only: nothing is moved automatically"],
+    limitations: ["US bases and job sites with a map position only", "Forecasts refresh every three hours, alerts every ten minutes"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/command-center", "/dispatch"],
     screenshots: [],
     related: ["command-center", "smart-dispatch"],
-    verified: "2026-10-27",
+    verified: "2026-10-28",
   },
   {
     id: "truck-health",
@@ -141,7 +141,7 @@ export const FEATURES: Feature[] = [
     points: ["Good, Watch or At risk with the reasons", "Rules the company adjusts in Settings", "Shown on Maintenance and on the dispatch board"],
     limitations: ["Information only: safety restrictions are what block dispatch"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/maintenance", "/dispatch"],
     screenshots: [],
     related: ["maintenance", "smart-dispatch"],
@@ -157,7 +157,7 @@ export const FEATURES: Feature[] = [
     points: ["On time against the load's planned window", "Tickets entered the same day", "Drivers see only their own figures; no leaderboard"],
     limitations: ["A share needs three loads or tickets behind it"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/reports", "/driver"],
     screenshots: [],
     related: ["driver-portal", "delivery-tickets"],
@@ -173,7 +173,7 @@ export const FEATURES: Feature[] = [
     points: ["Win rate by material or service, distance and customer", "Median won and lost rate per unit", "Reasons recorded when a quote is declined"],
     limitations: ["Distance is straight-line from the yard", "Nothing changes a price automatically"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/reports"],
     screenshots: [],
     related: ["orders"],
@@ -189,7 +189,7 @@ export const FEATURES: Feature[] = [
     points: ["Position recorded once when the ticket is sent, never tracked", "Ticket photos on the customer's confirmed ticket", "Print or save as PDF from the portal"],
     limitations: ["The driver can decline the location; the ticket still goes through"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/tickets", "/driver"],
     screenshots: [],
     related: ["delivery-tickets", "driver-portal"],
@@ -205,7 +205,7 @@ export const FEATURES: Feature[] = [
     points: ["Sent from the customer portal with up to three photos", "Nothing reaches drivers until the office applies it", "Photos on the driver's load"],
     limitations: ["Needs the customer portal"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/customers"],
     screenshots: [],
     related: ["orders", "driver-portal"],
@@ -221,7 +221,7 @@ export const FEATURES: Feature[] = [
     points: ["Counts only, no customer details", "Off until the company switches it on", "Never sent twice a day"],
     limitations: ["Email only until text messages are set up", "Sent with the evening run on the current hosting plan"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-10-28
     routes: ["/settings"],
     screenshots: [],
     related: ["command-center"],
