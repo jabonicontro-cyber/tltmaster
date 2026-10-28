@@ -980,6 +980,46 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
   },
   {
+    id: "safety-incidents",
+    title: "Safety incidents",
+    summary: "Report accidents, injuries, damage, spills and near misses, investigate them and follow corrective actions through to closed.",
+    category: "fleet",
+    routes: ["/safety", "/safety/*", "/driver/safety"],
+    permissions: [],
+    audience: "Drivers report from their phone; owners, office and dispatch see incidents; owners and office investigate and close them.",
+    whatYouSee: [
+      "**Open incidents**, **Serious or injury**, **Actions overdue** and **Closed, last 90 days** at the top of Safety.",
+      "Each incident: **The report** as it was made (with photos), **Investigation** (findings and root cause), **Corrective actions**, **Witnesses** and the **Timeline**.",
+      "Drivers see **My reports** with the status of their own reports, never the investigation.",
+    ],
+    tasks: [
+      {
+        title: "Report an incident from the phone",
+        steps: ["On My Day, select **Report a safety incident**.", "Choose **What happened** and **How serious**, check the **Date** and **Time**, and describe it.", "Add photos if you can, then select **Report incident**."],
+      },
+      {
+        title: "Investigate and close",
+        steps: [
+          "Open the incident under **Safety**.",
+          "Write the **Findings** and **Root cause**, then **Save investigation**.",
+          "Add each **Corrective action** with who does it and when; the person marks it **Mark done**.",
+          "When the findings are recorded and every action is done, **Close incident**.",
+        ],
+      },
+    ],
+    prerequisites: ["Seeing incidents needs the safety view permission (owner, office and dispatch by default); investigating and closing need safety management (owner and office)."],
+    troubleshooting: [
+      { problem: "“Record the findings before closing.”", fix: "Write the findings in the investigation and save it." },
+      { problem: "“Every corrective action must be done before closing.”", fix: "Mark the remaining actions done first." },
+      { problem: "“Your sign-in is not linked to a driver record. Ask the office to report it.”", fix: "Ask the office to link your sign-in under Fleet → Drivers, or to report it for you." },
+      { problem: "“Safety incidents need a database update that has not been installed yet.”", fix: "Ask the owner to install the update." },
+    ],
+    next: ["driver-reports", "maintenance-work-orders"],
+    related: ["my-day", "fleet-drivers"],
+    reviewed: "2026-10-28",
+    limitations: ["Nothing is filed with a regulator or an insurer from Taviron.", "Photos are stored privately and shown only to people who may see the incident."],
+  },
+  {
     id: "driver-reports",
     title: "Driver Reports",
     summary: "See and act on delays, breakdowns and equipment or inspection problems sent by drivers.",

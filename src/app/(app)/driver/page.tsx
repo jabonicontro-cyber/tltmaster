@@ -199,6 +199,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         )}
         {/* On phones the Time off tab is one tap away; the link is for wider screens without the tab bar. */}
         <Link href="/time-off" className="mt-1 hidden text-sm font-semibold underline md:inline-block">Request time off</Link>
+        <Link href="/driver/safety" className="mt-1 ml-0 block text-sm font-semibold text-brand-fg underline md:ml-4 md:inline-block">Report a safety incident</Link>
         <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
         <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
       </div>

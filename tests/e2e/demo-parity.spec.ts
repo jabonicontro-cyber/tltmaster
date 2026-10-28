@@ -143,6 +143,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
     "/quotes": /No quotes yet/,
     "/communications": /No conversations yet/,
     "/schedule": /No people yet/,
+    "/safety": /No open incidents/,
   };
   try {
     for (const role of PREVIEW_ROLES) {

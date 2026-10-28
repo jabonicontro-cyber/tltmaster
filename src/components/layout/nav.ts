@@ -1,5 +1,5 @@
 import {
-  BarChart3, Boxes, CalendarClock, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
+  BarChart3, Boxes, ShieldAlert, CalendarClock, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -37,6 +37,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/field-reports", label: "Driver Reports", icon: MessageSquareWarning, permission: "field_reports.view", group: "Operations" },
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view", group: "Operations" },
   { href: "/maintenance", label: "Maintenance", icon: Wrench, permission: "maintenance.view", group: "Operations" },
+  { href: "/safety", label: "Safety", icon: ShieldAlert, permission: "safety.view", group: "Operations" },
   { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance" },
   { href: "/order-to-cash", label: "Order to Cash", icon: Workflow, permission: "billing.view", group: "Finance" },
   { href: "/payroll", label: "Payroll", icon: Wallet, permission: "payroll.manage", group: "Finance" },

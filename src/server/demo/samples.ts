@@ -105,6 +105,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("proof of delivery positions", await ticketLocations(db));
   // Site notes from customers (B94): one pending note for the office to review.
   note("site note from a customer", await siteNote(db));
+  // Safety incidents (B103): a closed near miss, an accident under investigation with an open action, a new spill.
+  note("safety incidents", await safetyIncidents(db));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
@@ -1317,6 +1319,13 @@ async function siteNote(db: Db): Promise<number> {
   const { data, error } = await db.rpc("demo_site_note");
   if (missing(error)) return 0;
   if (error) throw new Error(`Demo samples (site note): ${error.message}`);
+  return Number(data ?? 0);
+}
+
+async function safetyIncidents(db: Db): Promise<number> {
+  const { data, error } = await db.rpc("demo_safety_samples");
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (safety incidents): ${error.message}`);
   return Number(data ?? 0);
 }
 
