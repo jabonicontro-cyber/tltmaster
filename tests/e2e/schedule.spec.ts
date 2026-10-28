@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { asUser } from "./db";
+import { driverFixture } from "./driver-fixture";
 import { expectToast, signIn, unique } from "./helpers";
 import { USERS } from "./users";
 
@@ -95,6 +96,7 @@ test("a dispatcher schedules a driver, gives a day off, and assigning on that da
 });
 
 test("My Day shows the driver's own shift", async ({ page }) => {
+  await driverFixture(); // links the test driver's sign-in to a driver record with loads
   // Yesterday, today and tomorrow in UTC, so the company's today is covered in any time zone; cleared afterwards.
   const days = [-1, 0, 1].map((n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10));
   const employee = await asUser(USERS.owner.email, async (q) => {

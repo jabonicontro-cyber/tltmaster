@@ -84,7 +84,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
               <nav aria-label="Day" className="flex flex-wrap gap-1">
                 {dates.map((d) => (
                   <Link key={d} href={link({ view: "day", day: d })} aria-current={d === day ? "date" : undefined} className={cn("rounded-full px-2.5 py-1 text-xs font-medium", d === day ? "bg-strong text-white" : "text-muted hover:bg-surface hover:text-ink")}>
-                    {new Intl.DateTimeFormat("en-US", { weekday: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`))}
+                    {`${new Intl.DateTimeFormat("en-US", { weekday: "short", timeZone: "UTC" }).format(new Date(`${d}T12:00:00Z`))} ${Number(d.slice(8))}`}
                   </Link>
                 ))}
               </nav>

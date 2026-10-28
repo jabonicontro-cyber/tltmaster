@@ -150,7 +150,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     return (
       <div className="mx-auto max-w-xl">
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
-        <h1 className="mb-4 text-2xl font-black">My Day</h1>
+        <h1 className="mb-4 text-[1.75rem] leading-tight font-semibold tracking-[-0.03em]">My Day</h1>
         {home.notLinked ? (
           <Notice tone="warning" title="Your account is not linked to a driver yet">
             Ask the office to link your login to your driver record (Fleet → Drivers). Until then no loads can be shown.
