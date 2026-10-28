@@ -17,25 +17,12 @@ import type { CurrentPattern, ScheduleDay, SchedulePerson } from "@/server/data/
 import type { TimeOffMark } from "@/server/data/time-off";
 import Link from "next/link";
 import { TIME_OFF_CATEGORIES } from "@/lib/time-off";
+import { cellText, shortTime as short } from "@/lib/schedule/shifts";
 
 // The week's schedule: one row per person, one cell per day. People who manage schedules open a day to change it
 // (a shift, a day off, or back to the regular schedule) or a person's repeating pattern (weekly or a rotation).
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
-/** "06:00" → "6:00a". */
-function short(t: string | null) {
-  if (!t) return "";
-  const [h, m] = t.split(":").map(Number);
-  const suffix = h < 12 ? "a" : "p";
-  return `${h % 12 || 12}${m ? `:${String(m).padStart(2, "0")}` : ""}${suffix}`;
-}
-
-export function cellText(d: ScheduleDay) {
-  if (d.status === "shift") return `${short(d.start)}–${short(d.end)}`;
-  if (d.status === "off") return "Off";
-  return "—";
-}
 
 function useRun(onDone?: () => void) {
   const router = useRouter();

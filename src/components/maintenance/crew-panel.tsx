@@ -65,7 +65,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
   return (
     <div className="space-y-5">
       {canManage && open && (
-        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-surface p-3">
+        <div className="flex flex-wrap items-center gap-2 rounded-panel bg-surface p-3 ring-1 ring-line/60">
           {myTimerHere ? (
             <>
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink"><Clock className="size-4" aria-hidden /> Working · <Elapsed since={data.myTimer!.startedAt} /></span>
@@ -85,7 +85,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
       )}
 
       <section aria-label="Crew">
-        <ul className="divide-y divide-line rounded-2xl border border-line">
+        <ul className="divide-y divide-line overflow-hidden rounded-panel bg-card shadow-card ring-1 ring-line/60">
           {data.crew.length === 0 && <li className="px-3 py-2.5 text-sm text-muted">No mechanic assigned yet.</li>}
           {data.crew.map((c) => (
             <li key={c.userId} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
@@ -144,7 +144,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
           </form>
         )}
         {data.time.length > 0 ? (
-          <ul className="divide-y divide-line rounded-2xl border border-line text-sm">
+          <ul className="divide-y divide-line overflow-hidden rounded-panel bg-card shadow-card ring-1 ring-line/60 text-sm">
             {data.time.map((t) => (
               <li key={t.id} className={`flex flex-wrap items-center justify-between gap-2 px-3 py-2 ${t.voided ? "text-muted" : "text-ink"}`}>
                 <span>

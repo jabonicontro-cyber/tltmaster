@@ -1,6 +1,7 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import { createClient } from "@/server/supabase/server";
+import { DISPATCHABLE } from "./smart-dispatch";
 
 // Shift schedules (migration 20261120003300), read through the person's session: the company's schedules for people who
 // plan or see staff, one's own for everyone else (RLS and public.schedule_range). Before the migration the loader says so.
@@ -15,7 +16,7 @@ export interface ScheduleDay {
   source: "pattern" | "change" | null;
   reason: string;
 }
-export interface SchedulePerson { employeeId: string; name: string; department: string | null; days: ScheduleDay[] }
+export interface SchedulePerson { employeeId: string; name: string; department: string | null; /** Set when the person drives. */ driverId: string | null; days: ScheduleDay[] }
 
 const MISSING = new Set(["42P01", "PGRST205", "42883", "PGRST202"]);
 
@@ -26,14 +27,39 @@ export async function getScheduleWeek(from: string, days = 7): Promise<{ install
     if (MISSING.has(error.code ?? "")) return { installed: false, people: [] };
     throw new Error(error.message);
   }
-  const rows = (data ?? []) as Array<{ employee_id: string; full_name: string; department: string | null; work_date: string; status: ScheduleDay["status"]; start_time: string | null; end_time: string | null; overnight: boolean; break_minutes: number; source: ScheduleDay["source"]; reason: string }>;
+  const rows = (data ?? []) as Array<{ employee_id: string; full_name: string; department: string | null; work_date: string; status: ScheduleDay["status"]; start_time: string | null; end_time: string | null; overnight: boolean; break_minutes: number; source: ScheduleDay["source"]; reason: string; driver_id: string | null }>;
   const people = new Map<string, SchedulePerson>();
   for (const r of rows) {
-    const p = people.get(r.employee_id) ?? { employeeId: r.employee_id, name: r.full_name, department: r.department, days: [] };
+    const p = people.get(r.employee_id) ?? { employeeId: r.employee_id, name: r.full_name, department: r.department, driverId: r.driver_id ?? null, days: [] };
     p.days.push({ date: r.work_date, status: r.status, start: r.start_time?.slice(0, 5) ?? null, end: r.end_time?.slice(0, 5) ?? null, overnight: r.overnight, breakMinutes: r.break_minutes, source: r.source, reason: r.reason ?? "" });
     people.set(r.employee_id, p);
   }
   return { installed: true, people: [...people.values()] };
+}
+
+/**
+ * The signed-in person's own days (My Day "your shift"): their employee record is the one linked to their login.
+ * Null before the schedules update is installed or when the login has no employee record.
+ */
+export async function getMyShifts(userId: string, from: string, days = 2): Promise<ScheduleDay[] | null> {
+  const supabase = await createClient();
+  const me = await supabase.from("employees").select("id").eq("user_id", userId).maybeSingle();
+  const id = me.data?.id;
+  if (me.error || !id) return null;
+  const week = await getScheduleWeek(from, days).catch(() => null);
+  if (!week?.installed) return null;
+  return week.people.find((p) => p.employeeId === id)?.days ?? null;
+}
+
+/** Planned loads per day in a range (for the staffing forecast); null when they could not be read. */
+export async function plannedLoadsByDay(from: string, to: string): Promise<Record<string, number> | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("order_loads").select("load_date, orders!inner(status)").eq("status", "planned")
+    .gte("load_date", from).lte("load_date", to).in("orders.status", DISPATCHABLE).limit(5000);
+  if (error) return null;
+  const out: Record<string, number> = {};
+  for (const r of (data ?? []) as Array<{ load_date: string }>) out[r.load_date] = (out[r.load_date] ?? 0) + 1;
+  return out;
 }
 
 /** The Monday of the week containing a date. */

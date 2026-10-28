@@ -41,6 +41,24 @@ export async function listQuotes(filters: QuoteFilters) {
   return { rows: (data ?? []) as QuoteListRow[], total: count ?? 0 };
 }
 
+/**
+ * Open quotes at a glance (the Quotes page figures): drafts, sent quotes waiting for an answer with their total, and
+ * sent quotes whose validity ends within a week. Read with the person's session (RLS: their company only).
+ */
+export async function quotePipeline(today: string, weekEnd: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("quote_list").select("status, total_cents, valid_until").in("status", ["draft", "sent"]).limit(5000);
+  if (error) return null;
+  const rows = (data ?? []) as Array<{ status: string; total_cents: number; valid_until: string }>;
+  const sent = rows.filter((r) => r.status === "sent");
+  return {
+    drafts: rows.length - sent.length,
+    sent: sent.length,
+    sentCents: sent.reduce((n, r) => n + (r.total_cents ?? 0), 0),
+    expiring: sent.filter((r) => r.valid_until >= today && r.valid_until <= weekEnd).length,
+  };
+}
+
 export async function getUserNames(): Promise<Record<string, string>> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("user_directory");

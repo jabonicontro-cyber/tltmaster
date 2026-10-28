@@ -43,7 +43,7 @@ export function RunningTimer({ timer }: { timer: { workOrderId: string; number: 
     return () => clearInterval(t);
   }, []);
   return (
-    <section aria-label="Your running timer" className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-strong bg-card p-4">
+    <section aria-label="Your running timer" className="mb-4 flex flex-wrap items-center gap-3 rounded-panel bg-card p-4 shadow-card ring-2 ring-brand/70">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-ink">Working on <Link href={`/maintenance/work-orders/${timer.workOrderId}`} className="underline">{timer.number}</Link></p>
         <p className="text-sm text-muted">Timer running · <span className="tabular">{clock(minutesSince(timer.startedAt, now))}</span></p>

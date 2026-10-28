@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck, Wrench } from "lucide-react";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
+import { StatTile } from "@/components/ui/stat-tile";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
@@ -30,6 +31,8 @@ import { RATE_UNIT_LABELS } from "@/lib/hired-trucks";
 import { formatCents } from "@/lib/money";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { answerMyOffer } from "@/app/(app)/hired-trucks/actions";
+import { getMyShifts } from "@/server/data/schedules";
+import { shiftLine } from "@/lib/schedule/shifts";
 
 export const metadata = { title: "My Day" };
 
@@ -44,9 +47,9 @@ function AssignmentCard({ a, today, timeZone, past, photos = [] }: { a: DriverAs
   const risk = a.site.directions_risk ?? "standard";
   const checkDirections = directionsNeedAttention(a.site.directions_status, risk);
   return (
-    <li className={cn("rounded-2xl border bg-card shadow-xs", past ? "border-brand" : "border-line")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
+    <li className={cn("overflow-hidden rounded-panel bg-card shadow-card ring-1", past ? "ring-brand" : "ring-line/60")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
-        <p className="text-2xl font-black tabular">
+        <p className="text-2xl font-semibold tracking-[-0.03em] tabular">
           {formatTime(a.load.start_time)}<span className="text-base font-semibold text-muted"> – {formatTime(a.load.end_time)}</span>
         </p>
         <p className="text-sm font-semibold text-muted">{a.load.date === today ? "Today" : formatDate(a.load.date)} · {a.order.number} · load {a.load.number}</p>
@@ -164,13 +167,17 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates, offers, score, sitePhotos] = await Promise.all([
+  const [shop, updates, offers, score, sitePhotos, shifts] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
     loadScorecard(addDays(h.today, -(SCORECARD_DAYS - 1)), h.today, true).catch(() => null),
     // Job-site photos customers sent and the office applied (B94); none before the update is installed.
     (async () => { const r = await (await createClient()).rpc("driver_site_photos"); return (r.error ? {} : (r.data ?? {})) as Record<string, string[]>; })(),
+    // Their own schedule today and tomorrow (SCH-1); left out without a schedule or before the update is installed.
+    getMyShifts(access.userId, h.today, 2).catch(() => null),
   ]);
+  const shiftToday = shiftLine(shifts?.find((d) => d.date === h.today));
+  const shiftTomorrow = shiftLine(shifts?.find((d) => d.date === addDays(h.today, 1)));
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
   const whose = access.isDemo && shown && !platformAdmin ? shown : h.driver.name;
@@ -179,14 +186,30 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     <div className="mx-auto max-w-2xl space-y-5">
       <div>
         <p className="text-lg font-semibold" data-testid="greeting">{hello}</p>
-        <h1 className="text-2xl font-black">My Day</h1>
+        <h1 className="text-[1.75rem] leading-tight font-semibold tracking-[-0.03em]">My Day</h1>
         {/* Whose day this is: the driver record (the platform team member previewing a demo keeps their own name only in
             the header and greeting). Named only when the greeting does not already say it. */}
         <p className="text-muted">{whose && !hello.includes(whose.split(" ")[0]) ? `${whose} · ` : ""}{formatDate(h.today)}</p>
+        {(shiftToday || shiftTomorrow) && (
+          <p className="mt-1 text-sm" data-testid="my-shift">
+            {shiftToday && <>Your shift: <strong className="tabular">{shiftToday}</strong></>}
+            {shiftToday && shiftTomorrow ? <span className="text-muted"> · </span> : null}
+            {shiftTomorrow && <span className="text-muted">Tomorrow: <span className="tabular">{shiftTomorrow}</span></span>}
+          </p>
+        )}
         {/* On phones the Time off tab is one tap away; the link is for wider screens without the tab bar. */}
         <Link href="/time-off" className="mt-1 hidden text-sm font-semibold underline md:inline-block">Request time off</Link>
         <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
         <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
+      </div>
+      {/* The day in two figures (owner's references 2026-10-27: numbers first). */}
+      <div className="grid grid-cols-2 gap-3" aria-label="My day at a glance">
+        <StatTile icon={<Truck />} tone="brand" label="Loads today" value={today.length} muted={today.length === 0}>
+          <span className="text-muted"><span className="sr-only">{today.length} loads today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
+        </StatTile>
+        <StatTile icon={<ClipboardCheck />} tone={earlier.length ? "amber" : "neutral"} label="Tickets to enter" value={earlier.length} muted={earlier.length === 0}>
+          <span className="text-muted"><span className="sr-only">{earlier.length} tickets to enter. </span>{earlier.length ? "from earlier days" : "all caught up"}</span>
+        </StatTile>
       </div>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
       {sp.sent && (

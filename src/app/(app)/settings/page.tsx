@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { Building2, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -46,6 +47,11 @@ const BASE_SAVED: Record<string, string> = {
 };
 
 export const metadata = { title: "Settings" };
+
+const TAB_ICONS: Record<string, LucideIcon> = {
+  company: Building2, numbering: Hash, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
+  permissions: Users, security: Lock, sample: Database, audit: ScrollText,
+};
 
 type Group = "Company" | "Operations" | "Access" | "System";
 
@@ -262,7 +268,34 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <PageHeader title="Settings" />
       {saved && tab === "bases" ? <div className="mb-3"><Notice title="Saved">{BASE_SAVED[saved] ?? "Saved."}</Notice></div> : null}
       {actionError ? <div className="mb-3"><Notice tone="warning" title="Not saved">{actionError}</Notice></div> : null}
-      <nav aria-label="Settings groups" className="mb-3 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
+      <div className="lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-6">
+      {/* Wide screens: one grouped menu (owner's references 2026-10-27); phones and tablets keep the two pill rows. */}
+      <nav aria-label="Settings menu" className="sticky top-20 hidden space-y-5 lg:block">
+        {groups.map(({ g }) => (
+          <div key={g}>
+            <p className="mb-1.5 px-3 text-xs font-medium text-muted">{g}</p>
+            <ul className="space-y-0.5">
+              {tabs.filter((t) => t.group === g).map((t) => {
+                const Icon = TAB_ICONS[t.key] ?? Building2;
+                return (
+                  <li key={t.key}>
+                    <Link
+                      href={`/settings?tab=${t.key}`}
+                      aria-current={tab === t.key ? "page" : undefined}
+                      className={cn("flex h-9 items-center gap-2.5 rounded-control px-3 text-sm font-medium transition-colors", tab === t.key ? "bg-card text-ink shadow-xs ring-1 ring-line/60" : "text-muted hover:bg-ink/[0.04] hover:text-ink")}
+                    >
+                      <Icon className={cn("size-4 shrink-0", tab === t.key ? "text-brand-fg" : "")} aria-hidden />
+                      <span className="truncate">{t.label}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </nav>
+      <div className="min-w-0">
+      <nav aria-label="Settings groups" className="mb-3 flex lg:hidden w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {groups.map(({ g, first }) => (
           <Link
             key={g}
@@ -275,7 +308,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         ))}
       </nav>
       {inGroup.length > 1 && (
-        <nav aria-label="Settings sections" className="mb-4 flex flex-wrap gap-1.5">
+        <nav aria-label="Settings sections" className="mb-4 flex flex-wrap gap-1.5 lg:hidden">
           {inGroup.map((t) => (
             <Link
               key={t.key}
@@ -294,6 +327,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </p>
       ) : null}
       <Card>{content}</Card>
+      </div>
+      </div>
     </>
   );
 }

@@ -33,6 +33,20 @@ export interface EmployeeFilters {
 }
 
 /** The company's directory (row-level security: employees.view, or only your own record). */
+/** The People page figures: active people, drivers among them, people on leave, and people with a sign-in. */
+export async function employeeCounts() {
+  const supabase = await createClient();
+  const n = async (build: (q: ReturnType<typeof base>) => ReturnType<typeof base>) => (await build(base())).count ?? 0;
+  const base = () => supabase.from("employees").select("id", { count: "exact", head: true });
+  const [active, drivers, leave, logins] = await Promise.all([
+    n((q) => q.eq("status", "active")),
+    n((q) => q.in("status", ["active", "on_leave"]).not("driver_id", "is", null)),
+    n((q) => q.eq("status", "on_leave")),
+    n((q) => q.in("status", ["active", "on_leave"]).not("user_id", "is", null)),
+  ]);
+  return { active, drivers, leave, logins };
+}
+
 export async function listEmployees(f: EmployeeFilters) {
   const supabase = await createClient();
   let query = supabase

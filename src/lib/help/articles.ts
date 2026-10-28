@@ -89,6 +89,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Owners, office staff, dispatchers and anyone with orders, dispatch, tickets, billing, fleet, driver reports or quotes in their role.",
     whatYouSee: [
       "**Next 7 days** (with dispatch access): loads per day, loads without a truck and conflicts. Estimated value is shown only to people who can see billing.",
+      "**Weather** under the date: conditions now at your bases (or the yard) and official alerts in effect at today's delivery sites, from the US National Weather Service. Bases need a map position.",
       "**Your work**: items someone assigned to you and, if your sign-in is also linked to a driver, your own loads today.",
       "**Attention queue**: one item per open problem, most urgent and oldest first, such as Urgent order, Needs a delivery date, Load without a truck, Missing delivery ticket, Ticket to review, Billing blocked, Equipment out of service and driver reports.",
       "**Operations today**, **Sales and quotes** (with quote access) and **Recent activity**, depending on your role.",
@@ -1028,6 +1029,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Drivers.",
     whatYouSee: [
       "**Today** and **Tomorrow**: each load's times, order and load number, job, site directions, site contact and load notes.",
+      "**Your shift** today and tomorrow when the office keeps your schedule (start, end and break, or Day off).",
+      "**My last 30 days**: your own delivery figures from recorded deliveries and reports; only you and the office see them.",
       "**Updates from dispatch** about new or changed assignments, and shop appointments for your truck.",
       "**Tickets still needed**, **My recent tickets** and **My reports**, with reminders about your CDL and medical card.",
       "On a phone, tabs at the bottom: **My Day**, **Messages** (if your role has messaging), **Time off** and **Profile**.",
@@ -1771,6 +1774,57 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["A job title describes the job only. What a person can do in Taviron comes from their role."],
   },
   {
+    id: "schedule",
+    title: "Schedule",
+    summary: "See who works when, set repeating schedules and rotations, change a single day, and compare drivers on shift with planned loads.",
+    category: "people",
+    routes: ["/schedule", "/schedule/*"],
+    permissions: ["employees.view", "dispatch.view", "schedules.manage"],
+    audience: "Owners, office and dispatch; drivers see their own shift on My Day.",
+    whatYouSee: [
+      "**On shift today**, **Off today** and **Without a schedule** when the shown week includes today.",
+      "**Staffing forecast**: drivers on shift each day of the week next to the loads planned that day. **No driver** marks a day with loads and nobody scheduled.",
+      "**Week**: one row per person with each day's shift, **Off**, or — without a schedule. A moon marks a shift that ends the next day; time off shows on the person's days.",
+      "**Day**: one day as a timeline, each person's shift drawn across 24 hours so gaps and overlaps show at a glance.",
+    ],
+    tasks: [
+      {
+        title: "Set a repeating schedule",
+        steps: [
+          "Find the person (use **Find a person…**) and open their schedule.",
+          "Under **Repeats**, choose **Every week** or **Rotation (e.g. 4 on, 4 off)**, and the day it **Starts on**.",
+          "Set each working day's start, end and break; leave a day empty for a day off.",
+          "Select **Save schedule**.",
+        ],
+      },
+      {
+        title: "Change one day",
+        steps: [
+          "Select the person's day in the week.",
+          "Choose **Works** with **Starts**, **Ends** and **Break (min)**, or **Day off**, and add a **Reason (optional)**.",
+          "Select **Save**. The change applies to that date only; **Use regular schedule** removes it.",
+        ],
+      },
+      {
+        title: "See one day as a timeline",
+        steps: ["Select **Day** above the schedule.", "Pick the day of the week; shifts appear in order of start time, then days off, then people without a schedule."],
+      },
+    ],
+    prerequisites: ["Seeing everyone's schedule needs People or Dispatch access; changing schedules needs the schedules permission (owner, office and dispatch by default)."],
+    troubleshooting: [
+      { problem: "“Schedules need a database update that has not been installed yet.”", fix: "Ask the owner to install the update." },
+      { problem: "The staffing forecast is missing.", fix: "It shows when the week has drivers on shift or planned loads; loads are counted only for people who can see dispatch." },
+      { problem: "Dispatch says “Day off on …” when assigning a driver.", fix: "The driver is off that day. Choose another driver, or give a reason to assign anyway." },
+    ],
+    next: ["dispatch-board", "time-off"],
+    related: ["people", "my-day", "plan-the-day"],
+    reviewed: "2026-10-28",
+    limitations: [
+      "The forecast counts only; how many loads one driver can haul in a day is your company's call.",
+      "Shift offers (asking drivers to pick up open shifts) are not built yet.",
+    ],
+  },
+  {
     id: "time-off",
     title: "Time off",
     summary: "Request time off, follow your requests, and approve or deny requests from others.",
@@ -1935,6 +1989,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Deliveries and rework**: tickets, corrected and voided tickets, and time from delivery to accepted.",
       "**Verified delivered value** by customer, material / line and truck: accepted ticket quantities × the order's approved rate, before percentage charges, discounts and tax. Not invoiced amounts.",
       "**Billing turnaround** and **Truck utilization and downtime**.",
+      "**Drivers**: on-time and same-day ticket shares per driver for the period, with no ranking (needs dispatch or People access).",
+      "**Quotes won and lost** (with quote access): win rate, value won and lost, and the reasons recorded on lost quotes.",
       "**By Dispatch Base** when the company has more than one base: trucks, drivers, orders, loads and ordered value per base.",
       "Sections depend on your role.",
     ],

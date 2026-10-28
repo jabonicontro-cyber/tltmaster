@@ -71,6 +71,14 @@ test("a dispatcher schedules a driver, gives a day off, and assigning on that da
   await expect(row.getByRole("button", { name: /day off, changed for this day/ })).toHaveCount(1);
 
   // Dispatch: assigning the driver on their day off asks for a reason.
+  // The staffing forecast counts the week's planned loads; the day view draws each shift on a 24-hour timeline (SCH-1).
+  await expect(page.getByRole("region", { name: "Staffing forecast" }).getByRole("listitem", { name: /^Mon: \d+ drivers? on shift, [1-9]\d* loads? planned/ })).toBeVisible();
+  await page.getByRole("group", { name: "View" }).getByRole("link", { name: "Day" }).click();
+  await page.getByRole("navigation", { name: "Day" }).getByRole("link", { name: /^Tue/ }).click();
+  await expect(page.getByRole("listitem", { name: `${name}: 6a–4:30p` })).toBeVisible();
+  await page.getByRole("navigation", { name: "Day" }).getByRole("link", { name: /^Mon/ }).click();
+  await expect(page.getByRole("listitem", { name: `${name}: Day off` })).toBeVisible();
+
   await page.goto(`/dispatch?date=${monday}`);
   const card = page.locator("section").filter({ has: page.getByRole("link", { name: orderNumber, exact: true }) });
   await card.getByRole("listitem", { name: "Load 1", exact: true }).getByRole("button", { name: "Assign", exact: true }).click();
@@ -84,6 +92,23 @@ test("a dispatcher schedules a driver, gives a day off, and assigning on that da
   await dialog.getByLabel("Reason for working outside the shift").fill("Covering a rush pour (e2e)");
   await anyway.click();
   await expectToast(page, "Load assigned.");
+});
+
+test("My Day shows the driver's own shift", async ({ page }) => {
+  // Yesterday, today and tomorrow in UTC, so the company's today is covered in any time zone; cleared afterwards.
+  const days = [-1, 0, 1].map((n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10));
+  const employee = await asUser(USERS.owner.email, async (q) => {
+    const e = (await q("select e.id from public.employees e join auth.users u on u.id = e.user_id where u.email = $1", [USERS.driver.email])).rows[0].id as string;
+    for (const d of days) await q("select public.schedule_set_day($1, $2, 'shift', '00:00', '23:45', 0, 'My Day check (e2e)')", [e, d]);
+    return e;
+  });
+  try {
+    await signIn(page, "driver");
+    await page.goto("/driver");
+    await expect(page.getByTestId("my-shift")).toContainText("Your shift: 12:00 AM – 11:45 PM");
+  } finally {
+    await asUser(USERS.owner.email, async (q) => { for (const d of days) await q("select public.schedule_clear_day($1, $2)", [employee, d]); });
+  }
 });
 
 test("drivers cannot open the Schedule page", async ({ page }) => {

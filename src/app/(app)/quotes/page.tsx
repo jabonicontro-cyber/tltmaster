@@ -1,4 +1,9 @@
-import { Plus } from "lucide-react";
+import Link from "next/link";
+import { CalendarClock, FilePen, Plus, Send, Trophy } from "lucide-react";
+import { StatTile } from "@/components/ui/stat-tile";
+import { addDays } from "@/lib/dates";
+import { formatCents } from "@/lib/money";
+import { loadQuoteOutcomes } from "@/server/data/quote-outcomes";
 import { DateInput } from "@/components/ui/date-input";
 import { QuoteTable } from "@/components/quotes/quote-table";
 import { ButtonLink } from "@/components/ui/button";
@@ -11,7 +16,7 @@ import { EmptyState } from "@/components/ui/states";
 import { can } from "@/lib/permissions";
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from "@/lib/quotes/status";
 import { requirePagePermission } from "@/server/auth";
-import { listQuotes } from "@/server/data/quotes";
+import { listQuotes, quotePipeline } from "@/server/data/quotes";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 import { businessToday } from "@/server/data/settings";
 
@@ -23,9 +28,14 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
   const access = await requirePagePermission("quotes.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
-  const [{ rows, total }, { today }] = await Promise.all([
+  const [{ rows, total }, { today, timezone }] = await Promise.all([
     listQuotes({ q: sp.q, status: sp.status, customer: sp.customer, from: sp.from, to: sp.to, page }),
     businessToday(),
+  ]);
+  // The figures above the list: open quotes now, and quotes decided in the last 90 days (B95). Left out on failure.
+  const [pipe, outcomes] = await Promise.all([
+    quotePipeline(today, addDays(today, 7)),
+    loadQuoteOutcomes(addDays(today, -89), today, timezone).catch(() => null),
   ]);
   const filtered = Boolean(sp.q || sp.status || sp.customer || sp.from || sp.to);
   const hrefFor = (p: number) => {
@@ -42,6 +52,22 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
         description="Every quote with its current revision. Sent revisions are kept unchanged."
         actions={can(access, "quotes.edit") && <ButtonLink href="/quotes/new" icon={<Plus className="size-4" />}>New quote</ButtonLink>}
       />
+      {pipe && (
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Quotes at a glance">
+          <StatTile icon={<FilePen />} label="Drafts" value={pipe.drafts} muted={pipe.drafts === 0}>
+            <Link href="/quotes?status=draft" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{pipe.drafts} </span>not sent yet</Link>
+          </StatTile>
+          <StatTile icon={<Send />} tone="brand" label="Waiting for an answer" value={pipe.sent} muted={pipe.sent === 0}>
+            <Link href="/quotes?status=sent" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{pipe.sent} sent, </span><span className="tabular">{formatCents(pipe.sentCents)}</span> quoted</Link>
+          </StatTile>
+          <StatTile icon={<CalendarClock />} tone={pipe.expiring ? "amber" : "neutral"} label="Expiring this week" value={pipe.expiring} muted={pipe.expiring === 0}>
+            <span className="text-muted"><span className="sr-only">{pipe.expiring} </span>{pipe.expiring ? "follow up before they lapse" : "nothing lapses in 7 days"}</span>
+          </StatTile>
+          <StatTile icon={<Trophy />} tone="green" label="Won, last 90 days" value={outcomes?.winRate == null ? "—" : `${Math.round(outcomes.winRate * 100)}%`} muted={!outcomes?.decided}>
+            <Link href="/reports" className="text-muted underline-offset-2 hover:underline">{outcomes?.decided ? `${outcomes.won} of ${outcomes.decided} decided` : "no quotes decided yet"}</Link>
+          </StatTile>
+        </div>
+      )}
       <Card>
         <FilterBar action="/quotes" query={sp.q} placeholder="Search quote #, customer, project, site…" clearHref="/quotes">
           {sp.customer && <input type="hidden" name="customer" value={sp.customer} />}

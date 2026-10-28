@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { KeyRound, Plane, Plus, Truck, Users } from "lucide-react";
+import { StatTile } from "@/components/ui/stat-tile";
 import { UsersPanel, type UserRow } from "@/components/settings/settings-client";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +18,7 @@ import { cn } from "@/lib/cn";
 import { can, ROLE_LABELS } from "@/lib/permissions";
 import { avatarUrl, employeePhotoSrc } from "@/lib/people/avatars";
 import { requirePagePermission } from "@/server/auth";
-import { listEmployees, photoVersions } from "@/server/data/employees";
+import { employeeCounts, listEmployees, photoVersions } from "@/server/data/employees";
 import { listSignIns } from "@/server/data/people";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 import { adminAvailable } from "@/server/supabase/admin";
@@ -68,10 +69,11 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   }
   const page = pageParam(sp.page);
   const { rows, total } = await listEmployees({ q: sp.q, status: sp.status, department: sp.department, kind: sp.kind, page });
-  const [photos, signIns, accounts] = await Promise.all([
+  const [photos, signIns, accounts, counts] = await Promise.all([
     photoVersions(rows.map((r) => r.user_id)),
     manageUsers ? listSignIns(access.companyId!) : Promise.resolve([]),
     manageUsers ? accountStates("employee") : Promise.resolve(null),
+    employeeCounts().catch(() => null),
   ]);
   const signInOf = new Map(signIns.map((u) => [u.id, u]));
   const filtered = Boolean(sp.q || sp.department || sp.kind || (sp.status && sp.status !== "current"));
@@ -86,6 +88,22 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
   return (
     <>
       {header}
+      {counts && (
+        <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="People at a glance">
+          <StatTile icon={<Users />} tone="brand" label="Active" value={counts.active}>
+            <span className="text-muted"><span className="sr-only">{counts.active} </span>working for the company</span>
+          </StatTile>
+          <StatTile icon={<Truck />} label="Drivers" value={counts.drivers} muted={counts.drivers === 0}>
+            <Link href="/employees?kind=drivers" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{counts.drivers} </span>with a driver record</Link>
+          </StatTile>
+          <StatTile icon={<Plane />} tone={counts.leave ? "amber" : "neutral"} label="On leave" value={counts.leave} muted={counts.leave === 0}>
+            <Link href="/employees?status=on_leave" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{counts.leave} </span>away for now</Link>
+          </StatTile>
+          <StatTile icon={<KeyRound />} label="With a sign-in" value={counts.logins} muted={counts.logins === 0}>
+            <Link href="/employees?kind=logins" className="text-muted underline-offset-2 hover:underline"><span className="sr-only">{counts.logins} </span>use Taviron</Link>
+          </StatTile>
+        </div>
+      )}
       <Card>
         <FilterBar action="/employees" query={sp.q} placeholder="Search name, title, email, phone…" clearHref="/employees">
           <FilterSelect name="status" label="Status" value={sp.status ?? "current"} options={[
