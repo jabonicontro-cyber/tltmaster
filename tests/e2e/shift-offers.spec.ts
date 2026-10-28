@@ -20,8 +20,10 @@ test("an offered shift is asked for on My Day and approved on the Schedule", asy
     if (e.rows.length) await q("update public.employees set driver_id = $2, status = 'active' where id = $1", [e.rows[0].id, me]);
     else await q("insert into public.employees (full_name, department, user_id, driver_id) values ('Drew Driver', 'operations', $1, $2)", [userId, me]);
     const who = e.rows.length ? (e.rows[0].full_name as string) : "Drew Driver";
-    // A day far enough ahead that earlier runs' shifts (one-day changes) do not collide.
-    const d = (await q("select (current_date + 30 + (abs(hashtext($1)) % 300))::text d", [id])).rows[0].d as string;
+    // A day within the 90 days offers allow; a shift from an earlier run on that day is cleared first.
+    const d = (await q("select (current_date + 30 + (abs(hashtext($1)) % 55))::text d", [id])).rows[0].d as string;
+    const emp = (await q("select id from public.employees where user_id = $1", [userId])).rows[0].id as string;
+    await q("select public.schedule_clear_day($1, $2::date)", [emp, d]);
     return { date: d, name: who };
   });
   await asUser(USERS.owner.email, async (q) => { await q("select public.shift_offer_set_mode('request')"); });
