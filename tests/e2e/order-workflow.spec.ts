@@ -73,7 +73,8 @@ test("reports show measured figures; money only with billing access", async ({ p
   await expect(page.getByRole("heading", { name: "Reports", level: 1 })).toBeVisible();
   await expect(page.getByRole("region", { name: "Deliveries and rework" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Verified delivered value" })).toBeVisible();
-  await expect(page.getByText("Profitability is not calculated yet")).toBeVisible();
+  // Profit per load (B104): estimated from the company's own cost rates, or a prompt to add them.
+  await expect(page.getByText(/Profit per load needs your cost rates|Estimated profit/).first()).toBeVisible();
   await expect(page.getByRole("navigation").first().getByRole("link", { name: "Reports", exact: true })).toBeVisible();
 
   await page.context().clearCookies();

@@ -2031,6 +2031,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Billing turnaround** and **Truck utilization and downtime**.",
       "**Drivers**: on-time and same-day ticket shares per driver for the period, with no ranking (needs dispatch or People access).",
       "**Quotes won and lost** (with quote access): win rate, value won and lost, and the reasons recorded on lost quotes.",
+      "**Profit** (with billing access): revenue, estimated cost, estimated profit and margin, by customer and by truck, from your cost rates in **Settings → Cost rates**.",
       "**By Dispatch Base** when the company has more than one base: trucks, drivers, orders, loads and ordered value per base.",
       "Sections depend on your role.",
     ],
@@ -2053,7 +2054,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["billing"],
     related: ["settings-dispatch-bases", "order-to-cash"],
     reviewed: REVIEWED,
-    limitations: ["Profitability is not calculated: profit per load, truck, customer or material needs cost data Taviron does not have. No savings or return on investment are claimed."],
+    limitations: ["Profit is an estimate: each delivered load's planned hours × your own cost rates (Settings → Cost rates), plus the fixed cost per load. Actual fuel, pay and repair costs are not read, and loads without a priced ticket or planned hours are left out. No savings or return on investment are claimed."],
   },
 
   // ---------------------------------------------------------------------------------------------------------------

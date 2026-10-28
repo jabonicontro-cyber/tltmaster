@@ -13,6 +13,7 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
 import { requireAccess } from "@/server/auth";
 import { can } from "@/lib/permissions";
+import { ProfitSection, type ProfitReport } from "@/components/reports/profit-section";
 import { QuoteOutcomesSection } from "@/components/reports/quote-outcomes";
 import { loadQuoteOutcomes } from "@/server/data/quote-outcomes";
 import { DriverScorecardTable } from "@/components/drivers/scorecard";
@@ -150,6 +151,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const quoteOutcomes = can(access, "quotes.view") ? await loadQuoteOutcomes(from, to, timezone).catch(() => null) : null;
   // Driver scorecard (B96): every driver, for people with dispatch or employee access (the database checks it again).
   const scorecard = can(access, "dispatch.view") || can(access, "employees.view") ? await loadScorecard(from, to).catch(() => null) : null;
+  // Profit per load (B104) for people who see billing; missing before the update is installed.
+  const profit = can(access, "billing.view") ? await supabase.rpc("report_profit", { p_from: from, p_to: to }).then((x) => (x.error ? null : (x.data as ProfitReport))) : null;
   const byBase = bases && bases.length > 1 ? await baseSummary(from, to) : [];
   const short = (d: string) => new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${d}T00:00:00Z`));
   const trend = series.map((x, i) => ({
@@ -339,10 +342,12 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
           {quoteOutcomes ? <QuoteOutcomesSection data={quoteOutcomes} /> : null}
 
-          <Notice title="Profitability is not calculated yet">
-            Profit per load, truck, customer or material needs cost data Taviron does not have: {r.profitability.missing.join(", ")}. Revenue figures above are verified delivered value only, and no savings or
-            return on investment are claimed.
-          </Notice>
+          {profit ? (
+            <>
+              <h2 className="pt-2 text-lg font-semibold tracking-[-0.015em]">Profit</h2>
+              <ProfitSection data={profit} canEditRates={can(access, "billing.manage")} />
+            </>
+          ) : null}
         </div>
       )}
     </>

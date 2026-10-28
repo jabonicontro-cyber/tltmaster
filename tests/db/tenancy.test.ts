@@ -35,7 +35,7 @@ const TENANT_TABLES = [
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
-  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events",
+  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -63,6 +63,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.safety_incident_for_manage", "private.safety_log", "public.safety_report", "public.safety_investigate",
   "public.safety_add_witness", "public.safety_add_action", "public.safety_complete_action", "public.safety_close",
   "public.safety_photo_begin", "public.safety_photo_path", "public.my_safety_reports", "public.demo_safety_samples",
+  // Profit per load (20261120004400): set_cost_rates needs billing.manage; report_profit needs billing.view and reads
+  // only the caller's company; demo_cost_rates needs the demo owner.
+  "public.set_cost_rates", "public.report_profit", "public.demo_cost_rates",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

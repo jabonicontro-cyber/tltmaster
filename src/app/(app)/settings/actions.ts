@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { MAX_LOGO_BYTES, brandingProblems, sniffImage } from "@/lib/branding";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { parseMoneyToCents } from "@/lib/money";
 import { companySettingsSchema, inviteSchema, sequenceSchema, userAccessSchema } from "@/lib/schemas/settings";
 import { uuid } from "@/lib/schemas/common";
 import { PERMISSIONS, ROLES, type AppRole } from "@/lib/permissions";
@@ -209,3 +210,23 @@ export async function saveDailySummary(formData: FormData): Promise<ActionResult
   });
 }
 
+
+/** The company's own cost rates for profit per load (B104; billing.manage, checked again by the database). Empty = not set. */
+export async function saveCostRates(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    const cents = (k: string): number | null | "bad" => {
+      const v = String(formData.get(k) ?? "").trim();
+      if (!v) return null;
+      const c = parseMoneyToCents(v);
+      return c === null || c < 0 ? "bad" : c;
+    };
+    const truck = cents("truck_hour"), driver = cents("driver_hour"), perLoad = cents("per_load");
+    if (truck === "bad" || driver === "bad" || perLoad === "bad") return fail("Enter amounts in dollars, like 65 or 65.50, or leave them empty.");
+    const { error } = await (await createClient()).rpc("set_cost_rates", { p_truck_hour: truck, p_driver_hour: driver, p_per_load: perLoad });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/settings");
+    revalidatePath("/reports");
+    return ok(undefined, "Cost rates saved.");
+  });
+}

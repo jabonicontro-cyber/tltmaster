@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Users, type LucideIcon } from "lucide-react";
+import { Building2, Calculator, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -24,6 +24,7 @@ import { businessToday, getSettings } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
 import { DocumentRulesForm } from "@/components/settings/document-rules-form";
+import { CostRatesForm } from "@/components/settings/cost-rates-form";
 import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
 import { summaryLines, type DailySummary } from "@/lib/summary/daily";
@@ -63,6 +64,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "dispatch", label: "Dispatch rules", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
   { key: "bases", label: "Dispatch Bases", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "users.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
+  { key: "costs", label: "Cost rates", group: "Operations", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
@@ -95,6 +97,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <div className="border-t border-line">
           <BrandingForm settings={settings} canEdit={can(access, "settings.manage")} companyId={access.companyId!} />
         </div>
+      </>
+    );
+  } else if (tab === "costs") {
+    const rates = await supabase.from("company_cost_rates").select("truck_hour_cents, driver_hour_cents, per_load_cents").maybeSingle();
+    content = (
+      <>
+        <CardHeader
+          title="Cost rates"
+          description="Your own costs, used for profit per load in Reports: each delivered load's planned hours × the truck and driver rates, plus the fixed amount per load. Profit is an estimate; a rate left empty counts as nothing, and with no rates no profit is shown."
+        />
+        <CardBody>
+          {rates.error ? <p className="text-sm text-muted">Cost rates need a database update that has not been installed yet.</p> : <CostRatesForm rates={rates.data ?? null} canEdit={can(access, "billing.manage")} />}
+        </CardBody>
       </>
     );
   } else if (tab === "dispatch") {
