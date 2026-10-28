@@ -10,7 +10,7 @@ import { SalesSection } from "@/components/command-center/sales-section";
 import { SpeedSection } from "@/components/command-center/speed-section";
 import { WeatherStrip } from "@/components/command-center/weather-strip";
 import { loadSiteWeather } from "@/server/weather";
-import { SectionLayout, type Section } from "@/components/command-center/section-layout";
+import { SectionLayout, type Section, type SectionId } from "@/components/command-center/section-layout";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
@@ -39,7 +39,7 @@ import { outlookTotals } from "@/lib/live/outlook";
 
 export const metadata = { title: "Command Center" };
 
-type Search = { kind?: string; mine?: string; hidden?: string; page?: string; activity?: string; from?: string; to?: string; customer?: string; welcome?: string };
+type Search = { kind?: string; mine?: string; hidden?: string; page?: string; activity?: string; from?: string; to?: string; customer?: string; welcome?: string; all?: string };
 
 /** Permissions that give a person operational responsibilities shown here (the database checks them again). */
 const OPERATIONS: Permission[] = ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view", "orders.view"];
@@ -75,6 +75,11 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const hidden = sp.hidden === "1";
   const page = positive(sp.page);
   const activityPage = positive(sp.activity, 20);
+  // The unfiltered first view shows the most urgent few (owner 2026-10-28: less scrolling); "Show all" opens the rest.
+  const showAll = sp.all === "1" || Boolean(kind || mine || hidden) || page > 1;
+  const FIRST_ITEMS = 6;
+  const FIRST_ACTIVITY = 6;
+  const activityAll = sp.all === "1" || activityPage > 1;
   const canAssign = has("exceptions.assign");
   const [{ today, timezone }, settings] = await Promise.all([businessToday(), getSettings()]);
   const from = sp.from && isIsoDate(sp.from) ? sp.from : addDays(today, -30);
@@ -135,6 +140,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "outlook",
       title: "Next 7 days",
+      place: "full",
       collapsedSummary: t ? `${t.loads} loads · ${t.unassigned} without a truck${t.conflicts ? ` · ${t.conflicts} conflicts` : ""}` : "Could not be loaded",
       content: outlook.ok ? (
         <LiveOutlook outlook={outlook.data} today={today} />
@@ -151,9 +157,10 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "my_work",
       title: "Your work",
+      place: "rail",
       collapsedSummary: [myItems?.total ? `${myItems.total} assigned to you` : null, linkedDriver ? `${myLoads.length} of your loads today` : null].filter(Boolean).join(" · ") || undefined,
       content: (
-        <div className={cn("grid grid-cols-1 gap-5", linkedDriver && ops && "xl:grid-cols-2")}>
+        <div className="grid grid-cols-1 gap-4">
           {ops && (
             <Card>
               <CardHeader title="Assigned to you" description="Items someone asked you to handle. They close when the record is fixed." />
@@ -163,7 +170,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 <p className="px-5 py-6 text-sm text-muted sm:px-6">Nothing is assigned to you right now.</p>
               ) : (
                 <>
-                  <ul className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6" aria-label="Assigned to you">
+                  <ul className="grid grid-cols-1 gap-3 px-4 pb-4" aria-label="Assigned to you">
                     {myItems.items.map((item) => (
                       <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
                     ))}
@@ -207,6 +214,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "attention",
       title: "Attention queue",
+      place: "main",
       collapsedSummary: s ? `${s.exceptions.total} open · ${s.exceptions.urgent} urgent` : "Could not be loaded",
       content: (
         <Card>
@@ -244,12 +252,19 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           ) : (
             <>
               {hidden && <p className="border-b border-line bg-surface px-5 py-2 text-sm sm:px-6">These are still open for everyone else. They return to your queue when the time runs out.</p>}
-              <ul className="grid grid-cols-1 gap-4 bg-surface/60 p-4 sm:grid-cols-2 sm:p-5 xl:grid-cols-3" aria-label="Attention items">
-                {queue.data.items.map((item) => (
+              <ul className="grid grid-cols-1 gap-4 bg-surface/60 p-4 sm:grid-cols-2 sm:p-5" aria-label="Attention items">
+                {(showAll ? queue.data.items : queue.data.items.slice(0, FIRST_ITEMS)).map((item) => (
                   <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
                 ))}
               </ul>
-              <Pagination page={page} pageSize={QUEUE_PAGE_SIZE} total={queue.data.total} hrefFor={(p) => href({ kind, mine, hidden, page: p })} />
+              {showAll ? (
+                <Pagination page={page} pageSize={QUEUE_PAGE_SIZE} total={queue.data.total} hrefFor={(p) => href({ kind, mine, hidden, page: p })} />
+              ) : queue.data.total > FIRST_ITEMS ? (
+                <p className="px-5 py-3 text-sm sm:px-6">
+                  <Link href={`/command-center?all=1#attention`} className="font-semibold text-brand-fg underline-offset-2 hover:underline">Show all {queue.data.total} items</Link>
+                  <span className="text-muted"> · the {FIRST_ITEMS} most urgent are shown</span>
+                </p>
+              ) : null}
             </>
           )}
         </Card>
@@ -270,6 +285,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "operations",
       title: "Operations today",
+      place: "rail",
       content: summary?.ok ? (
         <MetricGrid cards={cards} />
       ) : (
@@ -283,6 +299,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "speed",
       title: "Speed",
+      place: "rail",
       content: speed ? <SpeedSection speed={speed} /> : <ErrorState title="Speed figures could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." />,
     });
   }
@@ -291,6 +308,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "sales",
       title: "Sales and quotes",
+      place: "full",
       content: quotes ? (
         <SalesSection quotes={quotes} from={from} to={to} customer={customer} customers={customers} followupDays={settings.quote_followup_days} today={today} resetHref="/command-center" />
       ) : (
@@ -302,6 +320,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   sections.push({
     id: "activity",
     title: "Recent activity",
+    place: "full",
     content: (
       <Card>
         <CardHeader title="What changed" description={has("audit.view") ? "Everything recorded in this company's audit log." : "Orders, quotes, dispatch, tickets and fleet, as your role allows."} />
@@ -312,7 +331,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         ) : (
           <>
             <ul className="divide-y divide-line" aria-label="Recent activity">
-              {activity.data.rows.map((a) => {
+              {(activityAll ? activity.data.rows : activity.data.rows.slice(0, FIRST_ACTIVITY)).map((a) => {
                 const link = activityHref(a);
                 return (
                   <li key={a.id} className="px-5 py-2.5 text-sm sm:px-6">
@@ -322,11 +341,17 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 );
               })}
             </ul>
+            {!activityAll ? (
+              activity.data.rows.length > FIRST_ACTIVITY || activity.data.hasMore ? (
+                <p className="px-5 py-3 text-sm sm:px-6"><Link href="/command-center?all=1#section-activity" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Show more activity</Link></p>
+              ) : null
+            ) : (<>
             <div className="flex justify-between gap-2 px-5 py-3 sm:px-6">
               {activityPage > 1 ? <Link href={href({ kind, mine, hidden, page, activity: activityPage - 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Newer</Link> : <span />}
               {activity.data.hasMore && <Link href={href({ kind, mine, hidden, page, activity: activityPage + 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Older</Link>}
             </div>
             <p className="px-5 pb-3 text-xs text-muted sm:px-6">{ACTIVITY_PAGE_SIZE} per page.</p>
+            </>)}
           </>
         )}
       </Card>
@@ -410,10 +435,19 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {!ops && !has("quotes.view") && !linkedDriver ? (
         <EmptyState title="Nothing to coordinate for your role yet" description="Your role does not include orders, dispatch, tickets, billing, fleet or quotes. Use the menu for the modules you can open." />
       ) : (
-        <SectionLayout sections={sections} initial={layout} />
+        <SectionLayout sections={sortSections(sections)} initial={layout} />
       )}
     </>
   );
+}
+
+/**
+ * The default order (owner 2026-10-28: important information first): the attention queue with your work, today's
+ * figures and speed beside it, then the week ahead, sales and activity. A saved order still wins.
+ */
+const DEFAULT_ORDER: SectionId[] = ["attention", "my_work", "operations", "speed", "outlook", "sales", "activity"];
+function sortSections(list: Section[]) {
+  return [...list].sort((a, b) => DEFAULT_ORDER.indexOf(a.id) - DEFAULT_ORDER.indexOf(b.id));
 }
 
 function Chip({ href, active, label, count }: { href: string; active: boolean; label: string; count?: number }) {

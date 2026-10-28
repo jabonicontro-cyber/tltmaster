@@ -1,5 +1,6 @@
 import { Gauge, Receipt, ClipboardList } from "lucide-react";
 import type { ReactNode } from "react";
+import { InfoTip } from "@/components/ui/info-tip";
 import { formatTime } from "@/lib/orders/schedule";
 import type { SpeedMetrics } from "@/server/data/speed";
 import { SPEED_DAYS } from "@/server/data/speed";
@@ -9,7 +10,7 @@ export function SpeedSection({ speed }: { speed: SpeedMetrics }) {
   const { planning, billingReady, pace } = speed;
   return (
     <div>
-      <ul className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-3" aria-label="Speed">
+      <ul className="divide-y divide-line/70 overflow-hidden rounded-panel bg-card shadow-card ring-1 ring-line/60" aria-label="Speed">
         {planning !== undefined && (
           <Figure
             icon={<ClipboardList className="size-4" aria-hidden />}
@@ -39,28 +40,27 @@ export function SpeedSection({ speed }: { speed: SpeedMetrics }) {
           />
         )}
       </ul>
-      <p className="mt-3 text-xs text-muted">Measured from what was recorded in the last {SPEED_DAYS} days. Nothing here is estimated.</p>
+      <p className="mt-2 px-1 text-xs text-muted">Measured from what was recorded in the last {SPEED_DAYS} days. Nothing here is estimated.</p>
     </div>
   );
 }
 
 function Figure({ icon, label, value, unit, sub, how }: { icon: ReactNode; label: string; value: string | null; unit?: string; sub: string; how: string }) {
   return (
-    <li aria-label={label} className="flex flex-col rounded-panel border border-line/70 bg-card p-4 shadow-card sm:p-5">
-      <p className="flex items-center gap-2 text-[13px] font-medium text-muted">
-        <span className="grid size-7 place-items-center rounded-full bg-surface text-ink">{icon}</span>
-        {label}
-      </p>
+    <li aria-label={label} className="flex items-start gap-3 px-4 py-3">
+      <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-full bg-surface text-ink">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1 text-sm font-medium text-ink">{label}<InfoTip label={`How ${label.toLowerCase()} is measured`}>{how}</InfoTip></span>
+        <span className="block text-xs text-muted">{sub}</span>
+      </span>
       {value === null ? (
-        <p className="mt-3 text-lg font-semibold text-muted">Not enough measured yet</p>
+        <span className="max-w-24 shrink-0 text-right text-xs font-medium text-muted">Not enough measured yet</span>
       ) : (
-        <p className="mt-3 text-[2rem] leading-none font-semibold tracking-[-0.03em] text-ink tabular">
+        <span className="shrink-0 text-right text-xl leading-tight font-semibold tracking-[-0.02em] text-ink tabular">
           {value}
-          {unit && <span className="ml-1.5 text-base font-medium tracking-normal text-muted">{unit}</span>}
-        </p>
+          {unit && <span className="block text-xs font-medium tracking-normal text-muted">{unit}</span>}
+        </span>
       )}
-      <p className="mt-2 text-sm text-ink">{sub}</p>
-      <p className="mt-auto pt-3 text-xs text-muted">{how}</p>
     </li>
   );
 }

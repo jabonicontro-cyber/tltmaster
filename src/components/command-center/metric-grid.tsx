@@ -1,37 +1,42 @@
 import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import type { MetricCard } from "@/lib/command-center/rules";
 import { cn } from "@/lib/cn";
 
-/** A small status dot carries the tone; the cards themselves stay neutral so the numbers do the talking. */
+/** A small status dot carries the tone; the rows themselves stay neutral so the numbers do the talking. */
 const dotClasses: Record<MetricCard["tone"], string> = {
-  default: "",
+  default: "bg-line",
   warn: "bg-amber-500",
   bad: "bg-critical",
   good: "bg-green-600",
 };
 
-/** Overview cards. A null value reads "Not available", never 0. */
+/**
+ * Today's operations as one card of rows (owner 2026-10-28: one block instead of a wall of tiles), sitting beside the
+ * attention queue. Each row is a way into the module. A null value reads "Not available", never 0.
+ */
 export function MetricGrid({ cards }: { cards: MetricCard[] }) {
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4" aria-label="Overview">
+    <ul className="divide-y divide-line/70 overflow-hidden rounded-panel bg-card shadow-card ring-1 ring-line/60" aria-label="Overview">
       {cards.map((c) => {
         const body = (
-          <div className={cn("flex h-full flex-col rounded-panel border border-line/70 bg-card p-4 shadow-card transition-[border-color,box-shadow,translate] duration-200 sm:p-5", c.href && "hover:-translate-y-px hover:border-ink/15 hover:shadow-float")}>
-            <p className="flex items-center gap-1.5 text-[13px] font-medium text-muted">
-              {dotClasses[c.tone] && <span className={cn("size-1.5 rounded-full", dotClasses[c.tone])} aria-hidden />}
-              {c.label}
-            </p>
+          <div className={cn("flex items-center gap-3 px-4 py-2.5", c.href && "transition-colors hover:bg-ink/[0.03]")}>
+            <span className={cn("size-2 shrink-0 rounded-full", dotClasses[c.tone])} aria-hidden />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-sm font-medium text-ink">{c.label}</span>
+              <span className="block truncate text-xs text-muted">{c.sub}</span>
+            </span>
             {c.value === null ? (
-              <p className="mt-1 text-lg font-semibold text-muted">Not available</p>
+              <span className="shrink-0 text-sm font-medium text-muted">Not available</span>
             ) : (
-              <p className={cn("mt-2 text-[2rem] leading-none font-semibold tracking-[-0.03em] tabular", c.tone === "bad" ? "text-critical" : "text-ink")}>{c.value}</p>
+              <span className={cn("shrink-0 text-xl font-semibold tracking-[-0.02em] tabular", c.tone === "bad" ? "text-critical" : c.value === 0 ? "text-muted/70" : "text-ink")}>{c.value}</span>
             )}
-            <p className="mt-auto pt-3 text-sm text-muted">{c.sub}</p>
+            {c.href && <ChevronRight className="size-4 shrink-0 text-muted/60" aria-hidden />}
           </div>
         );
         return (
           <li key={c.key} aria-label={c.label}>
-            {c.href ? <Link href={c.href} className="block h-full">{body}</Link> : body}
+            {c.href ? <Link href={c.href} className="block">{body}</Link> : body}
           </li>
         );
       })}
