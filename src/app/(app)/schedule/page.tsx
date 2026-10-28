@@ -17,6 +17,9 @@ import { facesForEmployees } from "@/server/data/faces";
 import { getScheduleWeek, listPatterns, plannedLoadsByDay, weekStart } from "@/server/data/schedules";
 import { businessToday } from "@/server/data/settings";
 import { timeOffInRange } from "@/server/data/time-off";
+import { listShiftOffers } from "@/server/data/shift-offers";
+import { OfferShiftButton, ShiftOffersList } from "@/components/schedule/shift-offers";
+import { Card, CardHeader } from "@/components/ui/card";
 
 export const metadata = { title: "Schedule" };
 
@@ -36,9 +39,10 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
   // Day view: one day of the shown week as a timeline (today when it is in the week, else the Monday).
   const dayView = sp.view === "day";
   const day = sp.day && isIsoDate(sp.day) && sp.day >= from && sp.day <= to ? sp.day : today >= from && today <= to ? today : from;
-  const [week, patterns, timeOff, loadsByDay] = await Promise.all([
+  const [week, patterns, timeOff, loadsByDay, offers] = await Promise.all([
     getScheduleWeek(from, 7), listPatterns(from), timeOffInRange(from, to).catch(() => null),
     can(access, "dispatch.view") ? plannedLoadsByDay(from, to).catch(() => null) : Promise.resolve(null),
+    manage || can(access, "dispatch.view") ? listShiftOffers(today) : Promise.resolve(null),
   ]);
   const faces = await facesForEmployees(week.people.map((p) => p.employeeId));
   const q = (sp.q ?? "").trim().toLowerCase();
@@ -75,6 +79,16 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             </div>
           )}
           {forecast.some((d) => d.drivers || d.loads) ? <StaffingForecast days={forecast} today={today} /> : null}
+          {offers?.installed && (manage || offers.offers.length > 0) && (
+            <Card className="mb-5">
+              <CardHeader
+                title="Shift offers"
+                description={offers.offers.length ? undefined : "Need someone extra on a day? Offer a shift; qualified people answer from My Day."}
+                actions={manage ? <OfferShiftButton mode={offers.mode} today={today} people={week.people.map((p) => ({ id: p.employeeId, name: p.name, driver: !!p.driverId, shop: p.department === "shop" }))} /> : undefined}
+              />
+              {offers.offers.length > 0 && <ShiftOffersList offers={offers.offers} canManage={manage} names={Object.fromEntries(week.people.map((p) => [p.employeeId, p.name]))} />}
+            </Card>
+          )}
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <div role="group" aria-label="View" className="inline-flex rounded-control bg-surface p-0.5 ring-1 ring-line">
               <Link href={link({})} aria-current={!dayView ? "page" : undefined} className={cn("rounded-[calc(var(--radius-control)-2px)] px-3 py-1 text-sm font-medium", !dayView ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>Week</Link>

@@ -1857,8 +1857,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Staffing forecast**: drivers on shift each day of the week next to the loads planned that day. **No driver** marks a day with loads and nobody scheduled.",
       "**Week**: one row per person with each day's shift, **Off**, or — without a schedule. A moon marks a shift that ends the next day; time off shows on the person's days.",
       "**Day**: one day as a timeline, each person's shift drawn across 24 hours so gaps and overlaps show at a glance.",
+      "**Shift offers**: extra shifts offered to drivers, the shop or everyone, with who asked or accepted and the status.",
     ],
     tasks: [
+      {
+        title: "Offer an extra shift",
+        steps: [
+          "Select **Offer a shift** under **Shift offers**.",
+          "Choose the **Date**, **Start**, **End**, **Break (min)** and who it is **For**; in the company's \"offer to chosen people\" mode, tick who to offer it to.",
+          "Select **Offer shift**. Everyone who can take it sees it under **Open shifts** on My Day (or My jobs in the shop) and gets an in-app notice.",
+          "Depending on the company's choice in **Settings → Shift offers**: **Approve** one of the people who asked, **Confirm** the person who accepted, or nothing at all when the first to accept gets it.",
+        ],
+      },
       {
         title: "Set a repeating schedule",
         steps: [
@@ -1883,6 +1893,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     prerequisites: ["Seeing everyone's schedule needs People or Dispatch access; changing schedules needs the schedules permission (owner, office and dispatch by default)."],
     troubleshooting: [
+      { problem: "“Already works that day” when someone answers a shift offer.", fix: "A person already on shift that day (or still on the overnight shift from the day before) cannot take another. Offer it to someone else." },
+      { problem: "“On approved time off that day.”", fix: "People on approved time off are not offered the shift and cannot take it." },
       { problem: "“Schedules need a database update that has not been installed yet.”", fix: "Ask the owner to install the update." },
       { problem: "The staffing forecast is missing.", fix: "It shows when the week has drivers on shift or planned loads; loads are counted only for people who can see dispatch." },
       { problem: "Dispatch says “Day off on …” when assigning a driver.", fix: "The driver is off that day. Choose another driver, or give a reason to assign anyway." },

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Calculator, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, Calculator, CalendarDays, CalendarPlus, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -38,6 +38,8 @@ import { listSignIns } from "@/server/data/people";
 import { ImportUploader } from "@/components/admin/import-uploader";
 import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
 import { stageCompanyImport } from "./import/actions";
+import { shiftOfferMode } from "@/server/data/shift-offers";
+import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
 
 const BASE_SAVED: Record<string, string> = {
   created: "Base added.",
@@ -63,7 +65,7 @@ const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   company: Building2, numbering: Hash, costs: Calculator, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
-  permissions: Users, security: Lock, sample: Database, import: Upload, audit: ScrollText,
+  permissions: Users, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, audit: ScrollText,
 };
 
 type Group = "Company" | "Operations" | "Access" | "System";
@@ -76,6 +78,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "dispatch", label: "Dispatch rules", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "dispatch.view") },
   { key: "bases", label: "Dispatch Bases", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "users.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
+  { key: "shift-offers", label: "Shift offers", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "costs", label: "Cost rates", group: "Operations", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
@@ -256,6 +259,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   } else if (tab === "sample") {
     const { data } = await supabase.rpc("sample_data_counts");
     content = <SampleDataPanel counts={(data ?? {}) as Record<string, number>} />;
+  } else if (tab === "shift-offers") {
+    const { installed, mode } = await shiftOfferMode();
+    content = (
+      <>
+        <CardHeader
+          title="Shift offers"
+          description="How an extra shift offered on the Schedule is filled. Whatever you choose, Taviron checks that the person is in the right group, is not already working that day and is not on approved time off, both when they answer and right before the shift is written. Changing this never changes offers already out."
+        />
+        <CardBody>
+          {installed ? <ShiftOfferModeForm mode={mode} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Shift offers need a database update that has not been installed yet.</p>}
+        </CardBody>
+      </>
+    );
   } else if (tab === "import") {
     const { data, error } = await supabase.rpc("company_import_batches");
     const batches = (data ?? []) as CompanyImportSummary[];

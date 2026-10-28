@@ -35,7 +35,7 @@ const TENANT_TABLES = [
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
-  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements",
+  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -75,6 +75,12 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.import_stage_core", "private.import_approve_core", "private.company_import_batch_for", "public.company_import_stage",
   "public.company_import_batches", "public.company_import_batch", "public.company_import_decide", "public.company_import_discard",
   "public.company_import_approve", "public.company_import_undo", "public.demo_import_samples",
+  // B102 shift offers (20261120004700): planners (schedules.manage) offer and decide; people answer for themselves
+  // (their own employee record, never an id argument); the shift is written only after the checks run again.
+  "private.shift_offer_problem", "private.my_employee", "private.shift_offer_notify_planners", "private.shift_offer_notify_person",
+  "private.shift_offer_fill", "public.shift_offer_set_mode", "public.shift_offer_create", "public.shift_offer_decide",
+  "public.shift_offer_cancel", "public.my_shift_offers", "public.shift_offer_respond", "public.shift_offer_withdraw",
+  "public.demo_shift_offer_samples",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

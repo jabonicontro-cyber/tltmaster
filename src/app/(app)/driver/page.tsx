@@ -33,6 +33,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { answerMyOffer } from "@/app/(app)/hired-trucks/actions";
 import { getMyShifts } from "@/server/data/schedules";
 import { shiftLine } from "@/lib/schedule/shifts";
+import { myShiftOffers } from "@/server/data/shift-offers";
+import { MyShiftOffers } from "@/components/schedule/shift-offers";
 
 export const metadata = { title: "My Day" };
 
@@ -167,7 +169,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates, offers, score, sitePhotos, shifts] = await Promise.all([
+  const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
     loadScorecard(addDays(h.today, -(SCORECARD_DAYS - 1)), h.today, true).catch(() => null),
@@ -175,6 +177,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     (async () => { const r = await (await createClient()).rpc("driver_site_photos"); return (r.error ? {} : (r.data ?? {})) as Record<string, string[]>; })(),
     // Their own schedule today and tomorrow (SCH-1); left out without a schedule or before the update is installed.
     getMyShifts(access.userId, h.today, 2).catch(() => null),
+    // Extra shifts offered to them (B102); none before the update is installed.
+    myShiftOffers().catch(() => null),
   ]);
   const shiftToday = shiftLine(shifts?.find((d) => d.date === h.today));
   const shiftTomorrow = shiftLine(shifts?.find((d) => d.date === addDays(h.today, 1)));
@@ -244,6 +248,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
               </li>
             ))}
           </ul>
+        </section>
+      )}
+
+      {/* Shift offers (B102): extra shifts this person can take; the database checks again when they answer. */}
+      {shiftOffers && shiftOffers.length > 0 && (
+        <section aria-label="Open shifts" className="rounded-2xl border border-line bg-card px-4 pt-3 pb-1">
+          <h2 className="text-lg font-bold">Open shifts</h2>
+          <MyShiftOffers offers={shiftOffers} />
         </section>
       )}
 

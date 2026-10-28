@@ -5,6 +5,8 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listMyJobs } from "@/server/data/maintenance-crew";
+import { myShiftOffers } from "@/server/data/shift-offers";
+import { MyShiftOffers } from "@/components/schedule/shift-offers";
 
 export const metadata = { title: "My jobs" };
 
@@ -15,7 +17,7 @@ export const metadata = { title: "My jobs" };
 export default async function MyJobsPage() {
   const access = await requirePagePermission("maintenance.view");
   const manage = can(access, "maintenance.manage");
-  const jobs = await listMyJobs(access.userId);
+  const [jobs, shiftOffers] = await Promise.all([listMyJobs(access.userId), myShiftOffers().catch(() => null)]);
 
   return (
     <>
@@ -26,6 +28,13 @@ export default async function MyJobsPage() {
       ) : (
         <div className="mx-auto max-w-2xl">
           {jobs.myTimer && <RunningTimer timer={jobs.myTimer} />}
+          {/* Shift offers (B102): extra shop shifts this person can take. */}
+          {shiftOffers && shiftOffers.length > 0 && (
+            <section aria-label="Open shifts" className="mb-5 rounded-2xl border border-line bg-card px-4 pt-3 pb-1">
+              <h2 className="text-sm font-semibold text-ink">Open shifts</h2>
+              <MyShiftOffers offers={shiftOffers} />
+            </section>
+          )}
           <h2 className="mb-2 text-sm font-semibold text-ink">My jobs</h2>
           {jobs.mine.length ? (
             <ul className="space-y-3">

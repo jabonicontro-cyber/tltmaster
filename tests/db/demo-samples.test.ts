@@ -185,6 +185,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Spreadsheet import (B106): one customer file waiting for review, with ready, duplicate and needs-fixing rows.
     const imports = await q<{ status: string }>("select r.status from private.import_rows r join private.import_batches b on b.id = r.batch_id where b.company_id = $1 and b.source = 'company' order by r.row_number", [w.company]);
     expect(imports.rows.map((r) => r.status)).toEqual(["valid", "valid", "duplicate", "error"]);
+    // Shift offers (B102): an open driver shift two days out, asked for by one qualified driver.
+    const shiftOffers = await q<{ status: string; answers: string }>("select o.status, count(r.id) answers from public.shift_offers o left join public.shift_offer_responses r on r.offer_id = o.id and r.status = 'requested' where o.company_id = $1 group by o.id", [w.company]);
+    expect(shiftOffers.rows.map((r) => [r.status, Number(r.answers)])).toEqual([["open", 1]]);
     // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
     const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
     expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);
