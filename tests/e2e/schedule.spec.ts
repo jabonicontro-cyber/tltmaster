@@ -1,6 +1,6 @@
 import { expect, test, type Locator } from "@playwright/test";
 import { asUser } from "./db";
-import { driverFixture } from "./driver-fixture";
+import { driverFixture, driverUserId } from "./driver-fixture";
 import { expectToast, signIn, unique } from "./helpers";
 import { USERS } from "./users";
 
@@ -99,8 +99,9 @@ test("My Day shows the driver's own shift", async ({ page }) => {
   await driverFixture(); // links the test driver's sign-in to a driver record with loads
   // Yesterday, today and tomorrow in UTC, so the company's today is covered in any time zone; cleared afterwards.
   const days = [-1, 0, 1].map((n) => new Date(Date.now() + n * 864e5).toISOString().slice(0, 10));
+  const userId = await driverUserId();
   const employee = await asUser(USERS.owner.email, async (q) => {
-    const e = (await q("select e.id from public.employees e join auth.users u on u.id = e.user_id where u.email = $1", [USERS.driver.email])).rows[0].id as string;
+    const e = (await q("select id from public.employees where user_id = $1", [userId])).rows[0].id as string;
     for (const d of days) await q("select public.schedule_set_day($1, $2, 'shift', '00:00', '23:45', 0, 'My Day check (e2e)')", [e, d]);
     return e;
   });
