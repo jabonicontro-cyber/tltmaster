@@ -3,14 +3,15 @@ import type { ReactNode } from "react";
 import { Search } from "lucide-react";
 import { buttonClasses } from "./button";
 import { Input } from "./form";
+import { LiveFilterForm } from "./live-filter-form";
 
 /**
  * Search + filter form using plain GET parameters, so filters are bookmarkable
- * and work without JavaScript.
+ * and work without JavaScript. With JavaScript the list follows as you type (LiveFilterForm).
  */
 export function FilterBar({ action, query, placeholder = "Search…", children, clearHref }: { action: string; query?: string; placeholder?: string; children?: ReactNode; clearHref: string }) {
   return (
-    <form action={action} method="get" role="search" className="space-y-3 border-b border-line/60 px-5 py-4 sm:px-6">
+    <LiveFilterForm action={action} className="space-y-3 border-b border-line/60 px-5 py-4 sm:px-6">
       {/* Search and the actions on one line; filters, when there are any, on a quiet line below. */}
       {/* Phones: the search gets the whole line, the actions sit below it. */}
       <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
@@ -29,7 +30,7 @@ export function FilterBar({ action, query, placeholder = "Search…", children, 
         </Link>
       </div>
       {children ? <div className="grid grid-cols-2 items-end gap-x-3 gap-y-2 sm:flex sm:flex-wrap">{children}</div> : null}
-    </form>
+    </LiveFilterForm>
   );
 }
 

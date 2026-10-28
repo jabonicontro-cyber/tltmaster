@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
 import { referenceKey } from "@/lib/search";
+import { rankRows } from "@/lib/search/rank";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import type { ContactRow, CustomerRow, QuoteListRow, SiteRow } from "./types";
 
@@ -49,7 +50,12 @@ export async function listCustomers(filters: CustomerFilters) {
     res = await run(false);
   }
   if (res.error) throw new Error(`Could not load customers: ${res.error.message}`);
-  return { rows: (res.data ?? []) as unknown as ListRow[], total: res.count ?? 0, crm };
+  const rows = (res.data ?? []) as unknown as ListRow[];
+  // With a search and the default sort, the best matches come first (name before number, email, phone or city).
+  const ranked = !filters.sort || filters.sort === "name"
+    ? rankRows(rows, filters.q, (r) => ({ main: r.name, others: [r.customer_number, r.email, r.phone, r.billing_city] }))
+    : rows;
+  return { rows: ranked, total: res.count ?? 0, crm };
 }
 
 export async function getCustomer(id: string) {
