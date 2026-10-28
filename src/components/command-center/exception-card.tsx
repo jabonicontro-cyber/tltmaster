@@ -23,7 +23,9 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
   const title = exceptionTitle(item);
   const age = ageLabel(item.since, now);
   const reasons = exceptionReasons(item);
-  const urgent = item.priority === 1;
+  // The red edge marks urgent work: top-priority items, and an urgent order for as long as its flag is open —
+  // acknowledging it is not resolving it (owner 2026-10-28).
+  const urgent = item.priority === 1 || item.kind === "urgent_order";
   return (
     <li
       className={cn(
