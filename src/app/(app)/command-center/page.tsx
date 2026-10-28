@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { CheckCircle2, ListChecks, Plus, Route, Siren, Truck, UserCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, ListChecks, Plus, Route, Siren, Truck, UserCheck } from "lucide-react";
 import { StatTile } from "@/components/ui/stat-tile";
 import { ExceptionCard } from "@/components/command-center/exception-card";
 import { LiveOutlook } from "@/components/command-center/live-outlook";
+import { AttentionGlance, type AttentionKindRow } from "@/components/command-center/attention-glance";
 import { MetricGrid } from "@/components/command-center/metric-grid";
 import { RefreshButton } from "@/components/command-center/refresh-button";
 import { SalesSection } from "@/components/command-center/sales-section";
@@ -19,7 +20,7 @@ import { greeting } from "@/lib/people/greeting";
 import { shownName } from "@/server/data/profile";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
-import { EXCEPTION_KINDS, KIND_LABELS, PRIORITY_RULES, metricCards, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
+import { EXCEPTION_KINDS, KIND_LABELS, KIND_OWNERS, PRIORITY_RULES, exceptionAction, exceptionTitle, metricCards, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
 import { urgentSummary } from "@/lib/command-center/urgent";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
@@ -39,7 +40,11 @@ import { outlookTotals } from "@/lib/live/outlook";
 
 export const metadata = { title: "Command Center" };
 
-type Search = { kind?: string; mine?: string; hidden?: string; page?: string; activity?: string; from?: string; to?: string; customer?: string; welcome?: string; all?: string };
+type Search = { kind?: string; mine?: string; hidden?: string; page?: string; activity?: string; from?: string; to?: string; customer?: string; welcome?: string; all?: string; view?: string };
+
+/** Drill-in views (owner 2026-10-28): the overview shows each area at a glance; these open one area in full. */
+const VIEWS = { week: "Next 7 days", sales: "Sales and quotes", activity: "Recent activity" } as const;
+type View = keyof typeof VIEWS;
 
 /** Permissions that give a person operational responsibilities shown here (the database checks them again). */
 const OPERATIONS: Permission[] = ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view", "orders.view"];
@@ -75,11 +80,12 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const hidden = sp.hidden === "1";
   const page = positive(sp.page);
   const activityPage = positive(sp.activity, 20);
-  // The unfiltered first view shows the most urgent few (owner 2026-10-28: less scrolling); "Show all" opens the rest.
-  const showAll = sp.all === "1" || Boolean(kind || mine || hidden) || page > 1;
-  const FIRST_ITEMS = 6;
-  const FIRST_ACTIVITY = 6;
-  const activityAll = sp.all === "1" || activityPage > 1;
+  // At a glance first (owner 2026-10-28): the overview summarises every area; a kind, "Assigned to me", "Hidden",
+  // a later page or "all" opens the full queue, and ?view= opens the week, sales or activity in full.
+  const view: View | undefined = sp.view && sp.view in VIEWS ? (sp.view as View) : undefined;
+  const queueDrill = !view && (Boolean(kind || mine || hidden) || page > 1 || sp.all === "1");
+  const overview = !view && !queueDrill;
+  const GLANCE_ACTIVITY = 5;
   const canAssign = has("exceptions.assign");
   const [{ today, timezone }, settings] = await Promise.all([businessToday(), getSettings()]);
   const from = sp.from && isIsoDate(sp.from) ? sp.from : addDays(today, -30);
@@ -143,7 +149,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       place: "full",
       collapsedSummary: t ? `${t.loads} loads · ${t.unassigned} without a truck${t.conflicts ? ` · ${t.conflicts} conflicts` : ""}` : "Could not be loaded",
       content: outlook.ok ? (
-        <LiveOutlook outlook={outlook.data} today={today} />
+        <LiveOutlook outlook={outlook.data} today={today} compact={overview} moreHref="/command-center?view=week" />
       ) : (
         <ErrorState title="The next 7 days could not be loaded" description="No figures are shown rather than guessed. Open Dispatch directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
       ),
@@ -163,21 +169,32 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         <div className="grid grid-cols-1 gap-4">
           {ops && (
             <Card>
-              <CardHeader title="Assigned to you" description="Items someone asked you to handle. They close when the record is fixed." />
+              <CardHeader title="Assigned to you" />
               {!myItems ? (
                 <div className="p-4"><ErrorState title="Your items could not be loaded" description="This does not mean nothing is assigned to you. Try again in a moment." /></div>
               ) : myItems.items.length === 0 ? (
                 <p className="px-5 py-6 text-sm text-muted sm:px-6">Nothing is assigned to you right now.</p>
               ) : (
                 <>
-                  <ul className="grid grid-cols-1 gap-3 px-4 pb-4" aria-label="Assigned to you">
-                    {myItems.items.map((item) => (
-                      <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
-                    ))}
+                  {/* One line each at a glance; the full cards (with assign and hide) open from "All assigned to you". */}
+                  <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Assigned to you">
+                    {myItems.items.slice(0, 3).map((item) => {
+                      const action = exceptionAction(item, cardCan);
+                      return (
+                        <li key={item.exception_key} aria-label={exceptionTitle(item)}>
+                          <Link href={action.href} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-ink/[0.03] sm:px-6">
+                            <span className={cn("size-2 shrink-0 rounded-full", item.priority === 1 ? "bg-critical" : "bg-amber-500")} aria-hidden />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-medium text-ink">{exceptionTitle(item)}</span>
+                              <span className="block truncate text-xs text-muted">{KIND_LABELS[item.kind]}{item.customer_name ? ` · ${item.customer_name}` : ""}</span>
+                            </span>
+                            <span className="shrink-0 text-xs font-semibold text-brand-fg">{action.label}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
                   </ul>
-                  {myItems.total > myItems.items.length && (
-                    <p className="px-5 py-3 text-sm sm:px-6"><Link href={href({ mine: true })} className="font-semibold underline">All {myItems.total} assigned to you</Link></p>
-                  )}
+                  <p className="border-t border-line/70 px-5 py-3 text-sm sm:px-6"><Link href={href({ mine: true })} className="font-semibold text-brand-fg underline-offset-2 hover:underline">{myItems.total > 1 ? `All ${myItems.total} assigned to you` : "Open it with assign and hide"}</Link></p>
                 </>
               )}
             </Card>
@@ -210,13 +227,22 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   }
 
   if (ops) {
+    const kindRows: AttentionKindRow[] = s
+      ? EXCEPTION_KINDS.filter((k) => (s.by_kind[k] ?? 0) > 0)
+          .map((k) => {
+            const ex = queue?.ok ? queue.data.items.find((i) => i.kind === k) : undefined;
+            return { kind: k, label: KIND_LABELS[k], count: s.by_kind[k] ?? 0, urgent: s.urgent_by_kind?.[k] ?? 0, owner: KIND_OWNERS[k], example: ex ? exceptionTitle(ex) : undefined, href: href({ kind: k }) };
+          })
+          .sort((a, b) => b.urgent - a.urgent || b.count - a.count)
+      : [];
+    const urgentItems = queue?.ok ? queue.data.items.filter((i) => i.priority === 1).slice(0, 2) : [];
     const visibleKinds = s ? EXCEPTION_KINDS.filter((k) => (s.by_kind[k] ?? 0) > 0 || kind === k) : [];
     sections.push({
       id: "attention",
       title: "Attention queue",
       place: "main",
       collapsedSummary: s ? `${s.exceptions.total} open · ${s.exceptions.urgent} urgent` : "Could not be loaded",
-      content: (
+      content: queueDrill ? (
         <Card>
           <CardHeader description="One item per underlying problem, most urgent and oldest first. An item leaves the queue only when its record is fixed in its own module." />
           <nav aria-label="Filter the queue" className="flex flex-wrap gap-2 border-b border-line/70 px-5 py-3 sm:px-6">
@@ -253,21 +279,38 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             <>
               {hidden && <p className="border-b border-line bg-surface px-5 py-2 text-sm sm:px-6">These are still open for everyone else. They return to your queue when the time runs out.</p>}
               <ul className="grid grid-cols-1 gap-4 bg-surface/60 p-4 sm:grid-cols-2 sm:p-5" aria-label="Attention items">
-                {(showAll ? queue.data.items : queue.data.items.slice(0, FIRST_ITEMS)).map((item) => (
+                {queue.data.items.map((item) => (
                   <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
                 ))}
               </ul>
-              {showAll ? (
-                <Pagination page={page} pageSize={QUEUE_PAGE_SIZE} total={queue.data.total} hrefFor={(p) => href({ kind, mine, hidden, page: p })} />
-              ) : queue.data.total > FIRST_ITEMS ? (
-                <p className="px-5 py-3 text-sm sm:px-6">
-                  <Link href={`/command-center?all=1#attention`} className="font-semibold text-brand-fg underline-offset-2 hover:underline">Show all {queue.data.total} items</Link>
-                  <span className="text-muted"> · the {FIRST_ITEMS} most urgent are shown</span>
-                </p>
-              ) : null}
+              <Pagination page={page} pageSize={QUEUE_PAGE_SIZE} total={queue.data.total} hrefFor={(p) => href({ kind, mine, hidden, page: p })} />
             </>
           )}
         </Card>
+      ) : (
+        !s || !queue?.ok ? (
+          <ErrorState title="The attention queue could not be loaded" description="This does not mean nothing needs attention. Open the modules directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
+        ) : s.exceptions.total - (s.exceptions.hidden ?? 0) === 0 ? (
+          <Card>
+            <EmptyState icon={<CheckCircle2 className="size-6" />} title="Nothing needs attention" description="Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports." />
+          </Card>
+        ) : (
+          <Card>
+            {/* Urgent items stay as full cards so they can be acted on here; everything else is one row per kind. */}
+            {urgentItems.length > 0 && (
+              <ul className={cn("grid grid-cols-1 gap-4 border-b border-line/70 bg-surface/60 p-4 sm:p-5", urgentItems.length > 1 && "sm:grid-cols-2")} aria-label="Attention items">
+                {urgentItems.map((item) => (
+                  <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
+                ))}
+              </ul>
+            )}
+            <AttentionGlance rows={kindRows} />
+            <p className="flex flex-wrap items-center gap-x-3 border-t border-line/70 px-5 py-3 text-sm sm:px-6">
+              <Link href="/command-center?all=1#attention" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Open the full queue</Link>
+              <span className="text-muted">{queue.data.total} open · most urgent and oldest first</span>
+            </p>
+          </Card>
+        )
       ),
     });
 
@@ -285,9 +328,10 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     sections.push({
       id: "operations",
       title: "Operations today",
-      place: "rail",
+      // Under the queue, two rows across (owner 2026-10-28): every figure in view without a long column beside it.
+      place: "main",
       content: summary?.ok ? (
-        <MetricGrid cards={cards} />
+        <MetricGrid cards={cards} columns={2} />
       ) : (
         <ErrorState title="The overview could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
       ),
@@ -310,7 +354,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       title: "Sales and quotes",
       place: "full",
       content: quotes ? (
-        <SalesSection quotes={quotes} from={from} to={to} customer={customer} customers={customers} followupDays={settings.quote_followup_days} today={today} resetHref="/command-center" />
+        <SalesSection quotes={quotes} from={from} to={to} customer={customer} customers={customers} followupDays={settings.quote_followup_days} today={today} resetHref="/command-center?view=sales" compact={overview} moreHref="/command-center?view=sales" />
       ) : (
         <ErrorState title="Quote figures could not be loaded" description="Open Quotes directly or try again." />
       ),
@@ -331,7 +375,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         ) : (
           <>
             <ul className="divide-y divide-line" aria-label="Recent activity">
-              {(activityAll ? activity.data.rows : activity.data.rows.slice(0, FIRST_ACTIVITY)).map((a) => {
+              {(view === "activity" ? activity.data.rows : activity.data.rows.slice(0, GLANCE_ACTIVITY)).map((a) => {
                 const link = activityHref(a);
                 return (
                   <li key={a.id} className="px-5 py-2.5 text-sm sm:px-6">
@@ -341,14 +385,14 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 );
               })}
             </ul>
-            {!activityAll ? (
-              activity.data.rows.length > FIRST_ACTIVITY || activity.data.hasMore ? (
-                <p className="px-5 py-3 text-sm sm:px-6"><Link href="/command-center?all=1#section-activity" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Show more activity</Link></p>
+            {view !== "activity" ? (
+              activity.data.rows.length > GLANCE_ACTIVITY || activity.data.hasMore ? (
+                <p className="border-t border-line/70 px-5 py-3 text-sm sm:px-6"><Link href="/command-center?view=activity" className="font-semibold text-brand-fg underline-offset-2 hover:underline">All activity</Link></p>
               ) : null
             ) : (<>
             <div className="flex justify-between gap-2 px-5 py-3 sm:px-6">
-              {activityPage > 1 ? <Link href={href({ kind, mine, hidden, page, activity: activityPage - 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Newer</Link> : <span />}
-              {activity.data.hasMore && <Link href={href({ kind, mine, hidden, page, activity: activityPage + 1 }, "#section-activity")} className={buttonClasses("secondary", "sm")}>Older</Link>}
+              {activityPage > 1 ? <Link href={`/command-center?view=activity${activityPage > 2 ? `&activity=${activityPage - 1}` : ""}`} className={buttonClasses("secondary", "sm")}>Newer</Link> : <span />}
+              {activity.data.hasMore && <Link href={`/command-center?view=activity&activity=${activityPage + 1}`} className={buttonClasses("secondary", "sm")}>Older</Link>}
             </div>
             <p className="px-5 pb-3 text-xs text-muted sm:px-6">{ACTIVITY_PAGE_SIZE} per page.</p>
             </>)}
@@ -435,7 +479,11 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       {!ops && !has("quotes.view") && !linkedDriver ? (
         <EmptyState title="Nothing to coordinate for your role yet" description="Your role does not include orders, dispatch, tickets, billing, fleet or quotes. Use the menu for the modules you can open." />
       ) : (
-        <SectionLayout sections={sortSections(sections)} initial={layout} />
+        overview ? (
+          <SectionLayout sections={sortSections(sections)} initial={layout} />
+        ) : (
+          <DrillIn title={queueDrill ? "Attention queue" : VIEWS[view!]} section={sections.find((x) => x.id === (queueDrill ? "attention" : view === "week" ? "outlook" : view))} />
+        )
       )}
     </>
   );
@@ -448,6 +496,19 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 const DEFAULT_ORDER: SectionId[] = ["attention", "my_work", "operations", "speed", "outlook", "sales", "activity"];
 function sortSections(list: Section[]) {
   return [...list].sort((a, b) => DEFAULT_ORDER.indexOf(a.id) - DEFAULT_ORDER.indexOf(b.id));
+}
+
+/** One area in full, opened from the overview; "Command Center" goes back to everything at a glance. */
+function DrillIn({ title, section }: { title: string; section?: Section }) {
+  return (
+    <section aria-label={title} id={section?.id === "attention" ? "attention" : undefined}>
+      <div className="mb-3 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Link href="/command-center" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-fg underline-offset-2 hover:underline"><ArrowLeft className="size-4" aria-hidden />Command Center</Link>
+        <h2 className="text-lg font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+      </div>
+      {section ? section.content : <EmptyState title="Not available for your role" description="Go back to the Command Center for what your role covers." />}
+    </section>
+  );
 }
 
 function Chip({ href, active, label, count }: { href: string; active: boolean; label: string; count?: number }) {

@@ -17,11 +17,41 @@ const dayNumber = (date: string) => Number(date.slice(8, 10));
  * Layout (owner's references 2026-10-27): the figures first, the week as a bar chart (covered and open loads, today
  * highlighted), today's capacity as rings, and the next steps as cards.
  */
-export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: string }) {
+export function LiveOutlook({ outlook, today, compact = false, moreHref }: { outlook: Outlook; today: string; compact?: boolean; moreHref?: string }) {
   const totals = outlookTotals(outlook.days);
   const steps = nextSteps(outlook.days, today);
   const busiest = Math.max(1, ...outlook.days.map((d) => d.loads));
   const t = outlook.days.find((d) => d.date === today) ?? outlook.days[0];
+  // At a glance (owner 2026-10-28): the figures, a short bar per day and the most pressing next step; the full week
+  // (taller chart, today's capacity, every next step) opens from "Open the week".
+  if (compact) {
+    const step = steps[0];
+    return (
+      <section aria-label="Loads this week" className="min-w-0 rounded-panel bg-card shadow-card ring-1 ring-line/60">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-3 px-5 pt-4 sm:px-6 lg:grid-cols-[minmax(0,15rem)_minmax(0,1fr)] lg:items-center">
+          <div className="grid grid-cols-2 gap-x-5 gap-y-3" aria-label="Outlook summary">
+            <Figure small value={totals.loads} label="loads planned" />
+            <Figure small value={totals.unassigned} label="without a truck" tone={totals.unassigned > 0 ? "amber" : undefined} />
+            {totals.conflicts > 0 && <Figure small value={totals.conflicts} label="on equipment that cannot run" tone="critical" />}
+          </div>
+          <ol className="grid grid-cols-7 gap-1 sm:gap-2" aria-label="Day by day">
+            {outlook.days.map((d) => <DayBar key={d.date} day={d} today={today} busiest={busiest} short />)}
+          </ol>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-line/70 px-5 py-3 text-sm sm:px-6">
+          {step ? (
+            <Link href={step.href} className={cn("inline-flex min-w-0 items-center gap-2 font-medium underline-offset-2 hover:underline", step.urgent ? "text-critical" : "text-ink")}>
+              {step.urgent ? <AlertTriangle className="size-4 shrink-0" aria-hidden /> : <CalendarClock className="size-4 shrink-0 text-muted" aria-hidden />}
+              <span className="min-w-0">{step.text}</span>
+            </Link>
+          ) : (
+            <span className="text-muted">Every load this week has a truck and driver.</span>
+          )}
+          {moreHref && <Link href={moreHref} className="ml-auto inline-flex items-center gap-1 font-semibold text-brand-fg underline-offset-2 hover:underline">Open the week<ArrowRight className="size-3.5" aria-hidden /></Link>}
+        </div>
+      </section>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
       <section aria-label="Loads this week" className="min-w-0 rounded-panel bg-card shadow-card ring-1 ring-line/60">
@@ -100,10 +130,10 @@ export function LiveOutlook({ outlook, today }: { outlook: Outlook; today: strin
   );
 }
 
-function Figure({ value, label, tone }: { value: string | number; label: string; tone?: "amber" | "critical" }) {
+function Figure({ value, label, tone, small }: { value: string | number; label: string; tone?: "amber" | "critical"; small?: boolean }) {
   return (
     <p className="min-w-0">
-      <span className={cn("block text-[1.75rem] leading-none font-semibold tracking-[-0.03em] tabular", tone === "amber" ? "text-amber-700" : tone === "critical" ? "text-critical" : "text-ink")}>{value}</span>
+      <span className={cn("block leading-none", small ? "text-[1.375rem]" : "text-[1.75rem]", "font-semibold tracking-[-0.03em] tabular", tone === "amber" ? "text-amber-700" : tone === "critical" ? "text-critical" : "text-ink")}>{value}</span>
       <span className="mt-1.5 block max-w-[16rem] text-sm text-muted">{label}</span>
     </p>
   );
@@ -114,7 +144,7 @@ function Figure({ value, label, tone }: { value: string | number; label: string;
  * (red today, amber later). The link opens that day's board. The accessible name starts with the visible words
  * (day, date, loads) and then the spoken details (WCAG 2.5.3).
  */
-function DayBar({ day: d, today, busiest }: { day: OutlookDay; today: string; busiest: number }) {
+function DayBar({ day: d, today, busiest, short = false }: { day: OutlookDay; today: string; busiest: number; short?: boolean }) {
   const isToday = d.date === today;
   const height = d.loads ? Math.max(8, Math.round((d.loads / busiest) * 100)) : 0;
   const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
@@ -129,7 +159,7 @@ function DayBar({ day: d, today, busiest }: { day: OutlookDay; today: string; bu
           <span className={cn("text-base font-semibold tabular", d.loads ? "text-ink" : "text-muted/70")}>{d.loads}</span>
           <span className="sr-only"> loads</span>
         </span>
-        <span className="mt-2 flex h-36 w-full max-w-11 flex-col justify-end xl:h-48" aria-hidden>
+        <span className={cn("mt-2 flex w-full max-w-11 flex-col justify-end", short ? "h-12" : "h-36 xl:h-48")} aria-hidden>
           {d.loads === 0 ? (
             <span className="h-1.5 w-full rounded-full bg-ink/[0.07]" />
           ) : (

@@ -55,12 +55,31 @@ function QuoteMiniList({ rows, empty, today }: { rows: QuoteListRow[]; empty: st
 }
 
 /** Quotes: figures for a period, follow-ups and expirations (from the quotes the caller can see). */
-export function SalesSection({ quotes, from, to, customer, customers, followupDays, today, resetHref }: {
+export function SalesSection({ quotes, from, to, customer, customers, followupDays, today, resetHref, compact = false, moreHref }: {
   quotes: Quotes; from: string; to: string; customer?: string; customers: Array<{ id: string; name: string }>; followupDays: number; today: string; resetHref: string;
+  /** At a glance: the four figures only, with a way into the full view (period, customer, lists). */
+  compact?: boolean; moreHref?: string;
 }) {
+  const figures = (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <Stat icon={<FileClock className="size-5" />} label="Sent, awaiting response" value={quotes.awaiting.count} sub={formatCents(quotes.awaiting.totalCents)} href="/quotes?status=sent" />
+      <Stat icon={<AlertTriangle className="size-5" />} label="Need follow-up" value={quotes.followUp.length + quotes.pastExpiration.length} sub={`${quotes.followUp.length} no reply in ${followupDays}+ days · ${quotes.pastExpiration.length} past expiration`} tone={quotes.followUp.length + quotes.pastExpiration.length > 0 ? "warn" : "default"} href={compact ? moreHref : undefined} />
+      <Stat icon={<CheckCircle2 className="size-5" />} label={`Accepted ${formatDate(from)} – ${formatDate(to)}`} value={quotes.accepted.count} sub={`${formatCents(quotes.accepted.totalCents)}${quotes.winRate !== null ? ` · ${quotes.winRate}% of decided` : ""}`} tone="good" href="/quotes?status=accepted" />
+      <Stat icon={<FileText className="size-5" />} label="Drafts not yet sent" value={quotes.drafts.count} sub={`${formatCents(quotes.drafts.totalCents)}${quotes.staleDrafts.length ? ` · ${quotes.staleDrafts.length} untouched 7+ days` : ""}`} href="/quotes?status=draft" />
+    </div>
+  );
+  if (compact) {
+    return (
+      <div className="space-y-2">
+        {figures}
+        {moreHref && <p className="px-1 text-sm"><Link href={moreHref} className="font-semibold text-brand-fg underline-offset-2 hover:underline">Follow-ups, accepted and expiring quotes</Link></p>}
+      </div>
+    );
+  }
   return (
     <div className="space-y-4">
       <form method="get" action="/command-center" className="flex flex-wrap items-end gap-2 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3" aria-label="Sales period">
+        <input type="hidden" name="view" value="sales" />
         <div>
           <label htmlFor="from" className="mb-1 block text-xs font-medium text-muted">Decisions from</label>
           <DateInput id="from" name="from" defaultValue={from} className="w-40" />
@@ -73,12 +92,7 @@ export function SalesSection({ quotes, from, to, customer, customers, followupDa
         <button type="submit" className={buttonClasses("dark")}>Apply</button>
         <Link href={resetHref} className={buttonClasses("ghost")}>Reset</Link>
       </form>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <Stat icon={<FileClock className="size-5" />} label="Sent, awaiting response" value={quotes.awaiting.count} sub={formatCents(quotes.awaiting.totalCents)} href="/quotes?status=sent" />
-        <Stat icon={<AlertTriangle className="size-5" />} label="Need follow-up" value={quotes.followUp.length + quotes.pastExpiration.length} sub={`${quotes.followUp.length} no reply in ${followupDays}+ days · ${quotes.pastExpiration.length} past expiration`} tone={quotes.followUp.length + quotes.pastExpiration.length > 0 ? "warn" : "default"} />
-        <Stat icon={<CheckCircle2 className="size-5" />} label={`Accepted ${formatDate(from)} – ${formatDate(to)}`} value={quotes.accepted.count} sub={`${formatCents(quotes.accepted.totalCents)}${quotes.winRate !== null ? ` · ${quotes.winRate}% of decided` : ""}`} tone="good" href="/quotes?status=accepted" />
-        <Stat icon={<FileText className="size-5" />} label="Drafts not yet sent" value={quotes.drafts.count} sub={`${formatCents(quotes.drafts.totalCents)}${quotes.staleDrafts.length ? ` · ${quotes.staleDrafts.length} untouched 7+ days` : ""}`} href="/quotes?status=draft" />
-      </div>
+      {figures}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <Card>
           <CardHeader title="Quotes awaiting follow-up" description={`Sent with no response for ${followupDays}+ days, or past expiration.`} />
