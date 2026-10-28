@@ -70,6 +70,11 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // only from maintenance.costs and read through part_costs (maintenance.costs); part_use adds a cost line only with a
   // known cost; demo samples need the demo owner.
   "private.part_for_change", "public.part_save", "public.part_receive", "public.part_count", "public.part_use", "public.part_costs", "public.demo_parts_samples",
+  // B106 company self-import (20261120004600): shared cores are internal; company_* check settings.manage and use the
+  // caller's own company (never a company id argument); undo makes records inactive and never deletes.
+  "private.import_stage_core", "private.import_approve_core", "private.company_import_batch_for", "public.company_import_stage",
+  "public.company_import_batches", "public.company_import_batch", "public.company_import_decide", "public.company_import_discard",
+  "public.company_import_approve", "public.company_import_undo", "public.demo_import_samples",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

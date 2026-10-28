@@ -11,8 +11,11 @@ import { stageImport } from "@/app/admin/actions";
  * review. Nothing is created here: staging only records the rows; records are
  * created when the batch is approved. The server repeats every check.
  */
-export function ImportUploader({ companyId, initial }: {
-  companyId: string;
+export function ImportUploader({ companyId, initial, action = stageImport }: {
+  /** The company the platform team imports into; a company importing its own records leaves it out (B106). */
+  companyId?: string;
+  /** The server action that stages the file (the platform's by default; a company's own for self-import). */
+  action?: (formData: FormData) => Promise<void>;
   /** A CSV a company uploaded to its onboarding checklist, opened by Taviron for import (still reviewed before anything is created). */
   initial?: { csv: string; fileName: string; entity: ImportEntity; documentId: string };
 }) {
@@ -57,8 +60,8 @@ export function ImportUploader({ companyId, initial }: {
   }
 
   return (
-    <form action={stageImport} className="space-y-5">
-      <input type="hidden" name="company" value={companyId} />
+    <form action={action} className="space-y-5">
+      {companyId ? <input type="hidden" name="company" value={companyId} /> : null}
       {initial ? <input type="hidden" name="document" value={initial.documentId} /> : null}
       <input type="hidden" name="entity" value={entity} />
       <input type="hidden" name="file_name" value={fileName} />

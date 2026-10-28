@@ -111,6 +111,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("cost rates", await rpcCount(db, "demo_cost_rates"));
   // Parts inventory (B105): a small shelf with one low part and one used on an open work order.
   note("parts inventory", await rpcCount(db, "demo_parts_samples"));
+  note("spreadsheet import", await rpcCount(db, "demo_import_samples"));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.

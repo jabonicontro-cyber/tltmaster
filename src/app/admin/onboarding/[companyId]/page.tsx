@@ -37,6 +37,7 @@ const BATCH_STATUS: Record<ImportBatchSummary["status"], { label: string; tone: 
   approved: { label: "Approved", tone: "green" },
   reverted: { label: "Reverted", tone: "gray" },
   discarded: { label: "Discarded", tone: "gray" },
+  deactivated: { label: "Undone", tone: "gray" },
 };
 
 export default async function CompanyOnboardingPage({ params, searchParams }: { params: Promise<{ companyId: string }>; searchParams: Promise<{ error?: string; created?: string; document?: string; entity?: string }> }) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Calculator, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Users, type LucideIcon } from "lucide-react";
+import { Building2, Calculator, CalendarDays, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -35,6 +35,9 @@ import { BasesPanel } from "@/components/settings/bases-panel";
 import { CompanyMfaPolicyForm } from "@/components/security/company-mfa-policy";
 import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
 import { listSignIns } from "@/server/data/people";
+import { ImportUploader } from "@/components/admin/import-uploader";
+import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
+import { stageCompanyImport } from "./import/actions";
 
 const BASE_SAVED: Record<string, string> = {
   created: "Base added.",
@@ -49,9 +52,18 @@ const BASE_SAVED: Record<string, string> = {
 
 export const metadata = { title: "Settings" };
 
+type CompanyImportSummary = { id: string; entity: string; status: string; file_name: string; created_at: string; created_by: string | null; rows: number; to_import: number; result: { created?: number } | null };
+const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "gray" }> = {
+  review: { label: "In review", tone: "amber" },
+  approved: { label: "Approved", tone: "green" },
+  reverted: { label: "Reverted", tone: "gray" },
+  discarded: { label: "Discarded", tone: "gray" },
+  deactivated: { label: "Undone", tone: "gray" },
+};
+
 const TAB_ICONS: Record<string, LucideIcon> = {
-  company: Building2, numbering: Hash, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
-  permissions: Users, security: Lock, sample: Database, audit: ScrollText,
+  company: Building2, numbering: Hash, costs: Calculator, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
+  permissions: Users, security: Lock, sample: Database, import: Upload, audit: ScrollText,
 };
 
 type Group = "Company" | "Operations" | "Access" | "System";
@@ -68,6 +80,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
+  { key: "import", label: "Import", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "audit", label: "Audit log", group: "System", visible: (a) => can(a, "audit.view") },
 ];
 const GROUPS: Group[] = ["Company", "Operations", "Access", "System"];
@@ -243,6 +256,52 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   } else if (tab === "sample") {
     const { data } = await supabase.rpc("sample_data_counts");
     content = <SampleDataPanel counts={(data ?? {}) as Record<string, number>} />;
+  } else if (tab === "import") {
+    const { data, error } = await supabase.rpc("company_import_batches");
+    const batches = (data ?? []) as CompanyImportSummary[];
+    content = (
+      <>
+        <CardHeader
+          title="Import from a spreadsheet"
+          description="Bring in customers, materials, trucks or drivers from a CSV file. Nothing is created until you review every row and approve; rows that need fixing are never imported, and an approved import can be undone (its records become inactive, never deleted)."
+        />
+        <CardBody>
+          {error ? <p className="text-sm text-muted">Importing needs a database update that has not been installed yet.</p> : <ImportUploader action={stageCompanyImport} />}
+        </CardBody>
+        {!error && batches.length > 0 && (
+          <>
+            <CardHeader title="Imports" />
+            <TableWrap>
+              <Table aria-label="Imports">
+                <thead>
+                  <tr><Th>File</Th><Th>Records</Th><Th className="hidden md:table-cell">By</Th><Th>Status</Th></tr>
+                </thead>
+                <tbody>
+                  {batches.map((b) => {
+                    const st = IMPORT_STATUS[b.status] ?? { label: b.status, tone: "gray" as const };
+                    const created = typeof b.result?.created === "number" ? b.result.created : null;
+                    return (
+                      <Tr key={b.id}>
+                        <Td>
+                          <Link href={`/settings/import/${b.id}`} className="font-medium text-brand-fg hover:underline">{b.file_name || "Spreadsheet"}</Link>
+                          <div className="text-xs text-muted">{formatDateTime(b.created_at, timezone)}</div>
+                        </Td>
+                        <Td className="text-sm">
+                          {ENTITY_LABELS[b.entity as ImportEntity] ?? b.entity}
+                          <div className="text-xs text-muted tabular">{b.status === "review" ? `${b.to_import} of ${b.rows} to import` : created != null ? `${created} created` : `${b.rows} rows`}</div>
+                        </Td>
+                        <Td className="hidden text-sm md:table-cell">{b.created_by ?? "—"}</Td>
+                        <Td><Badge tone={st.tone}>{st.label}</Badge></Td>
+                      </Tr>
+                    );
+                  })}
+                </tbody>
+              </Table>
+            </TableWrap>
+          </>
+        )}
+      </>
+    );
   } else if (tab === "audit") {
     const [{ data }, names] = await Promise.all([
       supabase.from("audit_events").select("*").order("occurred_at", { ascending: false }).limit(200),

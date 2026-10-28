@@ -14,7 +14,7 @@ export interface PlatformCompany {
 export interface ImportBatchSummary {
   id: string;
   entity: string;
-  status: "review" | "approved" | "reverted" | "discarded";
+  status: "review" | "approved" | "reverted" | "discarded" | "deactivated";
   file_name: string;
   created_at: string;
   created_by: string | null;

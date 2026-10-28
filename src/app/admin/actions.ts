@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
-import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, parseCsv, prepareRows } from "@/lib/platform/imports";
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
 import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
@@ -13,6 +12,7 @@ import { seedDemoCompany } from "@/server/demo/seed";
 import { refreshNorthfield } from "@/server/demo/northfield-refresh";
 import { withDemoRefreshLock } from "@/server/demo/auto-refresh";
 import { dbErrorMessage } from "@/server/errors";
+import { readImportForm } from "@/server/imports";
 import { assertPlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
 
@@ -87,28 +87,10 @@ export async function createCompany(formData: FormData) {
 export async function stageImport(formData: FormData) {
   const company = uuid.parse(formData.get("company"));
   const path = `/admin/onboarding/${company}`;
-  const entity = z.enum(IMPORT_ENTITIES).safeParse(formData.get("entity"));
-  if (!entity.success) back(path, "Choose what the spreadsheet contains.");
-  const csv = String(formData.get("csv") ?? "");
-  const fileName = String(formData.get("file_name") ?? "").slice(0, 200);
-  if (!csv.trim()) back(path, "Choose a spreadsheet file (CSV).");
-  if (csv.length > MAX_IMPORT_BYTES) back(path, "The file is too large. Split it into smaller files.");
-  let mapping: string[] = [];
-  try {
-    mapping = z.array(z.string().max(40)).max(200).parse(JSON.parse(String(formData.get("mapping") ?? "[]")));
-  } catch {
-    back(path, "The column choices could not be read. Choose the columns again.");
-  }
-  const table = parseCsv(csv);
-  if (table.length < 2) back(path, "The file has a header row but no data rows.");
-  if (table.length - 1 > MAX_IMPORT_ROWS) back(path, `Import at most ${MAX_IMPORT_ROWS.toLocaleString()} rows at a time.`);
-  const problems = mappingProblems(mapping, entity.data!);
-  if (problems.length) back(path, problems[0]);
-  // The server's own validation is authoritative; the browser preview only helps.
-  const rows = prepareRows(table, mapping, entity.data!);
-  const mapped = Object.fromEntries(table[0].map((h, i) => [h, mapping[i] ?? ""]).filter(([, k]) => k));
+  const form = readImportForm(formData);
+  if (!form.ok) return back(path, form.error);
   const supabase = await db();
-  const { data, error } = await supabase.rpc("platform_import_stage", { p_company: company, p_entity: entity.data, p_file_name: fileName, p_mapping: mapped, p_rows: rows });
+  const { data, error } = await supabase.rpc("platform_import_stage", { p_company: company, p_entity: form.entity, p_file_name: form.fileName, p_mapping: form.mapping, p_rows: form.rows });
   if (error) back(path, dbErrorMessage(error));
   // Staged from a file on the company's onboarding checklist: note it in the task's history (20261120001000).
   const document = uuid.safeParse(formData.get("document"));

@@ -182,6 +182,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     // The Maintenance board's later columns (2026-10-26): in progress, awaiting parts, awaiting inspection.
     const board = await q<{ status: string }>("select distinct status::text as status from public.work_orders where company_id = $1 and status in ('in_progress', 'awaiting_parts', 'awaiting_inspection') order by 1", [w.company]);
     expect(board.rows.map((r) => r.status)).toEqual(["awaiting_inspection", "awaiting_parts", "in_progress"]);
+    // Spreadsheet import (B106): one customer file waiting for review, with ready, duplicate and needs-fixing rows.
+    const imports = await q<{ status: string }>("select r.status from private.import_rows r join private.import_batches b on b.id = r.batch_id where b.company_id = $1 and b.source = 'company' order by r.row_number", [w.company]);
+    expect(imports.rows.map((r) => r.status)).toEqual(["valid", "valid", "duplicate", "error"]);
     // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
     const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
     expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);

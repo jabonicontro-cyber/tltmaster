@@ -144,7 +144,15 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
     await must("review", db.rpc("review_delivery_ticket", { p_ticket_id: t.ticket_id, p_action: "accept", p_note: "" }));
   };
 
-  // Past week: delivered and verified (4 loads).
+  // Past week: delivered and verified (6 loads over three days, so the Speed review figure has enough sittings
+  // whatever the weekday the demo is created on).
+  const d4 = addDays(today, -4);
+  const past0 = await order(1, d4, "Feed and seed to Sugarbush Farm Supply", [lineOf("LH-LOAD", "2", 61000, "Linehaul, Lafayette → Remington")], "Door 3. Pallets stay on the trailer until checked.");
+  for (const [i, [unit, tr, driver, start, end, at]] of ([["204", "T-53", "Kendra Price", "07:30", "10:30", "10:10"], ["206", "T-52", "Eli Sutter", "09:30", "12:30", "12:10"]] as const).entries()) {
+    const l = await load(past0.id, d4, start, end);
+    await assign(l, unit, tr, driver);
+    await deliver(l, past0.lineId, d4, at, `PLF-${d4.replaceAll("-", "").slice(2)}-${i + 1}`);
+  }
   const d3 = addDays(today, -3);
   const d2 = addDays(today, -2);
   const past1 = await order(0, d3, "Bagged feed to Bluestem Grain", [lineOf("LH-LOAD", "2", 68000, "Linehaul, Lafayette → Rensselaer")], "Check in at the scale office. Forklift unloading only.");
