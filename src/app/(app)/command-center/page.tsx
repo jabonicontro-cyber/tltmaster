@@ -166,7 +166,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       place: "rail",
       collapsedSummary: [myItems?.total ? `${myItems.total} assigned to you` : null, linkedDriver ? `${myLoads.length} of your loads today` : null].filter(Boolean).join(" · ") || undefined,
       content: (
-        <div className="grid grid-cols-1 gap-4">
+        <div className="flex flex-col gap-4 [&>*:last-child]:flex-1">
           {ops && (
             <Card>
               <CardHeader title="Assigned to you" />

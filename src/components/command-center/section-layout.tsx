@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -54,14 +54,22 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
   };
   const byId = new Map(sections.map((s) => [s.id, s]));
 
-  const render = (id: SectionId) => {
+  // `pair`: the section's row and column beside its partner on wide screens (main i ↔ rail i), so the two columns
+  // line up and each pair ends at the same height (owner 2026-11-01: "make these tiles even with each other").
+  const render = (id: SectionId, pair?: { row: number; col: 1 | 2 }) => {
     const s = byId.get(id);
     if (!s) return null;
     const index = visible.indexOf(id);
     const isCollapsed = collapsed.includes(id);
     return (
-      <section key={id} id={id === "attention" ? "attention" : undefined} aria-labelledby={`section-${id}`} className="scroll-mt-20">
-        <div className="mb-3 flex items-center gap-2">
+      <section
+        key={id}
+        id={id === "attention" ? "attention" : undefined}
+        aria-labelledby={`section-${id}`}
+        style={pair ? ({ "--row": pair.row } as CSSProperties) : undefined}
+        className={cn("flex min-w-0 scroll-mt-20 flex-col", pair && "xl:[grid-row:var(--row)]", pair?.col === 1 && "xl:col-start-1", pair?.col === 2 && "xl:col-start-2")}
+      >
+        <div className="mb-3 flex min-h-9 items-center gap-2">
           <button
             type="button"
             onClick={() => toggle(id)}
@@ -88,7 +96,7 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
             )}
           </span>
         </div>
-        <div id={`section-body-${id}`} className={cn(isCollapsed && "hidden")}>{s.content}</div>
+        <div id={`section-body-${id}`} className={cn("flex flex-1 flex-col [&>*]:flex-1", isCollapsed && "hidden")}>{s.content}</div>
       </section>
     );
   };
@@ -103,12 +111,17 @@ export function SectionLayout({ sections, initial }: { sections: Section[]; init
   return (
     <div className="space-y-9">
       {(main.length > 0 || rail.length > 0) && (
-        <div className={cn("grid grid-cols-1 gap-9", main.length > 0 && rail.length > 0 && "xl:grid-cols-[minmax(0,1fr)_23rem] xl:gap-6")}>
-          {main.length > 0 && <div className="min-w-0 space-y-9">{main.map(render)}</div>}
-          {rail.length > 0 && <div className="min-w-0 space-y-9">{rail.map(render)}</div>}
-        </div>
+        main.length > 0 && rail.length > 0 ? (
+          // Phones and tablets: the main sections, then the rail. Wide screens: side by side, row by row.
+          <div className="grid grid-cols-1 gap-9 xl:grid-cols-[minmax(0,1fr)_23rem] xl:gap-x-6">
+            {main.map((id, i) => render(id, { row: i + 1, col: 1 }))}
+            {rail.map((id, i) => render(id, { row: i + 1, col: 2 }))}
+          </div>
+        ) : (
+          <div className="min-w-0 space-y-9">{[...main, ...rail].map((id) => render(id))}</div>
+        )
       )}
-      {full.map(render)}
+      {full.map((id) => render(id))}
     </div>
   );
 }
