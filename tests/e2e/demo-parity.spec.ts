@@ -266,6 +266,9 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByRole("table", { name: "Receivables by age" })).toBeVisible();
   await expect(owner.getByRole("table", { name: "Invoices" })).toContainText(/INV-\d{4,}/);
   await expect(owner.getByText(/invoice(s)? past due/).first()).toBeVisible();
+  // Revenue check (B110): the demo's delivered work held up by review or exceptions appears with its estimated value.
+  await visit(owner, "/billing/leaks");
+  await expect(owner.getByRole("list", { name: "Billing held up" })).toBeVisible();
   // GPS and hours (B101, samples.ts): hand-entered sample positions with one stale truck, and drivers' hours.
   await visit(owner, "/fleet/locations");
   await expect(owner.getByRole("list", { name: "Truck positions" })).toContainText("Sample (demo)");

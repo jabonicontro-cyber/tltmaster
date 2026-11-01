@@ -36,7 +36,7 @@ const TENANT_TABLES = [
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
-  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses", "invoicing_settings", "invoices", "invoice_payments", "telematics_settings", "vehicle_positions", "driver_hours",
+  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses", "invoicing_settings", "invoices", "invoice_payments", "telematics_settings", "vehicle_positions", "driver_hours", "revenue_leak_reviews",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -92,6 +92,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // finds the company by the key's hash.
   "public.telematics_status", "public.telematics_save_settings", "public.telematics_set_feed_key", "public.telematics_revoke_feed_key",
   "public.telematics_record_position", "public.telematics_record_hours", "public.telematics_ingest", "public.demo_telematics_samples",
+  // B110 revenue leakage finder (20261120005100): marking a finding checked or reopening it needs billing.manage; the
+  // findings themselves (revenue_leaks) run as the caller (security invoker), so RLS and base access apply.
+  "public.revenue_leak_check", "public.revenue_leak_reopen",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

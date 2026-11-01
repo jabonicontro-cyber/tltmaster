@@ -72,6 +72,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           : "Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."}
         actions={
           <>
+            <ButtonLink href="/billing/leaks" variant="secondary" size="sm">Revenue check</ButtonLink>
             {invoicing.installed && <ButtonLink href="/billing/invoices" variant="secondary" size="sm">Invoices</ButtonLink>}
             <ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>
           </>

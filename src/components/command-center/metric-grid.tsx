@@ -24,7 +24,7 @@ export function MetricGrid({ cards, columns = 1 }: { cards: MetricCard[]; column
       )}
       aria-label="Overview"
     >
-      {cards.map((c) => {
+      {cards.map((c, i) => {
         const body = (
           <div className={cn("flex items-center gap-3 px-4 py-2.5", c.href && "transition-colors hover:bg-ink/[0.03]")}>
             <span className={cn("size-2 shrink-0 rounded-full", dotClasses[c.tone])} aria-hidden />
@@ -41,7 +41,8 @@ export function MetricGrid({ cards, columns = 1 }: { cards: MetricCard[]; column
           </div>
         );
         return (
-          <li key={c.key} aria-label={c.label}>
+          // An odd last row spans both columns, so the card never ends with an empty half (owner 2026-10-28: even tiles).
+          <li key={c.key} aria-label={c.label} className={cn(columns === 2 && cards.length % 2 === 1 && i === cards.length - 1 && "sm:col-span-2 sm:border-r-0")}>
             {c.href ? <Link href={c.href} className="block">{body}</Link> : body}
           </li>
         );

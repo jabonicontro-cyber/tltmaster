@@ -32,6 +32,9 @@ import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard } from "@/server/data/dashboard";
 import { loadDriverHome } from "@/server/data/driver";
 import { fleetOverview } from "@/server/data/fleet";
+import { listLeaks } from "@/server/data/leaks";
+import { formatCents } from "@/lib/money";
+import { missedTotal } from "@/lib/billing/leaks";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
@@ -96,7 +99,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
-  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather] = await Promise.all([
+  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks] = await Promise.all([
     ops ? loadSummary() : none,
     ops ? loadQueue({ kind, mine, page, hidden }) : none,
     ops ? loadQueue({ mine: true, page: 1, limit: 5 }) : none,
@@ -112,6 +115,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     speedCan.dispatch || speedCan.tickets ? loadSpeed(timezone, speedCan).catch(() => null) : none,
     // Weather at job sites with loads (B92), for dispatch; a demo reads a sample forecast (DEMO_TENANTS §2).
     has("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
+    // Revenue check (B110): open findings for people who see billing; nothing shown if it cannot be loaded.
+    has("billing.view") ? listLeaks().catch(() => null) : none,
   ]);
   const now = new Date();
   const todayDay = outlook?.ok ? outlook.data.days.find((d) => d.date === today) ?? null : null;
@@ -323,6 +328,17 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         sub: `${fleet.drivers.notReady.length} not eligible (qualifications)`,
         href: "/fleet/drivers",
         tone: fleet.drivers.notReady.length > 0 ? "warn" : "default",
+      });
+    }
+    if (leaks) {
+      const missed = missedTotal(leaks);
+      cards.push({
+        key: "revenue_check",
+        label: "Revenue to check",
+        value: leaks.length,
+        sub: leaks.length ? `${formatCents(missed)} possibly missed (estimated)` : "Nothing slipping through",
+        href: "/billing/leaks",
+        tone: missed > 0 ? "warn" : "default",
       });
     }
     sections.push({
