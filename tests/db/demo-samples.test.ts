@@ -199,6 +199,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(gps.rows[0].current)).toBeGreaterThanOrEqual(1);
     expect(Number(gps.rows[0].stale)).toBeGreaterThanOrEqual(1);
     expect(Number(gps.rows[0].low)).toBeGreaterThanOrEqual(1);
+    // Wait times (B111): finished stops at pickups and sites, some over the demo's 45 free minutes.
+    const waits = await q<{ n: string; long: string; free: number }>("select count(*) n, count(*) filter (where departed_at - arrived_at > interval '45 minutes') long, (select free_minutes from public.wait_time_settings where company_id = $1) free from public.load_stop_times where company_id = $1 and departed_at is not null", [w.company]);
+    expect(Number(waits.rows[0].n)).toBeGreaterThanOrEqual(2);
+    expect(Number(waits.rows[0].long)).toBeGreaterThanOrEqual(1);
+    expect(waits.rows[0].free).toBe(45);
     // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
     const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
     expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);

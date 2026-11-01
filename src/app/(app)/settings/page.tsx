@@ -41,6 +41,8 @@ import { stageCompanyImport } from "./import/actions";
 import { shiftOfferMode } from "@/server/data/shift-offers";
 import { invoicingSettings } from "@/server/data/invoices";
 import { telematicsStatus } from "@/server/data/telematics";
+import { waitTimeSettings } from "@/server/data/wait-times";
+import { WaitTimeForm } from "@/components/settings/wait-time-form";
 import { env } from "@/server/env";
 import { TelematicsSettingsForm } from "@/components/fleet/telematics";
 import { saveInvoicingSettings } from "../billing/invoices/actions";
@@ -138,7 +140,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </>
     );
   } else if (tab === "dispatch") {
-    const [rules, health] = await Promise.all([documentRules(), supabase.from("company_settings").select("truck_health_rules").maybeSingle()]);
+    const [rules, health, wait] = await Promise.all([documentRules(), supabase.from("company_settings").select("truck_health_rules").maybeSingle(), waitTimeSettings()]);
     content = (
       <>
         <CardHeader
@@ -154,6 +156,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
         <CardBody>
           {health.error ? <p className="text-sm text-muted">Truck health needs a database update that has not been installed yet.</p> : <TruckHealthForm rules={parseRules((health.data as { truck_health_rules?: unknown } | null)?.truck_health_rules)} canEdit={can(access, "settings.manage")} />}
+        </CardBody>
+        <CardHeader
+          title="Wait times"
+          description="How long a truck may wait at a pickup or job site before Reports → Wait times flags it. Drivers tap Arrived and Left on My Day. Nothing is billed."
+        />
+        <CardBody>
+          {wait.installed ? <WaitTimeForm freeMinutes={wait.freeMinutes} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Wait times need a database update that has not been installed yet.</p>}
         </CardBody>
       </>
     );

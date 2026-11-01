@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { DateRangeFields } from "@/components/ui/typed-date-input";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { ButtonLink } from "@/components/ui/button";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { addDays, formatDate, isIsoDate } from "@/lib/dates";
@@ -170,6 +171,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Reports"
         description={`Measured from your own records, ${formatDate(from)} – ${formatDate(to)}. Nothing here is estimated; where data is missing, the report says so.`}
+        actions={<ButtonLink href="/reports/wait-times" variant="secondary">Wait times</ButtonLink>}
       />
       <form className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-4" aria-label="Period">
         <nav aria-label="Periods" className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
