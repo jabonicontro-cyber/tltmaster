@@ -122,7 +122,7 @@ describe.skipIf(!available)("demo feature samples", () => {
     const readiness = ((await as(w.owner).from("billing_order_status").select("readiness")).data ?? []).map((r) => (r as { readiness: string }).readiness);
     expect(readiness).toContain("ready");
     expect(readiness).toContain("handed_off");
-    expect(c.handoffs).toBe(1);
+    expect(c.handoffs).toBeGreaterThanOrEqual(1); // the billing sample's batch (and the invoice sample's, when it hands off more)
     // Trailer work orders (20261115000100): one scheduled trailer inspection, nothing taken out of service.
     const trailerWo = await q<{ n: string; down: string }>(
       "select count(*) n, count(*) filter (where t.service_status = 'out_of_service') down from public.work_orders w join public.trailers t on t.id = w.trailer_id where w.company_id = $1", [w.company]);
@@ -188,6 +188,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Shift offers (B102): an open driver shift two days out, asked for by one qualified driver.
     const shiftOffers = await q<{ status: string; answers: string }>("select o.status, count(r.id) answers from public.shift_offers o left join public.shift_offer_responses r on r.offer_id = o.id and r.status = 'requested' where o.company_id = $1 group by o.id", [w.company]);
     expect(shiftOffers.rows.map((r) => [r.status, Number(r.answers)])).toEqual([["open", 1]]);
+    // Invoicing (B99): Taviron issues the demo's invoices; issued invoices with at least one past due and one payment.
+    const invoices = await q<{ status: string; overdue: boolean; paid: string }>("select i.status, i.due_date < (now() at time zone $2)::date overdue, coalesce((select sum(amount_cents) from public.invoice_payments p where p.invoice_id = i.id and p.voided_at is null), 0) paid from public.invoices i where i.company_id = $1", [w.company, TZ]);
+    expect(invoices.rows.length).toBeGreaterThanOrEqual(1);
+    expect(invoices.rows.every((r) => r.status === "issued")).toBe(true);
+    expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
     // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
     const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
     expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);

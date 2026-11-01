@@ -114,6 +114,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.
   note("spreadsheet import", await rpcCount(db, "demo_import_samples"));
   note("shift offers", await rpcCount(db, "demo_shift_offer_samples"));
+  // Invoicing (B99): Taviron issues the demo's invoices; one past due, one partly paid, one paid (after the billing sample).
+  note("invoices", await rpcCount(db, "demo_invoice_samples"));
   // After the driver day and planning samples: assigns some of today's own open loads so routes exist today.
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.

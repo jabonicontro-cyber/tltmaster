@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
+import { FormError } from "@/components/ui/form";
 
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
@@ -28,10 +29,12 @@ import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { getQuickBooksForHandoffs } from "@/server/data/accounting";
 import { BILLING_VIEWS, getBillingBoard, type BillingFilters, type BillingView } from "@/server/data/billing";
+import { invoicesByHandoff, invoicingSettings } from "@/server/data/invoices";
+import { createInvoice } from "./invoices/actions";
 
 export const metadata = { title: "Billing Readiness" };
 
-type Search = { view?: string; q?: string; from?: string; to?: string; customer?: string; kind?: string; readiness?: string; batch?: string };
+type Search = { view?: string; q?: string; from?: string; to?: string; customer?: string; kind?: string; readiness?: string; batch?: string; error?: string };
 
 
 function serviceDates(a: string | null, b: string | null) {
@@ -53,7 +56,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   };
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
-  const board = await getBillingBoard(view, filters);
+  const [board, invoicing] = await Promise.all([getBillingBoard(view, filters), invoicingSettings()]);
   const keep = (k: BillingView) => {
     const p = new URLSearchParams({ view: k });
     for (const f of ["q", "from", "to", "customer"] as const) if (filters[f]) p.set(f, filters[f]!);
@@ -64,9 +67,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Billing Readiness"
-        description="Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."
-        actions={<ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>}
+        description={invoicing.issuer === "taviron"
+          ? "Which delivered work is documented, reviewed and ready to invoice. Handed-off orders become invoices Taviron issues (Settings → Invoicing). Nothing here changes prices."
+          : "Which delivered work is documented, reviewed and ready to invoice. Handed-off orders go to your accounting system by file or, once connected, by Send to QuickBooks. Nothing here changes prices or marks anything paid."}
+        actions={
+          <>
+            {invoicing.installed && <ButtonLink href="/billing/invoices" variant="secondary" size="sm">Invoices</ButtonLink>}
+            <ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>
+          </>
+        }
       />
+      {sp.error && <div className="mb-4"><FormError message={sp.error.slice(0, 300)} /></div>}
       <BillingPipeline counts={board.counts} href={keep} current={view} />
       <nav aria-label="Billing views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(BILLING_VIEWS) as BillingView[]).map((k) => (
@@ -280,18 +291,23 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             )}
           </>
         ) : board.view === "handed_off" ? (
-          <HandedOff board={board} canManage={canManage} highlight={sp.batch}
-            qb={await getQuickBooksForHandoffs(board.batches.flatMap((b) => b.orders.map((o) => o.id)), access)} />
+          <HandedOff board={board} canManage={canManage} highlight={sp.batch} issuer={invoicing.issuer}
+            qb={await getQuickBooksForHandoffs(board.batches.flatMap((b) => b.orders.map((o) => o.id)), access)}
+            invoices={invoicing.issuer === "taviron" ? await invoicesByHandoff(board.batches.flatMap((b) => b.orders.map((o) => o.id))) : {}} />
         ) : null}
       </Card>
     </>
   );
 }
 
-function HandedOff({ board, canManage, highlight, qb }: {
+function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }: {
   board: Extract<Awaited<ReturnType<typeof getBillingBoard>>, { view: "handed_off" }>; canManage: boolean; highlight?: string;
   qb: Awaited<ReturnType<typeof getQuickBooksForHandoffs>>;
+  /** Who issues the company's invoices (B99): with Taviron, each order gets Create invoice instead of Send to QuickBooks. */
+  issuer: "quickbooks" | "taviron";
+  invoices: Awaited<ReturnType<typeof invoicesByHandoff>>;
 }) {
+  const qb = issuer === "taviron" ? { ...qbAll, canSend: false } : qbAll;
   const unsent = (ids: Array<{ id: string; reverted_at: string | null }>) => ids.filter((o) => !o.reverted_at && !(qb.sends[o.id] ?? []).some((s) => s.status === "sent") ).map((o) => o.id);
   if (board.batches.length === 0) {
     return <EmptyState title="Nothing handed off yet" description="Batches of orders handed off for billing appear here with their file." />;
@@ -335,6 +351,15 @@ function HandedOff({ board, canManage, highlight, qb }: {
                     <Td align="right" className="tabular">{formatCents(r.order.total_cents)}</Td>
                     <Td align="right">
                       {qb.canSend && unsent([r]).length > 0 && <QuickBooksSendButton handoffOrderIds={[r.id]} label={(qb.sends[r.id] ?? []).some((s) => s.status === "failed") ? "Send again" : "Send to QuickBooks"} variant="ghost" />}
+                      {issuer === "taviron" && !r.reverted_at && (invoices[r.id] ? (
+                        <Link href={`/billing/invoices/${invoices[r.id].id}`} className={buttonClasses("ghost", "sm")}>{invoices[r.id].number ? `Invoice ${invoices[r.id].number}` : "Draft invoice"}</Link>
+                      ) : canManage ? (
+                        <form action={createInvoice} className="inline">
+                          <input type="hidden" name="handoff" value={r.id} />
+                          <input type="hidden" name="back" value="/billing?view=handed_off" />
+                          <button type="submit" className={buttonClasses("secondary", "sm")}><FilePlus2 className="size-4" />Create invoice</button>
+                        </form>
+                      ) : null)}
                       {canManage && !r.reverted_at && <RevertHandoffButton handoffOrderId={r.id} orderId={r.order_id} orderNumber={r.order.order_number} batchNumber={b.batch_number} />}
                     </Td>
                   </Tr>

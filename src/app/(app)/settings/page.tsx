@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Calculator, CalendarDays, CalendarPlus, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, Calculator, CalendarDays, CalendarPlus, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -39,6 +39,10 @@ import { ImportUploader } from "@/components/admin/import-uploader";
 import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
 import { stageCompanyImport } from "./import/actions";
 import { shiftOfferMode } from "@/server/data/shift-offers";
+import { invoicingSettings } from "@/server/data/invoices";
+import { saveInvoicingSettings } from "../billing/invoices/actions";
+import { Field, Input, Textarea } from "@/components/ui/form";
+import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
 
 const BASE_SAVED: Record<string, string> = {
@@ -64,7 +68,7 @@ const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "
 };
 
 const TAB_ICONS: Record<string, LucideIcon> = {
-  company: Building2, numbering: Hash, costs: Calculator, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
+  company: Building2, numbering: Hash, costs: Calculator, invoicing: Receipt, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
   permissions: Users, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, audit: ScrollText,
 };
 
@@ -80,6 +84,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "shift-offers", label: "Shift offers", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "costs", label: "Cost rates", group: "Operations", visible: (a) => can(a, "billing.view") },
+  { key: "invoicing", label: "Invoicing", group: "Company", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
@@ -259,6 +264,39 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   } else if (tab === "sample") {
     const { data } = await supabase.rpc("sample_data_counts");
     content = <SampleDataPanel counts={(data ?? {}) as Record<string, number>} />;
+  } else if (tab === "invoicing") {
+    const inv = await invoicingSettings();
+    const edit = can(access, "billing.manage");
+    content = (
+      <>
+        <CardHeader
+          title="Invoicing"
+          description="Who issues your invoices. QuickBooks: handed-off orders are sent to QuickBooks and invoiced there. Taviron: you create, issue and email invoices here, with your logo and colour, and record payments; nothing goes to QuickBooks for those orders."
+        />
+        <CardBody>
+          {!inv.installed ? (
+            <p className="text-sm text-muted">Invoicing needs a database update that has not been installed yet.</p>
+          ) : (
+            <form action={saveInvoicingSettings} className="max-w-xl space-y-4" aria-label="Invoicing">
+              <fieldset className="space-y-2" disabled={!edit}>
+                <legend className="mb-1 text-sm font-medium">Invoices are issued by</legend>
+                {([["quickbooks", "QuickBooks", "Send handed-off orders to QuickBooks (Billing → Businesses and QuickBooks)."], ["taviron", "Taviron", "Create, issue and email invoices from Taviron and track what each customer owes."]] as const).map(([v, label, hint]) => (
+                  <label key={v} className="flex items-start gap-3 rounded-control border border-line p-3 has-[:checked]:border-strong has-[:checked]:bg-surface">
+                    <input type="radio" name="issuer" value={v} defaultChecked={inv.issuer === v} className="mt-1 size-4 accent-brand" />
+                    <span><span className="block font-medium">{label}</span><span className="block text-sm text-muted">{hint}</span></span>
+                  </label>
+                ))}
+              </fieldset>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Payment terms (days)" htmlFor="terms_days" hint="0 = due on receipt"><Input id="terms_days" name="terms_days" inputMode="numeric" defaultValue={String(inv.termsDays)} disabled={!edit} /></Field>
+              </div>
+              <Field label="Footer on invoices" htmlFor="footer" hint="For example how to pay, or a thank-you"><Textarea id="footer" name="footer" rows={3} maxLength={500} defaultValue={inv.footer} disabled={!edit} /></Field>
+              {edit && <SubmitButton>Save</SubmitButton>}
+            </form>
+          )}
+        </CardBody>
+      </>
+    );
   } else if (tab === "shift-offers") {
     const { installed, mode } = await shiftOfferMode();
     content = (
@@ -357,6 +395,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title="Settings" />
       {saved && tab === "bases" ? <div className="mb-3"><Notice title="Saved">{BASE_SAVED[saved] ?? "Saved."}</Notice></div> : null}
+      {saved === "invoicing" && tab === "invoicing" ? <div className="mb-3"><Notice title="Saved">Invoicing settings saved. New invoices use them; issued invoices keep theirs.</Notice></div> : null}
       {actionError ? <div className="mb-3"><Notice tone="warning" title="Not saved">{actionError}</Notice></div> : null}
       <div className="lg:grid lg:grid-cols-[13.5rem_minmax(0,1fr)] lg:items-start lg:gap-6">
       {/* Wide screens: one grouped menu (owner's references 2026-10-27); phones and tablets keep the two pill rows. */}

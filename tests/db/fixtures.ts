@@ -1,5 +1,6 @@
 // Shared setup for dispatch-related database tests: a scheduled order, a ready
 // fleet, loads and assignments — all created through the app's own functions.
+import { randomUUID } from "node:crypto";
 import { addDays } from "@/lib/dates";
 import { sampleIds, TOP_LINE, type Session } from "./helpers";
 
@@ -72,4 +73,26 @@ export async function fleet(s: Session, user: string, on: string) {
     drivers.push(d);
   }
   return { t1, t2, d1: drivers[0], d2: drivers[1], d3: drivers[2] };
+}
+
+/** A completed, acknowledged order (a material line and a hauling line) handed off for billing. */
+export async function handedOff(s: Session, office: string) {
+  const today = await businessToday(s);
+  const yesterday = addDays(today, -1);
+  const f = await fleet(s, office, yesterday);
+  const order = await scheduledOrder(s, office, addDays(today, -2), addDays(today, 2), addDays(today, -2));
+  const load = await planLoad(s, order.id, yesterday, "07:00", "09:00", { planned_quantity: "22", unit_code: "ton" });
+  await assign(s, load.load_id, f.t1, null, f.d1);
+  await s.as(office);
+  const t = (await s.query<{ r: { ticket_id: string } }>("select public.submit_delivery_ticket($1::jsonb) as r", [JSON.stringify({
+    load_id: load.load_id, order_line_id: order.materialLine, delivered_date: yesterday, delivered_time: "08:00", quantity: "40", unit_code: "ton", external_reference: `SC-${randomUUID().slice(0, 8)}`,
+  })])).rows[0].r;
+  await s.query("select public.review_delivery_ticket($1, 'accept', '')", [t.ticket_id]);
+  await s.query("select public.set_order_status($1, 'in_progress', '')", [order.id]);
+  await s.query("select public.set_order_status($1, 'completed', '')", [order.id]);
+  const st = (await s.query<Row>("select exceptions_fingerprint from public.billing_order_status where order_id = $1", [order.id])).rows[0];
+  if (st?.exceptions_fingerprint) await s.query("select public.acknowledge_billing_exceptions($1, $2, 'Test')", [order.id, st.exceptions_fingerprint]);
+  await s.query("select public.hand_off_orders($1::uuid[], '', '', $2)", [[order.id], randomUUID()]);
+  const h = (await s.query<{ id: string; snapshot: { lines: Array<{ kind: string; billing_entity_id?: string; billing_entity_name?: string }> } }>("select id, snapshot from public.billing_handoff_orders where order_id = $1", [order.id])).rows[0];
+  return { order, handoffOrder: h.id, snapshot: h.snapshot };
 }
