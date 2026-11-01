@@ -84,7 +84,7 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   await c.getByRole("button", { name: "Approve and assign" }).click();
   // Hours of service are not in Taviron: the dispatcher confirms them before anything is assigned.
   const confirm = page.getByRole("dialog", { name: "Confirm hours of service" });
-  await expect(confirm).toContainText("Taviron has no ELD or driver-log data");
+  await expect(confirm).toContainText("Taviron did not verify them");
   await confirm.getByRole("button", { name: "I checked — assign" }).click();
   await expectToast(page, new RegExp(`${f.orderNumber} load 1: assigned to truck`));
   await expect(c).toHaveCount(0);

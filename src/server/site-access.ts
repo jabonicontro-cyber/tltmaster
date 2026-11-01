@@ -67,7 +67,7 @@ export function publicSiteEnabled(): boolean {
  * portal and tracking links (B66) are for that company's own customers, who never see Taviron's preview: every portal
  * page and function checks the company's portal switches and the customer's account itself.
  */
-const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track"];
+const EXEMPT = ["/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }

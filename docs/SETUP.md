@@ -213,6 +213,23 @@ then link the account on their driver record (Fleet → Drivers → Edit → *Li
 user account*). Until it is linked, *My Day* says so and shows nothing. Ticket photos
 need the storage bucket (step 9 of the hosted setup, or `DEV_STORAGE=1` locally).
 
+### GPS and hours provider feed (B101)
+
+A company that chooses **Provider feed** in Settings → GPS and hours creates a feed key there (shown once; only its
+SHA-256 is stored). Its GPS/ELD provider or a connector sends:
+
+```
+POST <APP_BASE_URL>/api/telematics/ingest
+Authorization: Bearer tlk_…
+{"positions": [{"truck": "201", "latitude": 40.42, "longitude": -86.91, "recorded_at": "2026-11-01T14:05:00Z", "speed_mph": 42, "heading": 90}],
+ "hours": [{"driver": "Amira Saleh", "duty_status": "driving", "as_of": "2026-11-01T14:00:00Z",
+            "drive_minutes_left": 312, "shift_minutes_left": 420, "cycle_minutes_left": 2950}]}
+```
+
+Trucks match by unit number, drivers by id or exact name; at most 1000 rows and 512 KB per request; times may be up to
+7 days old. The answer counts accepted and skipped rows. The route needs `SUPABASE_SERVICE_ROLE_KEY` (already required)
+and no other variable; nothing is sent anywhere.
+
 ## 4. Deploying (Vercel or any Node host)
 
 - Framework preset: Next.js. Node 22.

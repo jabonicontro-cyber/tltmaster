@@ -7,7 +7,8 @@ import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Sessio
 afterAll(() => pool.end());
 
 /** Business tables that must carry a company_id (all except the global catalogs). */
-const SERVICE_ONLY_TABLES = new Set(["accounting_connection_secrets"]);
+// telematics_settings holds the GPS feed key's hash: read through telematics_status() only.
+const SERVICE_ONLY_TABLES = new Set(["accounting_connection_secrets", "telematics_settings"]);
 
 const TENANT_TABLES = [
   "haulers", "hauler_documents", "hauler_offers",
@@ -35,7 +36,7 @@ const TENANT_TABLES = [
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
   "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
-  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses", "invoicing_settings", "invoices", "invoice_payments",
+  "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses", "invoicing_settings", "invoices", "invoice_payments", "telematics_settings", "vehicle_positions", "driver_hours",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
@@ -86,6 +87,11 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.add_invoice_sequence", "private.invoice_balance", "private.invoice_for_change", "public.invoicing_save_settings",
   "public.invoice_create", "public.invoice_issue", "public.invoice_record_sent", "public.invoice_void", "public.invoice_add_payment",
   "public.invoice_void_payment", "public.demo_invoice_samples", "private.accounting_send_not_invoiced",
+  // B101 GPS and hours (20261120004900): settings.manage for the source and feed key (only its hash is stored, never
+  // readable); dispatch.edit (or the driver for their own hours) for hand entry; the feed is service role only and
+  // finds the company by the key's hash.
+  "public.telematics_status", "public.telematics_save_settings", "public.telematics_set_feed_key", "public.telematics_revoke_feed_key",
+  "public.telematics_record_position", "public.telematics_record_hours", "public.telematics_ingest", "public.demo_telematics_samples",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

@@ -266,6 +266,11 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByRole("table", { name: "Receivables by age" })).toBeVisible();
   await expect(owner.getByRole("table", { name: "Invoices" })).toContainText(/INV-\d{4,}/);
   await expect(owner.getByText(/invoice(s)? past due/).first()).toBeVisible();
+  // GPS and hours (B101, samples.ts): hand-entered sample positions with one stale truck, and drivers' hours.
+  await visit(owner, "/fleet/locations");
+  await expect(owner.getByRole("list", { name: "Truck positions" })).toContainText("Sample (demo)");
+  await expect(owner.getByRole("list", { name: "Truck positions" }).getByText("Stale").first()).toBeVisible();
+  await expect(owner.getByRole("list", { name: "Drivers' hours" })).toContainText(/Drive \d/);
   // A company that lets QuickBooks issue its invoices gets Send to QuickBooks instead (simulated in a demo).
   await admin.from("invoicing_settings").update({ issuer: "quickbooks" }).eq("company_id", co!.id);
   await visit(owner, "/billing?view=handed_off");

@@ -193,6 +193,12 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(invoices.rows.length).toBeGreaterThanOrEqual(1);
     expect(invoices.rows.every((r) => r.status === "issued")).toBe(true);
     expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
+    // GPS and hours (B101): hand entry turned on, current positions plus one stale truck, hours with one under an hour.
+    const gps = await q<{ current: string; stale: string; low: string; source: string }>("select (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at > now() - interval '30 minutes') current, (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at <= now() - interval '30 minutes') stale, (select count(*) from public.driver_hours where company_id = $1 and drive_minutes_left < 60) low, (select source from public.telematics_settings where company_id = $1) source", [w.company]);
+    expect(gps.rows[0].source).toBe("manual");
+    expect(Number(gps.rows[0].current)).toBeGreaterThanOrEqual(1);
+    expect(Number(gps.rows[0].stale)).toBeGreaterThanOrEqual(1);
+    expect(Number(gps.rows[0].low)).toBeGreaterThanOrEqual(1);
     // Learned maintenance estimates (B91): completed jobs with recorded labor and an estimate, in several kinds of job.
     const history = await q<{ n: string; kinds: string }>("select count(distinct w.id) n, count(distinct w.category) kinds from public.work_orders w join public.work_order_time_entries t on t.work_order_id = w.id and t.voided_at is null where w.company_id = $1 and w.status = 'completed' and w.estimated_hours is not null", [w.company]);
     expect(Number(history.rows[0].n)).toBeGreaterThanOrEqual(12);

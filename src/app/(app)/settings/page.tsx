@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Calculator, CalendarDays, CalendarPlus, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, Calculator, CalendarDays, CalendarPlus, Navigation, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -40,6 +40,9 @@ import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
 import { stageCompanyImport } from "./import/actions";
 import { shiftOfferMode } from "@/server/data/shift-offers";
 import { invoicingSettings } from "@/server/data/invoices";
+import { telematicsStatus } from "@/server/data/telematics";
+import { env } from "@/server/env";
+import { TelematicsSettingsForm } from "@/components/fleet/telematics";
 import { saveInvoicingSettings } from "../billing/invoices/actions";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -69,7 +72,7 @@ const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   company: Building2, numbering: Hash, costs: Calculator, invoicing: Receipt, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
-  permissions: Users, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, audit: ScrollText,
+  permissions: Users, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, gps: Navigation, audit: ScrollText,
 };
 
 type Group = "Company" | "Operations" | "Access" | "System";
@@ -83,6 +86,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "bases", label: "Dispatch Bases", group: "Operations", visible: (a) => can(a, "settings.manage") || can(a, "users.manage") || can(a, "dispatch.view") },
   { key: "time-off", label: "Time off", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "shift-offers", label: "Shift offers", group: "Operations", visible: (a) => can(a, "settings.manage") },
+  { key: "gps", label: "GPS and hours", group: "Operations", visible: (a) => can(a, "settings.manage") },
   { key: "costs", label: "Cost rates", group: "Operations", visible: (a) => can(a, "billing.view") },
   { key: "invoicing", label: "Invoicing", group: "Company", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
@@ -257,6 +261,23 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </>
           ) : (
             <p className="text-sm text-muted">The end-of-day summary needs a database update that has not been installed yet.</p>
+          )}
+        </CardBody>
+      </>
+    );
+  } else if (tab === "gps") {
+    const gps = await telematicsStatus();
+    content = (
+      <>
+        <CardHeader
+          title="GPS and hours of service"
+          description="Where truck positions and drivers' hours come from. They appear on Fleet → Locations and hours with their age and source. Nothing is estimated."
+        />
+        <CardBody>
+          {!gps.installed ? (
+            <p className="text-sm text-muted">GPS and hours need a database update that has not been installed yet.</p>
+          ) : (
+            <TelematicsSettingsForm source={gps.source} staleMinutes={gps.staleMinutes} keyHint={gps.feedKeyHint} canEdit={can(access, "settings.manage")} endpoint={`${env().APP_BASE_URL}/api/telematics/ingest`} />
           )}
         </CardBody>
       </>

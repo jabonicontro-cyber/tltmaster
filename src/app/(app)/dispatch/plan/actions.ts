@@ -11,7 +11,8 @@ import { capabilityGate, provider, sessionLedger } from "@/server/ai/gates";
 import { planExplanationRequest } from "@/server/ai/plan-explanation";
 import { runCapability } from "@/server/ai/run";
 import { AiError, publicMessage } from "@/server/ai/types";
-import { HOS_REQUIRED_MESSAGE, approvalNote, hosApprovalAllowed, hosProvider } from "@/lib/hos";
+import { HOS_REQUIRED_MESSAGE, approvalNote, hosApprovalAllowed } from "@/lib/hos";
+import { loadHosProvider } from "@/server/data/telematics";
 import { assertPermission } from "@/server/auth";
 import { getOptimizationInput, getOptimizationPlan } from "@/server/data/optimization";
 import { businessToday } from "@/server/data/settings";
@@ -45,8 +46,8 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     const parsed = approveInput.safeParse(input);
     if (!parsed.success) return fail("Invalid plan selection.");
     const { date, planLabel, items, hosConfirmed } = parsed.data;
-    // Hours of service are not in Taviron (lib/hos): the dispatcher confirms them, or nothing is assigned.
-    if (!hosApprovalAllowed(hosProvider(), items.map((i) => i.driverId), date, hosConfirmed)) return fail(HOS_REQUIRED_MESSAGE);
+    // Hours of service (lib/hos): current provider-feed hours verify a driver; otherwise the dispatcher confirms them.
+    if (!hosApprovalAllowed(await loadHosProvider(items.map((i) => i.driverId)), items.map((i) => i.driverId), date, hosConfirmed)) return fail(HOS_REQUIRED_MESSAGE);
     const supabase = await createClient();
     const outcomes: ApprovalOutcome[] = [];
     for (const item of items) {

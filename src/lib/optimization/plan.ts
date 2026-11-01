@@ -270,7 +270,7 @@ export function feasiblePairs(input: OptimizationInput): Map<string, Pair[]> {
 /** Information a person must confirm for a pair that passed every hard constraint. */
 function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTruck, trailer: OptTrailer | null, driverId: string): string[] {
   const r: string[] = [];
-  if (!input.hoursOfServiceVerified) r.push("Hours of service not verified (no ELD or driver-log data).");
+  if (!input.hoursOfServiceVerified) r.push("Hours of service not verified by Taviron.");
   if (load.planned_quantity !== null && capacity(truck, load.unit_code, trailer) === null) r.push(`No recorded capacity for ${load.unit_code ?? "this unit"} on ${equipmentLabel(truck, trailer)}.`);
   else if (load.planned_quantity !== null && (trailer ? !trailer.capacity_verified_at : !truck.capacity_verified_at)) r.push(`${trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck.unit_number}`}'s capacity is not verified.`);
   if (trailer && !trailer.compatible_truck_types.length) r.push(`Trailer ${trailer.unit_number}'s compatible truck types are not recorded.`);

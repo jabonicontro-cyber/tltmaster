@@ -86,7 +86,7 @@ describe("optimization core", () => {
     const plan = optimize(input({ loads: [load("A", { urgent: true })], trucks: [truck("101", { capacity_verified_at: null })], revenueCents: { A: 500_00 } }), PRESETS.balanced.priorities);
     const [a] = plan.assignments;
     expect(a.status).toBe("needs_review");
-    expect(a.review).toEqual(expect.arrayContaining(["Hours of service not verified (no ELD or driver-log data).", "Truck 101's capacity is not verified."]));
+    expect(a.review).toEqual(expect.arrayContaining(["Hours of service not verified by Taviron.", "Truck 101's capacity is not verified."]));
     expect(a.reasons.join(" ")).toMatch(/urgent order/);
     const verified = optimize(input({ loads: [load("A")], hoursOfServiceVerified: true }), PRESETS.balanced.priorities);
     expect(verified.assignments[0].status).toBe("verified");

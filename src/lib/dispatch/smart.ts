@@ -191,8 +191,8 @@ export interface SmartShopVisit {
   safety_critical: boolean;
 }
 
-/** Hours of service are never assumed: Taviron has no ELD or driver-log data. */
-export const HOS_NOTE = "Hours of service are not checked: no ELD or driver-log data is connected. Confirm each driver's available hours before dispatching.";
+/** Hours of service are never assumed: proposals do not check them (Fleet → Locations and hours shows recorded hours). */
+export const HOS_NOTE = "Hours of service are not checked in proposals. Confirm each driver's available hours before dispatching (recorded hours are on Fleet → Locations and hours).";
 
 export interface Candidate {
   truckId: string;

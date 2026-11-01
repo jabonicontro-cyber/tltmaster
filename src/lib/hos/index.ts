@@ -10,7 +10,9 @@
  * whose data is current may verify; stale or missing data falls back to the dispatcher's confirmation, and a
  * verified shortfall becomes a hard block in eligibility (not built until a source exists).
  */
-export type HosSource = "none";
+import { hoursVerified, type HoursRecord, type StatusInfo } from "@/lib/telematics";
+
+export type HosSource = "none" | "feed";
 
 export interface HosProvider {
   readonly source: HosSource;
@@ -20,15 +22,29 @@ export interface HosProvider {
 
 export const NO_HOS_PROVIDER: HosProvider = { source: "none", verified: () => false };
 
-/** The configured provider. Today always "none". */
+/** The default provider: verifies nothing. The server swaps in the feed provider when the company uses one. */
 export function hosProvider(): HosProvider {
   return NO_HOS_PROVIDER;
 }
 
-/** What the dispatcher confirms before approving a proposal (shown in the dialog and recorded on the assignment). */
-export const HOS_CONFIRMATION = "I checked that each driver has the hours of service for these loads. Taviron has no ELD or driver-log data, so it did not check them.";
+/**
+ * GPS and hours (B101): a company using a provider feed verifies a driver only with current feed hours for a load
+ * today (src/lib/telematics hoursVerified). Hand-entered hours never verify. Built by src/server/data/telematics.ts.
+ */
+export function feedHosProvider(records: HoursRecord[], status: Pick<StatusInfo, "source" | "staleMinutes">, today: string, now: Date = new Date()): HosProvider {
+  if (status.source !== "feed") return NO_HOS_PROVIDER;
+  const latest = new Map<string, HoursRecord>();
+  for (const r of records) {
+    const cur = latest.get(r.driverId);
+    if (!cur || r.asOf > cur.asOf) latest.set(r.driverId, r);
+  }
+  return { source: "feed", verified: (driverId, at) => hoursVerified(latest.get(driverId), status, at, today, now) };
+}
 
-export const HOS_REQUIRED_MESSAGE = "Confirm that you checked each driver's hours of service first — Taviron has no ELD or driver-log data.";
+/** What the dispatcher confirms before approving a proposal (shown in the dialog and recorded on the assignment). */
+export const HOS_CONFIRMATION = "I checked that each driver has the hours of service for these loads. Taviron did not verify them from current provider data.";
+
+export const HOS_REQUIRED_MESSAGE = "Confirm that you checked each driver's hours of service first — Taviron could not verify them from current provider data.";
 
 /** The assignment note: what was approved, and that hours were confirmed by a person, not verified by Taviron. */
 export function approvalNote(what: string, confirmed: boolean): string {

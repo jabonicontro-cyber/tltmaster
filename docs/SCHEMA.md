@@ -470,6 +470,7 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 | `operation_workspaces`, `comm_housekeeping_runs` | Workspace scope (orders / site + date / loads), sync status; throttle for housekeeping. | Members or `comms.operations`; company |
 | `alert_event_types` (global), `comm_alert_settings`, `alerts`, `alert_recipients`, `alert_acknowledgments`, `alert_events` | Alert catalog with safety minimums; company policies (audited); alerts with dedup key, priority, scope, escalation; recipients and responsibility; acknowledgments; history. | `comms.alerts` or recipients |
 | `message_attachments` | File records (pending → uploaded → attached / discarded; `expired` with `expired_at` and `file_removed_at` once retention removed the stored file) for the private `comm-attachments` bucket. | Those who can read the message |
+| `telematics_settings`, `vehicle_positions`, `driver_hours` | GPS and hours (B101): the company's source (none / manual / feed), current-for minutes and feed key hash (never readable; `telematics_status()`); truck positions and driver duty status and clocks, each with source (manual / feed / demo) and time. | Settings: service only. Positions and hours: `dispatch.view` or `fleet.view`; a driver their own hours |
 
 ## Planned tables (later phases)
 
