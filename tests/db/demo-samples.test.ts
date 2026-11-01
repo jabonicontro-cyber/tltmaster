@@ -376,9 +376,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     const first = await ensureFeatureSamples(as(w.owner), today);
     expect(first.features).toContain("billing: ready and handed off");
     expect(await states()).toContain("handed_off");
-    expect((await counts(w.company)).handoffs).toBe(1);
+    // The billing sample's handoff, plus any the invoice sample (B99) hands off for its invoices.
+    const handoffs = (await counts(w.company)).handoffs;
+    expect(handoffs).toBeGreaterThanOrEqual(1);
     await ensureFeatureSamples(as(w.owner), today);
-    expect((await counts(w.company)).handoffs).toBe(1); // a second run adds nothing
+    expect((await counts(w.company)).handoffs).toBe(handoffs); // a second run adds nothing
   }, 180_000);
 
   it("remembers the demo welcome per person in a demo company only", async () => {
