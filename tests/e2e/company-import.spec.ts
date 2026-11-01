@@ -7,7 +7,7 @@ import { signIn, unique } from "./helpers";
 test("an owner imports customers from a spreadsheet, then undoes it", async ({ page }) => {
   test.slow();
   const id = unique();
-  const csv = ["Customer,Email", `Alder Paving ${id},ops@alder.test`, `Birch Grading ${id},`, `alder paving ${id},`, `,nobody@x.test`].join("\r\n");
+  const csv = ["Customer,Email", `Alder Paving ${id},ops-${id}@alder.test`, `Birch Grading ${id},`, `alder paving ${id},`, `,nobody@x.test`].join("\r\n");
 
   await signIn(page, "owner");
   await page.goto("/settings?tab=import");

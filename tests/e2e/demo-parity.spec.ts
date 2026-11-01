@@ -261,6 +261,13 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await visit(owner, "/billing/setup");
   await expect(owner.getByRole("heading", { name: /Stone & Sand \(demo\)/ })).toBeVisible();
   await expect(owner.getByText(/QuickBooks is not connected in demo companies/).first()).toBeVisible();
+  // Invoicing (B99, samples.ts): Taviron issues the demo's invoices — one past due, one partly paid, one paid.
+  await visit(owner, "/billing/invoices");
+  await expect(owner.getByRole("table", { name: "Receivables by age" })).toBeVisible();
+  await expect(owner.getByRole("table", { name: "Invoices" })).toContainText(/INV-\d{4,}/);
+  await expect(owner.getByText(/invoice(s)? past due/).first()).toBeVisible();
+  // A company that lets QuickBooks issue its invoices gets Send to QuickBooks instead (simulated in a demo).
+  await admin.from("invoicing_settings").update({ issuer: "quickbooks" }).eq("company_id", co!.id);
   await visit(owner, "/billing?view=handed_off");
   await owner.getByRole("button", { name: "Send to QuickBooks" }).first().click();
   await expect(owner.getByText(/Demo: simulated sending invoice/).first()).toBeVisible();

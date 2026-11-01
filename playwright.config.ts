@@ -25,6 +25,10 @@ export default defineConfig({
     navigationTimeout: 120_000,
     actionTimeout: 60_000,
     screenshot: "only-on-failure",
+    // The phone's location (proof of delivery, B98): a phone answers at once; without this a headless browser never
+    // answers and every ticket send waits the form's full 8 seconds.
+    geolocation: { latitude: 40.42, longitude: -86.91 },
+    permissions: ["geolocation"],
     launchOptions: process.env.PW_CHROMIUM_PATH ? { executablePath: process.env.PW_CHROMIUM_PATH } : undefined,
   },
   projects: [
