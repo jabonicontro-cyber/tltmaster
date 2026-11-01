@@ -93,4 +93,28 @@ describe("invoicing", () => {
       expect((await s.query("select 1 from public.document_sequences where company_id = $1 and key = 'invoice'", [other])).rowCount).toBe(1);
     });
   });
+  // Fix 20261120005000: invoices are never deleted, except with their sample order when sample data is removed
+  // (before, an invoiced sample order made Settings → Sample data fail).
+  it("an invoiced sample order goes with Remove sample data; invoices are otherwise never deleted", async () => {
+    await withSession(async (s) => {
+      const office = await s.createUser("office");
+      const owner = await s.createUser("owner");
+      const { order, handoffOrder } = await handedOff(s, office);
+      await s.as(owner);
+      await s.query("select public.invoicing_save_settings('taviron', 30, '')");
+      const inv = (await s.query<{ r: string }>("select public.invoice_create($1) r", [handoffOrder])).rows[0].r;
+      await s.query("select public.invoice_issue($1, null)", [inv]);
+      await s.query("select public.invoice_add_payment($1, 100, current_date, 'check', '', '')", [inv]);
+      await s.asAdmin();
+      expect((await pgError(s.query("delete from public.invoice_payments where invoice_id = $1", [inv]))).message).toMatch(/never deleted/);
+      expect((await pgError(s.query("delete from public.invoices where id = $1", [inv]))).message).toMatch(/never deleted/);
+      await s.query("update public.orders set is_sample = true where id = $1", [order.id]);
+      await s.as(owner);
+      await s.query("select public.remove_sample_data()");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.orders where id = $1", [order.id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.invoices where id = $1", [inv])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.invoice_payments where invoice_id = $1", [inv])).rowCount).toBe(0);
+    });
+  });
 });
