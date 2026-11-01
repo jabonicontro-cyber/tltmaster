@@ -75,7 +75,7 @@ export function LoginSheet({ c, includePassword }: { c: DeliveryCredential; incl
       <ul className="mt-2 list-disc space-y-1 pl-6 text-base">
         <li>The temporary password stops working on <strong>{formatDateTime(c.expiresAt)}</strong>. After that, ask {c.companyName} for a new sheet.</li>
         <li>Forgot your password later? Ask {c.companyName} for a new sheet — nobody there can see your password.</li>
-        <li>On a shared computer, tick &ldquo;This is a shared computer&rdquo; when you sign in, and sign out when you are done.</li>
+        <li>On a shared computer, untick &ldquo;Stay signed in&rdquo; when you sign in, and sign out when you are done.</li>
       </ul>
       <p className="mt-6 rounded-xl bg-[#f1f5f9] p-3 text-sm">
         Keep this sheet private and do not share your sign-in. Once you have created your own password, this temporary password no longer works.

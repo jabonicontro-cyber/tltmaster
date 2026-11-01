@@ -2,7 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
+import { SHARED_DEVICE_COOKIE, wantsBrowserSession } from "@/lib/shared-device";
 import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
@@ -27,9 +27,9 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   }
   const address = signInAddress(parsed.data.email);
   if (!address.ok) return { ok: false, error: address.error };
-  // Shared computer: mark it first, so the session cookies written below expire with the browser.
+  // "Stay signed in" unticked: mark it first, so the session cookies written below expire with the browser.
   const jar = await cookies();
-  if (formData.get("shared_device") === "on") jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  if (wantsBrowserSession(formData)) jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   else jar.delete(SHARED_DEVICE_COOKIE);
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({

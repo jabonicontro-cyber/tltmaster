@@ -121,3 +121,15 @@ describe("environment parsing", () => {
     expect(() => parseEnv({ NEXT_PUBLIC_SUPABASE_URL: "nope" })).toThrow(/NEXT_PUBLIC_SUPABASE_URL/);
   });
 });
+
+describe("text-message codes switch (B109)", () => {
+  const base = { NEXT_PUBLIC_SUPABASE_URL: "https://x.supabase.co", NEXT_PUBLIC_SUPABASE_ANON_KEY: "anon-key-anon-key-anon-key" };
+  it("is off unless set to on; a malformed value is ignored and named", async () => {
+    const { parseEnv } = await import("@/server/env");
+    expect(parseEnv(base).MFA_SMS).toBe(false);
+    expect(parseEnv({ ...base, MFA_SMS: "on" }).MFA_SMS).toBe(true);
+    const bad = parseEnv({ ...base, MFA_SMS: "yes" });
+    expect(bad.MFA_SMS).toBe(false);
+    expect(bad.invalidSettings).toContain("MFA_SMS");
+  });
+});

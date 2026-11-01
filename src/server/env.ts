@@ -26,6 +26,11 @@ const optional = {
   QBO_CLIENT_ID: z.string().min(10).max(200),
   QBO_CLIENT_SECRET: z.string().min(10).max(200),
   QBO_ENVIRONMENT: z.enum(["sandbox", "production"]),
+  /**
+   * Two-step verification codes by text message (B109). "on" only after the owner turned on Phone MFA and an SMS
+   * provider (Twilio) in the Supabase dashboard; Supabase sends and checks the codes. Off by default.
+   */
+  MFA_SMS: z.enum(["on", "off"]),
 } as const;
 
 type OptionalKey = keyof typeof optional;
@@ -44,6 +49,8 @@ export interface ServerEnv {
   QBO_CLIENT_ID?: string;
   QBO_CLIENT_SECRET?: string;
   QBO_ENVIRONMENT: "sandbox" | "production";
+  /** Text-message verification codes offered (B109). */
+  MFA_SMS: boolean;
   /** Names (never values) of optional settings that were set but malformed and are being ignored. */
   invalidSettings: OptionalKey[];
 }
@@ -86,6 +93,7 @@ export function parseEnv(source: Record<string, string | undefined>): ServerEnv 
     QBO_CLIENT_ID: values.QBO_CLIENT_ID,
     QBO_CLIENT_SECRET: values.QBO_CLIENT_SECRET,
     QBO_ENVIRONMENT: (values.QBO_ENVIRONMENT as ServerEnv["QBO_ENVIRONMENT"] | undefined) ?? "sandbox",
+    MFA_SMS: values.MFA_SMS === "on",
     invalidSettings,
   };
 }

@@ -17,8 +17,8 @@ describe("reference numbers", () => {
       const seq = (await s.query<{ key: string; prefix: string; include_year: boolean; pad: number; next_value: string }>(
         "select key, prefix, include_year, pad, next_value from public.document_sequences where company_id = $1 order by key", [a])).rows;
       expect(seq.map((r) => `${r.key}:${r.prefix}:${r.include_year}:${r.pad}:${r.next_value}`)).toEqual([
-        "billing:BIL-:false:4:1001", "customer:CUS-:false:4:1001", "order:ORD-:false:4:1001", "quote:QTE-:false:4:1001",
-        "ticket:TKT-:false:4:1001", "work_order:MWO-:false:4:1001",
+        "billing:BIL-:false:4:1001", "customer:CUS-:false:4:1001", "invoice:INV-:false:4:1001", "order:ORD-:false:4:1001",
+        "quote:QTE-:false:4:1001", "ticket:TKT-:false:4:1001", "work_order:MWO-:false:4:1001",
       ]);
       const n = async (c: string, k: string) => (await s.query<{ n: string }>("select private.next_document_number($1, $2) n", [c, k])).rows[0].n;
       expect(await n(a, "order")).toBe("ORD-1001");

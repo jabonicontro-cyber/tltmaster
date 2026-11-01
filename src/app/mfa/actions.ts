@@ -7,10 +7,14 @@ import { safeNextPath } from "@/lib/safe-redirect";
 import { confirmPassword } from "@/server/reauth";
 import { assertPermission } from "@/server/auth";
 import { mfaState } from "@/server/mfa";
+import { env } from "@/server/env";
+import { toE164 } from "@/lib/phone";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
-// Two-step verification (20261120000900): Supabase Auth TOTP factors. Codes are checked by Supabase Auth; this file
+// Two-step verification (20261120000900): Supabase Auth TOTP factors, and phone factors (codes by text message, B109)
+// when the server allows them (MFA_SMS=on, after Phone MFA and an SMS provider are set up in Supabase). Platform
+// administrators always use an authenticator app. Codes are checked by Supabase Auth; this file
 // only orders the steps, records events and adds recovery codes and limits. Nothing here can raise a session to aal2
 // without a valid authenticator code.
 
@@ -45,16 +49,21 @@ export async function startEnrollment(): Promise<ActionResult<{ factorId: string
 export async function verifyCode(formData: FormData): Promise<ActionResult<{ next: string; enrolled: boolean }>> {
   const { supabase } = await signedIn();
   const code = String(formData.get("code") ?? "").replace(/\s/g, "");
-  if (!CODE.test(code)) return fail("Enter the 6-digit code from your authenticator app.", { code: "Six digits." });
+  if (!CODE.test(code)) return fail("Enter the 6-digit code.", { code: "Six digits." });
   if (await tooManyFailures()) return fail(LOCKED);
   const { data: list } = await supabase.auth.mfa.listFactors();
   const requested = String(formData.get("factorId") ?? "");
-  const factor = (list?.all ?? []).find((f) => f.factor_type === "totp" && (requested ? f.id === requested : f.status === "verified"));
-  if (!factor) return fail("No authenticator app is set up. Start the setup again.");
-  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+  const challengeId = String(formData.get("challengeId") ?? "");
+  // A text-message code answers the challenge that sent it; an authenticator code is checked against a new one.
+  const kind = challengeId ? "phone" : "totp";
+  const factor = (list?.all ?? []).find((f) => f.factor_type === kind && (requested ? f.id === requested : f.status === "verified"));
+  if (!factor) return fail(kind === "phone" ? "No phone is set up for text-message codes. Start again." : "No authenticator app is set up. Start the setup again.");
+  const { error } = kind === "phone"
+    ? await supabase.auth.mfa.verify({ factorId: factor.id, challengeId, code })
+    : await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
   if (error) {
     await supabase.rpc("mfa_record_event", { p_event: "mfa.challenge_failed" });
-    return fail(error.status === 429 ? LOCKED : "That code did not work. Check the time on your phone and enter the newest code.");
+    return fail(error.status === 429 ? LOCKED : kind === "phone" ? "That code did not work. Enter the newest code from the text, or send a new one." : "That code did not work. Check the time on your phone and enter the newest code.");
   }
   const enrolled = factor.status === "unverified";
   await supabase.rpc("mfa_record_event", { p_event: enrolled ? "mfa.enrolled" : "mfa.verified" });
@@ -62,6 +71,47 @@ export async function verifyCode(formData: FormData): Promise<ActionResult<{ nex
   if (!enrolled) revalidatePath("/", "layout");
   const next = safeNextPath(String(formData.get("next") ?? ""), "/command-center");
   return ok({ next, enrolled });
+}
+
+/** Whether this person may use text-message codes: the server allows them and they are not a platform administrator. */
+async function smsAllowed(): Promise<boolean> {
+  if (!env().MFA_SMS) return false;
+  const state = await mfaState();
+  return !state.policy?.platform;
+}
+
+/**
+ * Start text-message verification: register the mobile number and text the first code. Supabase sends the text
+ * and checks the code; nothing is active until the code is entered.
+ */
+export async function startPhoneEnrollment(formData: FormData): Promise<ActionResult<{ factorId: string; challengeId: string; phone: string }>> {
+  const { supabase } = await signedIn();
+  if (!(await smsAllowed())) return fail("Text-message codes are not available. Use an authenticator app.");
+  const phone = toE164(String(formData.get("phone") ?? ""));
+  if (!phone) return fail("Enter your mobile number, for example (555) 555-0123.", { phone: "Mobile number." });
+  if (await tooManyFailures()) return fail(LOCKED);
+  const { data: list } = await supabase.auth.mfa.listFactors();
+  for (const f of list?.all ?? []) if (f.status === "unverified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+  if ((list?.all ?? []).some((f) => f.status === "verified")) return fail("Two-step verification is already set up for this account.");
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "phone", phone, friendlyName: `Phone ${phone.slice(-4)}` });
+  if (error || !data) return fail(error?.status === 422 ? "Text-message codes are not turned on for this server. Use an authenticator app." : "Could not start the setup. Try again.");
+  const challenge = await supabase.auth.mfa.challenge({ factorId: data.id });
+  if (challenge.error || !challenge.data) return fail(challenge.error?.status === 429 ? "Too many texts. Wait a few minutes and try again." : "The text could not be sent. Check the number and try again.");
+  return ok({ factorId: data.id, challengeId: challenge.data.id, phone: `•••${phone.slice(-4)}` });
+}
+
+/** Text a new code to the phone already set up (sign-in) or being set up (resend). */
+export async function sendPhoneCode(formData: FormData): Promise<ActionResult<{ factorId: string; challengeId: string }>> {
+  const { supabase } = await signedIn();
+  if (!env().MFA_SMS) return fail("Text-message codes are not available. Use your authenticator app.");
+  if (await tooManyFailures()) return fail(LOCKED);
+  const { data: list } = await supabase.auth.mfa.listFactors();
+  const requested = String(formData.get("factorId") ?? "");
+  const factor = (list?.all ?? []).find((f) => f.factor_type === "phone" && (requested ? f.id === requested : f.status === "verified"));
+  if (!factor) return fail("No phone is set up for text-message codes.");
+  const { data, error } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+  if (error || !data) return fail(error?.status === 429 ? "Too many texts. Wait a few minutes and try again." : "The text could not be sent. Try again.");
+  return ok({ factorId: factor.id, challengeId: data.id }, "Code sent by text message.");
 }
 
 /** New recovery codes (all earlier ones stop working). Needs a verified second factor in this session. */

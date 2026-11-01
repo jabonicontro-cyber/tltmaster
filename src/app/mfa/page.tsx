@@ -7,6 +7,7 @@ import { MfaChallenge, MfaEnroll, RecoveryCodesStep } from "@/components/securit
 import { PRODUCT_NAME } from "@/lib/product";
 import { safeNextPath } from "@/lib/safe-redirect";
 import { mfaState } from "@/server/mfa";
+import { env } from "@/server/env";
 import { createClient } from "@/server/supabase/server";
 import { signOut } from "@/app/(auth)/actions";
 
@@ -23,8 +24,12 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
   if (!claims?.claims?.sub) redirect("/login?next=/mfa");
   const next = safeNextPath(sp.next, "/command-center");
   const { data: list } = await supabase.auth.mfa.listFactors();
-  const verified = (list?.totp ?? []).length > 0;
+  const hasApp = (list?.totp ?? []).length > 0;
+  const hasPhone = (list?.phone ?? []).length > 0;
+  const verified = hasApp || hasPhone;
   const state = await mfaState();
+  // Text-message codes (B109): only when the server allows them, never for platform administrators.
+  const smsAllowed = env().MFA_SMS && !state.policy?.platform;
   const done = verified && state.aal === "aal2";
   const needsCodes = done && state.installed && (state.policy?.recovery_codes ?? 0) === 0;
 
@@ -46,16 +51,16 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
         </h1>
         <p className="mt-1 mb-5 text-sm text-muted">
           {sp.reset ? "Your lost authenticator was removed. Set up a new one now. " : ""}
-          {state.reason ?? (verified ? "Open your authenticator app for the current code." : "Protect your account with a code from your phone, in addition to your password.")}
+          {state.reason ?? (verified ? (hasApp ? "Open your authenticator app for the current code." : "We text a code to your phone.") : "Protect your account with a code from your phone, in addition to your password.")}
         </p>
         {needsCodes ? (
           <RecoveryCodesStep next={next} />
         ) : done ? (
           <Link href={next} className="font-semibold text-brand-fg hover:underline">Continue</Link>
         ) : verified ? (
-          <MfaChallenge next={next} />
+          <MfaChallenge next={next} kind={hasApp ? "totp" : "phone"} />
         ) : (
-          <MfaEnroll next={next} />
+          <MfaEnroll next={next} smsAllowed={smsAllowed} />
         )}
         <form action={signOut} className="mt-6 border-t border-line pt-4 text-center">
           <button type="submit" className="text-sm text-muted hover:text-ink hover:underline">Sign out</button>

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
+import { SHARED_DEVICE_COOKIE, wantsBrowserSession } from "@/lib/shared-device";
 import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
@@ -40,7 +40,7 @@ export async function signInToPortal(formData: FormData): Promise<ActionResult> 
   const address = signInAddress(parsed.data.email);
   if (!address.ok) return fail(address.error);
   const jar = await cookies();
-  if (formData.get("shared_device") === "on") jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
+  if (wantsBrowserSession(formData)) jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   else jar.delete(SHARED_DEVICE_COOKIE);
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email: address.email, password: parsed.data.password });

@@ -486,6 +486,21 @@ replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_ten
 
 Do not use `scripts/create-owner.mjs` for a prospect (it sets a password chosen by the operator).
 
+### 3d. Text-message verification codes (optional, B109)
+
+Two-step verification can send its code by text message instead of an authenticator app. Taviron never sends these
+texts itself: Supabase does, through the SMS provider you connect. Owner steps (a paid service: each text costs money):
+
+1. In Twilio, create an account and a Messaging Service (or a sending number) and note the Account SID, Auth Token and
+   Messaging Service SID.
+2. In Supabase → Authentication → Providers → Phone, choose Twilio and enter those values (they stay in Supabase).
+3. In Supabase → Authentication → Multi-Factor, turn on **Phone** (enroll and verify).
+4. In Vercel → Project → Settings → Environment Variables, set `MFA_SMS=on` for Production and redeploy.
+
+People then see "No authenticator app? Get codes by text message" when they set up two-step verification. Platform
+administrators always use an authenticator app. To turn it off, set `MFA_SMS=off`: people who chose texts can still sign
+in until Phone MFA is turned off in Supabase, so first ask them to switch to an authenticator app.
+
 ## 4. Custom domain (later)
 
 1. Vercel → Project → **Settings → Domains** → add `app.yourdomain.com`.

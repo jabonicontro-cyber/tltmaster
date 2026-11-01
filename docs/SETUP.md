@@ -27,6 +27,7 @@ dashboard (production). Never commit real values.
 | `AI_PROVIDER`, `OPENAI_API_KEY` | no (AI off) | `openai` and the key. **Server only**; the key is set by the owner in the hosting provider, never committed. A key alone switches nothing on (docs/AI.md §3) |
 | `AI_CAPABILITIES`, `AI_MODEL_PLAN_EXPLANATION`, `AI_MONTHLY_TOKEN_LIMIT` | to run an AI capability | Explicit switch, model id and per-company monthly token cap. The capability also needs the `20261110000100_ai_usage` migration and passing evaluation evidence |
 | `AI_FALLBACK_MODEL_PLAN_EXPLANATION`, `AI_REQUESTS_PER_MINUTE`, `AI_TIMEOUT_MS`, `AI_PRICING_JSON`, `AI_IN_DEMOS` | optional | Approved fallback (needs its own evidence), rate limit (6), timeout (20000 ms), prices for cost estimates, demo companies (off) |
+| `MFA_SMS` | no (off) | `on` offers two-step verification codes by **text message** next to the authenticator app (B109). Only after Phone MFA and an SMS provider (Twilio) are turned on in Supabase → Authentication; Supabase sends and checks the codes (DEPLOYMENT §3d). Platform administrators always use an authenticator app |
 | `TEST_DATABASE_URL` | for `npm run test:db` | Superuser URL of a **local/disposable** database |
 
 ## 2. Supabase project (hosted)

@@ -27,7 +27,7 @@ async function signInAs(page: Page, username: string, password: string, shared =
   await page.goto("/login");
   await page.getByLabel("Email or username").fill(username);
   await page.getByLabel("Password", { exact: true }).fill(password);
-  if (shared) await page.getByLabel(/shared computer/).check();
+  if (shared) await page.getByRole("checkbox", { name: /Stay signed in/ }).uncheck();
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { backspaceOverFormatting, caretAfterFormat, formatPhone, isCompletePhone } from "@/lib/phone";
+import { backspaceOverFormatting, caretAfterFormat, formatPhone, isCompletePhone, toE164 } from "@/lib/phone";
 import { optionalPhone } from "@/lib/schemas/common";
 
 /** Simulate typing characters one by one at the end. */
@@ -63,5 +63,18 @@ describe("caret and editing", () => {
     expect(formatPhone(r!.value)).toBe("124");
     expect(backspaceOverFormatting("(123) 456-7", 9)).toBeNull(); // after a digit: normal backspace
     expect(backspaceOverFormatting("+44 20", 4)).toBeNull(); // international: browser handles it
+  });
+});
+
+describe("toE164 (text-message codes, B109)", () => {
+  it("adds +1 to US numbers and keeps international ones", () => {
+    expect(toE164("(555) 555-0123")).toBe("+15555550123");
+    expect(toE164("1 555 555 0123")).toBe("+15555550123");
+    expect(toE164("+44 20 7946 0958")).toBe("+442079460958");
+  });
+  it("refuses what cannot be a mobile number", () => {
+    expect(toE164("555-0123")).toBeNull();
+    expect(toE164("+12")).toBeNull();
+    expect(toE164("")).toBeNull();
   });
 });

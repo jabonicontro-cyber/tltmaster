@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { generateTemporaryPassword, homePathFor, instructionsText, passwordProblem, usernameCandidates, usernameFromName } from "@/lib/accounts";
-import { cookiePersistence } from "@/lib/shared-device";
+import { cookiePersistence, wantsBrowserSession } from "@/lib/shared-device";
 import { isValidUsername } from "@/lib/usernames";
 
 describe("account helpers", () => {
@@ -63,5 +63,13 @@ describe("account helpers", () => {
     expect(cookiePersistence(opts, false)).toBe(opts);
     expect(cookiePersistence(opts, true)).toEqual({ path: "/", httpOnly: true });
     expect(cookiePersistence(undefined, true)).toBeUndefined();
+  });
+
+  it("\"Stay signed in\" unticked means a browser session; ticked or an older form without the box does not", () => {
+    const f = (o: Record<string, string>) => { const d = new FormData(); for (const [k, v] of Object.entries(o)) d.set(k, v); return d; };
+    expect(wantsBrowserSession(f({ stay_signed_in_shown: "1" }))).toBe(true);
+    expect(wantsBrowserSession(f({ stay_signed_in_shown: "1", stay_signed_in: "on" }))).toBe(false);
+    expect(wantsBrowserSession(f({}))).toBe(false);
+    expect(wantsBrowserSession(f({ shared_device: "on" }))).toBe(true);
   });
 });

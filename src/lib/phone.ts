@@ -73,3 +73,16 @@ export function backspaceOverFormatting(value: string, caret: number): { value: 
   if (i === 0) return null;
   return { value: value.slice(0, i - 1) + value.slice(caret), caret: i - 1 };
 }
+
+/**
+ * A mobile number for text messages in E.164 ("+15555550123"): a 10-digit US number gets +1; an international number
+ * must start with "+". Null when it cannot be a mobile number.
+ */
+export function toE164(input: string): string | null {
+  const v = input.trim();
+  const digits = v.replace(/\D/g, "");
+  if (v.startsWith("+")) return digits.length >= 8 && digits.length <= 15 ? `+${digits}` : null;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  return null;
+}

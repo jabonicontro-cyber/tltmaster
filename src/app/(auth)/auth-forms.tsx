@@ -21,9 +21,10 @@ export function LoginForm({ next, gate = false }: { next?: string; gate?: boolea
       <Field label="Password" htmlFor="password">
         <PasswordInput id="password" name="password" autoComplete="current-password" required className="h-12 text-base" />
       </Field>
+      <input type="hidden" name="stay_signed_in_shown" value="1" />
       <label className="flex min-h-11 items-center gap-3 text-sm text-ink">
-        <input type="checkbox" name="shared_device" className="size-5 rounded border-line accent-brand" />
-        This is a shared computer (sign me out when the browser closes)
+        <input type="checkbox" name="stay_signed_in" defaultChecked className="size-5 rounded border-line accent-brand" />
+        <span>Stay signed in <span className="text-muted">— untick on a shared computer to sign out when the browser closes</span></span>
       </label>
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign in"}
