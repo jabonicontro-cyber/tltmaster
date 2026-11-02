@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
-import { signIn, unique } from "./helpers";
+import { expectToast, signIn, unique } from "./helpers";
 import { TOP_LINE_SLUG } from "./users";
 
 // Customer self-booking (B115, 20261120005500), end to end: booking is off until the owner turns it on; dispatch opens
@@ -57,16 +57,18 @@ test("the owner turns booking on, dispatch opens a day, a customer requests load
   await expect(page.getByText("Customer booking is off")).toBeVisible();
   await page.getByLabel("Customers can request loads in the portal").check();
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(page.getByText("Customer booking is on.")).toBeVisible();
+  await expectToast(page, "Customer booking is on.");
 
   // Open 4 loads on the first bookable day (tomorrow); clear any earlier run's requests there.
   const day = (await sql<{ d: string }>("select (private.company_today($1) + 1)::text d", [TOP_LINE]))[0].d;
   await sql("update public.booking_requests set status = 'canceled' where company_id = $1 and day = $2 and status = 'pending'", [TOP_LINE, day]);
+  // An earlier run may have opened this day already (then saving would change nothing).
+  await sql("update public.booking_capacity set loads = 0 where company_id = $1 and day = $2", [TOP_LINE, day]);
   const used = (await sql<{ n: number }>("select coalesce(sum(loads), 0)::int n from public.booking_requests where company_id = $1 and day = $2 and status = 'approved'", [TOP_LINE, day]))[0].n;
   await page.reload();
   await page.locator(`#cap-${day}`).fill(String(used + 4));
   await page.getByRole("button", { name: "Save open loads" }).click();
-  await expect(page.getByText("Open loads saved.")).toBeVisible();
+  await expectToast(page, "Open loads saved.");
 
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const cust = await ctx.newPage();
@@ -84,7 +86,7 @@ test("the owner turns booking on, dispatch opens a day, a customer requests load
     await cust.getByRole("link", { name: "Book loads" }).click();
     await expect(cust.getByRole("heading", { name: "Book loads" })).toBeVisible();
     const form = cust.getByRole("form", { name: "Book loads" });
-    await form.getByLabel("Day").selectOption(day);
+    await form.locator("#bk-day").selectOption(day);
     // More loads than the day has room for is refused, without saying how many are left.
     await form.getByLabel("Loads").fill("5");
     await form.getByLabel("What do you need hauled?").fill(material);
@@ -105,7 +107,7 @@ test("the owner turns booking on, dispatch opens a day, a customer requests load
     const waiting = page.getByRole("list", { name: "Booking requests waiting" }).locator("li", { hasText: material });
     await expect(waiting.getByText(CUSTOMER)).toBeVisible();
     await waiting.getByRole("button", { name: "Approve" }).click();
-    await expect(page.getByText("Saved. The customer sees it in the portal.")).toBeVisible();
+    await expectToast(page, "Saved. The customer sees it in the portal.");
 
     await cust.reload();
     await expect(cust.getByRole("list", { name: "Your booking requests" }).locator("li", { hasText: material }).getByText("Approved")).toBeVisible();

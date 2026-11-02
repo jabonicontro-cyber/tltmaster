@@ -51,7 +51,7 @@ test("billing holds a customer; dispatch sees it and gives a reason to assign; b
   await signIn(page, "dispatcher");
   await page.goto(`/dispatch?date=${date}`);
   const orderCard = page.locator("section").filter({ has: page.getByRole("link", { name: f.orderNumber, exact: true }) });
-  await expect(orderCard.getByText("Credit hold")).toBeVisible();
+  await expect(orderCard.getByText("Credit hold", { exact: true }).first()).toBeVisible();
   await orderCard.getByRole("button", { name: "Assign", exact: true }).first().click();
   const dialog = page.getByRole("dialog");
   await choose(dialog.getByLabel("Truck"), truck);
