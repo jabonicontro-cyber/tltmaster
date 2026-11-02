@@ -19,7 +19,8 @@ import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { can } from "@/lib/permissions";
 import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type DriverAssignment } from "@/server/data/driver";
-import { stopTimesForLoads } from "@/server/data/wait-times";
+import { listStopTimes, stopTimesForLoads } from "@/server/data/wait-times";
+import { median, minutesLabel, waitMinutes } from "@/lib/dispatch/wait-times";
 import { StopButtons, type StopState } from "@/components/driver/stop-buttons";
 import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
@@ -45,7 +46,7 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[] }) {
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -109,6 +110,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops }: { a: D
             </dl>
           </details>
         )}
+        {usualWait != null && <p className="text-sm text-muted">You usually wait about <strong className="text-ink">{minutesLabel(usualWait)}</strong> at this site (your last visits).</p>}
         {stops && <StopButtons load={a.load.id} stops={stops} timeZone={timeZone} />}
         {hasTicket && (
           <ul className="space-y-1" aria-label="Tickets for this load">
@@ -172,7 +174,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes] = await Promise.all([
+  const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes, history] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
     loadScorecard(addDays(h.today, -(SCORECARD_DAYS - 1)), h.today, true).catch(() => null),
@@ -184,8 +186,15 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     myShiftOffers().catch(() => null),
     // Arrived / Left at pickup and site (B111) for today's and earlier loads; none before the update is installed.
     stopTimesForLoads([...earlier, ...today].map((a) => a.load.id)),
+    // Their own finished stops over the last 60 days (B121), for "you usually wait about N min here".
+    listStopTimes(addDays(h.today, -60), addDays(h.today, -1), h.timezone).catch(() => null),
   ]);
   const stopsFor = (loadId: string) => stopTimes.filter((t) => t.loadId === loadId);
+  const siteLabel = (a: DriverAssignment) => a.site.label || [a.site.line1, a.site.city].filter(Boolean).join(", ");
+  const usualWait = (a: DriverAssignment): number | null => {
+    const waits = (history ?? []).filter((t) => t.stop === "site" && t.placeLabel === siteLabel(a)).map((t) => waitMinutes(t)).filter((m): m is number => m !== null);
+    return waits.length >= 2 ? median(waits) : null;
+  };
   const shiftToday = shiftLine(shifts?.find((d) => d.date === h.today));
   const shiftTomorrow = shiftLine(shifts?.find((d) => d.date === addDays(h.today, 1)));
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
@@ -297,7 +306,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} />)}</ul>
         </section>
       )}
 
@@ -306,14 +315,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} />)}</ul>
         )}
       </section>
 
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} />)}</ul>
         </section>
       )}
 

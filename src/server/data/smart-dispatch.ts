@@ -1,4 +1,6 @@
 import "server-only";
+import { median, waitMinutes } from "@/lib/dispatch/wait-times";
+import { listStopTimes } from "@/server/data/wait-times";
 import type { Point } from "@/lib/routing/route";
 import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
 import { getTrailerInput } from "./trailer-input";
@@ -48,7 +50,7 @@ const clock = (t: string) => {
 
 export async function getSmartDispatchInput(from: string, to: string): Promise<SmartInput> {
   const supabase = await createClient();
-  const { today } = await businessToday();
+  const { today, timezone } = await businessToday();
   const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries, schedule] = await Promise.all([
     supabase
       .from("order_loads")
@@ -162,6 +164,24 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const y = yardRow.data as { yard_latitude: number | string | null; yard_longitude: number | string | null } | null;
   const yard = y && y.yard_latitude != null && y.yard_longitude != null ? { lat: Number(y.yard_latitude), lng: Number(y.yard_longitude) } : null;
   const mileCents = rateRow.error ? null : ((rateRow.data as { empty_mile_cents: number | null } | null)?.empty_mile_cents ?? null);
+  // Typical wait at each job site (B122): median of the last 60 days' recorded waits, 3+ visits. Matched on the site's
+  // name or street line. Missing data: nothing shown.
+  const stops = await listStopTimes(addDays(today, -60), addDays(today, -1), timezone).catch(() => null);
+  if (stops) {
+    const bySite = new Map<string, number[]>();
+    for (const t of stops) {
+      const w = waitMinutes(t);
+      if (t.stop !== "site" || w === null || !t.placeLabel) continue;
+      const k = t.placeLabel.split(",")[0].trim().toLowerCase();
+      bySite.set(k, [...(bySite.get(k) ?? []), w]);
+    }
+    for (const l of smartLoads) {
+      const row = byLoad.get(l.id)?.orders;
+      const k = (row?.site_label || row?.site_line1 || "").trim().toLowerCase();
+      const waits = k ? bySite.get(k) : undefined;
+      if (waits && waits.length >= 3) l.site_wait = median(waits);
+    }
+  }
   // Learning from recorded decisions (B117): rejections not reconsidered, and loads drivers ran, per customer, over
   // the last 120 days. Any read error leaves learning out (proposals are made as before).
   const since = new Date(Date.now() - 120 * 86400_000).toISOString();

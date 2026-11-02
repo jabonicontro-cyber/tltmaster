@@ -49,6 +49,8 @@ export interface SmartLoad {
   point?: Point | null;
   /** The order's customer (B117 learning); absent in older inputs. */
   customer_id?: string | null;
+  /** Median recorded wait at this job site over the last 60 days, in minutes (B122); absent without 3+ visits. */
+  site_wait?: number | null;
 }
 
 export interface SmartBooking {

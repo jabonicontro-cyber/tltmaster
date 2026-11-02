@@ -97,6 +97,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
         {plan.priority.reasons.slice(0, 1).map((r) => (
           <Badge key={r} tone={urgentRank === 0 ? "red" : urgentRank === 1 ? "amber" : "gray"}>{r}</Badge>
         ))}
+        {l.site_wait != null && l.site_wait >= 30 && <Badge tone="amber">Usually ~{l.site_wait} min wait on site</Badge>}
       </div>
 
       {plan.proposal ? (

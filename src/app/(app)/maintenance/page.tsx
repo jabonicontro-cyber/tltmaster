@@ -11,6 +11,7 @@ import { addDays, formatDate } from "@/lib/dates";
 import { rankWorkOrders, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
+import { loadShopInsights } from "@/server/data/shop-insights";
 import { listAssignees, listDriverOptions, listOpenWorkOrders, listPmStatus, listTrailers, listTrucks } from "@/server/data/maintenance";
 import { businessToday } from "@/server/data/settings";
 import { listShopWorkload } from "@/server/data/maintenance-crew";
@@ -58,6 +59,8 @@ export default async function MaintenancePage() {
   // Monday of this week, in the company's time zone.
   const weekStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
   const shop = await listShopWorkload(open.map((w) => w.id), zonedTimeToUtc(weekStart, "00:00", timezone) ?? `${weekStart}T00:00:00Z`);
+  // Shop insights (B120): repeat failures, parts a job usually needs, the truck's free days. Left out on any error.
+  const insights = await loadShopInsights(today, open.map((w) => w.id)).catch(() => null);
   const truckById = new Map(trucks.map((t) => [t.id, t]));
   const trailerById = new Map(trailers.map((t) => [t.id, t]));
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
@@ -368,6 +371,41 @@ export default async function MaintenancePage() {
 
         </div>
       </div>
+      {insights && (insights.repeats.length > 0 || insights.jobs.length > 0) && (
+        <Card className="mt-5">
+          <CardHeader title="Shop insights" description="Learned from your completed work orders and the parts used on them. Suggestions only." />
+          {insights.repeats.length > 0 && (
+            <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Repeat failures">
+              {insights.repeats.map((r) => (
+                <li key={`${r.unitId}-${r.category}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm sm:px-6">
+                  <span className="size-2 shrink-0 rounded-full bg-amber-500" aria-hidden />
+                  <span className="font-semibold text-ink">{r.unitLabel}</span>
+                  <span className="min-w-0 flex-1 text-muted">{r.detail}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {insights.jobs.length > 0 && (
+            <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Open jobs: parts and free days">
+              {insights.jobs.slice(0, 8).map((j) => (
+                <li key={j.workOrderId} className="px-5 py-3 text-sm sm:px-6">
+                  <Link href={`/maintenance/work-orders/${j.workOrderId}`} className="font-semibold text-ink hover:underline">{j.number}</Link>
+                  <span className="text-muted"> · {j.unitLabel}</span>
+                  {j.parts.length > 0 && (
+                    <p className="mt-0.5 text-muted">
+                      Usually needs:{" "}
+                      {j.parts.map((p, i) => (
+                        <span key={p.partId} className={cn(p.short && "font-medium text-amber-800")}>{i ? ", " : ""}{p.name} ({p.typical} {p.unit}, {p.onHand} on hand{p.short ? " — order more" : ""})</span>
+                      ))}
+                    </p>
+                  )}
+                  {j.freeDays && j.freeDays.length > 0 && <p className="mt-0.5 text-muted">No loads planned on {j.freeDays.map((d) => formatDate(d)).join(", ")} — a good day for the shop.</p>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
     </>
   );
 }
