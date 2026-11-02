@@ -39,7 +39,7 @@ describe("invoicing", () => {
       expect(row.lines.length).toBeGreaterThan(0);
       expect(Number(row.total_cents)).toBeGreaterThan(0);
       expect((await pgError(s.query("select public.invoice_create($1)", [handoffOrder]))).code).toBe("23505");
-      expect((await pgError(s.query("select public.invoice_add_payment($1, 100, current_date, 'check')", [inv]))).message).toMatch(/issued invoices only/);
+      expect((await pgError(s.query("select public.invoice_add_payment($1, 100, current_date - 1, 'check')", [inv]))).message).toMatch(/issued invoices only/);
 
       // Issue: numbered INV-…, due after the terms; a second issue is refused.
       await s.query("select public.invoice_issue($1, null)", [inv]);
@@ -50,8 +50,8 @@ describe("invoicing", () => {
       expect((await pgError(s.query("select public.invoice_issue($1, null)", [inv]))).message).toMatch(/Only a draft/);
 
       // Payments: never more than is owed; a void needs a reason; the balance follows.
-      expect((await pgError(s.query("select public.invoice_add_payment($1, $2, current_date, 'check')", [inv, total + 1]))).message).toMatch(/more than/);
-      const p1 = (await s.query<{ r: string }>("select public.invoice_add_payment($1, $2, current_date, 'check', '1001', '') r", [inv, Math.floor(total / 2)])).rows[0].r;
+      expect((await pgError(s.query("select public.invoice_add_payment($1, $2, current_date - 1, 'check')", [inv, total + 1]))).message).toMatch(/more than/);
+      const p1 = (await s.query<{ r: string }>("select public.invoice_add_payment($1, $2, current_date - 1, 'check', '1001', '') r", [inv, Math.floor(total / 2)])).rows[0].r;
       expect(await balance(inv)).toBe(total - Math.floor(total / 2));
       // The invoice cannot be voided while it has payments.
       expect((await pgError(s.query("select public.invoice_void($1, 'Wrong customer')", [inv]))).message).toMatch(/Void the payments first/);
@@ -104,7 +104,7 @@ describe("invoicing", () => {
       await s.query("select public.invoicing_save_settings('taviron', 30, '')");
       const inv = (await s.query<{ r: string }>("select public.invoice_create($1) r", [handoffOrder])).rows[0].r;
       await s.query("select public.invoice_issue($1, null)", [inv]);
-      await s.query("select public.invoice_add_payment($1, 100, current_date, 'check', '', '')", [inv]);
+      await s.query("select public.invoice_add_payment($1, 100, current_date - 1, 'check', '', '')", [inv]);
       await s.asAdmin();
       expect((await pgError(s.query("delete from public.invoice_payments where invoice_id = $1", [inv]))).message).toMatch(/never deleted/);
       expect((await pgError(s.query("delete from public.invoices where id = $1", [inv]))).message).toMatch(/never deleted/);
