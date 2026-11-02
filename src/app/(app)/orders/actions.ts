@@ -25,6 +25,7 @@ import { assertPermission } from "@/server/auth";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { creditGate, creditHolds, holdSummary, recordCreditOverride } from "@/server/credit";
 import type { EffectivePrice, OrderStatus } from "@/server/data/types";
 
 function revalidateOrder(id: string) {
@@ -39,14 +40,21 @@ function revalidateOrder(id: string) {
  * is returned with created = false. The database function enforces the
  * permission and the accepted status as well.
  */
-export async function convertQuoteToOrder(quoteId: string): Promise<ActionResult<{ orderId: string; orderNumber: string; created: boolean }>> {
+export async function convertQuoteToOrder(quoteId: string, creditReason?: string): Promise<ActionResult<{ orderId: string; orderNumber: string; created: boolean }>> {
   return guard(async () => {
     await assertPermission("orders.edit");
     if (!uuid.safeParse(quoteId).success) return fail("Invalid quote.");
     const supabase = await createClient();
+    // Credit hold (B128): a new order for a customer on hold needs a reason (an existing order just opens).
+    const quote = (await supabase.from("quotes").select("customer_id").eq("id", quoteId).maybeSingle()).data as { customer_id: string } | null;
+    const existing = (await supabase.from("orders").select("id").eq("source_quote_id", quoteId).limit(1)).data ?? [];
+    const reason = creditReason?.trim().slice(0, 500);
+    const gate = quote && !existing.length ? await creditGate(quote.customer_id, reason) : null;
+    if (gate) return fail(gate.message, { creditReason: "Give a reason to go ahead." });
     const { data, error } = await supabase.rpc("convert_quote_to_order", { p_quote_id: quoteId });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { order_id: string; order_number: string; created: boolean };
+    if (quote && r.created && reason) await recordCreditOverride(quote.customer_id, "order", r.order_id, reason);
     revalidatePath("/orders");
     revalidatePath(`/quotes/${quoteId}`);
     revalidatePath("/command-center");
@@ -67,10 +75,15 @@ export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResu
     await assertPermission("orders.edit");
     const parsed = orderDraftInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
+    // Credit hold (B128): a new order for a customer on hold needs a reason, which is recorded; never blocked.
+    const isNew = !parsed.data.orderId;
+    const gate = isNew ? await creditGate(parsed.data.customerId, parsed.data.creditReason) : null;
+    if (gate) return fail(gate.message, { creditReason: "Give a reason to go ahead." });
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("save_order_draft", { p_payload: toOrderDraftPayload(parsed.data) });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { order_id: string; edit_seq: number; order_number: string; total_cents: number };
+    if (isNew && parsed.data.creditReason) await recordCreditOverride(parsed.data.customerId, "order", r.order_id, parsed.data.creditReason);
     revalidateOrder(r.order_id);
     if (parsed.data.saveSite) revalidatePath(`/customers/${parsed.data.customerId}`);
     return ok({ orderId: r.order_id, editSeq: r.edit_seq, orderNumber: r.order_number, totalCents: r.total_cents }, `Order ${r.order_number} saved.`);
@@ -87,7 +100,8 @@ export async function loadOrderCustomerContext(customerId: string, onDate: strin
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("effective_prices", { p_customer_id: customerId, p_on: onDate });
     if (error) return fail(dbErrorMessage(error));
-    return ok({ ...context, prices: (data ?? []) as EffectivePrice[] });
+    const hold = (await creditHolds([customerId])).get(customerId);
+    return ok({ ...context, prices: (data ?? []) as EffectivePrice[], creditHold: hold ? `${hold.name} is ${holdSummary(hold)}.` : null });
   });
 }
 

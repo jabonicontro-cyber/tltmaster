@@ -235,3 +235,30 @@ export async function setCustomerPriority(customerId: string, priority: boolean)
     return ok(undefined, priority ? "Priority customer: their loads are planned first." : "No longer a priority customer.");
   });
 }
+
+/** Credit hold (B128): billing puts a customer on hold with a reason, or releases a manual hold. */
+export async function setCustomerCreditHold(customerId: string, hold: boolean, reason: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    if (!uuid.safeParse(customerId).success) return fail("Customer not found.");
+    const { error } = await (await createClient()).rpc("set_customer_credit_hold", { p_customer: customerId, p_hold: hold, p_reason: reason.slice(0, 500) });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/customers/${customerId}`);
+    revalidatePath("/dispatch");
+    return ok(undefined, hold ? "On credit hold. Orders and dispatch will ask for a reason to go ahead." : "Credit hold released.");
+  });
+}
+
+export async function setCustomerCreditLimit(customerId: string, dollars: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    if (!uuid.safeParse(customerId).success) return fail("Customer not found.");
+    const text = dollars.replace(/[$,\s]/g, "");
+    if (text && !/^\d+(\.\d{1,2})?$/.test(text)) return fail("Enter the limit in dollars, for example 25000.");
+    const cents = text ? Math.round(Number(text) * 100) : null;
+    const { error } = await (await createClient()).rpc("set_customer_credit_limit", { p_customer: customerId, p_limit_cents: cents });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/customers/${customerId}`);
+    return ok(undefined, cents === null ? "No credit limit." : "Credit limit saved.");
+  });
+}

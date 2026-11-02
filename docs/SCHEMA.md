@@ -482,6 +482,18 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 | `booking_capacity` | Loads customers may request per company and day (0 = closed). `booking_set_capacity` (`dispatch.edit`); read with `dispatch.view`. |
 | `booking_requests` | A customer's request: day, loads, material, optional saved site, time of day, notes, status `pending/approved/declined/canceled`, decision note, linked order. Read with `dispatch.view`; customers use `portal_booking_state/request/cancel` only. |
 
+## Credit holds (20261120005600)
+
+`customers` gains `credit_hold`, `credit_hold_reason`, `credit_hold_at`, `credit_hold_by`, `credit_limit_cents`.
+
+| Table | Purpose |
+| --- | --- |
+| `credit_hold_settings` | Per company: `overdue_days` (null = automatic holds off). `credit_hold_save_settings` (`billing.manage`). |
+| `credit_hold_overrides` | Each time someone created an order or dispatched a load for a customer on hold: context, record, reason, the hold's reasons, who and when. Read with `billing.view`; written only by `record_credit_override` (`orders.edit` / `dispatch.edit`). |
+
+`private.credit_holds` computes who is on hold (manual, overdue past the set days, open issued invoices over the limit);
+`customer_credit_holds` returns it to order, dispatch and customer staff (amounts only with `billing.view`).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

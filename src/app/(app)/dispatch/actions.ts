@@ -9,6 +9,7 @@ import { loadHosProvider } from "@/server/data/telematics";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { creditGate, creditHolds, holdSummary, orderCustomer, recordCreditOverride } from "@/server/credit";
 import { checkPair } from "@/lib/dispatch/smart";
 import { checkAssignment } from "@/lib/optimization/plan";
 import { getOptimizationInput } from "@/server/data/optimization";
@@ -95,6 +96,8 @@ const assignInput = z.object({
   replaceAssignmentId: optionalUuid,
   /** Why the driver works outside their scheduled shift (20261120003300); only after the shift check refused it. */
   offShiftReason: z.string().trim().max(500).optional(),
+  /** Why the load goes ahead for a customer on credit hold (B128); only after the hold was shown. */
+  creditReason: z.string().trim().max(500).optional(),
 });
 
 export async function assignLoad(input: z.input<typeof assignInput>): Promise<ActionResult<{ assignmentId: string; warnings: string[] }>> {
@@ -103,6 +106,10 @@ export async function assignLoad(input: z.input<typeof assignInput>): Promise<Ac
     const parsed = assignInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const a = parsed.data;
+    // Credit hold (B128): never blocked, but the dialog asks for a reason first (fieldErrors.creditHold).
+    const customerId = await orderCustomer(a.orderId);
+    const gate = customerId ? await creditGate(customerId, a.creditReason) : null;
+    if (gate) return fail(gate.message, { creditHold: gate.message });
     const supabase = await createClient();
     const args = {
       p_load_id: a.loadId,
@@ -119,8 +126,10 @@ export async function assignLoad(input: z.input<typeof assignInput>): Promise<Ac
     if (error && error.hint === "off_shift") return fail(error.message, { offShift: error.message });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { assignment_id: string; warnings: string[] };
+    const recorded = customerId && a.creditReason ? await recordCreditOverride(customerId, "assignment", r.assignment_id, a.creditReason) : true;
     revalidateBoard(a.orderId);
-    return ok({ assignmentId: r.assignment_id, warnings: r.warnings }, a.replaceAssignmentId ? "Load reassigned." : "Load assigned.");
+    const warnings = recorded ? r.warnings : [...(r.warnings ?? []), "The reason for going ahead despite the credit hold could not be recorded."];
+    return ok({ assignmentId: r.assignment_id, warnings }, a.replaceAssignmentId ? "Load reassigned." : "Load assigned.");
   });
 }
 
@@ -203,6 +212,9 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
       return fail(`This proposal is no longer valid — ${check.reasons.join(" ")} The proposals have been refreshed; review them again.`);
     }
     const supabase = await createClient();
+    // Credit hold (B128): a proposal is not approved in one click; the load is assigned from the board with a reason.
+    const held = await loadCreditHold(loadId);
+    if (held) return fail(`${held.name} is ${holdSummary(held)}. Assign this load from the board to give a reason for going ahead.`);
     const { data, error } = await supabase.rpc("assign_load", {
       p_load_id: loadId, p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_note: approvalNote("Approved Smart Dispatch proposal", hosConfirmed), p_replace_assignment_id: null,
     });
@@ -239,4 +251,12 @@ export async function reconsiderRecommendations(loadId: string): Promise<ActionR
     if (error) return fail(dbErrorMessage(error));
     return ok(undefined, "Rejected options will be proposed again.");
   });
+}
+
+/** The credit hold of a load's customer, if any (B128). */
+async function loadCreditHold(loadId: string) {
+  const supabase = await createClient();
+  const { data } = await supabase.from("order_loads").select("orders(customer_id)").eq("id", loadId).maybeSingle();
+  const customerId = (data as unknown as { orders: { customer_id: string } | null } | null)?.orders?.customer_id;
+  return customerId ? (await creditHolds([customerId])).get(customerId) ?? null : null;
 }

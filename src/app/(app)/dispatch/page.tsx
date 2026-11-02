@@ -9,6 +9,7 @@ import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { ButtonLink } from "@/components/ui/button";
 import { CalendarRange, GanttChart, MapPinned, Route, Sparkles, Truck, Users } from "lucide-react";
+import { creditHolds, holdSummary } from "@/server/credit";
 import { createClient } from "@/server/supabase/server";
 import { cn } from "@/lib/cn";
 import { listOpenUrgencies } from "@/server/data/urgency";
@@ -108,6 +109,10 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   ]);
   // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
   const faces = await facesForDrivers(day.drivers.map((d) => d.id));
+  // Credit holds (B128) for this day's customers: a badge on their orders (assigning asks for a reason).
+  const dayOrders = day.orders as Array<{ id: string; customer_id?: string | null }>;
+  const holds = await creditHolds([...new Set(dayOrders.map((o) => o.customer_id).filter((c): c is string => Boolean(c)))]);
+  const creditHoldByOrder = Object.fromEntries(dayOrders.flatMap((o) => { const h = o.customer_id ? holds.get(o.customer_id) : undefined; return h ? [[o.id, `${h.name} is ${holdSummary(h)}`]] : []; }));
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const description = `${weekday}, ${formatDateLong(date)}${date === today ? " — today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`;
 
@@ -153,7 +158,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             </section>
           ) : null;
         })()}
-        <DispatchBoard day={day} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard day={day} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

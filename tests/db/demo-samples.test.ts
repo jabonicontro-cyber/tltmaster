@@ -298,6 +298,9 @@ describe.skipIf(!available)("demo feature samples", () => {
               (select count(*) from public.booking_requests where company_id = $1 and status = 'pending') pending,
               (select count(*) from public.booking_requests where company_id = $1 and status = 'approved') approved`, [w.company]);
     expect(booking.rows[0]).toEqual({ enabled: true, days: "8", pending: "1", approved: "1" });
+    // Credit holds (B128): one customer on a manual hold, not the priority customer.
+    const held = await q<{ n: string; priority: string }>("select count(*) n, count(*) filter (where is_priority) priority from public.customers where company_id = $1 and credit_hold", [w.company]);
+    expect([Number(held.rows[0].n), Number(held.rows[0].priority)]).toEqual([1, 0]);
 
     // Proof of delivery (B98): confirmed tickets at a located job site get a position (up to five).
     const pod = await q<{ located: string; placed: string }>(

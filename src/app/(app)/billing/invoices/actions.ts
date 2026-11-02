@@ -165,3 +165,16 @@ export async function saveInvoicingSettings(formData: FormData) {
   refresh();
   go(back, "saved", "invoicing");
 }
+
+/** Credit holds (B128): customers go on hold when an issued invoice is this many days past due; empty turns it off. */
+export async function saveCreditHoldSettings(formData: FormData) {
+  const back = "/settings?tab=invoicing";
+  await manage(back);
+  const raw = String(formData.get("overdue_days") ?? "").trim();
+  const days = raw === "" ? null : Number.parseInt(raw, 10);
+  if (days !== null && (!Number.isInteger(days) || days < 0 || days > 365)) go(back, "error", "Days past due are 0 to 365, or empty to turn it off.");
+  const { error } = await (await createClient()).rpc("credit_hold_save_settings", { p_overdue_days: days });
+  if (error) go(back, "error", dbErrorMessage(error));
+  revalidatePath("/settings");
+  go(back, "saved", "invoicing");
+}

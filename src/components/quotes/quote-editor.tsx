@@ -82,6 +82,8 @@ export interface CustomerContext {
   contacts: ContactRow[];
   sites: SiteRow[];
   prices: EffectivePrice[];
+  /** Orders only: why the customer is on credit hold (B128), or null. */
+  creditHold?: string | null;
 }
 
 interface Props {
@@ -132,6 +134,8 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
   const [formError, setFormError] = useState<string | null>(null);
   const [conflict, setConflict] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  // A new order for a customer on credit hold (B128): the reason to go ahead, recorded with the order.
+  const [creditReason, setCreditReason] = useState("");
   const [dirty, setDirty] = useState(false);
   const [newCustomerOpen, setNewCustomerOpen] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
@@ -334,7 +338,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
   function buildOrderInput(): OrderDraftInput {
     const { quoteId, quoteDate, validUntil, ...q } = buildInput();
     void validUntil;
-    return { ...q, orderId: quoteId, orderDate: quoteDate, requestedDate: state.requestedDate ?? "" };
+    return { ...q, orderId: quoteId, orderDate: quoteDate, requestedDate: state.requestedDate ?? "", creditReason: creditReason.trim() || undefined };
   }
 
   function buildInput(): QuoteDraftInput {
@@ -490,6 +494,14 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                 {selectedCustomer.po_required && <Badge tone="amber">PO required</Badge>}
                 <SampleBadge show={selectedCustomer.is_sample} />
                 {loadingContext && <span>Loading…</span>}
+              </div>
+            )}
+            {isOrder && !state.quoteId && context?.creditHold && (
+              <div role="alert" className="mt-3 space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
+                <p className="text-sm font-semibold text-critical">{context.creditHold}</p>
+                <Field label="Reason for going ahead" htmlFor="credit-reason" required error={fieldErrors.creditReason} hint="Recorded with the order. Billing can release the hold.">
+                  <Input id="credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
+                </Field>
               </div>
             )}
           </div>

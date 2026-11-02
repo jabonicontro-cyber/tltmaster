@@ -18,6 +18,7 @@ import { getOptimizationInput, getOptimizationPlan } from "@/server/data/optimiz
 import { businessToday } from "@/server/data/settings";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { creditHolds, holdSummary } from "@/server/credit";
 
 const approveInput = z.object({
   date: z.string().refine(isIsoDate),
@@ -50,7 +51,16 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     if (!hosApprovalAllowed(await loadHosProvider(items.map((i) => i.driverId)), items.map((i) => i.driverId), date, hosConfirmed)) return fail(HOS_REQUIRED_MESSAGE);
     const supabase = await createClient();
     const outcomes: ApprovalOutcome[] = [];
+    // Credit holds (B128): those loads are left for the board, where the dispatcher gives a reason to go ahead.
+    const loadCustomers = new Map((((await supabase.from("order_loads").select("id, orders(customer_id)").in("id", items.map((i) => i.loadId))).data ?? []) as unknown as Array<{ id: string; orders: { customer_id: string } | null }>)
+      .map((l) => [l.id, l.orders?.customer_id ?? ""]));
+    const holds = await creditHolds([...new Set([...loadCustomers.values()].filter(Boolean))]);
     for (const item of items) {
+      const hold = holds.get(loadCustomers.get(item.loadId) ?? "");
+      if (hold) {
+        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned — ${hold.name} is ${holdSummary(hold)}. Assign it from the board to give a reason.`, warnings: [] });
+        continue;
+      }
       const check = checkAssignment(await getOptimizationInput(date), item.loadId, item.truckId, item.trailerId, item.driverId);
       if (!check.ok) {
         outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned — no longer valid: ${check.reasons.join(" ")}`, warnings: [] });

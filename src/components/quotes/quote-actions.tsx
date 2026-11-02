@@ -39,6 +39,9 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
   const [reviseOpen, setReviseOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState<QuoteStatus | null>(null);
   const [note, setNote] = useState("");
+  // Customer on credit hold (B128): shown after the first try; the reason goes with the next one.
+  const [creditHold, setCreditHold] = useState<string | null>(null);
+  const [creditReason, setCreditReason] = useState("");
   const [reason, setReason] = useState("");
 
   const [convertOpen, setConvertOpen] = useState(false);
@@ -107,13 +110,25 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
         description="Creates an order from the accepted revision with the same customer, job site, lines, prices, discounts and totals. The quote and its revisions are kept unchanged, and its status can no longer change."
         confirmLabel="Create order"
         onConfirm={async () => {
-          const r = await convertQuoteToOrder(quoteId);
-          if (!r.ok) return r.error;
+          const r = await convertQuoteToOrder(quoteId, creditHold ? creditReason : undefined);
+          if (!r.ok) {
+            if (r.fieldErrors?.creditReason) setCreditHold(r.error);
+            return r.fieldErrors?.creditReason ? "Give a reason to go ahead (at least 3 characters)." : r.error;
+          }
           if (r.data.created) toast.success(r.message ?? "Order created");
           else toast.info(r.message ?? "Opening existing order");
           router.push(`/orders/${r.data.orderId}`);
         }}
-      />
+      >
+        {creditHold && (
+          <div role="alert" className="space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
+            <p className="text-sm font-semibold text-critical">{creditHold}</p>
+            <Field label="Reason for going ahead" htmlFor="convert-credit-reason" required>
+              <Input id="convert-credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
+            </Field>
+          </div>
+        )}
+      </ConfirmDialog>
 
       {emailOpen && <EmailDialog quoteId={quoteId} editSeq={versionLocked ? null : editSeq} onClose={() => setEmailOpen(false)} />}
 

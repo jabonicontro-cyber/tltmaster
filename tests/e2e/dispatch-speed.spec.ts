@@ -140,6 +140,7 @@ test("keyboard: arrows change the day and ? lists the shortcuts", async ({ page 
   const f = await fixture([["07:00", "09:00"]]);
   await signIn(page, "dispatcher");
   await page.goto(`/dispatch?date=${f.day2}`);
+  await page.waitForLoadState("networkidle");
   await page.locator("body").click({ position: { x: 5, y: 300 } });
   await page.keyboard.press("ArrowLeft");
   await expect(page).toHaveURL(new RegExp(`date=${f.day1}`));

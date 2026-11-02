@@ -50,7 +50,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {} }: { day: DispatchDay; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -205,6 +205,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
                 key={o.id}
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
+                creditHold={creditHolds[o.id] ?? null}
                 routeOpen={routeOrder === o.id}
                 onRoute={() => setRouteOrder((cur) => (cur === o.id ? null : o.id))}
                 selected={selected}
@@ -336,6 +337,7 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
 function OrderCard({
   order: o,
   urgent,
+  creditHold,
   routeOpen,
   onRoute,
   selected,
@@ -358,6 +360,7 @@ function OrderCard({
 }: {
   order: OrderListRow;
   urgent: boolean;
+  creditHold: string | null;
   routeOpen: boolean;
   onRoute: () => void;
   selected: Set<string>;
@@ -399,6 +402,7 @@ function OrderCard({
             <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
             <OrderStatusBadge status={o.status} />
             {urgent && <UrgentPill />}
+            {creditHold && <span title={creditHold}><Badge tone="red">Credit hold</Badge></span>}
             <SampleBadge show={o.is_sample} />
             {outsideSchedule && <Badge tone="amber">Outside the order&apos;s scheduled dates</Badge>}
           </div>
@@ -780,6 +784,9 @@ function AssignDialog({
   // Set when the shift check refused the driver: the problem shown and the reason typed (20261120003300).
   const [offShift, setOffShift] = useState<string | null>(null);
   const [offShiftReason, setOffShiftReason] = useState("");
+  // Set when the customer is on credit hold (B128): the hold shown and the reason typed to go ahead.
+  const [creditHold, setCreditHold] = useState<string | null>(null);
+  const [creditReason, setCreditReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const interval: Interval = { starts_at: load.starts_at, ends_at: load.ends_at };
@@ -819,9 +826,14 @@ function AssignDialog({
   async function submit() {
     setPending(true);
     setError(null);
-    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note, replaceAssignmentId: current?.id ?? null, offShiftReason: offShift ? offShiftReason : undefined });
+    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note, replaceAssignmentId: current?.id ?? null, offShiftReason: offShift ? offShiftReason : undefined, creditReason: creditHold ? creditReason : undefined });
     setPending(false);
     if (!r.ok) {
+      // The customer is on credit hold: show it and ask for a reason; the next Assign sends it.
+      if (r.fieldErrors?.creditHold) {
+        setCreditHold(r.fieldErrors.creditHold);
+        return;
+      }
       // Outside the driver's shift: show why and ask for a reason; the next Assign sends it.
       if (r.fieldErrors?.offShift) {
         setOffShift(r.fieldErrors.offShift);
@@ -843,14 +855,22 @@ function AssignDialog({
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={pending}>Cancel</Button>
-          <Button onClick={submit} loading={pending} disabled={!truckId || !driverId || Boolean(unchanged) || (check ? !check.eligible : true) || (Boolean(offShift) && offShiftReason.trim().length < 3)}>
-            {offShift ? "Assign anyway" : current ? "Reassign" : "Assign"}
+          <Button onClick={submit} loading={pending} disabled={!truckId || !driverId || Boolean(unchanged) || (check ? !check.eligible : true) || (Boolean(offShift) && offShiftReason.trim().length < 3) || (Boolean(creditHold) && creditReason.trim().length < 3)}>
+            {offShift || creditHold ? "Assign anyway" : current ? "Reassign" : "Assign"}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
         <FormError message={error} />
+        {creditHold && (
+          <div role="alert" className="space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
+            <p className="text-sm font-semibold text-critical">{creditHold}</p>
+            <Field label="Reason for going ahead" htmlFor="assign-credit-reason" required>
+              <Input id="assign-credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
+            </Field>
+          </div>
+        )}
         {offShift && (
           <div role="alert" className="space-y-2 rounded-xl border border-line bg-surface p-3">
             <p className="text-sm font-semibold text-ink">{offShift}</p>

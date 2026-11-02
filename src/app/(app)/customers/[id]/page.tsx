@@ -10,6 +10,8 @@ import { DescriptionList } from "@/components/ui/description-list";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { PriorityToggle } from "@/components/customers/priority-toggle";
+import { CreditPanel } from "@/components/customers/credit-panel";
+import { creditHolds } from "@/server/credit";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
@@ -36,6 +38,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   const verification = "site_review_days_standard" in settings;
   // CRM (20261119000100): null until that update is installed.
   const crm = await loadCustomerCrm(id);
+  // Credit hold (B128): null hold = in good standing; the panel only once the update is installed.
+  const creditInstalled = "credit_hold" in customer;
+  const hold = creditInstalled ? (await creditHolds([id])).get(id) ?? null : null;
   const userNames = crm || (verification && sites.some((s) => s.directions_verified_by)) ? await getUserNames() : {};
   const account = customer as typeof customer & { relationship?: Relationship; account_owner_id?: string | null; tags?: string[] };
   const intervals = { site_review_days_standard: settings.site_review_days_standard ?? null, site_review_days_safety: settings.site_review_days_safety ?? null };
@@ -80,6 +85,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           <>
             <ActiveBadge active={customer.active} />
             <SampleBadge show={customer.is_sample} />
+            {hold && <Badge tone="red">On credit hold</Badge>}
             {"is_priority" in customer && <PriorityToggle customerId={customer.id} priority={Boolean((customer as { is_priority?: boolean }).is_priority)} canEdit={canEdit} />}
           </>
         }
@@ -122,6 +128,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
+          {creditInstalled && (can(access, "billing.view") || hold) && (
+            <CreditPanel customerId={customer.id} hold={hold} limitCents={(customer as { credit_limit_cents?: number | null }).credit_limit_cents ?? null} canManage={can(access, "billing.manage")} />
+          )}
           <Card>
             <CardHeader title="Details" />
             <CardBody>

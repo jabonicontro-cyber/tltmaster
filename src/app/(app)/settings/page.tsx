@@ -45,7 +45,7 @@ import { waitTimeSettings } from "@/server/data/wait-times";
 import { WaitTimeForm } from "@/components/settings/wait-time-form";
 import { env } from "@/server/env";
 import { TelematicsSettingsForm } from "@/components/fleet/telematics";
-import { saveInvoicingSettings } from "../billing/invoices/actions";
+import { saveCreditHoldSettings, saveInvoicingSettings } from "../billing/invoices/actions";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
@@ -299,6 +299,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     content = <SampleDataPanel counts={(data ?? {}) as Record<string, number>} />;
   } else if (tab === "invoicing") {
     const inv = await invoicingSettings();
+    // Credit holds (B128): null until that update is installed.
+    const credit = await supabase.from("credit_hold_settings").select("overdue_days").maybeSingle();
     const edit = can(access, "billing.manage");
     content = (
       <>
@@ -324,6 +326,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <Field label="Payment terms (days)" htmlFor="terms_days" hint="0 = due on receipt"><Input id="terms_days" name="terms_days" inputMode="numeric" defaultValue={String(inv.termsDays)} disabled={!edit} /></Field>
               </div>
               <Field label="Footer on invoices" htmlFor="footer" hint="For example how to pay, or a thank-you"><Textarea id="footer" name="footer" rows={3} maxLength={500} defaultValue={inv.footer} disabled={!edit} /></Field>
+              {edit && <SubmitButton>Save</SubmitButton>}
+            </form>
+          )}
+          {!credit.error && (
+            <form action={saveCreditHoldSettings} className="mt-8 max-w-xl space-y-3 border-t border-line pt-6" aria-label="Credit holds">
+              <h3 className="text-base font-semibold text-ink">Credit holds</h3>
+              <p className="text-sm text-muted">A customer goes on credit hold when an issued Taviron invoice is more than this many days past due (or their open balance is over the credit limit on their page). New orders and dispatch for them are never blocked: whoever goes ahead gives a reason, which is recorded.</p>
+              <Field label="Days past due" htmlFor="overdue_days" hint="Empty: off. Holds put on by hand always apply."><Input id="overdue_days" name="overdue_days" inputMode="numeric" defaultValue={(credit.data as { overdue_days: number | null } | null)?.overdue_days?.toString() ?? ""} disabled={!edit} className="max-w-28" /></Field>
               {edit && <SubmitButton>Save</SubmitButton>}
             </form>
           )}

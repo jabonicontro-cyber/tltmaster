@@ -26,6 +26,8 @@ export const orderDraftInput = z
     terms: text(8000),
     taxRate: z.string().default("0"),
     lines: z.array(quoteLineInput).max(200, "An order can have at most 200 lines."),
+    /** Why a new order goes ahead for a customer on credit hold (B128). */
+    creditReason: z.string().trim().max(500).optional(),
   })
   .superRefine((o, ctx) => {
     if (o.requestedDate && o.requestedDate < o.orderDate)
