@@ -510,6 +510,16 @@ per truck and day; void + reason). Fleet staff read all; a driver reads their ow
 `fuel_record_trip_sheet` (fleet.edit, or a driver for a truck they drove that day or their own truck); `fuel_void`
 (fleet.edit); `fuel_my_trucks(day)` for My Day. The quarter's IFTA summary is computed in `src/lib/fuel/ifta.ts`.
 
+## Vehicle inspections (20261120006000)
+
+`vehicle_inspections` (truck, driver, kind `pre_trip`/`post_trip`, day, odometer, `items` = every DVIR item with OK and
+a note, defect count, `safety_defect`, remarks, `work_order_id`; one per truck, day and kind). Fleet or maintenance staff
+read all; a driver reads their own. Written only by `inspection_submit` (fleet.edit, or a driver for a truck they drive
+today or their own truck — the fuel rule): defects open one work order (`source = 'inspection'`, a new value of the
+work-order source check); a safety-item defect makes it safety-critical and takes the truck out of service
+(`private.wo_restrict_truck`). `inspection_my_trucks()` for My Day; `inspection_missing_today()` (fleet or dispatch
+view) lists today's working trucks without a pre-trip. Missing inspections never block dispatch.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

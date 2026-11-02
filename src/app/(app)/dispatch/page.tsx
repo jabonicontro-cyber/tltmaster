@@ -1,3 +1,4 @@
+import { missingPreTrips } from "@/server/data/inspections";
 import Link from "next/link";
 import { DispatchBoard } from "@/components/dispatch/dispatch-board";
 import { DispatchTimeline } from "@/components/dispatch/dispatch-timeline";
@@ -107,6 +108,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     // Weather at this day's job sites (B92); a demo reads a sample forecast (DEMO_TENANTS §2).
     view === "board" ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : Promise.resolve(null),
   ]);
+  // Inspections (B132): today's working trucks without a pre-trip; flagged, never blocking. [] before the update.
+  const noPreTrip = view === "board" && date === today ? await missingPreTrips().catch(() => []) : [];
   // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
   const faces = await facesForDrivers(day.drivers.map((d) => d.id));
   // Credit holds (B128) for this day's customers: a badge on their orders (assigning asks for a reason).
@@ -158,6 +161,11 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             </section>
           ) : null;
         })()}
+        {noPreTrip.length > 0 && (
+          <p role="status" className="mb-4 rounded-panel border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>
+          </p>
+        )}
         <DispatchBoard day={day} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>

@@ -1,3 +1,4 @@
+import { InspectionForm } from "@/components/fleet/inspection-form";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck, Wrench } from "lucide-react";
@@ -180,6 +181,12 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const fuelTrucksRes = await (await createClient()).rpc("fuel_my_trucks", { p_day: h.today });
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
+  // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
+  const inspRes = await (await createClient()).rpc("inspection_my_trucks");
+  const inspTrucks = (inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean }>))
+    .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
+    .filter((t) => t.pending.length > 0);
+  const preTripDue = inspTrucks.some((t) => t.pending.includes("pre_trip"));
   // Pay statements (B131): the driver's own, for approved periods only; empty before that update is installed.
   const payRes = await (await createClient()).rpc("my_pay_statements");
   const pay = payRes.error ? [] : ((payRes.data ?? []) as Array<{ period_id: string; starts_on: string; ends_on: string; total_cents: number }>).slice(0, 4);
@@ -317,6 +324,23 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
           <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} />)}</ul>
         </section>
+      )}
+
+      {inspTrucks.length > 0 && (
+        <Card>
+          <CardHeader
+            title={preTripDue ? "Pre-trip inspection" : "Post-trip inspection"}
+            description={preTripDue ? "Before you drive: check every item. A defect goes straight to the shop." : "At the end of your shift: check every item and report anything wrong."}
+          />
+          <div className="px-5 pb-5 sm:px-6">
+            {preTripDue ? <InspectionForm trucks={inspTrucks} /> : (
+              <details className="rounded-xl border border-line px-4 py-3">
+                <summary className="cursor-pointer text-sm font-semibold text-ink">Start post-trip inspection</summary>
+                <div className="pt-3"><InspectionForm trucks={inspTrucks} /></div>
+              </details>
+            )}
+          </div>
+        </Card>
       )}
 
       <section aria-label="Today">

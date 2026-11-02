@@ -318,6 +318,14 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(fuel.rows[0].sheets)).toBeGreaterThan(20);
     expect(Number(fuel.rows[0].states)).toBe(2);
     expect(Number(fuel.rows[0].buys)).toBeGreaterThan(5);
+    // Inspections (B132): pre-trips on past weekdays, none today, one minor defect with its inspection work order.
+    const insp = await q<{ n: string; today: string; defects: string; wo: string }>(
+      `select count(*) n, count(*) filter (where inspected_on = (now() at time zone coalesce((select timezone from public.company_settings where company_id = $1), 'America/Chicago'))::date) today,
+              count(*) filter (where defect_count > 0) defects,
+              (select count(*) from public.work_orders where company_id = $1 and source = 'inspection') wo
+       from public.vehicle_inspections where company_id = $1`, [w.company]);
+    expect(Number(insp.rows[0].n)).toBeGreaterThan(5);
+    expect([insp.rows[0].today, insp.rows[0].defects, insp.rows[0].wo]).toEqual(["0", "1", "1"]);
     // Credit holds (B128): one customer on a manual hold, not the priority customer.
     const held = await q<{ n: string; priority: string }>("select count(*) n, count(*) filter (where is_priority) priority from public.customers where company_id = $1 and credit_hold", [w.company]);
     expect([Number(held.rows[0].n), Number(held.rows[0].priority)]).toEqual([1, 0]);

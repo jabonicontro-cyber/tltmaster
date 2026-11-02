@@ -1834,6 +1834,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Tax rates are not included; apply the official ones each quarter.", "Receipt photos are not stored yet."],
   },
   {
+    id: "inspections",
+    title: "Pre-trip and post-trip inspections",
+    summary: "Drivers check the standard inspection items on My Day before and after their shift; defects go straight to the shop as work orders, and a safety defect takes the truck out of service.",
+    category: "fleet",
+    routes: ["/fleet/inspections", "/driver", "/dispatch"],
+    permissions: ["fleet.view", "driver.portal"],
+    audience: "Drivers inspect the truck they drive today; the office sees every inspection and the trucks still missing a pre-trip.",
+    whatYouSee: [
+      "On **My Day**, drivers see **Pre-trip inspection** until it is done, then **Post-trip inspection**.",
+      "**Inspections** (Fleet): trucks working today without a pre-trip, defects of the last 14 days with their work orders, and every inspection.",
+      "On the dispatch board for today: a note naming trucks without a pre-trip. They are never blocked.",
+    ],
+    tasks: [
+      { title: "Do a pre-trip inspection (driver)", steps: ["On My Day, mark each item **OK** or **Defect**; for a defect, say what is wrong.", "Select **Mark the rest OK** when everything else is fine, then **Save inspection**."] },
+      { title: "Follow up a defect", steps: ["Open **Fleet → Inspections** and select the work order next to the defect.", "A safety defect (brakes, steering, lights, tires, wheels, coupling) has taken the truck out of service; the shop clears it as for any safety work order."] },
+    ],
+    prerequisites: ["A driver can inspect only a truck they drive today or their own truck."],
+    troubleshooting: [
+      { problem: "A truck shows as missing a pre-trip but the driver did one.", fix: "It was recorded for a different truck. The office can record one for today on Fleet → Inspections." },
+    ],
+    next: ["fuel-ifta"],
+    related: [],
+    reviewed: "2026-11-02",
+    limitations: ["One pre-trip and one post-trip per truck per day.", "Photos of defects are not attached yet.", "Trailers are not inspected separately yet."],
+  },
+  {
     id: "hauler-settlements",
     title: "Pay a hired hauler (settlements)",
     summary: "Settle a hauler's confirmed jobs for a period: accepted tickets at the offered rate, less their commission and any deductions, then approve and record the payment.",
