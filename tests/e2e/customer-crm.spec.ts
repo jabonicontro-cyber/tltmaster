@@ -60,7 +60,7 @@ test("office works a prospect from first call to won, and the pipeline follows",
   await expect(account.locator(".pill-text", { hasText: /^Customer$/ })).toBeVisible();
 
   // The list filters by tag and exports the same rows as CSV.
-  await page.goto("/customers?tag=quarry");
+  await page.goto(`/customers?tag=quarry&q=${encodeURIComponent(name)}`);
   await expect(page.getByRole("link", { name })).toBeVisible();
   const csv = await page.request.get(`/customers/export?q=${encodeURIComponent(name)}`);
   expect(csv.headers()["content-type"]).toContain("text/csv");
