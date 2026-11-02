@@ -121,6 +121,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("priority customer", await rpcCount(db, "demo_priority_customer"));
   // Credit holds (B128): one customer on a manual hold, so orders and the board show the warning.
   note("credit hold", await rpcCount(db, "demo_credit_hold_sample"));
+  // Fuel and IFTA (B130): about a quarter of trip sheets and fuel for two trucks, a few days in a neighbouring state.
+  note("fuel and trip sheets", await rpcCount(db, "demo_fuel_samples"));
   // Parts inventory (B105): a small shelf with one low part and one used on an open work order.
   note("parts inventory", await rpcCount(db, "demo_parts_samples"));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.

@@ -111,3 +111,13 @@ export async function assertPermission(permission: Permission): Promise<Access> 
   if (await mfaBlocks()) throw new MfaRequiredError();
   return access;
 }
+
+/** For server actions open to several roles: throws PermissionError unless the person has at least one permission. */
+export async function assertAnyPermission(...permissions: [Permission, ...Permission[]]): Promise<Access> {
+  const access = await getAccess();
+  if (!access || !access.active || !access.companyId || !permissions.some((p) => can(access, p))) {
+    throw new PermissionError(permissions[0]);
+  }
+  if (await mfaBlocks()) throw new MfaRequiredError();
+  return access;
+}

@@ -1782,6 +1782,33 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Nothing is billed: detention charges are not part of this yet.", "Times come from taps, not GPS."],
   },
   {
+    id: "fuel-ifta",
+    title: "Fuel and IFTA",
+    summary: "Drivers record a trip sheet each day and the fuel they buy; Fleet → Fuel and IFTA adds up miles and gallons per state for the quarter's IFTA report.",
+    category: "fleet",
+    routes: ["/fleet/fuel", "/driver"],
+    permissions: ["fleet.view"],
+    audience: "Drivers record their own; office and owners record for any truck and file the report.",
+    whatYouSee: [
+      "On **My Day**, drivers see **Trip sheet and fuel** for the truck they drive today.",
+      "**Fuel and IFTA** (Fleet): the quarter's miles, gallons and fleet MPG, the **IFTA summary** per state (miles, gallons bought, taxable and net taxable gallons), and every trip sheet and fuel purchase.",
+    ],
+    tasks: [
+      { title: "Record a trip sheet (driver)", steps: ["At the end of the day, on My Day, type the odometer at the start and at the end.", "If you crossed a state line, select **Crossed into another state** and type the miles in each state; they must add up.", "Select **Save trip sheet**."] },
+      { title: "Record fuel", steps: ["Open **Record fuel**, choose the state, type the gallons and the total from the receipt (and the receipt number), and select **Save fuel**."] },
+      { title: "File the quarter's IFTA return", steps: ["Open **Fleet → Fuel and IFTA**, choose the quarter and select **Download IFTA summary (CSV)**.", "Apply the quarter's official IFTA tax rates to the net taxable gallons (or give the file to your accountant)."] },
+      { title: "Fix a wrong entry", steps: ["Select **Void** on it and say why, then record it again."] },
+    ],
+    prerequisites: ["A driver can record only for a truck they drove that day or their own truck."],
+    troubleshooting: [
+      { problem: "Fleet MPG shows a dash.", fix: "No fuel is recorded for the quarter yet; taxable gallons need it." },
+    ],
+    next: ["dispatch-board"],
+    related: [],
+    reviewed: "2026-11-02",
+    limitations: ["Tax rates are not included; apply the official ones each quarter.", "Receipt photos are not stored yet."],
+  },
+  {
     id: "hauler-settlements",
     title: "Pay a hired hauler (settlements)",
     summary: "Settle a hauler's confirmed jobs for a period: accepted tickets at the offered rate, less their commission and any deductions, then approve and record the payment.",

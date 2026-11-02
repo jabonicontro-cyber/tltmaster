@@ -502,6 +502,14 @@ frozen commission rate and amount, deductions, net, paid date and reference, voi
 offer is in at most one unreleased row), `hauler_settlement_deductions` (description, amount, `removed`). Read with
 `payroll.manage` or `billing.view`; every change through `hauler_*` functions (`payroll.manage`).
 
+## Fuel and IFTA (20261120005800)
+
+`fuel_purchases` (truck, driver, day, state/province, gallons, total, odometer, station, receipt number, void + reason) and
+`trip_sheets` (truck, driver, day, start/end odometer, `legs` = miles per state summing to the difference; one live sheet
+per truck and day; void + reason). Fleet staff read all; a driver reads their own. Written by `fuel_record_purchase` /
+`fuel_record_trip_sheet` (fleet.edit, or a driver for a truck they drove that day or their own truck); `fuel_void`
+(fleet.edit); `fuel_my_trucks(day)` for My Day. The quarter's IFTA summary is computed in `src/lib/fuel/ifta.ts`.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

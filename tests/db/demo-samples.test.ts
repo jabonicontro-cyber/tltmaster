@@ -309,6 +309,15 @@ describe.skipIf(!available)("demo feature samples", () => {
               (select count(*) from public.booking_requests where company_id = $1 and status = 'pending') pending,
               (select count(*) from public.booking_requests where company_id = $1 and status = 'approved') approved`, [w.company]);
     expect(booking.rows[0]).toEqual({ enabled: true, days: "8", pending: "1", approved: "1" });
+    // Fuel and IFTA (B130): trip sheets for two trucks, some in a second state, and fuel purchases.
+    const fuel = await q<{ trucks: string; sheets: string; states: string; buys: string }>(
+      `select (select count(distinct truck_id) from public.trip_sheets where company_id = $1) trucks, (select count(*) from public.trip_sheets where company_id = $1) sheets,
+              (select count(distinct e ->> 'jurisdiction') from public.trip_sheets t, jsonb_array_elements(t.legs) e where t.company_id = $1) states,
+              (select count(*) from public.fuel_purchases where company_id = $1) buys`, [w.company]);
+    expect(Number(fuel.rows[0].trucks)).toBe(2);
+    expect(Number(fuel.rows[0].sheets)).toBeGreaterThan(20);
+    expect(Number(fuel.rows[0].states)).toBe(2);
+    expect(Number(fuel.rows[0].buys)).toBeGreaterThan(5);
     // Credit holds (B128): one customer on a manual hold, not the priority customer.
     const held = await q<{ n: string; priority: string }>("select count(*) n, count(*) filter (where is_priority) priority from public.customers where company_id = $1 and credit_hold", [w.company]);
     expect([Number(held.rows[0].n), Number(held.rows[0].priority)]).toEqual([1, 0]);

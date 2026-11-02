@@ -38,6 +38,8 @@ import { getMyShifts } from "@/server/data/schedules";
 import { shiftLine } from "@/lib/schedule/shifts";
 import { myShiftOffers } from "@/server/data/shift-offers";
 import { MyShiftOffers } from "@/components/schedule/shift-offers";
+import { FuelForm, TripSheetForm } from "@/components/fleet/fuel-forms";
+import { homeState } from "@/server/data/fuel";
 
 export const metadata = { title: "My Day" };
 
@@ -174,6 +176,10 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
+  // Fuel and IFTA (B130): the trucks this driver may record for today; empty before that update is installed.
+  const fuelTrucksRes = await (await createClient()).rpc("fuel_my_trucks", { p_day: h.today });
+  const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
+  const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes, history] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
@@ -318,6 +324,22 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} />)}</ul>
         )}
       </section>
+
+      {fuelTrucks.length > 0 && (
+        <Card>
+          <CardHeader
+            title="Trip sheet and fuel"
+            description={fuelTrucks.every((t) => t.sheet_done) ? "Today's trip sheet is in. Add fuel when you buy it." : "At the end of the day: odometer at the start and end, and any state line you crossed. Add fuel when you buy it."}
+          />
+          <div className="space-y-6 px-5 pb-5 sm:px-6">
+            {fuelTrucks.some((t) => !t.sheet_done) && <TripSheetForm trucks={fuelTrucks.filter((t) => !t.sheet_done).map((t) => ({ id: t.id, label: `Truck ${t.unit}` }))} today={h.today} homeState={fuelHome} />}
+            <details className="rounded-xl border border-line px-4 py-3">
+              <summary className="cursor-pointer text-sm font-semibold text-ink">Record fuel</summary>
+              <div className="pt-3"><FuelForm compact trucks={fuelTrucks.map((t) => ({ id: t.id, label: `Truck ${t.unit}` }))} today={h.today} homeState={fuelHome} /></div>
+            </details>
+          </div>
+        </Card>
+      )}
 
       {later.length > 0 && (
         <section aria-label="Tomorrow">

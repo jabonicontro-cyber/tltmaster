@@ -7,6 +7,7 @@ const TABS = [
   { href: "/fleet/trailers", label: "Trailers" },
   { href: "/fleet/drivers", label: "Drivers" },
   { href: "/fleet/locations", label: "Locations and hours" },
+  { href: "/fleet/fuel", label: "Fuel and IFTA" },
 ] as const;
 
 export type FleetTab = (typeof TABS)[number]["label"];
