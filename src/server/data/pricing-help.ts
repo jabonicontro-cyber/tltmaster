@@ -56,7 +56,7 @@ export async function loadPricingHelp(
     const key = `${name}|${l.unit_code}`;
     if (seen.has(key)) continue;
     seen.add(key);
-    out.push(pricingHelp({ name, unit: l.unit_code!, rateCents: l.unit_rate_cents, miles }, history, costPerLoad));
+    out.push(pricingHelp({ name, unit: l.unit_code!, unitLabel: l.unit_label, rateCents: l.unit_rate_cents, miles }, history, costPerLoad));
   }
-  return out.length ? { miles, lines: out, costShown: costPerLoad !== null } : null;
+  return out.length ? { miles, lines: out, costShown: out.some((l) => l.costPerLoadCents !== null) } : null;
 }

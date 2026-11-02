@@ -15,6 +15,8 @@ export type Verdict = "no_history" | "in_line" | "high" | "low" | "below_cost";
 export interface PricingInput {
   name: string;
   unit: string;
+  /** How people read the unit ("Cubic yards"); the code is used when missing. */
+  unitLabel?: string;
   /** The line's current rate, or null when not priced yet. */
   rateCents: number | null;
   /** Straight-line miles yard → job site for this quote, or null when unknown. */
@@ -24,6 +26,7 @@ export interface PricingInput {
 export interface PricingHelp {
   name: string;
   unit: string;
+  unitLabel: string;
   rateCents: number | null;
   /** "distance" when only quotes in the same distance band were used. */
   basis: "distance" | "all" | null;
@@ -78,6 +81,7 @@ export function pricingHelp(input: PricingInput, history: DecidedQuote[], costPe
   const base = {
     name: input.name,
     unit: input.unit,
+    unitLabel: input.unitLabel || input.unit,
     rateCents: input.rateCents,
     basis: used.length ? (useBand ? ("distance" as const) : ("all" as const)) : null,
     bandLabel: useBand && band ? band.label : null,
@@ -91,7 +95,7 @@ export function pricingHelp(input: PricingInput, history: DecidedQuote[], costPe
     costPerLoadCents: cost,
   };
   const scope = useBand && band ? `quotes ${band.label.toLowerCase()} from your yard` : "your decided quotes";
-  const per = `/${input.unit}`;
+  const per = `/${(input.unitLabel || input.unit).replace(/s$/, "").toLowerCase()}`;
 
   if (input.rateCents !== null && cost !== null && input.rateCents < cost) {
     return { ...base, verdict: "below_cost", reason: `Below your average cost of ${money(cost)} per delivered load (last 90 days).` };

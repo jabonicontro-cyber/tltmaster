@@ -31,7 +31,7 @@ export function PricingHelpCard({ help }: { help: QuotePricingHelp }) {
             <li key={`${l.name}|${l.unit}`} className="px-5 py-3.5 sm:px-6">
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span className="font-semibold text-ink">{l.name}</span>
-                <span className="text-sm text-muted">per {l.unit}</span>
+                <span className="text-sm text-muted">per {l.unitLabel.replace(/s$/, "").toLowerCase()}</span>
                 <Badge tone={v.tone}>{v.label}</Badge>
                 <span className="ml-auto text-sm tabular">
                   Yours <strong className="text-ink">{l.rateCents === null ? "—" : formatCents(l.rateCents)}</strong>
