@@ -71,8 +71,15 @@ describe("plan demos", () => {
       await s.query("select public.platform_demo_set_plan($1, 'growth')", [demo]);
       const growth = await layout(s, demo);
       expect(growth.SOUTH).toEqual({ active: false, trucks: 0 });
-      expect(growth.MAIN.trucks).toBe(pro.MAIN.trucks + pro.SOUTH.trucks);
-      expect(growth.NORTH.trucks).toBe(pro.NORTH.trucks);
+      expect(growth.MAIN.trucks + growth.NORTH.trucks).toBe(12); // nothing lost
+      if (pro.NORTH.trucks > 0) {
+        expect(growth.MAIN.trucks).toBe(pro.MAIN.trucks + pro.SOUTH.trucks);
+        expect(growth.NORTH.trucks).toBe(pro.NORTH.trucks);
+      } else {
+        // The trucks' ids are random: when the hash left North empty under Professional, Growth is North's first use
+        // and spreads the records there (platform_demo_set_plan, "first use of the extra bases").
+        expect(growth.NORTH.trucks).toBeGreaterThan(0);
+      }
 
       // Essential: one active base holding everything; the audit log has each switch.
       await s.as(admin);
