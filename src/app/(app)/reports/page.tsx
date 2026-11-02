@@ -171,7 +171,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Reports"
         description={`Measured from your own records, ${formatDate(from)} – ${formatDate(to)}. Nothing here is estimated; where data is missing, the report says so.`}
-        actions={<span className="flex flex-wrap gap-2"><ButtonLink href="/reports/customers" variant="secondary">Customer insights</ButtonLink><ButtonLink href="/reports/wait-times" variant="secondary">Wait times</ButtonLink></span>}
+        actions={<span className="flex flex-wrap gap-2"><ButtonLink href="/reports/customers" variant="secondary">Customer insights</ButtonLink>{can(access, "billing.view") && <ButtonLink href="/reports/what-if" variant="secondary">What if</ButtonLink>}<ButtonLink href="/reports/wait-times" variant="secondary">Wait times</ButtonLink></span>}
       />
       <form className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-4" aria-label="Period">
         <nav aria-label="Periods" className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
