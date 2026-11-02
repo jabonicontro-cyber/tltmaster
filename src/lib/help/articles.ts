@@ -1834,6 +1834,32 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Tax rates are not included; apply the official ones each quarter.", "Receipt photos are not stored yet."],
   },
   {
+    id: "offline",
+    title: "Working without signal",
+    summary: "When the phone has no signal, the driver still sees today's loads as last loaded and can save tickets, inspections and Arrived/Left taps; they send by themselves when signal returns.",
+    category: "dispatch",
+    routes: ["/driver"],
+    permissions: ["driver.portal"],
+    audience: "Drivers using Taviron on their phone.",
+    whatYouSee: [
+      "With no signal, the app opens on **Your day as of …**: today's loads as they were when you last had signal. It may be out of date — check with dispatch before acting on it.",
+      "**Waiting to send** on My Day: what is saved on your phone and not yet with the office.",
+    ],
+    tasks: [
+      { title: "Send a ticket without signal", steps: ["Fill in the ticket as usual (without photos) and tap **Send ticket**.", "It says **Saved on this phone — not sent yet**. Keep the paper ticket; it sends by itself when you have signal."] },
+      { title: "If something was not accepted", steps: ["It stays under **Waiting to send** with the reason.", "Tell the office what it was, then tap **Delete**."] },
+    ],
+    prerequisites: ["Open My Day once with signal each day, so today's loads are saved on the phone."],
+    troubleshooting: [
+      { problem: "The app says nothing is saved.", fix: "My Day was not opened with signal today, or the saved day is more than 18 hours old. Call dispatch." },
+      { problem: "I signed out and lost what was waiting.", fix: "Signing out deletes what is saved on the phone (you are warned first). Enter it again or tell the office." },
+    ],
+    next: ["my-day", "inspections"],
+    related: [],
+    reviewed: "2026-11-02",
+    limitations: ["Photos, messages, breakdown reports, fuel and trip sheets still need signal.", "Not tested on every phone yet."],
+  },
+  {
     id: "inspections",
     title: "Pre-trip and post-trip inspections",
     summary: "Drivers check the standard inspection items on My Day before and after their shift; defects go straight to the shop as work orders, and a safety defect takes the truck out of service.",

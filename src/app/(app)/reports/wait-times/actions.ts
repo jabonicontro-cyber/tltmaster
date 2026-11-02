@@ -25,6 +25,25 @@ export async function markStop(formData: FormData): Promise<ActionResult> {
   });
 }
 
+const markAt = z.object({ load: z.uuid(), stop: z.enum(["pickup", "site"]), event: z.enum(["arrive", "depart"]), at: z.iso.datetime({ offset: true }) });
+
+/**
+ * An Arrived / Left tap made without signal and sent later from the phone (B133): the tapped time is kept, within the
+ * limits the database enforces (load_stop_mark_at: at most 16 hours back, never in the future).
+ */
+export async function markStopAt(input: z.input<typeof markAt>): Promise<ActionResult> {
+  return guard(async () => {
+    await requireAccess();
+    const p = markAt.safeParse(input);
+    if (!p.success) return fail("Invalid stop.");
+    const { error } = await (await createClient()).rpc("load_stop_mark_at", { p_load: p.data.load, p_stop: p.data.stop, p_event: p.data.event, p_at: p.data.at });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/driver");
+    revalidatePath("/reports/wait-times");
+    return ok(undefined, "Recorded.");
+  });
+}
+
 export async function saveWaitSettings(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("settings.manage");

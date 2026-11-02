@@ -9,7 +9,7 @@ async function noHorizontalScroll(page: Page) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test("a driver sees only their own day, sends a ticket (with a failed send and a retry) and reports a breakdown", async ({ page }) => {
+test("a driver sees only their own day, sends a ticket (saved without signal, sent later) and reports a breakdown", async ({ page }) => {
   const f = await fixture();
   await signIn(page, "driver");
   await expect(page).toHaveURL(/\/driver$/);
@@ -37,19 +37,18 @@ test("a driver sees only their own day, sends a ticket (with a failed send and a
   await page.getByLabel("Paper / scale ticket number").fill(f.ref);
   await noHorizontalScroll(page);
 
-  // No signal: nothing is reported as sent.
+  // No signal (B133): the ticket is saved on the phone, never reported as sent; it goes out once signal returns.
   await page.context().setOffline(true);
-  await page.getByRole("button", { name: "Send ticket" }).click();
-  await expect(page.getByRole("alert").filter({ hasText: "Not sent — no connection to the office" })).toBeVisible();
+  await page.getByRole("button", { name: "Send ticket" }).dblclick();
+  await expect(page.getByRole("status").filter({ hasText: "Saved on this phone — not sent yet" })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/ticket$`));
   await page.context().setOffline(false);
-  await page.getByRole("button", { name: "Send again" }).dblclick();
-  await expect(page).toHaveURL(/\/driver\?sent=/);
-  await expect(page.getByRole("status")).toContainText(/Ticket TKT-\d{4,} sent to the office\./);
+  await page.goto("/driver");
+  await expect(page.getByRole("region", { name: "Waiting to send" })).toHaveCount(0, { timeout: 30_000 });
   const recent = page.getByRole("list", { name: "My recent tickets" });
   await expect(recent.getByText("Sent — waiting for office review").first()).toBeVisible();
   const count = await office(async (q) => (await q("select count(*)::int as n from public.delivery_tickets where external_reference = $1", [f.ref])).rows[0].n as number);
-  expect(count).toBe(1); // one ticket despite the failed attempt and the double tap
+  expect(count).toBe(1); // one ticket despite the double tap and the late send
   await expect(page.getByRole("region", { name: "Tickets still needed" })).toHaveCount(0);
 
   // Breakdown report on today's load.

@@ -15,7 +15,7 @@ function nowIn(timezone: string) {
 }
 
 export default async function DriverTicketPage({ params }: { params: Promise<{ id: string }> }) {
-  await requirePagePermission("driver.portal");
+  const access = await requirePagePermission("driver.portal");
   const { id } = await params;
   const form = await loadAssignmentForm(id);
   if (!form) notFound();
@@ -41,6 +41,7 @@ export default async function DriverTicketPage({ params }: { params: Promise<{ i
           lines={f.lines}
           units={f.units}
           existing={f.tickets}
+          queue={{ userId: access.userId, label: `Ticket for ${f.order.number} load ${f.load.number}` }}
         />
       )}
     </div>

@@ -97,7 +97,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.revenue_leak_check", "public.revenue_leak_reopen",
   // B111 wait times (20261120005200): the load's own driver or dispatch.edit marks Arrived / Left; office corrections
   // dispatch.edit; free time settings.manage. Track only: nothing is billed.
-  "public.wait_time_save_settings", "private.stop_time_writer", "private.is_my_load", "public.load_stop_mark", "public.load_stop_set", "public.demo_wait_time_samples",
+  "public.wait_time_save_settings", "private.stop_time_writer", "private.is_my_load", "public.load_stop_mark", "public.load_stop_mark_at", "public.load_stop_set", "public.demo_wait_time_samples",
   // B113 cost per empty mile (20261120005300): billing.manage; demo sample for demo owners only.
   "public.set_empty_mile_cost", "public.demo_empty_mile_cost",
   // Priority customers (20261120005400): customers.edit; demo sample for demo owners only.

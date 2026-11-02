@@ -40,9 +40,22 @@ describe("wait times", () => {
       expect((await pgError(s.query("select public.load_stop_mark($1, 'yard', 'arrive')", [load.load_id]))).code).toBe("22023");
       expect((await pgError(s.query("select public.load_stop_set($1, 'site', now() - interval '1 hour', now())", [load.load_id]))).code).toBe("42501");
 
+      // Sent later from the phone (B133, 20261120006100): the tapped time is kept, within 16 hours and not in the future;
+      // a departure never before its arrival; another driver still cannot.
+      expect((await pgError(s.query("select public.load_stop_mark_at($1, 'site', 'arrive', now() + interval '10 minutes')", [load.load_id]))).message).toMatch(/too old|tell the office/);
+      expect((await pgError(s.query("select public.load_stop_mark_at($1, 'site', 'arrive', now() - interval '17 hours')", [load.load_id]))).code).toBe("22023");
+      await s.query("select public.load_stop_mark_at($1, 'site', 'arrive', now() - interval '50 minutes')", [load.load_id]);
+      expect((await pgError(s.query("select public.load_stop_mark_at($1, 'site', 'depart', now() - interval '60 minutes')", [load.load_id]))).message).toMatch(/before Arrived/);
+      await s.query("select public.load_stop_mark_at($1, 'site', 'depart', now() - interval '5 minutes')", [load.load_id]);
+      const queued = (await s.query<{ minutes: number }>("select extract(epoch from departed_at - arrived_at)::int / 60 minutes from public.load_stop_times where load_id = $1 and stop = 'site'", [load.load_id])).rows[0];
+      expect(queued.minutes).toBe(45);
+      await s.asAdmin();
+      await s.query("update public.load_stop_times set arrived_at = null, departed_at = null where load_id = $1 and stop = 'site'", [load.load_id]);
+
       // Another driver and a mechanic cannot record this load; the other driver cannot read it either.
       await s.as(otherDriverUser);
       expect((await pgError(s.query("select public.load_stop_mark($1, 'site', 'arrive')", [load.load_id]))).code).toBe("42501");
+      expect((await pgError(s.query("select public.load_stop_mark_at($1, 'site', 'arrive', now())", [load.load_id]))).code).toBe("42501");
       expect((await s.query("select 1 from public.load_stop_times where load_id = $1", [load.load_id])).rowCount).toBe(0);
       await s.as(mechanic);
       expect((await pgError(s.query("select public.load_stop_mark($1, 'site', 'arrive')", [load.load_id]))).code).toBe("42501");

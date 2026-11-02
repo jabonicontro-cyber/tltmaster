@@ -3,6 +3,7 @@
 // service; a missing pre-trip is listed for the office, never blocking; other drivers and companies see nothing.
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
+import { addDays } from "@/lib/dates";
 import { assign, businessToday, fleet, planLoad, scheduledOrder } from "./fixtures";
 import { pgError, pool, withSession } from "./helpers";
 
@@ -38,6 +39,10 @@ describe("vehicle inspections", () => {
       expect((await pgError(submit(f.t1, "pre_trip", items({ wipers: "" })))).message).toMatch(/Describe each defect/);
       expect((await pgError(submit(f.t1, "mid_trip", items()))).message).toMatch(/pre-trip or post-trip/);
       expect((await pgError(submit(f.t1, "pre_trip", items(), { odometer: "lots" }))).message).toMatch(/odometer/);
+
+      // Saved without signal and sent later (B133): yesterday is accepted for a truck driven yesterday only; older is refused.
+      expect((await pgError(submit(f.t1, "pre_trip", items(), { inspected_on: addDays(today, -2) }))).message).toMatch(/today or yesterday/);
+      expect((await pgError(submit(f.t1, "pre_trip", items(), { inspected_on: addDays(today, -1) }))).message).toMatch(/only for a truck you drove/);
 
       // A minor defect: a normal work order, the truck stays in service.
       const pre = (await submit(f.t1, "pre_trip", items({ mirrors: "Cracked passenger mirror" }), { odometer: "120400" })).rows[0].r;

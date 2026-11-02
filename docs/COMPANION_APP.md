@@ -43,7 +43,8 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 | Presence (Available, Busy, Away, Busy – Active Delivery) | Working (Communications; active delivery is derived from the assignment, never set to Available automatically) |
 | Time off (requests, balances) | Working (Time off tab; same approval chains and balance checks) |
 | Mechanic workspace (owner 2026-10-25) | Working: **My jobs** (`/maintenance/my-jobs`) is a shop login's home, with a mechanic tab bar on phones (My jobs, Work orders, Messages, Time off, Profile). Each job shows the next step that fits it (Start this job, Start/Stop timer, My part is done), the running timer is pinned on top, and "Needs a mechanic" lists unled open jobs (most urgent first) to take. Same server actions and database functions as the work order page (crews, timers, statuses from `20261120002900`); nothing bypasses the work order rules. Before that migration the page says "Not available yet" |
-| Documents, inspections (DVIR) | **Not built.** Inspections need the compliance scope (§9 Q12) |
+| Inspections (DVIR) | Working (B132, 2026-11-02): pre-trip and post-trip on My Day; defects open work orders, safety defects take the truck out of service; a missing pre-trip is flagged, never blocking |
+| Offline day and queued sends | Working (B133, owner 2026-11-02): see section 4 |
 | Push notifications to the lock screen | **Not built.** Needs owner approval and keys (section 7) |
 | Native iOS / Android store apps | **Not built.** Needs owner decision and accounts (section 7) |
 
@@ -55,9 +56,27 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 - **Freshness:** My Day shows when its data was read ("Updated 7:41 AM"). After 5 minutes it says "This may be out of
   date … check with dispatch" with a Refresh button. When the phone goes offline it says "No connection". It reloads
   when the app comes back to the foreground or back online.
-- **Offline:** not supported for data, by design. The service worker never stores company data. It only serves
-  `/offline` when a page cannot load ("nothing is shown here … call dispatch"). Actions require a live server answer.
-  Duplicate submits are already prevented by the existing forms (submission keys on tickets and reports).
+- **Offline (B133, owner 2026-11-02: cached day + queued sends):**
+  - *Saved day.* After My Day loads, the app keeps today's loads on the phone (browser storage, under the signed-in
+    person's id): order, load, times, customer and project, site, truck and trailer, instructions, Arrived/Left state,
+    the ticket form's lines and units, and the trucks still due an inspection. With no signal the app opens on
+    `/offline`, which shows that day headed "Your day as of 9:42. No connection: this may be out of date — check with
+    dispatch before acting on it". A saved day older than 18 hours is not shown. The service worker never stores it;
+    the page as served carries no company data.
+  - *Queued sends.* Without signal, a delivery ticket (without photos — photos need signal), an inspection and an
+    Arrived/Left tap are saved on the phone ("Saved on this phone — not sent yet") and listed under **Waiting to send**.
+    They are sent, oldest first, as soon as there is signal (on My Day: on load, when the phone comes back online, and
+    every 20 seconds). Each goes through the same server action and database checks as a live one. Tickets keep their
+    submission key, so a retry never creates a second ticket. Taps keep the time they were tapped
+    (`load_stop_mark_at`: at most 16 hours back, never in the future, Left never before Arrived). Inspections keep
+    their day (today or yesterday only).
+  - *Refusals.* If Taviron refuses an item (for example a delivery time in the future), it stays under Waiting to send
+    with the reason until the driver deletes it. It is never dropped silently.
+  - *Sign-out.* Sign-out removes the saved day and the queue. If anything is still waiting, the driver is told how
+    many items will be deleted first. Items belong to the person who made them and are never sent under someone
+    else's sign-in.
+  - *Not offline.* Messages, photos, field reports, fuel and trip sheets, time off and anything for another day still
+    need signal.
 - **Sessions:** an expired or revoked session sends the person to sign-in on the next request, as in the browser. A
   removed permission takes effect on the next request (every page checks on the server).
 
@@ -80,8 +99,13 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
   - Office staff get no driver tabs.
   - The service worker controls the app, and `/offline` holds no company data.
 - Offline fallback: `tests/unit/service-worker.test.ts` runs `public/sw.js` against stand-ins for the browser APIs. It
-  checks that only the offline page and an icon are stored, that a failed page load returns the offline page, and that
-  data, actions and POSTs are never handled or stored. A browser test can't prove this reliably here: in the full suite,
+  checks that only the offline page, an icon and build files (`/_next/static`, the same for every company) are stored,
+  that a failed page load returns the offline page, and that data, actions and POSTs are never handled or stored.
+- Offline queue: `tests/unit/offline-store.test.ts` covers per-person storage, age limit, one item per key, refusals
+  kept, sign-out clearing and storage failures. `tests/e2e/offline-driver.spec.ts` (phone size): a ticket and an
+  Arrived tap without signal wait on the phone, the offline page shows the saved day, both reach the office once signal
+  returns (one ticket, tapped time kept), and sign-out removes everything. DB rules: `tests/db/wait-times.test.ts`
+  (`load_stop_mark_at`) and `tests/db/inspections.test.ts` (today or yesterday). A browser test can't prove this reliably here: in the full suite,
   Playwright's offline mode let the service worker's own page request through while blocking the page's CSS. The
   result was an unstyled live page, which can't happen on a real phone with no signal.
 - Gate spec: the companion files are reachable with the gate on and carry no company data.

@@ -9,6 +9,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { quantityError } from "@/lib/tickets/rules";
 import { recordTicketLocation, submitDriverTicket } from "@/app/(app)/driver/actions";
+import { announceOutbox, enqueue } from "@/lib/offline/store";
 import { Choice } from "./choice";
 import { PhotoAttachments, type PhotoState } from "./photo-attachments";
 
@@ -19,13 +20,17 @@ interface Props {
   lines: Array<{ id: string; description: string; unit_code: string }>;
   units: Array<{ code: string; label: string }>;
   existing: Array<{ number: string }>;
+  /** Offline driver app (B133): who is signed in and what the ticket is for, so it can wait on the phone without signal. */
+  queue?: { userId: string; label: string };
+  /** After the ticket is saved on the phone (the offline page returns to its list). */
+  onQueued?: () => void;
 }
 
-type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string };
+type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string } | { kind: "queued" };
 
 const field = "min-h-12 w-full rounded-2xl border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
 
-export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing }: Props) {
+export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing, queue, onQueued }: Props) {
   const router = useRouter();
   // One key for this form: retries and double taps can never create a second ticket.
   const [submissionKey] = useState(() => crypto.randomUUID());
@@ -57,14 +62,30 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
     setErrors(e);
     if (Object.keys(e).length) return;
     setState({ kind: "sending" });
+    const input = {
+      assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
+      externalReference: reference, notes, submissionKey, confirmDuplicate: confirmed, photoIds: photos.ids,
+    };
+    // No signal (B133): the ticket waits on this phone and sends itself later, with the same key, so it can never
+    // arrive twice. Photos need signal, so a ticket with photos is not kept.
+    const keep = () => {
+      if (!queue) return false;
+      if (photos.ids.length) {
+        setState({ kind: "failed", message: "Not sent — no connection. A ticket with photos needs signal: remove the photos to save it on this phone, or send it when you have signal.", offline: true });
+        return true;
+      }
+      if (!enqueue({ id: submissionKey, userId: queue.userId, kind: "ticket", label: queue.label, payload: input })) return false;
+      announceOutbox();
+      setState({ kind: "queued" });
+      onQueued?.();
+      return true;
+    };
+    if (typeof navigator !== "undefined" && navigator.onLine === false && keep()) return;
     // Where the ticket is submitted (proof of delivery, B98): asked for now so any permission prompt shows while
     // sending; never blocks the ticket, and nothing is recorded if the driver says no or the phone cannot tell.
     const position = currentPosition();
     try {
-      const r = await submitDriverTicket({
-        assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
-        externalReference: reference, notes, submissionKey, confirmDuplicate: confirmed, photoIds: photos.ids,
-      });
+      const r = await submitDriverTicket(input);
       if (r.ok) {
         const pos = await position;
         if (pos && r.data.created) await recordTicketLocation({ ticketId: r.data.ticketId, ...pos }).catch(() => undefined);
@@ -76,6 +97,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       setErrors(r.fieldErrors ?? {});
       setState({ kind: "failed", message: r.error, offline: false });
     } catch {
+      if (keep()) return;
       setState({ kind: "failed", message: "Not sent — no connection to the office. Nothing was saved on this phone. Check your signal and tap Send again.", offline: true });
     }
   }
@@ -152,6 +174,11 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
           </label>
         </div>
       )}
+      {state.kind === "queued" && (
+        <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 font-semibold text-amber-950 ring-1 ring-amber-200">
+          Saved on this phone — not sent yet. It sends by itself when you have signal; My Day shows it under Waiting to send. Keep the paper ticket.
+        </p>
+      )}
       {state.kind === "failed" && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{state.message}</p>
       )}
@@ -160,7 +187,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
 
       <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
-        <button type="submit" disabled={sending || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
+        <button type="submit" disabled={sending || state.kind === "queued" || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
           {sending ? <><Loader2 className="size-5 animate-spin" aria-hidden /> Sending…</> : <><Send className="size-5" aria-hidden /> {state.kind === "failed" ? "Send again" : "Send ticket"}</>}
         </button>
       </div>

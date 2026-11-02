@@ -50,7 +50,7 @@ test("office staff keep the full menu on a phone (no driver tabs)", async ({ pag
   await expect(page.getByRole("navigation", { name: "Driver tabs" })).toHaveCount(0);
 });
 
-test("the service worker controls the app and the offline page holds no company data", async ({ page }) => {
+test("the service worker controls the app and the offline page itself holds no company data", async ({ page }) => {
   // The offline fallback itself is proven in tests/unit/service-worker.test.ts: Playwright's offline mode does not cover
   // requests a service worker makes, so a browser run cannot reliably simulate a phone with no signal.
   await page.setViewportSize({ width: 390, height: 844 });
@@ -59,6 +59,10 @@ test("the service worker controls the app and the offline page holds no company 
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await expect.poll(() => page.evaluate(() => Boolean(navigator.serviceWorker.controller))).toBe(true);
+  // The page as served carries nothing about the company or the driver; only a day saved on this phone (B133) is shown.
+  const html = await (await page.request.get("/offline")).text();
+  expect(html).not.toContain("Drew");
+  await page.evaluate(() => localStorage.clear());
   await page.goto("/offline");
   await expect(page.getByRole("heading", { name: "No connection" })).toBeVisible();
   await expect(page.getByText("nothing is shown here")).toBeVisible();

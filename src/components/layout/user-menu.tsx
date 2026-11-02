@@ -15,6 +15,7 @@ import { ChangeViewDialog } from "./change-view-dialog";
 import { OPEN_DEMO_WELCOME } from "./demo-welcome";
 import { useState, useTransition } from "react";
 import { signOut } from "@/app/(auth)/actions";
+import { clearOffline, readOutbox } from "@/lib/offline/store";
 import { switchCompany } from "@/app/account/actions";
 
 type CompanyItem = { id: string; name: string; current: boolean; role: string };
@@ -165,7 +166,13 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
             {/* Call the action directly: a <form> inside the menu would unmount before it submits. */}
             <M.Item
               disabled={signingOut}
-              onSelect={() => startSignOut(() => signOut())}
+              onSelect={(e) => {
+                // The day and anything waiting to send are removed from this phone at sign-out (B133); unsent items are named first.
+                const waiting = readOutbox().length;
+                if (waiting && !window.confirm(`${waiting} item${waiting === 1 ? " is" : "s are"} saved on this phone and not sent yet. Signing out deletes ${waiting === 1 ? "it" : "them"}. Sign out anyway?`)) { e.preventDefault(); return; }
+                clearOffline();
+                startSignOut(() => signOut());
+              }}
               className="flex w-full cursor-pointer items-center gap-2 rounded px-3 py-2 text-sm text-ink outline-none hover:bg-surface focus:bg-surface data-[disabled]:opacity-60"
             >
               <LogOut className="size-4" aria-hidden />
