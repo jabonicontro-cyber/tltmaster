@@ -9,7 +9,7 @@ import { getEmailMode } from "@/server/email/provider";
 
 export interface InviteInput { email: string; full_name: string; role: AppRole; /** The person's record to link, when known. */ employeeId?: string }
 
-const DEPARTMENT_FOR_ROLE: Record<AppRole, string> = { owner: "management", dispatcher: "dispatch", office: "office", mechanic: "shop", driver: "operations" };
+const DEPARTMENT_FOR_ROLE: Record<AppRole, string> = { owner: "management", dispatcher: "dispatch", office: "office", mechanic: "shop", driver: "operations", accountant: "office" };
 
 /**
  * Every sign-in is a person (owner 2026-10-14): link the login to the given record, else to an unlinked record with

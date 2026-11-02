@@ -16,7 +16,7 @@ import { createClient } from "@/server/supabase/server";
 // employees.edit is needed too because a person record is created or linked. Every step is checked again by the
 // database. A temporary password is returned once to the administrator and never stored.
 
-const DEPARTMENT_FOR_ROLE: Record<AppRole, string> = { owner: "management", dispatcher: "dispatch", office: "office", mechanic: "shop", driver: "operations" };
+const DEPARTMENT_FOR_ROLE: Record<AppRole, string> = { owner: "management", dispatcher: "dispatch", office: "office", mechanic: "shop", driver: "operations", accountant: "office" };
 const uuid = z.uuid();
 
 async function staff() {

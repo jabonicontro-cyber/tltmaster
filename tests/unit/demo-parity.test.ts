@@ -39,6 +39,7 @@ const ALLOWED = new Set([
   "src/app/(app)/employees/page.tsx",
   "src/app/(app)/employees/[id]/page.tsx",
   "src/app/(app)/customer-portal/account-actions.ts",
+  "src/app/(app)/settings/accountant-actions.ts", // B134: no real accountant sign-in from a demo (as employee sign-ins)
   "src/app/(app)/customer-portal/page.tsx",
   // QuickBooks Online (B82): demos never connect to or send to QuickBooks; sends are recorded as simulated.
   "src/server/accounting/send.ts",

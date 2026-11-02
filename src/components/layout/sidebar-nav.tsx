@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { NAV_ITEMS } from "./nav";
-import type { Permission } from "@/lib/permissions";
+import { isAccountantOnly, type Permission } from "@/lib/permissions";
 
 /**
  * `collapsed`: the desktop icon rail. Labels stay in the page (screen readers
@@ -14,7 +14,8 @@ import type { Permission } from "@/lib/permissions";
  */
 export function SidebarNav({ permissions, onNavigate, collapsed = false }: { permissions: Permission[]; onNavigate?: () => void; collapsed?: boolean }) {
   const pathname = usePathname();
-  const items = NAV_ITEMS.filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))));
+  const accountant = isAccountantOnly(permissions);
+  const items = NAV_ITEMS.filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))) && (!accountant || i.accountant));
   return (
     <nav aria-label="Main" className="flex flex-col gap-0.5 px-3">
       {items.map((item, i) => {

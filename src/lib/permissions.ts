@@ -54,12 +54,15 @@ export const PERMISSIONS = [
   "payroll.manage",
   "safety.view",
   "safety.manage",
+  "accounting.view",
 ] as const;
 
 export type Permission = (typeof PERMISSIONS)[number];
 
+/** Roles given to people who work in the company (role pickers). */
 export const ROLES = ["owner", "office", "dispatcher", "mechanic", "driver"] as const;
-export type AppRole = (typeof ROLES)[number];
+/** Every role, including an outside accountant's time-limited, read-only role (B134; given only through Accountant access). */
+export type AppRole = (typeof ROLES)[number] | "accountant";
 
 export const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Owner / Administrator",
@@ -67,6 +70,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   dispatcher: "Dispatcher",
   mechanic: "Mechanic",
   driver: "Driver",
+  accountant: "Outside accountant",
 };
 
 export interface Access {
@@ -87,4 +91,12 @@ export interface Access {
 
 export function can(access: Pick<Access, "permissions"> | null | undefined, permission: Permission): boolean {
   return Boolean(access?.permissions.includes(permission));
+}
+
+/**
+ * An outside accountant's sign-in (B134): its role can hold only these two permissions (enforced by the database), so
+ * the app shows it only the accountant view and the finance pages it may read.
+ */
+export function isAccountantOnly(permissions: readonly string[]): boolean {
+  return permissions.includes("accounting.view") && permissions.every((p) => p === "accounting.view" || p === "billing.view");
 }

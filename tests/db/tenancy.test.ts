@@ -116,6 +116,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.pay_statement", "public.payroll_statement", "public.my_pay_statements", "public.my_pay_statement",
   // Inspections (20261120006000): fuel_writer rules; defects open work orders, safety ones restrict the truck.
   "public.inspection_submit", "public.inspection_my_trucks", "public.inspection_missing_today", "public.demo_inspection_samples",
+  // Accountant access (20261120006300): owner-only grants, time limit in current_company_id, payroll only when invited.
+  "private.require_owner", "private.end_of_company_day", "public.accountant_grant", "public.accountant_set_access", "public.accountant_list",
+  "public.accountant_record_visit", "public.accountant_me", "private.accountant_payroll_allowed", "public.accountant_payroll_periods", "public.accountant_pay_statement",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

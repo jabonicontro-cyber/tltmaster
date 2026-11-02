@@ -1,6 +1,7 @@
+import { AccountantAccess, type AccountantRow } from "@/components/settings/accountant-access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, Calculator, CalendarDays, CalendarPlus, Navigation, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, BookOpenCheck, Calculator, CalendarDays, CalendarPlus, Navigation, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -74,7 +75,7 @@ const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   company: Building2, numbering: Hash, costs: Calculator, invoicing: Receipt, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
-  permissions: Users, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, gps: Navigation, audit: ScrollText,
+  permissions: Users, accountants: BookOpenCheck, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, gps: Navigation, audit: ScrollText,
 };
 
 type Group = "Company" | "Operations" | "Access" | "System";
@@ -92,6 +93,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "costs", label: "Cost rates", group: "Operations", visible: (a) => can(a, "billing.view") },
   { key: "invoicing", label: "Invoicing", group: "Company", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
+  { key: "accountants", label: "Accountant access", group: "Access", visible: (a) => a.role === "owner" },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "import", label: "Import", group: "System", visible: (a) => can(a, "settings.manage") },
@@ -198,6 +200,24 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         />
         <CardBody>
           {chain ? <ApprovalChainForm steps={chain.map((c) => ({ role: c.role, label: c.label }))} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Approval chains need a database update that has not been installed yet. Until then one approval decides each request.</p>}
+        </CardBody>
+      </>
+    );
+  } else if (tab === "accountants") {
+    // Accountant access (B134): owners only; empty before 20261120006300 is installed.
+    const list = await supabase.rpc("accountant_list");
+    const [ty, tm, td] = today.split("-").map(Number);
+    const defaultEnd = `${tm < 4 || (tm === 4 && td <= 15) ? ty : ty + 1}-04-15`;
+    content = (
+      <>
+        <CardHeader
+          title="Accountant access"
+          description="Let your outside accountant look through the company's financials during tax season: read-only, until the date you choose. You can extend it or end it at any time, and every visit is recorded."
+        />
+        <CardBody>
+          {list.error ? <Notice title="Not available yet">Accountant access needs a database update that has not been installed yet.</Notice> : (
+            <AccountantAccess rows={(list.data ?? []) as AccountantRow[]} today={today} timezone={timezone} defaultEnd={defaultEnd} demo={Boolean(access.isDemo)} companyName={access.companyName ?? "Your company"} />
+          )}
         </CardBody>
       </>
     );

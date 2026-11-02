@@ -54,6 +54,7 @@ export function homePathFor(role: AppRole | null | undefined, permissions: reado
   if (role === "driver" && has("driver.portal")) return "/driver";
   if (role === "mechanic" && has("maintenance.view")) return "/maintenance/my-jobs";
   if (role === "dispatcher" && has("dispatch.view")) return "/dispatch";
+  if (role === "accountant" && has("accounting.view")) return "/accountant";
   return "/command-center";
 }
 

@@ -1,3 +1,4 @@
+import { isAccountantOnly } from "@/lib/permissions";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft, CheckCircle2, ListChecks, Plus, Route, Siren, Truck, UserCheck } from "lucide-react";
@@ -76,6 +77,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const has = (p: Permission) => can(access, p);
   // People whose only responsibility is driving start on their own day.
   if (has("driver.portal") && !OFFICE.some(has)) redirect("/driver");
+  // An outside accountant (B134) starts on the accountant view.
+  if (isAccountantOnly(access.permissions)) redirect("/accountant");
   const sp = await searchParams;
   const ops = OPERATIONS.some(has);
   const kind = sp.kind && (EXCEPTION_KINDS as readonly string[]).includes(sp.kind) ? (sp.kind as ExceptionKind) : undefined;

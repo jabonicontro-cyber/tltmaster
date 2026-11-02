@@ -1834,6 +1834,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Tax rates are not included; apply the official ones each quarter.", "Receipt photos are not stored yet."],
   },
   {
+    id: "accountant-view",
+    title: "Give your accountant access for tax season",
+    summary: "An owner gives the outside accountant a read-only sign-in until a date they choose; it ends by itself.",
+    category: "tickets-billing",
+    routes: ["/accountant", "/settings"],
+    permissions: ["accounting.view"],
+    audience: "Owners give and end access; the accountant only reads.",
+    whatYouSee: [
+      "**Settings → Accountant access** (owners): each accountant, until when, whether payroll is included and their last visit.",
+      "**Accountant view**: the year's invoices, payments, what is still owed by age, hauler settlements, fuel and IFTA by quarter, and driver payroll if included, with CSV downloads.",
+    ],
+    tasks: [
+      { title: "Give your accountant access", steps: ["Open **Settings → Accountant access**.", "Type their name and a username, choose the last day of access (April 15 is suggested) and tick payroll only if they need it.", "Select **Create accountant sign-in**, then print, copy or email the sign-in."] },
+      { title: "Extend or end it", steps: ["Change the date and select **Save**, or select **End access now**."] },
+    ],
+    prerequisites: ["Only an owner can give, change or end an accountant's access."],
+    troubleshooting: [
+      { problem: "The accountant says they cannot see anything.", fix: "Their access ended. Give it again with a new date." },
+    ],
+    next: ["billing"],
+    related: [],
+    reviewed: "2026-11-02",
+    limitations: ["Read-only: the accountant cannot correct anything; send corrections to the office.", "Taxes are not calculated."],
+  },
+  {
     id: "offline",
     title: "Working without signal",
     summary: "When the phone has no signal, the driver still sees today's loads as last loaded and can save tickets, inspections and Arrived/Left taps; they send by themselves when signal returns.",

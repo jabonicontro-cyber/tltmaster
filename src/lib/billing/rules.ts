@@ -226,7 +226,7 @@ export interface HandoffSnapshot {
   }>;
 }
 
-function csvCell(value: unknown): string {
+export function csvCell(value: unknown): string {
   const s = value === null || value === undefined ? "" : String(value);
   // Quote everything that needs it; neutralize spreadsheet formulas.
   const safe = /^[=+\-@\t\r]/.test(s) && !/^-?\d+(\.\d+)?$/.test(s) ? `'${s}` : s;

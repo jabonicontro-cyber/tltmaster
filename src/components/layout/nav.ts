@@ -1,6 +1,6 @@
 import {
   Sunrise,
-  BarChart3, Boxes, ShieldAlert, CalendarClock, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
+  BarChart3, Calculator, Boxes, ShieldAlert, CalendarClock, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
@@ -17,6 +17,8 @@ export interface NavItem {
   planned?: boolean;
   /** Sidebar group heading this item sits under (none: the top group). */
   group?: NavGroup;
+  /** Shown to an outside accountant's sign-in (B134); every other item is hidden from it. */
+  accountant?: boolean;
 }
 
 export type NavGroup = "Sales" | "Operations" | "Finance" | "Company";
@@ -40,10 +42,11 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/fleet", label: "Fleet", icon: Truck, permission: "fleet.view", group: "Operations" },
   { href: "/maintenance", label: "Maintenance", icon: Wrench, permission: "maintenance.view", group: "Operations" },
   { href: "/safety", label: "Safety", icon: ShieldAlert, permission: "safety.view", group: "Operations" },
-  { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance" },
+  { href: "/accountant", label: "Accountant view", icon: Calculator, permission: "accounting.view", group: "Finance", accountant: true },
+  { href: "/billing", label: "Billing", icon: ReceiptText, permission: "billing.view", group: "Finance", accountant: true },
   { href: "/order-to-cash", label: "Order to Cash", icon: Workflow, permission: "billing.view", group: "Finance" },
   { href: "/payroll", label: "Payroll", icon: Wallet, permission: "payroll.manage", group: "Finance" },
-  { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance" },
+  { href: "/reports", label: "Reports", icon: BarChart3, anyOf: ["tickets.view", "billing.view", "fleet.view", "dispatch.view"], group: "Finance", accountant: true },
   { href: "/employees", label: "People", icon: IdCard, permission: "employees.view", group: "Company" },
   { href: "/schedule", label: "Schedule", icon: CalendarClock, anyOf: ["employees.view", "dispatch.view", "schedules.manage"], group: "Company" },
   // Everyone may request their own time off; the page shows more with time_off.view / time_off.approve.

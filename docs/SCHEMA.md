@@ -522,6 +522,17 @@ view) lists today's working trucks without a pre-trip. Missing inspections never
 `inspection_submit` takes an optional `inspected_on` (today or yesterday) for inspections saved on a phone without
 signal and sent later.
 
+## Accountant access (20261120006200, 20261120006300)
+
+`company_memberships` gains `access_ends_at` (required for the role `accountant`) and `payroll_view` (accountants
+only). `private.current_company_id()` and `current_company_id_any()` ignore a membership whose `access_ends_at` has
+passed, so an ended accountant reaches nothing. The role `accountant` may hold only `accounting.view` and `billing.view`
+(trigger `role_permissions_accountant_guard`). Owners only (`private.require_owner`): `accountant_grant`,
+`accountant_set_access` (extend, payroll on/off, end now), `accountant_list`. `accountant_me`,
+`accountant_record_visit` (audit `accountant.visited`), and payroll for an accountant whose invite includes it or
+payroll staff: `accountant_payroll_periods`, `accountant_pay_statement` (approved periods only). Fuel purchases and trip
+sheets are also readable with `accounting.view`.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

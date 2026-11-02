@@ -183,7 +183,7 @@ export async function saveApprovalChain(formData: FormData): Promise<ActionResul
     }
     if (!Array.isArray(steps) || steps.length > 5) return fail("An approval chain has at most five steps.");
     for (const s of steps) {
-      if (!ROLES.includes(s?.role as AppRole)) return fail("Choose who decides each step.");
+      if (!(ROLES as readonly string[]).includes(String(s?.role))) return fail("Choose who decides each step.");
       if (typeof s.label !== "string" || !s.label.trim() || s.label.length > 60) return fail("Give each step a short name (up to 60 characters).");
     }
     const supabase = await createClient();
