@@ -2,7 +2,7 @@
 // permission that opens its page, and the database's row-level security still decides which rows come back.
 import type { Permission } from "@/lib/permissions";
 
-export type SearchGroupKey = "customers" | "orders" | "quotes" | "tickets" | "workOrders" | "trucks" | "trailers" | "drivers" | "people";
+export type SearchGroupKey = "goto" | "customers" | "orders" | "quotes" | "tickets" | "workOrders" | "trucks" | "trailers" | "drivers" | "people";
 
 export type SearchHit = { id: string; title: string; detail: string; href: string };
 

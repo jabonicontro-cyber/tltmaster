@@ -22,6 +22,7 @@ export async function globalSearch(access: Access, q: string, limit = LIMIT): Pr
   const groups = searchableGroups(access.permissions);
   const run = async (key: SearchGroupKey): Promise<SearchHit[]> => {
     switch (key) {
+      case "goto": return []; // intent shortcuts come from src/lib/search-intents, not the database
       case "customers": {
         const { data } = await supabase.from("customers").select("id, name, customer_number, email").or(`name.ilike.${like},customer_number.ilike.${like},email.ilike.${like}${idsClause(await referenceMatches(supabase, REF_KEYS.customers, ref))}`).order("name").limit(limit);
         return ((data ?? []) as Array<{ id: string; name: string; customer_number: string; email: string }>).map((r) => ({ id: r.id, title: r.name, detail: [r.customer_number, r.email].filter(Boolean).join(" · "), href: `/customers/${r.id}` }));
