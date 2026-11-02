@@ -186,3 +186,33 @@ export async function submitSiteInfo(formData: FormData): Promise<ActionResult<{
   revalidatePath(`/portal/${slug}/sites`);
   return ok({ id: data as string }, "Sent to the office. They check it before drivers see it.");
 }
+
+// Customer self-booking (B115): requests only; the company's dispatch approves each one.
+const bookingSchema = z.object({
+  day: z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, "Choose one of the open days."),
+  loads: z.string().trim().regex(/^\d{1,3}$/, "Enter the number of loads."),
+  material: z.string().trim().min(1, "Tell us what you need hauled.").max(200),
+  site_id: z.string().trim().optional(),
+  time_window: z.enum(["any", "morning", "afternoon"]).default("any"),
+  notes: z.string().trim().max(2000).optional(),
+});
+
+export async function requestBooking(formData: FormData): Promise<ActionResult<{ id: string }>> {
+  const slug = slugOf(formData);
+  const parsed = bookingSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the form.");
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("portal_booking_request", { p_slug: slug, p: { ...parsed.data, site_id: parsed.data.site_id || null } });
+  if (error) return fail(portalError(error));
+  revalidatePath(`/portal/${slug}/book`);
+  return ok(data as { id: string }, "Request sent. You will see here when it is approved.");
+}
+
+export async function cancelBooking(formData: FormData): Promise<ActionResult> {
+  const slug = slugOf(formData);
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("portal_booking_cancel", { p_slug: slug, p_request: String(formData.get("request") ?? "") });
+  if (error) return fail(portalError(error));
+  revalidatePath(`/portal/${slug}/book`);
+  return ok(undefined, "Request withdrawn.");
+}

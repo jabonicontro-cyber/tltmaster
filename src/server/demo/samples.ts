@@ -98,6 +98,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("payroll period", await payrollPeriod(db, today));
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
+  // Customer self-booking (B115): switched on with open loads on the next weekdays, one pending and one approved request.
+  note("customer booking", await rpcCount(db, "demo_booking_samples"));
   note("guided onboarding", await guidedOnboarding(db));
   // After the planning day (tomorrow's open loads exist): hired trucks with an open and a confirmed offer (B83).
   note("hired trucks", await hiredTrucks(db, today, companyId));

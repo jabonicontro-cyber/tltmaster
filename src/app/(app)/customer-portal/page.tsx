@@ -12,6 +12,10 @@ import { accountStates, emailServerStatus } from "@/server/accounts";
 import { PortalSignInForm } from "@/components/accounts/portal-sign-in-form";
 import { SignInManager } from "@/components/accounts/sign-in-manager";
 import { createClient } from "@/server/supabase/server";
+import { businessToday } from "@/server/data/settings";
+import { formatDate } from "@/lib/dates";
+import { BOOKING_STATUS, capacityDays, TIME_WINDOW, type BookingStatus, type TimeWindow } from "@/lib/portal-booking";
+import { BookingDecision, BookingSettingsForm, CapacityForm } from "@/components/portal/booking-forms";
 import {
   HelpArticleForm, InviteForm, PortalSettingsForm, QuoteRequestForm, QuoteResponseButtons, RevokeAccountButton, StaffReplyForm, type PortalSettingsValues,
 } from "@/components/portal/staff-portal-forms";
@@ -20,6 +24,7 @@ export const metadata = { title: "Customer Portal" };
 
 const TABS = [
   { key: "inbox", label: "Requests" },
+  { key: "booking", label: "Booking" },
   { key: "access", label: "Customer Access" },
   { key: "help", label: "Help Articles" },
   { key: "settings", label: "Settings" },
@@ -57,6 +62,7 @@ export default async function CustomerPortalPage({ searchParams }: { searchParam
 
   let content: React.ReactNode = null;
   if (tab === "inbox") content = await Inbox(access.permissions.includes("quotes.view"), can(access, "customers.edit"), can(access, "quotes.edit"), can(access, "quotes.status"));
+  else if (tab === "booking") content = await BookingTab(access, state.open);
   else if (tab === "access") content = await AccessTab(access, can(access, "customers.edit"), state.open);
   else if (tab === "help") content = await HelpTab(can(access, "settings.manage"));
   else
@@ -374,6 +380,92 @@ async function HelpTab(canEdit: boolean) {
       ) : (
         <EmptyState title="No help articles yet" description="Write answers to the questions your customers ask most: ordering, delivery windows, site access, tickets." />
       )}
+    </div>
+  );
+}
+
+/**
+ * Customer self-booking (B115): off by default; dispatch opens a number of loads per day and approves each request.
+ * Customers see days only as open or full. Nothing is scheduled until an order is created and linked.
+ */
+async function BookingTab(access: Access, portalOpen: boolean) {
+  const supabase = await createClient();
+  const canDispatch = can(access, "dispatch.view");
+  const { today } = await businessToday();
+  const [settingsRes, capacityRes, requestsRes] = await Promise.all([
+    supabase.from("booking_settings").select("enabled, min_days_ahead, horizon_days").maybeSingle(),
+    canDispatch ? supabase.from("booking_capacity").select("day, loads").gte("day", today).order("day") : Promise.resolve({ data: [], error: null }),
+    canDispatch ? supabase.from("booking_requests").select("id, customer_id, day, loads, material, site_id, time_window, notes, status, decision_note, order_id, created_at").gte("day", today).order("day").limit(200) : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (settingsRes.error) {
+    return <ErrorState title="Customer booking needs a database update" description="Apply migration 20261120005500 (applied automatically when this release is promoted). Nothing else changes until then." />;
+  }
+  const settings = (settingsRes.data as { enabled: boolean; min_days_ahead: number; horizon_days: number } | null) ?? { enabled: false, min_days_ahead: 1, horizon_days: 14 };
+  type Req = { id: string; customer_id: string; day: string; loads: number; material: string; site_id: string | null; time_window: TimeWindow; notes: string; status: BookingStatus; decision_note: string; order_id: string | null; created_at: string };
+  const requests = (requestsRes.data ?? []) as Req[];
+  const customerIds = [...new Set(requests.map((r) => r.customer_id))];
+  const siteIds = [...new Set(requests.map((r) => r.site_id).filter((v): v is string => Boolean(v)))];
+  const [customers, sites, orders] = await Promise.all([
+    customerIds.length ? supabase.from("customers").select("id, name").in("id", customerIds) : Promise.resolve({ data: [] }),
+    siteIds.length ? supabase.from("customer_sites").select("id, label").in("id", siteIds) : Promise.resolve({ data: [] }),
+    customerIds.length && can(access, "orders.view") ? supabase.from("orders").select("id, order_number, customer_id").in("customer_id", customerIds).neq("status", "canceled").order("created_at", { ascending: false }).limit(300) : Promise.resolve({ data: [] }),
+  ]);
+  const name = new Map(((customers.data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]));
+  const site = new Map(((sites.data ?? []) as Array<{ id: string; label: string }>).map((c) => [c.id, c.label]));
+  const orderRows = (orders.data ?? []) as Array<{ id: string; order_number: string; customer_id: string }>;
+  const orderNumber = new Map(orderRows.map((o) => [o.id, o.order_number]));
+  const days = capacityDays(today, Math.max(14, settings.horizon_days + 1), (capacityRes.data ?? []) as Array<{ day: string; loads: number }>, requests);
+  const pending = requests.filter((r) => r.status === "pending");
+  const others = requests.filter((r) => r.status !== "pending" && r.status !== "canceled");
+  const canDecide = can(access, "dispatch.edit");
+
+  const row = (r: Req) => (
+    <li key={r.id} className="space-y-2 px-5 py-3.5 sm:px-6">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="font-semibold text-ink">{name.get(r.customer_id) ?? "Customer"}</span>
+        <span className="text-sm tabular">{formatDate(r.day)} · {r.loads} load{r.loads === 1 ? "" : "s"} · {TIME_WINDOW[r.time_window]}</span>
+        <Badge tone={BOOKING_STATUS[r.status].tone}>{BOOKING_STATUS[r.status].label}</Badge>
+        {r.order_id && <Link href={`/orders/${r.order_id}`} className="text-sm font-semibold text-brand-fg hover:underline">Order {orderNumber.get(r.order_id) ?? ""}</Link>}
+      </div>
+      <p className="text-sm text-muted">{r.material}{r.site_id ? ` · ${site.get(r.site_id) ?? "Saved site"}` : ""}{r.notes ? ` · “${r.notes}”` : ""}{r.decision_note ? ` · Your note: ${r.decision_note}` : ""}</p>
+      {canDecide && (r.status === "pending" || (r.status === "approved" && !r.order_id)) && (
+        <div className="flex flex-wrap items-end gap-3">
+          <BookingDecision request={r.id} status={r.status} orders={orderRows.filter((o) => o.customer_id === r.customer_id).slice(0, 30).map((o) => ({ id: o.id, number: o.order_number }))} />
+          {can(access, "orders.edit") && <Link href={`/orders/new?customer=${r.customer_id}`} className="text-sm font-semibold text-brand-fg hover:underline">Create the order</Link>}
+        </div>
+      )}
+    </li>
+  );
+
+  return (
+    <div className="space-y-5">
+      {!settings.enabled ? (
+        <Notice title="Customer booking is off">Customers cannot request loads until you turn it on below{portalOpen ? "" : " and the portal is open"}. Every request still waits for dispatch to approve it.</Notice>
+      ) : null}
+      {canDispatch && (
+        <Card>
+          <CardHeader title="Requests waiting for you" description="Approve to accept the work, then create the order as usual and link it so the customer sees it. Declining needs a reason the customer sees." />
+          {pending.length === 0 ? <CardBody><EmptyState title="No requests waiting" /></CardBody> : <ul className="divide-y divide-line border-t border-line" aria-label="Booking requests waiting">{pending.map(row)}</ul>}
+        </Card>
+      )}
+      {canDispatch && (
+        <Card>
+          <CardHeader title="Open loads per day" description="How many loads customers may request each day. Leave a day empty to keep it closed. Customers only see open or full, never these numbers." />
+          <CardBody><CapacityForm days={days} canEdit={canDecide} /></CardBody>
+        </Card>
+      )}
+      {canDispatch && others.length > 0 && (
+        <Card>
+          <CardHeader title="Answered" />
+          <ul className="divide-y divide-line border-t border-line" aria-label="Answered booking requests">{others.map(row)}</ul>
+        </Card>
+      )}
+      <Card>
+        <CardHeader title="Booking settings" description="Off by default. When on, customers signed in to your portal can request loads on the days you open." />
+        <CardBody>
+          <BookingSettingsForm enabled={settings.enabled} minDays={settings.min_days_ahead} horizon={settings.horizon_days} canEdit={can(access, "settings.manage")} />
+        </CardBody>
+      </Card>
     </div>
   );
 }

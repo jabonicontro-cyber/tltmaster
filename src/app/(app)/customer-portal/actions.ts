@@ -111,3 +111,48 @@ export async function revokeTrackingLink(formData: FormData): Promise<ActionResu
   revalidatePath(`/orders/${String(formData.get("order") ?? "")}`);
   return ok(undefined, "Link turned off.");
 }
+
+// Customer self-booking (B115). Settings: company settings permission; capacity and decisions: dispatch.
+export async function saveBookingSettings(formData: FormData): Promise<ActionResult> {
+  await assertPermission("settings.manage");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("booking_save_settings", {
+    p_enabled: bool(formData, "enabled"),
+    p_min_days_ahead: Number(formData.get("min_days_ahead") ?? 1),
+    p_horizon_days: Number(formData.get("horizon_days") ?? 14),
+  });
+  if (error) return fail(message(error));
+  revalidatePath(PATH);
+  return ok(undefined, bool(formData, "enabled") ? "Customer booking is on." : "Customer booking is off.");
+}
+
+export async function setBookingCapacity(formData: FormData): Promise<ActionResult> {
+  await assertPermission("dispatch.edit");
+  const supabase = await createClient();
+  const days = formData.getAll("day").map(String);
+  const loads = formData.getAll("loads").map(String);
+  const before = formData.getAll("before").map(String);
+  let changed = 0;
+  for (const [i, day] of days.entries()) {
+    const raw = loads[i]?.trim() ?? "";
+    if (raw === (before[i] ?? "")) continue;
+    const { error } = await supabase.rpc("booking_set_capacity", { p_day: day, p_loads: raw === "" ? 0 : Number(raw) });
+    if (error) return fail(message(error));
+    changed++;
+  }
+  revalidatePath(PATH);
+  return ok(undefined, changed ? "Open loads saved." : "Nothing changed.");
+}
+
+export async function decideBooking(formData: FormData): Promise<ActionResult> {
+  await assertPermission("dispatch.edit");
+  const supabase = await createClient();
+  const status = String(formData.get("status") ?? "");
+  const { error } = await supabase.rpc("booking_decide", {
+    p_request: String(formData.get("request") ?? ""), p_status: status,
+    p_note: String(formData.get("note") ?? ""), p_order: String(formData.get("order") ?? "") || null,
+  });
+  if (error) return fail(message(error));
+  revalidatePath(PATH);
+  return ok(undefined, status === "declined" ? "Declined. The customer sees your reason." : "Saved. The customer sees it in the portal.");
+}

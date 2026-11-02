@@ -1,7 +1,7 @@
 // Customer portal (B66): shapes returned by the portal_* database functions and customer-facing formatting.
 // Everything a customer sees comes from these functions; nothing here invents a status, date or quantity.
 
-export type PortalFeatures = { orders: boolean; quotes: boolean; documents: boolean; support: boolean; help: boolean; tracking: boolean };
+export type PortalFeatures = { orders: boolean; quotes: boolean; documents: boolean; support: boolean; help: boolean; tracking: boolean; /** Customer self-booking (B115), from booking settings. */ booking?: boolean };
 
 export type PortalCompany = {
   name: string;

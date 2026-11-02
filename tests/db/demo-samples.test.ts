@@ -291,6 +291,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(pricing.rows.map((r) => [r.status, Number(r.n)])).toEqual([["accepted", 3], ["declined", 1]]);
     const pricingOpen = await q<{ n: string }>("select count(*) n from public.orders where company_id = $1 and project_name like 'Pricing history (demo)%' and status <> 'canceled'", [w.company]);
     expect(Number(pricingOpen.rows[0].n)).toBe(0);
+    // Customer booking (B115): switched on, eight weekdays opened (one full), one pending and one approved request.
+    const booking = await q<{ enabled: boolean; days: string; pending: string; approved: string }>(
+      `select (select enabled from public.booking_settings where company_id = $1) enabled,
+              (select count(*) from public.booking_capacity where company_id = $1) days,
+              (select count(*) from public.booking_requests where company_id = $1 and status = 'pending') pending,
+              (select count(*) from public.booking_requests where company_id = $1 and status = 'approved') approved`, [w.company]);
+    expect(booking.rows[0]).toEqual({ enabled: true, days: "8", pending: "1", approved: "1" });
 
     // Proof of delivery (B98): confirmed tickets at a located job site get a position (up to five).
     const pod = await q<{ located: string; placed: string }>(

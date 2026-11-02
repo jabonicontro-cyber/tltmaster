@@ -37,7 +37,11 @@ export const portalGate = cache(async (slug: string): Promise<PortalGate> => {
     if (await setupRequired()) redirect("/welcome");
     return { kind: "no-access", company: await portalPublic(slug) };
   }
-  return { kind: "customer", context: data as PortalContext };
+  const context = data as PortalContext;
+  // Customer self-booking (B115) has its own company switch; false before its migration is applied.
+  const booking = await supabase.rpc("portal_booking_state", { p_slug: slug });
+  context.features = { ...context.features, booking: !booking.error && (booking.data as { enabled?: boolean } | null)?.enabled === true };
+  return { kind: "customer", context };
 });
 
 /** For customer pages: the context, or a redirect to this portal's sign-in. */

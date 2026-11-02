@@ -474,6 +474,14 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 | `revenue_leak_reviews` | Revenue check (B110): findings a person marked as fine, by finding key (which includes the amount, so a changed amount reappears), with the reason and who. Findings themselves are computed by `revenue_leaks()`, never stored. | `billing.view` read; written only through `revenue_leak_check` / `revenue_leak_reopen` (`billing.manage`) |
 | `wait_time_settings`, `load_stop_times` | Wait times (B111): the company's free minutes (null = none flagged); per load and stop (pickup / site) the arrival and departure, the pickup location, and the source (driver / office / demo). Track only: nothing is billed. | Read: `dispatch.view` or `billing.view`, or the load's own driver. Write: `load_stop_mark` (own driver or `dispatch.edit`), `load_stop_set` (`dispatch.edit`), `wait_time_save_settings` (`settings.manage`) |
 
+## Customer self-booking (20261120005500)
+
+| Table | Purpose |
+| --- | --- |
+| `booking_settings` | Per company: `enabled` (default off), `min_days_ahead`, `horizon_days`. Read by members; saved by `booking_save_settings` (`settings.manage`). |
+| `booking_capacity` | Loads customers may request per company and day (0 = closed). `booking_set_capacity` (`dispatch.edit`); read with `dispatch.view`. |
+| `booking_requests` | A customer's request: day, loads, material, optional saved site, time of day, notes, status `pending/approved/declined/canceled`, decision note, linked order. Read with `dispatch.view`; customers use `portal_booking_state/request/cancel` only. |
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

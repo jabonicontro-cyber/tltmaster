@@ -39,6 +39,17 @@ days), revocable link showing only status, planned windows and confirmed quantit
 **Not built:** invoices and payments in the portal (Taviron has no issued invoices and no payment provider), emailed
 invitations and notifications (no email provider), custom domains.
 
+### 1a. Customer self-booking (B115, `20261120005500`)
+
+Off by default (owner 2026-11-01); the company turns it on in Customer Portal → Booking (`settings.manage`), with the
+earliest and latest bookable day. Dispatch (`dispatch.edit`) opens a number of loads per day (owner 2026-11-02);
+customers see each day only as **open** or **full**, never the numbers or fleet details. `portal_booking_request` locks the
+day's capacity row so pending + approved requests never exceed what was opened; a customer can withdraw a pending request.
+Dispatch approves or declines (a reason the customer sees) with `booking_decide`, then creates the order as usual and links
+it (same customer only). A request never schedules anything. Tables `booking_settings`, `booking_capacity`,
+`booking_requests` (staff read with `dispatch.view`; customers only through `portal_booking_*`). Tests:
+`tests/db/portal-booking.test.ts`, `tests/e2e/portal-booking.spec.ts`.
+
 ## 2. Testing Lab
 
 Admin → Testing Lab. Everything happens inside a **demo company**:
