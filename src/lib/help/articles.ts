@@ -1804,7 +1804,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       { problem: "A job is missing from the settlement.", fix: "It has no accepted ticket yet, a ticket is in another unit than the offer, or it is already on another settlement. Void that one with a reason to settle the job again." },
     ],
-    next: ["dispatch"],
+    next: ["dispatch-board"],
     related: [],
     reviewed: "2026-11-02",
     limitations: ["Taviron records payments; it does not send money.", "A paid settlement cannot be voided."],
