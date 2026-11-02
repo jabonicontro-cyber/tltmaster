@@ -223,8 +223,16 @@ export async function saveCostRates(formData: FormData): Promise<ActionResult> {
     };
     const truck = cents("truck_hour"), driver = cents("driver_hour"), perLoad = cents("per_load");
     if (truck === "bad" || driver === "bad" || perLoad === "bad") return fail("Enter amounts in dollars, like 65 or 65.50, or leave them empty.");
-    const { error } = await (await createClient()).rpc("set_cost_rates", { p_truck_hour: truck, p_driver_hour: driver, p_per_load: perLoad });
+    const mile = formData.has("empty_mile") ? cents("empty_mile") : undefined;
+    if (mile === "bad") return fail("Enter amounts in dollars, like 65 or 65.50, or leave them empty.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("set_cost_rates", { p_truck_hour: truck, p_driver_hour: driver, p_per_load: perLoad });
     if (error) return fail(dbErrorMessage(error));
+    // Cost per empty mile (B113): only when the form showed the field (the database update is installed).
+    if (mile !== undefined) {
+      const m = await supabase.rpc("set_empty_mile_cost", { p_cents: mile });
+      if (m.error) return fail(dbErrorMessage(m.error));
+    }
     revalidatePath("/settings");
     revalidatePath("/reports");
     return ok(undefined, "Cost rates saved.");

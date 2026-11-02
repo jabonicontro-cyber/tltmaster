@@ -98,6 +98,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // B111 wait times (20261120005200): the load's own driver or dispatch.edit marks Arrived / Left; office corrections
   // dispatch.edit; free time settings.manage. Track only: nothing is billed.
   "public.wait_time_save_settings", "private.stop_time_writer", "private.is_my_load", "public.load_stop_mark", "public.load_stop_set", "public.demo_wait_time_samples",
+  // B113 cost per empty mile (20261120005300): billing.manage; demo sample for demo owners only.
+  "public.set_empty_mile_cost", "public.demo_empty_mile_cost",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

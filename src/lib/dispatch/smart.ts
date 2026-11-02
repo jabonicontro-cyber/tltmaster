@@ -25,6 +25,7 @@
 // load is not proposed again for an overlapping one.
 
 import { addDays } from "@/lib/dates";
+import { straightLineMiles, type Point } from "@/lib/routing/route";
 import { driverChecks, eligibilityMessage, type EligibilityQualification } from "@/lib/fleet/eligibility";
 
 export interface SmartLoad {
@@ -44,6 +45,8 @@ export interface SmartLoad {
   requested_date: string | null;
   urgent: boolean;
   needed_by: string | null;
+  /** The job site's located point (customer site), for empty miles (B113); null or absent when not located. */
+  point?: Point | null;
 }
 
 export interface SmartBooking {
@@ -55,6 +58,8 @@ export interface SmartBooking {
   starts_at: string;
   ends_at: string;
   site: string;
+  /** The booked load's job site point (B113), when located. */
+  point?: Point | null;
 }
 
 export interface SmartTruck {
@@ -124,6 +129,10 @@ export interface SmartInput {
   pickTrailer?: (truck: SmartTruck, load: SmartLoad, driver: SmartDriver | null, busy: string[]) => { id: string; unit_number: string } | null;
   /** Dispatch bases, when the company has more than one: names by id and whether cross-base dispatch is allowed. */
   bases?: { crossBase: boolean; names: Record<string, string> };
+  /** The company yard (B113): where a truck starts the day. Null or absent when not located. */
+  yard?: Point | null;
+  /** The company's cost per empty mile in cents (B113), when set and readable by the viewer (billing.view). */
+  mileCents?: number | null;
 }
 
 /** Base rule for one truck or driver on a load: a block (cross-base off), a warning (allowed), or nothing. */
@@ -205,6 +214,10 @@ export interface Candidate {
   score: number;
   reasons: string[];
   warnings: string[];
+  /** Estimated straight-line empty miles to this job site (B113); null when a location is missing. */
+  emptyMiles?: number | null;
+  /** Estimated cost of those miles in cents, when the company set a cost per mile and the viewer may see it. */
+  emptyCostCents?: number | null;
 }
 
 export interface Exclusion {
@@ -412,9 +425,25 @@ interface Scored {
   score: number;
   reasons: string[];
   warnings: string[];
+  emptyMiles?: number | null;
 }
 
-function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; site: string; load_date: string }>): Scored {
+type DayWork = { truck_id: string; driver_id: string; order_id: string; site: string; load_date: string; ends_at?: string; point?: Point | null };
+
+/**
+ * Empty miles (B113, owner 2026-11-02): straight-line miles from where the truck will be — the job site of its last load
+ * that day ending before this one starts, or the yard — to this load's job site. Null when either point is unknown.
+ * Loads do not record their pickup, so this is a measure of repositioning, labelled as an estimate.
+ */
+export function emptyMilesFor(sameDay: DayWork[], l: Pick<SmartLoad, "starts_at" | "point">, yard: Point | null | undefined): { miles: number; from: "previous drop" | "yard" } | null {
+  if (!l.point) return null;
+  const start = new Date(l.starts_at).getTime();
+  const prior = sameDay.filter((w) => w.ends_at && new Date(w.ends_at).getTime() <= start).sort((a, b) => (a.ends_at! < b.ends_at! ? 1 : -1))[0];
+  if (prior) return prior.point ? { miles: straightLineMiles(prior.point, l.point), from: "previous drop" } : null;
+  return yard ? { miles: straightLineMiles(yard, l.point), from: "yard" } : null;
+}
+
+function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: DayWork[]): Scored {
   let score = 0;
   const reasons: string[] = [];
   const warnings: string[] = [];
@@ -459,8 +488,14 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Arr
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));
   }
+  const empty = emptyMilesFor(sameDay, l, input.yard);
+  if (empty) {
+    // Fewer empty miles first: about one point per two miles, capped so safety and capacity still decide.
+    score -= Math.min(25, Math.round(empty.miles / 2));
+    reasons.push(`About ${Math.round(empty.miles)} empty mi from ${empty.from === "yard" ? "the yard" : "its previous drop"} (straight line).`);
+  }
   if (sameDay.length > 0 && !reasons.length) reasons.push(`Already running ${sameDay.length} load${sameDay.length === 1 ? "" : "s"} that day.`);
-  return { id: t.id, label: t.unit_number, score, reasons, warnings };
+  return { id: t.id, label: t.unit_number, score, reasons, warnings, emptyMiles: empty ? Math.round(empty.miles * 10) / 10 : null };
 }
 
 function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; load_date: string }>, input: Pick<SmartInput, "bases"> = {}): Scored {
@@ -486,14 +521,16 @@ export function recommend(input: SmartInput): LoadPlan[] {
   const reserved: Reservation[] = [];
   const plans: LoadPlan[] = [];
   const notes = [
-    "Travel distance is not calculated: no truck locations are recorded. Job and site continuity are used instead.",
+    input.loads.some((l) => l.point)
+      ? "Empty miles are straight-line estimates from each truck's previous drop that day (or the yard) to the job site; roads are longer, and the pickup is not recorded on loads."
+      : "Travel distance is not calculated: job sites are not located yet. Job and site continuity are used instead.",
     HOS_NOTE,
     ...(input.maintenanceChecked === false ? ["Maintenance shop dates were not checked: the maintenance database update is not installed yet."] : []),
     ...(input.timeOffChecked === false ? ["Driver time off was not checked: the time-off database update is not installed yet."] : []),
   ];
 
   // Existing bookings, then each proposal as it is made: each truck and driver only looks at its own work.
-  const dayWork = input.bookings.map((b) => ({ truck_id: b.truck_id, driver_id: b.driver_id, order_id: b.order_id, site: b.site, load_date: b.load_date }));
+  const dayWork: DayWork[] = input.bookings.map((b) => ({ truck_id: b.truck_id, driver_id: b.driver_id, order_id: b.order_id, site: b.site, load_date: b.load_date, ends_at: b.ends_at, point: b.point ?? null }));
   const workByTruck = groupBy(dayWork, (w) => w.truck_id);
   const workByDriver = groupBy(dayWork, (w) => w.driver_id);
 
@@ -530,6 +567,8 @@ export function recommend(input: SmartInput): LoadPlan[] {
         pairs.push({
           truckId: t.id, truckLabel: trailer ? `${t.label} + ${trailer.unit_number}` : t.label, trailerId: trailer?.id ?? null, trailerLabel: trailer?.unit_number ?? null,
           driverId: d.id, driverLabel: d.label, score: t.score + d.score, reasons: [...t.reasons, ...d.reasons], warnings: [...t.warnings, ...d.warnings],
+          emptyMiles: t.emptyMiles ?? null,
+          emptyCostCents: t.emptyMiles != null && input.mileCents != null ? Math.round(t.emptyMiles * input.mileCents) : null,
         });
       }
     }
@@ -587,7 +626,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
       blocked = { why, options };
     } else {
       reserved.push({ load, truckId: proposal.truckId, driverId: proposal.driverId, trailerId: proposal.trailerId ?? null });
-      const work = { truck_id: proposal.truckId, driver_id: proposal.driverId, order_id: load.order_id, site: load.site, load_date: load.load_date };
+      const work: DayWork = { truck_id: proposal.truckId, driver_id: proposal.driverId, order_id: load.order_id, site: load.site, load_date: load.load_date, ends_at: load.ends_at, point: load.point ?? null };
       for (const [m, k] of [[workByTruck, work.truck_id], [workByDriver, work.driver_id]] as const) {
         const list = m.get(k);
         if (list) list.push(work); else m.set(k, [work]);

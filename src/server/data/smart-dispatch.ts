@@ -1,4 +1,5 @@
 import "server-only";
+import type { Point } from "@/lib/routing/route";
 import { pickTrailer, type OptimizationInput } from "@/lib/optimization/plan";
 import { getTrailerInput } from "./trailer-input";
 import { addDays } from "@/lib/dates";
@@ -20,8 +21,16 @@ interface LoadRow {
   ends_at: string;
   planned_quantity: number | string | null;
   unit_code: string | null;
-  orders: { order_number: string; status: string; requested_date: string | null; site_line1: string; site_label: string; customers: { name: string } | null } | null;
+  orders: { order_number: string; status: string; requested_date: string | null; site_line1: string; site_label: string; customer_id?: string; customers: { name: string } | null;
+    /** The located customer site (B113 empty miles). */
+    customer_sites?: { latitude: number | string | null; longitude: number | string | null } | null } | null;
 }
+
+/** The job site's located point, or null. */
+const pointOf = (o: LoadRow["orders"]): Point | null => {
+  const lat = o?.customer_sites?.latitude, lng = o?.customer_sites?.longitude;
+  return lat == null || lng == null ? null : { lat: Number(lat), lng: Number(lng) };
+};
 
 const site = (o: LoadRow["orders"]) => (o ? (o.site_line1 || o.site_label || "").trim().toLowerCase() : "");
 
@@ -43,7 +52,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries, schedule] = await Promise.all([
     supabase
       .from("order_loads")
-      .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customers(name))")
+      .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customer_id, customers(name), customer_sites(latitude, longitude))")
       .eq("status", "planned")
       .gte("load_date", addDays(from, -1))
       .lte("load_date", addDays(to, 1)),
@@ -90,6 +99,19 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const leaveMissing = leave.error && (leave.error.code === "PGRST202" || leave.error.code === "42883");
   if (leave.error && !leaveMissing) throw new Error(`Smart Dispatch could not read driver time off: ${leave.error.message}`);
 
+  // Orders typed with an address instead of a saved site still get a location when the address matches one of the
+  // customer's saved, located sites (same street line, case-insensitive). B113 empty miles.
+  const unlinked = [...new Set(loadRows.filter((l) => l.orders && !l.orders.customer_sites && l.orders.customer_id && l.orders.site_line1).map((l) => l.orders!.customer_id!))];
+  if (unlinked.length) {
+    const sites = await supabase.from("customer_sites").select("customer_id, line1, latitude, longitude").in("customer_id", unlinked).not("latitude", "is", null);
+    const byAddress = new Map(((sites.data ?? []) as Array<{ customer_id: string; line1: string; latitude: number; longitude: number }>).map((x) => [`${x.customer_id}|${x.line1.trim().toLowerCase()}`, x]));
+    for (const l of loadRows) {
+      const o = l.orders;
+      if (!o || o.customer_sites || !o.customer_id) continue;
+      const m = byAddress.get(`${o.customer_id}|${o.site_line1.trim().toLowerCase()}`);
+      if (m) o.customer_sites = { latitude: m.latitude, longitude: m.longitude };
+    }
+  }
   const byLoad = new Map(loadRows.map((l) => [l.id, l]));
   const assigned = new Set((assignments.data ?? []).map((a) => a.load_id as string));
   const urgent = new Map((urgencies.data ?? []).map((u) => [u.order_id as string, u.needed_by as string | null]));
@@ -115,11 +137,12 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
       requested_date: l.orders!.requested_date,
       urgent: urgent.has(l.order_id),
       needed_by: urgent.get(l.order_id) ?? null,
+      point: pointOf(l.orders),
     }));
 
   const bookings: SmartBooking[] = (assignments.data ?? []).map((a) => {
     const l = byLoad.get(a.load_id as string);
-    return { load_id: a.load_id as string, order_id: a.order_id as string, truck_id: a.truck_id as string, driver_id: a.driver_id as string, starts_at: a.starts_at as string, ends_at: a.ends_at as string, load_date: l?.load_date ?? "", site: site(l?.orders ?? null) };
+    return { load_id: a.load_id as string, order_id: a.order_id as string, truck_id: a.truck_id as string, driver_id: a.driver_id as string, starts_at: a.starts_at as string, ends_at: a.ends_at as string, load_date: l?.load_date ?? "", site: site(l?.orders ?? null), point: pointOf(l?.orders ?? null) };
   });
 
   // Dispatch bases (two or more): each load carries its order's base, each truck and driver its own.
@@ -129,8 +152,19 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   }
 
   const hired = await hiredIds();
+  // Empty miles (B113): the yard where trucks start, and the cost per mile for people who see billing (RLS hides the
+  // rates from everyone else, so they see miles only). Missing either: miles without a cost, or no miles.
+  const [yardRow, rateRow] = await Promise.all([
+    supabase.from("company_settings").select("yard_latitude, yard_longitude").maybeSingle(),
+    supabase.from("company_cost_rates").select("empty_mile_cents").maybeSingle(),
+  ]);
+  const y = yardRow.data as { yard_latitude: number | string | null; yard_longitude: number | string | null } | null;
+  const yard = y && y.yard_latitude != null && y.yard_longitude != null ? { lat: Number(y.yard_latitude), lng: Number(y.yard_longitude) } : null;
+  const mileCents = rateRow.error ? null : ((rateRow.data as { empty_mile_cents: number | null } | null)?.empty_mile_cents ?? null);
   return {
     today,
+    yard,
+    mileCents,
     bases: bases ? { crossBase: bases.crossBase, names: bases.names } : undefined,
     loads: smartLoads,
     bookings,

@@ -109,6 +109,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("safety incidents", await safetyIncidents(db));
   // Profit per load (B104): cost rates a small hauler might use, so Reports shows estimated profit.
   note("cost rates", await rpcCount(db, "demo_cost_rates"));
+  // Profit-aware dispatch (B113): a fictional cost per empty mile, so proposals show an estimated cost.
+  note("cost per empty mile", await rpcCount(db, "demo_empty_mile_cost"));
   // Parts inventory (B105): a small shelf with one low part and one used on an open work order.
   note("parts inventory", await rpcCount(db, "demo_parts_samples"));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.

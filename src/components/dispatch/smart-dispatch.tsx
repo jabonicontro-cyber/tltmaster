@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { formatCents } from "@/lib/money";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { HOS_CONFIRMATION } from "@/lib/hos";
@@ -106,6 +107,11 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
               <span className="font-semibold text-ink">Truck {chosen?.truckLabel}</span>
               <span className="text-muted"> with </span>
               <span className="inline-flex items-center gap-1.5 align-middle font-semibold text-ink">{chosen && <Avatar name={chosen.driverLabel} size={22} {...faces[chosen.driverId]} />}{chosen?.driverLabel}</span>
+              {chosen?.emptyMiles != null && (
+                <span className="ml-2 inline-flex h-[22px] items-center rounded-full bg-ink/[0.06] px-2 align-middle text-xs font-medium text-ink/75" title="Straight-line estimate from the truck's previous drop (or the yard) to the job site">
+                  <span className="pill-text">{chosen.emptyMiles < 0.5 ? "No empty miles" : `≈ ${Math.round(chosen.emptyMiles)} empty mi${chosen.emptyCostCents != null ? ` · ~${formatCents(chosen.emptyCostCents)}` : ""}`}</span>
+                </span>
+              )}
             </p>
             {canEdit ? (
               <div className="flex flex-wrap items-center gap-2">

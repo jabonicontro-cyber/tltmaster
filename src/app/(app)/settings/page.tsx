@@ -127,7 +127,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </>
     );
   } else if (tab === "costs") {
-    const rates = await supabase.from("company_cost_rates").select("truck_hour_cents, driver_hour_cents, per_load_cents").maybeSingle();
+    // The cost per empty mile (B113, 20261120005300) when installed; otherwise the three original rates.
+    const withMile = await supabase.from("company_cost_rates").select("truck_hour_cents, driver_hour_cents, per_load_cents, empty_mile_cents").maybeSingle();
+    const mileSupported = !withMile.error;
+    const rates = mileSupported ? withMile : await supabase.from("company_cost_rates").select("truck_hour_cents, driver_hour_cents, per_load_cents").maybeSingle();
     content = (
       <>
         <CardHeader
@@ -135,7 +138,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           description="Your own costs, used for profit per load in Reports: each delivered load's planned hours × the truck and driver rates, plus the fixed amount per load. Profit is an estimate; a rate left empty counts as nothing, and with no rates no profit is shown."
         />
         <CardBody>
-          {rates.error ? <p className="text-sm text-muted">Cost rates need a database update that has not been installed yet.</p> : <CostRatesForm rates={rates.data ?? null} canEdit={can(access, "billing.manage")} />}
+          {rates.error ? <p className="text-sm text-muted">Cost rates need a database update that has not been installed yet.</p> : <CostRatesForm rates={rates.data ?? null} canEdit={can(access, "billing.manage")} mileSupported={mileSupported} />}
         </CardBody>
       </>
     );
