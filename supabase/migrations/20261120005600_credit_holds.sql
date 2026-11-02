@@ -27,7 +27,7 @@ grant select on public.credit_hold_settings to authenticated;
 create table public.credit_hold_overrides (
   id           uuid primary key default gen_random_uuid(),
   company_id   uuid not null references public.companies (id) on delete cascade,
-  customer_id  uuid not null references public.customers (id),
+  customer_id  uuid not null references public.customers (id) on delete cascade,
   context      text not null check (context in ('order', 'assignment')),
   entity_id    uuid,
   reason       text not null check (length(reason) between 1 and 500),

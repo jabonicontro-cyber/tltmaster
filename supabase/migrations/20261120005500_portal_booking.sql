@@ -34,7 +34,7 @@ grant select on public.booking_capacity to authenticated;
 create table public.booking_requests (
   id             uuid primary key default gen_random_uuid(),
   company_id     uuid not null references public.companies (id) on delete cascade,
-  customer_id    uuid not null references public.customers (id),
+  customer_id    uuid not null references public.customers (id) on delete cascade,
   -- The portal account that asked; null for a demo sample.
   account_id     uuid references public.portal_accounts (id) on delete set null,
   day            date not null,
