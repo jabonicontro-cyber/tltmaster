@@ -153,6 +153,49 @@
       "ready": "Time to plan tomorrow",
       "alt": "Command Center speed figures in a demo company: time to plan tomorrow, delivery to billing-ready and ticket review pace, measured from recorded work",
       "caption": "Speed on the Command Center — demo company, fictional data."
+    },
+    {
+      "id": "truck-health",
+      "file": "truck-health.png",
+      "feature": "truck-health",
+      "path": "/maintenance",
+      "viewport": "desktop",
+      "ready": "Truck health",
+      "scroll": "Truck health",
+      "alt": "Truck health in a demo company's maintenance page: each truck that needs watching, with the reasons such as overdue service or repeated defects",
+      "caption": "Truck health — demo company, fictional data."
+    },
+    {
+      "id": "driver-scorecard",
+      "file": "driver-scorecard.png",
+      "feature": "driver-scorecard",
+      "path": "/reports",
+      "viewport": "desktop",
+      "ready": "Drivers",
+      "scroll": "Drivers",
+      "alt": "The drivers table in a demo company's reports: loads, on-time deliveries and same-day tickets per driver for the period, with no ranking",
+      "caption": "Driver scorecard — demo company, fictional data."
+    },
+    {
+      "id": "quote-outcomes",
+      "file": "quote-outcomes.png",
+      "feature": "quote-outcomes",
+      "path": "/reports",
+      "viewport": "desktop",
+      "ready": "Quotes won and lost",
+      "scroll": "Quotes won and lost",
+      "alt": "Quotes won and lost in a demo company's reports: win rate, reasons for lost quotes and rates by material",
+      "caption": "Quotes won and lost — demo company, fictional data."
+    },
+    {
+      "id": "site-notes",
+      "file": "site-notes.png",
+      "feature": "site-notes",
+      "path": "/customers/site-notes",
+      "viewport": "desktop",
+      "ready": "Site notes from customers",
+      "alt": "Site notes customers sent from their portal in a demo company, waiting for the office to review before drivers see them",
+      "caption": "Site notes from customers — demo company, fictional data."
     }
   ]
 }

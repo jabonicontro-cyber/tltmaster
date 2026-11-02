@@ -191,7 +191,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true, // owner 2026-10-28
     routes: ["/maintenance", "/dispatch"],
-    screenshots: [],
+    screenshots: ["truck-health"],
     related: ["maintenance", "smart-dispatch"],
     verified: "2026-10-27",
   },
@@ -207,7 +207,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true, // owner 2026-10-28
     routes: ["/reports", "/driver"],
-    screenshots: [],
+    screenshots: ["driver-scorecard"],
     related: ["driver-portal", "delivery-tickets"],
     verified: "2026-10-27",
   },
@@ -223,7 +223,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true, // owner 2026-10-28
     routes: ["/reports"],
-    screenshots: [],
+    screenshots: ["quote-outcomes"],
     related: ["orders"],
     verified: "2026-10-27",
   },
@@ -271,7 +271,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true, // owner 2026-10-28
     routes: ["/customers"],
-    screenshots: [],
+    screenshots: ["site-notes"],
     related: ["orders", "driver-portal"],
     verified: "2026-10-27",
   },

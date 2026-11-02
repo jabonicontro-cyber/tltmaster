@@ -134,6 +134,42 @@
       "capturedAt": "2026-10-26T17:37:52.232Z",
       "source": "localhost:3000",
       "checks": "passed"
+    },
+    "truck-health": {
+      "file": "truck-health.png",
+      "feature": "truck-health",
+      "path": "/maintenance",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-02T06:26:31.240Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "driver-scorecard": {
+      "file": "driver-scorecard.png",
+      "feature": "driver-scorecard",
+      "path": "/reports",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-02T06:26:37.299Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "quote-outcomes": {
+      "file": "quote-outcomes.png",
+      "feature": "quote-outcomes",
+      "path": "/reports",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-02T06:26:43.306Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "site-notes": {
+      "file": "site-notes.png",
+      "feature": "site-notes",
+      "path": "/customers/site-notes",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-02T06:26:46.374Z",
+      "source": "localhost:3000",
+      "checks": "passed"
     }
   }
 }

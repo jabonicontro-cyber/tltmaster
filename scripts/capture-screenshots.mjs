@@ -124,7 +124,7 @@ for (const s of selected) {
     await page.waitForLoadState("networkidle");
   }
   if (s.scroll) {
-    await page.locator("main").getByText(s.scroll, { exact: true }).first().evaluate((el) => {
+    await page.locator("main").getByText(s.scroll, { exact: !s.scrollPartial }).first().evaluate((el) => {
       const top = el.getBoundingClientRect().top + window.scrollY - 72; // below the sticky header
       window.scrollTo(0, top);
     });
