@@ -47,6 +47,8 @@ export interface SmartLoad {
   needed_by: string | null;
   /** The job site's located point (customer site), for empty miles (B113); null or absent when not located. */
   point?: Point | null;
+  /** The order's customer (B117 learning); absent in older inputs. */
+  customer_id?: string | null;
 }
 
 export interface SmartBooking {
@@ -133,6 +135,23 @@ export interface SmartInput {
   yard?: Point | null;
   /** The company's cost per empty mile in cents (B113), when set and readable by the viewer (billing.view). */
   mileCents?: number | null;
+  /**
+   * What dispatchers decided before (B117), per "resource|customer" over the last 120 days: proposals they rejected
+   * (not reconsidered) and loads a driver ran for that customer. Learning only from recorded decisions.
+   */
+  learned?: { driverRejected: Record<string, number>; truckRejected: Record<string, number>; driverWorked: Record<string, number> };
+}
+
+/** How recorded decisions move a candidate (B117): rejections push down, experience with the customer pushes up. */
+export function learnedAdjustment(kind: "driver" | "truck", id: string, l: Pick<SmartLoad, "customer_id" | "customer_name">, learned: SmartInput["learned"]): { score: number; reason: string | null } {
+  if (!learned || !l.customer_id) return { score: 0, reason: null };
+  const key = `${id}|${l.customer_id}`;
+  const rejected = (kind === "driver" ? learned.driverRejected : learned.truckRejected)[key] ?? 0;
+  const who = l.customer_name ?? "this customer";
+  if (rejected >= 2) return { score: -Math.min(24, rejected * 6), reason: `Dispatchers passed on this ${kind} for ${who} ${rejected} times recently.` };
+  const worked = kind === "driver" ? learned.driverWorked[key] ?? 0 : 0;
+  if (worked >= 2) return { score: Math.min(10, worked * 2), reason: `Has run ${worked} loads for ${who} (knows the site).` };
+  return { score: 0, reason: null };
 }
 
 /** Base rule for one truck or driver on a load: a block (cross-base off), a warning (allowed), or nothing. */
@@ -488,6 +507,11 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));
   }
+  const lt = learnedAdjustment("truck", t.id, l, input.learned);
+  if (lt.reason) {
+    score += lt.score;
+    reasons.push(lt.reason);
+  }
   const empty = emptyMilesFor(sameDay, l, input.yard);
   if (empty) {
     // Fewer empty miles first: about one point per two miles, capped so safety and capacity still decide.
@@ -498,8 +522,10 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
   return { id: t.id, label: t.unit_number, score, reasons, warnings, emptyMiles: empty ? Math.round(empty.miles * 10) / 10 : null };
 }
 
-function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; load_date: string }>, input: Pick<SmartInput, "bases"> = {}): Scored {
+function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: Array<{ truck_id: string; driver_id: string; order_id: string; load_date: string }>, input: Pick<SmartInput, "bases" | "learned"> = {}): Scored {
   let score = baseCheck(d.base_id, l, input).warn ? -25 : 0; // same-base drivers first
+  const learned = learnedAdjustment("driver", d.id, l, input.learned);
+  score += learned.score;
   const reasons: string[] = [];
   const sameDay = dayWork.filter((w) => w.driver_id === d.id && w.load_date === l.load_date);
   if (sameDay.some((w) => w.order_id === l.order_id)) {
@@ -510,6 +536,7 @@ function scoreDriver(d: SmartDriver, l: SmartLoad, warnings: string[], dayWork: 
   const total = dayWork.filter((w) => w.driver_id === d.id).length;
   score -= total * 2;
   reasons.push(sameDay.length === 0 ? "Has no other loads that day." : `Has ${sameDay.length} other load${sameDay.length === 1 ? "" : "s"} that day.`);
+  if (learned.reason) reasons.push(learned.reason);
   score -= warnings.length * 3;
   return { id: d.id, label: d.name, score, reasons, warnings };
 }

@@ -138,6 +138,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
       urgent: urgent.has(l.order_id),
       needed_by: urgent.get(l.order_id) ?? null,
       point: pointOf(l.orders),
+      customer_id: l.orders!.customer_id ?? null,
     }));
 
   const bookings: SmartBooking[] = (assignments.data ?? []).map((a) => {
@@ -161,10 +162,32 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const y = yardRow.data as { yard_latitude: number | string | null; yard_longitude: number | string | null } | null;
   const yard = y && y.yard_latitude != null && y.yard_longitude != null ? { lat: Number(y.yard_latitude), lng: Number(y.yard_longitude) } : null;
   const mileCents = rateRow.error ? null : ((rateRow.data as { empty_mile_cents: number | null } | null)?.empty_mile_cents ?? null);
+  // Learning from recorded decisions (B117): rejections not reconsidered, and loads drivers ran, per customer, over
+  // the last 120 days. Any read error leaves learning out (proposals are made as before).
+  const since = new Date(Date.now() - 120 * 86400_000).toISOString();
+  const [rej, ran] = await Promise.all([
+    supabase.from("dispatch_recommendation_rejections").select("truck_id, driver_id, order_loads(orders(customer_id))").is("cleared_at", null).gte("created_at", since).limit(5000),
+    supabase.from("dispatch_assignments").select("driver_id, orders(customer_id)").eq("status", "active").gte("starts_at", since).lt("starts_at", new Date().toISOString()).limit(5000),
+  ]);
+  let learned: SmartInput["learned"];
+  if (!rej.error && !ran.error) {
+    const bump = (m: Record<string, number>, k: string) => { m[k] = (m[k] ?? 0) + 1; };
+    learned = { driverRejected: {}, truckRejected: {}, driverWorked: {} };
+    for (const r of (rej.data ?? []) as unknown as Array<{ truck_id: string; driver_id: string; order_loads: { orders: { customer_id: string } | null } | null }>) {
+      const c = r.order_loads?.orders?.customer_id;
+      if (!c) continue;
+      bump(learned.driverRejected, `${r.driver_id}|${c}`);
+      bump(learned.truckRejected, `${r.truck_id}|${c}`);
+    }
+    for (const a of (ran.data ?? []) as unknown as Array<{ driver_id: string; orders: { customer_id: string } | null }>) {
+      if (a.orders?.customer_id) bump(learned.driverWorked, `${a.driver_id}|${a.orders.customer_id}`);
+    }
+  }
   return {
     today,
     yard,
     mileCents,
+    learned,
     bases: bases ? { crossBase: bases.crossBase, names: bases.names } : undefined,
     loads: smartLoads,
     bookings,
