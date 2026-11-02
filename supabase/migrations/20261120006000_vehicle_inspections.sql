@@ -129,11 +129,11 @@ stable
 security definer
 set search_path = ''
 as $$
+  with d as (select private.company_today(private.current_company_id()) as day where private.current_company_id() is not null)
   select coalesce(jsonb_agg(jsonb_build_object('id', t ->> 'id', 'unit', t ->> 'unit',
-           'pre_trip', exists (select 1 from public.vehicle_inspections v where v.truck_id = (t ->> 'id')::uuid and v.inspected_on = private.company_today(private.current_company_id()) and v.kind = 'pre_trip'),
-           'post_trip', exists (select 1 from public.vehicle_inspections v where v.truck_id = (t ->> 'id')::uuid and v.inspected_on = private.company_today(private.current_company_id()) and v.kind = 'post_trip'))), '[]'::jsonb)
-  from jsonb_array_elements(public.fuel_my_trucks(private.company_today(private.current_company_id()))) t
-  where private.current_company_id() is not null;
+           'pre_trip', exists (select 1 from public.vehicle_inspections v where v.truck_id = (t ->> 'id')::uuid and v.inspected_on = d.day and v.kind = 'pre_trip'),
+           'post_trip', exists (select 1 from public.vehicle_inspections v where v.truck_id = (t ->> 'id')::uuid and v.inspected_on = d.day and v.kind = 'post_trip'))), '[]'::jsonb)
+  from d, jsonb_array_elements(public.fuel_my_trucks(d.day)) t;
 $$;
 
 -- Office: today's working trucks (an active assignment today) without a pre-trip inspection.

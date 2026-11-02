@@ -205,13 +205,18 @@ stable
 security definer
 set search_path = ''
 as $$
+  -- The driver and company are read once; candidate trucks come from the driver's own truck and that day's
+  -- assignments (never a scan of the whole fleet).
+  with me as (select private.my_driver_id() as driver, private.current_company_id() as company),
+  mine as (
+    select d.primary_truck_id as truck_id from public.drivers d, me where d.id = me.driver and d.primary_truck_id is not null
+    union
+    select a.truck_id from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id, me
+    where a.driver_id = me.driver and l.load_date = p_day and a.status <> 'canceled' and a.truck_id is not null)
   select coalesce(jsonb_agg(jsonb_build_object('id', t.id, 'unit', t.unit_number,
            'sheet_done', exists (select 1 from public.trip_sheets s where s.truck_id = t.id and s.sheet_date = p_day and not s.voided)) order by t.unit_number), '[]'::jsonb)
-  from public.trucks t
-  where t.company_id = private.current_company_id() and private.my_driver_id() is not null
-    and (t.id = (select d.primary_truck_id from public.drivers d where d.id = private.my_driver_id())
-         or exists (select 1 from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id
-                    where a.driver_id = private.my_driver_id() and a.truck_id = t.id and l.load_date = p_day and a.status <> 'canceled'));
+  from mine join public.trucks t on t.id = mine.truck_id, me
+  where t.company_id = me.company and me.driver is not null;
 $$;
 
 -- Demo sample: a quarter's worth of fictional fuel purchases and trip sheets for two of the demo's trucks, mostly in the

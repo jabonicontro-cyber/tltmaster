@@ -177,18 +177,17 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const today = h.assignments.filter((a) => a.load.date === h.today);
   const later = h.assignments.filter((a) => a.load.date > h.today);
   const reminders = qualificationReminders(h.qualifications, h.today);
-  // Fuel and IFTA (B130): the trucks this driver may record for today; empty before that update is installed.
-  const fuelTrucksRes = await (await createClient()).rpc("fuel_my_trucks", { p_day: h.today });
+  // These three are independent: read them together. Each is empty before its update is installed.
+  const sb = await createClient();
+  const [fuelTrucksRes, inspRes, payRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements")]);
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
-  const inspRes = await (await createClient()).rpc("inspection_my_trucks");
   const inspTrucks = (inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean }>))
     .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
     .filter((t) => t.pending.length > 0);
   const preTripDue = inspTrucks.some((t) => t.pending.includes("pre_trip"));
   // Pay statements (B131): the driver's own, for approved periods only; empty before that update is installed.
-  const payRes = await (await createClient()).rpc("my_pay_statements");
   const pay = payRes.error ? [] : ((payRes.data ?? []) as Array<{ period_id: string; starts_on: string; ends_on: string; total_cents: number }>).slice(0, 4);
   const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes, history] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),

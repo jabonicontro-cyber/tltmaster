@@ -22,7 +22,9 @@ export function InspectionForm({ trucks }: { trucks: Truck[] }) {
   const [error, setError] = useState<string | null>(null);
   const [truckId, setTruckId] = useState(trucks[0]?.id ?? "");
   const truck = trucks.find((t) => t.id === truckId);
-  const [kind, setKind] = useState<InspectionKind>(truck?.pending[0] ?? "pre_trip");
+  const [chosenKind, setKind] = useState<InspectionKind>(truck?.pending[0] ?? "pre_trip");
+  // After a save (or a truck change) the chosen inspection may be done: move to the next one due for this truck.
+  const kind: InspectionKind = !truck || truck.pending.includes(chosenKind) ? chosenKind : truck.pending[0] ?? chosenKind;
   const [odometer, setOdometer] = useState("");
   const [remarks, setRemarks] = useState("");
   const blank = () => Object.fromEntries(INSPECTION_ITEMS.map((i) => [i.key, { ok: null, note: "" } as Mark]));
@@ -49,7 +51,7 @@ export function InspectionForm({ trucks }: { trucks: Truck[] }) {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {trucks.length > 1 && (
           <Field label="Truck" htmlFor="insp-truck">
-            <Select id="insp-truck" value={truckId} onChange={(e) => { setTruckId(e.target.value); const t = trucks.find((x) => x.id === e.target.value); if (t?.pending[0]) setKind(t.pending[0]); }}>
+            <Select id="insp-truck" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
               {trucks.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </Select>
           </Field>

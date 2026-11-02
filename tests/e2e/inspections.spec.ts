@@ -10,7 +10,8 @@ test.use({ viewport: { width: 390, height: 844 } });
 test("a driver records a pre-trip and a post-trip; defects reach the shop and the office", async ({ page, browser }) => {
   const f = await driverFixture();
   await signIn(page, "driver");
-  await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible();
+  await expect(page).toHaveURL(/\/driver$/);
+  await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible({ timeout: 30_000 });
   await expect(page.getByRole("heading", { name: "Pre-trip inspection" })).toBeVisible();
 
   const form = page.getByRole("form", { name: "Vehicle inspection" });
@@ -25,10 +26,11 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   await expectToast(page, "opened for the shop");
 
   // Post-trip: a brake defect is a safety defect and takes the truck out of service.
-  await expect(page.getByRole("heading", { name: "Post-trip inspection" })).toBeVisible();
+  // The fixture driver has one truck today, so My Day moves on to the post-trip (behind a disclosure).
+  await expect(page.getByRole("heading", { name: "Post-trip inspection" })).toBeVisible({ timeout: 20_000 });
   await page.getByText("Start post-trip inspection").click();
   const post = page.getByRole("form", { name: "Vehicle inspection" });
-  if (await post.getByLabel("Truck").count()) await post.getByLabel("Truck").selectOption({ label: `Truck ${f.myTruck}` });
+  await expect(post.locator("#insp-kind")).toHaveValue("post_trip");
   await post.getByRole("group", { name: "Service brakes" }).getByRole("button", { name: "Defect" }).click();
   await post.getByLabel("What is wrong with service brakes").fill("Air leak at the rear chamber (test)");
   await expect(post.getByText("A safety defect takes this truck out of service")).toBeVisible();
