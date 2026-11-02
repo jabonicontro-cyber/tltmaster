@@ -48,7 +48,11 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
     }
   };
   // A tap kept on the phone is not refreshed from Taviron (there is no signal to ask).
-  const { pending, onSubmit, formError } = useFormAction(send, { onSuccess: (r) => { toast.success(r.message ?? "Recorded."); if (!r.message?.startsWith("Saved on this phone")) router.refresh(); } });
+  const { pending, onSubmit, formError } = useFormAction(send, { onSuccess: (r) => {
+    if (r.message?.startsWith("Saved on this phone")) { toast.warning(r.message); return; }
+    toast.success(r.message ?? "Recorded.");
+    router.refresh();
+  } });
   const time = (iso: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso));
   const event = !s.arrivedAt ? "arrive" : !s.departedAt ? "depart" : null;
   return (
