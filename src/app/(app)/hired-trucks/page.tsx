@@ -17,7 +17,9 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { loadHiredTrucks } from "@/server/data/hired-trucks";
 import { businessToday } from "@/server/data/settings";
-import { addHaulerDriver, addHaulerTruck, confirmOffer, recordAnswer, recordHaulerDocument, saveHauler, sendOffer, withdrawOffer } from "./actions";
+import { createClient } from "@/server/supabase/server";
+import { addDays } from "@/lib/dates";
+import { addHaulerDriver, addHaulerTruck, confirmOffer, createSettlement, recordAnswer, recordHaulerDocument, saveHauler, sendOffer, setHaulerCommission, withdrawOffer } from "./actions";
 
 export const metadata = { title: "Hired trucks" };
 
@@ -30,7 +32,10 @@ const SAVED = {
   answered: { text: "Answer recorded." },
   confirmed: { text: "Confirmed: the load is assigned to the hired truck." },
   withdrawn: { text: "Offer withdrawn." },
+  commission: { text: "Commission saved. It applies to settlements created from now on." },
 };
+
+const SETTLEMENT_STATUS = { draft: { label: "Draft", tone: "gray" }, approved: { label: "Approved", tone: "blue" }, paid: { label: "Paid", tone: "green" }, void: { label: "Void", tone: "red" } } as const;
 
 /**
  * Hired trucks (B83): owner-operators and subcontracted haulers. Offers go out only when the hauler's documents are on
@@ -65,6 +70,11 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
   const haulerName = new Map(data.haulers.map((h) => [h.id, h.name]));
   const truckName = new Map(data.haulers.flatMap((h) => h.trucks.map((t) => [t.id, t.unit_number] as const)));
   const driverName = new Map(data.haulers.flatMap((h) => h.drivers.map((d) => [d.id, d.name] as const)));
+  // Settlements (B129, 20261120005700): null until that update is installed.
+  const payroll = can(access, "payroll.manage");
+  const settlementsRes = seePay ? await (await createClient()).from("hauler_settlements").select("id, number, hauler_id, period_start, period_end, status, net_cents").order("number", { ascending: false }).limit(30) : null;
+  const settlements = settlementsRes && !settlementsRes.error ? (settlementsRes.data as Array<{ id: string; number: number; hauler_id: string; period_start: string; period_end: string; status: keyof typeof SETTLEMENT_STATUS; net_cents: number }>) : null;
+  const commissions = settlements ? new Map(((await (await createClient()).from("haulers").select("id, commission_bp")).data as Array<{ id: string; commission_bp: number }> | null ?? []).map((h) => [h.id, h.commission_bp])) : new Map<string, number>();
   const when = (o: (typeof data.offers)[number]) => `${formatDate(o.load.load_date)} ${formatTime(o.load.start_time)}`;
 
   return (
@@ -271,6 +281,61 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
               </TableWrap>
             )}
           </Card>
+
+          {settlements && (
+            <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-[1fr_380px]">
+              <Card>
+                <CardHeader title="Settlements" description="Pay for one hauler and period: gross from accepted tickets at the offered rate, less their commission and any deductions. Taviron records payments; it moves no money." />
+                {settlements.length === 0 ? (
+                  <EmptyState title="No settlements yet" description={payroll ? "Create one on the right." : "Someone with payroll access creates them."} className="py-8" />
+                ) : (
+                  <ul className="divide-y divide-line border-t border-line" aria-label="Settlements">
+                    {settlements.map((st) => (
+                      <li key={st.id}>
+                        <Link href={`/hired-trucks/settlements/${st.id}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 hover:bg-ink/[0.03] sm:px-6">
+                          <span className="font-semibold text-ink tabular">#{st.number}</span>
+                          <span className="min-w-0 flex-1 text-sm">{haulerName.get(st.hauler_id)} <span className="text-muted">· {formatDate(st.period_start)} – {formatDate(st.period_end)}</span></span>
+                          <Badge tone={SETTLEMENT_STATUS[st.status].tone}>{SETTLEMENT_STATUS[st.status].label}</Badge>
+                          <span className="w-28 text-right font-semibold tabular">{formatCents(Number(st.net_cents))}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Card>
+              {payroll && (
+                <Card>
+                  <CardHeader title="New settlement" description="Every confirmed job of the hauler in the period that is not already settled. Jobs without an accepted ticket are left out and counted." />
+                  <CardBody>
+                    <form action={createSettlement} className="space-y-4" aria-label="New settlement">
+                      <Field label="Hauler" htmlFor="st-hauler">
+                        <Select id="st-hauler" name="hauler_id" required defaultValue="">
+                          <option value="" disabled>Choose a hauler…</option>
+                          {data.haulers.map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
+                        </Select>
+                      </Field>
+                      <div className="grid grid-cols-2 gap-3">
+                        <Field label="From" htmlFor="st-from"><DateInput id="st-from" name="from" defaultValue={addDays(today, -7)} required /></Field>
+                        <Field label="To" htmlFor="st-to"><DateInput id="st-to" name="to" defaultValue={addDays(today, -1)} required /></Field>
+                      </div>
+                      <SubmitButton>Create draft</SubmitButton>
+                    </form>
+                    <div className="mt-6 space-y-3 border-t border-line pt-5">
+                      <h3 className="text-sm font-semibold text-ink">Commission per hauler</h3>
+                      {data.haulers.map((h) => (
+                        <form key={h.id} action={setHaulerCommission} className="flex items-end gap-2" aria-label={`Commission for ${h.name}`}>
+                          <input type="hidden" name="hauler_id" value={h.id} />
+                          <Field label={h.name} htmlFor={`cm-${h.id}`} className="flex-1"><Input id={`cm-${h.id}`} name="commission" inputMode="decimal" defaultValue={String((commissions.get(h.id) ?? 0) / 100)} className="max-w-24" /></Field>
+                          <span className="pb-2.5 text-sm text-muted">%</span>
+                          <SubmitButton size="sm" variant="secondary">Save</SubmitButton>
+                        </form>
+                      ))}
+                    </div>
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          )}
         </>
       )}
     </>

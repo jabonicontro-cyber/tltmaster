@@ -278,10 +278,21 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Hired trucks (B83): a ready hauler and one with expired insurance; an open offer and a confirmed one, assigned.
     const haulers = await q<{ n: string }>("select count(*) n from public.haulers where company_id = $1", [w.company]);
     expect(Number(haulers.rows[0].n)).toBe(2);
-    const offerStates = await q<{ status: string }>("select status from public.hauler_offers where company_id = $1 order by status", [w.company]);
+    // Upcoming offers (the settlement sample's past jobs aside): one open, one confirmed and assigned.
+    const offerStates = await q<{ status: string }>("select o.status from public.hauler_offers o join public.order_loads l on l.id = o.load_id where o.company_id = $1 and l.load_date > private.company_today($1) order by o.status", [w.company]);
     expect(offerStates.rows.map((r) => r.status)).toEqual(["confirmed", "offered"]);
-    const hiredAssigned = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.trucks t on t.id = a.truck_id where a.company_id = $1 and a.status = 'active' and t.hauler_id is not null", [w.company]);
+    const hiredAssigned = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.trucks t on t.id = a.truck_id join public.order_loads l on l.id = a.load_id where a.company_id = $1 and a.status = 'active' and t.hauler_id is not null and l.load_date > private.company_today($1)", [w.company]);
     expect(Number(hiredAssigned.rows[0].n)).toBe(1);
+    // Hauler settlements (B129): a draft for two delivered hired jobs, 10 % commission, a $75 fuel advance.
+    const settlement = await q<{ status: string; gross_cents: string; commission_cents: string; deductions_cents: string; net_cents: string; jobs: string }>(
+      "select s.status, s.gross_cents, s.commission_cents, s.deductions_cents, s.net_cents, (select count(*) from public.hauler_settlement_jobs j where j.settlement_id = s.id) jobs from public.hauler_settlements s where s.company_id = $1", [w.company]);
+    expect(settlement.rows).toHaveLength(1);
+    const st = settlement.rows[0];
+    const gross = Number(st.gross_cents);
+    expect([st.status, st.jobs, st.deductions_cents]).toEqual(["draft", "2", "7500"]);
+    expect(gross).toBeGreaterThan(0);
+    expect(Number(st.commission_cents)).toBe(Math.round(gross / 10));
+    expect(Number(st.net_cents)).toBe(gross - Math.round(gross / 10) - 7500);
 
     // Quote history (B95): eight decided quotes — three won, three declined with a reason, two expired.
     const decided = await q<{ status: string; n: string }>("select q.status, count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%' group by q.status order by q.status", [w.company]);

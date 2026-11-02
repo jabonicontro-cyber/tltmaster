@@ -103,6 +103,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("guided onboarding", await guidedOnboarding(db));
   // After the planning day (tomorrow's open loads exist): hired trucks with an open and a confirmed offer (B83).
   note("hired trucks", await hiredTrucks(db, today, companyId));
+  // Hauler settlements (B129): a past hired job with an accepted ticket, a 10 % commission and a draft settlement.
+  note("hauler settlement", await haulerSettlement(db, today));
   // Last: spreads this demo's past assignment and review times so Command Center "Speed" has measurements (B86).
   note("speed history", await speedHistory(db));
   // Proof of delivery (B98): some confirmed tickets placed at their job site, as a driver's phone would record them.
@@ -1470,4 +1472,64 @@ async function hiredTrucks(db: Db, today: string, companyId: string): Promise<nu
     }
   }
   return added + offers;
+}
+
+/**
+ * Hauler settlements (B129): once, for the demo's ready hauler, a delivered hired job three weekdays ago (an order and
+ * load, an offer accepted by phone and confirmed by dispatch, an accepted ticket — all through the app's own functions,
+ * nothing texted), a 10 % commission, and a draft settlement for that day with a fuel-advance deduction. Fictional.
+ */
+async function haulerSettlement(db: Db, today: string): Promise<number> {
+  const existing = await db.from("hauler_settlements").select("id").limit(1);
+  if (missing(existing.error)) return 0;
+  if (existing.error) throw new Error(`Demo samples (hauler settlement): ${existing.error.message}`);
+  if ((existing.data ?? []).length) return 0;
+  const on = await db.rpc("hired_trucks_enabled");
+  if (on.error || !on.data) return 0;
+  const hauler = ((await db.from("haulers").select("id, name").eq("name", "Ridgeline Hauling (demo)").limit(1)).data ?? [])[0] as
+    { id: string; name: string } | undefined;
+  if (!hauler) return 0;
+  const truck = ((await db.from("trucks").select("id").eq("hauler_id", hauler.id).limit(1)).data ?? [])[0] as { id: string } | undefined;
+  const driver = ((await db.from("drivers").select("id").eq("hauler_id", hauler.id).limit(1)).data ?? [])[0] as { id: string } | undefined;
+  if (!truck || !driver) return 0;
+  // A real-looking order: a customer and a per-ton material line from the demo's own orders.
+  const tmpl = ((await db.from("orders").select("customer_id, site_label, site_line1, site_city, customers(po_required), order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)").not("status", "in", "(draft,canceled)").limit(40)).data ?? []) as unknown as Array<{
+    customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null;
+    order_lines: Array<{ kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number | null; taxable: boolean }> }>;
+  const payable = (l: { calc_method: string; unit_code: string | null; unit_rate_cents: number | null }) => l.calc_method === "per_unit" && ["ton", "load", "hour"].includes(l.unit_code ?? "") && Number(l.unit_rate_cents) > 0;
+  const pick = tmpl.find((o) => o.customers && !o.customers.po_required && o.order_lines.some(payable));
+  if (!pick) return 0;
+  const line = pick.order_lines.find(payable)!;
+  const unit = line.unit_code as "ton" | "load" | "hour";
+  // What the hauler is paid per unit and what each job delivered (fictional, typical for the unit).
+  const rate = { ton: 1350, load: 9500, hour: 9000 }[unit];
+  const qtys = { ton: ["22", "21.5"], load: ["1", "1"], hour: ["2.5", "3"] }[unit];
+  let day = addDays(today, -3);
+  while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, -1);
+  const o = (await must("hauler order", db.rpc("save_order_draft", { p_payload: {
+    customer_id: pick.customer_id, order_date: day, project_name: "Hired truck haul (demo)", site_label: pick.site_label, site_line1: pick.site_line1, site_city: pick.site_city,
+    lines: [{ kind: line.kind, calc_method: "per_unit", material_id: line.material_id, description: line.description, unit_code: unit, quantity: unit === "ton" ? "44" : "2", unit_rate_cents: Number(line.unit_rate_cents), taxable: line.taxable }],
+  } }))) as { order_id: string; order_number: string };
+  await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
+  await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
+  await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
+  const lineId = ((await must("line", db.from("order_lines").select("id").eq("order_id", o.order_id).limit(1))) as Array<{ id: string }>)[0].id;
+  let jobs = 0;
+  for (const [k, [start, end, qty]] of ([["06:30", "07:30", qtys[0]], ["08:30", "09:30", qtys[1]]] as const).entries()) {
+    const loadId = ((await must("hauler load", db.rpc("save_order_load", { p_payload: { order_id: o.order_id, load_date: day, start_time: start, end_time: end, planned_quantity: qty, unit_code: unit } }))) as { load_id: string }).load_id;
+    const offer = await db.rpc("hauler_offer_send", { p_load: loadId, p_truck: truck.id, p_trailer: null, p_driver: driver.id, p_rate_cents: rate, p_rate_unit: unit, p_note: "Demo offer (nothing is texted)." });
+    if (offer.error) continue;
+    const answered = await db.rpc("hauler_offer_respond", { p_offer: offer.data, p_accept: true, p_note: "Answered by phone (demo)" });
+    if (answered.error) continue;
+    const confirmed = await db.rpc("hauler_offer_confirm", { p_offer: offer.data });
+    if (confirmed.error) continue;
+    const ticket = ((await must("hauler ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: qty, unit_code: unit, external_reference: `DEMO-H-${o.order_number}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
+    await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
+    jobs++;
+  }
+  if (!jobs) return 0;
+  await must("commission", db.rpc("hauler_set_commission", { p_hauler: hauler.id, p_bp: 1000 }));
+  const st = (await must("settlement", db.rpc("hauler_settlement_create", { p_hauler: hauler.id, p_from: day, p_to: day }))) as { id: string };
+  await must("deduction", db.rpc("hauler_settlement_deduct", { p_settlement: st.id, p_description: "Fuel advance (demo)", p_amount_cents: 7500 }));
+  return jobs + 1;
 }

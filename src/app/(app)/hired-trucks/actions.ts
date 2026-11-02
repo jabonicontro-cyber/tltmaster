@@ -150,3 +150,69 @@ export async function answerMyOffer(f: FormData) {
   revalidatePath("/driver");
   redirect(`/driver?saved=${text(f, "answer") === "accept" ? "offer_accepted" : "offer_declined"}`);
 }
+
+// Hauler settlements (B129): payroll.manage, checked again in the database.
+const SETTLE = (sid: string) => `${PAGE}/settlements/${sid}`;
+const cents = (raw: string) => {
+  const t = raw.replace(/[$,\s]/g, "");
+  return /^\d+(\.\d{1,2})?$/.test(t) ? Math.round(Number(t) * 100) : null;
+};
+
+export async function setHaulerCommission(f: FormData) {
+  await assertPermission("payroll.manage");
+  const hauler = id(f, "hauler_id");
+  const pct = text(f, "commission");
+  if (!hauler || !/^\d{1,2}(\.\d{1,2})?$/.test(pct || "0")) back("Commission is a percentage from 0 to 50.");
+  const { error } = await (await createClient()).rpc("hauler_set_commission", { p_hauler: hauler, p_bp: Math.round(Number(pct || "0") * 100) });
+  if (error) back(dbErrorMessage(error));
+  done("commission");
+}
+
+export async function createSettlement(f: FormData) {
+  await assertPermission("payroll.manage");
+  const hauler = id(f, "hauler_id");
+  const from = text(f, "from");
+  const to = text(f, "to");
+  if (!hauler) back("Choose a hauler.");
+  if (!isOperationalDate(from) || !isOperationalDate(to)) back("Enter the first and last day of the period.");
+  const { data, error } = await (await createClient()).rpc("hauler_settlement_create", { p_hauler: hauler, p_from: from, p_to: to });
+  if (error) back(dbErrorMessage(error));
+  const r = data as { id: string; left_out: number };
+  revalidatePath(PAGE);
+  redirect(`${SETTLE(r.id)}?created=1${r.left_out ? `&left_out=${r.left_out}` : ""}`);
+}
+
+export async function addSettlementDeduction(f: FormData) {
+  await assertPermission("payroll.manage");
+  const sid = id(f, "settlement_id");
+  if (!sid) back("Settlement not found.");
+  const amount = cents(text(f, "amount"));
+  if (!amount) back("Enter the amount in dollars, for example 150.", SETTLE(sid!));
+  const { error } = await (await createClient()).rpc("hauler_settlement_deduct", { p_settlement: sid, p_description: text(f, "description"), p_amount_cents: amount });
+  if (error) back(dbErrorMessage(error), SETTLE(sid!));
+  done("deducted", SETTLE(sid!));
+}
+
+export async function removeSettlementDeduction(f: FormData) {
+  await assertPermission("payroll.manage");
+  const sid = id(f, "settlement_id");
+  const did = id(f, "deduction_id");
+  if (!sid || !did) back("Deduction not found.");
+  const { error } = await (await createClient()).rpc("hauler_settlement_remove_deduction", { p_deduction: did });
+  if (error) back(dbErrorMessage(error), SETTLE(sid!));
+  done("removed", SETTLE(sid!));
+}
+
+export async function setSettlementStatus(f: FormData) {
+  await assertPermission("payroll.manage");
+  const sid = id(f, "settlement_id");
+  const status = text(f, "status");
+  if (!sid || !["approved", "paid", "void"].includes(status)) back("Settlement not found.");
+  const paidOn = text(f, "paid_on");
+  if (status === "paid" && !isOperationalDate(paidOn)) back("Enter the day it was paid.", SETTLE(sid!));
+  const { error } = await (await createClient()).rpc("hauler_settlement_set_status", {
+    p_settlement: sid, p_status: status, p_paid_on: status === "paid" ? paidOn : null, p_reference: text(f, "reference"), p_reason: text(f, "reason"),
+  });
+  if (error) back(dbErrorMessage(error), SETTLE(sid!));
+  done(status, SETTLE(sid!));
+}

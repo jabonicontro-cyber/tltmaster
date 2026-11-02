@@ -494,6 +494,14 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 `private.credit_holds` computes who is on hold (manual, overdue past the set days, open issued invoices over the limit);
 `customer_credit_holds` returns it to order, dispatch and customer staff (amounts only with `billing.view`).
 
+## Hauler settlements (20261120005700)
+
+`haulers.commission_bp` (0–5000). `hauler_settlements` (number, hauler, period, status draft/approved/paid/void, gross,
+frozen commission rate and amount, deductions, net, paid date and reference, void reason), `hauler_settlement_jobs`
+(snapshot of each settled confirmed offer: quantity, unit, rate, amount; `released` when its settlement is voided; an
+offer is in at most one unreleased row), `hauler_settlement_deductions` (description, amount, `removed`). Read with
+`payroll.manage` or `billing.view`; every change through `hauler_*` functions (`payroll.manage`).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and
