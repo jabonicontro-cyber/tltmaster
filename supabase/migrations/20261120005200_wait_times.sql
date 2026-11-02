@@ -41,13 +41,27 @@ alter table public.load_stop_times enable row level security;
 revoke all on public.wait_time_settings, public.load_stop_times from anon, authenticated;
 grant select on public.wait_time_settings, public.load_stop_times to authenticated;
 
+-- Whether the load is on the caller's own active assignment (drivers cannot read dispatch_assignments directly).
+create or replace function private.is_my_load(p_load uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (select 1 from public.dispatch_assignments a
+                 where a.load_id = p_load and a.status = 'active' and a.driver_id = private.my_driver_id()
+                   and a.company_id = private.current_company_id());
+$$;
+revoke all on function private.is_my_load(uuid) from public, anon;
+grant execute on function private.is_my_load(uuid) to authenticated;
+
 create policy wait_time_settings_read on public.wait_time_settings for select to authenticated
   using (company_id = (select private.current_company_id()));
 create policy load_stop_times_read on public.load_stop_times for select to authenticated
   using (company_id = (select private.current_company_id())
          and ((select private.has_permission('dispatch.view')) or (select private.has_permission('billing.view'))
-              or exists (select 1 from public.dispatch_assignments a
-                         where a.load_id = load_stop_times.load_id and a.status = 'active' and a.driver_id = (select private.my_driver_id()))));
+              or private.is_my_load(load_id)));
 
 create or replace function public.wait_time_save_settings(p_free_minutes integer)
 returns void
@@ -82,9 +96,7 @@ declare
   v_company uuid := private.require_company();
   r record;
 begin
-  select l.id, l.order_id, l.company_id,
-         exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active'
-                 and a.driver_id = private.my_driver_id()) as own
+  select l.id, l.order_id, l.company_id, private.is_my_load(l.id) as own
     into r
   from public.order_loads l where l.id = p_load and l.company_id = v_company;
   if r.id is null then
@@ -196,7 +208,7 @@ begin
       and l.load_date between private.company_today(v_demo) - 14 and private.company_today(v_demo) - 1
     order by l.starts_at limit 24
   loop
-    v_wait := case when r.site_id = v_slow then 55 + (i % 4) * 15 else 12 + (i % 5) * 7 end;
+    v_wait := case when r.site_id = v_slow or i % 4 = 0 then 55 + (i % 4) * 15 else 12 + (i % 5) * 7 end;
     insert into public.load_stop_times (company_id, load_id, order_id, stop, arrived_at, departed_at, source, entered_by)
     values (v_demo, r.id, r.order_id, 'pickup', r.starts_at, r.starts_at + make_interval(mins => 10 + (i % 3) * 8), 'demo', null),
            (v_demo, r.id, r.order_id, 'site', r.starts_at + interval '50 minutes', r.starts_at + make_interval(mins => 50 + v_wait), 'demo', null)

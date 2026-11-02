@@ -29,9 +29,9 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
   if (!can(access, "dispatch.view") && !can(access, "billing.view")) redirect("/no-access?missing=dispatch.view");
   const sp = await searchParams;
   const days = PERIODS.includes(Number(sp.days)) ? Number(sp.days) : 30;
-  const { today } = await businessToday();
+  const { today, timezone } = await businessToday();
   const from = addDays(today, -(days - 1));
-  const [settings, stops] = await Promise.all([waitTimeSettings(), listStopTimes(from, today)]);
+  const [settings, stops] = await Promise.all([waitTimeSettings(), listStopTimes(from, today, timezone)]);
   const header = (
     <PageHeader
       title="Wait times"
@@ -93,7 +93,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
                       <Td className="text-right tabular">{p.visits}</Td>
                       <Td className={cn("text-right font-semibold tabular", isLong(p.medianMinutes, free) && "text-amber-800")}>{minutesLabel(p.medianMinutes)}</Td>
                       <Td className="text-right tabular">{minutesLabel(p.longest)}</Td>
-                      <Td className="text-right tabular">{p.long === null ? "—" : p.long ? <Badge tone="amber">{p.long} · {minutesLabel(p.minutesOver)}</Badge> : "0"}</Td>
+                      <Td className="text-right tabular">{p.long === null ? "—" : p.long ? <Badge tone="amber">{p.long} {p.long === 1 ? "wait" : "waits"} · {minutesLabel(p.minutesOver)} over</Badge> : "0"}</Td>
                     </Tr>
                   ))}
                 </tbody>

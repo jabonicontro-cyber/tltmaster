@@ -7,4 +7,5 @@ drop function if exists private.stop_time_writer(uuid);
 drop function if exists public.wait_time_save_settings(integer);
 drop table if exists public.load_stop_times;
 drop table if exists public.wait_time_settings;
+drop function if exists private.is_my_load(uuid);
 commit;

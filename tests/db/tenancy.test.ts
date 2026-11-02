@@ -97,7 +97,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.revenue_leak_check", "public.revenue_leak_reopen",
   // B111 wait times (20261120005200): the load's own driver or dispatch.edit marks Arrived / Left; office corrections
   // dispatch.edit; free time settings.manage. Track only: nothing is billed.
-  "public.wait_time_save_settings", "private.stop_time_writer", "public.load_stop_mark", "public.load_stop_set", "public.demo_wait_time_samples",
+  "public.wait_time_save_settings", "private.stop_time_writer", "private.is_my_load", "public.load_stop_mark", "public.load_stop_set", "public.demo_wait_time_samples",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",
