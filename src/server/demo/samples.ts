@@ -82,6 +82,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("issued quote", await issuedQuote(db, today));
   // Decided quotes for Reports → Quotes won and lost (B95): wins, losses with reasons, across materials and customers.
   note("quote history", await quoteHistory(db, today));
+  // More decided quotes on the open draft's item, so Pricing help (B114) shows a suggestion on it.
+  note("pricing history", await pricingHistory(db, today));
   note("operational workspace", await workspace(db, today, userId));
   note("assigned attention item", await assignedItem(db, userId));
   note("order waiting for a date", await needsScheduling(db, today));
@@ -851,12 +853,55 @@ async function quoteHistory(db: Db, today: string): Promise<number> {
 }
 
 /**
+ * Quote pricing help (B114): four more decided quotes for the item and unit of the demo's open draft quote — three won
+ * around its rate, one lost above it — so the draft shows a suggestion with its reasoning. Issued through the manual path
+ * (nothing is sent), added once (marked by the project name); accepted ones are closed like the quote history.
+ */
+async function pricingHistory(db: Db, today: string): Promise<number> {
+  const done = await db.from("quote_versions").select("id").like("project_name", "Pricing history (demo)%").limit(1);
+  if (missing(done.error)) return 0;
+  if (done.error) throw new Error(`Demo samples (pricing history): ${done.error.message}`);
+  if ((done.data ?? []).length) return 0;
+  const draft = ((await db.from("quotes").select("current_version_id").in("status", ["draft", "sent"]).order("created_at").limit(1)).data ?? [])[0] as { current_version_id: string | null } | undefined;
+  if (!draft?.current_version_id) return 0;
+  const line = ((await db.from("quote_lines").select("kind, material_id, charge_item_id, description, unit_code, unit_rate_cents").eq("quote_version_id", draft.current_version_id).eq("calc_method", "per_unit").or("material_id.not.is.null,charge_item_id.not.is.null").order("line_no").limit(1)).data ?? [])[0] as
+    { kind: string; material_id: string | null; charge_item_id: string | null; description: string; unit_code: string; unit_rate_cents: number | null } | undefined;
+  const customers = (await must("customers", db.from("customers").select("id").order("name").limit(3))) as Array<{ id: string }>;
+  if (!line?.unit_rate_cents || !customers.length) return 0;
+  const plan = [
+    { outcome: "accepted", reason: "", markup: 0.97 },
+    { outcome: "accepted", reason: "", markup: 1.0 },
+    { outcome: "declined", reason: "Another supplier was cheaper per unit (demo).", markup: 1.14 },
+    { outcome: "accepted", reason: "", markup: 1.03 },
+  ] as const;
+  let n = 0;
+  for (const [i, p] of plan.entries()) {
+    const customer = customers[i % customers.length];
+    const site = ((await db.from("customer_sites").select("id, label, line1, city").eq("customer_id", customer.id).limit(1)).data ?? [])[0] as { id: string; label: string; line1: string; city: string } | undefined;
+    const saved = (await must("pricing quote", db.rpc("save_quote_draft", { p_payload: {
+      customer_id: customer.id, quote_date: addDays(today, -60 + i * 5), valid_until: addDays(today, -30 + i * 5), tax_rate_bp: 0,
+      project_name: `Pricing history (demo) ${i + 1}`,
+      ...(site ? { site_id: site.id, site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
+      lines: [{ kind: line.kind, calc_method: "per_unit", ...(line.material_id ? { material_id: line.material_id } : { charge_item_id: line.charge_item_id }), description: line.description, unit_code: line.unit_code, quantity: String(line.unit_code === "load" ? 3 : 40 + i * 10), unit_rate_cents: Math.max(100, Math.round(line.unit_rate_cents * p.markup)) }],
+    } }))) as { quote_id: string; edit_seq: number };
+    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional — nothing was sent)." }));
+    await must("decide", db.rpc("set_quote_status", { p_quote_id: saved.quote_id, p_status: p.outcome, p_note: p.reason }));
+    n++;
+  }
+  await closeHistoryOrders(db);
+  return n;
+}
+
+/**
  * The accepted history quotes became Confirmed orders (as in the app). They are past sales kept for the win rate, not
  * work to schedule, so they are canceled with a note — otherwise they would fill "Needs scheduling" on the board.
  * Idempotent: only history orders still Confirmed; existing demos are tidied by Refresh.
  */
 async function closeHistoryOrders(db: Db): Promise<number> {
-  const open = (await must("history orders", db.from("orders").select("id").like("project_name", "Quote history (demo)%").eq("status", "confirmed"))) as Array<{ id: string }>;
+  const open: Array<{ id: string }> = [];
+  for (const prefix of ["Quote history (demo)%", "Pricing history (demo)%"]) {
+    open.push(...((await must("history orders", db.from("orders").select("id").like("project_name", prefix).eq("status", "confirmed"))) as Array<{ id: string }>));
+  }
   for (const o of open) {
     await must("close history order", db.rpc("set_order_status", { p_order_id: o.id, p_status: "canceled", p_note: "Sample quote history: kept to show the win rate, not work to schedule (demo)." }));
   }

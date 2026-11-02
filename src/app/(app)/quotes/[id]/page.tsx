@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { QuoteActions } from "@/components/quotes/quote-actions";
+import { PricingHelpCard } from "@/components/quotes/pricing-help";
 import { QuoteLinesTable } from "@/components/quotes/quote-lines-table";
 import { Badge, QuoteStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import { isPastExpiration, QUOTE_STATUS_LABELS } from "@/lib/quotes/status";
 import { requirePagePermission } from "@/server/auth";
 import { getQuoteDetail } from "@/server/data/quotes";
 import { getOrderForQuote } from "@/server/data/orders";
+import { loadPricingHelp } from "@/server/data/pricing-help";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Quote" };
@@ -36,6 +38,10 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   if (!detail) notFound();
   const { quote, customer, versions, current, lines, events, deliveries, names } = detail;
   const [{ today, timezone }, order] = await Promise.all([businessToday(), can(access, "orders.view") ? getOrderForQuote(quote.id) : Promise.resolve(null)]);
+  // Pricing help (B114) while the price can still change: drafts and quotes waiting on the customer.
+  const pricing = quote.status === "draft" || quote.status === "sent"
+    ? await loadPricingHelp(lines, current.site_id, today, timezone, can(access, "billing.view")).catch(() => null)
+    : null;
   const pastExpiration = isPastExpiration(quote.status, current.valid_until, today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const site = [current.site_label, current.site_line1, current.site_line2, [current.site_city, current.site_state, current.site_postal_code].filter(Boolean).join(" ")]
@@ -147,6 +153,8 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
               </dl>
             </div>
           </Card>
+
+          {pricing && <PricingHelpCard help={pricing} />}
 
           <Card>
             <CardHeader title="Emails and deliveries" description="Every attempt is recorded, including failures and previews." />

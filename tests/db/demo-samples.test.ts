@@ -286,6 +286,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Quote history (B95): eight decided quotes — three won, three declined with a reason, two expired.
     const decided = await q<{ status: string; n: string }>("select q.status, count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%' group by q.status order by q.status", [w.company]);
     expect(decided.rows.map((r) => [r.status, Number(r.n)])).toEqual([["accepted", 3], ["declined", 3], ["expired", 2]]);
+    // Pricing help (B114): four more decided quotes on the open draft's item (three won, one lost); their orders are closed.
+    const pricing = await q<{ status: string; n: string }>("select q.status, count(*) n from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.project_name like 'Pricing history (demo)%' group by q.status order by q.status", [w.company]);
+    expect(pricing.rows.map((r) => [r.status, Number(r.n)])).toEqual([["accepted", 3], ["declined", 1]]);
+    const pricingOpen = await q<{ n: string }>("select count(*) n from public.orders where company_id = $1 and project_name like 'Pricing history (demo)%' and status <> 'canceled'", [w.company]);
+    expect(Number(pricingOpen.rows[0].n)).toBe(0);
 
     // Proof of delivery (B98): confirmed tickets at a located job site get a position (up to five).
     const pod = await q<{ located: string; placed: string }>(
@@ -304,6 +309,8 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);
     expect(Number(decidedAgain.rows[0].n)).toBe(8);
+    const pricingAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Pricing history (demo)%'", [w.company]);
+    expect(Number(pricingAgain.rows[0].n)).toBe(4);
     // A demo shown as Growth gets a yard for its second dispatch base, tied to that base.
     await q("update public.companies set demo_plan = 'growth' where id = $1", [w.company]);
     const base = (await q<{ id: string }>("insert into public.dispatch_bases (company_id, code, name, timezone) values ($1, 'EAST', 'East Yard', $2) returning id", [w.company, TZ])).rows[0].id;

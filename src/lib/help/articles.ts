@@ -536,6 +536,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Revisions**: every revision is kept; sent revisions are never changed.",
       "**Emails and deliveries**: every send attempt, including failures and previews.",
       "**History** of status changes.",
+      "**Pricing help** (drafts and sent quotes): for each priced line, the rates of your own won and lost quotes from the last 12 months — at a similar distance from your yard when there are enough — a suggested rate and why. Per-load lines are also compared with your measured cost per load when you can see billing. A suggestion only; customers never see it.",
     ],
     tasks: [
       {

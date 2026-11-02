@@ -10,6 +10,11 @@ import { addDays, todayIn, zonedTimeToUtc } from "@/lib/dates";
 // were withdrawn by the company and are left out.
 
 export async function loadQuoteOutcomes(from: string, to: string, timeZone: string): Promise<QuoteOutcomes> {
+  return quoteOutcomes(await loadDecidedQuotes(from, to, timeZone));
+}
+
+/** The decided quotes of a period with their priced lines and distance (shared by B95 and pricing help, B114). */
+export async function loadDecidedQuotes(from: string, to: string, timeZone: string): Promise<DecidedQuote[]> {
   const supabase = await createClient();
   // The period's days are the company's own calendar days, not UTC ones (an evening decision belongs to that day).
   const start = zonedTimeToUtc(from, "00:00", timeZone)!;
@@ -23,7 +28,7 @@ export async function loadQuoteOutcomes(from: string, to: string, timeZone: stri
   if (quotes.error) throw new Error(`Could not load quotes: ${quotes.error.message}`);
   type Row = { id: string; quote_number: string; status: string; customer_id: string; current_version_id: string | null; accepted_version_id: string | null; first_sent_at: string | null; accepted_at: string | null; closed_at: string | null; status_note: string };
   const rows = ((quotes.data ?? []) as Row[]).filter((q) => (q.status === "accepted" ? q.accepted_at : q.closed_at));
-  if (!rows.length) return quoteOutcomes([]);
+  if (!rows.length) return [];
 
   const versionIds = rows.map((q) => q.accepted_version_id ?? q.current_version_id).filter((v): v is string => Boolean(v));
   const [versions, lines, customers, settings] = await Promise.all([
@@ -50,8 +55,7 @@ export async function loadQuoteOutcomes(from: string, to: string, timeZone: stri
     linesByVersion.set(l.quote_version_id, [...(linesByVersion.get(l.quote_version_id) ?? []), { name, unit: l.unit_code, rateCents: Number(l.unit_rate_cents) }]);
   }
 
-  return quoteOutcomes(
-    rows.map((q) => {
+  return rows.map((q) => {
       const vid = q.accepted_version_id ?? q.current_version_id ?? "";
       const v = versionById.get(vid);
       const site = v?.site_id ? sitePoint.get(v.site_id) : undefined;
@@ -69,6 +73,5 @@ export async function loadQuoteOutcomes(from: string, to: string, timeZone: stri
         totalCents: Number(v?.total_cents ?? 0),
         materials: linesByVersion.get(vid) ?? [],
       } satisfies DecidedQuote;
-    }),
-  );
+    });
 }
