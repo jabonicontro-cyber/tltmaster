@@ -46,8 +46,11 @@ begin
   if v_demo is null then
     raise exception 'Demo samples are only added to a demo company, by its owner.' using errcode = '42501';
   end if;
+  if exists (select 1 from public.company_cost_rates where company_id = v_demo and empty_mile_cents is not null) then
+    return 0;
+  end if;
   insert into public.company_cost_rates (company_id, empty_mile_cents) values (v_demo, 125)
-  on conflict (company_id) do update set empty_mile_cents = 125 where public.company_cost_rates.empty_mile_cents is null;
+  on conflict (company_id) do update set empty_mile_cents = 125;
   return 1;
 end;
 $$;
