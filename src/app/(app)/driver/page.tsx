@@ -180,6 +180,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const fuelTrucksRes = await (await createClient()).rpc("fuel_my_trucks", { p_day: h.today });
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
+  // Pay statements (B131): the driver's own, for approved periods only; empty before that update is installed.
+  const payRes = await (await createClient()).rpc("my_pay_statements");
+  const pay = payRes.error ? [] : ((payRes.data ?? []) as Array<{ period_id: string; starts_on: string; ends_on: string; total_cents: number }>).slice(0, 4);
   const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes, history] = await Promise.all([
     loadMaintenanceNotices(), loadDispatchUpdates(), myOffers(),
     // The driver's own last 30 days (B96); missing update or failure: the card is simply left out.
@@ -346,6 +349,22 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
           <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} />)}</ul>
         </section>
+      )}
+
+      {pay.length > 0 && (
+        <Card>
+          <CardHeader title="My pay" description="Statements of approved pay periods: every ticket and its pay. Gross, before taxes." />
+          <ul className="divide-y divide-line border-t border-line" aria-label="My pay statements">
+            {pay.map((p) => (
+              <li key={p.period_id}>
+                <Link href={`/driver/pay/${p.period_id}`} className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-ink/[0.03] sm:px-6">
+                  <span className="text-sm">{formatDate(p.starts_on)} – {formatDate(p.ends_on)}</span>
+                  <span className="font-semibold tabular">{formatCents(p.total_cents)}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
       )}
 
       <Card>

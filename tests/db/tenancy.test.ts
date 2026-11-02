@@ -112,6 +112,8 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.hauler_settlement_total", "private.hauler_settlement_draft", "public.hauler_set_commission", "public.hauler_settlement_create", "public.hauler_settlement_deduct", "public.hauler_settlement_remove_deduction", "public.hauler_settlement_set_status",
   // Fuel and IFTA (20261120005800): fleet.edit, or a driver for a truck they drove that day; demo sample for demo owners.
   "private.fuel_writer", "public.fuel_my_trucks", "public.fuel_record_purchase", "public.fuel_record_trip_sheet", "public.fuel_void", "public.demo_fuel_samples",
+  // Pay statements (20261120005900): read-only; payroll.manage for any driver, a driver only their own approved periods.
+  "private.pay_statement", "public.payroll_statement", "public.my_pay_statements", "public.my_pay_statement",
   // End-of-day summary (20261120004200): figures are counts only; my_daily_summary needs dispatch or settings access;
   // daily_summary_due and daily_summary_record are service role only (the scheduled job, every company by design).
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",

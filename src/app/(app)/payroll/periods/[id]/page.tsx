@@ -85,7 +85,10 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
               <tbody>
                 {[...byDriver].map(([d, r]) => (
                   <Tr key={d}>
-                    <Td><a href={`#driver-${d}`} className="font-semibold hover:underline">{name(d)}</a></Td>
+                    <Td>
+                      <a href={`#driver-${d}`} className="font-semibold hover:underline">{name(d)}</a>
+                      <Link href={`/payroll/periods/${period.id}/statements/${d}`} className="ml-2 text-xs font-semibold text-brand-fg hover:underline">Statement</Link>
+                    </Td>
                     <Td align="right">{r.tickets}</Td>
                     <Td align="right" className="tabular">{r.tons ? r.tons.toFixed(2) : "—"}</Td>
                     <Td align="right" className="tabular">{money(r.earnings)}</Td>

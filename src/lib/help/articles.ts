@@ -1782,6 +1782,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Nothing is billed: detention charges are not part of this yet.", "Times come from taps, not GPS."],
   },
   {
+    id: "pay-statements",
+    title: "Driver pay statements",
+    summary: "Each driver's pay for a payroll period, ticket by ticket, to print — and on the driver's own My Day once the period is approved.",
+    category: "people",
+    routes: ["/payroll/periods/*", "/driver", "/driver/pay/*"],
+    permissions: ["payroll.manage", "driver.portal"],
+    audience: "Payroll staff print any driver's statement; each driver sees only their own, after approval.",
+    whatYouSee: [
+      "On a payroll period, **Statement** next to each driver: every verified ticket with its pay, adjustments and the gross.",
+      "On **My Day**, drivers see **My pay**: their statements for approved periods.",
+    ],
+    tasks: [
+      { title: "Print a driver's statement", steps: ["Open **Payroll** and the period.", "Select **Statement** next to the driver, then **Print**."] },
+      { title: "Let drivers see their pay", steps: ["Approve the period. Each driver then sees their own statement on My Day."] },
+    ],
+    prerequisites: ["Payroll calculation is on and the period has calculated tickets."],
+    troubleshooting: [
+      { problem: "A driver does not see their statement.", fix: "The period is not approved yet, or they had no paid tickets or adjustments in it." },
+    ],
+    next: [],
+    related: [],
+    reviewed: "2026-11-02",
+    limitations: ["Gross pay only: taxes and deductions come from your payroll provider."],
+  },
+  {
     id: "fuel-ifta",
     title: "Fuel and IFTA",
     summary: "Drivers record a trip sheet each day and the fuel they buy; Fleet → Fuel and IFTA adds up miles and gallons per state for the quarter's IFTA report.",

@@ -93,6 +93,15 @@ test("the owner sets a rule, calculates a period from a verified ticket, approve
   await page.getByLabel(/I checked the totals/).check();
   await page.getByRole("button", { name: "Approve and lock" }).click();
   await expect(page.getByText("Approved", { exact: true }).first()).toBeVisible();
+
+  // The driver's pay statement (B131): the ticket and the gross, ready to print.
+  const periodUrl = page.url();
+  await page.locator("section").filter({ has: page.getByRole("heading", { name: "Earnings by driver" }) }).getByRole("row").filter({ hasText: f.driver }).getByRole("link", { name: "Statement" }).click();
+  const statement = page.getByRole("article", { name: "Pay statement" });
+  await expect(statement).toContainText(f.ticket);
+  await expect(statement.getByLabel("Totals")).toContainText("$91.25");
+  await expect(page.getByText("Not approved yet")).toHaveCount(0);
+  await page.goto(periodUrl);
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Download summary (CSV)" }).click();
   const file = await (await download).path();
