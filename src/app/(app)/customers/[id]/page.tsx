@@ -9,6 +9,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { PageHeader } from "@/components/ui/page-header";
+import { PriorityToggle } from "@/components/customers/priority-toggle";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
@@ -79,6 +80,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           <>
             <ActiveBadge active={customer.active} />
             <SampleBadge show={customer.is_sample} />
+            {"is_priority" in customer && <PriorityToggle customerId={customer.id} priority={Boolean((customer as { is_priority?: boolean }).is_priority)} canEdit={canEdit} />}
           </>
         }
         description={`${customer.customer_number} · ${customer.customer_type === "commercial" ? "Commercial" : "Residential"} customer`}

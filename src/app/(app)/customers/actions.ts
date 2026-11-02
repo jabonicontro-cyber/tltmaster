@@ -221,3 +221,17 @@ export async function reviewSiteNote(formData: FormData): Promise<ActionResult> 
   });
 }
 
+
+/** Priority customer on or off (owner 2026-11-02): their loads are planned first. customers.edit, checked again by the database. */
+export async function setCustomerPriority(customerId: string, priority: boolean): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("customers.edit");
+    if (!uuid.safeParse(customerId).success) return fail("Customer not found.");
+    const { error } = await (await createClient()).rpc("set_customer_priority", { p_customer: customerId, p_priority: priority });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/customers/${customerId}`);
+    revalidatePath("/customers");
+    revalidatePath("/dispatch");
+    return ok(undefined, priority ? "Priority customer: their loads are planned first." : "No longer a priority customer.");
+  });
+}

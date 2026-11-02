@@ -51,6 +51,8 @@ export interface SmartLoad {
   customer_id?: string | null;
   /** Median recorded wait at this job site over the last 60 days, in minutes (B122); absent without 3+ visits. */
   site_wait?: number | null;
+  /** The customer is marked priority (owner 2026-11-02): planned first after urgent orders. */
+  priority_customer?: boolean;
 }
 
 export interface SmartBooking {
@@ -282,6 +284,10 @@ function priorityOf(l: SmartLoad, today: string): { rank: number; reasons: strin
     rank = 0;
     reasons.push(l.needed_by ? "Urgent order (flagged by the office, needed by a set time)" : "Urgent order (flagged by the office)");
   }
+  if (l.priority_customer && !l.urgent) {
+    rank = Math.min(rank, 1);
+    reasons.push("Priority customer");
+  }
   if (l.requested_date && l.requested_date < l.load_date) {
     rank = Math.min(rank, 1);
     reasons.push(`Planned after the customer's requested date (${l.requested_date})`);
@@ -301,7 +307,8 @@ export function orderLoads(loads: SmartLoad[], today: string): SmartLoad[] {
   return [...loads].sort((a, b) => {
     const pa = priorityOf(a, today).rank;
     const pb = priorityOf(b, today).rank;
-    return pa - pb || a.load_date.localeCompare(b.load_date) || a.starts_at.localeCompare(b.starts_at) || a.order_number.localeCompare(b.order_number) || a.load_number - b.load_number || a.id.localeCompare(b.id);
+    // Within the same urgency, a priority customer's load is planned first (owner 2026-11-02).
+    return pa - pb || Number(Boolean(b.priority_customer)) - Number(Boolean(a.priority_customer)) || a.load_date.localeCompare(b.load_date) || a.starts_at.localeCompare(b.starts_at) || a.order_number.localeCompare(b.order_number) || a.load_number - b.load_number || a.id.localeCompare(b.id);
   });
 }
 

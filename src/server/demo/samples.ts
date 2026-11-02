@@ -111,6 +111,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("cost rates", await rpcCount(db, "demo_cost_rates"));
   // Profit-aware dispatch (B113): a fictional cost per empty mile, so proposals show an estimated cost.
   note("cost per empty mile", await rpcCount(db, "demo_empty_mile_cost"));
+  // Priority customers (owner 2026-11-02): the demo's busiest customer is priority, so the board shows it.
+  note("priority customer", await rpcCount(db, "demo_priority_customer"));
   // Parts inventory (B105): a small shelf with one low part and one used on an open work order.
   note("parts inventory", await rpcCount(db, "demo_parts_samples"));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.

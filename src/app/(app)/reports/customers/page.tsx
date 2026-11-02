@@ -39,6 +39,12 @@ export default async function CustomerInsightsPage() {
       : Promise.resolve([]),
     billing ? listInvoices().catch(() => null) : Promise.resolve(null),
   ]);
+  // Most profitable customers (owner 2026-11-02): profit per customer over the last 90 days (B104 cost rates).
+  const profit = billing
+    ? await supabase.rpc("report_profit", { p_from: addDays(today, -90), p_to: addDays(today, -1) })
+        .then((r) => (r.error ? null : (r.data as { has_rates: boolean; by_customer: Array<{ name: string; loads: number; revenue_cents: number; cost_cents: number; profit_cents: number }> })))
+    : null;
+  const topProfit = (profit?.by_customer ?? []).filter((c) => c.revenue_cents > 0).sort((a, b) => b.profit_cents - a.profit_cents).slice(0, 10);
   const points: OrderPoint[] = orderRows.map((o) => ({ customerId: o.customer_id, customerName: o.customers?.name ?? "Customer", orderDate: o.order_date, totalCents: Number(o.total_cents) }));
   const issued = (invoices ?? []).filter((i) => i.status === "issued" && i.issue_date);
   const paid: PaidInvoice[] = issued
@@ -57,7 +63,7 @@ export default async function CustomerInsightsPage() {
     <>
       <PageHeader
         title="Customer insights"
-        description="Customers ordering less than usual or paying slower, and the money you can expect over the next four weeks — from your own orders, invoices and payments. Estimates are labelled; nothing is sent."
+        description="Your most profitable customers, those ordering less than usual or paying slower, and the money you can expect over the next four weeks — from your own orders, invoices and payments. Estimates are labelled; nothing is sent."
         actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
       />
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
@@ -83,6 +89,32 @@ export default async function CustomerInsightsPage() {
               {forecast.estimatedFromHistory} invoice{forecast.estimatedFromHistory === 1 ? "" : "s"} placed from payment history, {forecast.fromTerms} from terms{forecast.unknown ? `, ${forecast.unknown} without a date` : ""}. {forecast.beyond.invoices ? `${formatCents(forecast.beyond.cents)} expected after four weeks.` : ""}
             </p>
           </CardBody>
+        </Card>
+      )}
+
+      {billing && profit && (
+        <Card className="mb-5">
+          <CardHeader
+            title="Most profitable customers"
+            description={profit.has_rates ? "Last 90 days: revenue from delivered tickets minus your cost rates on each load's hours. An estimate." : "Last 90 days by revenue. Add cost rates (Settings → Cost rates) to rank by profit."}
+          />
+          {topProfit.length === 0 ? <CardBody><EmptyState title="No priced deliveries in the last 90 days" /></CardBody> : (
+            <ol className="divide-y divide-line border-t border-line" aria-label="Most profitable customers">
+              {(profit.has_rates ? topProfit : [...topProfit].sort((a, b) => b.revenue_cents - a.revenue_cents)).map((c, i) => (
+                <li key={c.name} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3 text-sm sm:px-6">
+                  <span className="w-5 text-right text-muted tabular">{i + 1}</span>
+                  <Link href={`/customers?q=${encodeURIComponent(c.name)}`} className="min-w-0 flex-1 font-semibold hover:underline">{c.name}</Link>
+                  <span className="text-muted tabular">{c.loads} loads · {formatCents(c.revenue_cents)} revenue</span>
+                  {profit.has_rates && (
+                    <span className="w-40 text-right">
+                      <span className={cn("font-semibold tabular", c.profit_cents < 0 ? "text-critical" : "text-ink")}>{formatCents(c.profit_cents)}</span>
+                      <span className="text-muted"> · {c.revenue_cents > 0 ? `${Math.round((c.profit_cents / c.revenue_cents) * 100)}%` : "—"}</span>
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ol>
+          )}
         </Card>
       )}
 

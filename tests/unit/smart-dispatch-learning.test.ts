@@ -38,3 +38,18 @@ describe("learning from dispatcher decisions", () => {
     expect(experienced.proposal!.driverId).toBe("d-b");
   });
 });
+
+describe("priority customers", () => {
+  it("plans a priority customer's load first, right after urgent ones, with the reason", () => {
+    const later = { ...load, id: "P", order_number: "ORD-2", starts_at: `${TODAY}T15:00:00Z`, ends_at: `${TODAY}T16:00:00Z`, priority_customer: true };
+    const urgent = { ...load, id: "U", order_number: "ORD-3", starts_at: `${TODAY}T17:00:00Z`, ends_at: `${TODAY}T18:00:00Z`, urgent: true };
+    const plans = recommend({ ...input(empty), loads: [load, later, urgent], drivers: [driver("d-a", "Avery")] });
+    expect(plans.map((p) => p.load.id)).toEqual(["U", "P", "L"]);
+    expect(plans[1].priority.reasons[0]).toBe("Priority customer");
+    // With one driver, the priority load gets them before the ordinary load at an overlapping time.
+    const clash = { ...later, starts_at: load.starts_at, ends_at: load.ends_at };
+    const two = recommend({ ...input(empty), loads: [load, clash], drivers: [driver("d-a", "Avery")], trucks: [truck] });
+    expect(two.find((p) => p.load.id === "P")!.proposal).not.toBeNull();
+    expect(two.find((p) => p.load.id === "L")!.proposal).toBeNull();
+  });
+});

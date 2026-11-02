@@ -23,7 +23,7 @@ interface LoadRow {
   ends_at: string;
   planned_quantity: number | string | null;
   unit_code: string | null;
-  orders: { order_number: string; status: string; requested_date: string | null; site_line1: string; site_label: string; customer_id?: string; customers: { name: string } | null;
+  orders: { order_number: string; status: string; requested_date: string | null; site_line1: string; site_label: string; customer_id?: string; customers: { name: string; is_priority?: boolean } | null;
     /** The located customer site (B113 empty miles). */
     customer_sites?: { latitude: number | string | null; longitude: number | string | null } | null } | null;
 }
@@ -33,6 +33,8 @@ const pointOf = (o: LoadRow["orders"]): Point | null => {
   const lat = o?.customer_sites?.latitude, lng = o?.customer_sites?.longitude;
   return lat == null || lng == null ? null : { lat: Number(lat), lng: Number(lng) };
 };
+
+const LOAD_SELECT = "id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customer_id, customers(name), customer_sites(latitude, longitude))";
 
 const site = (o: LoadRow["orders"]) => (o ? (o.site_line1 || o.site_label || "").trim().toLowerCase() : "");
 
@@ -51,10 +53,10 @@ const clock = (t: string) => {
 export async function getSmartDispatchInput(from: string, to: string): Promise<SmartInput> {
   const supabase = await createClient();
   const { today, timezone } = await businessToday();
-  const [loads, trucks, drivers, quals, reports, urgencies, onLeave, primaries, schedule] = await Promise.all([
+  const [loadsFirst, trucks, drivers, quals, reports, urgencies, onLeave, primaries, schedule] = await Promise.all([
     supabase
       .from("order_loads")
-      .select("id, order_id, load_number, load_date, starts_at, ends_at, planned_quantity, unit_code, orders(order_number, status, requested_date, site_line1, site_label, customer_id, customers(name), customer_sites(latitude, longitude))")
+      .select(LOAD_SELECT.replace("customers(name)", "customers(name, is_priority)"))
       .eq("status", "planned")
       .gte("load_date", addDays(from, -1))
       .lte("load_date", addDays(to, 1)),
@@ -70,6 +72,10 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
     // Drivers' scheduled shifts (20261120003300): from the day before (overnight shifts) to the day after the range.
     supabase.rpc("schedule_range", { p_from: addDays(from, -1), p_days: Math.min(42, daysBetween(from, to) + 3) }),
   ]);
+  // Before the priority-customer update (20261120005400) the column is missing: load without it (no priorities).
+  const loads = loadsFirst.error && /is_priority/.test(loadsFirst.error.message)
+    ? await supabase.from("order_loads").select(LOAD_SELECT).eq("status", "planned").gte("load_date", addDays(from, -1)).lte("load_date", addDays(to, 1))
+    : loadsFirst;
   const primaryOf = new Map(((primaries.data ?? []) as Array<{ id: string; primary_truck_id: string }>).map((d) => [d.id, d.primary_truck_id]));
   for (const r of [loads, trucks, drivers, quals, reports, urgencies]) {
     if (r.error) throw new Error(`Smart Dispatch could not read the data it needs: ${r.error.message}`);
@@ -141,6 +147,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
       needed_by: urgent.get(l.order_id) ?? null,
       point: pointOf(l.orders),
       customer_id: l.orders!.customer_id ?? null,
+      priority_customer: Boolean(l.orders!.customers?.is_priority),
     }));
 
   const bookings: SmartBooking[] = (assignments.data ?? []).map((a) => {

@@ -294,6 +294,7 @@ function loadValue(load: SmartLoad, input: OptimizationInput, p: Priorities, max
   const reasons: string[] = [];
   let value = 100; // covering a load always matters
   if (load.urgent) { value += 12 * p.service; reasons.push("urgent order"); }
+  else if (load.priority_customer) { value += 10 * p.service; reasons.push("priority customer"); }
   if (load.requested_date && load.requested_date < load.load_date) { value += 8 * p.service; reasons.push(`customer asked for ${load.requested_date}`); }
   else if (load.requested_date && load.requested_date <= load.load_date) { value += 4 * p.service; reasons.push("due on this date"); }
   const rev = input.revenueCents[load.id];
