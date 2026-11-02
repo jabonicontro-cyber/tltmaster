@@ -1,4 +1,5 @@
 import {
+  Sunrise,
   BarChart3, Boxes, ShieldAlert, CalendarClock, IdCard, ReceiptText, Siren, Route, MessageSquareWarning, CalendarRange, ClipboardList, FileText, Settings, Ticket, Truck, Users, Wrench, CalendarOff, MessagesSquare, Workflow, Wallet, Globe,
   type LucideIcon,
 } from "lucide-react";
@@ -23,6 +24,7 @@ export type NavGroup = "Sales" | "Operations" | "Finance" | "Company";
 export const NAV_ITEMS: NavItem[] = [
   { href: "/driver", label: "My Day", icon: Route, permission: "driver.portal" },
   // One home for everyone with office, dispatch, shop or sales responsibilities (drivers start on My Day).
+  { href: "/briefing", label: "Morning briefing", icon: Sunrise, anyOf: ["dispatch.view", "billing.view"] },
   { href: "/command-center", label: "Command Center", icon: Siren, anyOf: ["dispatch.view", "tickets.view", "billing.view", "fleet.view", "field_reports.view", "orders.view", "quotes.view"] },
   // Everyone: messages need comms.message, but alerts and announcements addressed to a person are always theirs to read.
   { href: "/communications", label: "Communications", icon: MessagesSquare },
