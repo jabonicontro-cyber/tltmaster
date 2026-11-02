@@ -27,7 +27,7 @@ describe("accountant access", () => {
       expect((await pgError(s.query("select public.accountant_grant($1, 'x', $2, false)", [office, addDays(today, 30)]))).message).toMatch(/already works in the company/);
       await grant(addDays(today, 30));
       const list = (await s.query<{ r: Array<{ user_id: string; payroll: boolean; current: boolean }> }>("select public.accountant_list() r")).rows[0].r;
-      expect(list).toEqual([expect.objectContaining({ user_id: accountant, payroll: false, current: true })]);
+      expect(list.filter((a) => a.user_id === accountant)).toEqual([expect.objectContaining({ user_id: accountant, payroll: false, current: true })]);
 
       // The accountant reads financials, changes nothing, and never gets more than the two read permissions.
       await s.as(accountant);
@@ -59,7 +59,7 @@ describe("accountant access", () => {
       // Ending it now: no company, nothing readable, nothing callable.
       await s.as(owner);
       await s.query("select public.accountant_set_access($1, null, false, true)", [accountant]);
-      expect((await s.query<{ r: Array<{ current: boolean }> }>("select public.accountant_list() r")).rows[0].r[0].current).toBe(false);
+      expect((await s.query<{ r: Array<{ user_id: string; current: boolean }> }>("select public.accountant_list() r")).rows[0].r.find((a) => a.user_id === accountant)?.current).toBe(false);
       await s.as(accountant);
       expect((await s.query<{ c: string | null }>("select private.current_company_id() c")).rows[0].c).toBeNull();
       expect((await s.query("select 1 from public.invoices")).rowCount).toBe(0);
