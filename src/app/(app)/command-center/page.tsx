@@ -21,14 +21,14 @@ import { greeting } from "@/lib/people/greeting";
 import { shownName } from "@/server/data/profile";
 import { Pagination } from "@/components/ui/pagination";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
-import { EXCEPTION_KINDS, KIND_LABELS, KIND_OWNERS, PRIORITY_RULES, exceptionAction, exceptionTitle, metricCards, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
+import { EXCEPTION_KINDS, KIND_LABELS, KIND_OWNERS, PRIORITY_RULES, exceptionAction, exceptionTitle, metricCards, type CommandSummary, type ExceptionKind, type MetricCard } from "@/lib/command-center/rules";
 import { urgentSummary } from "@/lib/command-center/urgent";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
 import { can, type Permission } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
-import { ACTIVITY_PAGE_SIZE, QUEUE_PAGE_SIZE, loadActivity, loadAssigneeOptions, loadLayout, loadQueue, loadSummary } from "@/server/data/command-center";
+import { ACTIVITY_PAGE_SIZE, QUEUE_PAGE_SIZE, loadActivity, loadAssigneeOptions, loadLayout, loadOverview, type Loaded, type QueuePage } from "@/server/data/command-center";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard } from "@/server/data/dashboard";
 import { loadDriverHome } from "@/server/data/driver";
@@ -102,10 +102,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
-  const [summary, queue, mineTop, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks] = await Promise.all([
-    ops ? loadSummary() : none,
-    ops ? loadQueue({ kind, mine, page, hidden }) : none,
-    ops ? loadQueue({ mine: true, page: 1, limit: 5 }) : none,
+  const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks] = await Promise.all([
+    ops ? loadOverview({ kind, mine, page, hidden, mineLimit: 5 }) : Promise.resolve(null),
     loadActivity(access, activityPage),
     canAssign ? loadAssigneeOptions() : Promise.resolve([]),
     getUserNames(),
@@ -121,6 +119,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     // Revenue check (B110): open findings for people who see billing; nothing shown if it cannot be loaded.
     has("billing.view") ? listLeaks().catch(() => null) : none,
   ]);
+  const summary: Loaded<CommandSummary> | null = attention?.summary ?? null;
+  const queue: Loaded<QueuePage> | null = attention?.queue ?? null;
+  const mineTop: Loaded<QueuePage> | null = attention?.mineTop ?? null;
   const now = new Date();
   const todayDay = outlook?.ok ? outlook.data.days.find((d) => d.date === today) ?? null : null;
 

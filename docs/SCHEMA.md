@@ -328,6 +328,7 @@ reliably known), the affected order / load / ticket / equipment / assignment,
 | Function | Permission | Does |
 | --- | --- | --- |
 | `command_center_summary()` | any of dispatch / tickets / billing / fleet view | Counts per kind and overview figures; a figure the caller may not see is `null`. |
+| `command_center_overview(kind, mine, limit, offset, hidden, mine_limit)` | same as the summary | The Command Center page in one call (20261120006400): `summary`, `urgent_by_kind`, `queue` and `mine` from one build of the exceptions list (`private.cc_exceptions`), identical to the separate calls, which now use the same helpers. |
 | `command_center_exceptions(kind, mine, limit, offset)` | same | Visible exceptions, priority then oldest first, with the current assignee; `limit` clamped to 1–100; returns `total`. |
 | `exception_assignee_options()` | `exceptions.assign` | Active members (name, role) and the kinds their role can resolve. |
 | `assign_exception(key, user, note)` | `exceptions.assign` | Only for an exception that is open and visible to the caller, only to an active member whose role holds the resolving permission (`tickets.edit`, `dispatch.edit`, `tickets.review`, `billing.manage`, `fleet.service`); ends the previous assignee; audited. |

@@ -236,6 +236,41 @@ describe("paging and filters", () => {
   });
 });
 
+describe("one build of the list per page (20261120006400)", () => {
+  it("the combined call returns exactly what the separate calls return, for each role, and refuses the same people", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      await s.as(w.office);
+      const past = await planLoad(s, w.order.id, w.yesterday, "07:00", "09:00");
+      await assign(s, past.load_id, w.f.t1, null, w.f.d1);
+      await s.query("select public.set_equipment_service_status('truck', $1, 'out_of_service', 'Brakes (test)', null)", [w.f.t2]);
+      const dispatcher = await s.createUser("dispatcher");
+      const mechanic = await s.createUser("mechanic");
+      for (const who of [w.office, dispatcher, mechanic]) {
+        await s.as(who);
+        for (const [kind, mine, hidden] of [[null, false, false], ["missing_ticket", false, false], [null, true, false], [null, false, true]] as const) {
+          const { rows } = await s.query<{ combined: unknown; separate: unknown }>(
+            `select public.command_center_overview($1, $2, 20, 0, $3, 5) as combined,
+                    jsonb_build_object('summary', public.command_center_summary(), 'urgent_by_kind', public.command_center_urgent_by_kind(),
+                                       'queue', public.command_center_exceptions($1, $2, 20, 0, $3),
+                                       'mine', public.command_center_exceptions(null, true, 5, 0, false)) as separate`,
+            [kind, mine, hidden]);
+          expect(rows[0].combined, `${who} ${kind} ${mine} ${hidden}`).toEqual(rows[0].separate);
+        }
+      }
+      await s.as(w.office);
+      expect((await pgError(s.query("select public.command_center_overview('everything')"))).message).toMatch(/Unknown exception type/);
+      for (const role of ["driver", null] as const) {
+        await s.as(await s.createUser(role));
+        expect((await pgError(s.query("select public.command_center_overview()"))).code, String(role)).toBe("42501");
+      }
+      await s.as(null);
+      expect((await pgError(s.query("select public.command_center_overview()"))).code).toBe("42501");
+      expect((await pgError(s.query("select private.cc_exceptions($1)", [w.order.id]))).code).toBe("42501");
+    });
+  });
+});
+
 describe("assigning an item to a person", () => {
   it("assigns only open items to people who can resolve them, keeps the history, and never closes the item", async () => {
     await withSession(async (s) => {

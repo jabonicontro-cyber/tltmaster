@@ -223,7 +223,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.onboarding_go_live_sign", "public.platform_onboarding_kit", "public.platform_onboarding_form_save",
   "public.platform_onboarding_go_live_sign",
   // Company CRM (20261119000100): membership check for owners/assignees; opportunity rules and history; prospect → customer.
-  "public.command_center_urgent_by_kind", "private.is_company_member",
+  "public.command_center_urgent_by_kind", "public.command_center_overview", "private.is_company_member",
   // Dispatch bases (20261120000100): plan limit, rules, default base on insert, default base for new companies.
   "private.base_limit", "private.dispatch_base_rules", "public.set_default_dispatch_base", "private.default_base", "private.company_default_base", "private.my_bases", "private.base_unrestricted", "public.set_person_bases", "public.set_order_base", "public.dispatch_base_allowance", "public.platform_demo_set_plan", "public.platform_help_overview", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "private.company_record_counts", "private.company_delete_enabled", "private.crm_opportunity_rules", "private.crm_opportunity_after", "private.crm_customer_on_order",
   "private.alerts_from_field_reports", "private.alerts_from_time_off", "private.alerts_from_work_orders",

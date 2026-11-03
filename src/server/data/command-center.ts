@@ -44,6 +44,46 @@ export async function loadQueue(f: { kind?: ExceptionKind; mine?: boolean; page:
   return { ok: true, data: data as QueuePage };
 }
 
+/**
+ * The Command Center's attention sections in one database call (20261120006400): overview counts, urgent breakdown,
+ * the queue page and the caller's top items, from one build of the exceptions list instead of four. Before that update
+ * is installed it falls back to the separate calls, with the same results.
+ */
+export async function loadOverview(f: { kind?: ExceptionKind; mine?: boolean; page: number; hidden?: boolean; mineLimit: number }): Promise<{
+  summary: Loaded<CommandSummary>; queue: Loaded<QueuePage>; mineTop: Loaded<QueuePage>;
+}> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("command_center_overview", {
+    p_kind: f.kind ?? null,
+    p_mine: f.mine ?? false,
+    p_limit: QUEUE_PAGE_SIZE,
+    p_offset: (f.page - 1) * QUEUE_PAGE_SIZE,
+    p_hidden: f.hidden ?? false,
+    p_mine_limit: f.mineLimit,
+  });
+  if (error && (error.code === "PGRST202" || error.code === "42883")) {
+    const [summary, queue, mineTop] = await Promise.all([
+      loadSummary(),
+      loadQueue({ kind: f.kind, mine: f.mine, page: f.page, hidden: f.hidden }),
+      loadQueue({ mine: true, page: 1, limit: f.mineLimit }),
+    ]);
+    return { summary, queue, mineTop };
+  }
+  if (error || !data) {
+    return {
+      summary: { ok: false, error: "The overview could not be loaded." },
+      queue: { ok: false, error: "The attention queue could not be loaded." },
+      mineTop: { ok: false, error: "The attention queue could not be loaded." },
+    };
+  }
+  const d = data as { summary: CommandSummary; urgent_by_kind: Record<string, number> | null; queue: QueuePage; mine: QueuePage };
+  return {
+    summary: { ok: true, data: { ...d.summary, urgent_by_kind: d.urgent_by_kind } },
+    queue: { ok: true, data: d.queue },
+    mineTop: { ok: true, data: d.mine },
+  };
+}
+
 export interface ActivityRow {
   id: string;
   occurred_at: string;
