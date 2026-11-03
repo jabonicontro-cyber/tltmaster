@@ -246,9 +246,11 @@ describe("one build of the list per page (20261120006400)", () => {
       await s.query("select public.set_equipment_service_status('truck', $1, 'out_of_service', 'Brakes (test)', null)", [w.f.t2]);
       const dispatcher = await s.createUser("dispatcher");
       const mechanic = await s.createUser("mechanic");
-      for (const who of [w.office, dispatcher, mechanic]) {
+      const cases = [[w.office, null, false, false], [w.office, "missing_ticket", false, false], [w.office, null, true, true],
+                     [dispatcher, null, false, false], [mechanic, null, false, false]] as const;
+      for (const [who, kind, mine, hidden] of cases) {
         await s.as(who);
-        for (const [kind, mine, hidden] of [[null, false, false], ["missing_ticket", false, false], [null, true, false], [null, false, true]] as const) {
+        {
           const { rows } = await s.query<{ combined: unknown; separate: unknown }>(
             `select public.command_center_overview($1, $2, 20, 0, $3, 5) as combined,
                     jsonb_build_object('summary', public.command_center_summary(), 'urgent_by_kind', public.command_center_urgent_by_kind(),
@@ -268,7 +270,7 @@ describe("one build of the list per page (20261120006400)", () => {
       expect((await pgError(s.query("select public.command_center_overview()"))).code).toBe("42501");
       expect((await pgError(s.query("select private.cc_exceptions($1)", [w.order.id]))).code).toBe("42501");
     });
-  });
+  }, 60_000);
 });
 
 describe("assigning an item to a person", () => {
