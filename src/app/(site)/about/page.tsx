@@ -49,7 +49,7 @@ export default function AboutPage() {
           </ul>
           <h2 className="mt-16 text-2xl font-black text-cloud">Your data</h2>
           <p className="mt-3 max-w-3xl text-silver">
-            Each company's records are kept separate from every other company's, people see only what their role allows, and changes are recorded. The details, and
+            Each company&apos;s records are kept separate from every other company&apos;s, people see only what their role allows, and changes are recorded. The details, and
             what is not in place yet, are on <Link href="/trust" className="font-semibold text-cloud underline">Trust &amp; Security</Link>.
           </p>
           <p className="mt-10 max-w-3xl text-silver">
