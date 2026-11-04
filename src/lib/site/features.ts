@@ -109,11 +109,11 @@ export const FEATURES: Feature[] = [
     points: ["Offers blocked while insurance, W-9, agreement, registration or inspection is missing or expired", "The hired driver accepts or declines on My Day", "Hauler pay statement from verified tickets at the offered rate"],
     limitations: ["Add-on switched on per company", "Offers by text message are not available yet"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/hired-trucks"],
-    screenshots: [],
+    screenshots: ["hired-trucks"],
     related: ["smart-dispatch"],
-    verified: "2026-10-26",
+    verified: "2026-11-04",
   },
   {
     id: "weather-alerts",
@@ -141,11 +141,11 @@ export const FEATURES: Feature[] = [
     points: ["Report from the phone with up to 8 photos", "Findings kept apart from the report as made", "Corrective actions with owners and due dates"],
     limitations: ["No regulator filing or insurance claim is sent from Taviron"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/safety", "/driver/safety"],
-    screenshots: [],
+    screenshots: ["safety-incidents"],
     related: ["driver-portal", "maintenance"],
-    verified: "2026-10-28",
+    verified: "2026-11-04",
   },
   {
     id: "load-profit",
@@ -157,11 +157,11 @@ export const FEATURES: Feature[] = [
     points: ["Your own cost rates, set in Settings", "Profit and margin by customer and by truck", "Loads without a price or hours counted, never guessed"],
     limitations: ["An estimate from planned hours and flat rates; actual fuel, pay and repair costs are not read"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/reports", "/settings"],
-    screenshots: [],
+    screenshots: ["load-profit"],
     related: ["reports", "billing"],
-    verified: "2026-10-28",
+    verified: "2026-11-04",
   },
   {
     id: "parts-inventory",
@@ -173,11 +173,11 @@ export const FEATURES: Feature[] = [
     points: ["Low-stock flags at your reorder point", "Use parts on a work order from the phone or desk", "Stock never goes below zero"],
     limitations: ["No purchase orders are sent to suppliers"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/maintenance/parts"],
-    screenshots: [],
+    screenshots: ["parts-inventory"],
     related: ["maintenance", "maintenance-estimates"],
-    verified: "2026-10-28",
+    verified: "2026-11-04",
   },
   {
     id: "truck-health",
@@ -237,11 +237,11 @@ export const FEATURES: Feature[] = [
     points: ["Typical winning and losing rates per item and unit", "Prefers quotes at a similar distance", "Flags rates below cost or above what you usually lose at", "Says when there is not enough history instead of guessing"],
     limitations: ["A suggestion only: the person sets the price", "Never shown to customers", "Distance is straight-line from the yard"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/quotes"],
-    screenshots: [],
+    screenshots: ["pricing-help"],
     related: ["quote-outcomes"],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "proof-of-delivery",
@@ -429,11 +429,11 @@ export const FEATURES: Feature[] = [
     points: ["One lifecycle per open order with the reason and next step", "Needs-attention view, oldest first within each stage", "Read-only: nothing here changes an order"],
     limitations: ["Invoices, receivables and payments are not built; the view ends at Handed off"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/order-to-cash"],
-    screenshots: [],
+    screenshots: ["order-to-cash"],
     related: ["billing", "orders"],
-    verified: "2026-10-14",
+    verified: "2026-11-04",
   },
   {
     id: "customer-crm",
@@ -558,11 +558,11 @@ export const FEATURES: Feature[] = [
     limitations: ["Shift offer notices are in-app only (no texts or emails)"],
     status: "available",
     // Publishing is a person's decision (docs/MARKETING.md).
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/schedule"],
-    screenshots: [],
+    screenshots: ["schedules"],
     related: ["people", "smart-dispatch", "plan-the-day"],
-    verified: "2026-10-28",
+    verified: "2026-11-04",
   },
   {
     id: "reports",
@@ -622,11 +622,11 @@ export const FEATURES: Feature[] = [
     points: ["One route per truck from the dispatch board", "Distances per leg; road miles and driving time with truck routing connected", "Sites without a location are listed to fix"],
     limitations: ["Without a routing key, distances are straight lines (labelled)", "Truck dimensions are not recorded yet, so routing uses a standard truck profile", "Routes follow the board's load order; no automatic re-sequencing"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/dispatch"],
-    screenshots: [],
+    screenshots: ["route-planner"],
     related: ["plan-the-day", "smart-dispatch"],
-    verified: "2026-10-14",
+    verified: "2026-11-04",
   },
   {
     id: "dispatch-bases",
@@ -654,11 +654,11 @@ export const FEATURES: Feature[] = [
     points: ["Every row checked and reviewed before approval", "Possible duplicates flagged", "All at once or nothing", "Undo makes records inactive, never deletes them"],
     limitations: ["CSV files only", "Orders, tickets and history are not imported"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/settings"],
-    screenshots: [],
+    screenshots: ["company-import"],
     related: ["help-center"],
-    verified: "2026-10-28",
+    verified: "2026-11-04",
   },
   {
     id: "invoicing",
@@ -670,11 +670,11 @@ export const FEATURES: Feature[] = [
     points: ["Invoices from verified, handed-off orders only", "Your logo and colour on every invoice", "Payments never exceed what is owed", "Receivables by age, per customer"],
     limitations: ["No online card or bank payment", "One invoice per order"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/billing/invoices"],
-    screenshots: [],
+    screenshots: ["invoicing"],
     related: ["billing"],
-    verified: "2026-11-01",
+    verified: "2026-11-04",
   },
   {
     id: "morning-briefing",
@@ -686,11 +686,11 @@ export const FEATURES: Feature[] = [
     points: ["Ranked by urgency and money at stake", "One button per action", "Only what each person may see", "Quiet days say so"],
     limitations: ["Built from today's records; no forecasts yet"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/briefing"],
-    screenshots: [],
+    screenshots: ["morning-briefing"],
     related: ["revenue-check"],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "customer-insights",
@@ -702,11 +702,11 @@ export const FEATURES: Feature[] = [
     points: ["From your own orders and payments", "Ordering less and paying slower, with the numbers", "Four-week cash forecast by each customer's habit", "Estimates labelled"],
     limitations: ["Payment habits need Taviron invoicing (or payments recorded in Taviron)", "A forecast, not a promise"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/reports/customers"],
-    screenshots: [],
+    screenshots: ["customer-insights"],
     related: ["invoicing"],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "wait-times",
@@ -718,11 +718,11 @@ export const FEATURES: Feature[] = [
     points: ["Two taps per stop on the driver's phone", "Slowest places first", "Your own free time decides what counts as long", "Office can enter or correct times"],
     limitations: ["Detention charges are not billed yet", "Times come from taps, not GPS"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/reports/wait-times"],
-    screenshots: [],
+    screenshots: ["wait-times"],
     related: [],
-    verified: "2026-11-01",
+    verified: "2026-11-04",
   },
   {
     id: "revenue-check",
@@ -734,11 +734,11 @@ export const FEATURES: Feature[] = [
     points: ["Amounts from your own tickets and rates", "One button to the place that fixes it", "Mark intended differences as fine, with a reason", "Total on the Command Center"],
     limitations: ["Findings only: nothing is billed or changed automatically", "Compares quantities only where ticket and order use the same unit"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/billing/leaks"],
-    screenshots: [],
+    screenshots: ["revenue-check"],
     related: ["billing", "invoicing"],
-    verified: "2026-11-01",
+    verified: "2026-11-04",
   },
   {
     id: "gps-hours",
@@ -750,11 +750,11 @@ export const FEATURES: Feature[] = [
     points: ["Works with any provider that can send data, or by hand", "Every position and hours record shows its age and source", "Stale data is marked, never treated as current", "Only current provider hours count as verified"],
     limitations: ["No built-in connection to a specific GPS or ELD brand yet", "Taviron does not calculate hours-of-service rules"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/fleet/locations"],
-    screenshots: [],
+    screenshots: ["gps-hours"],
     related: [],
-    verified: "2026-11-01",
+    verified: "2026-11-04",
   },
   {
     id: "customer-portal",
@@ -798,11 +798,11 @@ export const FEATURES: Feature[] = [
     points: ["Daily trip sheet on the driver's phone", "Miles per state must add up to the odometer", "Fleet MPG, taxable and net gallons per state", "CSV for the accountant"],
     limitations: ["Tax rates are applied by the company", "Receipt photos not stored yet"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/fleet/fuel"],
-    screenshots: [],
+    screenshots: ["fuel-ifta"],
     related: [],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "accountant-view",
@@ -830,11 +830,11 @@ export const FEATURES: Feature[] = [
     points: ["Today's loads on the phone, marked as of when", "Tickets, inspections and arrival taps saved without signal", "Sent automatically when signal returns", "Cleared at sign-out"],
     limitations: ["Photos need signal", "Not yet tested on every phone"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/driver"],
-    screenshots: [],
+    screenshots: ["offline-driver"],
     related: [],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "inspections",
@@ -846,11 +846,11 @@ export const FEATURES: Feature[] = [
     points: ["Standard pre-trip and post-trip items", "Defects open work orders", "Safety defects take the truck out of service", "Missing pre-trips flagged on the board"],
     limitations: ["Defect photos not attached yet", "Trucks only; trailers later"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/fleet/inspections"],
-    screenshots: [],
+    screenshots: ["inspections"],
     related: [],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "hauler-settlements",
@@ -862,11 +862,11 @@ export const FEATURES: Feature[] = [
     points: ["Jobs from accepted tickets at the offered rate", "Commission per hauler and one-off deductions", "Approve, then record the payment and reference", "A job is never paid twice"],
     limitations: ["Part of the Hired trucks add-on", "Records payments; it does not send money"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/hired-trucks"],
-    screenshots: [],
+    screenshots: ["hauler-settlements"],
     related: [],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "credit-holds",
@@ -878,11 +878,11 @@ export const FEATURES: Feature[] = [
     points: ["Hold by hand, by credit limit or by days past due", "Badge on the dispatch board", "A reason is required to go ahead, and kept", "Billing releases holds"],
     limitations: ["Never blocks work by itself", "Automatic holds use invoices issued in Taviron"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/customers"],
-    screenshots: [],
+    screenshots: ["credit-holds"],
     related: ["invoicing"],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "customer-booking",
@@ -894,11 +894,11 @@ export const FEATURES: Feature[] = [
     points: ["Off by default; one company switch", "Dispatch sets the loads open per day", "Full days cannot be chosen; no fleet details shown", "Every request approved or declined with a reason"],
     limitations: ["Requests only: the order is created by staff", "No email or text notice yet: customers see answers in the portal"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/customer-portal"],
-    screenshots: [],
+    screenshots: ["customer-booking"],
     related: ["customer-portal"],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "help-center",
@@ -947,9 +947,9 @@ export const COMING_SOON: ComingSoon[] = [
 /** Planned or unreleased work: the internal record behind the capability checks (PLANNED). Not shown on the website (owner 2026-10-26). */
 export const NOT_YET: string[] = [
   "Driver pay calculations — waiting on each company's written pay rules",
-  "Issuing or sending invoices from Taviron itself, and payroll integrations",
-  "Travel distance and drive time in dispatch suggestions — truck locations are not recorded yet",
-  "Parts inventory and purchasing for maintenance",
+  "Payroll provider integrations",
+  "Road miles and drive time in dispatch suggestions (straight-line estimates today)",
+  "Purchase orders to parts suppliers",
   "Built-in GPS and ELD provider connections (Samsara, Motive) and live arrival estimates",
   "Automatic reading (OCR) of paper tickets",
   "Online payments and self-service subscriptions",

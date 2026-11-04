@@ -179,6 +179,195 @@
       "capturedAt": "2026-11-04T00:06:36.285Z",
       "source": "localhost:3000",
       "checks": "passed"
+    },
+    "hired-trucks": {
+      "file": "hired-trucks.png",
+      "feature": "hired-trucks",
+      "path": "/hired-trucks",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:05.939Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "hauler-settlements": {
+      "file": "hauler-settlements.png",
+      "feature": "hauler-settlements",
+      "path": "/hired-trucks",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:07.381Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "safety-incidents": {
+      "file": "safety-incidents.png",
+      "feature": "safety-incidents",
+      "path": "/safety",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:08.831Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "load-profit": {
+      "file": "load-profit.png",
+      "feature": "load-profit",
+      "path": "/reports",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:12.540Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "parts-inventory": {
+      "file": "parts-inventory.png",
+      "feature": "parts-inventory",
+      "path": "/maintenance/parts",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:13.828Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "pricing-help": {
+      "file": "pricing-help.png",
+      "feature": "pricing-help",
+      "path": "/quotes?status=draft",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:15.441Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "order-to-cash": {
+      "file": "order-to-cash.png",
+      "feature": "order-to-cash",
+      "path": "/order-to-cash",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:16.943Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "schedules": {
+      "file": "schedules.png",
+      "feature": "schedules",
+      "path": "/schedule",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:22.157Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "route-planner": {
+      "file": "route-planner.png",
+      "feature": "route-planner",
+      "path": "/dispatch?view=routes",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:23.485Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "company-import": {
+      "file": "company-import.png",
+      "feature": "company-import",
+      "path": "/settings?tab=import",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:25.001Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "invoicing": {
+      "file": "invoicing.png",
+      "feature": "invoicing",
+      "path": "/billing/invoices",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:26.247Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "morning-briefing": {
+      "file": "morning-briefing.png",
+      "feature": "morning-briefing",
+      "path": "/briefing",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:28.333Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "customer-insights": {
+      "file": "customer-insights.png",
+      "feature": "customer-insights",
+      "path": "/reports/customers",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:29.598Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "wait-times": {
+      "file": "wait-times.png",
+      "feature": "wait-times",
+      "path": "/reports/wait-times",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:30.895Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "revenue-check": {
+      "file": "revenue-check.png",
+      "feature": "revenue-check",
+      "path": "/billing/leaks",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:32.905Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "gps-hours": {
+      "file": "gps-hours.png",
+      "feature": "gps-hours",
+      "path": "/fleet/locations",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:34.398Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "fuel-ifta": {
+      "file": "fuel-ifta.png",
+      "feature": "fuel-ifta",
+      "path": "/fleet/fuel",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:35.633Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "offline-driver": {
+      "file": "offline-driver.png",
+      "feature": "offline-driver",
+      "path": "/driver",
+      "viewport": "phone",
+      "capturedAt": "2026-11-04T01:38:36.879Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "inspections": {
+      "file": "inspections.png",
+      "feature": "inspections",
+      "path": "/fleet/inspections",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:38.351Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "credit-holds": {
+      "file": "credit-holds.png",
+      "feature": "credit-holds",
+      "path": "/customers?q=Harlow",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:38:58.893Z",
+      "source": "localhost:3000",
+      "checks": "passed"
+    },
+    "customer-booking": {
+      "file": "customer-booking.png",
+      "feature": "customer-booking",
+      "path": "/customer-portal?tab=booking",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T01:39:00.205Z",
+      "source": "localhost:3000",
+      "checks": "passed"
     }
   }
 }

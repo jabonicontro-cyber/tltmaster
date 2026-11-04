@@ -206,6 +206,221 @@
       "ready": "Accountant view",
       "alt": "The accountant view in a demo company: the year's invoiced, received and still-owed totals, invoices issued, receivables by age and fuel and IFTA by quarter",
       "caption": "Accountant view — demo company, fictional data."
+    },
+    {
+      "id": "hired-trucks",
+      "file": "hired-trucks.png",
+      "feature": "hired-trucks",
+      "path": "/hired-trucks",
+      "viewport": "desktop",
+      "ready": "Hired trucks",
+      "alt": "Hired trucks in a demo company: outside haulers, their offers and confirmed jobs",
+      "caption": "Hired trucks — demo company, fictional data."
+    },
+    {
+      "id": "hauler-settlements",
+      "file": "hauler-settlements.png",
+      "feature": "hauler-settlements",
+      "path": "/hired-trucks",
+      "viewport": "desktop",
+      "ready": "Hired trucks",
+      "scroll": "Settlements",
+      "alt": "Hauler settlements in a demo company: each statement with the hauler, period, net amount and status",
+      "caption": "Hauler settlements — demo company, fictional data."
+    },
+    {
+      "id": "safety-incidents",
+      "file": "safety-incidents.png",
+      "feature": "safety-incidents",
+      "path": "/safety",
+      "viewport": "desktop",
+      "ready": "Safety",
+      "alt": "Safety incidents in a demo company: reported incidents with type, people involved, status and follow-up",
+      "caption": "Safety incidents — demo company, fictional data."
+    },
+    {
+      "id": "load-profit",
+      "file": "load-profit.png",
+      "feature": "load-profit",
+      "path": "/reports",
+      "viewport": "desktop",
+      "ready": "Reports",
+      "scroll": "Profit",
+      "alt": "Estimated profit per load and per customer in a demo company's reports, from the company's own cost rates",
+      "caption": "Profit per load — demo company, fictional data."
+    },
+    {
+      "id": "parts-inventory",
+      "file": "parts-inventory.png",
+      "feature": "parts-inventory",
+      "path": "/maintenance/parts",
+      "viewport": "desktop",
+      "ready": "Parts",
+      "alt": "Shop parts in a demo company: parts on hand, reorder points and parts used on work orders",
+      "caption": "Shop parts — demo company, fictional data."
+    },
+    {
+      "id": "pricing-help",
+      "file": "pricing-help.png",
+      "feature": "pricing-help",
+      "path": "/quotes?status=draft",
+      "viewport": "desktop",
+      "ready": "Pricing help",
+      "alt": "A draft quote in a demo company with Pricing help: for each line, what the company's own won and lost quotes charged and a suggested rate with the reasoning",
+      "caption": "Quote pricing help — demo company, fictional data.",
+      "open": "^QTE-\\d+",
+      "scroll": "Pricing help"
+    },
+    {
+      "id": "order-to-cash",
+      "file": "order-to-cash.png",
+      "feature": "order-to-cash",
+      "path": "/order-to-cash",
+      "viewport": "desktop",
+      "ready": "Order to cash",
+      "alt": "Order to cash in a demo company: each order's path from delivery to ticket review, billing and payment, with what is holding it up",
+      "caption": "Order to cash — demo company, fictional data."
+    },
+    {
+      "id": "schedules",
+      "file": "schedules.png",
+      "feature": "schedules",
+      "path": "/schedule",
+      "viewport": "desktop",
+      "ready": "Schedule",
+      "alt": "Shift schedule in a demo company: drivers' shifts across the week with the loads forecast for each day",
+      "caption": "Shift schedules — demo company, fictional data."
+    },
+    {
+      "id": "route-planner",
+      "file": "route-planner.png",
+      "feature": "route-planner",
+      "path": "/dispatch?view=routes",
+      "viewport": "desktop",
+      "ready": "Each truck's day as a route",
+      "alt": "The dispatch board in a demo company with route planning: each truck's loads in order from the yard to every site",
+      "caption": "Route planning — demo company, fictional data."
+    },
+    {
+      "id": "company-import",
+      "file": "company-import.png",
+      "feature": "company-import",
+      "path": "/settings?tab=import",
+      "viewport": "desktop",
+      "ready": "Import",
+      "alt": "Spreadsheet import in a demo company's settings: upload customers, trucks, drivers and sites from a spreadsheet and check them before saving",
+      "caption": "Spreadsheet import — demo company, fictional data."
+    },
+    {
+      "id": "invoicing",
+      "file": "invoicing.png",
+      "feature": "invoicing",
+      "path": "/billing/invoices",
+      "viewport": "desktop",
+      "ready": "Invoices",
+      "alt": "Invoices in a demo company: drafts, open, overdue, partly paid and paid invoices with amounts due",
+      "caption": "Invoices and receivables — demo company, fictional data."
+    },
+    {
+      "id": "morning-briefing",
+      "file": "morning-briefing.png",
+      "feature": "morning-briefing",
+      "path": "/briefing",
+      "viewport": "desktop",
+      "ready": "Good",
+      "alt": "The morning briefing in a demo company: today's loads, what needs attention and yesterday's results on one page",
+      "caption": "Morning briefing — demo company, fictional data."
+    },
+    {
+      "id": "customer-insights",
+      "file": "customer-insights.png",
+      "feature": "customer-insights",
+      "path": "/reports/customers",
+      "viewport": "desktop",
+      "ready": "Customer insights",
+      "alt": "Customer insights in a demo company: each customer's health, payment habits and the cash forecast",
+      "caption": "Customer health and cash forecast — demo company, fictional data."
+    },
+    {
+      "id": "wait-times",
+      "file": "wait-times.png",
+      "feature": "wait-times",
+      "path": "/reports/wait-times",
+      "viewport": "desktop",
+      "ready": "Wait times",
+      "alt": "Wait times in a demo company: how long trucks wait at each quarry and job site, from drivers' arrival and departure taps",
+      "caption": "Wait times — demo company, fictional data."
+    },
+    {
+      "id": "revenue-check",
+      "file": "revenue-check.png",
+      "feature": "revenue-check",
+      "path": "/billing/leaks",
+      "viewport": "desktop",
+      "ready": "Revenue check",
+      "alt": "Revenue check in a demo company: deliveries not billed, billed less than delivered or below the price list, with estimated amounts",
+      "caption": "Revenue check — demo company, fictional data."
+    },
+    {
+      "id": "gps-hours",
+      "file": "gps-hours.png",
+      "feature": "gps-hours",
+      "path": "/fleet/locations",
+      "viewport": "desktop",
+      "ready": "Locations",
+      "alt": "Truck locations and driver hours in a demo company: each truck's last position on a map and each driver's hours left, with age and source",
+      "caption": "Truck locations and driver hours — demo company, fictional data."
+    },
+    {
+      "id": "fuel-ifta",
+      "file": "fuel-ifta.png",
+      "feature": "fuel-ifta",
+      "path": "/fleet/fuel",
+      "viewport": "desktop",
+      "ready": "Fuel",
+      "alt": "Fuel and IFTA in a demo company: fuel receipts, miles per state from trip sheets and the quarter's IFTA summary",
+      "caption": "Fuel and IFTA — demo company, fictional data."
+    },
+    {
+      "id": "offline-driver",
+      "file": "offline-driver.png",
+      "feature": "offline-driver",
+      "path": "/driver",
+      "viewport": "phone",
+      "ready": "My Day",
+      "alt": "The driver's My Day on a phone in a demo company: the day's loads are saved on the phone so they stay readable without signal",
+      "caption": "Works without signal — demo company, fictional data."
+    },
+    {
+      "id": "inspections",
+      "file": "inspections.png",
+      "feature": "inspections",
+      "path": "/fleet/inspections",
+      "viewport": "desktop",
+      "ready": "Inspections",
+      "alt": "Digital inspections in a demo company: pre-trip and post-trip inspections by truck, with defects that opened work orders",
+      "caption": "Digital inspections — demo company, fictional data."
+    },
+    {
+      "id": "credit-holds",
+      "file": "credit-holds.png",
+      "feature": "credit-holds",
+      "path": "/customers?q=Harlow",
+      "viewport": "desktop",
+      "ready": "On credit hold",
+      "alt": "A customer on credit hold in a demo company: the hold, its reason and credit limit, shown wherever orders are dispatched",
+      "caption": "Credit holds — demo company, fictional data.",
+      "open": "^Harlow Homes \\(demo\\)$"
+    },
+    {
+      "id": "customer-booking",
+      "file": "customer-booking.png",
+      "feature": "customer-booking",
+      "path": "/customer-portal?tab=booking",
+      "viewport": "desktop",
+      "ready": "Booking",
+      "alt": "The customer portal settings in a demo company, where dispatch opens days for customers to request loads",
+      "caption": "Customer self-booking — demo company, fictional data."
     }
   ]
 }
