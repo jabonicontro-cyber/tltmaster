@@ -667,8 +667,8 @@ export const FEATURES: Feature[] = [
     problem: "Delivered work waits on someone retyping it into accounting, and nobody knows at a glance who owes what or how late.",
     how: "Each company chooses who issues its invoices. With Taviron, a handed-off order becomes an invoice from the verified deliveries, issued with the company's logo and colour, emailed as a PDF, and paid down as payments are recorded; receivables show what each customer owes by how late.",
     value: "Invoices go out the day the work is verified, and late balances are visible before they become a problem.",
-    points: ["Invoices from verified, handed-off orders only", "Your logo and colour on every invoice", "Payments never exceed what is owed", "Receivables by age, per customer"],
-    limitations: ["No online card or bank payment", "One invoice per order"],
+    points: ["Invoices from verified, handed-off orders only", "One invoice for one order, or for several orders of a customer", "Your logo and colour on every invoice", "Payments never exceed what is owed", "Receivables by age, per customer"],
+    limitations: ["No online card or bank payment"],
     status: "available",
     published: true, // owner 2026-11-04
     routes: ["/billing/invoices"],

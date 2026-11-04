@@ -139,6 +139,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("billing tolerance", await billingTolerance(db));
   // Invoicing (B99): Taviron issues the demo's invoices; one past due, one partly paid, one paid (after the billing sample).
   note("invoices", await rpcCount(db, "demo_invoice_samples"));
+  // One invoice for several orders (UX10): a draft that bills two handed-off orders of one customer (nothing is sent).
+  note("combined invoice", await rpcCount(db, "demo_combined_invoice_sample"));
   // GPS and hours (B101): hand-entered sample positions (one stale) and drivers' hours (one nearly out of drive time).
   note("GPS and hours", await rpcCount(db, "demo_telematics_samples"));
   // Wait times (B111): finished pickup and site stops on recent delivered loads, one site clearly slow, 45 free minutes.

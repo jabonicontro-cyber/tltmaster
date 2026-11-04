@@ -31,13 +31,23 @@ test("a mechanic takes a job on a phone, starts it, times it and marks their par
   await expect(mine).toBeVisible();
   await expect(mine.getByRole("button", { name: "My part is done" })).toHaveCount(0); // not before the job starts
 
+  // Each state says the next step in plain words (UX14).
+  await expect(mine.getByTestId("next-step")).toHaveText(/^Next: tap Start this job/);
   await mine.getByRole("button", { name: "Start this job" }).click();
   await expectToast(page, "Status: In progress.");
+  await expect(mine.getByTestId("next-step")).toHaveText(/^Next: start your timer/);
   await mine.getByRole("button", { name: "Start timer" }).click();
   await expectToast(page, "Timer started.");
   await expect(page.getByRole("region", { name: "Your running timer" })).toContainText(/Timer running/);
-  await page.getByRole("region", { name: "Your running timer" }).getByRole("button", { name: "Stop timer" }).click();
+  await expect(mine.getByTestId("next-step")).toHaveText(/^Your timer is running/);
+  // A quick note of what was found, kept with the time entry.
+  await mine.getByLabel(/What you found or did/).fill("Cut sidewall, left steer tire");
+  await mine.getByRole("button", { name: "Stop timer" }).click();
   await expectToast(page, "Timer stopped.");
+  await asUser(USERS.owner.email, async (q) => {
+    const r = await q("select e.note from public.work_order_time_entries e join public.work_orders w on w.id = e.work_order_id where w.title = $1", [title]);
+    expect(r.rows.map((x) => x.note)).toContain("Cut sidewall, left steer tire");
+  });
   await expect(page.getByRole("region", { name: "Your running timer" })).toHaveCount(0);
 
   await mine.getByRole("button", { name: "My part is done" }).click();

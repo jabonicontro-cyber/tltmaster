@@ -216,7 +216,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     // Their own schedule today and tomorrow (SCH-1); left out without a schedule or before the update is installed.
     getMyShifts(access.userId, h.today, 2).catch(() => null),
     // Extra shifts offered to them (B102); none before the update is installed.
-    myShiftOffers().catch(() => null),
+    myShiftOffers("drivers").catch(() => null),
     // Arrived / Left at pickup and site (B111) for today's and earlier loads; none before the update is installed.
     stopTimesForLoads([...earlier, ...today].map((a) => a.load.id)),
     // Their own finished stops over the last 60 days (B121), for "you usually wait about N min here".

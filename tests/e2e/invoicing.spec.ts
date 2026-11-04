@@ -86,6 +86,41 @@ test("the office invoices a handed-off order, emails it and records a partial pa
   }
 });
 
+// One invoice for several orders (UX10, migration 20261120007000): two handed-off orders of one customer become one
+// draft whose lines name their order; discarding the draft frees both orders again.
+test("the office bills two orders of one customer on one invoice, then discards the draft", async ({ page }) => {
+  test.slow();
+  const [a, b] = [await handedOff(), await handedOff()];
+  await office(async (q) => { await q("select public.invoicing_save_settings('taviron', 30, '')"); });
+  try {
+    await signIn(page, "office");
+    await page.goto("/billing?view=handed_off");
+    await page.getByRole("link", { name: "One invoice for several orders" }).first().click();
+    await expect(page.getByRole("heading", { name: "One invoice for several orders", level: 1 })).toBeVisible();
+    const form = page.getByRole("form", { name: "Orders of Prairie View Landscaping" });
+    // Earlier runs may have left other orders of this customer: bill only this test's two.
+    for (const box of await form.getByRole("checkbox").all()) await box.uncheck();
+    await form.getByRole("checkbox", { name: `Order ${a}` }).check();
+    await form.getByRole("checkbox", { name: `Order ${b}` }).check();
+    await form.getByRole("button", { name: "Create one draft invoice" }).click();
+
+    await expect(page.getByRole("heading", { name: "Draft invoice", level: 1 })).toBeVisible();
+    const orders = page.getByRole("list", { name: "Orders on this invoice" });
+    await expect(orders).toContainText(a);
+    await expect(orders).toContainText(b);
+    await expect(page.getByRole("table", { name: "Invoice lines" })).toContainText(`Order ${a} · Gravel #53 limestone`);
+    await expect(page.getByRole("table", { name: "Invoice lines" })).toContainText(`Order ${b} · Gravel #53 limestone`);
+
+    await page.getByLabel("Reason").fill("Wrong orders (e2e)");
+    await page.getByRole("button", { name: "Discard draft" }).click();
+    await expect(page.getByText("Wrong orders (e2e)")).toBeVisible();
+    await page.goto("/billing/invoices/combine");
+    await expect(page.getByRole("form", { name: "Orders of Prairie View Landscaping" }).getByRole("checkbox", { name: `Order ${a}` })).toBeVisible();
+  } finally {
+    await office(async (q) => { await q("select public.invoicing_save_settings('quickbooks', 30, '')"); });
+  }
+});
+
 test("dispatchers cannot open invoices", async ({ page }) => {
   await signIn(page, "dispatcher");
   await page.goto("/billing/invoices");

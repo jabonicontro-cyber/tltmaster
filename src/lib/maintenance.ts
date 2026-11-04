@@ -266,3 +266,17 @@ export function workOrderUnit(
   if (w.trailer_id) return `Trailer ${trailers.get(w.trailer_id) ?? "—"}`;
   return `Truck ${(w.truck_id && trucks.get(w.truck_id)) ?? "—"}`;
 }
+
+/**
+ * The next step on a mechanic's job card, in plain words (UX14, owner walkthrough 2026-11-04). Matches the buttons the
+ * card shows for the same state.
+ */
+export function mechanicNextStep(job: { status: string; tasksDone: number; tasksTotal: number }, timer: "here" | "elsewhere" | "none"): string {
+  const left = Math.max(job.tasksTotal - job.tasksDone, 0);
+  const checklist = left > 0 ? ` Work through the checklist (${left} left).` : "";
+  if (job.status === "awaiting_parts") return "Waiting for parts. Start the job again when they are in.";
+  if (job.status !== "in_progress") return "Next: tap Start this job when you begin work.";
+  if (timer === "here") return `Your timer is running.${checklist} Stop the timer when you take a break or finish.`;
+  if (timer === "elsewhere") return "Your timer is running on another job. Stop it there before you work on this one.";
+  return `Next: start your timer while you work.${checklist} When your part is finished, tap My part is done.`;
+}

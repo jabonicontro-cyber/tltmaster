@@ -1,3 +1,4 @@
+import { CustomerBalance } from "@/components/customers/customer-balance";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { FileText, Pencil, Plus } from "lucide-react";
@@ -131,6 +132,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           {creditInstalled && (can(access, "billing.view") || hold) && (
             <CreditPanel customerId={customer.id} hold={hold} limitCents={(customer as { credit_limit_cents?: number | null }).credit_limit_cents ?? null} canManage={can(access, "billing.manage")} />
           )}
+          {can(access, "billing.view") && <CustomerBalance customerId={customer.id} today={today} />}
           <Card>
             <CardHeader title="Details" />
             <CardBody>

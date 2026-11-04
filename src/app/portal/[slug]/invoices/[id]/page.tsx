@@ -1,3 +1,4 @@
+import { ordersWord } from "@/lib/billing/invoices";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { trimNumber } from "@/lib/fleet/labels";
@@ -40,7 +41,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
             <p className="whitespace-pre-line text-muted">{[str(b.name), str(b.line1), str(b.line2), [str(b.city), str(b.state), str(b.postal_code)].filter(Boolean).join(" ")].filter(Boolean).join("\n")}</p>
           </div>
           <div className="space-y-0.5 text-muted">
-            {i.order_number && <p>Order {i.order_number}</p>}
+            {i.order_number && <p>{ordersWord(i.order_number, true)} {i.order_number}</p>}
             {i.customer_po && <p>PO {i.customer_po}</p>}
             {i.project_name && <p>{i.project_name}</p>}
             {i.service_start && <p>Service {formatDay(i.service_start)}{i.service_end && i.service_end !== i.service_start ? ` – ${formatDay(i.service_end)}` : ""}</p>}

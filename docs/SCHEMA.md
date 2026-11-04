@@ -559,6 +559,20 @@ bucket; `support_settings.first_reply_hours` is the company's target (null = off
 `support_save_settings` (settings.manage). Reads: RLS on customers.view; `support_overdue()` for the Command Center;
 `support_notice_recipients()` for the email notice the app sends (never from a demo).
 
+## One invoice for several orders (20261120007000)
+
+`invoice_orders` lists every order an invoice bills (`invoice_id`, `handoff_order_id`, `order_id`, `order_number`,
+`position`, `total_cents`, `active`); existing invoices were backfilled with their one order. A unique index on
+`handoff_order_id where active` allows one active invoice per handed-off order, alone or combined; triggers on
+`invoices` list the invoice's first order on insert and set `active = false` when it is voided. `invoices.order_number`
+holds the list of order numbers for a combined invoice, and each line carries its `order_number` and names it in the
+description. Writes: `invoice_create_combined(handoffs[])` (billing.manage; one customer, Taviron issuing, none undone,
+invoiced or sent to QuickBooks; locks the handoffs). Reads: RLS on billing.view; `invoice_combine_candidates()`
+(security invoker). The dates check on `invoices` now applies to numbered invoices only, so a draft can be discarded.
+
+`my_shift_offer_audiences()` (20261120007100): who each of the caller's own visible shift offers is for, so My Day
+lists driver and everyone offers and My jobs shop and everyone offers. Read-only.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

@@ -17,7 +17,7 @@ export const metadata = { title: "My jobs" };
 export default async function MyJobsPage() {
   const access = await requirePagePermission("maintenance.view");
   const manage = can(access, "maintenance.manage");
-  const [jobs, shiftOffers] = await Promise.all([listMyJobs(access.userId), myShiftOffers().catch(() => null)]);
+  const [jobs, shiftOffers] = await Promise.all([listMyJobs(access.userId), myShiftOffers("shop").catch(() => null)]);
 
   return (
     <>

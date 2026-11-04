@@ -89,9 +89,12 @@ export function parseAmountCents(v: string): number | null {
 }
 
 /** The default email for an issued invoice (shown in the send form, editable). */
+/** An invoice can bill several orders (UX10): their numbers are stored as one list ("ORD-1, ORD-2"). */
+export const ordersWord = (orderNumber: string, capital = false) => (orderNumber.includes(", ") ? (capital ? "Orders" : "orders") : capital ? "Order" : "order");
+
 export function defaultInvoiceEmail(inv: { number: string | null; order_number: string; bill_to: { name: string } }, total: string, due: string, companyName: string) {
   return {
     subject: `Invoice ${inv.number} from ${companyName}`,
-    message: [`Hello ${inv.bill_to.name},`, "", `Attached is invoice ${inv.number} for order ${inv.order_number}: ${total}, due ${due}.`, "", "Please reply to this email with any questions.", "", "Thank you,", companyName].join("\n"),
+    message: [`Hello ${inv.bill_to.name},`, "", `Attached is invoice ${inv.number} for ${ordersWord(inv.order_number)} ${inv.order_number}: ${total}, due ${due}.`, "", "Please reply to this email with any questions.", "", "Thank you,", companyName].join("\n"),
   };
 }

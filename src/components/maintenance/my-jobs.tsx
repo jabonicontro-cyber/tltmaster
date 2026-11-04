@@ -9,9 +9,10 @@ import { setWorkOrderStatus } from "@/app/(app)/maintenance/actions";
 import { addMechanic, setMyStatus, startTimer, stopTimer } from "@/app/(app)/maintenance/crew-actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/form";
 import type { ActionResult } from "@/lib/action-result";
 import { formatDate } from "@/lib/dates";
-import { STATUS_TONE, WO_STATUSES, WO_URGENCIES, type WoStatus } from "@/lib/maintenance";
+import { STATUS_TONE, WO_STATUSES, WO_URGENCIES, mechanicNextStep, type WoStatus } from "@/lib/maintenance";
 import type { MyJob, OpenJob } from "@/server/data/maintenance-crew";
 
 // The mechanic's phone workspace (docs/COMPANION_APP.md): large targets, one primary action per job. Every action is
@@ -71,6 +72,8 @@ function JobHeader({ job }: { job: OpenJob }) {
 export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; timerHere: boolean; timerElsewhere: boolean }) {
   const { pending, run } = useRun();
   const canStart = ["reported", "triaged", "scheduled", "awaiting_parts"].includes(job.status);
+  // A quick note when the timer stops (what was found or done); it is kept with the time entry on the work order.
+  const [note, setNote] = useState("");
   return (
     <li className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <div className="flex items-start justify-between gap-3">
@@ -84,11 +87,18 @@ export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; time
         {job.tasksTotal > 0 && <> · Checklist {job.tasksDone} of {job.tasksTotal}</>}
         {job.scheduledFor && <> · Scheduled {formatDate(job.scheduledFor)}</>}
       </p>
+      <p className="mt-1 text-sm font-medium text-ink" data-testid="next-step">{mechanicNextStep(job, timerHere ? "here" : timerElsewhere ? "elsewhere" : "none")}</p>
+      {timerHere && (
+        <label className="mt-3 block text-sm">
+          <span className="text-muted">What you found or did (optional, saved with your time)</span>
+          <Input value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} className="mt-1" placeholder="e.g. Air leak at the rear brake chamber" />
+        </label>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {job.status === "in_progress" && !timerHere && (
           <Button size="lg" className="min-h-12" disabled={pending || timerElsewhere} onClick={() => run(() => startTimer({ workOrderId: job.id }))} icon={<Play className="size-4" aria-hidden />}>Start timer</Button>
         )}
-        {timerHere && <Button size="lg" variant="dark" className="min-h-12" disabled={pending} onClick={() => run(() => stopTimer())} icon={<Square className="size-4" aria-hidden />}>Stop timer</Button>}
+        {timerHere && <Button size="lg" variant="dark" className="min-h-12" disabled={pending} onClick={() => run(() => stopTimer({ note }))} icon={<Square className="size-4" aria-hidden />}>Stop timer</Button>}
         {canStart && (
           <Button size="lg" className="min-h-12" disabled={pending} onClick={() => run(() => setWorkOrderStatus({ id: job.id, status: "in_progress", note: "", editSeq: job.editSeq }))} icon={<Play className="size-4" aria-hidden />}>Start this job</Button>
         )}
@@ -96,7 +106,6 @@ export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; time
           <Button size="lg" variant="secondary" className="min-h-12" disabled={pending} onClick={() => run(() => setMyStatus({ workOrderId: job.id, status: "done" }))} icon={<Check className="size-4" aria-hidden />}>My part is done</Button>
         )}
       </div>
-      {timerElsewhere && job.status === "in_progress" && <p className="mt-2 text-xs text-muted">Stop your other timer first.</p>}
     </li>
   );
 }

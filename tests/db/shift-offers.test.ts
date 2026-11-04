@@ -38,6 +38,11 @@ describe("shift offers", () => {
       const o1 = await create(1);
       expect((await mine(a.user)).map((r) => r.id)).toContain(o1);
       expect(await mine(clerk.user)).toEqual([]); // not a driver
+      // Who each of my own offers is for (UX14: My Day lists driver offers, My jobs shop offers); nothing for the clerk.
+      await s.as(a.user);
+      expect((await s.query<{ id: string; audience: string }>("select id, audience from public.my_shift_offer_audiences()")).rows).toContainEqual({ id: o1, audience: "drivers" });
+      await s.as(clerk.user);
+      expect((await s.query("select * from public.my_shift_offer_audiences()")).rows).toEqual([]);
       await s.as(a.user);
       expect((await s.query<{ r: string }>("select public.shift_offer_respond($1) r", [o1])).rows[0].r).toBe("requested");
       expect((await pgError(s.query("select public.shift_offer_respond($1)", [o1]))).message).toMatch(/already answered/);

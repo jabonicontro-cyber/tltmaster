@@ -79,9 +79,40 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
 /** Active invoices by handed-off order, for the Billing board's Handed off view. */
 export async function invoicesByHandoff(handoffOrderIds: string[]): Promise<Record<string, { id: string; number: string | null; status: InvoiceStatus }>> {
   if (!handoffOrderIds.length) return {};
-  const { data, error } = await (await createClient()).from("invoices").select("id, number, status, handoff_order_id").in("handoff_order_id", handoffOrderIds).neq("status", "void");
+  const supabase = await createClient();
+  // Every order an invoice bills, alone or combined (UX10, migration 20261120007000); before it, the invoice's own order.
+  const linked = await supabase.from("invoice_orders").select("handoff_order_id, invoice:invoices(id, number, status)").in("handoff_order_id", handoffOrderIds).eq("active", true);
+  if (!linked.error) {
+    const rows = (linked.data ?? []) as unknown as Array<{ handoff_order_id: string; invoice: { id: string; number: string | null; status: InvoiceStatus } | null }>;
+    return Object.fromEntries(rows.filter((r) => r.invoice).map((r) => [r.handoff_order_id, r.invoice!]));
+  }
+  const { data, error } = await supabase.from("invoices").select("id, number, status, handoff_order_id").in("handoff_order_id", handoffOrderIds).neq("status", "void");
   if (error) return {};
   return Object.fromEntries(((data ?? []) as Array<{ id: string; number: string | null; status: InvoiceStatus; handoff_order_id: string }>).map((r) => [r.handoff_order_id, r]));
+}
+
+/** The orders an invoice bills, in invoice order (one for most invoices; several for a combined one). */
+export async function invoiceOrders(invoiceId: string): Promise<Array<{ order_id: string; order_number: string; total_cents: number }>> {
+  const { data, error } = await (await createClient()).from("invoice_orders").select("order_id, order_number, total_cents").eq("invoice_id", invoiceId).order("position");
+  if (error) return [];
+  return ((data ?? []) as Array<{ order_id: string; order_number: string; total_cents: number }>).map((r) => ({ ...r, total_cents: Number(r.total_cents) }));
+}
+
+export interface CombineCandidate {
+  handoff_order_id: string; order_id: string; order_number: string; customer_id: string; customer_name: string;
+  customer_po: string; project_name: string; service_start: string | null; service_end: string | null; total_cents: number;
+}
+/** Handed-off orders not invoiced yet, grouped by customer (customers with at least two only). Null before the migration. */
+export async function combineCandidates(): Promise<Array<{ customerId: string; customerName: string; orders: CombineCandidate[] }> | null> {
+  const { data, error } = await (await createClient()).rpc("invoice_combine_candidates");
+  if (error) return null;
+  const groups = new Map<string, { customerId: string; customerName: string; orders: CombineCandidate[] }>();
+  for (const r of (data ?? []) as CombineCandidate[]) {
+    const g = groups.get(r.customer_id) ?? { customerId: r.customer_id, customerName: r.customer_name, orders: [] };
+    g.orders.push({ ...r, total_cents: Number(r.total_cents) });
+    groups.set(r.customer_id, g);
+  }
+  return [...groups.values()].filter((g) => g.orders.length >= 2);
 }
 
 /** Who the invoice comes from: the default billing business when there is one, else the company. Logo and colour

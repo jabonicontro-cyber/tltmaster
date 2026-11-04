@@ -67,14 +67,22 @@ export async function listShiftOffers(from: string): Promise<{ installed: boolea
 }
 
 /** Offers open to the signed-in person, and the ones they answered. Null before the migration is installed. */
-export async function myShiftOffers(): Promise<MyShiftOffer[] | null> {
-  const { data, error } = await (await createClient()).rpc("my_shift_offers");
+export async function myShiftOffers(place?: "drivers" | "shop"): Promise<MyShiftOffer[] | null> {
+  const supabase = await createClient();
+  const [{ data, error }, audiences] = await Promise.all([
+    supabase.rpc("my_shift_offers"),
+    // Each page lists only the offers meant for it (UX14): My Day driver and everyone offers, My jobs shop and everyone
+    // offers, also for a person who is both. Before migration 20261120007100 every offer is listed.
+    place ? supabase.rpc("my_shift_offer_audiences") : Promise.resolve({ data: null, error: null }),
+  ]);
   if (error) {
     if (MISSING.has(error.code ?? "")) return null;
     throw new Error(`Shift offers: ${error.message}`);
   }
+  const audience = new Map(((audiences.error ? [] : audiences.data ?? []) as Array<{ id: string; audience: string }>).map((r) => [r.id, r.audience]));
+  const meant = (id: string) => !place || !audience.has(id) || audience.get(id) === "everyone" || audience.get(id) === place;
   type Row = { id: string; work_date: string; start_time: string; end_time: string; break_minutes: number; mode: OfferMode; note: string; offer_status: OfferStatus; my_status: ResponseStatus | null; problem: string | null };
-  return ((data ?? []) as Row[]).map((r) => ({
+  return ((data ?? []) as Row[]).filter((r) => meant(r.id)).map((r) => ({
     id: r.id, workDate: r.work_date, start: hhmm(r.start_time), end: hhmm(r.end_time), breakMinutes: r.break_minutes, mode: r.mode, note: r.note,
     offerStatus: r.offer_status, myStatus: r.my_status, problem: r.problem,
   }));

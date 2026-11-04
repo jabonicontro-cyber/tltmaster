@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download, FileText } from "lucide-react";
 import { AdminFlash } from "@/components/admin/flash";
@@ -10,13 +11,13 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { PAYMENT_METHODS, STATE_LABEL, balanceCents, defaultInvoiceEmail, invoiceState, paidCents } from "@/lib/billing/invoices";
+import { PAYMENT_METHODS, STATE_LABEL, balanceCents, defaultInvoiceEmail, invoiceState, ordersWord, paidCents } from "@/lib/billing/invoices";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getInvoice, invoiceSender } from "@/server/data/invoices";
+import { getInvoice, invoiceOrders, invoiceSender } from "@/server/data/invoices";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 import { addPayment, issueInvoice, sendInvoice, voidInvoice, voidPayment } from "../actions";
@@ -40,7 +41,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
-  const [inv, { today, timezone }, names] = await Promise.all([getInvoice(id), businessToday(), getUserNames()]);
+  const [inv, { today, timezone }, names, orders] = await Promise.all([getInvoice(id), businessToday(), getUserNames(), invoiceOrders(id)]);
   if (!inv) notFound();
   const sender = await invoiceSender(inv);
   const manage = can(access, "billing.manage");
@@ -54,7 +55,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
     <>
       <PageHeader
         title={inv.number ? `Invoice ${inv.number}` : "Draft invoice"}
-        description={`${b.name} · order ${inv.order_number}${inv.project_name ? ` · ${inv.project_name}` : ""}`}
+        description={`${b.name} · ${ordersWord(inv.order_number)} ${inv.order_number}${inv.project_name ? ` · ${inv.project_name}` : ""}`}
         crumbs={[{ label: "Billing", href: "/billing" }, { label: "Invoices", href: "/billing/invoices" }, { label: inv.number ?? "Draft" }]}
         badges={<Badge tone={STATE_LABEL[state].tone}>{STATE_LABEL[state].label}</Badge>}
         actions={
@@ -98,6 +99,20 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
               {inv.status === "issued" && <><dt className="font-semibold">Balance due</dt><dd className="text-right text-lg font-semibold tabular">{formatCents(owed)}</dd></>}
             </dl>
           </Card>
+
+          {orders.length > 1 && (
+            <Card>
+              <CardHeader title={`${orders.length} orders on this invoice`} description="Each line above names its order." />
+              <ul className="divide-y divide-line border-t border-line" aria-label="Orders on this invoice">
+                {orders.map((o) => (
+                  <li key={o.order_id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm sm:px-6">
+                    <Link href={`/billing/orders/${o.order_id}`} className="font-semibold tabular hover:underline">{o.order_number}</Link>
+                    <span className="tabular">{formatCents(o.total_cents)}</span>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {inv.status !== "draft" && (
             <Card>
@@ -204,7 +219,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
 
           {manage && inv.status !== "void" && paid === 0 && (
             <Card>
-              <CardHeader title={inv.status === "draft" ? "Discard this draft" : "Void this invoice"} description={inv.status === "draft" ? "The order can be invoiced again." : "It stays on record with its number and your reason; the order can then be invoiced again."} />
+              <CardHeader title={inv.status === "draft" ? "Discard this draft" : "Void this invoice"} description={inv.status === "draft" ? `The ${orders.length > 1 ? "orders" : "order"} can be invoiced again.` : `It stays on record with its number and your reason; the ${orders.length > 1 ? "orders" : "order"} can then be invoiced again.`} />
               <CardBody>
                 <form action={voidInvoice} className="space-y-3">
                   <input type="hidden" name="invoice" value={inv.id} />

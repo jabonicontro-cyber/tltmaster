@@ -1,3 +1,4 @@
+import { isMechanicOnly } from "@/lib/companion";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
 import { after } from "next/server";
@@ -51,7 +52,10 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   // Presentation mode only ever applies inside a demo company.
   const jar = await cookies();
   const presentation = access.isDemo && jar.get(PRESENTATION_COOKIE)?.value === "1";
-  const sidebarPinned = jar.get(SIDEBAR_COOKIE)?.value === "pinned";
+  // The person's own choice wins. Without one, the shop (mechanic-only logins, often on a tablet where the icon rail has
+  // no hover labels) gets the labelled menu (UX14); everyone else the icon rail.
+  const sidebarChoice = jar.get(SIDEBAR_COOKIE)?.value;
+  const sidebarPinned = sidebarChoice ? sidebarChoice === "pinned" : isMechanicOnly(access.permissions);
   // The demo welcome shows until this person dismisses it in this demo company (never in presentation mode).
   const welcome = Boolean(access.isDemo && !presentation && access.companyId && !welcomed.data &&
     !welcomedInCookie(jar.get(DEMO_WELCOME_COOKIE)?.value, welcomeToken(access.companyId, access.userId)));

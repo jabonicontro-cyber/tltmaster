@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, daysBetween, invoiceState, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
+import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -38,7 +38,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     <PageHeader
       title="Invoices"
       description="Invoices Taviron issued from handed-off orders, what is paid, and what each customer still owes. Nothing here charges a card or posts to an accounting system."
-      actions={<ButtonLink href="/billing?view=handed_off" variant="secondary">Handed-off orders</ButtonLink>}
+      actions={<>
+        <ButtonLink href="/billing/invoices/combine" variant="ghost">One invoice for several orders</ButtonLink>
+        <ButtonLink href="/billing?view=handed_off" variant="secondary">Handed-off orders</ButtonLink>
+      </>}
     />
   );
   if (!invoices || !settings.installed) {
@@ -126,7 +129,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                   <Tr key={i.id}>
                     <Td>
                       <Link href={`/billing/invoices/${i.id}`} className="font-semibold tabular text-brand-fg hover:underline">{i.number ?? "Draft"}</Link>
-                      <div className="text-xs text-muted">Order {i.order_number}</div>
+                      <div className="text-xs text-muted">{ordersWord(i.order_number, true)} {i.order_number}</div>
                     </Td>
                     <Td className="text-sm">{i.customer_name}</Td>
                     <Td className="hidden text-sm tabular md:table-cell">{i.issue_date ? formatDate(i.issue_date) : "—"}</Td>

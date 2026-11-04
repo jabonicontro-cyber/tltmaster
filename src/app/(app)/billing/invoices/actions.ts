@@ -49,6 +49,20 @@ export async function createInvoice(formData: FormData) {
   redirect(`${page(data as string)}?saved=created`);
 }
 
+/** One draft invoice for several handed-off orders of one customer (UX10). The database checks the customer, the
+ * permission, and that no order is already invoiced. */
+export async function createCombinedInvoice(formData: FormData) {
+  const back = "/billing/invoices/combine";
+  const ids = formData.getAll("handoff").map(String).filter((v) => uuid.safeParse(v).success);
+  if (ids.length < 2) go(back, "error", "Choose at least two orders to put on one invoice.");
+  await manage(back);
+  const { data, error } = await (await createClient()).rpc("invoice_create_combined", { p_handoffs: ids });
+  if (error) go(back, "error", dbErrorMessage(error));
+  refresh();
+  revalidatePath(back);
+  redirect(`${page(data as string)}?saved=created`);
+}
+
 export async function issueInvoice(formData: FormData) {
   const id = uuid.parse(formData.get("invoice"));
   const date = String(formData.get("issue_date") ?? "");

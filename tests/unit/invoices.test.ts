@@ -44,3 +44,12 @@ describe("receivables aging", () => {
     expect(parseAmountCents("12.345")).toBeNull();
   });
 });
+
+describe("invoices for several orders (UX10)", () => {
+  it("says order or orders from the stored list of order numbers", async () => {
+    const { ordersWord, defaultInvoiceEmail } = await import("@/lib/billing/invoices");
+    expect(ordersWord("ORD-1001")).toBe("order");
+    expect(ordersWord("ORD-1001, ORD-1002", true)).toBe("Orders");
+    expect(defaultInvoiceEmail({ number: "INV-1", order_number: "ORD-1, ORD-2", bill_to: { name: "Acme" } }, "$10.00", "Dec 1", "Co").message).toContain("for orders ORD-1, ORD-2:");
+  });
+});

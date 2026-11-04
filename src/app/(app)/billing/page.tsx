@@ -313,7 +313,18 @@ function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }:
   if (board.batches.length === 0) {
     return <EmptyState title="Nothing handed off yet" description="Batches of orders handed off for billing appear here with their file." />;
   }
+  // Customers with two or more handed-off orders not invoiced yet can be billed once (UX10).
+  const waiting = new Map<string, number>();
+  if (issuer === "taviron") for (const { orders } of board.batches) for (const r of orders) if (!r.reverted_at && !invoices[r.id]) waiting.set(r.order.customer_name ?? "", (waiting.get(r.order.customer_name ?? "") ?? 0) + 1);
+  const combinable = [...waiting.values()].filter((n) => n >= 2).length;
   return (
+    <>
+    {canManage && combinable > 0 && (
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3 text-sm sm:px-6">
+        <span className="text-muted">{combinable === 1 ? "One customer has" : `${combinable} customers have`} several orders waiting for an invoice.</span>
+        <Link href="/billing/invoices/combine" className={buttonClasses("secondary", "sm")}><FilePlus2 className="size-4" />One invoice for several orders</Link>
+      </div>
+    )}
     <ul className="divide-y divide-line" aria-label="Handoff batches">
       {board.batches.map(({ batch: b, orders }) => (
         <li key={b.id} className={cn("px-5 py-4 sm:px-6", highlight === b.id && "bg-amber-50/40")} aria-label={`Batch ${b.batch_number}`}>
@@ -371,6 +382,7 @@ function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }:
         </li>
       ))}
     </ul>
+    </>
   );
 }
 

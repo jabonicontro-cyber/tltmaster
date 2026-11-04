@@ -189,9 +189,15 @@ describe.skipIf(!available)("demo feature samples", () => {
     const shiftOffers = await q<{ status: string; answers: string }>("select o.status, count(r.id) answers from public.shift_offers o left join public.shift_offer_responses r on r.offer_id = o.id and r.status = 'requested' where o.company_id = $1 group by o.id", [w.company]);
     expect(shiftOffers.rows.map((r) => [r.status, Number(r.answers)])).toEqual([["open", 1]]);
     // Invoicing (B99): Taviron issues the demo's invoices; issued invoices with at least one past due and one payment.
-    const invoices = await q<{ status: string; overdue: boolean; paid: string }>("select i.status, i.due_date < (now() at time zone $2)::date overdue, coalesce((select sum(amount_cents) from public.invoice_payments p where p.invoice_id = i.id and p.voided_at is null), 0) paid from public.invoices i where i.company_id = $1", [w.company, TZ]);
+    const invoices = await q<{ status: string; overdue: boolean; paid: string; orders: string }>("select i.status, i.due_date < (now() at time zone $2)::date overdue, coalesce((select sum(amount_cents) from public.invoice_payments p where p.invoice_id = i.id and p.voided_at is null), 0) paid, (select count(*) from public.invoice_orders o where o.invoice_id = i.id) orders from public.invoices i where i.company_id = $1", [w.company, TZ]);
     expect(invoices.rows.length).toBeGreaterThanOrEqual(1);
-    expect(invoices.rows.every((r) => r.status === "issued")).toBe(true);
+    // One invoice for several orders (UX10): a draft that bills two orders of one customer; every other one is issued.
+    expect(invoices.rows.filter((r) => Number(r.orders) === 1).every((r) => r.status === "issued")).toBe(true);
+    // Only when some customer had two orders to bill (it depends on the hour the seed ran); never invented otherwise.
+    const combined = invoices.rows.filter((r) => Number(r.orders) > 1).map((r) => [r.status, Number(r.orders)]);
+    const twoReady = await q("select o.customer_id from public.billing_order_status s join public.orders o on o.id = s.order_id where s.company_id = $1 and s.readiness = 'ready' group by 1 having count(*) >= 2", [w.company]);
+    if (combined.length === 0) expect(twoReady.rows.length).toBe(0);
+    else expect(combined).toEqual([["draft", 2]]);
     expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
     // GPS and hours (B101): hand entry turned on, current positions plus one stale truck, hours with one under an hour.
     const gps = await q<{ current: string; stale: string; low: string; source: string }>("select (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at > now() - interval '30 minutes') current, (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at <= now() - interval '30 minutes') stale, (select count(*) from public.driver_hours where company_id = $1 and drive_minutes_left < 60) low, (select source from public.telematics_settings where company_id = $1) source", [w.company]);
@@ -412,6 +418,7 @@ describe.skipIf(!available)("demo feature samples", () => {
       await client.query("set local session_replication_role = replica");
       // The demo's sample invoices hang off its handoffs (B99): they go too, or they would point at nothing.
       await client.query("delete from public.invoice_payments where company_id = $1", [w.company]);
+      await client.query("delete from public.invoice_orders where company_id = $1", [w.company]);
       await client.query("delete from public.invoices where company_id = $1", [w.company]);
       await client.query("delete from public.billing_handoff_orders where handoff_id in (select id from public.billing_handoffs where company_id = $1)", [w.company]);
       await client.query("delete from public.billing_handoffs where company_id = $1", [w.company]);

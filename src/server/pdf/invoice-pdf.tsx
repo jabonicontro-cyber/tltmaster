@@ -91,7 +91,7 @@ function InvoicePdf({ doc }: { doc: InvoiceDocument }) {
             {doc.billTo.customerNumber ? <Text style={s.small}>Customer # {doc.billTo.customerNumber}</Text> : null}
           </View>
           <View style={s.col}>
-            <Text style={s.h}>ORDER</Text>
+            <Text style={s.h}>{doc.orderNumber.includes(", ") ? "ORDERS" : "ORDER"}</Text>
             <Text style={s.bold}>{doc.orderNumber}</Text>
             {doc.projectName ? <Text>{doc.projectName}</Text> : null}
             {doc.customerPo ? <Text>PO {doc.customerPo}</Text> : null}
