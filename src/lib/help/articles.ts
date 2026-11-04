@@ -2115,7 +2115,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["billing"],
     related: ["orders", "command-center"],
     reviewed: REVIEWED,
-    limitations: ["Invoices and payments are coming soon: issuing invoices, tracking what customers owe and recording payments are not built yet, so this view ends at Handed off."],
+    limitations: ["This view ends at Handed off; invoices, what customers owe and payments are in Billing → Invoices."],
   },
   {
     id: "payroll",

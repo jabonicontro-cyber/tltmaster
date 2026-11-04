@@ -114,14 +114,17 @@ let failures = 0;
 for (const s of selected) {
   consoleErrors.length = 0;
   await page.setViewportSize(VIEWPORTS[s.viewport]);
-  await page.goto(`${base}${s.path}`, { waitUntil: "networkidle" });
+  // Pages with a background refresh never go network-idle: wait for the load, then give the network a moment; the ready
+  // text and loading checks below decide whether the screen is complete.
+  await page.goto(`${base}${s.path}`, { waitUntil: "load", timeout: Number(process.env.CAPTURE_TIMEOUT_MS ?? 60_000) });
+  await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
   if (s.open) {
     await page.getByRole("link", { name: new RegExp(s.open) }).first().click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
   }
   if (s.tab) {
     await page.locator("main").getByRole("tab", { name: new RegExp(`^${s.tab}`) }).or(page.locator("main").getByRole("link", { name: new RegExp(`^${s.tab}`) })).first().click();
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
   }
   if (s.scroll) {
     await page.locator("main").getByText(s.scroll, { exact: !s.scrollPartial }).first().evaluate((el) => {

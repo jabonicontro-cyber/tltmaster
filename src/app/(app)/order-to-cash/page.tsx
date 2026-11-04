@@ -54,8 +54,8 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
       </ul>
       {/* A limit, stated once and quietly: the view ends at Handed off. */}
       <p className="mt-2.5 text-sm text-muted">
-        <span className="font-medium text-ink">Coming soon:</span> invoices and payments. Taviron hands orders off for billing; issuing
-        invoices, tracking what customers owe and recording payments are not built yet, so this view ends at Handed off.
+        This view ends at Handed off. Invoices, what customers owe and payments are in{" "}
+        <Link href="/billing/invoices" className="font-medium text-brand-fg underline-offset-2 hover:underline">Billing → Invoices</Link>.
       </p>
 
       <Card className="mt-5">
