@@ -41,6 +41,9 @@ export const portalGate = cache(async (slug: string): Promise<PortalGate> => {
   // Customer self-booking (B115) has its own company switch; false before its migration is applied.
   const booking = await supabase.rpc("portal_booking_state", { p_slug: slug });
   context.features = { ...context.features, booking: !booking.error && (booking.data as { enabled?: boolean } | null)?.enabled === true };
+  // Invoices and statements (UX5): only when the company issues in Taviron and Documents is on; false before the update.
+  const invoices = context.features.documents ? await supabase.rpc("portal_invoices", { p_slug: slug }) : null;
+  context.features = { ...context.features, invoices: Boolean(invoices && !invoices.error && (invoices.data as { enabled?: boolean } | null)?.enabled) };
   return { kind: "customer", context };
 });
 

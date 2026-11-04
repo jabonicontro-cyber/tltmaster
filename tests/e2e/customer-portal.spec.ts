@@ -144,6 +144,18 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
     await expect(cust.getByText("It is 4412. Drive slowly past the scale.")).toBeVisible();
     await expect(cust.getByText(/Gate code changes monthly/)).toHaveCount(0);
 
+    // Invoices and statements (UX5): shown once the company issues its invoices in Taviron (read-only).
+    const issuer = (await sql<{ issuer: string }>("select issuer from public.invoicing_settings where company_id = $1", [TOP_LINE]))[0]?.issuer ?? null;
+    await sql("insert into public.invoicing_settings (company_id, issuer) values ($1, 'taviron') on conflict (company_id) do update set issuer = 'taviron'", [TOP_LINE]);
+    try {
+      await cust.goto(`/portal/${TOP_LINE_SLUG}/invoices`);
+      await expect(cust.getByRole("heading", { name: "Invoices" })).toBeVisible();
+      await expect(cust.getByRole("region", { name: "Statement" })).toBeVisible();
+    } finally {
+      if (issuer) await sql("update public.invoicing_settings set issuer = $2 where company_id = $1", [TOP_LINE, issuer]);
+      else await sql("delete from public.invoicing_settings where company_id = $1", [TOP_LINE]);
+    }
+
     // Turning the portal off closes it immediately.
     await sql("update public.portal_settings set enabled = false where company_id = $1", [TOP_LINE]);
     await cust.goto(`/portal/${TOP_LINE_SLUG}/orders`);

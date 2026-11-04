@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
-import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
+import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
+import { trimNumber } from "@/lib/fleet/labels";
 import { portalCall, portalGate } from "@/server/portal";
 import { previewPortalAs } from "@/app/admin/testing-lab/actions";
 import { Field, Select } from "@/components/ui/form";
@@ -31,8 +32,25 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
     c.features.quotes ? portalCall<{ quotes: PortalQuoteRow[] }>("portal_quotes", { p_slug: slug }) : Promise.resolve({ quotes: [] }),
     c.features.support ? portalCall<PortalSupportRow[]>("portal_support_list", { p_slug: slug }) : Promise.resolve([]),
   ]);
-  const today = new Date().toISOString().slice(0, 10);
+  // The company's today (its time zone), not the server's.
+  const dayIn = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: c.timezone || "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
+  const today = dayIn(new Date());
   const active = orders.filter((o) => !portalIsPast(o, today));
+  // Today (UX5): for orders scheduled today, the loads planned for today and the tickets delivered so far, from recorded
+  // data only (no estimates). At most five orders.
+  const todays = active.filter((o) => o.scheduled_start && o.scheduled_start <= today && (o.scheduled_end ?? o.scheduled_start) >= today).slice(0, 5);
+  // Read directly (not portalCall, which turns any refusal into "not found" for the whole page): a failed order is left out.
+  const sb = await createClient();
+  const todayDetail = (await Promise.all(todays.map(async (o) => { const r = await sb.rpc("portal_order", { p_slug: slug, p_order: o.id }); return r.error ? null : (r.data as PortalOrder); })))
+    .filter((d): d is PortalOrder => d !== null)
+    .map((d) => {
+      const loads = d.loads.filter((l) => l.date === today && !l.canceled);
+      const delivered = d.tickets.filter((t) => dayIn(new Date(t.delivered_at)) === today);
+      const units = [...new Set(delivered.map((t) => t.unit))];
+      const qty = units.length === 1 ? `${trimNumber(String(delivered.reduce((n, t) => n + Number(t.quantity), 0)))} ${units[0].replace(/_/g, " ")}` : "";
+      return { id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty };
+    })
+    .filter((d) => d.planned > 0 || d.delivered > 0);
   const awaiting = quotes.quotes.filter((q) => q.status === "sent" && !q.response);
   const answered = support.filter((s) => s.status === "answered");
 
@@ -48,6 +66,24 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
         {c.features.quotes ? <Stat label="Quotes awaiting your answer" value={awaiting.length} href={`/portal/${slug}/quotes`} /> : null}
         {c.features.support ? <Stat label="New replies from us" value={answered.length} href={`/portal/${slug}/support`} /> : null}
       </div>
+
+      {todayDetail.length ? (
+        <Card>
+          <CardHeader title="Today" description="Loads planned for today and tickets delivered so far, as recorded." />
+          <CardBody>
+            <ul className="divide-y divide-line" aria-label="Today">
+              {todayDetail.map((d) => (
+                <li key={d.id}>
+                  <Link href={`/portal/${slug}/orders/${d.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface">
+                    <span className="font-semibold text-ink">Order {d.number}{d.site ? <span className="font-normal text-muted"> · {d.site}</span> : null}</span>
+                    <span className="text-sm tabular text-ink">{d.delivered} of {d.planned || d.delivered} load{(d.planned || d.delivered) === 1 ? "" : "s"} delivered{d.qty ? ` · ${d.qty}` : ""}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </CardBody>
+        </Card>
+      ) : null}
 
       {c.features.orders ? (
         <Card>

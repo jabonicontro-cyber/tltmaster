@@ -87,3 +87,12 @@ case by writing within 14 days (after that they start a new one). Internal notes
 portal or its functions. Each reply sends a short email notice with a link to the portal (no message content), to the
 customer's active portal logins; demo companies never send, and a server without email set up only previews.
 
+## Invoices, statement and Today (UX5, 2026-11-04)
+
+When the company issues its invoices in Taviron (Settings → Invoicing) and the portal's Documents switch is on, the
+portal shows **Invoices**: the customer's own issued invoices (never drafts or voided ones) with what was paid and the
+balance, a printable invoice page, and a statement with the balance and aging (not yet due, 1–30, 31–60, 61–90, over
+90 days past due) as of the company's today (`portal_invoices`, `portal_invoice`, migration 20261120006900). Read-only:
+no online payment. The portal home also shows **Today** for orders scheduled today: loads planned for today and tickets
+delivered so far, from recorded data only.
+

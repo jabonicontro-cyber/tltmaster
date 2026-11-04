@@ -1,7 +1,7 @@
 // Customer portal (B66): shapes returned by the portal_* database functions and customer-facing formatting.
 // Everything a customer sees comes from these functions; nothing here invents a status, date or quantity.
 
-export type PortalFeatures = { orders: boolean; quotes: boolean; documents: boolean; support: boolean; help: boolean; tracking: boolean; /** Customer self-booking (B115), from booking settings. */ booking?: boolean };
+export type PortalFeatures = { orders: boolean; quotes: boolean; documents: boolean; support: boolean; help: boolean; tracking: boolean; /** Customer self-booking (B115), from booking settings. */ booking?: boolean; /** Invoices and statements (UX5). */ invoices?: boolean };
 
 export type PortalCompany = {
   name: string;
@@ -214,3 +214,15 @@ export function isPortalSlug(slug: string): boolean {
 export function isPortalToken(token: string | null | undefined): token is string {
   return typeof token === "string" && /^[0-9a-f]{64}$/.test(token);
 }
+
+export type PortalInvoiceRow = { id: string; number: string; issue_date: string; due_date: string; order_number: string | null; customer_po: string | null; project_name: string | null; total_cents: number; paid_cents: number; balance_cents: number; state: "open" | "overdue" | "paid" };
+export type PortalStatement = { balance_cents: number; overdue_cents: number; current_cents: number; d1_30_cents: number; d31_60_cents: number; d61_90_cents: number; d90_plus_cents: number; open_count: number };
+export type PortalInvoices = { enabled: false } | { enabled: true; as_of: string; invoices: PortalInvoiceRow[]; statement: PortalStatement };
+export type PortalInvoice = {
+  id: string; number: string; issue_date: string; due_date: string; terms_days: number | null; order_number: string | null; customer_po: string | null; project_name: string | null;
+  service_start: string | null; service_end: string | null; bill_to: Record<string, unknown> | null; issued_by: Record<string, unknown> | null; footer: string | null;
+  lines: Array<{ description: string; quantity: number | string | null; unit_code: string | null; unit_rate_cents: number | null; amount_cents: number }>;
+  subtotal_cents: number; discount_cents: number; tax_cents: number; total_cents: number;
+  payments: Array<{ received_on: string; amount_cents: number; method: string }>; paid_cents: number; balance_cents: number;
+};
+
