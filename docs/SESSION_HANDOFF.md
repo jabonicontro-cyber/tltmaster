@@ -1,11 +1,29 @@
 # Session handoff — Taviron
 
-Last updated: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 000000000000000000. 2026-11-04 — owner walkthrough fixes (UX1–UX16; owner at work, "follow recommendations")
+
+- **Production (Preview CI, Preview deploy, Production CI, migration workflow and Production deploy green):** batch 2
+  `add42ba` (pickup at the quarry, driver Navigate/Call, My Day order), batch 3 `7ecea57` (photos on defects and work
+  orders, dump-body checklist), `9ea09af` (support center B138), `0c14a46` (portal invoices, statement, Today panel),
+  `8f9cebc` (driver pay statements published with the labelled demo pay rule, About page). Not verified in a browser
+  on the live site (not reachable from the session).
+- **`27573b7` (promoting at the time of writing):** one invoice for several orders (UX10, migration `20261120007000`:
+  `invoice_orders`, one active invoice per order, Discard draft fixed), the customer page's Invoices and balance card,
+  mechanic next steps and timer notes, labelled menu for mechanic-only logins, shift offers on the right page (UX14,
+  migration `20261120007100`). Both migrations have tested rollbacks and work with the code before them.
+- **Local-only test notes:** with ~650 accumulated test companies in the local database, `command-center` and
+  `coordination` DB tests exceed 20 s (pass with a longer timeout) and `platform-launchpad` misses its lead in the capped
+  attention list; CI runs on a clean database.
+- **Owner:** press **Refresh demo data** in each demo (combined draft invoice where a customer has two orders to bill,
+  support cases, pay statement sample). Open: UX11 truck-day jobs (spec recorded, not built), UX14 "parts summary
+  count" (meaning to confirm), UX16 website story, AI keys in Vercel when wanted.
 
 ## 00000000000000000. 2026-10-27 (later) — seven owner ideas (B92–B98)
 

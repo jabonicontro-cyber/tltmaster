@@ -912,7 +912,8 @@ async function quoteHistory(db: Db, today: string): Promise<number> {
     const customer = customers[i % customers.length];
     const site = ((await db.from("customer_sites").select("id, label, line1, city").eq("customer_id", customer.id).limit(1)).data ?? [])[0] as { id: string; label: string; line1: string; city: string } | undefined;
     const saved = (await must("history quote", db.rpc("save_quote_draft", { p_payload: {
-      customer_id: customer.id, quote_date: addDays(today, -40 + i * 4), valid_until: addDays(today, -10 + i * 4), tax_rate_bp: 0,
+      // Decided quotes lie in the past (UX13): quoted 60 to 25 days ago, each valid 20 days, so an expired one has expired.
+      customer_id: customer.id, quote_date: addDays(today, -60 + i * 5), valid_until: addDays(today, -40 + i * 5), tax_rate_bp: 0,
       project_name: `Quote history (demo) ${i + 1}`,
       ...(site ? { site_id: site.id, site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
       lines: [{ kind: m.kind, calc_method: "per_unit", ...(m.material_id ? { material_id: m.material_id } : { charge_item_id: m.charge_item_id }), description: m.description, unit_code: m.unit_code, quantity: String(m.unit_code === "load" ? 2 + (i % 3) : 18 + i * 6), unit_rate_cents: Math.max(100, Math.round(Number(m.unit_rate_cents) * p.markup)) }],
