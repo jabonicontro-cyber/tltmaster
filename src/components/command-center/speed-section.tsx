@@ -25,10 +25,10 @@ export function SpeedSection({ speed }: { speed: SpeedMetrics }) {
         {billingReady !== undefined && (
           <Figure
             icon={<Receipt className="size-4" aria-hidden />}
-            label="Delivery to billing-ready"
+            label="Delivery to ticket accepted"
             value={billingReady ? hours(billingReady.medianHours) : null}
             sub={billingReady ? `${Math.round(billingReady.withinDay * 100)}% within a day · ${billingReady.tickets} tickets` : "Needs at least 5 accepted tickets."}
-            how="From the delivery time on the ticket to its acceptance (median)."
+            how="From the delivery time on the ticket to its acceptance (median). An accepted ticket is ready for billing; Reports shows delivery to billing for whole orders."
           />
         )}
         {pace !== undefined && (
@@ -62,7 +62,7 @@ function WeekByWeek({ weeks: all, plan, billing }: { weeks: WeekSpeed[]; plan: b
           <tr className="text-left text-xs text-muted">
             <th className="py-1 font-medium">Week</th>
             {plan && <th className="py-1 text-right font-medium">Plan tomorrow</th>}
-            {billing && <th className="py-1 text-right font-medium">Billing-ready</th>}
+            {billing && <th className="py-1 text-right font-medium">Ticket accepted</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-line/70">

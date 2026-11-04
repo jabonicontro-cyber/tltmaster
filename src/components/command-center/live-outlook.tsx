@@ -94,7 +94,7 @@ export function LiveOutlook({ outlook, today, compact = false, moreHref }: { out
           <h3 className="text-sm font-semibold text-ink">Today</h3>
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Ring size={84} part={t.assigned} whole={t.loads} label="Covered" caption={t.loads ? `${t.unassigned} open` : "no loads"} tone={t.unassigned ? "critical" : "green"} />
-            <Ring size={84} part={t.trucksReady} whole={t.trucksReady + t.trucksDown} label="Trucks" caption={t.trucksDown ? `${t.trucksDown} down` : "all can run"} tone={t.trucksDown ? "amber" : "brand"} />
+            <Ring size={84} part={t.trucksReady} whole={t.trucksReady + t.trucksDown} label="Trucks that can run" caption={t.trucksDown ? `${t.trucksDown} can't run (shop, restriction or out of service)` : "all can run"} tone={t.trucksDown ? "amber" : "brand"} />
             <Ring size={84} part={t.driversAvailable} whole={t.driversAvailable + t.driversOff} label="Drivers" caption={t.driversOff ? `${t.driversOff} off` : "none off"} />
           </div>
         </section>

@@ -1,4 +1,4 @@
-import { addDays } from "@/lib/dates";
+import { addDays, formatDate } from "@/lib/dates";
 
 // One view of a vehicle's mechanical availability, derived from the records
 // that already decide it: the service status (set only through
@@ -77,7 +77,7 @@ export function vehicleAvailability(
     return { state: "restricted", label: "Safety restricted", detail: `Safety-critical defect on ${safety.map((w) => w.number).join(", ")}. Cleared only through Maintenance.`, ready: false, upcoming };
   }
   if (v.service_status === "out_of_service") {
-    const back = v.expected_return_date ? ` Expected back ${v.expected_return_date}.` : "";
+    const back = v.expected_return_date ? ` Expected back ${formatDate(v.expected_return_date)}.` : "";
     return { state: "out_of_service", label: "Out of service", detail: `${v.out_of_service_reason || "No reason recorded."}${back}`, ready: false, upcoming };
   }
   const shop = openWorkOrders.find((w) => IN_SHOP.has(w.status));

@@ -61,8 +61,8 @@ describe("Smart Dispatch recommendations", () => {
   it("4. a truck out of service (maintenance) is excluded, with its expected return", () => {
     const [p] = recommend(input({ loads: [load("A")], trucks: [truck("101", { service_status: "out_of_service", expected_return_date: "2026-10-14" })] }));
     expect(p.proposal).toBeNull();
-    expect(p.excludedTrucks[0].reasons[0]).toBe("Out of service (expected back 2026-10-14).");
-    expect(p.blocked?.options.join(" ")).toMatch(/expected back in service on 2026-10-14 — after this load's date/);
+    expect(p.excludedTrucks[0].reasons[0]).toBe("Out of service (expected back Oct 14, 2026).");
+    expect(p.blocked?.options.join(" ")).toMatch(/expected back in service on Oct 14, 2026 — after this load's date/);
   });
 
   it("5. an unresolved breakdown or inspection report blocks the truck; an equipment issue only warns", () => {
@@ -239,5 +239,25 @@ describe("Smart Dispatch and time off", () => {
     const none = recommend({ ...base, loads: [load("Z")], pickTrailer: () => null });
     expect(none[0].proposal).toBeNull();
     expect(none[0].excludedTrucks[0].reasons.join(" ")).toMatch(/No usable trailer is free/);
+  });
+});
+
+describe("Smart Dispatch: own trucks and held loads (UX3, owner 2026-11-04)", () => {
+  it("keeps each driver on their own truck when both are free", () => {
+    const trucks = [truck("101"), truck("102"), truck("103")];
+    const drivers = [qualified({ id: "d-avery", name: "Avery", primary_truck_id: "t-103" }), qualified({ id: "d-blake", name: "Blake", primary_truck_id: "t-101" })];
+    const plans = recommend(input({ trucks, drivers, loads: [load("A"), load("B", { starts_at: at(TODAY, "15:00"), ends_at: at(TODAY, "16:00") })] }));
+    for (const p of plans) {
+      const d = drivers.find((x) => x.id === p.proposal!.driverId)!;
+      expect(p.proposal!.truckId, p.load.id).toBe(d.primary_truck_id);
+      expect(p.proposal!.reasons[0]).toMatch(/usually drives this truck/);
+    }
+  });
+
+  it("never proposes a held load (credit hold, hired-truck offer) and does not reserve resources for it", () => {
+    const [held, next] = recommend(input({ loads: [load("A", { hold: "Customer (test) is on credit hold." }), load("B")] }));
+    expect(held.proposal).toBeNull();
+    expect(held.blocked?.why).toEqual(["Customer (test) is on credit hold."]);
+    expect(next.proposal).toMatchObject({ truckLabel: "101", driverLabel: "Avery" });
   });
 });

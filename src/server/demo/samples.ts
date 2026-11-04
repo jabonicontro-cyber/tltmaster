@@ -130,6 +130,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.
   note("spreadsheet import", await rpcCount(db, "demo_import_samples"));
   note("shift offers", await rpcCount(db, "demo_shift_offer_samples"));
+  // Billing tolerance (UX2): a sample 1 % so scale-weight differences of a few hundred pounds do not block billing.
+  // Only when the demo has never set one; a value chosen in the demo is never changed.
+  note("billing tolerance", await billingTolerance(db));
   // Invoicing (B99): Taviron issues the demo's invoices; one past due, one partly paid, one paid (after the billing sample).
   note("invoices", await rpcCount(db, "demo_invoice_samples"));
   // GPS and hours (B101): hand-entered sample positions (one stale) and drivers' hours (one nearly out of drive time).
@@ -1395,6 +1398,18 @@ async function siteNote(db: Db): Promise<number> {
 }
 
 /** A demo sample function that returns how many rows it added (0 before its migration is installed). */
+/** A sample billing tolerance (1 %, fictional) when the demo has none yet; 0 when already set or not installed. */
+async function billingTolerance(db: Db): Promise<number> {
+  const current = await db.from("billing_tolerance_settings").select("company_id").maybeSingle();
+  if (missing(current.error)) return 0;
+  if (current.error) throw new Error(`Demo samples (billing tolerance): ${current.error.message}`);
+  if (current.data) return 0;
+  const { error } = await db.rpc("billing_save_tolerance", { p_percent: 1 });
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (billing tolerance): ${error.message}`);
+  return 1;
+}
+
 async function rpcCount(db: Db, fn: string): Promise<number> {
   const { data, error } = await db.rpc(fn);
   if (missing(error)) return 0;

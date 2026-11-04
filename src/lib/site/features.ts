@@ -90,7 +90,7 @@ export const FEATURES: Feature[] = [
     problem: "Nobody knows how long planning tomorrow or getting a delivery ready to bill really takes.",
     how: "Command Center measures it from what people actually record: how long it takes to assign tomorrow's trucks, how long a delivery waits until its ticket is accepted, and how many tickets are reviewed per minute.",
     value: "Improvements show up in real numbers, measured from the company's own work, never estimated.",
-    points: ["Time to plan tomorrow, from the assignments made the day before", "Delivery to billing-ready, from delivery to ticket acceptance", "Ticket review pace per minute of review time"],
+    points: ["Time to plan tomorrow, from the assignments made the day before", "Delivery to ticket accepted (ready for billing)", "Ticket review pace per minute of review time"],
     limitations: ["Shows nothing until enough has been recorded (“not enough measured yet”)"],
     status: "available",
     published: true,

@@ -48,7 +48,7 @@ export default async function PortalBook({ params }: { params: Promise<{ slug: s
           <ul className="divide-y divide-line border-t border-line" aria-label="Your booking requests">
             {requests.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-5 py-3.5 sm:px-6">
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 basis-full sm:basis-auto sm:flex-1">
                   <p className="font-semibold text-ink">{formatDate(r.day)} · {r.loads} load{r.loads === 1 ? "" : "s"} · {TIME_WINDOW[r.time_window]}</p>
                   <p className="text-sm text-muted">{r.material}{r.site ? ` · ${r.site}` : ""}{r.decision_note ? ` · ${c.name}: ${r.decision_note}` : ""}</p>
                 </div>

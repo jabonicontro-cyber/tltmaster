@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
-import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow } from "@/lib/portal";
+import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
 import { portalCall, portalGate } from "@/server/portal";
 import { previewPortalAs } from "@/app/admin/testing-lab/actions";
 import { Field, Select } from "@/components/ui/form";
@@ -31,7 +31,8 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
     c.features.quotes ? portalCall<{ quotes: PortalQuoteRow[] }>("portal_quotes", { p_slug: slug }) : Promise.resolve({ quotes: [] }),
     c.features.support ? portalCall<PortalSupportRow[]>("portal_support_list", { p_slug: slug }) : Promise.resolve([]),
   ]);
-  const active = orders.filter((o) => !["completed", "canceled"].includes(o.status));
+  const today = new Date().toISOString().slice(0, 10);
+  const active = orders.filter((o) => !portalIsPast(o, today));
   const awaiting = quotes.quotes.filter((q) => q.status === "sent" && !q.response);
   const answered = support.filter((s) => s.status === "answered");
 

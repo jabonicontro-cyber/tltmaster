@@ -9,7 +9,7 @@ import { SITE_CONTAINER } from "@/lib/layout";
 /** Public website header. The phone menu is a <details> element (works without JavaScript); see MobileMenu. */
 export function SiteHeader() {
   return (
-    <header className="site-header sticky top-0 z-40 bg-navy/75 backdrop-blur-xl backdrop-saturate-150">
+    <header className="site-header sticky top-0 z-40 bg-navy/95 backdrop-blur-xl backdrop-saturate-150">
       <div className={cn(SITE_CONTAINER, "flex h-16 items-center justify-between gap-4")}>
         <Link href="/" aria-label="Taviron home" className="flex rounded-xl">
           <TavironLogo />

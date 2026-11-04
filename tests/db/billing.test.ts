@@ -169,6 +169,38 @@ describe("quantity reconciliation", () => {
     });
   });
 
+  it("a company-set tolerance (UX2) leaves small quantity differences out; off means an exact match; only billing managers set it", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      await s.as(w.office);
+      const t = await submit(s, w.payload({ quantity: "22.2" })); // 0.2 t over a 22 t plan = 0.91 %
+      await review(s, t.ticket_id, "accept");
+      const kinds = async () => (await exceptions(s, w.order.id)).map((e) => e.kind);
+      expect(await kinds()).toContain("load_quantity");
+
+      await s.query("select public.billing_save_tolerance(1)");
+      expect(await kinds()).not.toContain("load_quantity");
+      await s.query("select public.billing_save_tolerance(0.5)");
+      expect(await kinds()).toContain("load_quantity");
+      await s.query("select public.billing_save_tolerance(null)");
+      expect(await kinds()).toContain("load_quantity");
+
+      // Units never become tolerated: a ticket in loads stays an exception at any tolerance.
+      await s.query("select public.billing_save_tolerance(10)");
+      const other = await planLoad(s, w.order.id, w.yesterday, "10:00", "11:00", { planned_quantity: "22", unit_code: "ton" });
+      await assign(s, other.load_id, w.f.t2, null, w.f.d2);
+      const t2 = await submit(s, w.payload({ load_id: other.load_id, quantity: "1", unit_code: "load", delivered_time: "10:30" }));
+      await review(s, t2.ticket_id, "accept");
+      expect(await kinds()).toContain("load_units_differ");
+
+      expect((await pgError(s.query("select public.billing_save_tolerance(0)"))).code).toBe("22023");
+      expect((await pgError(s.query("select public.billing_save_tolerance(11)"))).code).toBe("22023");
+      const driver = await s.createUser("driver");
+      await s.as(driver);
+      expect((await pgError(s.query("select public.billing_save_tolerance(2)"))).code).toBe("42501");
+    });
+  });
+
   it("flags a missing PO when the customer requires one, and a zero rate", async () => {
     await withSession(async (s) => {
       const w = await world(s);

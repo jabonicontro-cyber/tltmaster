@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/states";
-import { formatQuantity, scheduleText, type PortalOrderSummary } from "@/lib/portal";
+import { formatQuantity, portalIsPast, portalStatusLabel, scheduleText, type PortalOrderSummary } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Orders" };
@@ -14,7 +14,8 @@ export default async function PortalOrders({ params, searchParams }: { params: P
   if (!c.features.orders) notFound();
   const all = await portalCall<PortalOrderSummary[]>("portal_orders", { p_slug: slug });
   const past = show === "past";
-  const orders = all.filter((o) => (["completed", "canceled"].includes(o.status) ? past : !past));
+  const today = new Date().toISOString().slice(0, 10);
+  const orders = all.filter((o) => (portalIsPast(o, today) ? past : !past));
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -37,7 +38,7 @@ export default async function PortalOrders({ params, searchParams }: { params: P
                     <p className="mt-0.5 text-sm text-muted">{scheduleText(o) ?? "Not scheduled yet"}{o.site ? ` · ${o.site}` : ""}</p>
                     {o.po ? <p className="mt-0.5 text-sm text-muted">PO {o.po}</p> : null}
                   </div>
-                  <Badge tone={o.status === "canceled" ? "gray" : o.status === "on_hold" ? "amber" : "brand"}>{o.status_label}</Badge>
+                  <Badge tone={o.status === "canceled" ? "gray" : o.status === "on_hold" ? "amber" : portalIsPast(o, today) ? "green" : "brand"}>{portalStatusLabel(o, today)}</Badge>
                 </div>
                 {o.tickets_confirmed + o.tickets_reported > 0 ? (
                   <p className="mt-2 text-sm text-ink">

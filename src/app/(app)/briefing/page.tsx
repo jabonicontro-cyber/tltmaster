@@ -7,7 +7,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState } from "@/components/ui/states";
 import { balanceCents, invoiceState } from "@/lib/billing/invoices";
-import { missedTotal } from "@/lib/billing/leaks";
+import { heldTotal, missedTotal } from "@/lib/billing/leaks";
 import { briefingActions, greetingFor, type BriefingAction } from "@/lib/briefing";
 import { cn } from "@/lib/cn";
 import { addDays, formatDateLong } from "@/lib/dates";
@@ -61,7 +61,7 @@ export default async function BriefingPage() {
     billingReady: s?.billing_ready ?? null,
     billingBlocked: s?.billing_blocked ?? null,
     overdueInvoices: overdue ? { count: overdue.length, cents: overdue.reduce((n, i) => n + balanceCents(i), 0) } : null,
-    revenueToCheck: leaks ? { count: leaks.length, cents: missedTotal(leaks) } : null,
+    revenueToCheck: leaks ? { count: leaks.length, cents: missedTotal(leaks), heldCents: heldTotal(leaks) } : null,
     tomorrowUnassigned: daily?.tomorrow_without_truck ?? null,
     longWaitsYesterday: waits ? waits.filter((w) => isLong(waitMinutes(w), waitCfg.freeMinutes)).length : null,
   });

@@ -15,7 +15,7 @@ export interface BriefingSignals {
   billingReady: number | null;
   billingBlocked: number | null;
   overdueInvoices: { count: number; cents: number } | null;
-  revenueToCheck: { count: number; cents: number } | null;
+  revenueToCheck: { count: number; cents: number; heldCents?: number } | null;
   tomorrowUnassigned: number | null;
   longWaitsYesterday: number | null;
 }
@@ -44,7 +44,7 @@ export function briefingActions(s: BriefingSignals): BriefingAction[] {
   if (n(s.loadsTodayUnassigned)) out.push({ key: "unassigned", tone: "critical", weight: 90, title: `${plural(s.loadsTodayUnassigned!, "load")} today without a truck`, detail: "Smart Dispatch has proposals ready for most of them.", href: "/dispatch", cta: "Assign on the board" });
   if (n(s.assignmentProblems)) out.push({ key: "problems", tone: "critical", weight: 85, title: `${plural(s.assignmentProblems!, "assignment")} that would now be refused`, detail: "A truck, trailer or driver no longer qualifies (repair, expired document, time off).", href: "/command-center?kind=assignment_problem#attention", cta: "Fix assignments" });
   if (n(s.overdueInvoices?.count)) out.push({ key: "overdue", tone: "warn", weight: 70 + Math.min(15, Math.floor(s.overdueInvoices!.cents / 500000)), title: `${money(s.overdueInvoices!.cents)} overdue on ${plural(s.overdueInvoices!.count, "invoice")}`, detail: "Customers past their payment terms.", href: "/billing/invoices?view=overdue", cta: "See who owes" });
-  if (n(s.revenueToCheck?.count)) out.push({ key: "revenue", tone: "warn", weight: 65 + Math.min(15, Math.floor(s.revenueToCheck!.cents / 500000)), title: `About ${money(s.revenueToCheck!.cents)} possibly not billed`, detail: `${plural(s.revenueToCheck!.count, "finding")}: delivered work not handed off, short billing or voided invoices.`, href: "/billing/leaks", cta: "Check revenue" });
+  if (n(s.revenueToCheck?.count)) out.push({ key: "revenue", tone: "warn", weight: 65 + Math.min(15, Math.floor(s.revenueToCheck!.cents / 500000)), title: s.revenueToCheck!.cents > 0 ? `About ${money(s.revenueToCheck!.cents)} possibly not billed` : `About ${money(s.revenueToCheck!.heldCents ?? 0)} of billing held up`, detail: `${plural(s.revenueToCheck!.count, "finding")}: delivered work not handed off, short billing or voided invoices.`, href: "/billing/leaks", cta: "Check revenue" });
   if (n(s.billingReady)) out.push({ key: "ready", tone: "info", weight: 60, title: `${plural(s.billingReady!, "order")} ready to bill`, detail: "Delivered, documented and reviewed.", href: "/billing?view=ready", cta: "Hand off for billing" });
   if (n(s.missingTickets)) out.push({ key: "missing", tone: "warn", weight: 55, title: `${plural(s.missingTickets!, "delivered load")} without a ticket`, detail: "Billing waits until each load has its ticket.", href: "/command-center?kind=missing_ticket#attention", cta: "Chase tickets" });
   if (n(s.ticketsToReview)) out.push({ key: "review", tone: "info", weight: 50, title: `${plural(s.ticketsToReview!, "ticket")} to review`, detail: "Accepted tickets move orders toward billing.", href: "/tickets", cta: "Review tickets" });

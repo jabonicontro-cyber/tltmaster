@@ -35,9 +35,17 @@ export function leakHref(l: Pick<Leak, "kind" | "orderId" | "refId">): string {
   return l.kind === "voided_invoice" ? `/billing/invoices/${l.refId}` : `/orders/${l.orderId}`;
 }
 
-/** Possible missed revenue: positive amounts only (over-billing is a dispute risk, not missed revenue). */
+/**
+ * Possible missed revenue: positive amounts only (over-billing is a dispute risk, not missed revenue), and not work that
+ * is only waiting for ticket review or a billing decision ("billing held up", UX4): that is counted by heldTotal.
+ */
 export function missedTotal(leaks: Leak[]): number {
-  return leaks.reduce((n, l) => n + (l.amountCents !== null && l.amountCents > 0 && l.kind !== "billed_over" ? l.amountCents : 0), 0);
+  return leaks.reduce((n, l) => n + (l.amountCents !== null && l.amountCents > 0 && l.kind !== "billed_over" && l.kind !== "stuck" ? l.amountCents : 0), 0);
+}
+
+/** Delivered work waiting for review or a billing decision: not missed, but not billable yet. */
+export function heldTotal(leaks: Leak[]): number {
+  return leaks.reduce((n, l) => n + (l.kind === "stuck" && l.amountCents !== null && l.amountCents > 0 ? l.amountCents : 0), 0);
 }
 
 export function byKind(leaks: Leak[]): Array<{ kind: LeakKind; count: number; cents: number }> {

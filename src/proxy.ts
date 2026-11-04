@@ -3,6 +3,7 @@ import { cookiePersistence, SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
 import { NextResponse, type NextRequest } from "next/server";
 import { signSiteAccess, verifySiteAccess } from "@/lib/site-access-token";
 import { isPublicSiteRequest } from "@/lib/site/paths";
+import { isAppPath } from "@/lib/app-roots";
 import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnabled, revalidateGrant, revalidateSeconds, siteGate } from "@/server/site-access";
 
 // "/api/cron": scheduled jobs authenticate with CRON_SECRET, not a session. "/api/telematics/ingest": a GPS/ELD provider
@@ -107,7 +108,8 @@ export async function proxy(request: NextRequest) {
 
   // 2. Sign-in.
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(p + "/"));
-  if (!signedIn && !isPublic && !sitePage) {
+  // An address that is neither an app page nor a public page renders "page not found" (UX12), not the login page.
+  if (!signedIn && !isPublic && !sitePage && isAppPath(path)) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.search = path === "/" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`;

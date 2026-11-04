@@ -1,0 +1,62 @@
+// The first path segment of every signed-in or account page (src/app/(app), src/app/(auth) and the top-level route
+// folders). A signed-out visitor to one of these is sent to sign in; any other unknown address shows "page not found"
+// instead of the login page (UX12). tests/unit/app-roots.test.ts keeps this list in step with the folders.
+export const APP_ROOTS: readonly string[] = [
+  "account",
+  "accountant",
+  "admin",
+  "api",
+  "assistant",
+  "auth",
+  "billing",
+  "brand",
+  "briefing",
+  "command-center",
+  "communications",
+  "customer-portal",
+  "customers",
+  "dashboard",
+  "dispatch",
+  "driver",
+  "early-access",
+  "employees",
+  "field-reports",
+  "fleet",
+  "forgot-password",
+  "help",
+  "hired-trucks",
+  "login",
+  "maintenance",
+  "materials",
+  "mfa",
+  "no-access",
+  "offline",
+  "onboarding",
+  "order-to-cash",
+  "orders",
+  "payroll",
+  "people",
+  "portal",
+  "profile",
+  "quotes",
+  "reports",
+  "route-planner",
+  "safety",
+  "schedule",
+  "search",
+  "settings",
+  "setup",
+  "signup",
+  "site-photos",
+  "tickets",
+  "time-off",
+  "track",
+  "update-password",
+  "welcome",
+];
+
+/** Whether a path belongs to the app (sign-in needed) rather than being an unknown public address. */
+export function isAppPath(path: string): boolean {
+  const first = path.split("/")[1] ?? "";
+  return first === "" || APP_ROOTS.includes(first);
+}

@@ -24,7 +24,7 @@
 // date passed, earliest load), and a truck or driver proposed for a more urgent
 // load is not proposed again for an overlapping one.
 
-import { addDays } from "@/lib/dates";
+import { addDays, formatDate } from "@/lib/dates";
 import { straightLineMiles, type Point } from "@/lib/routing/route";
 import { driverChecks, eligibilityMessage, type EligibilityQualification } from "@/lib/fleet/eligibility";
 
@@ -53,6 +53,11 @@ export interface SmartLoad {
   site_wait?: number | null;
   /** The customer is marked priority (owner 2026-11-02): planned first after urgent orders. */
   priority_customer?: boolean;
+  /**
+   * Why this load must not get a one-click proposal (UX3, owner 2026-11-04): the customer is on credit hold, or the load
+   * is offered to a hired truck. The dispatcher decides on the board; nothing is proposed or reserved for it.
+   */
+  hold?: string | null;
 }
 
 export interface SmartBooking {
@@ -398,7 +403,7 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   const ix = indexOf(input);
   const out: string[] = [];
   if (!t.active) out.push(eligibilityMessage("truck_inactive"));
-  if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${t.expected_return_date})` : ""}.`);
+  if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${formatDate(t.expected_return_date)})` : ""}.`);
   const shop = ix.shopByTruck.get(t.id) ?? NONE;
   const restricted = shop.find((v) => v.safety_critical);
   if (restricted) out.push(`Safety-critical work order ${restricted.number} is open — the truck returns only through clearance in Maintenance.`);
@@ -571,6 +576,13 @@ export function recommend(input: SmartInput): LoadPlan[] {
   const workByDriver = groupBy(dayWork, (w) => w.driver_id);
 
   for (const load of orderLoads(input.loads, input.today)) {
+    if (load.hold) {
+      plans.push({
+        load, priority: priorityOf(load, input.today), proposal: null, alternatives: [], excludedTrucks: [], excludedDrivers: [],
+        blocked: { why: [load.hold], options: ["Assign it from the board, where the reason is recorded."] }, rejectedPairs: 0, notes,
+      });
+      continue;
+    }
     const taken = overlapsFor(reserved, load);
     const excludedTrucks: Exclusion[] = [];
     const okTrucks: Scored[] = [];
@@ -593,16 +605,26 @@ export function recommend(input: SmartInput): LoadPlan[] {
 
     const rejected = input.rejections.filter((r) => r.load_id === load.id);
     const pairs: Candidate[] = [];
-    for (const t of okTrucks.slice(0, 4)) {
+    // The best four of each, plus each candidate driver's own truck and each candidate truck's regular driver (UX3).
+    const topTrucks = okTrucks.slice(0, 4);
+    const topDrivers = okDrivers.slice(0, 4);
+    const ownOf = (driverId: string) => indexOf(input).driversById.get(driverId)?.primary_truck_id ?? null;
+    const truckCands = [...topTrucks, ...okTrucks.slice(4).filter((t) => topDrivers.some((d) => ownOf(d.id) === t.id))];
+    const driverCands = [...topDrivers, ...okDrivers.slice(4).filter((d) => topTrucks.some((t) => ownOf(d.id) === t.id))];
+    for (const t of truckCands) {
       const truck = indexOf(input).trucksById.get(t.id)!;
-      for (const d of okDrivers.slice(0, 4)) {
+      for (const d of driverCands) {
         if (rejected.some((r) => r.truck_id === t.id && r.driver_id === d.id)) continue;
         // A tractor needs a trailer the driver may pull (combination licence); otherwise the pair is not offered.
         const trailer = truck.truck_type === "tractor" && input.pickTrailer ? input.pickTrailer(truck, load, indexOf(input).driversById.get(d.id) ?? null, taken.busy) : null;
         if (truck.truck_type === "tractor" && !trailer) continue;
+        // Keep a driver on their own truck (UX3): dump fleets rarely swap; a free own truck makes another one less likely.
+        const own = indexOf(input).driversById.get(d.id)?.primary_truck_id ?? null;
+        const pairScore = own === t.id ? 40 : own && okTrucks.some((x) => x.id === own) ? -15 : 0;
+        const pairReasons = own === t.id ? [`${d.label} usually drives this truck.`] : [];
         pairs.push({
           truckId: t.id, truckLabel: trailer ? `${t.label} + ${trailer.unit_number}` : t.label, trailerId: trailer?.id ?? null, trailerLabel: trailer?.unit_number ?? null,
-          driverId: d.id, driverLabel: d.label, score: t.score + d.score, reasons: [...t.reasons, ...d.reasons], warnings: [...t.warnings, ...d.warnings],
+          driverId: d.id, driverLabel: d.label, score: t.score + d.score + pairScore, reasons: [...pairReasons, ...t.reasons, ...d.reasons], warnings: [...t.warnings, ...d.warnings],
           emptyMiles: t.emptyMiles ?? null,
           emptyCostCents: t.emptyMiles != null && input.mileCents != null ? Math.round(t.emptyMiles * input.mileCents) : null,
         });
@@ -638,7 +660,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
       for (const t of excludedTrucks) {
         const truck = input.trucks.find((x) => x.id === t.id)!;
         if (truck.service_status === "out_of_service" && truck.expected_return_date && t.reasons.length === 1) {
-          options.push(`Truck ${t.label} is expected back in service on ${truck.expected_return_date}${truck.expected_return_date > load.load_date ? " — after this load's date" : ""}.`);
+          options.push(`Truck ${t.label} is expected back in service on ${formatDate(truck.expected_return_date)}${truck.expected_return_date > load.load_date ? " — after this load's date" : ""}.`);
         }
         if (t.reasons.length === 1 && t.reasons[0].startsWith("Already booked") ) options.push(`Truck ${t.label} is free at another time that day — moving the load's time would need the customer's agreement.`);
       }

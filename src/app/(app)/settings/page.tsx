@@ -46,7 +46,7 @@ import { waitTimeSettings } from "@/server/data/wait-times";
 import { WaitTimeForm } from "@/components/settings/wait-time-form";
 import { env } from "@/server/env";
 import { TelematicsSettingsForm } from "@/components/fleet/telematics";
-import { saveCreditHoldSettings, saveInvoicingSettings } from "../billing/invoices/actions";
+import { saveBillingTolerance, saveCreditHoldSettings, saveInvoicingSettings } from "../billing/invoices/actions";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
@@ -321,6 +321,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     const inv = await invoicingSettings();
     // Credit holds (B128): null until that update is installed.
     const credit = await supabase.from("credit_hold_settings").select("overdue_days").maybeSingle();
+    const tolerance = await supabase.from("billing_tolerance_settings").select("percent").maybeSingle();
     const edit = can(access, "billing.manage");
     content = (
       <>
@@ -354,6 +355,14 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <h3 className="text-base font-semibold text-ink">Credit holds</h3>
               <p className="text-sm text-muted">A customer goes on credit hold when an issued Taviron invoice is more than this many days past due (or their open balance is over the credit limit on their page). New orders and dispatch for them are never blocked: whoever goes ahead gives a reason, which is recorded.</p>
               <Field label="Days past due" htmlFor="overdue_days" hint="Empty: off. Holds put on by hand always apply."><Input id="overdue_days" name="overdue_days" inputMode="numeric" defaultValue={(credit.data as { overdue_days: number | null } | null)?.overdue_days?.toString() ?? ""} disabled={!edit} className="max-w-28" /></Field>
+              {edit && <SubmitButton>Save</SubmitButton>}
+            </form>
+          )}
+          {!tolerance.error && (
+            <form action={saveBillingTolerance} className="mt-8 max-w-xl space-y-3 border-t border-line pt-6" aria-label="Billing tolerance">
+              <h3 className="text-base font-semibold text-ink">Billing tolerance</h3>
+              <p className="text-sm text-muted">Scale weights rarely match the plan exactly. A difference between the tickets and the planned or ordered quantity within this percentage is not a billing exception; a larger one still is, and different units, missing tickets and zero rates always are. Empty: tickets must match exactly.</p>
+              <Field label="Allowed difference (%)" htmlFor="tolerance_percent" hint="Above 0 and up to 10, for example 1 or 2.5. Your company chooses the number."><Input id="tolerance_percent" name="tolerance_percent" inputMode="decimal" defaultValue={(tolerance.data as { percent: number | string | null } | null)?.percent?.toString() ?? ""} disabled={!edit} className="max-w-28" /></Field>
               {edit && <SubmitButton>Save</SubmitButton>}
             </form>
           )}

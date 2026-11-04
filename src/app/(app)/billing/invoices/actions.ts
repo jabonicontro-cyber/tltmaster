@@ -178,3 +178,18 @@ export async function saveCreditHoldSettings(formData: FormData) {
   revalidatePath("/settings");
   go(back, "saved", "invoicing");
 }
+
+/** Billing tolerance (UX2): quantity differences within this percent of the planned or ordered quantity are not billing
+ * exceptions; empty = exact match. The company chooses the number. */
+export async function saveBillingTolerance(formData: FormData) {
+  const back = "/settings?tab=invoicing";
+  await manage(back);
+  const raw = String(formData.get("tolerance_percent") ?? "").trim().replace(",", ".");
+  const percent = raw === "" ? null : Number(raw);
+  if (percent !== null && (!Number.isFinite(percent) || percent <= 0 || percent > 10)) go(back, "error", "The tolerance is above 0 and up to 10 percent, or empty for an exact match.");
+  const { error } = await (await createClient()).rpc("billing_save_tolerance", { p_percent: percent === null ? null : Math.round(percent * 100) / 100 });
+  if (error) go(back, "error", dbErrorMessage(error));
+  revalidatePath("/settings");
+  revalidatePath("/billing");
+  go(back, "saved", "invoicing");
+}

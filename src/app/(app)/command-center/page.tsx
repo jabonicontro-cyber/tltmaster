@@ -35,7 +35,7 @@ import { loadDriverHome } from "@/server/data/driver";
 import { fleetOverview } from "@/server/data/fleet";
 import { listLeaks } from "@/server/data/leaks";
 import { formatCents } from "@/lib/money";
-import { missedTotal } from "@/lib/billing/leaks";
+import { heldTotal, missedTotal } from "@/lib/billing/leaks";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
@@ -336,11 +336,12 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     }
     if (leaks) {
       const missed = missedTotal(leaks);
+      const held = heldTotal(leaks);
       cards.push({
         key: "revenue_check",
         label: "Revenue to check",
         value: leaks.length,
-        sub: leaks.length ? `${formatCents(missed)} possibly missed (estimated)` : "Nothing slipping through",
+        sub: !leaks.length ? "Nothing slipping through" : missed > 0 ? `${formatCents(missed)} possibly missed (estimated)` : `${formatCents(held)} of billing held up (estimated)`,
         href: "/billing/leaks",
         tone: missed > 0 ? "warn" : "default",
       });

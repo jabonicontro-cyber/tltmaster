@@ -53,7 +53,7 @@ describe("Plan the day: why loads are blocked and what is unavailable", () => {
     const ex = explainLoad(ctx, "A");
     expect(ex.summary).toMatch(/None of the 1 truck can take this load/);
     expect(ex.unavailable).toEqual([
-      { kind: "truck", id: "t-101", label: "Truck 101", reasons: [expect.stringMatching(/Out of service \(expected back 2026-10-16\)/)] },
+      { kind: "truck", id: "t-101", label: "Truck 101", reasons: [expect.stringMatching(/Out of service \(expected back Oct 16, 2026\)/)] },
       { kind: "driver", id: "d-Blake", label: "Blake", reasons: [expect.stringMatching(/medical/i)] },
     ]);
     expect(unavailableResources(ctx).map((u) => u.label)).toEqual(["Truck 101", "Blake"]);

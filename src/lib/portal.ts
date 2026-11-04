@@ -152,6 +152,23 @@ export function formatTime(t: string | null | undefined): string {
 }
 
 /** The order's schedule as the customer should read it, or null when nothing is scheduled yet. */
+/**
+ * Whether an order belongs with past orders in the portal (UX5): completed or canceled, or — while the office has not
+ * closed it yet — every scheduled day is over, nothing more is planned and every delivery is confirmed. Such an order
+ * shows as "Delivered" instead of "Scheduled". On hold is always open.
+ */
+export function portalIsPast(o: Pick<PortalOrderSummary, "status" | "scheduled_start" | "scheduled_end" | "next_load" | "tickets_confirmed" | "tickets_reported">, today: string): boolean {
+  if (o.status === "completed" || o.status === "canceled") return true;
+  if (o.status === "on_hold") return false;
+  const last = o.scheduled_end ?? o.scheduled_start;
+  return Boolean(last && last < today && !o.next_load && o.tickets_confirmed > 0 && o.tickets_reported === 0);
+}
+
+/** The status shown to the customer: "Delivered" for an order that is finished but not closed yet (UX5). */
+export function portalStatusLabel(o: Pick<PortalOrderSummary, "status" | "status_label" | "scheduled_start" | "scheduled_end" | "next_load" | "tickets_confirmed" | "tickets_reported">, today: string): string {
+  return o.status !== "completed" && o.status !== "canceled" && portalIsPast(o, today) ? "Delivered" : o.status_label;
+}
+
 export function scheduleText(o: Pick<PortalOrderSummary, "scheduled_start" | "scheduled_end" | "window_start" | "window_end" | "requested_date">): string | null {
   if (o.scheduled_start) {
     const days = o.scheduled_end && o.scheduled_end !== o.scheduled_start ? `${formatDay(o.scheduled_start)} – ${formatDay(o.scheduled_end)}` : formatDay(o.scheduled_start);

@@ -7,7 +7,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState, Notice } from "@/components/ui/states";
-import { LEAK_KINDS, byKind, leakHref, missedTotal, type Leak } from "@/lib/billing/leaks";
+import { LEAK_KINDS, byKind, heldTotal, leakHref, missedTotal, type Leak } from "@/lib/billing/leaks";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -41,6 +41,7 @@ export default async function RevenueCheckPage({ searchParams }: { searchParams:
   const checked = all.filter((l) => l.checkedReason);
   const shown = showChecked ? checked : open;
   const missed = missedTotal(open);
+  const held = heldTotal(open);
   const kinds = byKind(open);
   const canManage = can(access, "billing.manage");
   const q = (o: { days?: number; show?: string }) => `/billing/leaks?days=${o.days ?? days}${o.show ? `&show=${o.show}` : ""}`;
@@ -50,7 +51,7 @@ export default async function RevenueCheckPage({ searchParams }: { searchParams:
       {header}
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatTile icon={<CircleDollarSign />} tone={missed > 0 ? "amber" : "green"} label="Possible missed revenue" value={formatCents(missed)} muted={missed === 0}>
-          Estimated from tickets and the orders&apos; rates
+          {held > 0 ? `Estimated. Plus ${formatCents(held)} of billing held up (waiting for review), not missed.` : "Estimated from tickets and the orders' rates"}
         </StatTile>
         <StatTile icon={<FileWarning />} tone={open.length ? "amber" : "neutral"} label="Open findings" value={open.length} muted={open.length === 0}>
           {kinds.length ? `${kinds.length} kind${kinds.length === 1 ? "" : "s"}` : "Nothing to check"}

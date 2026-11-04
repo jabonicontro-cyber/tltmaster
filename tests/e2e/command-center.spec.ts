@@ -183,5 +183,5 @@ test("another company sees only its own (empty) command center", async ({ page }
   // Speed is measured from this company's own records only: nothing recorded, nothing shown as a figure.
   const speed = page.getByRole("list", { name: "Speed" });
   await expect(speed.getByRole("listitem", { name: "Ticket review pace" })).toContainText("Not enough measured yet");
-  await expect(speed.getByRole("listitem", { name: "Delivery to billing-ready" })).toContainText("Not enough measured yet");
+  await expect(speed.getByRole("listitem", { name: "Delivery to ticket accepted" })).toContainText("Not enough measured yet");
 });

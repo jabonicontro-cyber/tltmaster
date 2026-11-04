@@ -11,6 +11,7 @@ import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
 import { hiredIds } from "./hired-trucks";
+import { creditHolds } from "@/server/credit";
 
 export const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
 
@@ -149,6 +150,21 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
       customer_id: l.orders!.customer_id ?? null,
       priority_customer: Boolean(l.orders!.customers?.is_priority),
     }));
+
+  // Loads that must not get a one-click proposal (UX3): the customer is on credit hold, or the load is offered to a hired
+  // truck. Read with the person's session; when either is not installed the load is proposed as before.
+  const heldIds = smartLoads.map((l) => l.id);
+  const [holds, offers] = await Promise.all([
+    creditHolds([...new Set(smartLoads.map((l) => l.customer_id).filter((x): x is string => Boolean(x)))]).catch(() => new Map<string, { name: string }>()),
+    heldIds.length
+      ? supabase.from("hauler_offers").select("load_id").in("load_id", heldIds).in("status", ["offered", "confirmed"]).then((r) => (r.error ? [] : (r.data ?? []) as Array<{ load_id: string }>))
+      : Promise.resolve([] as Array<{ load_id: string }>),
+  ]);
+  const offered = new Set(offers.map((o) => o.load_id));
+  for (const l of smartLoads) {
+    if (offered.has(l.id)) l.hold = "This load is offered to a hired truck. Withdraw the offer before giving it to your own crew.";
+    else if (l.customer_id && holds.has(l.customer_id)) l.hold = `${holds.get(l.customer_id)!.name} is on credit hold.`;
+  }
 
   const bookings: SmartBooking[] = (assignments.data ?? []).map((a) => {
     const l = byLoad.get(a.load_id as string);

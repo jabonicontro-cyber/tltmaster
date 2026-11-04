@@ -22,7 +22,7 @@ export default function PlatformPage() {
         <p>One system of record for the office, dispatch, the shop and the trucks. Every screen below is the real app, with the demo company&apos;s fictional data — and, just as plainly, each capability says what it does not do yet.</p>
       </PageIntro>
 
-      <nav aria-label="Capabilities" className="sticky top-16 z-20 border-b border-silver/10 bg-navy/90 backdrop-blur">
+      <nav aria-label="Capabilities" className="sticky top-16 z-20 border-b border-silver/10 bg-navy backdrop-blur">
         <Container>
           <ul className="flex gap-2 overflow-x-auto py-3 text-sm [scrollbar-width:none]">
             {features.map((f) => (
