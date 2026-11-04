@@ -23,6 +23,6 @@ describe("public website capabilities", () => {
     }
     // QuickBooks is announced as coming soon (owner 2026-10-25), never as available.
     expect(COMING_SOON.map((c) => c.name).join(" ")).toMatch(/QuickBooks/);
-    expect(PLANNED.join(" ")).toMatch(/Travel distance/);
+    expect(PLANNED.join(" ")).toMatch(/Road miles and drive time/);
   });
 });
