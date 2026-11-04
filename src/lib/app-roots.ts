@@ -48,6 +48,7 @@ export const APP_ROOTS: readonly string[] = [
   "setup",
   "signup",
   "site-photos",
+  "support",
   "tickets",
   "time-off",
   "track",

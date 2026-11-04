@@ -99,7 +99,11 @@ export type PortalQuote = {
 };
 
 export type PortalSupportRow = { id: string; subject: string; status: "open" | "answered" | "closed"; created_at: string; updated_at: string; order_number: string | null };
-export type PortalThread = PortalSupportRow & { messages: Array<{ from: "customer" | "staff"; body: string; at: string }> };
+export type PortalThread = PortalSupportRow & {
+  /** Support center (B138); absent before that update is installed. */
+  kind?: string; closed_at?: string | null; can_reopen?: boolean; ticket_number?: string | null; invoice_number?: string | null;
+  messages: Array<{ id?: string; from: "customer" | "staff"; body: string; at: string; files?: Array<{ id: string; name: string; type: string }> }>;
+};
 export type PortalHelpArticle = { id: string; title: string; category: string; body: string; published_at: string | null };
 
 export const QUOTE_STATUS_LABEL: Record<PortalQuoteRow["status"], string> = {

@@ -7,16 +7,18 @@ import { Camera } from "lucide-react";
  * (inspection defects, work orders). Files are sent after the record is saved with uploadPhotos(); the server checks
  * type, size and who may add them.
  */
-export function PhotoPicker({ id, label = "Photos (optional)", files, onChange, max = 8, hint }: {
+export function PhotoPicker({ id, label = "Photos (optional)", files, onChange, max = 8, hint, accept = "image/jpeg,image/png,image/webp", camera = true, empty = "Take or choose photos" }: {
   id: string; label?: string; files: File[]; onChange: (files: File[]) => void; max?: number; hint?: string;
+  /** Other file types (e.g. PDFs for support attachments); the camera opens only when `camera` is true. */
+  accept?: string; camera?: boolean; empty?: string;
 }) {
   return (
     <div>
       <label htmlFor={id} className="flex min-h-12 cursor-pointer items-center gap-2 rounded-control border border-dashed border-line bg-surface px-3 text-sm text-muted hover:border-strong/40">
         <Camera className="size-5 shrink-0" aria-hidden />
-        <span><span className="font-semibold text-ink">{label}</span> · {files.length ? `${files.length} photo${files.length === 1 ? "" : "s"} chosen` : "Take or choose photos"}</span>
+        <span><span className="font-semibold text-ink">{label}</span> · {files.length ? `${files.length} file${files.length === 1 ? "" : "s"} chosen` : empty}</span>
       </label>
-      <input id={id} type="file" accept="image/jpeg,image/png,image/webp" multiple capture="environment" className="sr-only"
+      <input id={id} type="file" accept={accept} multiple {...(camera ? { capture: "environment" as const } : {})} className="sr-only"
         onChange={(e) => onChange(Array.from(e.target.files ?? []).slice(0, max))} />
       {hint ? <p className="mt-1 text-xs text-muted">{hint}</p> : null}
     </div>

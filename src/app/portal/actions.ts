@@ -144,26 +144,37 @@ export async function respondToQuote(formData: FormData): Promise<ActionResult> 
   return ok(undefined, accept ? "Thank you. We will confirm your acceptance shortly." : "Thank you for letting us know.");
 }
 
-export async function createSupportRequest(formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function createSupportRequest(formData: FormData): Promise<ActionResult<{ id: string; messageId: string | null }>> {
   const slug = slugOf(formData);
-  const order = String(formData.get("order") ?? "") || null;
+  const val = (k: string) => String(formData.get(k) ?? "") || null;
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("portal_support_create", {
-    p_slug: slug, p_subject: String(formData.get("subject") ?? ""), p_message: String(formData.get("message") ?? ""), p_order: order,
+  // The support center (B138): case type and optional order, ticket or invoice; the original function before that
+  // update is installed.
+  let { data, error } = await supabase.rpc("portal_support_open", {
+    p_slug: slug, p_kind: String(formData.get("kind") ?? ""), p_subject: String(formData.get("subject") ?? ""), p_message: String(formData.get("message") ?? ""),
+    p_order: val("order"), p_ticket: val("ticket"), p_invoice: val("invoice"),
   });
+  if (error?.code === "PGRST202") {
+    ({ data, error } = await supabase.rpc("portal_support_create", {
+      p_slug: slug, p_subject: String(formData.get("subject") ?? ""), p_message: String(formData.get("message") ?? ""), p_order: val("order"),
+    }));
+  }
   if (error) return fail(portalError(error));
-  const id = (data as { id: string }).id;
-  redirect(`/portal/${slug}/support/${id}?sent=1`);
+  const r = data as { id: string; message_id?: string };
+  revalidatePath(`/portal/${slug}/support`);
+  return ok({ id: r.id, messageId: r.message_id ?? null }, "Sent.");
 }
 
-export async function replyToSupport(formData: FormData): Promise<ActionResult> {
+export async function replyToSupport(formData: FormData): Promise<ActionResult<{ messageId: string | null }>> {
   const slug = slugOf(formData);
   const request = String(formData.get("request") ?? "");
+  const body = String(formData.get("body") ?? "");
   const supabase = await createClient();
-  const { error } = await supabase.rpc("portal_support_reply", { p_slug: slug, p_request: request, p_body: String(formData.get("body") ?? "") });
+  let { data, error } = await supabase.rpc("portal_support_send", { p_slug: slug, p_request: request, p_body: body });
+  if (error?.code === "PGRST202") ({ data, error } = await supabase.rpc("portal_support_reply", { p_slug: slug, p_request: request, p_body: body }));
   if (error) return fail(portalError(error));
   revalidatePath(`/portal/${slug}/support/${request}`);
-  return ok(undefined, "Message sent.");
+  return ok({ messageId: typeof data === "string" ? data : null }, "Message sent.");
 }
 
 export async function voteOnArticle(formData: FormData): Promise<ActionResult> {

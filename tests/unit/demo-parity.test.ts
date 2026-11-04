@@ -25,6 +25,8 @@ const ALLOWED = new Set([
   "src/app/(app)/driver/page.tsx",
   "src/app/(app)/quotes/actions.ts",
   "src/app/(app)/billing/invoices/actions.ts",
+  "src/app/(app)/support/actions.ts",
+  "src/server/support/notice.ts",
   "src/server/people/invite.ts",
   "src/app/admin/actions.ts",
   "src/app/admin/demo/page.tsx",

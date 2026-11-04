@@ -309,6 +309,11 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
         await visit(owner, "/dispatch?view=timeline");
         await expect(owner.getByRole("table", { name: "Trucks by hour" }).getByRole("button").first(), `${role} timeline has loads`).toBeVisible();
       }
+      // Support center (B138, samples.ts demo_support_samples): cases with types, one waiting past the reply target.
+      if (nav.includes("/support")) {
+        await visit(owner, "/support?filter=all");
+        await expect(owner.getByRole("table", { name: "Support cases" }), `${role} support has cases`).toBeVisible();
+      }
       if (role === "driver" || role === "multi") {
         await visit(owner, "/driver");
         await expect(owner.getByText(/\bload \d/i).first(), `${role} My Day has loads`).toBeVisible();

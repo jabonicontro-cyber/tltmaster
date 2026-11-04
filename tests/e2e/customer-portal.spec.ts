@@ -112,6 +112,7 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
     // Support: a question, answered by the office.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/support/new`);
     const subject = `Gate code ${unique()}`;
+    await cust.getByLabel("What is it about?").selectOption({ label: "Other" });
     await cust.getByLabel("Subject").fill(subject);
     await cust.getByLabel("Message").fill("What is the gate code for the north entrance?");
     await cust.getByRole("button", { name: "Send" }).click();
@@ -126,15 +127,22 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
     // The office sees both requests and answers the question.
     await page.goto("/customer-portal");
     await expect(page.getByText(`${CUSTOMER} · ${material}`)).toBeVisible();
-    const thread = page.getByRole("listitem").filter({ hasText: `${CUSTOMER} · ${subject}` });
-    await expect(thread.getByText(`${CUSTOMER} · ${subject}`)).toBeVisible();
-    await thread.getByLabel("Reply").fill("It is 4412. Drive slowly past the scale.");
-    await thread.getByRole("button", { name: "Send Reply" }).click();
-    await expect(page.getByText("Reply sent to the customer's portal.")).toBeVisible();
+    // Support cases live in the support center (B138): an internal note stays with staff, the reply reaches the portal.
+    await page.getByRole("link", { name: "Open Support" }).click();
+    await page.getByRole("link", { name: subject }).click();
+    await page.getByRole("radio", { name: "Internal note" }).click();
+    await page.getByLabel(/^Note/).fill("Gate code changes monthly (staff only, test)");
+    await page.getByRole("button", { name: "Save note" }).click();
+    await expect(page.getByText(/Note saved \(staff only\)/)).toBeVisible();
+    await page.getByRole("radio", { name: "Reply to customer" }).click();
+    await page.getByLabel("Reply", { exact: true }).fill("It is 4412. Drive slowly past the scale.");
+    await page.getByRole("button", { name: "Send reply" }).click();
+    await expect(page.getByText(/Reply sent\./)).toBeVisible();
 
     await cust.goto(`/portal/${TOP_LINE_SLUG}/support`);
     await cust.getByRole("link", { name: new RegExp(subject) }).click();
     await expect(cust.getByText("It is 4412. Drive slowly past the scale.")).toBeVisible();
+    await expect(cust.getByText(/Gate code changes monthly/)).toHaveCount(0);
 
     // Turning the portal off closes it immediately.
     await sql("update public.portal_settings set enabled = false where company_id = $1", [TOP_LINE]);

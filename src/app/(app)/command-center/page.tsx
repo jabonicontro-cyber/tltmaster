@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
+import { supportOverdue } from "@/server/data/support";
 import { greeting } from "@/lib/people/greeting";
 import { shownName } from "@/server/data/profile";
 import { Pagination } from "@/components/ui/pagination";
@@ -102,7 +103,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
-  const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks] = await Promise.all([
+  const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks, support] = await Promise.all([
     ops ? loadOverview({ kind, mine, page, hidden, mineLimit: 5 }) : Promise.resolve(null),
     loadActivity(access, activityPage),
     canAssign ? loadAssigneeOptions() : Promise.resolve([]),
@@ -118,6 +119,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
     // Revenue check (B110): open findings for people who see billing; nothing shown if it cannot be loaded.
     has("billing.view") ? listLeaks().catch(() => null) : none,
+    // Support cases past the company's first-reply target (B138); off until the company sets a target.
+    has("customers.view") ? supportOverdue() : none,
   ]);
   const summary: Loaded<CommandSummary> | null = attention?.summary ?? null;
   const queue: Loaded<QueuePage> | null = attention?.queue ?? null;
@@ -439,6 +442,13 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 
       {/* Weather under the date (owner 2026-10-28): conditions now at the bases, alerts at today's delivery sites. */}
       {weather && <WeatherStrip weather={weather} today={today} timezone={timezone} />}
+
+      {support && support.count > 0 && (
+        <p role="alert" className="mb-5 rounded-panel border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <span className="font-semibold">{support.count} support case{support.count === 1 ? "" : "s"} waiting longer than {support.targetHours} h for a first reply.</span>{" "}
+          <Link href="/support?filter=open" className="font-semibold underline">Open Support</Link>
+        </p>
+      )}
 
       {sp.welcome === "1" && (
         <div className="mb-5">

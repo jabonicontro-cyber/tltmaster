@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { can, type Access } from "@/lib/permissions";
-import { formatDay, formatQuantity, REQUEST_STATUS_LABEL, SUPPORT_STATUS_LABEL } from "@/lib/portal";
+import { formatDay, formatQuantity, REQUEST_STATUS_LABEL } from "@/lib/portal";
 import { isUsernameEmail } from "@/lib/usernames";
 import { requirePagePermission } from "@/server/auth";
 import { accountStates, emailServerStatus } from "@/server/accounts";
@@ -17,7 +17,7 @@ import { formatDate } from "@/lib/dates";
 import { BOOKING_STATUS, capacityDays, TIME_WINDOW, type BookingStatus, type TimeWindow } from "@/lib/portal-booking";
 import { BookingDecision, BookingSettingsForm, CapacityForm } from "@/components/portal/booking-forms";
 import {
-  HelpArticleForm, InviteForm, PortalSettingsForm, QuoteRequestForm, QuoteResponseButtons, RevokeAccountButton, StaffReplyForm, type PortalSettingsValues,
+  HelpArticleForm, InviteForm, PortalSettingsForm, QuoteRequestForm, QuoteResponseButtons, RevokeAccountButton, type PortalSettingsValues,
 } from "@/components/portal/staff-portal-forms";
 
 export const metadata = { title: "Customer Portal" };
@@ -106,16 +106,14 @@ export default async function CustomerPortalPage({ searchParams }: { searchParam
 
 async function Inbox(canSeeQuotes: boolean, canReply: boolean, canEditQuotes: boolean, canDecide: boolean) {
   const supabase = await createClient();
-  const [support, messages, requests, responses, customers] = await Promise.all([
+  const [support, requests, responses, customers] = await Promise.all([
     supabase.from("portal_support_requests").select("id, customer_id, subject, status, created_at, updated_at, order_id").order("updated_at", { ascending: false }).limit(50),
-    supabase.from("portal_messages").select("request_id, author_kind, body, created_at").order("created_at").limit(500),
     canSeeQuotes ? supabase.from("portal_quote_requests").select("id, customer_id, material, quantity, unit, requested_date, site_text, notes, status, quote_id, created_at").order("created_at", { ascending: false }).limit(50) : Promise.resolve({ data: [] }),
     canSeeQuotes ? supabase.from("portal_quote_responses").select("id, quote_id, response, signer_name, note, status, created_at").eq("status", "pending").order("created_at") : Promise.resolve({ data: [] }),
     supabase.from("customers").select("id, name"),
   ]);
   const names = new Map(((customers.data ?? []) as Array<{ id: string; name: string }>).map((c) => [c.id, c.name]));
   const threads = (support.data ?? []) as Array<{ id: string; customer_id: string; subject: string; status: "open" | "answered" | "closed"; created_at: string; updated_at: string }>;
-  const msgs = (messages.data ?? []) as Array<{ request_id: string; author_kind: string; body: string; created_at: string }>;
   const reqs = (requests.data ?? []) as Array<{ id: string; customer_id: string; material: string; quantity: number | null; unit: string; requested_date: string | null; site_text: string; notes: string; status: keyof typeof REQUEST_STATUS_LABEL; quote_id: string | null; created_at: string }>;
   const resp = (responses.data ?? []) as Array<{ id: string; quote_id: string; response: "accept" | "decline"; signer_name: string; note: string; created_at: string }>;
   const quoteIds = [...new Set(resp.map((r) => r.quote_id))];
@@ -188,29 +186,10 @@ async function Inbox(canSeeQuotes: boolean, canReply: boolean, canEditQuotes: bo
 
       {threads.length ? (
         <Card>
-          <CardHeader title="Support Requests" />
-          <CardBody>
-            <ul className="divide-y divide-line">
-              {threads.map((t) => (
-                <li key={t.id} className="space-y-2 py-3">
-                  <details open={t.status === "open"}>
-                    <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 text-sm">
-                      <span className="font-semibold text-ink">{names.get(t.customer_id) ?? "Customer"} · {t.subject}</span>
-                      <Badge tone={t.status === "open" ? "brand" : t.status === "answered" ? "green" : "gray"}>{t.status === "open" ? "Needs a reply" : SUPPORT_STATUS_LABEL[t.status]}</Badge>
-                    </summary>
-                    <ol className="mt-3 space-y-2">
-                      {msgs.filter((m) => m.request_id === t.id).map((m, i) => (
-                        <li key={i} className={cn("rounded-xl border p-2 text-sm", m.author_kind === "customer" ? "border-line bg-card" : "border-brand/30 bg-brand-light")}>
-                          <p className="text-xs font-semibold text-muted">{m.author_kind === "customer" ? "Customer" : "Your team"} · {WHEN.format(new Date(m.created_at))}</p>
-                          <p className="whitespace-pre-line text-ink">{m.body}</p>
-                        </li>
-                      ))}
-                    </ol>
-                    {canReply && t.status !== "closed" ? <div className="mt-3"><StaffReplyForm request={t.id} /></div> : null}
-                  </details>
-                </li>
-              ))}
-            </ul>
+          <CardHeader title="Support Requests" description="Customer support cases now have their own page: types, assignment, internal notes and attachments." />
+          <CardBody className="flex flex-wrap items-center justify-between gap-3 text-sm">
+            <span>{threads.filter((t) => t.status === "open").length} waiting for a reply · {threads.length} in the last 50</span>
+            <Link href="/support" className="font-semibold text-brand-fg hover:underline">Open Support</Link>
           </CardBody>
         </Card>
       ) : null}

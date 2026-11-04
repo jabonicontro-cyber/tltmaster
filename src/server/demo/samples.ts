@@ -146,6 +146,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Pickups (UX7): open orders load at one of the demo's quarries or plants, so drivers see "Load at" with Navigate.
   // Orders numbered …5 are left without one (the "Not set" case). An existing pickup is never changed.
   note("order pickups", await orderPickups(db));
+  // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
+  // internal note, one closed recently). Once per demo.
+  note("support cases", await rpcCount(db, "demo_support_samples"));
   return result;
 }
 

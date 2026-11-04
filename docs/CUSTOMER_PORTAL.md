@@ -78,3 +78,12 @@ database owner only (SQL editor): `private.platform_settings` key `platform_mfa_
 `tests/db/customer-portal.test.ts` (isolation between customers and companies, invitations, duplicates, previews),
 `tests/db/mfa.test.ts`, `tests/db/demo-samples.test.ts` (portal samples), `tests/e2e/customer-portal.spec.ts`,
 `tests/e2e/testing-lab.spec.ts`, `tests/e2e/mfa.spec.ts`, `tests/unit/portal.test.ts`, `tests/unit/mfa-totp.test.ts`.
+
+## Support center (B138, 2026-11-04)
+
+Support requests became cases in the office's **Support** page (`/support`). Customers choose what a case is about,
+can link one of their orders, tickets or invoices, attach photos or PDFs (5 per message, 10 MB each) and reopen a closed
+case by writing within 14 days (after that they start a new one). Internal notes are staff only and never appear in the
+portal or its functions. Each reply sends a short email notice with a link to the portal (no message content), to the
+customer's active portal logins; demo companies never send, and a server without email set up only previews.
+

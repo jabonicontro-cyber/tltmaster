@@ -545,6 +545,20 @@ passed, so an ended accountant reaches nothing. The role `accountant` may hold o
 payroll staff: `accountant_payroll_periods`, `accountant_pay_statement` (approved periods only). Fuel purchases and trip
 sheets are also readable with `accounting.view`.
 
+## Support center (20261120006800)
+
+Builds on the portal's `portal_support_requests` and `portal_messages` (20261120000700). A case gains `kind`
+(`delivery`, `billing`, `material`, `other`), `assigned_to`, optional `ticket_id` and `invoice_id` (beside `order_id`;
+each must belong to the case's customer), `opened_by_staff` (office-opened cases have no `account_id`),
+`first_reply_at` and `closed_at`. A message gains `internal` (staff notes; never returned by the `portal_*` functions).
+`portal_support_files` holds attachments (photos and PDFs, 10 MB, 5 per message) in the private `support-files`
+bucket; `support_settings.first_reply_hours` is the company's target (null = off). Customer writes:
+`portal_support_open`, `portal_support_send` (a closed case reopens only within 14 days of closing; the original
+`portal_support_reply` follows the same rule), `portal_support_file_begin`. Staff writes (customers.edit):
+`support_open_case`, `support_reply` (reply, internal note, close), `support_update`, `support_file_begin`;
+`support_save_settings` (settings.manage). Reads: RLS on customers.view; `support_overdue()` for the Command Center;
+`support_notice_recipients()` for the email notice the app sends (never from a demo).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

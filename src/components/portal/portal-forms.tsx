@@ -8,6 +8,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
+import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
+import { checkSupportFiles, SUPPORT_ACCEPT, SUPPORT_KINDS, SUPPORT_MAX_FILES } from "@/lib/support";
 import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
 export function PortalLoginForm({ slug, next, company }: { slug: string; next?: string; company: string }) {
@@ -153,28 +155,58 @@ export function QuoteResponseForm({ slug, quote }: { slug: string; quote: string
   );
 }
 
-export function SupportForm({ slug, orders, defaultOrder }: { slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string }) {
-  const { pending, onSubmit, formError } = useFormAction(createSupportRequest);
+type LinkOption = { id: string; label: string };
+
+/** A new support case (B138): what it is about, an optional order, ticket or invoice, and photos or PDFs. */
+export function SupportForm({ slug, orders, defaultOrder, tickets = [], invoices = [] }: { slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string; tickets?: LinkOption[]; invoices?: LinkOption[] }) {
+  const router = useRouter();
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const { pending, onSubmit, formError } = useFormAction(createSupportRequest, {
+    onSuccess: async (r) => {
+      const data = r.data;
+      const failed = data.messageId && files.length ? await uploadPhotos(`/portal/${slug}/support/files`, { message: data.messageId }, files) : 0;
+      if (failed) toast.warning(`${failed} attachment${failed === 1 ? "" : "s"} could not be sent.`);
+      router.push(`/portal/${slug}/support/${data.id}?sent=1`);
+    },
+  });
   return (
-    <form onSubmit={onSubmit} className="space-y-4" aria-label="New support request">
-      <FormError message={formError} />
+    <form onSubmit={(e) => { const bad = checkSupportFiles(files); if (bad) { e.preventDefault(); setError(bad); return; } setError(null); onSubmit(e); }} className="space-y-4" aria-label="New support request">
+      <FormError message={error ?? formError} />
       <input type="hidden" name="slug" value={slug} />
+      <Field label="What is it about?" htmlFor="kind" required>
+        <Select id="kind" name="kind" defaultValue="" required>
+          <option value="" disabled>Choose…</option>
+          {Object.entries(SUPPORT_KINDS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+        </Select>
+      </Field>
       <Field label="Subject" htmlFor="subject" required>
         <Input id="subject" name="subject" required maxLength={160} />
       </Field>
-      {orders.length ? (
-        <Field label="About an order" htmlFor="order">
-          <Select id="order" name="order" defaultValue={defaultOrder ?? ""}>
-            <option value="">Not about a specific order</option>
-            {orders.map((o) => (
-              <option key={o.id} value={o.id}>Order {o.number}</option>
-            ))}
-          </Select>
-        </Field>
-      ) : null}
+      <div className="grid gap-4 sm:grid-cols-3">
+        {orders.length ? (
+          <Field label="Order (optional)" htmlFor="order">
+            <Select id="order" name="order" defaultValue={defaultOrder ?? ""}>
+              <option value="">None</option>
+              {orders.map((o) => <option key={o.id} value={o.id}>Order {o.number}</option>)}
+            </Select>
+          </Field>
+        ) : null}
+        {tickets.length ? (
+          <Field label="Ticket (optional)" htmlFor="ticket">
+            <Select id="ticket" name="ticket" defaultValue=""><option value="">None</option>{tickets.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</Select>
+          </Field>
+        ) : null}
+        {invoices.length ? (
+          <Field label="Invoice (optional)" htmlFor="invoice">
+            <Select id="invoice" name="invoice" defaultValue=""><option value="">None</option>{invoices.map((i) => <option key={i.id} value={i.id}>{i.label}</option>)}</Select>
+          </Field>
+        ) : null}
+      </div>
       <Field label="Message" htmlFor="message" required>
         <Textarea id="message" name="message" rows={5} required minLength={5} maxLength={4000} />
       </Field>
+      <PhotoPicker id="support-files" label="Photos or PDFs (optional)" empty="Add up to 5, 10 MB each" accept={SUPPORT_ACCEPT} camera={false} files={files} onChange={setFiles} max={SUPPORT_MAX_FILES} />
       <Button type="submit" loading={pending}>Send</Button>
     </form>
   );
@@ -183,20 +215,27 @@ export function SupportForm({ slug, orders, defaultOrder }: { slug: string; orde
 export function SupportReplyForm({ slug, request }: { slug: string; request: string }) {
   const router = useRouter();
   const form = useRef<HTMLFormElement>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const { pending, onSubmit, formError } = useFormAction(replyToSupport, {
-    onSuccess: () => {
+    onSuccess: async (r) => {
+      const data = r.data;
+      const failed = data?.messageId && files.length ? await uploadPhotos(`/portal/${slug}/support/files`, { message: data.messageId }, files) : 0;
+      if (failed) toast.warning(`${failed} attachment${failed === 1 ? "" : "s"} could not be sent.`);
       form.current?.reset();
+      setFiles([]);
       router.refresh();
     },
   });
   return (
-    <form ref={form} onSubmit={onSubmit} className="space-y-3" aria-label="Reply">
-      <FormError message={formError} />
+    <form ref={form} onSubmit={(e) => { const bad = checkSupportFiles(files); if (bad) { e.preventDefault(); setError(bad); return; } setError(null); onSubmit(e); }} className="space-y-3" aria-label="Reply">
+      <FormError message={error ?? formError} />
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="request" value={request} />
       <Field label="Reply" htmlFor="body">
         <Textarea id="body" name="body" rows={3} required maxLength={4000} />
       </Field>
+      <PhotoPicker id="reply-files" label="Photos or PDFs (optional)" empty="Add up to 5, 10 MB each" accept={SUPPORT_ACCEPT} camera={false} files={files} onChange={setFiles} max={SUPPORT_MAX_FILES} />
       <Button type="submit" variant="secondary" loading={pending}>Send Reply</Button>
     </form>
   );
