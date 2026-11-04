@@ -30,7 +30,19 @@ export function PayStatement({ s, company }: { s: PayStatementData; company: str
         </div>
         <p className="text-right text-sm text-muted">{s.lines.length} ticket{s.lines.length === 1 ? "" : "s"}</p>
       </header>
-      <TableWrap className="mt-4 rounded-none border-0">
+      {/* Phones: one row per ticket (date and ticket on the left, pay on the right); the table from tablets and in print. */}
+      <ul className="mt-4 divide-y divide-line sm:hidden print:hidden" aria-label="Tickets">
+        {s.lines.length === 0 ? <li className="py-3 text-sm text-muted">No paid tickets in this period.</li> : s.lines.map((l, i) => (
+          <li key={i} className="flex items-start justify-between gap-3 py-3">
+            <span className="min-w-0">
+              <span className="block font-semibold tabular">{l.ticket ?? "—"} <span className="font-normal text-muted">· {formatDate(l.delivered_on)}</span></span>
+              <span className="block text-sm text-muted">{[l.order_number, `${qty(l.quantity)} ${l.unit}`, l.reference].filter(Boolean).join(" · ")}</span>
+            </span>
+            <span className="shrink-0 font-semibold tabular">{money(l.amount_cents)}</span>
+          </li>
+        ))}
+      </ul>
+      <TableWrap className="mt-4 hidden rounded-none border-0 sm:block print:block">
         <Table aria-label="Tickets">
           <thead><tr><Th>Day</Th><Th>Ticket</Th><Th>Order</Th><Th align="right">Quantity</Th><Th align="right">Pay</Th></tr></thead>
           <tbody>

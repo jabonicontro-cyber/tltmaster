@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
+import { calculatePeriod, loadActiveRules } from "@/server/payroll/calculate";
 import { triageRules } from "@/lib/maintenance-triage";
 import { demoAssign } from "./assign";
 
@@ -96,6 +97,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
+  // Driver pay statements (UX16, owner 2026-11-04): a clearly labelled fictional rule and one approved past period, so
+  // drivers and the office see real-looking statements in the demo. Never in a real company (demoCompany above).
+  note("sample pay statements", await samplePayStatements(db, today));
   note("CRM pipeline", await crm(db, today, userId));
   note("customer portal", await customerPortal(db));
   // Customer self-booking (B115): switched on with open loads on the next weekdays, one pending and one approved request.
@@ -214,15 +218,63 @@ async function crm(db: Db, today: string, me: string): Promise<number> {
 
 /**
  * Driver payroll (B27, 20261118000200): one open period over the last two weeks, so the owner sees the demo's verified
- * tickets waiting for payroll. No pay rule is added: pay rules are each company's own (docs/PAYROLL.md) and never
- * invented, so calculation stays off until someone in the demo writes and activates one. Only while the demo has no
- * payroll period.
+ * tickets waiting for payroll. Pay rules are each company's own (docs/PAYROLL.md); in a demo only, samplePayStatements
+ * adds a clearly labelled fictional rule (owner 2026-11-04). Only while the demo has no payroll period.
  */
 async function payrollPeriod(db: Db, today: string): Promise<number> {
   const n = await count(db, "payroll_periods");
   if (n === null || n > 0) return 0;
   await must("payroll period", db.rpc("payroll_period_create", { p_starts: addDays(today, -14), p_ends: addDays(today, -1) }));
   return 1;
+}
+
+/**
+ * Sample pay statements (owner 2026-11-04: publish Driver pay statements, with a clearly labelled sample rule in demos).
+ * A fictional flat amount per delivered load, named as a demo sample, then the demo's open two-week period recorded
+ * through the normal calculation and approved (only when it has paid tickets), so statements exist. Only while the demo has no approved period; a rule someone in
+ * the demo wrote is used as it is (no sample added). Anything the rule does not cover is excluded with a note.
+ */
+async function samplePayStatements(db: Db, today: string): Promise<number> {
+  // Never fails the refresh: a step that cannot run is logged (no data) and the rest of the samples continue.
+  const skip = (step: string, why?: string, n = 0) => { console.warn("Demo pay sample stopped", { step, why: (why ?? "").slice(0, 200) }); return n; };
+  const approved = await db.from("payroll_periods").select("id, totals").in("status", ["approved", "exported", "reconciled"]);
+  if (approved.error) return skip("period check", approved.error.message);
+  if (((approved.data ?? []) as Array<{ totals: { total_cents?: number } | null }>).some((p) => Number(p.totals?.total_cents ?? 0) > 0)) return 0;
+  let rules: Awaited<ReturnType<typeof loadActiveRules>>;
+  try { rules = await loadActiveRules(); } catch (e) { return skip("rules", e instanceof Error ? e.message : ""); }
+  let added = 0;
+  if (!rules.length) {
+    const draft = await db.rpc("payroll_rule_draft", { p: {
+      rule_id: "", name: "Sample pay rule (demo, fictional)", formula: "loads * rate", rate: "85", unit_code: "", scope: {},
+      effective_from: addDays(today, -90), effective_to: "", evidence_note: "Demo only: a fictional flat amount per delivered load, not a real pay formula.",
+    } });
+    if (draft.error || !draft.data) return skip("draft", draft.error?.message);
+    const act = await db.rpc("payroll_rule_activate", { p_version: draft.data as string, p_note: "Demo sample (fictional)" });
+    if (act.error) return skip("activate", act.error.message);
+    added++;
+  }
+  // Calculation on (the demo's own setting; only when it is off, keeping any period length chosen in the demo).
+  const settings = (await db.from("payroll_settings").select("enabled, period_length, period_anchor").maybeSingle()).data as { enabled: boolean; period_length: string | null; period_anchor: string | null } | null;
+  if (!settings?.enabled) {
+    const on = await db.rpc("payroll_settings_save", { p: { enabled: true, period_length: settings?.period_length ?? "biweekly", period_anchor: settings?.period_anchor ?? "" } });
+    if (on.error) return skip("settings", on.error.message, added);
+  }
+  // The demo's open period (the last two weeks, where its verified tickets are); a past one only if there is none.
+  let period = ((await db.from("payroll_periods").select("id").eq("status", "open").order("starts_on", { ascending: false }).limit(1).maybeSingle()).data as { id: string } | null)?.id ?? null;
+  if (!period) {
+    const created = await db.rpc("payroll_period_create", { p_starts: addDays(today, -14), p_ends: addDays(today, -1) });
+    if (created.error) return skip("period", created.error.message, added);
+    period = ((await db.from("payroll_periods").select("id").eq("status", "open").order("starts_on", { ascending: false }).limit(1).maybeSingle()).data as { id: string } | null)?.id ?? null;
+    if (!period) return added;
+  }
+  try { await calculatePeriod(period, true); } catch (e) { return skip("calculate", e instanceof Error ? e.message : "", added); }
+  // Never approve an empty period: without paid tickets there is nothing to show on a statement.
+  const paid = ((await db.from("payroll_entries").select("id").eq("period_id", period).eq("status", "calculated").limit(1)).data ?? []).length;
+  if (!paid) return skip("no paid tickets in the period", "", added);
+  const exceptions = ((await db.from("payroll_entries").select("id").eq("period_id", period).eq("status", "exception")).data ?? []) as Array<{ id: string }>;
+  for (const e of exceptions) await db.rpc("payroll_entry_set", { p_entry: e.id, p_status: "excluded", p_note: "Demo: not covered by the sample rule" });
+  const ok = await db.rpc("payroll_period_approve", { p_period: period });
+  return ok.error ? skip("approve", ok.error.message, added) : added + 1;
 }
 
 /**

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
+import { SEGMENTS } from "@/lib/site/areas";
 
 export const metadata: Metadata = {
   title: "About",
@@ -35,7 +37,23 @@ export default function AboutPage() {
               </div>
             ))}
           </div>
+          {/* Product facts only (owner 2026-11-04): who it is for, how data is kept, how to reach us. */}
+          <h2 className="mt-16 text-2xl font-black text-cloud">Who it is for</h2>
+          <ul className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {SEGMENTS.map((g) => (
+              <li key={g.slug} className="rounded-2xl border border-silver/10 bg-navy-2 p-5">
+                <Link href={`/solutions/${g.slug}`} className="font-bold text-cloud hover:underline">{g.label}</Link>
+                <p className="mt-1 text-sm text-silver">{g.summary}</p>
+              </li>
+            ))}
+          </ul>
+          <h2 className="mt-16 text-2xl font-black text-cloud">Your data</h2>
+          <p className="mt-3 max-w-3xl text-silver">
+            Each company's records are kept separate from every other company's, people see only what their role allows, and changes are recorded. The details, and
+            what is not in place yet, are on <Link href="/trust" className="font-semibold text-cloud underline">Trust &amp; Security</Link>.
+          </p>
           <p className="mt-10 max-w-3xl text-silver">
+            Questions? <Link href="/contact" className="font-semibold text-cloud underline">Send us a message</Link>.{" "}
             Taviron is in early access: companies join by invitation and are set up with the Taviron team. If that sounds like your operation, we would like to hear
             from you.
           </p>

@@ -798,7 +798,7 @@ export const FEATURES: Feature[] = [
     points: ["Ticket by ticket, with adjustments", "Printable for the office", "Driver sees their own after approval", "Never anyone else's"],
     limitations: ["Gross pay only; taxes and deductions are your payroll provider's"],
     status: "available",
-    published: false,
+    published: true,
     routes: ["/payroll"],
     screenshots: [],
     related: [],
