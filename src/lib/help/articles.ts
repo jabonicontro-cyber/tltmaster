@@ -849,6 +849,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
         ],
       },
       {
+        title: "Assign the suggested crew straight from the board",
+        steps: [
+          "On the board, an unassigned load shows its suggested crew as a button, for example **101 · Isaac Moreno**.",
+          "Select it, check the driver's hours, and select **I checked — assign**. The same checks run as for **Approve and assign**.",
+          "To pick someone else, select **Assign** next to it. If the customer is on credit hold or the board changed, the assign window opens with the suggested crew filled in.",
+        ],
+      },
+      {
         title: "Reject a proposal",
         steps: [
           "Select **Reject…**, add a **Reason for rejecting** if you like, and confirm.",

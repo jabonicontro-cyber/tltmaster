@@ -92,6 +92,32 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
 });
 
+test("suggested crew on the board (B136): one click and the hours confirmation assign the load; Assign still opens the full window", async ({ page }) => {
+  test.setTimeout(120_000);
+  const f = await fixture();
+  await signIn(page, "dispatcher");
+  await page.goto(`/dispatch?date=${plusDays(1)}&horizon=3`);
+  const row = page.locator(`#load-${f.loadId}`);
+  await row.scrollIntoViewIfNeeded();
+  const suggested = row.getByRole("button", { name: /^Assign load 1 to truck .+ and .+$/ });
+  await expect(suggested).toBeVisible({ timeout: 30_000 });
+  // The full window is still one click away.
+  await row.getByRole("button", { name: "Assign", exact: true }).click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  // Nothing is assigned until the dispatcher confirms the hours.
+  await suggested.click();
+  const confirm = page.getByRole("dialog", { name: "Confirm hours of service" });
+  await expect(confirm).toContainText("Taviron did not verify them");
+  const before = await asUser(USERS.office.email, (q) => q("select count(*)::int as n from public.dispatch_assignments where load_id = $1", [f.loadId]));
+  expect(before.rows[0].n).toBe(0);
+  await confirm.getByRole("button", { name: "I checked — assign" }).click();
+  await expectToast(page, /Load 1 assigned to truck/);
+  const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
+  expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
+  await expect(row.getByRole("button", { name: "Reassign" })).toBeVisible({ timeout: 30_000 });
+});
+
 test("rejecting a proposal moves to the next option; reconsidering brings it back", async ({ page }) => {
   const f = await fixture();
   await signIn(page, "dispatcher");

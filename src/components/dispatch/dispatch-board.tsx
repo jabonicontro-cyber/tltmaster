@@ -26,7 +26,8 @@ import { formatTime } from "@/lib/orders/schedule";
 import type { AssignmentRow, DispatchDay, OrderLoadRow } from "@/server/data/dispatch";
 import type { OrderListRow } from "@/server/data/types";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
-import { assignLoad, cancelAssignment, cancelLoad, saveLoad } from "@/app/(app)/dispatch/actions";
+import { approveRecommendation, assignLoad, cancelAssignment, cancelLoad, saveLoad } from "@/app/(app)/dispatch/actions";
+import { HOS_CONFIRMATION } from "@/lib/hos";
 
 const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
 /** Drag payload type for drivers and trucks dragged onto a load (B85). */
@@ -42,6 +43,9 @@ interface Lookup {
   faces: Record<string, Face>;
 }
 
+/** Smart Dispatch's first proposal for an unassigned load (B136): one click, then the hours confirmation, assigns it. */
+export interface CrewSuggestion { truckId: string; truckLabel: string; trailerId: string | null; trailerLabel: string | null; driverId: string; driverLabel: string }
+
 const timeRange = (l: Pick<OrderLoadRow, "start_time" | "end_time">) => `${formatTime(l.start_time)} – ${formatTime(l.end_time)}`;
 
 function describeBooking(a: ActiveAssignment, lk: Lookup) {
@@ -50,13 +54,14 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
     if (focusLoadId) document.getElementById(`load-${focusLoadId}`)?.scrollIntoView({ block: "center" });
   }, [focusLoadId]);
   const [loadDialog, setLoadDialog] = useState<{ order: OrderListRow; load: OrderLoadRow | null } | null>(null);
+  const [suggest, setSuggest] = useState<{ load: OrderLoadRow; s: CrewSuggestion } | null>(null);
   const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null; initial?: { truckId?: string; trailerId?: string; driverId?: string } } | null>(null);
   // Faster dispatching (B85): selected open loads, the batch dialogs and the shortcuts list.
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -223,6 +228,8 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
                 onAddLoad={() => setLoadDialog({ order: o, load: null })}
                 onEditLoad={(load) => setLoadDialog({ order: o, load })}
                 onAssign={(load) => setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null })}
+                suggestions={suggestions}
+                onSuggest={(load, sug) => setSuggest({ load, s: sug })}
                 onUnassign={(a, load) => {
                   setReason("");
                   setCancelTarget({ kind: "assignment", id: a.id, orderId: o.id, title: `Remove the assignment from ${o.order_number} load ${load.load_number}` });
@@ -277,6 +284,28 @@ export function DispatchBoard({ day, canEdit, canEnterTickets = false, focusLoad
           }}
         />
       )}
+      <ConfirmDialog
+        open={Boolean(suggest)}
+        onOpenChange={(o) => !o && setSuggest(null)}
+        title="Confirm hours of service"
+        description={suggest ? `Assign ${lk.orders.get(suggest.load.order_id)?.order_number ?? "this order"} load ${suggest.load.load_number} to ${suggest.s.driverLabel} with truck ${suggest.s.truckLabel}${suggest.s.trailerLabel ? ` and trailer ${suggest.s.trailerLabel}` : ""}. ${HOS_CONFIRMATION}` : ""}
+        confirmLabel="I checked — assign"
+        onConfirm={async () => {
+          if (!suggest) return;
+          const { load, s: sug } = suggest;
+          const r = await approveRecommendation({ loadId: load.id, truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId, loadDate: load.load_date, hosConfirmed: true });
+          if (!r.ok) {
+            // A credit hold or a changed board needs the dispatcher: open the assign window with this crew filled in.
+            setSuggest(null);
+            toast.error(r.error);
+            setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: sug.truckId, trailerId: sug.trailerId ?? undefined, driverId: sug.driverId } });
+            return;
+          }
+          toast.success(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.`);
+          if (r.data.warnings.length) toast.warning(r.data.warnings.map(eligibilityMessage).join(" "));
+          refresh();
+        }}
+      />
       <ConfirmDialog
         open={Boolean(cancelTarget)}
         onOpenChange={(o) => !o && setCancelTarget(null)}
@@ -355,6 +384,8 @@ function OrderCard({
   onAddLoad,
   onEditLoad,
   onAssign,
+  suggestions,
+  onSuggest,
   onUnassign,
   onCancelLoad,
 }: {
@@ -378,6 +409,8 @@ function OrderCard({
   onAddLoad: () => void;
   onEditLoad: (l: OrderLoadRow) => void;
   onAssign: (l: OrderLoadRow) => void;
+  suggestions: Record<string, CrewSuggestion>;
+  onSuggest: (l: OrderLoadRow, s: CrewSuggestion) => void;
   onUnassign: (a: AssignmentRow, l: OrderLoadRow) => void;
   onCancelLoad: (l: OrderLoadRow) => void;
 }) {
@@ -536,8 +569,15 @@ function OrderCard({
                 </div>
                 {canEdit && !canceled && (
                   <div className="flex flex-wrap items-start gap-1.5 sm:col-span-3 sm:justify-end">
+                    {dispatchable && !current && suggestions[l.id] && (
+                      <Button size="sm" icon={<Truck className="size-4" />} onClick={() => onSuggest(l, suggestions[l.id])}
+                        aria-label={`Assign load ${l.load_number} to truck ${suggestions[l.id].truckLabel} and ${suggestions[l.id].driverLabel}`}
+                        title="Suggested by Smart Dispatch; you confirm hours before it is assigned">
+                        <span className="max-w-[16rem] truncate">{suggestions[l.id].truckLabel} · {suggestions[l.id].driverLabel}</span>
+                      </Button>
+                    )}
                     {dispatchable && (
-                      <Button size="sm" variant={current ? "secondary" : "primary"} icon={<Truck className="size-4" />} onClick={() => onAssign(l)}>
+                      <Button size="sm" variant={current || suggestions[l.id] ? "secondary" : "primary"} icon={current || !suggestions[l.id] ? <Truck className="size-4" /> : undefined} onClick={() => onAssign(l)} title={!current && suggestions[l.id] ? "Pick a different truck, trailer or driver" : undefined}>
                         {current ? "Reassign" : "Assign"}
                       </Button>
                     )}

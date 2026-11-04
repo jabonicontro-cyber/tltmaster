@@ -1,6 +1,6 @@
 import { missingPreTrips } from "@/server/data/inspections";
 import Link from "next/link";
-import { DispatchBoard } from "@/components/dispatch/dispatch-board";
+import { DispatchBoard, type CrewSuggestion } from "@/components/dispatch/dispatch-board";
 import { DispatchTimeline } from "@/components/dispatch/dispatch-timeline";
 import { RouteViews, type RouteView } from "@/components/routing/route-views";
 import { UrgentOrders } from "@/components/dispatch/urgent-orders";
@@ -108,6 +108,17 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     // Weather at this day's job sites (B92); a demo reads a sample forecast (DEMO_TENANTS §2).
     view === "board" ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : Promise.resolve(null),
   ]);
+  // Suggested crew on each unassigned load (B136, owner 2026-11-04): Smart Dispatch's first proposal for loads on this
+  // day; the dispatcher's click (after the hours confirmation) assigns through the same checks as Approve.
+  const suggestions: Record<string, CrewSuggestion> = {};
+  if (!("error" in smart) && can(access, "dispatch.edit")) {
+    for (const p of smart.plans) {
+      if (p.proposal && p.load.load_date === date) {
+        const c = p.proposal;
+        suggestions[p.load.id] = { truckId: c.truckId, truckLabel: c.truckLabel, trailerId: c.trailerId ?? null, trailerLabel: c.trailerLabel ?? null, driverId: c.driverId, driverLabel: c.driverLabel };
+      }
+    }
+  }
   // Inspections (B132): today's working trucks without a pre-trip; flagged, never blocking. [] before the update.
   const noPreTrip = view === "board" && date === today ? await missingPreTrips().catch(() => []) : [];
   // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
@@ -166,7 +177,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>
           </p>
         )}
-        <DispatchBoard day={day} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard day={day} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );
