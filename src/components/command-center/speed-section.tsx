@@ -2,6 +2,8 @@ import { Gauge, Receipt, ClipboardList } from "lucide-react";
 import type { ReactNode } from "react";
 import { InfoTip } from "@/components/ui/info-tip";
 import { formatTime } from "@/lib/orders/schedule";
+import type { WeekSpeed } from "@/lib/command-center/speed";
+import { formatDate } from "@/lib/dates";
 import type { SpeedMetrics } from "@/server/data/speed";
 import { SPEED_DAYS } from "@/server/data/speed";
 
@@ -40,8 +42,41 @@ export function SpeedSection({ speed }: { speed: SpeedMetrics }) {
           />
         )}
       </ul>
+      {speed.weeks.length > 0 && (planning !== undefined || billingReady !== undefined) && <WeekByWeek weeks={speed.weeks} plan={planning !== undefined} billing={billingReady !== undefined} />}
       <p className="mt-2 px-1 text-xs text-muted">Measured from what was recorded in the last {SPEED_DAYS} days. Nothing here is estimated.</p>
     </div>
+  );
+}
+
+/** The two figures per week, newest first (owner 2026-11-04: watch both week to week). Weeks with too little are marked. */
+function WeekByWeek({ weeks: all, plan, billing }: { weeks: WeekSpeed[]; plan: boolean; billing: boolean }) {
+  // Weeks older than the first measured one are left out (a new company, or a demo's few weeks of history); this week stays.
+  const oldest = all.reduce((n, w, i) => ((plan && w.planning) || (billing && w.billingReady) ? i : n), 0);
+  const weeks = all.slice(0, Math.max(oldest + 1, 1));
+  const label = (w: string, i: number) => (i === 0 ? "This week" : i === 1 ? "Last week" : `Week of ${formatDate(w)}`);
+  return (
+    <details className="mt-2 rounded-panel bg-card px-4 py-2 ring-1 ring-line/60">
+      <summary className="cursor-pointer py-1 text-sm font-medium text-ink">Week by week</summary>
+      <table className="mt-1 w-full text-sm" aria-label="Speed week by week">
+        <thead>
+          <tr className="text-left text-xs text-muted">
+            <th className="py-1 font-medium">Week</th>
+            {plan && <th className="py-1 text-right font-medium">Plan tomorrow</th>}
+            {billing && <th className="py-1 text-right font-medium">Billing-ready</th>}
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-line/70">
+          {weeks.map((w, i) => (
+            <tr key={w.weekStart}>
+              <td className="py-1.5">{label(w.weekStart, i)}</td>
+              {plan && <td className="py-1.5 text-right tabular">{w.planning ? duration(w.planning.medianMinutes) : <span className="text-xs text-muted">Not enough</span>}</td>}
+              {billing && <td className="py-1.5 text-right tabular">{w.billingReady ? hours(w.billingReady.medianHours) : <span className="text-xs text-muted">Not enough</span>}</td>}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="pb-1 pt-2 text-xs text-muted">Medians, measured the same way as above. Weeks start on Monday; this week is still in progress.</p>
+    </details>
   );
 }
 

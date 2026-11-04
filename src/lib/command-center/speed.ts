@@ -114,3 +114,44 @@ export function reviewPace(rows: Array<{ reviewer: string; reviewedAt: string }>
   if (timed < MIN_TICKETS || minutes < MIN_REVIEW_MINUTES) return null;
   return { perMinute: Math.round((timed / minutes) * 10) / 10, timed, minutes: Math.round(minutes), sittings };
 }
+
+/** Weeks shown week by week (owner 2026-11-04: both figures, week to week). */
+export const SPEED_WEEKS = 8;
+
+export interface WeekSpeed {
+  /** Monday of the week (business time). */
+  weekStart: string;
+  planning: PlanningSpeed | null;
+  billingReady: BillingReadySpeed | null;
+}
+
+/** Monday on or before a YYYY-MM-DD date. */
+export function mondayOf(isoDate: string): string {
+  const d = new Date(`${isoDate}T12:00:00Z`).getUTCDay(); // 0 = Sunday
+  return addDays(isoDate, d === 0 ? -6 : 1 - d);
+}
+
+/**
+ * The same two figures per week, newest first, for the last SPEED_WEEKS weeks including this one: planning by the week
+ * of the delivery day, billing-ready by the week of the acceptance. Each week needs the same minimum measurements as the
+ * headline figure, otherwise it is null ("not enough measured").
+ */
+export function weeklySpeed(
+  plans: Array<{ loadDate: string; createdAt: string }> | null,
+  tickets: Array<{ deliveredAt: string; reviewedAt: string }> | null,
+  timeZone: string,
+  today: string,
+  weeks = SPEED_WEEKS,
+): WeekSpeed[] {
+  const thisWeek = mondayOf(today);
+  return Array.from({ length: weeks }, (_, i) => {
+    const weekStart = addDays(thisWeek, -7 * i);
+    const weekEnd = addDays(weekStart, 6);
+    const inWeek = (d: string) => d >= weekStart && d <= weekEnd;
+    return {
+      weekStart,
+      planning: plans ? planningSpeed(plans.filter((p) => inWeek(p.loadDate)), timeZone) : null,
+      billingReady: tickets ? billingReadySpeed(tickets.filter((t) => inWeek(todayIn(timeZone, new Date(t.reviewedAt))))) : null,
+    };
+  });
+}

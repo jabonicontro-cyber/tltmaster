@@ -1,5 +1,6 @@
 import "server-only";
-import { billingReadySpeed, planningSpeed, reviewPace, type BillingReadySpeed, type PlanningSpeed, type ReviewPace } from "@/lib/command-center/speed";
+import { SPEED_WEEKS, billingReadySpeed, mondayOf, planningSpeed, reviewPace, weeklySpeed, type BillingReadySpeed, type PlanningSpeed, type ReviewPace, type WeekSpeed } from "@/lib/command-center/speed";
+import { addDays, todayIn } from "@/lib/dates";
 import { createClient } from "@/server/supabase/server";
 
 // Speed metrics (B86) over the last 30 days, read with the person's own session: RLS keeps them to the person's company
@@ -13,6 +14,8 @@ export interface SpeedMetrics {
   planning: PlanningSpeed | null | undefined;
   billingReady: BillingReadySpeed | null | undefined;
   pace: ReviewPace | null | undefined;
+  /** The planning and billing-ready figures per week, newest first (empty when the person sees neither). */
+  weeks: WeekSpeed[];
 }
 
 /** Every row of a query, a page at a time (the API returns at most 1000 per request). */
@@ -31,7 +34,11 @@ async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: un
 /** `undefined` means the person cannot see that figure's records; `null` means not enough has been measured yet. */
 export async function loadSpeed(timeZone: string, can: { dispatch: boolean; tickets: boolean }): Promise<SpeedMetrics> {
   const supabase = await createClient();
-  const since = new Date(Date.now() - SPEED_DAYS * 86_400_000).toISOString();
+  // Enough history for the weekly view (whole weeks back to Monday) as well as the 30-day figures.
+  const today = todayIn(timeZone);
+  const weeksFrom = addDays(mondayOf(today), -7 * (SPEED_WEEKS - 1));
+  const since = new Date(Math.min(Date.now() - SPEED_DAYS * 86_400_000, Date.parse(`${addDays(weeksFrom, -2)}T00:00:00Z`))).toISOString();
+  const recent = new Date(Date.now() - SPEED_DAYS * 86_400_000).toISOString();
   const [assignments, reviews] = await Promise.all([
     can.dispatch
       ? all<{ starts_at: string; created_at: string }>((f, t) => supabase.from("dispatch_assignments").select("starts_at, created_at").gte("created_at", since).order("created_at").range(f, t))
@@ -42,12 +49,14 @@ export async function loadSpeed(timeZone: string, can: { dispatch: boolean; tick
         )
       : null,
   ]);
+  const plans = assignments ? assignments.map((a) => ({ loadDate: localDate(a.starts_at, timeZone), createdAt: a.created_at })) : null;
+  const accepted = reviews ? reviews.filter((r) => r.status === "accepted" && r.delivered_at).map((r) => ({ deliveredAt: r.delivered_at!, reviewedAt: r.reviewed_at })) : null;
+  const last30 = <T extends { createdAt?: string; reviewedAt?: string }>(rows: T[]) => rows.filter((r) => (r.createdAt ?? r.reviewedAt ?? "") >= recent);
   return {
-    planning: assignments ? planningSpeed(assignments.map((a) => ({ loadDate: localDate(a.starts_at, timeZone), createdAt: a.created_at })), timeZone) : undefined,
-    billingReady: reviews
-      ? billingReadySpeed(reviews.filter((r) => r.status === "accepted" && r.delivered_at).map((r) => ({ deliveredAt: r.delivered_at!, reviewedAt: r.reviewed_at })))
-      : undefined,
-    pace: reviews ? reviewPace(reviews.filter((r) => r.reviewed_by).map((r) => ({ reviewer: r.reviewed_by!, reviewedAt: r.reviewed_at }))) : undefined,
+    planning: plans ? planningSpeed(last30(plans), timeZone) : undefined,
+    billingReady: accepted ? billingReadySpeed(last30(accepted)) : undefined,
+    pace: reviews ? reviewPace(reviews.filter((r) => r.reviewed_by && r.reviewed_at >= recent).map((r) => ({ reviewer: r.reviewed_by!, reviewedAt: r.reviewed_at }))) : undefined,
+    weeks: plans || accepted ? weeklySpeed(plans, accepted, timeZone, today) : [],
   };
 }
 
