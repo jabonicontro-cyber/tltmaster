@@ -170,6 +170,15 @@
       "capturedAt": "2026-11-02T06:26:46.374Z",
       "source": "localhost:3000",
       "checks": "passed"
+    },
+    "accountant-view": {
+      "file": "accountant-view.png",
+      "feature": "accountant-view",
+      "path": "/accountant",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-04T00:06:36.285Z",
+      "source": "localhost:3000",
+      "checks": "passed"
     }
   }
 }
