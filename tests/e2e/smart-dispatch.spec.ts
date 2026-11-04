@@ -118,6 +118,34 @@ test("suggested crew on the board (B136): one click and the hours confirmation a
   await expect(row.getByRole("button", { name: "Reassign" })).toBeVisible({ timeout: 30_000 });
 });
 
+test("same crew for the order's other loads (B136): offered after an assignment, checked and confirmed before anything is saved", async ({ page }) => {
+  test.setTimeout(150_000);
+  const f = await fixture();
+  // A second load on the same order later that day.
+  const second = await asUser(USERS.office.email, async (q) => {
+    const r = await q("select public.save_order_load($1::jsonb) as r", [JSON.stringify({ order_id: f.orderId, load_date: plusDays(1), start_time: "05:10", end_time: "06:10", planned_quantity: "18", unit_code: "ton" })]);
+    return r.rows[0].r.load_id as string;
+  });
+  await signIn(page, "dispatcher");
+  await page.goto(`/dispatch?date=${plusDays(1)}&horizon=3`);
+  const row = page.locator(`#load-${f.loadId}`);
+  await row.scrollIntoViewIfNeeded();
+  await row.getByRole("button", { name: /^Assign load 1 to truck .+ and .+$/ }).click({ timeout: 30_000 });
+  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked — assign" }).click();
+  await page.getByRole("button", { name: "Same crew for the other load" }).click();
+  const dialog = page.getByRole("dialog", { name: "Assign 1 load" });
+  await expect(dialog).toBeVisible();
+  // Nothing is saved until the dispatcher confirms the batch.
+  const before = await asUser(USERS.office.email, (q) => q("select count(*)::int as n from public.dispatch_assignments where load_id = $1 and status = 'active'", [second]));
+  expect(before.rows[0].n).toBe(0);
+  await dialog.getByRole("button", { name: "Assign 1 load" }).click();
+  await dialog.getByRole("button", { name: "Done" }).click();
+  const rows = await asUser(USERS.office.email, (q) => q("select load_id, truck_id, driver_id from public.dispatch_assignments where load_id = any($1::uuid[]) and status = 'active'", [[f.loadId, second]]));
+  expect(rows.rows).toHaveLength(2);
+  expect(rows.rows[0].truck_id).toBe(rows.rows[1].truck_id);
+  expect(rows.rows[0].driver_id).toBe(rows.rows[1].driver_id);
+});
+
 test("rejecting a proposal moves to the next option; reconsidering brings it back", async ({ page }) => {
   const f = await fixture();
   await signIn(page, "dispatcher");

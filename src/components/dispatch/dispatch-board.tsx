@@ -66,6 +66,8 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
   // Faster dispatching (B85): selected open loads, the batch dialogs and the shortcuts list.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
+  // "Same crew for the other loads" (B136, owner 2026-11-04: occasionally the whole order goes to one crew).
+  const [sameCrew, setSameCrew] = useState<{ loads: OrderLoadRow[]; crew: { truckId: string; trailerId: string | null; driverId: string } } | null>(null);
   const [copyOpen, setCopyOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   // The order whose route shows beside the board (owner 2026-10-26: Dispatch and the Route Planner on one page).
@@ -95,6 +97,15 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
 
   // Open loads (planned, no active assignment, on an order that can be dispatched): what batches work on.
   const openLoads = plannedLoads.filter((l) => !activeByLoad.has(l.id) && DISPATCHABLE.includes(lk.orders.get(l.order_id)?.status ?? ""));
+  /** After a load is assigned: offer the same crew for the order's other open loads that day (nothing is assigned until confirmed). */
+  const assignedToast = (message: string, load: OrderLoadRow, crew: { truckId: string; trailerId: string | null; driverId: string }) => {
+    const others = openLoads.filter((l) => l.order_id === load.order_id && l.id !== load.id);
+    if (!others.length) return void toast.success(message);
+    toast.success(message, {
+      duration: 10_000,
+      action: { label: `Same crew for the other ${others.length === 1 ? "load" : `${others.length} loads`}`, onClick: () => setSameCrew({ loads: others, crew }) },
+    });
+  };
   const proposals = useMemo(() => proposePreviousCrews(openLoads, day.pastCrews ?? []), [openLoads, day.pastCrews]);
   const selectedLoads = openLoads.filter((l) => selected.has(l.id));
   const toggle = (id: string) => setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
@@ -276,9 +287,11 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
           active={active}
           lk={lk}
           onClose={() => setAssignDialog(null)}
-          onSaved={(m, warnings) => {
+          onSaved={(m, warnings, crew) => {
+            const load = assignDialog.load;
             setAssignDialog(null);
-            toast.success(m);
+            if (crew) assignedToast(m, load, crew);
+            else toast.success(m);
             if (warnings.length) toast.warning(warnings.map(eligibilityMessage).join(" "));
             refresh();
           }}
@@ -301,7 +314,7 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
             setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: sug.truckId, trailerId: sug.trailerId ?? undefined, driverId: sug.driverId } });
             return;
           }
-          toast.success(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.`);
+          assignedToast(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.`, load, { truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId });
           if (r.data.warnings.length) toast.warning(r.data.warnings.map(eligibilityMessage).join(" "));
           refresh();
         }}
@@ -346,6 +359,16 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
           lk={lk}
           onClose={() => setBulkOpen(false)}
           onDone={() => { setBulkOpen(false); setSelected(new Set()); refresh(); }}
+        />
+      )}
+      {sameCrew && (
+        <BulkAssignDialog
+          loads={sameCrew.loads}
+          initial={sameCrew.crew}
+          active={active}
+          lk={lk}
+          onClose={() => setSameCrew(null)}
+          onDone={() => { setSameCrew(null); refresh(); }}
         />
       )}
       {copyOpen && (
@@ -814,7 +837,7 @@ function AssignDialog({
   active: AssignmentRow[];
   lk: Lookup;
   onClose: () => void;
-  onSaved: (m: string, warnings: string[]) => void;
+  onSaved: (m: string, warnings: string[], crew?: { truckId: string; trailerId: string | null; driverId: string }) => void;
 }) {
   const order = lk.orders.get(load.order_id);
   const [truckId, setTruckId] = useState(initial?.truckId ?? current?.truck_id ?? "");
@@ -882,7 +905,7 @@ function AssignDialog({
       setError(r.error);
       return;
     }
-    onSaved(r.message ?? "Saved", r.data.warnings);
+    onSaved(r.message ?? "Saved", r.data.warnings, { truckId, trailerId: trailerId || null, driverId });
   }
 
   return (

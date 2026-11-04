@@ -83,10 +83,10 @@ function Results({ results, items, lk }: { results: BatchResult[]; items: BatchI
 }
 
 /** Assign one crew to every selected load. */
-export function BulkAssignDialog({ loads, active, lk, onClose, onDone }: { loads: OrderLoadRow[]; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
-  const [truckId, setTruckId] = useState("");
-  const [trailerId, setTrailerId] = useState("");
-  const [driverId, setDriverId] = useState("");
+export function BulkAssignDialog({ loads, initial, active, lk, onClose, onDone }: { loads: OrderLoadRow[]; /** A crew filled in (same crew for the order's other loads, B136); the dispatcher still confirms. */ initial?: { truckId: string; trailerId: string | null; driverId: string }; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
+  const [truckId, setTruckId] = useState(initial?.truckId ?? "");
+  const [trailerId, setTrailerId] = useState(initial?.trailerId ?? "");
+  const [driverId, setDriverId] = useState(initial?.driverId ?? "");
   const [running, setRunning] = useState<number | null>(null);
   const [results, setResults] = useState<BatchResult[] | null>(null);
   const sorted = useMemo(() => [...loads].sort((a, b) => a.starts_at.localeCompare(b.starts_at)), [loads]);
@@ -95,7 +95,7 @@ export function BulkAssignDialog({ loads, active, lk, onClose, onDone }: { loads
   const blocked = checks.filter((c) => c.length).length;
 
   return (
-    <Dialog open onOpenChange={(o) => !o && onClose()} title={`Assign ${loads.length} loads`} description="One crew for all selected loads, in time order. Each load is checked and saved on its own; loads that cannot take this crew are left open.">
+    <Dialog open onOpenChange={(o) => !o && onClose()} title={`Assign ${loads.length} ${loads.length === 1 ? "load" : "loads"}`} description="One crew for all selected loads, in time order. Each load is checked and saved on its own; loads that cannot take this crew are left open.">
       {results ? (
         <div className="space-y-4">
           <Results results={results} items={items} lk={lk} />
