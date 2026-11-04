@@ -814,11 +814,11 @@ export const FEATURES: Feature[] = [
     points: ["Read-only by design", "Ends on the date the owner picks", "Payroll only when the owner includes it", "Invoices and payments as CSV", "Every visit recorded"],
     limitations: ["Taxes are not calculated; the records are shown as kept"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-04
     routes: ["/accountant"],
-    screenshots: [],
+    screenshots: ["accountant-view"],
     related: [],
-    verified: "2026-11-02",
+    verified: "2026-11-04",
   },
   {
     id: "offline-driver",
@@ -938,6 +938,10 @@ export const COMING_SOON: ComingSoon[] = [
     text: "Text load offers to hired trucks and owner-operators, see who accepts, and keep their loads on the same dispatch board as your own fleet.",
     addOn: true,
   },
+  {
+    name: "Live GPS and arrival estimates",
+    text: "Connect Samsara, Motive or another GPS and ELD provider directly, so truck locations, driver hours and arrival estimates update on their own.",
+  },
 ];
 
 /** Planned or unreleased work: the internal record behind the capability checks (PLANNED). Not shown on the website (owner 2026-10-26). */
@@ -946,7 +950,7 @@ export const NOT_YET: string[] = [
   "Issuing or sending invoices from Taviron itself, and payroll integrations",
   "Travel distance and drive time in dispatch suggestions — truck locations are not recorded yet",
   "Parts inventory and purchasing for maintenance",
-  "GPS tracking, offline mode and route or weather intelligence",
+  "Built-in GPS and ELD provider connections (Samsara, Motive) and live arrival estimates",
   "Automatic reading (OCR) of paper tickets",
   "Online payments and self-service subscriptions",
 ];

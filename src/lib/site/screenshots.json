@@ -196,6 +196,16 @@
       "ready": "Site notes from customers",
       "alt": "Site notes customers sent from their portal in a demo company, waiting for the office to review before drivers see them",
       "caption": "Site notes from customers — demo company, fictional data."
+    },
+    {
+      "id": "accountant-view",
+      "file": "accountant-view.png",
+      "feature": "accountant-view",
+      "path": "/accountant",
+      "viewport": "desktop",
+      "ready": "Accountant view",
+      "alt": "The accountant view in a demo company: the year's invoiced, received and still-owed totals, invoices issued, receivables by age and fuel and IFTA by quarter",
+      "caption": "Accountant view — demo company, fictional data."
     }
   ]
 }

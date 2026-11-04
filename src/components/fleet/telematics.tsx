@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { createFeedKey, recordHours, recordPosition, revokeFeedKey, saveTelematicsSettings } from "@/app/(app)/fleet/locations/actions";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
@@ -103,6 +104,9 @@ export function RecordHoursButton({ drivers, label = "Record hours" }: { drivers
   );
 }
 
+/** Direct connections planned (owner 2026-11-04: shown as coming soon until the provider API keys are set up). */
+const PROVIDERS_COMING = ["Samsara", "Motive", "Other providers"];
+
 /** Settings → GPS and hours: source, how long data counts as current, and the feed key (shown once). */
 export function TelematicsSettingsForm({ source, staleMinutes, keyHint, canEdit, endpoint }: { source: TelematicsSource; staleMinutes: number; keyHint: string; canEdit: boolean; endpoint: string }) {
   const router = useRouter();
@@ -154,6 +158,19 @@ export function TelematicsSettingsForm({ source, staleMinutes, keyHint, canEdit,
             {keyHint && <Button size="sm" variant="ghost" onClick={revoke} disabled={busy}>Revoke key</Button>}
           </div>
         )}
+      </section>
+
+      <section className="space-y-3 border-t border-line pt-5" aria-label="Built-in provider connections">
+        <h3 className="text-sm font-semibold">Built-in provider connections</h3>
+        <p className="text-sm text-muted">Connect your GPS or ELD account directly, without a feed key or connector. Until then, use the feed key above or enter positions and hours by hand.</p>
+        <ul className="grid gap-2 sm:grid-cols-3">
+          {PROVIDERS_COMING.map((name) => (
+            <li key={name} className="flex items-center justify-between gap-2 rounded-control border border-line p-3 text-sm">
+              <span className="font-medium">{name}</span>
+              <Badge tone="gray">Coming soon</Badge>
+            </li>
+          ))}
+        </ul>
       </section>
 
       <Dialog open={newKey !== null} onOpenChange={(o) => !o && setNewKey(null)} title="Copy your feed key" description="This is the only time it is shown. Anyone with it can send positions and hours for your company. Any earlier key no longer works." size="sm">
