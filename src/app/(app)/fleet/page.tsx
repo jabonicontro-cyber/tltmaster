@@ -8,7 +8,8 @@ import { FleetNav } from "@/components/fleet/fleet-nav";
 import { Card, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { cn } from "@/lib/cn";
-import { addDays, formatDate } from "@/lib/dates";
+import { addDays, formatDate, todayIn } from "@/lib/dates";
+import { businessToday } from "@/server/data/settings";
 import { EXPIRY_WARNING_DAYS, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { qualificationName, TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS } from "@/lib/fleet/labels";
 import { requirePagePermission } from "@/server/auth";
@@ -39,7 +40,7 @@ function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label:
 
 export default async function FleetPage() {
   const access = await requirePagePermission("fleet.view");
-  const [o, trucks, trailers, drivers, ctx] = await Promise.all([fleetOverview(), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") })]);
+  const [o, trucks, trailers, drivers, ctx, { timezone }] = await Promise.all([fleetOverview(), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") }), businessToday()]);
   const activeTrucks = trucks.filter((t) => t.active);
   const restricted = activeTrucks.filter((t) => (ctx.maintenance.openByTruck.get(t.id) ?? []).some((w) => w.safety_critical));
   const pmOverdue = activeTrucks.filter((t) => (ctx.maintenance.pmByTruck.get(t.id)?.overdue ?? 0) > 0);
@@ -130,7 +131,7 @@ export default async function FleetPage() {
                   </Link>
                   <span className="ml-2 text-sm">{e.out_of_service_reason}</span>
                   <div className="text-xs text-muted">
-                    {e.out_of_service_since ? `Since ${formatDate(e.out_of_service_since.slice(0, 10))}` : ""}
+                    {e.out_of_service_since ? `Since ${formatDate(todayIn(timezone, new Date(e.out_of_service_since)))}` : ""}
                     {e.expected_return_date ? ` · expected back ${formatDate(e.expected_return_date)}` : " · no return date"}
                   </div>
                 </li>

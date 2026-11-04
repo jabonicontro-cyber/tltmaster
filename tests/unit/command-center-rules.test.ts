@@ -96,8 +96,8 @@ describe("overview cards", () => {
   it("hides what the role may not see instead of showing zero", () => {
     expect(metricCards(summary({}))).toEqual([]);
     const mechanic = metricCards(summary({ trucks_out_of_service: 2, trailers_out_of_service: 1 }));
-    expect(mechanic.map((c) => c.key)).toEqual(["out_of_service", "maintenance"]);
-    expect(mechanic.find((c) => c.key === "maintenance")).toMatchObject({ value: null, href: null });
+    // No "Maintenance due — not tracked yet" placeholder: maintenance has its own page and figures.
+    expect(mechanic.map((c) => c.key)).toEqual(["out_of_service"]);
   });
 
   it("links every metric to a filtered list", () => {
@@ -107,7 +107,6 @@ describe("overview cards", () => {
       ["unassigned_loads", "/command-center?kind=unassigned_load#attention"],
       ["assignment_problems", "/command-center?kind=assignment_problem#attention"],
       ["out_of_service", "/command-center?kind=equipment_out_of_service#attention"],
-      ["maintenance", null],
       ["missing_tickets", "/command-center?kind=missing_ticket#attention"],
       ["tickets_to_review", "/command-center?kind=ticket_review#attention"],
       ["billing_blocked", "/billing?view=exceptions"],

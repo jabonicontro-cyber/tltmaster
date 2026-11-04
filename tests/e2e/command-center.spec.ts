@@ -66,7 +66,8 @@ test("office sees prioritized items, opens the right workflow, assigns a person,
   for (const label of ["Loads today", "Missing delivery tickets", "Tickets to review", "Orders blocked from billing", "Orders ready to bill", "Trucks out of service"]) {
     await expect(overview.getByRole("listitem", { name: label, exact: true })).toBeVisible();
   }
-  await expect(overview.getByRole("listitem", { name: "Maintenance due" })).toContainText("Not available");
+  // The old "Maintenance due — not tracked yet" placeholder is gone (maintenance has its own page and figures).
+  await expect(overview.getByRole("listitem", { name: "Maintenance due" })).toHaveCount(0);
 
   // The metric opens the filtered queue.
   await overview.getByRole("listitem", { name: "Missing delivery tickets" }).getByRole("link").click();
@@ -156,7 +157,8 @@ test("dispatchers and mechanics see only what their role covers", async ({ page 
   await page.goto("/command-center");
   await expect(page.getByRole("link", { name: "Command Center" })).toBeVisible();
   await expect(overview.getByRole("listitem", { name: "Trucks out of service" })).toBeVisible();
-  await expect(overview.getByRole("listitem", { name: "Maintenance due" })).toContainText("Not available");
+  // The old "Maintenance due — not tracked yet" placeholder is gone (maintenance has its own page and figures).
+  await expect(overview.getByRole("listitem", { name: "Maintenance due" })).toHaveCount(0);
   await expect(overview.getByRole("listitem", { name: "Loads today", exact: true })).toHaveCount(0);
   await expect(overview.getByRole("listitem", { name: "Missing delivery tickets" })).toHaveCount(0);
   const kinds = await page.getByRole("list", { name: "Attention items" }).getByRole("listitem").filter({ hasText: /Missing delivery ticket|Ticket to review|Billing blocked|Load without a truck/ }).count();

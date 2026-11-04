@@ -69,7 +69,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
         )}
         <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "—"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
-        {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {a.load.unit_code}</strong></p>}
+        {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {(a.load.unit_code ?? "").replace(/_/g, " ")}</strong></p>}
         {a.order.customer_po && <p className="text-sm text-muted">Customer PO {a.order.customer_po}</p>}
         {checkDirections && (
           <p className="flex gap-2 text-sm font-semibold text-critical">

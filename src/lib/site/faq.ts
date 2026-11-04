@@ -21,11 +21,11 @@ export const PRODUCT_FAQ: Faq[] = [
   },
   {
     q: "Does it track hours of service or GPS location?",
-    a: "Not yet. There is no ELD or GPS connection today, so every proposal reminds the dispatcher to confirm each driver's hours of service.",
+    a: "Yes, from your own provider or by hand. Your GPS or ELD provider (or a connector) can send truck positions and driver hours to Taviron with a feed key, or dispatch enters them. Fleet shows each truck's last location and each driver's hours left, with how old the data is. Only current provider hours count as verified; otherwise the dispatcher confirms hours before approving. Built-in Samsara and Motive connections are coming soon, and Taviron does not calculate hours-of-service rules.",
   },
   {
     q: "Does Taviron send invoices or take payments?",
-    a: "No. It tells you which orders are fully delivered and verified, prepares an invoice draft for review and hands ready orders to your accounting in batches. Invoices are issued in your accounting system.",
+    a: "Invoices, yes; card or bank payments, no. Each company chooses: Taviron issues the invoice from the verified deliveries with your logo, emails it as a PDF and tracks what each customer owes as you record payments, or you hand ready orders to your accounting system. QuickBooks Online sync is coming soon. There is no online card or bank payment.",
   },
   {
     q: "Does Taviron use AI?",

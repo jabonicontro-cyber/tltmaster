@@ -198,7 +198,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 <p className="text-sm text-muted">The order line could not be loaded.</p>
               )}
               <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-                {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} / {unitLabel(context.line.unit_code)} — not changed by tickets</dd></div>}
+                {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} per {unitLabel(context.line.unit_code).replace(/s$/, "")} — not changed by tickets</dd></div>}
                 {context.order && <div><dt className="inline text-muted">Customer PO: </dt><dd className="inline">{context.order.customer_po || "none on the order"}</dd></div>}
                 {context.order && <div><dt className="inline text-muted">Site: </dt><dd className="inline">{[context.order.site_label, context.order.site_city].filter(Boolean).join(", ") || "—"}</dd></div>}
                 <div>

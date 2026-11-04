@@ -305,7 +305,6 @@ export function metricCards(s: CommandSummary): MetricCard[] {
       href: queue("equipment_out_of_service"),
       tone: warnIf(s.trucks_out_of_service),
     });
-    cards.push({ key: "maintenance", label: "Maintenance due", value: null, sub: "Not tracked yet — no maintenance records exist", href: null, tone: "default" });
   }
   if (s.driver_reports !== undefined && s.driver_reports !== null) {
     cards.push({ key: "driver_reports", label: "Driver reports open", value: s.driver_reports, sub: "Delays, breakdowns, inspection problems", href: "/field-reports", tone: warnIf(s.driver_reports, "bad") });

@@ -52,6 +52,15 @@ const ONSET = /\b(this morning|yesterday|today|last (night|week|trip|load)|since
 const SYMPTOM = /\b(leak\w*|nois\w*|squeal\w*|grind\w*|vibrat\w*|pull\w* (left|right)|smoke|smell\w*|warning light|overheat\w*|won'?t start|stall\w*|hiss\w*|knock\w*|clunk\w*|shak\w*|soft pedal|loss of power)\b/gi;
 
 /** Sentences of the report, trimmed, without empties. */
+/** The matched text widened to whole words ("brak" in "brakes" shows as "brakes"). */
+function wholeWords(text: string, start: number, length: number): string {
+  let a = start;
+  let b = start + length;
+  while (a > 0 && /[\p{L}\p{N}]/u.test(text[a - 1])) a--;
+  while (b < text.length && /[\p{L}\p{N}]/u.test(text[b])) b++;
+  return text.slice(a, b);
+}
+
 function sentences(text: string): string[] {
   return text.split(/(?<=[.!?])\s+|\n+/).map((s) => s.trim()).filter((s) => s.length >= 3).slice(0, 8);
 }
@@ -65,7 +74,7 @@ export function triageRules(input: TriageInput): TriageSuggestion {
 
   const safetyMatch = text.match(SAFETY);
   const safetyReview = Boolean(safetyMatch);
-  if (safetyMatch) reasons.push(`"${safetyMatch[0]}" can affect safe operation: a qualified person should check it before the vehicle runs.`);
+  if (safetyMatch) reasons.push(`"${wholeWords(text, safetyMatch.index ?? 0, safetyMatch[0].length)}" can affect safe operation: a qualified person should check it before the vehicle runs.`);
 
   const urgentMatch = text.match(URGENT);
   const urgency: WoUrgency = urgentMatch || (safetyReview && /won'?t|can'?t|fail|out\b|broke/i.test(text)) ? "immediate" : safetyReview ? "high" : "normal";
