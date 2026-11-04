@@ -118,3 +118,24 @@ export async function getOrderDetail(id: string) {
     site: site.data as SiteRow | null,
   };
 }
+
+/** The order's pickup and the company's active locations to choose from. Empty and `installed: false` before migration 20261120006600. */
+export async function getOrderPickup(id: string): Promise<{ installed: boolean; pickupId: string | null; locations: Array<{ id: string; name: string; kind: "yard" | "terminal" | "quarry" | "plant" | "pickup" | "other"; address: string }> }> {
+  if (!uuid.safeParse(id).success) return { installed: false, pickupId: null, locations: [] };
+  const supabase = await createClient();
+  const [order, locs] = await Promise.all([
+    supabase.from("orders").select("pickup_location_id").eq("id", id).maybeSingle(),
+    supabase.from("company_locations").select("id, name, kind, address_line1, city, state").eq("active", true).order("kind").order("name"),
+  ]);
+  if (order.error) return { installed: false, pickupId: null, locations: [] };
+  const rows = (locs.data ?? []) as Array<{ id: string; name: string; kind: "yard" | "terminal" | "quarry" | "plant" | "pickup" | "other"; address_line1: string | null; city: string | null; state: string | null }>;
+  // Loading points first (quarries, plants, pickups), then terminals and yards.
+  const rank = { quarry: 0, plant: 1, pickup: 2, terminal: 3, other: 4, yard: 5 } as const;
+  return {
+    installed: true,
+    pickupId: (order.data as { pickup_location_id: string | null } | null)?.pickup_location_id ?? null,
+    locations: rows
+      .map((r) => ({ id: r.id, name: r.name, kind: r.kind, address: [r.address_line1, r.city, r.state].filter(Boolean).join(", ") }))
+      .sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name)),
+  };
+}

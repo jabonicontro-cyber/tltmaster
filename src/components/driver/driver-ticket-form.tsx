@@ -49,6 +49,9 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   const line = lines.find((l) => l.id === lineId);
   // The order line's unit first (marked), never preselected.
   const orderedUnits = line ? [...units].sort((a, b) => (a.code === line.unit_code ? -1 : b.code === line.unit_code ? 1 : 0)) : units;
+  const HAUL_UNITS = ["ton", "cu_yd", "load"];
+  const mainUnits = orderedUnits.filter((u) => u.code === line?.unit_code || HAUL_UNITS.includes(u.code));
+  const otherUnits = orderedUnits.filter((u) => !mainUnits.includes(u));
 
   async function send() {
     const e: Record<string, string> = {};
@@ -111,6 +114,12 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         </p>
       )}
 
+      {/* The number a driver copies first (UX6). */}
+      <div>
+        <label htmlFor="d-ref" className="mb-2 block text-base font-bold">Paper / scale ticket number</label>
+        <input id="d-ref" autoComplete="off" maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} className={field} />
+      </div>
+
       <fieldset>
         <legend className="mb-2 text-base font-bold">What did you deliver?</legend>
         <div className="space-y-2">
@@ -129,11 +138,23 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
 
       <fieldset>
         <legend className="mb-2 text-base font-bold">Unit</legend>
+        {/* The order's unit and the usual haul units first; the rest behind "Other unit" (UX6). Never preselected: the
+            driver reads the unit off the paper ticket. */}
         <div className="grid grid-cols-2 gap-2">
-          {orderedUnits.map((u) => (
+          {mainUnits.map((u) => (
             <Choice key={u.code} name="unit" value={u.code} checked={unit === u.code} onChange={setUnit} hint={line && u.code === line.unit_code ? "Order unit" : undefined}>{u.label}</Choice>
           ))}
         </div>
+        {otherUnits.length > 0 && (
+          <details className="mt-2" open={otherUnits.some((u) => u.code === unit)}>
+            <summary className="cursor-pointer py-2 text-sm font-semibold text-brand-fg">Other unit</summary>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              {otherUnits.map((u) => (
+                <Choice key={u.code} name="unit" value={u.code} checked={unit === u.code} onChange={setUnit}>{u.label}</Choice>
+              ))}
+            </div>
+          </details>
+        )}
         {line && unit && unit !== line.unit_code && <p className="mt-2 text-sm text-amber-900">Different from the order unit — the office will check it. No conversion is made.</p>}
         {errors.unit && <p className="mt-1 font-semibold text-red-700">{errors.unit}</p>}
       </fieldset>
@@ -148,11 +169,6 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
           <input id="d-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={field} />
           {errors.time && <p className="mt-1 font-semibold text-red-700">{errors.time}</p>}
         </div>
-      </div>
-
-      <div>
-        <label htmlFor="d-ref" className="mb-2 block text-base font-bold">Paper / scale ticket number</label>
-        <input id="d-ref" autoComplete="off" maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} className={field} />
       </div>
 
       <div>

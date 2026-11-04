@@ -143,6 +143,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
   note("second delivery for one truck", await secondDelivery(db, today));
+  // Pickups (UX7): open orders load at one of the demo's quarries or plants, so drivers see "Load at" with Navigate.
+  // Orders numbered …5 are left without one (the "Not set" case). An existing pickup is never changed.
+  note("order pickups", await orderPickups(db));
   return result;
 }
 
@@ -1408,6 +1411,25 @@ async function billingTolerance(db: Db): Promise<number> {
   if (missing(error)) return 0;
   if (error) throw new Error(`Demo samples (billing tolerance): ${error.message}`);
   return 1;
+}
+
+/** Pickups on open demo orders that have none (UX7); 0 before that update is installed or without loading places. */
+async function orderPickups(db: Db): Promise<number> {
+  const orders = await db.from("orders").select("id, order_number")
+    .in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).is("pickup_location_id", null).order("order_number").limit(200);
+  if (missing(orders.error) || orders.error?.code === "42703") return 0; // column not there before 20261120006600
+  if (orders.error) throw new Error(`Demo samples (order pickups): ${orders.error.message}`);
+  const places = ((await db.from("company_locations").select("id").eq("active", true).in("kind", ["quarry", "plant"]).order("name")).data ?? []) as Array<{ id: string }>;
+  if (places.length === 0) return 0;
+  let n = 0;
+  for (const [i, o] of ((orders.data ?? []) as Array<{ id: string; order_number: string }>).entries()) {
+    if (o.order_number.endsWith("5")) continue;
+    const { error } = await db.rpc("set_order_pickup", { p_order: o.id, p_location: places[i % places.length].id });
+    if (missing(error)) return n;
+    if (error) throw new Error(`Demo samples (order pickups): ${error.message}`);
+    n++;
+  }
+  return n;
 }
 
 async function rpcCount(db: Db, fn: string): Promise<number> {

@@ -62,10 +62,11 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
       {event && <input type="hidden" name="event" value={event} />}
       <span className="w-20 text-sm font-semibold">{STOP_LABEL[s.stop]}</span>
       <span className="min-w-0 flex-1 text-sm text-muted tabular">
-        {s.arrivedAt ? `Arrived ${time(s.arrivedAt)}` : "Not arrived"}
+        {s.arrivedAt ? `Arrived ${time(s.arrivedAt)}` : "Not arrived yet"}
         {s.departedAt ? ` · left ${time(s.departedAt)} · waited ${minutesLabel(waitMinutes(s))}` : ""}
       </span>
-      {event && <Button type="submit" size="sm" variant={event === "arrive" ? "secondary" : "primary"} loading={pending}>{event === "arrive" ? "Arrived" : "Left"}</Button>}
+      {/* Glove-size target (UX6): at least 48 px tall and wide enough to hit from a cab. */}
+      {event && <Button type="submit" variant={event === "arrive" ? "secondary" : "primary"} loading={pending} className="min-h-12 min-w-28 text-base">{event === "arrive" ? "Arrived" : "Left"}</Button>}
       <FormError message={formError} />
     </form>
   );

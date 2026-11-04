@@ -12,7 +12,8 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   await signIn(page, "driver");
   await expect(page).toHaveURL(/\/driver$/);
   await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Pre-trip inspection" })).toBeVisible();
+  // UX6: the pre-trip is a prominent panel that opens on tap, so today's loads stay near the top.
+  await page.getByText("Pre-trip inspection — do this before you drive").click();
 
   const form = page.getByRole("form", { name: "Vehicle inspection" });
   const truck = form.getByLabel("Truck");
@@ -27,8 +28,8 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
 
   // Post-trip: a brake defect is a safety defect and takes the truck out of service.
   // The fixture driver has one truck today, so My Day moves on to the post-trip (behind a disclosure).
-  await expect(page.getByRole("heading", { name: "Post-trip inspection" })).toBeVisible({ timeout: 20_000 });
-  await page.getByText("Start post-trip inspection").click();
+  await expect(page.getByText("Post-trip inspection", { exact: true })).toBeVisible({ timeout: 20_000 });
+  await page.getByText("Post-trip inspection", { exact: true }).click();
   const post = page.getByRole("form", { name: "Vehicle inspection" });
   await expect(post.locator("#insp-kind")).toHaveValue("post_trip");
   await post.getByRole("group", { name: "Service brakes" }).getByRole("button", { name: "Defect" }).click();

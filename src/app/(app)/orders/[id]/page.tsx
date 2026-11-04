@@ -20,7 +20,8 @@ import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
 import { lineProgress } from "@/lib/tickets/context";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
-import { getOrderDetail } from "@/server/data/orders";
+import { getOrderDetail, getOrderPickup } from "@/server/data/orders";
+import { OrderPickup } from "@/components/orders/order-pickup";
 import { getOrderReadiness } from "@/server/data/billing";
 import { getOrderUrgency } from "@/server/data/urgency";
 import { OrderProgress } from "@/components/orders/order-progress";
@@ -36,11 +37,11 @@ import { OrderTrackingCard } from "@/components/portal/order-tracking-card";
 
 export const metadata = { title: "Order" };
 
-export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; base_saved?: string; base_error?: string }> }) {
+export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; base_saved?: string; base_error?: string; pickup_saved?: string; pickup_error?: string }> }) {
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
-  const { back, base_saved: baseSaved, base_error: baseError } = await searchParams;
-  const [bases, orderBase] = await Promise.all([baseOptions(), recordBase("orders", id)]);
+  const { back, base_saved: baseSaved, base_error: baseError, pickup_saved: pickupSaved, pickup_error: pickupError } = await searchParams;
+  const [bases, orderBase, pickup] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id)]);
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names, site: savedSite } = detail;
@@ -292,6 +293,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                       site
                     ),
                   },
+                  ...(pickup.installed ? [{ label: "Pickup", value: <OrderPickup orderId={id} pickupId={pickup.pickupId} locations={pickup.locations} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                   { label: "Project", value: order.project_name },
                   { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required — not entered</Badge> : "") },
                   { label: "Payment terms", value: billTo?.payment_terms ?? customer.payment_terms },
@@ -304,6 +306,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   { label: "Internal notes", value: order.internal_notes, wide: true },
                 ]}
               />
+              {pickupSaved ? <p className="mt-3 text-sm text-muted" role="status">Pickup saved. Drivers see it on their load card.</p> : null}
+              {pickupError ? <div className="mt-3"><Notice tone="warning" title="Pickup not saved">{pickupError}</Notice></div> : null}
             </CardBody>
           </Card>
 

@@ -102,9 +102,9 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
                 </span>
                 <div role="group" aria-label={i.label} className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
                   <button type="button" aria-pressed={m.ok === true} onClick={() => mark(i.key, { ok: true, note: "" })}
-                    className={cn("h-9 min-w-16 rounded-full px-3 text-sm font-semibold", m.ok === true ? "bg-card text-ink shadow-xs" : "text-muted")}>OK</button>
+                    className={cn("h-12 min-w-20 rounded-full px-4 text-base font-semibold", m.ok === true ? "bg-card text-ink shadow-xs" : "text-muted")}>OK</button>
                   <button type="button" aria-pressed={m.ok === false} onClick={() => mark(i.key, { ok: false })}
-                    className={cn("h-9 min-w-16 rounded-full px-3 text-sm font-semibold", m.ok === false ? "bg-critical text-white" : "text-muted")}>Defect</button>
+                    className={cn("h-12 min-w-20 rounded-full px-4 text-base font-semibold", m.ok === false ? "bg-critical text-white" : "text-muted")}>Defect</button>
                 </div>
               </div>
               {m.ok === false && (

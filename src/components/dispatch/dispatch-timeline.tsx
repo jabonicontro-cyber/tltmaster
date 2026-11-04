@@ -84,8 +84,9 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
           routeOrder === l.order_id && "ring-2 ring-strong",
         )}
       >
-        <span className="truncate font-semibold tabular">{o?.order_number ?? "Order"} · {l.load_number}</span>
-        <span className="truncate text-[11px] opacity-75">{formatTime(l.start_time)}{site ? ` · ${site}` : ""}</span>
+        {/* The full order number on its own line (UX8): the load number and time move to the second line. */}
+        <span className="truncate font-semibold tabular">{o?.order_number ?? "Order"}</span>
+        <span className="truncate text-[11px] opacity-75">Load {l.load_number} · {formatTime(l.start_time)}{site ? ` · ${site}` : ""}</span>
       </button>
     );
   };
@@ -114,7 +115,8 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
         <EmptyState icon={<Truck className="size-6" />} title="Nothing to show for this day" description="Trucks and loads appear here once the fleet is set up and orders have loads." />
       ) : (
         <div className="overflow-x-auto rounded-panel border border-line/70 bg-card shadow-card">
-          <div className="min-w-[56rem]" role="table" aria-label="Trucks by hour">
+          {/* At least 5.5rem per hour so a one-hour load shows its whole order number; wider days scroll sideways. */}
+          <div className="min-w-[56rem]" style={{ minWidth: `max(56rem, calc(14rem + ${span / 60} * 5.5rem))` }} role="table" aria-label="Trucks by hour">
             <div role="row" className="sticky top-0 z-10 flex border-b border-line/70 bg-card">
               <div role="columnheader" className="w-56 shrink-0 px-4 py-2.5 text-xs font-semibold text-muted">Truck and driver</div>
               <div role="columnheader" className="relative h-10 flex-1">

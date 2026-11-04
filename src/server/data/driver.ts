@@ -1,3 +1,5 @@
+import { businessToday } from "@/server/data/settings";
+import { twelveHour } from "@/lib/time-text";
 import type { DirectionsRisk, DirectionsStatus } from "@/lib/sites";
 import "server-only";
 import type { DriverQualification, ReportKind } from "@/lib/driver/rules";
@@ -106,8 +108,17 @@ export async function loadDispatchUpdates(): Promise<DispatchUpdate[]> {
   const rows = data as Array<DispatchUpdate & { source_id: string | null }>;
   const sources = [...new Set(rows.map((r) => r.source_id).filter((x): x is string => Boolean(x)))];
   if (!sources.length) return [];
-  const alerts = await supabase.from("alerts").select("id").in("id", sources).in("event_type", DISPATCH_EVENTS);
+  const alerts = await supabase.from("alerts").select("id, entity_id").in("id", sources).in("event_type", DISPATCH_EVENTS);
   if (alerts.error) return [];
-  const ours = new Set(((alerts.data ?? []) as Array<{ id: string }>).map((a) => a.id));
-  return rows.filter((r) => r.source_id && ours.has(r.source_id)).slice(0, 5).map(({ id, title, created_at }) => ({ id, title, created_at }));
+  const list = (alerts.data ?? []) as Array<{ id: string; entity_id: string | null }>;
+  // Notices about loads whose day is over are not news any more (UX15).
+  const loadIds = [...new Set(list.map((a) => a.entity_id).filter((x): x is string => Boolean(x)))];
+  const [{ today }, loads] = await Promise.all([
+    businessToday(),
+    loadIds.length ? supabase.from("order_loads").select("id, load_date").in("id", loadIds) : Promise.resolve({ data: [], error: null }),
+  ]);
+  const dateOf = new Map(((loads.data ?? []) as Array<{ id: string; load_date: string }>).map((l) => [l.id, l.load_date]));
+  const ours = new Set(list.filter((a) => !a.entity_id || !dateOf.has(a.entity_id) || dateOf.get(a.entity_id)! >= today).map((a) => a.id));
+  return rows.filter((r) => r.source_id && ours.has(r.source_id)).slice(0, 5).map(({ id, title, created_at }) => ({ id, title: twelveHour(title), created_at }));
 }
+

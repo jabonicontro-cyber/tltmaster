@@ -2,7 +2,8 @@ import { OfflineSupport } from "@/components/companion/offline-support";
 import { InspectionForm } from "@/components/fleet/inspection-form";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
+import { directionsUrl, telUrl, type LoadPickup } from "@/lib/driver/navigate";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -50,11 +51,15 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
   const checkDirections = directionsNeedAttention(a.site.directions_status, risk);
+  // One tap to the phone's maps app (UX7): to the pickup, then the job site; Call when the order has a site contact number.
+  const toPickup = pickup ? directionsUrl(pickup) : null;
+  const toSite = directionsUrl({ address: [a.site.line1, a.site.city, a.site.state, a.site.postal_code].filter(Boolean).join(", ") });
+  const call = telUrl(a.order.contact_phone);
   return (
     <li className={cn("overflow-hidden rounded-panel bg-card shadow-card ring-1", past ? "ring-brand" : "ring-line/60")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
@@ -65,12 +70,22 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
       </div>
       <div className="space-y-2 px-4 py-3 text-[15px]">
         <p className="font-bold">{a.order.customer_name}{a.order.project_name ? <span className="font-normal text-muted"> · {a.order.project_name}</span> : null}</p>
+        {pickup && (
+          <p className="flex gap-2"><Package className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Load at <strong>{pickup.name}</strong>{pickup.address ? <span className="text-muted"> · {pickup.address}</span> : null}</span></p>
+        )}
         {(a.site.label || site) && (
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
         )}
         <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "—"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
         {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {(a.load.unit_code ?? "").replace(/_/g, " ")}</strong></p>}
         {a.order.customer_po && <p className="text-sm text-muted">Customer PO {a.order.customer_po}</p>}
+        {(toPickup || toSite || call) && (
+          <div className="flex flex-wrap gap-2" aria-label="Directions and calls">
+            {toPickup && <a href={toPickup} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "md", "min-h-12 text-base")}><Navigation className="size-5" aria-hidden /> Navigate to pickup</a>}
+            {toSite && <a href={toSite} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "md", "min-h-12 text-base")}><Navigation className="size-5" aria-hidden /> Navigate to site</a>}
+            {call && <a href={call} className={buttonClasses("secondary", "md", "min-h-12 text-base")}><Phone className="size-5" aria-hidden /> Call {a.order.contact_name || "site contact"}</a>}
+          </div>
+        )}
         {checkDirections && (
           <p className="flex gap-2 text-sm font-semibold text-critical">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
@@ -180,7 +195,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const reminders = qualificationReminders(h.qualifications, h.today);
   // These three are independent: read them together. Each is empty before its update is installed.
   const sb = await createClient();
-  const [fuelTrucksRes, inspRes, payRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements")]);
+  const [fuelTrucksRes, inspRes, payRes, pickupRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups")]);
+  // Where each load is picked up (UX7), keyed by load; empty before that update is installed.
+  const pickups = (pickupRes.error ? {} : (pickupRes.data ?? {})) as Record<string, LoadPickup>;
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
@@ -247,6 +264,28 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <span className="text-muted"><span className="sr-only">{earlier.length} tickets to enter. </span>{earlier.length ? "from earlier days" : "all caught up"}</span>
         </StatTile>
       </div>
+      {/* Pre-trip first, but one tap to open (UX6): the long form no longer pushes today's loads off the screen. */}
+      {inspTrucks.length > 0 && (
+        // Keyed by what is due: once the pre-trip is saved the panel starts closed again for the post-trip.
+        <details key={preTripDue ? "pre-trip" : "post-trip"} className={cn("rounded-2xl border bg-card", preTripDue ? "border-amber-300 ring-1 ring-amber-200" : "border-line")}>
+          <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-base font-semibold text-ink">
+            <span>{preTripDue ? "Pre-trip inspection — do this before you drive" : "Post-trip inspection"}</span>
+            <span className="text-sm font-medium text-brand-fg">Open</span>
+          </summary>
+          <div className="border-t border-line px-4 pt-3 pb-4">
+            <p className="mb-3 text-sm text-muted">{preTripDue ? "Check every item. A defect goes straight to the shop." : "At the end of your shift: check every item and report anything wrong."}</p>
+            <InspectionForm trucks={inspTrucks} queue={{ userId: access.userId, day: h.today }} />
+          </div>
+        </details>
+      )}
+      <section aria-label="Today">
+        <h2 className="mb-2 text-lg font-bold">Today</h2>
+        {today.length === 0 ? (
+          <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
+        ) : (
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} />)}</ul>
+        )}
+      </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
       {sp.sent && (
         <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
@@ -322,38 +361,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} />)}</ul>
         </section>
       )}
 
       {/* Offline driver app (B133): keeps today on the phone and sends what is waiting once there is signal. */}
       <OfflineSupport userId={access.userId} />
 
-      {inspTrucks.length > 0 && (
-        <Card>
-          <CardHeader
-            title={preTripDue ? "Pre-trip inspection" : "Post-trip inspection"}
-            description={preTripDue ? "Before you drive: check every item. A defect goes straight to the shop." : "At the end of your shift: check every item and report anything wrong."}
-          />
-          <div className="px-5 pb-5 sm:px-6">
-            {preTripDue ? <InspectionForm trucks={inspTrucks} queue={{ userId: access.userId, day: h.today }} /> : (
-              <details className="rounded-xl border border-line px-4 py-3">
-                <summary className="cursor-pointer text-sm font-semibold text-ink">Start post-trip inspection</summary>
-                <div className="pt-3"><InspectionForm trucks={inspTrucks} queue={{ userId: access.userId, day: h.today }} /></div>
-              </details>
-            )}
-          </div>
-        </Card>
-      )}
 
-      <section aria-label="Today">
-        <h2 className="mb-2 text-lg font-bold">Today</h2>
-        {today.length === 0 ? (
-          <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
-        ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} />)}</ul>
-        )}
-      </section>
 
       {fuelTrucks.length > 0 && (
         <Card>
@@ -374,13 +389,16 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} />)}</ul>
         </section>
       )}
 
-      {pay.length > 0 && (
-        <Card>
-          <CardHeader title="My pay" description="Statements of approved pay periods: every ticket and its pay. Gross, before taxes." />
+      {/* Always reachable (UX6): an empty state says when statements will appear. */}
+      <Card>
+        <CardHeader title="My pay" description="Statements of approved pay periods: every ticket and its pay. Gross, before taxes." />
+        {pay.length === 0 ? (
+          <p className="border-t border-line px-5 py-4 text-sm text-muted sm:px-6">No pay statements yet. A statement appears here once the office approves a pay period that includes your tickets.</p>
+        ) : (
           <ul className="divide-y divide-line border-t border-line" aria-label="My pay statements">
             {pay.map((p) => (
               <li key={p.period_id}>
@@ -391,8 +409,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
               </li>
             ))}
           </ul>
-        </Card>
-      )}
+        )}
+      </Card>
 
       <Card>
         <CardHeader title="My recent tickets" description="The office reviews every ticket. Questions about a ticket go to the office." />
