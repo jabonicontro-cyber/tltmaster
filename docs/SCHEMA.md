@@ -523,6 +523,17 @@ view) lists today's working trucks without a pre-trip. Missing inspections never
 `inspection_submit` takes an optional `inspected_on` (today or yesterday) for inspections saved on a phone without
 signal and sent later.
 
+## Work order photos and dump-body items (20261120006700)
+
+`work_order_photos` (work order, path in the private `maintenance-photos` bucket, type, size, uploader). Maintenance
+viewers read them; nobody reads the bucket directly (the server's service role stores and signs one-minute links).
+Reserved only by `work_order_photo_begin` (maintenance.manage, open work orders, through `private.wo_for_crew`) and
+`inspection_photo_begin` (the driver who recorded the inspection, that day, while its work order is open; or
+maintenance.manage). JPEG/PNG/WebP, at most 5 MB, at most 8 per work order. `work_order_photo_path` answers maintenance
+viewers or the uploader. `private.inspection_items_for(truck)` is the DVIR list plus five dump-body items on dump
+trucks (`truck_type` ending in `_dump`; not safety items); `inspection_submit` checks that list and
+`inspection_my_trucks` adds a `dump` flag.
+
 ## Accountant access (20261120006200, 20261120006300)
 
 `company_memberships` gains `access_ends_at` (required for the role `accountant`) and `payroll_view` (accountants

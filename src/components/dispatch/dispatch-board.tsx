@@ -513,7 +513,7 @@ function OrderCard({
                 id={`load-${l.id}`}
                 aria-current={focusLoadId === l.id ? "true" : undefined}
                 className={cn(
-                  "grid grid-cols-1 gap-3 px-5 py-3 transition-colors sm:grid-cols-12 sm:px-6",
+                  "grid grid-cols-1 gap-2 px-5 py-2.5 transition-colors sm:grid-cols-12 sm:gap-3 sm:px-6",
                   canceled && "bg-surface/60 text-muted",
                   focusLoadId === l.id && "bg-amber-50 ring-2 ring-amber-400 ring-inset",
                   selected.has(l.id) && "bg-strong/[0.04]",
@@ -553,13 +553,11 @@ function OrderCard({
                     />
                   )}
                   <div>
-                  <p className="font-bold">Load {l.load_number}</p>
-                  <p className="text-sm tabular">{timeRange(l)}</p>
-                  {l.planned_quantity !== null && (
-                    <p className="text-sm text-muted">
-                      {trimNumber(l.planned_quantity)} {l.unit_code}
-                    </p>
-                  )}
+                  {/* One line per load (UX8): number, time and planned quantity together keep long days scannable. */}
+                  <p className="leading-snug"><span className="font-bold">Load {l.load_number}</span>{" "}
+                    <span className="text-sm tabular">{timeRange(l)}</span>
+                    {l.planned_quantity !== null && <span className="text-sm text-muted"> · {trimNumber(l.planned_quantity)} {(l.unit_code ?? "").replace(/_/g, " ")}</span>}
+                  </p>
                   {canceled && <Badge tone="gray">Canceled: {l.cancel_reason}</Badge>}
                   </div>
                 </div>

@@ -4,7 +4,7 @@ import { Avatar } from "@/components/ui/avatar";
 import type { Face } from "@/server/data/faces";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Lightbulb } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -211,14 +211,22 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
  * the next few days, most urgent first. Proposals are suggestions only; each
  * one is assigned only when a dispatcher approves it.
  */
+const FOLD_KEY = "taviron.smart-dispatch";
+
 export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {} }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face> }) {
   const feasible = plans.filter((p) => p.proposal).length;
   // The most urgent few first; the rest one click away, so the board below stays reachable.
   const [all, setAll] = useState(false);
   const FIRST = 6;
   const shown = all ? plans : plans.slice(0, FIRST);
+  // Open or folded is remembered per browser (UX8): a dispatcher who works from the board's suggested crews can keep it
+  // folded. Storage can be missing (private window); then it simply opens.
+  const fold = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    try { if (window.localStorage.getItem(FOLD_KEY) === "closed" && fold.current) fold.current.open = false; } catch { /* storage unavailable */ }
+  }, []);
   return (
-    <details open className="mb-4 rounded-panel border border-line/70 bg-card shadow-card" aria-label="Smart Dispatch">
+    <details open ref={fold} onToggle={(e) => { try { window.localStorage.setItem(FOLD_KEY, (e.currentTarget as HTMLDetailsElement).open ? "open" : "closed"); } catch { /* storage unavailable */ } }} className="mb-4 rounded-panel border border-line/70 bg-card shadow-card" aria-label="Smart Dispatch">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 border-b border-line px-4 py-2">
         <Lightbulb className="size-5 text-brand-fg" aria-hidden />
         <span className="font-bold">Smart Dispatch</span>

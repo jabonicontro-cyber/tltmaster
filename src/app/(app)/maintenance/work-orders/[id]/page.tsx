@@ -20,7 +20,8 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { CLEARANCE_STATUSES, COST_KINDS, WO_CATEGORIES, WO_STATUSES } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getWorkOrder } from "@/server/data/maintenance";
+import { WorkOrderPhotos } from "@/components/maintenance/work-order-photos";
+import { getWorkOrder, workOrderPhotoIds } from "@/server/data/maintenance";
 import { completedJobs } from "@/server/data/maintenance-estimates";
 import { learnedEstimate, type LearnedEstimate } from "@/lib/maintenance-estimate";
 import { getLatestTriage, getWorkOrderCrew } from "@/server/data/maintenance-crew";
@@ -52,9 +53,11 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone, today }, crew, triage, history, stock, partsUsed] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] })),
+  const [people, { timezone, today }, crew, triage, history, stock, partsUsed, photos] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] })),
     // Shop parts (B105): what is in stock and what this work order used.
-    listParts().catch(() => ({ installed: false, parts: [] as PartRow[] })), recentMovements(100, id)]);
+    listParts().catch(() => ({ installed: false, parts: [] as PartRow[] })), recentMovements(100, id),
+    // Photos from the driver's inspection and the shop (UX9); none before the update is installed.
+    workOrderPhotoIds(id)]);
   // B91: what comparable completed jobs took, from the company's own recorded labor. Shown beside the shop's estimate,
   // never written over it.
   const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
@@ -140,7 +143,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 ...(driver ? [["Driver", driver.name] as const] : []),
                 ["Odometer at service", fmtNum(wo.odometer_at_service, " mi")],
                 ["Engine hours at service", fmtNum(wo.engine_hours_at_service, " h")],
-                ["Source", wo.source === "preventive" ? "Preventive schedule" : wo.source === "field_report" ? "Driver report" : "Entered by the shop"],
+                ["Source", wo.source === "preventive" ? "Preventive schedule" : wo.source === "field_report" ? "Driver report" : wo.source === "inspection" ? "Driver inspection" : "Entered by the shop"],
                 ["Created", `${who(wo.created_by)} · ${formatDateTime(wo.created_at, timezone)}`],
               ].map(([label, value]) => (
                 <div key={String(label)} className="grid grid-cols-[8rem_minmax(0,1fr)] items-center gap-3 px-5 py-2.5 sm:px-6">
@@ -173,6 +176,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
               ))}
             </dl>
           </Card>
+          <WorkOrderPhotos workOrderId={wo.id} photos={photos} canAdd={editable} />
         </div>
 
         {/* Right: the work, by tab. */}

@@ -37,7 +37,7 @@ export default async function InspectionsPage() {
   const doneToday = new Map<string, Set<InspectionKind>>();
   for (const r of data.rows.filter((r) => r.inspected_on === today)) doneToday.set(r.truck_id, (doneToday.get(r.truck_id) ?? new Set()).add(r.kind));
   const formTrucks = trucks.filter((t) => t.active && t.service_status === "in_service")
-    .map((t) => ({ id: t.id, label: t.unit_number, pending: (["pre_trip", "post_trip"] as const).filter((k) => !doneToday.get(t.id)?.has(k)) }))
+    .map((t) => ({ id: t.id, label: t.unit_number, dump: String(t.truck_type ?? "").endsWith("_dump"), pending: (["pre_trip", "post_trip"] as const).filter((k) => !doneToday.get(t.id)?.has(k)) }))
     .filter((t) => t.pending.length > 0);
   const defects = data.rows.filter((r) => r.defect_count > 0);
 

@@ -37,7 +37,7 @@ export interface WorkOrderRow {
   completed_at: string | null;
   closed_at: string | null;
   cancel_reason: string;
-  source: "manual" | "field_report" | "preventive";
+  source: "manual" | "field_report" | "preventive" | "inspection";
   edit_seq: number;
   created_by: string | null;
   created_at: string;
@@ -294,4 +294,12 @@ export async function latestReadings(): Promise<Map<string, { miles: number | nu
     out.set(r.truck_id, cur);
   }
   return out;
+}
+
+/** Photo ids on a work order, oldest first (UX9); empty before 20261120006700 or without maintenance.view. */
+export async function workOrderPhotoIds(workOrderId: string): Promise<string[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("work_order_photos").select("id").eq("work_order_id", workOrderId).order("created_at");
+  if (error) return [];
+  return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
 }

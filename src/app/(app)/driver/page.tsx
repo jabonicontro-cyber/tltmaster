@@ -201,8 +201,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
-  const inspTrucks = (inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean }>))
-    .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
+  const inspTrucks = (inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean; dump?: boolean }>))
+    .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, dump: Boolean(t.dump), pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
     .filter((t) => t.pending.length > 0);
   const preTripDue = inspTrucks.some((t) => t.pending.includes("pre_trip"));
   // Pay statements (B131): the driver's own, for approved periods only; empty before that update is installed.

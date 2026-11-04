@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { APP_CONTAINER } from "@/lib/layout";
 import { DriverTabBar } from "@/components/companion/driver-tab-bar";
 import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
-import { isDriverOnly, isMechanicOnly } from "@/lib/companion";
+import { isDispatcherDriver, isDriverOnly, isMechanicOnly } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
@@ -43,6 +43,8 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
   // Companion app (docs/COMPANION_APP.md): a driver-only login gets bottom tabs on a phone.
   const driverOnly = isDriverOnly(navPermissions);
   const mechanicOnly = !driverOnly && isMechanicOnly(navPermissions);
+  // A dispatcher who also drives keeps the full menu and gets phone tabs for My Day and Dispatch (UX8).
+  const dispatcherDriver = !driverOnly && !mechanicOnly && isDispatcherDriver(navPermissions);
   return (
     <div className="app-root min-h-dvh lg:pl-[5.25rem] lg:data-[sidebar=pinned]:pl-[16.75rem]" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
@@ -92,11 +94,12 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       </header>
       <GuidePlayer />
 
-      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly) && "pb-32 md:pb-6")}>
+      <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly || dispatcherDriver) && "pb-32 md:pb-6")}>
         {children}
       </main>
       {driverOnly && <DriverTabBar permissions={navPermissions} />}
       {mechanicOnly && <DriverTabBar permissions={navPermissions} kind="mechanic" />}
+      {dispatcherDriver && <DriverTabBar permissions={navPermissions} kind="dispatcher-driver" />}
     </div>
   );
 }

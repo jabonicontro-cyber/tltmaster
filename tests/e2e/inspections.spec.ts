@@ -19,9 +19,12 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   const truck = form.getByLabel("Truck");
   if (await truck.count()) await truck.selectOption({ label: `Truck ${f.myTruck}` });
   await form.getByRole("button", { name: "Save inspection" }).click();
-  await expect(form.getByText(/Mark every item OK or Defect \(11 left\)/)).toBeVisible();
+  await expect(form.getByText(/Mark every item OK or Defect \(16 left\)/)).toBeVisible();
   await form.getByRole("group", { name: "Windshield wipers" }).getByRole("button", { name: "Defect" }).click();
   await form.getByLabel("What is wrong with windshield wipers").fill("Driver-side blade streaking (test)");
+  // UX9: a dump truck also checks the dump body, and a defect can carry photos for the shop.
+  await expect(form.getByRole("group", { name: "Hoist and dump body" })).toBeVisible();
+  await expect(form.getByText("Photos of the defect (optional)")).toBeVisible();
   await form.getByRole("button", { name: "Mark the rest OK" }).click();
   await form.getByRole("button", { name: "Save inspection" }).click();
   await expectToast(page, "opened for the shop");

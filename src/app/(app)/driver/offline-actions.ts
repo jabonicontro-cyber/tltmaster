@@ -19,7 +19,7 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
   const [forms, stops, insp] = await Promise.all([
     Promise.all(todays.map((a) => (a.can_submit_ticket ? loadAssignmentForm(a.assignment_id) : Promise.resolve(null)))),
     stopTimesForLoads(todays.map((a) => a.load.id)),
-    (async () => { const r = await (await createClient()).rpc("inspection_my_trucks"); return r.error ? [] : ((r.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean }>); })(),
+    (async () => { const r = await (await createClient()).rpc("inspection_my_trucks"); return r.error ? [] : ((r.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean; dump?: boolean }>); })(),
   ]);
   const units = forms.find((f) => f?.ok)?.ok ? (forms.find((f) => f?.ok) as { ok: true; data: { units: DaySnapshot["units"] } }).data.units : [];
   return {
@@ -46,7 +46,7 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
       };
     }),
     inspectionTrucks: insp
-      .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
+      .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, dump: Boolean(t.dump), pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
       .filter((t) => t.pending.length > 0),
   };
 }

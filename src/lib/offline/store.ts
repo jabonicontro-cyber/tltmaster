@@ -52,7 +52,7 @@ export interface DaySnapshot {
   driverName: string;
   loads: SnapshotLoad[];
   units: Array<{ code: string; label: string }>;
-  inspectionTrucks: Array<{ id: string; label: string; pending: Array<"pre_trip" | "post_trip"> }>;
+  inspectionTrucks: Array<{ id: string; label: string; pending: Array<"pre_trip" | "post_trip">; dump?: boolean }>;
 }
 
 const DAY_KEY = "taviron-offline-day";

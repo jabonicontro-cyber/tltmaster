@@ -14,7 +14,22 @@ export const INSPECTION_ITEMS = [
   { key: "emergency_equipment", label: "Emergency equipment", safety: false },
 ] as const;
 
+// Dump trucks also check the dump body (UX9, 20261120006700 private.inspection_items_for). Not safety items: a defect
+// opens a work order for the shop but does not by itself take the truck out of service.
+export const DUMP_BODY_ITEMS = [
+  { key: "air_lines", label: "Air lines and tanks", safety: false },
+  { key: "hoist_body", label: "Hoist and dump body", safety: false },
+  { key: "pto", label: "PTO", safety: false },
+  { key: "tarp", label: "Tarp", safety: false },
+  { key: "tailgate", label: "Tailgate and latches", safety: false },
+] as const;
+
+export type InspectionItem = { key: string; label: string; safety: boolean };
+/** The items for one truck: every truck gets the DVIR items, dump trucks also the dump body. */
+export const itemsFor = (dump: boolean): readonly InspectionItem[] => (dump ? [...INSPECTION_ITEMS, ...DUMP_BODY_ITEMS] : INSPECTION_ITEMS);
+export const ALL_INSPECTION_ITEMS: readonly InspectionItem[] = [...INSPECTION_ITEMS, ...DUMP_BODY_ITEMS];
+
 export type InspectionKey = (typeof INSPECTION_ITEMS)[number]["key"];
 export type InspectionKind = "pre_trip" | "post_trip";
 export const KIND_LABEL: Record<InspectionKind, string> = { pre_trip: "Pre-trip", post_trip: "Post-trip" };
-export const itemLabel = (key: string) => INSPECTION_ITEMS.find((i) => i.key === key)?.label ?? key.replace(/_/g, " ");
+export const itemLabel = (key: string) => ALL_INSPECTION_ITEMS.find((i) => i.key === key)?.label ?? key.replace(/_/g, " ");

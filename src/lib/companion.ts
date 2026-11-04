@@ -37,6 +37,25 @@ export function driverTabs(permissions: readonly string[]): DriverTab[] {
   return tabs;
 }
 
+/**
+ * A dispatcher who also drives (UX8): dispatch work plus their own driver day. They keep the full menu, and on a phone
+ * also get tabs for the two places they switch between all day.
+ */
+export function isDispatcherDriver(permissions: readonly string[]): boolean {
+  return permissions.includes("driver.portal") && permissions.includes("dispatch.view");
+}
+
+/** Tabs for a dispatcher who drives: My Day, Dispatch, Messages, Profile (each page still checks its permission). */
+export function dispatcherDriverTabs(permissions: readonly string[]): DriverTab[] {
+  const tabs: DriverTab[] = [
+    { href: "/driver", label: "My Day", match: (p) => p === "/driver" || p.startsWith("/driver/") },
+    { href: "/dispatch", label: "Dispatch", match: (p) => p.startsWith("/dispatch") },
+  ];
+  if (permissions.includes("comms.message")) tabs.push({ href: "/communications", label: "Messages", match: (p) => p.startsWith("/communications") });
+  tabs.push({ href: "/profile", label: "Profile", match: (p) => p.startsWith("/profile") });
+  return tabs;
+}
+
 /** The mechanic's tabs (each page still checks its own permission on the server). */
 export function mechanicTabs(permissions: readonly string[]): DriverTab[] {
   const tabs: DriverTab[] = [

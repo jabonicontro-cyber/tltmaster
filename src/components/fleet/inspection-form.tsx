@@ -6,11 +6,12 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
-import { INSPECTION_ITEMS, KIND_LABEL, type InspectionKind } from "@/lib/inspections/items";
+import { ALL_INSPECTION_ITEMS, itemsFor, KIND_LABEL, type InspectionKind } from "@/lib/inspections/items";
+import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { submitInspection } from "@/app/(app)/fleet/inspections/actions";
 import { announceOutbox, enqueue, isNetworkError } from "@/lib/offline/store";
 
-type Truck = { id: string; label: string; pending: InspectionKind[] };
+type Truck = { id: string; label: string; pending: InspectionKind[]; /** Dump trucks also check the dump body (UX9). */ dump?: boolean };
 type Mark = { ok: boolean | null; note: string };
 
 /**
@@ -32,23 +33,30 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
   const kind: InspectionKind = !truck || truck.pending.includes(chosenKind) ? chosenKind : truck.pending[0] ?? chosenKind;
   const [odometer, setOdometer] = useState("");
   const [remarks, setRemarks] = useState("");
-  const blank = () => Object.fromEntries(INSPECTION_ITEMS.map((i) => [i.key, { ok: null, note: "" } as Mark]));
+  // The truck's own list: the DVIR items, plus the dump body on dump trucks.
+  const items = itemsFor(Boolean(truck?.dump));
+  const blank = () => Object.fromEntries(ALL_INSPECTION_ITEMS.map((i) => [i.key, { ok: null, note: "" } as Mark]));
+  // Photos of defects (UX9): sent after the inspection is saved, to the work order it opens.
+  const [photos, setPhotos] = useState<File[]>([]);
   const [marks, setMarks] = useState<Record<string, Mark>>(blank);
   const mark = (key: string, m: Partial<Mark>) => setMarks((s) => ({ ...s, [key]: { ...s[key], ...m } }));
-  const unchecked = INSPECTION_ITEMS.filter((i) => marks[i.key].ok === null).length;
-  const safetyDefect = INSPECTION_ITEMS.some((i) => i.safety && marks[i.key].ok === false);
+  const unchecked = items.filter((i) => marks[i.key].ok === null).length;
+  const safetyDefect = items.some((i) => i.safety && marks[i.key].ok === false);
+  const anyDefect = items.some((i) => marks[i.key].ok === false);
 
   const submit = () => start(async () => {
     setError(null);
     if (unchecked > 0) return setError(`Mark every item OK or Defect (${unchecked} left).`);
     setSavedOffline(false);
-    const input = { truckId, kind, odometer, remarks, items: INSPECTION_ITEMS.map((i) => ({ key: i.key, ok: marks[i.key].ok === true, note: marks[i.key].note })) };
+    const input = { truckId, kind, odometer, remarks, items: items.map((i) => ({ key: i.key, ok: marks[i.key].ok === true, note: marks[i.key].note })) };
     const keep = () => {
       if (!queue) return false;
       const label = `${kind === "pre_trip" ? "Pre-trip" : "Post-trip"} inspection, ${truck?.label ?? "truck"}`;
       if (!enqueue({ id: crypto.randomUUID(), userId: queue.userId, kind: "inspection", label, payload: { ...input, inspectedOn: queue.day } })) return false;
       announceOutbox();
       setKept((k) => [...k, `${truckId}:${kind}`]);
+      if (photos.length) toast.warning("Photos need signal and were not kept. Show the shop the defect, or add photos when you are back in signal.");
+      setPhotos([]);
       setMarks(blank());
       setOdometer("");
       setRemarks("");
@@ -64,7 +72,10 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       return setError("Not sent — no connection to the office. Check your signal and try again.");
     }
     if (!r.ok) return setError(r.error);
-    if (r.data.safety) toast.warning(r.message ?? "Saved."); else toast.success(r.message ?? "Saved.");
+    const failed = r.data.defects > 0 && photos.length ? await uploadPhotos("/maintenance/photos", { inspection: r.data.id }, photos) : 0;
+    const note = failed ? ` ${failed} photo${failed === 1 ? "" : "s"} could not be sent.` : "";
+    if (r.data.safety || failed) toast.warning((r.message ?? "Saved.") + note); else toast.success(r.message ?? "Saved.");
+    setPhotos([]);
     setMarks(blank());
     setOdometer("");
     setRemarks("");
@@ -91,7 +102,7 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       </div>
 
       <ul className="divide-y divide-line rounded-xl border border-line" aria-label="Inspection items">
-        {INSPECTION_ITEMS.map((i) => {
+        {items.map((i) => {
           const m = marks[i.key];
           return (
             <li key={i.key} className="px-4 py-3">
@@ -117,6 +128,7 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       <button type="button" className="text-sm font-semibold text-brand-fg hover:underline" onClick={() => setMarks((s) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, v.ok === null ? { ok: true, note: "" } : v])))}>
         Mark the rest OK
       </button>
+      {anyDefect && <PhotoPicker id="insp-photos" label="Photos of the defect (optional)" files={photos} onChange={setPhotos} hint="Up to 8. They go to the shop with the work order." />}
       <Field label="Remarks" htmlFor="insp-remarks" hint="Optional"><Textarea id="insp-remarks" rows={2} maxLength={1000} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Field>
       {savedOffline && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200" role="status">Saved on this phone — not sent yet. It sends by itself when you have signal. Tell dispatch now about any safety defect.</p>}
       {safetyDefect && <p className="text-sm font-semibold text-critical" role="status">A safety defect takes this truck out of service until the shop clears it.</p>}

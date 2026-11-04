@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarOff, ClipboardList, MessagesSquare, Route, UserRound, Wrench } from "lucide-react";
+import { CalendarOff, ClipboardList, LayoutGrid, MessagesSquare, Route, UserRound, Wrench } from "lucide-react";
 import { cn } from "@/lib/cn";
-import { driverTabs, mechanicTabs } from "@/lib/companion";
+import { dispatcherDriverTabs, driverTabs, mechanicTabs } from "@/lib/companion";
 
-const ICONS: Record<string, typeof Route> = { "/driver": Route, "/maintenance/my-jobs": Wrench, "/maintenance/work-orders": ClipboardList, "/communications": MessagesSquare, "/time-off": CalendarOff, "/profile": UserRound };
+const ICONS: Record<string, typeof Route> = { "/driver": Route, "/maintenance/my-jobs": Wrench, "/maintenance/work-orders": ClipboardList, "/communications": MessagesSquare, "/time-off": CalendarOff, "/profile": UserRound, "/dispatch": LayoutGrid };
 
 /**
  * Bottom tabs for drivers on a phone (docs/COMPANION_APP.md). Large targets, no badges or counters that invite a
  * glance while driving; every page still checks its own permission on the server.
  */
-export function DriverTabBar({ permissions, kind = "driver" }: { permissions: readonly string[]; kind?: "driver" | "mechanic" }) {
+export function DriverTabBar({ permissions, kind = "driver" }: { permissions: readonly string[]; kind?: "driver" | "mechanic" | "dispatcher-driver" }) {
   const path = usePathname() ?? "";
-  const tabs = kind === "mechanic" ? mechanicTabs(permissions) : driverTabs(permissions);
+  const tabs = kind === "mechanic" ? mechanicTabs(permissions) : kind === "dispatcher-driver" ? dispatcherDriverTabs(permissions) : driverTabs(permissions);
   return (
-    <nav aria-label={kind === "mechanic" ? "Mechanic tabs" : "Driver tabs"} className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-30 rounded-full border border-line/70 bg-card/90 p-1.5 shadow-float backdrop-blur-md md:hidden">
+    <nav aria-label={kind === "mechanic" ? "Mechanic tabs" : kind === "dispatcher-driver" ? "Dispatch and driving tabs" : "Driver tabs"} className="fixed inset-x-3 bottom-[calc(env(safe-area-inset-bottom)+0.75rem)] z-30 rounded-full border border-line/70 bg-card/90 p-1.5 shadow-float backdrop-blur-md md:hidden">
       <ul className="grid gap-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
           const Icon = ICONS[t.href] ?? Route;

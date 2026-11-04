@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driverTabs, freshness, isDriverOnly, isMechanicOnly, mechanicTabs, STALE_AFTER_MS } from "@/lib/companion";
+import { dispatcherDriverTabs, driverTabs, freshness, isDispatcherDriver, isDriverOnly, isMechanicOnly, mechanicTabs, STALE_AFTER_MS } from "@/lib/companion";
 
 describe("companion app shell", () => {
   it("gives the phone tab bar only to logins whose work is driving", () => {
@@ -34,5 +34,19 @@ describe("mechanic phone workspace", () => {
     expect(mechanicTabs(mechanic).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Messages", "Time off", "Profile"]);
     expect(mechanicTabs(["maintenance.view"]).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Time off", "Profile"]);
     expect(mechanicTabs(mechanic)[0].match("/maintenance/my-jobs")).toBe(true);
+  });
+});
+
+describe("dispatcher who drives (UX8)", () => {
+  it("gets My Day and Dispatch tabs while keeping the full menu", () => {
+    const perms = ["driver.portal", "dispatch.view", "orders.view", "comms.message"];
+    expect(isDriverOnly(perms)).toBe(false);
+    expect(isDispatcherDriver(perms)).toBe(true);
+    expect(dispatcherDriverTabs(perms).map((t) => t.label)).toEqual(["My Day", "Dispatch", "Messages", "Profile"]);
+    expect(dispatcherDriverTabs(["driver.portal", "dispatch.view"]).map((t) => t.label)).toEqual(["My Day", "Dispatch", "Profile"]);
+  });
+  it("does not apply to dispatchers who do not drive or drivers without dispatch", () => {
+    expect(isDispatcherDriver(["dispatch.view", "orders.view"])).toBe(false);
+    expect(isDispatcherDriver(["driver.portal"])).toBe(false);
   });
 });

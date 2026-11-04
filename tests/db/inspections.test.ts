@@ -9,7 +9,8 @@ import { pgError, pool, withSession } from "./helpers";
 
 afterAll(() => pool.end());
 
-const KEYS = ["service_brakes", "parking_brake", "steering", "lights_reflectors", "tires", "wheels_rims", "coupling", "horn", "wipers", "mirrors", "emergency_equipment"];
+// The fixture trucks are tri-axle dump trucks: the DVIR items plus the dump body (UX9, 20261120006700).
+const KEYS = ["service_brakes", "parking_brake", "steering", "lights_reflectors", "tires", "wheels_rims", "coupling", "horn", "wipers", "mirrors", "emergency_equipment", "air_lines", "hoist_body", "pto", "tarp", "tailgate"];
 const items = (bad: Record<string, string> = {}) => KEYS.map((key) => ({ key, ok: !(key in bad), note: bad[key] ?? "" }));
 
 describe("vehicle inspections", () => {
