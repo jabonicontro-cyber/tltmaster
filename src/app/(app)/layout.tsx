@@ -1,4 +1,5 @@
 import { AccessibilitySync } from "@/components/accessibility/accessibility-sync";
+import { navLabels } from "@/lib/industry";
 import { getMyAccessibility } from "@/server/data/accessibility";
 import { isMechanicOnly } from "@/lib/companion";
 import type { ReactNode } from "react";
@@ -27,7 +28,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     getDemoPersona(Boolean(access.isDemo), access.userId),
     // The company's own branding (row-level security); the default look when it cannot be read.
     getSettings().then(
-      (s): ShellBranding => ({ color: s.brand_color, sidebarColor: s.brand_sidebar_color, logoUrl: s.has_logo ? `/brand/logo?c=${access.companyId}&v=${encodeURIComponent(s.updated_at)}` : "" }),
+      (s): ShellBranding => ({ color: s.brand_color, sidebarColor: s.brand_sidebar_color, logoUrl: s.has_logo ? `/brand/logo?c=${access.companyId}&v=${encodeURIComponent(s.updated_at)}` : "", navLabels: navLabels(s.industry) }),
       (): ShellBranding => ({ color: "", sidebarColor: "", logoUrl: "" }),
     ),
     getMyAccessibility(),

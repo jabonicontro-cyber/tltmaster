@@ -6,6 +6,7 @@ import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { parseMoneyToCents } from "@/lib/money";
 import { companySettingsSchema, inviteSchema, sequenceSchema, userAccessSchema } from "@/lib/schemas/settings";
 import { uuid } from "@/lib/schemas/common";
+import { INDUSTRIES, INDUSTRY_LABELS, type Industry } from "@/lib/industry";
 import { PERMISSIONS, ROLES, type AppRole } from "@/lib/permissions";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -236,5 +237,20 @@ export async function saveCostRates(formData: FormData): Promise<ActionResult> {
     revalidatePath("/settings");
     revalidatePath("/reports");
     return ok(undefined, "Cost rates saved.");
+  });
+}
+
+/** What the company hauls (MK1; settings.manage, checked again by RLS). Changes words people see, not the rules. */
+export async function saveIndustry(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    const industry = String(formData.get("industry") ?? "");
+    if (!(INDUSTRIES as readonly string[]).includes(industry)) return fail("Choose what your company hauls.");
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("company_settings").update({ industry }).eq("company_id", access.companyId!).select("company_id");
+    if (error) return fail(error.code === "42703" || error.code === "PGRST204" ? "This setting needs a database update that has not been installed yet." : dbErrorMessage(error));
+    if (!data?.length) return fail("Settings could not be saved.");
+    revalidatePath("/", "layout");
+    return ok(undefined, `Saved: ${INDUSTRY_LABELS[industry as Industry]}.`);
   });
 }

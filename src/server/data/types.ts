@@ -301,6 +301,8 @@ export interface CompanySettings {
   site_review_days_safety?: number | null;
   brand_color: string;
   brand_sidebar_color: string;
+  /** What the company hauls (20261120007600, master plan MK1); absent until installed (= aggregate). */
+  industry?: string;
   /** Whether a logo is stored; the image itself is served by /brand/logo, never sent with the settings. */
   has_logo: boolean;
   updated_at: string;

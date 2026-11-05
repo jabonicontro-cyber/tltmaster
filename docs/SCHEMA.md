@@ -580,6 +580,11 @@ accounts), `settings` jsonb with `textSize` (100, 115, 130), `highContrast`, `re
 only by its owner; written only through `set_my_accessibility(settings)`, which keeps the four known keys and validates
 them.
 
+## Industry profile (20261120007600)
+
+`company_settings.industry`: `aggregate` (default), `freight` or `both`. Changes words in the app (delivery tickets or
+bills of lading), never rules. Updated through the existing company settings policy (settings.manage).
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

@@ -1,4 +1,6 @@
 import { CopyReference } from "@/components/ui/copy-reference";
+import { getSettings } from "@/server/data/settings";
+import { vocabulary } from "@/lib/industry";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
@@ -50,6 +52,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const { queue: queueParam, back } = await searchParams;
   const detail = await getTicket(id);
   if (!detail) notFound();
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   // Opened from the review queue: show its position and where to go next.
   const inQueue = queueParam === "review";
   const [queue, context] = await Promise.all([inQueue ? reviewQueuePosition(id) : Promise.resolve(null), getTicketContext(detail.ticket)]);
@@ -87,8 +90,8 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         </nav>
       )}
       <PageHeader
-        title={`Ticket ${t.ticket_number}`}
-        crumbs={[{ label: "Delivery Tickets", href: "/tickets" }, { label: t.ticket_number }]}
+        title={`${words.document} ${t.ticket_number}`}
+        crumbs={[{ label: words.documents, href: "/tickets" }, { label: t.ticket_number }]}
         badges={
           <>
             <TicketStatusBadge status={t.status} />

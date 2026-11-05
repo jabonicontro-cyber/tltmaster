@@ -28,6 +28,8 @@ import { DocumentRulesForm } from "@/components/settings/document-rules-form";
 import { CostRatesForm } from "@/components/settings/cost-rates-form";
 import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
+import { IndustryForm } from "@/components/settings/industry-form";
+import { industryOf } from "@/lib/industry";
 import { summaryLines, type DailySummary } from "@/lib/summary/daily";
 import { parseRules } from "@/lib/fleet/health";
 import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
@@ -123,6 +125,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     content = (
       <>
         <CompanySettingsForm settings={settings} canEdit={can(access, "settings.manage")} />
+        {"industry" in settings && (
+          <div className="border-t border-line">
+            <IndustryForm industry={industryOf(settings.industry)} canEdit={can(access, "settings.manage")} />
+          </div>
+        )}
         <div className="border-t border-line">
           <BrandingForm settings={settings} canEdit={can(access, "settings.manage")} companyId={access.companyId!} />
         </div>

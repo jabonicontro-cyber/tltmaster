@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { getSettings } from "@/server/data/settings";
+import { vocabulary } from "@/lib/industry";
 import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
 import { TicketForm } from "@/components/tickets/ticket-form";
@@ -22,7 +24,8 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
   const ctx = await getLoadForTicket(loadId);
   if (!ctx) notFound();
   const { load, order, assignment, lines, existing } = ctx;
-  const crumbs = [{ label: "Delivery Tickets", href: "/tickets" }, { label: "Enter ticket" }];
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
+  const crumbs = [{ label: words.documents, href: "/tickets" }, { label: words.enter }];
 
   return (
     <>

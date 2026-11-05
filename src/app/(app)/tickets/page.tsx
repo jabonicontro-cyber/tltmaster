@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { vocabulary } from "@/lib/industry";
 import { Camera, ClipboardCheck, FilePlus2 } from "lucide-react";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
@@ -17,10 +18,13 @@ import { can } from "@/lib/permissions";
 import { REVIEW_REASON_LABELS, reviewReasonLabel } from "@/lib/tickets/rules";
 import { withReturn } from "@/lib/safe-redirect";
 import { requirePagePermission } from "@/server/auth";
-import { businessToday } from "@/server/data/settings";
+import { businessToday, getSettings } from "@/server/data/settings";
 import { listLoadsAwaitingTickets, listTickets, photoCounts, ticketCounts, TICKET_VIEWS, type TicketView } from "@/server/data/tickets";
 
-export const metadata = { title: "Delivery Tickets" };
+export async function generateMetadata() {
+  const s = await getSettings().catch(() => null);
+  return { title: vocabulary(s?.industry).documents };
+}
 
 type Search = { view?: string; q?: string; reason?: string; photo?: string };
 
@@ -36,6 +40,9 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
     businessToday(),
   ]);
   const photos = await photoCounts(tickets.map((t) => t.ticket_number));
+  // The section's name follows what the company hauls (MK1): delivery tickets, bills of lading, or both.
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
+  const viewLabel = (k: TicketView) => (k === "awaiting" ? `Loads awaiting a ${words.one}` : k === "all" ? `All ${words.many}` : TICKET_VIEWS[k]);
   // Narrow the current list by review reason and by whether a photo/scan is attached (shown list only).
   const reason = sp.reason && sp.reason in REVIEW_REASON_LABELS ? sp.reason : "";
   const photoFilter = sp.photo === "with" || sp.photo === "without" ? sp.photo : "";
@@ -50,8 +57,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageHeader
-        title="Delivery Tickets"
-        description="What was actually delivered, entered from paper or scale tickets. Separate from the dispatch plan and from billing."
+        title={words.documents}
+        description={words.description}
       />
       <nav aria-label="Ticket views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(TICKET_VIEWS) as TicketView[]).map((k) => (
@@ -64,7 +71,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
               k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
-            <span className="pill-text">{TICKET_VIEWS[k]}</span>
+            <span className="pill-text">{viewLabel(k)}</span>
             {tabCount[k] ? <Badge tone={k === "review" ? "amber" : "gray"}>{tabCount[k]}</Badge> : null}
           </Link>
         ))}
@@ -75,8 +82,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
           {awaiting.rows.length === 0 ? (
             <EmptyState
               icon={<ClipboardCheck className="size-6" />}
-              title="No loads waiting for a ticket"
-              description="Assigned loads appear here from their delivery day until a ticket is entered."
+              title={`No loads waiting for a ${words.one}`}
+              description={`Assigned loads appear here from their delivery day until a ${words.one} is entered.`}
             />
           ) : (
             <TableWrap>
@@ -117,7 +124,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         </Card>
       ) : (
         <Card>
-          <FilterBar action="/tickets" query={sp.q} placeholder="Search ticket #, paper ticket #, order #, customer, truck, driver…" clearHref={`/tickets?view=${view}`}>
+          <FilterBar action="/tickets" query={sp.q} placeholder={`Search ${words.one} #, paper #, order #, customer, truck, driver…`} clearHref={`/tickets?view=${view}`}>
             <input type="hidden" name="view" value={view} />
             <FilterSelect name="reason" label="Review reason" value={reason} options={[{ value: "", label: "Any" }, ...Object.entries(REVIEW_REASON_LABELS).map(([value, label]) => ({ value, label: label.split(" (")[0].replace(/\.$/, "") }))]} />
             <FilterSelect name="photo" label="Photo or scan" value={photoFilter} options={[{ value: "", label: "Any" }, { value: "with", label: "Attached" }, { value: "without", label: "Missing" }]} />
@@ -129,13 +136,13 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
             </div>
           )}
           {shown.length === 0 ? (
-            <EmptyState title={sp.q ? "No tickets match this search" : `No tickets · ${TICKET_VIEWS[view].toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
+            <EmptyState title={sp.q ? `No ${words.many} match this search` : `No ${words.many} · ${viewLabel(view).toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
           ) : (
             <TableWrap>
               <Table>
                 <thead>
                   <tr>
-                    <Th>Ticket</Th>
+                    <Th>{words.document}</Th>
                     <Th className="hidden sm:table-cell">Order / customer</Th>
                     <Th>Delivered</Th>
                     <Th className="hidden md:table-cell">Truck · driver</Th>

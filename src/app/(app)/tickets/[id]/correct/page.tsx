@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation";
+import { getSettings } from "@/server/data/settings";
+import { vocabulary } from "@/lib/industry";
 import { TicketForm } from "@/components/tickets/ticket-form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
@@ -20,6 +22,7 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
   if (t.status === "accepted" && !can(access, "tickets.review")) redirect(`/tickets/${id}`);
   const [ctx, { timezone }] = await Promise.all([getLoadForTicket(t.load_id), businessToday()]);
   if (!ctx) notFound();
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   // Delivery time as entered: local business time.
   const local = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(new Date(t.delivered_at));
   const part = (type: string) => local.find((p) => p.type === type)?.value ?? "";
@@ -28,7 +31,7 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
     <>
       <PageHeader
         title={`Correct ticket ${t.ticket_number}`}
-        crumbs={[{ label: "Delivery Tickets", href: "/tickets" }, { label: t.ticket_number, href: `/tickets/${id}` }, { label: "Correct" }]}
+        crumbs={[{ label: words.documents, href: "/tickets" }, { label: t.ticket_number, href: `/tickets/${id}` }, { label: "Correct" }]}
         description={`${t.snapshot.order_number} load ${t.snapshot.load_number} · ${t.snapshot.customer_name}`}
       />
       <div className="mb-5">
