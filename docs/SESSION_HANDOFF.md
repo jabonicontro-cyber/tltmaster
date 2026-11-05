@@ -22,8 +22,16 @@ project credentials. Read it together with:
   with address, appointment window, reference and notes. Order page section (freight companies or orders that have
   stops), route line on the dispatch board, stops with directions on the driver's card; demo sample on one of today's
   assigned orders. Per-stop arrived/left, rate confirmations, accessorial charges and brokers are next.
-- **Not done in this round:** customer portal and platform roles, tablet width and accessibility settings in the
-  sweep; the freight demo (MK3).
+- **Later the same day:** walkthrough round 2 (customer portal, platform team, tablet with 130% text and high contrast;
+  fixes: header width, portal heading, trip-sheet state name, fixed-height scroll areas). MK2 slice 2: Arrived / Left
+  at each stop (migration `20261120008000`), also offline and on Reports → Wait times. MK1: the driver app says bills
+  of lading for freight companies. MK3 groundwork: demo samples follow the demo's What you haul.
+- **In Production:** `f90fafe` (stops, walkthrough round 1, migrations 007800 and 007900) and `97cec5a` (per-stop
+  times, round 2, migration 008000), each with CI, the migration workflow and the deploy green.
+- **Owner decision waiting:** make Prairie Lantern Freight (Colby's demo) the freight demo by switching its What you
+  haul to General freight, or create a separate freight demo company.
+- **Local only:** the full database suite fails 8 Command Center / Launchpad tests locally because of thousands of
+  leftover test rows; CI (clean database) passes them.
 
 ## 0000000000000000000. 2026-11-05 — launch plan (January 2027), both markets, outreach, overnight builds
 
