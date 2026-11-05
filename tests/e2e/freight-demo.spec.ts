@@ -82,10 +82,10 @@ test("the platform team creates the freight demo and its owner sees a freight ca
   await expect(owner.getByRole("cell", { name: "Reefer (refrigerated)" })).toBeVisible();
   await expect(owner.getByRole("cell", { name: /dump/i })).toHaveCount(0);
   await visit(owner, "/dispatch?view=locations");
-  await expect(owner.getByText("Ridgeway Distribution Center (fictional)").first()).toBeVisible();
+  await expect(owner.getByText("Ridgeway Distribution Center (fictional)").filter({ visible: true }).first()).toBeVisible();
   await expect(owner.getByText(/quarr|gravel pit/i)).toHaveCount(0);
   await visit(owner, "/quotes/new");
-  await expect(owner.getByRole("button", { name: "Add linehaul / accessorial" })).toBeVisible();
+  await expect(owner.getByText(/Linehaul and accessorial charges \(detention, lumper, fuel\) are separate lines/)).toBeVisible();
 
   // Every demo mode opens its pages with data; drivers see bills of lading on My Day.
   const ctx = owner.context();
