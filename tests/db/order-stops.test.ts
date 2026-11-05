@@ -123,3 +123,50 @@ describe("order stops", () => {
     });
   });
 });
+
+describe("arrived and left at each stop (20261120008000)", () => {
+  it("records times per stop of the driver's own load, refuses stops of other orders and removed stops", async () => {
+    await withSession(async (s) => {
+      const w = await world(s);
+      await s.as(w.office);
+      await save(s, w.order.id, [{ kind: "pickup", name: "Acme Steel (test)" }, { kind: "delivery", name: "Lakeside (test)" }, { kind: "delivery", name: "Harbor (test)" }]);
+      const [p, d1, d2] = await current(s, w.order.id);
+      await save(s, w.other.id, [{ kind: "pickup", name: "Elsewhere (test)" }, { kind: "delivery", name: "Far (test)" }]);
+      const foreign = (await current(s, w.other.id))[0].id;
+
+      // The driver taps Arrived and Left at the first delivery; the pickup and job site keys still work as before.
+      await s.as(w.driver1);
+      const mark = (stop: string, ev: string) => s.query("select public.load_stop_mark($1, $2, $3)", [w.mine.load_id, stop, ev]);
+      await mark(`stop:${d1.id}`, "arrive");
+      await mark(`stop:${d1.id}`, "depart");
+      await mark("pickup", "arrive");
+      expect((await pgError(mark(`stop:${d2.id}`, "depart"))).message).toMatch(/Tap Arrived first/);
+      expect((await pgError(mark(`stop:${foreign}`, "arrive"))).message).toMatch(/not on this load/);
+      expect((await pgError(mark("stop:not-a-uuid", "arrive"))).code).toBe("22023");
+      // Another driver can't record on this load.
+      await s.as(w.driver2);
+      expect((await pgError(mark(`stop:${d1.id}`, "arrive"))).code).toBe("42501");
+
+      await s.asAdmin();
+      const rows = (await s.query<{ stop: string; order_stop_id: string | null; arrived: boolean; departed: boolean }>(
+        "select stop, order_stop_id, arrived_at is not null arrived, departed_at is not null departed from public.load_stop_times where load_id = $1 order by stop", [w.mine.load_id])).rows;
+      expect(rows).toEqual([
+        { stop: "pickup", order_stop_id: null, arrived: true, departed: false },
+        { stop: `stop:${d1.id}`, order_stop_id: d1.id, arrived: true, departed: true },
+      ]);
+      // The key and the stop id must agree.
+      expect((await pgError(s.query("update public.load_stop_times set stop = $2 where load_id = $1 and order_stop_id is not null", [w.mine.load_id, `stop:${d2.id}`]))).code).toBe("23514");
+
+      // The office corrects a stop's times; a stop taken off the order can't get new times.
+      await s.as(await s.createUser("dispatcher"));
+      await s.query("select public.load_stop_set($1, $2, now() - interval '2 hours', now() - interval '1 hour')", [w.mine.load_id, `stop:${d2.id}`]);
+      await s.as(w.office);
+      await save(s, w.order.id, [{ id: p.id, kind: "pickup", name: "Acme Steel (test)" }, { id: d1.id, kind: "delivery", name: "Lakeside (test)" }]);
+      await s.as(w.driver1);
+      expect((await pgError(mark(`stop:${d2.id}`, "arrive"))).message).toMatch(/not on this load/);
+      // The driver's stops carry their id for the buttons.
+      const mine = await driverStops(s);
+      expect((mine[w.mine.load_id] as unknown as Array<{ id: string }>).map((x) => x.id)).toEqual([p.id, d1.id]);
+    });
+  });
+});

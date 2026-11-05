@@ -65,8 +65,15 @@ test("the office lists stops and the driver and dispatcher see them", async ({ b
     const stops = driver.getByRole("list", { name: "Stops" }).first();
     await expect(stops.getByRole("listitem")).toHaveCount(3);
     await expect(stops.getByRole("listitem").first()).toContainText("Acme Steel (e2e)");
-    await expect(stops.getByRole("link", { name: "Navigate to stop 1, Acme Steel (e2e)" })).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\/.*Gary/);
+    await expect(stops.getByRole("link", { name: "Go to stop 1, Acme Steel (e2e)" })).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\/.*Gary/);
     await expect(driver.getByRole("link", { name: "Navigate to site" })).toHaveCount(0);
+    // Arrived and Left are recorded at each stop (MK2 slice 2), not just at the pickup and job site.
+    await expect(driver.getByRole("form", { name: "Job site times" })).toHaveCount(0);
+    const first = driver.getByRole("form", { name: "1. Acme Steel (e2e) times" }).first();
+    await first.getByRole("button", { name: "Arrived" }).click();
+    await expectToast(driver, "Arrived stop recorded.");
+    await expect(first.getByText(/^Arrived \d/)).toBeVisible();
+    await expect(driver.getByRole("form", { name: "2. Lakeside Build (e2e) times" }).first().getByRole("button", { name: "Arrived" })).toBeVisible();
 
     // Removing them all brings the job site back on the driver's card.
     await office.getByRole("button", { name: "Edit stops" }).click();

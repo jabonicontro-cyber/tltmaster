@@ -39,7 +39,7 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
   return (
     <>
       <M.Root>
-        <M.Trigger className="flex items-center gap-1.5 rounded-full py-1 pr-1 pl-1 text-left text-ink transition-colors hover:bg-card sm:gap-2 sm:pr-2.5">
+        <M.Trigger className="flex items-center gap-1.5 rounded-full py-1 pr-1 pl-1 text-left text-ink transition-colors hover:bg-card lg:gap-2 lg:pr-2.5">
           {/* Spoken name starts with what is shown (the person's name), not a hidden aria-label (WCAG 2.5.3). */}
           <span className="sr-only">Account menu: {name || email}{demo && !demo.presentation ? " (demo company)" : ""}</span>
           <span className="relative shrink-0">
@@ -47,7 +47,7 @@ export function UserMenu({ name, email, photo = "", fallbackPhoto = "", roleLabe
             <Avatar key={`${photo}|${fallbackPhoto}`} name={name || email} src={photo} fallbackSrc={fallbackPhoto} size={32} />
             {presence !== undefined && <PresenceDot presence={presence} className="absolute -right-0.5 -bottom-0.5" />}
           </span>
-          <span className="hidden min-w-0 sm:block" aria-hidden>
+          <span className="hidden min-w-0 lg:block" aria-hidden>
             <span className="block max-w-[12rem] truncate text-sm font-semibold">{name || email}</span>
             <span className="block max-w-[16rem] truncate text-xs text-muted">{roleLabel}</span>
           </span>

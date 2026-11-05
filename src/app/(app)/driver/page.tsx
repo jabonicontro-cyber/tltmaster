@@ -70,8 +70,8 @@ function RouteStops({ route }: { route: DriverStop[] }) {
               {s.notes ? <p className="whitespace-pre-line text-sm text-muted">{s.notes}</p> : null}
             </div>
             {to && (
-              <a href={to} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "sm", "min-h-11 shrink-0 self-center")} aria-label={`Navigate to stop ${s.seq}, ${s.name}`}>
-                <Navigation className="size-4" aria-hidden /> Go
+              <a href={to} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "sm", "min-h-11 shrink-0 self-center")}>
+                <Navigation className="size-4" aria-hidden /> Go<span className="sr-only"> to stop {s.seq}, {s.name}</span>
               </a>
             )}
           </li>
@@ -162,7 +162,12 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
           </details>
         )}
         {usualWait != null && <p className="text-sm text-muted">You usually wait about <strong className="text-ink">{minutesLabel(usualWait)}</strong> at this site (your last visits).</p>}
-        {stops && <StopButtons load={a.load.id} stops={stops} timeZone={timeZone} queue={userId ? { userId, label: `${a.order.number} load ${a.load.number}` } : undefined} />}
+        {stops && <StopButtons load={a.load.id} stops={hasRoute && route!.every((r) => r.id) ? route!.map((r) => {
+          // Arrived / Left at each of the order's stops (MK2 slice 2); the stop's id arrives with 20261120008000.
+          const key = `stop:${r.id}` as const;
+          const t = stops.find((x) => x.stop === key);
+          return { stop: key, label: `${r.seq}. ${r.name}`, arrivedAt: t?.arrivedAt ?? null, departedAt: t?.departedAt ?? null };
+        }) : stops} timeZone={timeZone} queue={userId ? { userId, label: `${a.order.number} load ${a.load.number}` } : undefined} />}
         {hasTicket && (
           <ul className="space-y-1" aria-label="Tickets for this load">
             {a.tickets.map((t) => (

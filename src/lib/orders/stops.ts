@@ -86,6 +86,8 @@ export function appointmentText(s: { appointment_date: string | null; window_sta
 
 /** A stop as the driver's load card receives it (driver_load_stops): the address already on one line. */
 export interface DriverStop {
+  /** Absent before 20261120008000 is applied. */
+  id?: string;
   seq: number;
   kind: StopKind;
   name: string;

@@ -598,6 +598,13 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Arrived / Left at each stop (20261120008000, MK2 slice 2)
+
+- `load_stop_times.order_stop_id`: a stop's times use the key `stop:<order stop id>` in `stop` (check: `pickup` and
+  `site` without a stop, or the key matching `order_stop_id`). `private.order_stop_for(order, key)` accepts only a
+  current stop of the load's order. `load_stop_mark`, `load_stop_mark_at` and `load_stop_set` take the key; pickup and
+  job site work as before. `driver_load_stops()` returns each stop's `id`.
+
 ## Communications read speed (20261120007900)
 
 - `private.my_alert_ids()` returns the alerts the signed-in person is a recipient of; the read policies of `alerts`, `alert_recipients`, `alert_acknowledgments` and `alert_events` use it once per query instead of `private.alert_is_recipient` per row (same access). Index `alert_recipients_user_idx (user_id, company_id, alert_id)`.

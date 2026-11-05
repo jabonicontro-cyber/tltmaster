@@ -3,13 +3,18 @@
  * charges. A wait is "left − arrived"; it counts as long only when the company set a free time and the wait exceeds it.
  */
 
-export type Stop = "pickup" | "site";
+/** Where a time was recorded: the pickup, the job site, or one of the order's stops (MK2, `stop:<order stop id>`). */
+export type Stop = "pickup" | "site" | `stop:${string}`;
+/** What kind of place it is, for the report: a loading place or a delivery place. */
+export type StopKind = "pickup" | "site";
+export const STOP_KEY = /^stop:[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 export interface StopTime {
   loadId: string;
   orderId: string;
   orderNumber: string;
   stop: Stop;
+  kind: StopKind;
   /** Where: the job site (order's site) or the pickup location's name; null when not recorded. */
   placeKey: string | null;
   placeLabel: string | null;
@@ -19,7 +24,7 @@ export interface StopTime {
   source: "driver" | "office" | "demo";
 }
 
-export const STOP_LABEL: Record<Stop, string> = { pickup: "Pickup", site: "Job site" };
+export const STOP_LABEL: Record<StopKind, string> = { pickup: "Pickup", site: "Job site" };
 
 /** Whole minutes waited, or null while the truck has not left (or never arrived). */
 export function waitMinutes(s: Pick<StopTime, "arrivedAt" | "departedAt">): number | null {
@@ -41,7 +46,7 @@ export function median(values: number[]): number | null {
 export interface PlaceSummary {
   key: string;
   label: string;
-  stop: Stop;
+  stop: StopKind;
   customerName: string | null;
   visits: number;
   medianMinutes: number | null;
@@ -54,12 +59,12 @@ export interface PlaceSummary {
 
 /** Finished waits grouped by place, slowest (median) first. Stops without a place are grouped as "Not recorded". */
 export function summarizeByPlace(rows: StopTime[], freeMinutes: number | null): PlaceSummary[] {
-  const groups = new Map<string, { label: string; stop: Stop; customer: string | null; waits: number[] }>();
+  const groups = new Map<string, { label: string; stop: StopKind; customer: string | null; waits: number[] }>();
   for (const r of rows) {
     const w = waitMinutes(r);
     if (w === null) continue;
-    const key = `${r.stop}:${r.placeKey ?? "none"}`;
-    const g = groups.get(key) ?? { label: r.placeLabel ?? (r.stop === "pickup" ? "Pickup not recorded" : "Site not recorded"), stop: r.stop, customer: r.customerName, waits: [] };
+    const key = `${r.kind}:${r.placeKey ?? "none"}`;
+    const g = groups.get(key) ?? { label: r.placeLabel ?? (r.kind === "pickup" ? "Pickup not recorded" : "Site not recorded"), stop: r.kind, customer: r.customerName, waits: [] };
     g.waits.push(w);
     groups.set(key, g);
   }

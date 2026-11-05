@@ -12,9 +12,9 @@ import { recordFuel, recordTripSheet, voidFuelEntry } from "@/app/(app)/fleet/fu
 
 type Truck = { id: string; label: string };
 
-function StateSelect({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+function StateSelect({ id, value, onChange, label = "State" }: { id: string; value: string; onChange: (v: string) => void; label?: string }) {
   return (
-    <Select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="max-w-28">
+    <Select id={id} value={value} onChange={(e) => onChange(e.target.value)} className="max-w-28" aria-label={label}>
       <option value="">State…</option>
       {JURISDICTIONS.map((j) => <option key={j} value={j}>{j}</option>)}
     </Select>
@@ -94,7 +94,7 @@ export function TripSheetForm({ trucks, today, homeState }: { trucks: Truck[]; t
         <legend className="text-sm font-medium text-ink">{oneState ? "State driven in" : "Miles in each state"}</legend>
         {legs.map((l, i) => (
           <div key={i} className="flex items-end gap-2">
-            <StateSelect id={`trip-state-${i}`} value={l.jurisdiction} onChange={(x) => setLegs((ls) => ls.map((y, k) => (k === i ? { ...y, jurisdiction: x } : y)))} />
+            <StateSelect id={`trip-state-${i}`} label={legs.length > 1 ? `State ${i + 1}` : "State driven in"} value={l.jurisdiction} onChange={(x) => setLegs((ls) => ls.map((y, k) => (k === i ? { ...y, jurisdiction: x } : y)))} />
             {!oneState && (
               <Input aria-label={`Miles in ${l.jurisdiction || "state"} ${i + 1}`} inputMode="numeric" value={l.miles} onChange={(e) => setLegs((ls) => ls.map((y, k) => (k === i ? { ...y, miles: e.target.value } : y)))} className="max-w-28" placeholder="Miles" />
             )}

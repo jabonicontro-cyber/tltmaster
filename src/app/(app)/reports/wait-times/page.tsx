@@ -44,8 +44,8 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
   const free = settings.freeMinutes;
   const finished = stops.filter((s) => waitMinutes(s) !== null);
   const waits = finished.map((s) => waitMinutes(s)!);
-  const siteWaits = finished.filter((s) => s.stop === "site").map((s) => waitMinutes(s)!);
-  const pickupWaits = finished.filter((s) => s.stop === "pickup").map((s) => waitMinutes(s)!);
+  const siteWaits = finished.filter((s) => s.kind === "site").map((s) => waitMinutes(s)!);
+  const pickupWaits = finished.filter((s) => s.kind === "pickup").map((s) => waitMinutes(s)!);
   const long = free === null ? null : waits.filter((w) => w > free).length;
   const hoursOver = free === null ? null : waits.reduce((n, w) => n + Math.max(0, w - free), 0) / 60;
   const places = summarizeByPlace(stops, free);
@@ -107,7 +107,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
                 {recent.map((s) => (
                   <li key={`${s.loadId}-${s.stop}`} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
                     <Link href={`/orders/${s.orderId}`} className="font-semibold hover:underline">{s.orderNumber}</Link>
-                    <span className="text-muted">{STOP_LABEL[s.stop]} · {s.placeLabel ?? "place not recorded"}</span>
+                    <span className="text-muted">{STOP_LABEL[s.kind]} · {s.placeLabel ?? "place not recorded"}</span>
                     <span className="ml-auto font-semibold tabular">{minutesLabel(waitMinutes(s))}</span>
                     <span className="text-xs text-muted">{s.arrivedAt ? formatDate(s.arrivedAt.slice(0, 10)) : ""}{s.source === "office" ? " · entered by the office" : ""}</span>
                   </li>

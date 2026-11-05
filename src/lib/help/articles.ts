@@ -3019,7 +3019,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "A **Stops** section on the order: each stop numbered in the order the truck makes it, marked **Pickup** or **Delivery**, with the place, address, appointment date and window, reference number and notes.",
       "On the dispatch board the order shows its route (for example Gary, IN → Joliet, IL (+1 stop)) instead of the job site.",
-      "On the driver's load card the stops replace the single pickup and job site, each with a **Go** button that opens directions.",
+      "On the driver's load card the stops replace the single pickup and job site, each with a **Go** button that opens directions and **Arrived** / **Left** buttons; the times show on Reports → Wait times by shipper and receiver.",
     ],
     tasks: [
       {
@@ -3047,6 +3047,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["what-you-haul"],
     related: ["order-detail", "dispatch-board"],
     reviewed: "2026-11-05",
-    limitations: ["Arrived and Left times are recorded for the pickup and the job site, not yet for each stop; per-stop proof of delivery and extra charges such as detention come later."],
+    limitations: ["Proof of delivery per stop and extra charges such as detention come later."],
   },
 ];

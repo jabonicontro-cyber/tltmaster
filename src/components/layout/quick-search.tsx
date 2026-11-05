@@ -95,7 +95,7 @@ export function QuickSearch({ variant = "header", initialQuery = "" }: { variant
   let index = -1;
 
   return (
-    <div ref={boxRef} className={cn("relative", variant === "header" ? "hidden w-64 md:block xl:w-80" : "w-full max-w-2xl")} role="search">
+    <div ref={boxRef} className={cn("relative", variant === "header" ? "hidden md:block md:w-48 lg:w-64 xl:w-80" : "w-full max-w-2xl")} role="search">
       <label htmlFor={`${listId}-input`} className="sr-only">Search records</label>
       <div className="relative">
         <Search className={cn("pointer-events-none absolute top-1/2 -translate-y-1/2 text-muted", variant === "header" ? "left-4 size-4" : "left-4 size-[18px]")} aria-hidden />

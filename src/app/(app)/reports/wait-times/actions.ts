@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { STOP_KEY } from "@/lib/dispatch/wait-times";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { assertPermission, requireAccess } from "@/server/auth";
 import { dbErrorMessage, guard } from "@/server/errors";
@@ -10,7 +11,9 @@ import { createClient } from "@/server/supabase/server";
 // Wait times (B111): Arrived / Left taps (the load's driver or dispatch) and the company's free time. Track only:
 // nothing is billed. The database checks every call again.
 
-const mark = z.object({ load: z.uuid(), stop: z.enum(["pickup", "site"]), event: z.enum(["arrive", "depart"]) });
+// The pickup, the job site, or one of the order's stops (MK2, "stop:<id>"); the database checks it is on the load.
+const stopKey = z.union([z.enum(["pickup", "site"]), z.string().regex(STOP_KEY)]);
+const mark = z.object({ load: z.uuid(), stop: stopKey, event: z.enum(["arrive", "depart"]) });
 
 export async function markStop(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
@@ -21,11 +24,11 @@ export async function markStop(formData: FormData): Promise<ActionResult> {
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/driver");
     revalidatePath("/reports/wait-times");
-    return ok(undefined, `${p.data.event === "arrive" ? "Arrived" : "Left"} ${p.data.stop === "pickup" ? "pickup" : "job site"} recorded.`);
+    return ok(undefined, `${p.data.event === "arrive" ? "Arrived" : "Left"} ${p.data.stop === "pickup" ? "pickup" : p.data.stop === "site" ? "job site" : "stop"} recorded.`);
   });
 }
 
-const markAt = z.object({ load: z.uuid(), stop: z.enum(["pickup", "site"]), event: z.enum(["arrive", "depart"]), at: z.iso.datetime({ offset: true }) });
+const markAt = z.object({ load: z.uuid(), stop: stopKey, event: z.enum(["arrive", "depart"]), at: z.iso.datetime({ offset: true }) });
 
 /**
  * An Arrived / Left tap made without signal and sent later from the phone (B133): the tapped time is kept, within the

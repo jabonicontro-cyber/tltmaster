@@ -1,3 +1,4 @@
+import type { Stop } from "@/lib/dispatch/wait-times";
 // Offline driver app (B133, owner 2026-11-02: cached day + queued sends; docs/COMPANION_APP.md §4).
 //
 // Two things are kept on the driver's phone, both under the signed-in person's id and both removed at sign-out:
@@ -41,7 +42,8 @@ export interface SnapshotLoad {
   canSubmitTicket: boolean;
   tickets: string[];
   lines: Array<{ id: string; description: string; unit_code: string }>;
-  stops: Array<{ stop: "pickup" | "site"; arrivedAt: string | null; departedAt: string | null }>;
+  /** Pickup and job site, or the order's stops in order (MK2) with a label each. */
+  stops: Array<{ stop: Stop; arrivedAt: string | null; departedAt: string | null; label?: string }>;
 }
 
 export interface DaySnapshot {

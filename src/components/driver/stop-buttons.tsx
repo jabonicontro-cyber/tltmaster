@@ -7,13 +7,16 @@ import { markStop } from "@/app/(app)/reports/wait-times/actions";
 import { Button } from "@/components/ui/button";
 import { FormError } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
+import { cn } from "@/lib/cn";
 import { STOP_LABEL, minutesLabel, waitMinutes, type Stop } from "@/lib/dispatch/wait-times";
 import { announceOutbox, enqueue, isNetworkError } from "@/lib/offline/store";
 import { useOutbox } from "@/components/companion/offline-support";
 
 // Wait times (B111) on My Day: Arrived / Left at the pickup and the job site. Times are recorded when tapped.
 
-export interface StopState { stop: Stop; arrivedAt: string | null; departedAt: string | null }
+export interface StopState { stop: Stop; arrivedAt: string | null; departedAt: string | null; /** Shown for an order's stops (MK2), e.g. "1. Acme Steel". */ label?: string }
+
+const labelOf = (s: { stop: Stop; label?: string }) => s.label ?? (s.stop === "pickup" || s.stop === "site" ? STOP_LABEL[s.stop] : "Stop");
 
 function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopState; timeZone: string; queue?: { userId: string; label: string } }) {
   const router = useRouter();
@@ -31,7 +34,7 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
     if (!queue) return false;
     const event = String(fd.get("event")) as "arrive" | "depart";
     const at = new Date().toISOString();
-    const label = `${event === "arrive" ? "Arrived" : "Left"} ${STOP_LABEL[given.stop].toLowerCase()} · ${queue.label}`;
+    const label = `${event === "arrive" ? "Arrived" : "Left"} ${labelOf(given).toLowerCase()} · ${queue.label}`;
     if (!enqueue({ id: crypto.randomUUID(), userId: queue.userId, kind: "stop", label, payload: { load, stop: given.stop, event, at } })) return false;
     announceOutbox();
     setKept((k) => ({ ...k, [event === "arrive" ? "arrivedAt" : "departedAt"]: at }));
@@ -56,11 +59,11 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
   const time = (iso: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso));
   const event = !s.arrivedAt ? "arrive" : !s.departedAt ? "depart" : null;
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label={`${STOP_LABEL[s.stop]} times`}>
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-x-3 gap-y-1" aria-label={`${labelOf(s)} times`}>
       <input type="hidden" name="load" value={load} />
       <input type="hidden" name="stop" value={s.stop} />
       {event && <input type="hidden" name="event" value={event} />}
-      <span className="w-20 text-sm font-semibold">{STOP_LABEL[s.stop]}</span>
+      <span className={cn("text-sm font-semibold", s.label ? "w-full sm:w-40 sm:truncate" : "w-20")}>{labelOf(s)}</span>
       <span className="min-w-0 flex-1 text-sm text-muted tabular">
         {s.arrivedAt ? `Arrived ${time(s.arrivedAt)}` : "Not arrived yet"}
         {s.departedAt ? ` · left ${time(s.departedAt)} · waited ${minutesLabel(waitMinutes(s))}` : ""}
@@ -74,10 +77,11 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
 
 export function StopButtons({ load, stops, timeZone, queue }: { load: string; stops: StopState[]; timeZone: string; queue?: { userId: string; label: string } }) {
   const by = (stop: Stop) => stops.find((s) => s.stop === stop) ?? { stop, arrivedAt: null, departedAt: null };
+  // An order with stops (MK2): one row per stop, in order. Otherwise the pickup and the job site, as before.
+  const rows = stops.some((s) => s.stop.startsWith("stop:")) ? stops.filter((s) => s.stop.startsWith("stop:")) : [by("pickup"), by("site")];
   return (
     <div className="space-y-2 rounded-xl bg-surface px-3 py-2.5" aria-label="Arrival and departure">
-      <StopRow load={load} s={by("pickup")} timeZone={timeZone} queue={queue} />
-      <StopRow load={load} s={by("site")} timeZone={timeZone} queue={queue} />
+      {rows.map((r) => <StopRow key={r.stop} load={load} s={r} timeZone={timeZone} queue={queue} />)}
     </div>
   );
 }

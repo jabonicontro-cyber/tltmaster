@@ -16,10 +16,12 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
   if (!home.ok) return null;
   const h = home.data;
   const todays = h.assignments.filter((a) => a.load.date === h.today);
-  const [forms, stops, insp] = await Promise.all([
+  const [forms, stops, insp, routeRes] = await Promise.all([
     Promise.all(todays.map((a) => (a.can_submit_ticket ? loadAssignmentForm(a.assignment_id) : Promise.resolve(null)))),
     stopTimesForLoads(todays.map((a) => a.load.id)),
     (async () => { const r = await (await createClient()).rpc("inspection_my_trucks"); return r.error ? [] : ((r.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean; dump?: boolean }>); })(),
+    // The order's stops (MK2), so taps at each stop work without signal too; empty before 20261120007800.
+    (async () => { const r = await (await createClient()).rpc("driver_load_stops"); return (r.error ? {} : (r.data ?? {})) as Record<string, Array<{ id?: string; seq: number; name: string }>>; })(),
   ]);
   const units = forms.find((f) => f?.ok)?.ok ? (forms.find((f) => f?.ok) as { ok: true; data: { units: DaySnapshot["units"] } }).data.units : [];
   return {
@@ -39,9 +41,11 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
         truck: a.truck, trailer: a.trailer, canSubmitTicket: Boolean(a.can_submit_ticket && f?.ok),
         tickets: a.tickets.map((t) => t.number),
         lines: f?.ok ? f.data.lines.map((l) => ({ id: l.id, description: l.description, unit_code: l.unit_code })) : [],
-        stops: (["pickup", "site"] as const).map((stop) => {
+        stops: (routeRes[a.load.id]?.length && routeRes[a.load.id].every((r) => r.id)
+          ? routeRes[a.load.id].map((r) => ({ stop: `stop:${r.id}` as const, label: `${r.seq}. ${r.name}` }))
+          : (["pickup", "site"] as const).map((stop) => ({ stop, label: undefined }))).map(({ stop, label }) => {
           const s = stops.find((x) => x.loadId === a.load.id && x.stop === stop);
-          return { stop, arrivedAt: s?.arrivedAt ?? null, departedAt: s?.departedAt ?? null };
+          return { stop, label, arrivedAt: s?.arrivedAt ?? null, departedAt: s?.departedAt ?? null };
         }),
       };
     }),

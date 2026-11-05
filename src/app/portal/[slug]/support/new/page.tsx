@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
+import { Card, CardBody } from "@/components/ui/card";
 import { SupportForm } from "@/components/portal/portal-forms";
 import type { PortalOrderSummary } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
@@ -20,8 +20,11 @@ export default async function NewSupportRequest({ params, searchParams }: { para
   return (
     <div className="space-y-4">
       <p className="text-sm"><Link href={`/portal/${slug}/support`} className="text-muted hover:text-ink hover:underline">← Support</Link></p>
+      <div>
+        <h1 className="text-2xl font-bold text-ink">New support request</h1>
+        <p className="mt-1 text-sm text-muted">Goes to {c.name}. You will see the reply here.</p>
+      </div>
       <Card>
-        <CardHeader title="New Support Request" description={`Goes to ${c.name}. You will see the reply here.`} />
         <CardBody>
           <SupportForm slug={slug} orders={orders.slice(0, 50).map((o) => ({ id: o.id, number: o.number }))} defaultOrder={orders.some((o) => o.id === order) ? order : undefined}
             tickets={c.features.orders ? links.tickets : []} invoices={links.invoices} />
