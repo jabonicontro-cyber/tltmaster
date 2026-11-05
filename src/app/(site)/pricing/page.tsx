@@ -7,7 +7,7 @@ import { PRICING_FAQ as FAQ } from "@/lib/site/pricing-faq";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Taviron pricing by fleet size and dispatch bases, from Essential to Enterprise. The subscription starts at go-live.",
+  description: "Taviron pricing by fleet size and dispatch bases, from Starter to Enterprise. The subscription starts at go-live.",
   alternates: { canonical: "/pricing" }, openGraph: siteOpenGraph("/pricing"),
 };
 
@@ -42,16 +42,18 @@ export default function PricingPage() {
       <section aria-labelledby="tiers-title">
         <h2 id="tiers-title" className="sr-only">Tiers</h2>
         <Container className="pt-14">
-          <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {/* Each card shares the grid's rows (subgrid), so names, prices, annual prices, onboarding and buttons line up
+              across a row of cards whatever their text length. */}
+          <ul className="grid gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {TIERS.map((t, n) => (
-              <li key={t.key} aria-label={t.name} style={order(n % 5)} className="site-reveal site-lift flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
+              <li key={t.key} aria-label={t.name} style={order(n % 5)} className="site-reveal site-lift row-span-6 grid grid-rows-subgrid gap-y-0 rounded-xl border border-silver/15 bg-navy-2 p-6">
                 <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
                 <p className="mt-1 text-sm text-silver">
                   Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
                 </p>
-                <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5">
+                <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5 self-end">
                   {t.from ? <span className="w-full text-sm text-silver">From</span> : null}
-                  <span className="text-4xl font-semibold tracking-tight text-cloud tabular-nums">{usd(t.monthlyCents)}</span>
+                  <span className="text-4xl font-semibold tracking-tight text-cloud tabular-nums xl:text-[1.75rem]">{usd(t.monthlyCents)}</span>
                   <span className="text-sm whitespace-nowrap text-silver">/ month</span>
                 </p>
                 <p className="mt-1.5 text-sm text-silver">
@@ -61,7 +63,7 @@ export default function PricingPage() {
                 <p className="mt-5 border-t border-silver/10 pt-4 text-sm text-silver">
                   One-time onboarding: <span className="font-semibold text-cloud tabular-nums">{usd(t.onboardingCents)}</span>
                 </p>
-                <div className="mt-auto pt-6">
+                <div className="self-end pt-6">
                   <CtaLink href="/demo" className="w-full">Request a Demo</CtaLink>
                 </div>
               </li>

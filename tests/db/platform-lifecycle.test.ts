@@ -43,6 +43,23 @@ describe("platform customer lifecycle", () => {
     });
   });
 
+  it("the plan catalog matches the public pricing page, Starter first, and prices Starter like any tier (2026-11-05)", async () => {
+    const { TIERS } = await import("@/lib/site/pricing");
+    await withSession(async (s) => {
+      const admin = await platformAdmin(s);
+      await s.as(admin);
+      type P = { plan_key: string; name: string; monthly_cents: number | null; onboarding_cents: number | null; trucks: number | null; bases: number | null; current: boolean };
+      const current = (await s.query<{ r: P[] }>("select public.platform_plans() as r")).rows[0].r.filter((p) => p.current && p.plan_key !== "custom");
+      expect(current.map((p) => [p.plan_key, p.name, p.monthly_cents, p.onboarding_cents, p.trucks, p.bases]))
+        .toEqual(TIERS.map((t) => [t.key, t.name, t.monthlyCents, t.onboardingCents, t.trucks, t.bases]));
+      const c = await company(s);
+      const starter = await plan(s, "starter");
+      expect((await terms(s, c, { plan_version_id: starter })).agreed_monthly_cents).toBe(24900);
+      expect((await terms(s, c, { plan_version_id: starter, offer: "founding" })).agreed_monthly_cents).toBe(19920);
+      expect((await terms(s, c, { plan_version_id: starter, terms: "annual" })).agreed_monthly_cents).toBe(22410);
+    });
+  });
+
   it("prices from the plan version: standard, founding 20% off, annual 10% off, free beta waives the fee; ambiguous combinations need the agreed amount", async () => {
     await withSession(async (s) => {
       const admin = await platformAdmin(s);

@@ -1,10 +1,11 @@
-// Public Taviron pricing (founder's tiers, master plan §5.1). Per company, per
+// Public Taviron pricing (founder's tiers, master plan §5.1; Starter added 2026-11-05 for 1–10 truck fleets, priced by
+// Claude at the owner's request from the tiers and the market research). Per company, per
 // month, before applicable taxes; confirmed in the written service agreement.
 // Nothing is charged through the website. Founding-customer discounts are
 // private and deliberately not in this file. Change the numbers here only.
 
 export interface Tier {
-  key: "essential" | "growth" | "professional" | "enterprise";
+  key: "starter" | "essential" | "growth" | "professional" | "enterprise";
   name: string;
   monthlyCents: number;
   /** "From" price (Enterprise). */
@@ -15,6 +16,7 @@ export interface Tier {
 }
 
 export const TIERS: Tier[] = [
+  { key: "starter", name: "Starter", monthlyCents: 24_900, trucks: 10, bases: 1, onboardingCents: 9_900 },
   { key: "essential", name: "Essential", monthlyCents: 49_900, trucks: 25, bases: 1, onboardingCents: 19_900 },
   { key: "growth", name: "Growth", monthlyCents: 74_900, trucks: 50, bases: 2, onboardingCents: 29_900 },
   { key: "professional", name: "Professional", monthlyCents: 99_900, trucks: 75, bases: 3, onboardingCents: 39_900 },

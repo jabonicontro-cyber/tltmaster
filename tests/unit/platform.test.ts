@@ -86,8 +86,9 @@ describe("lead emails", () => {
 });
 
 describe("pricing", () => {
-  it("has the five tiers with annual-commitment prices 10% off and no founding discount in the public data", async () => {
+  it("has the tiers (Starter added 2026-11-05) with annual-commitment prices 10% off and no founding discount in the public data", async () => {
     expect(TIERS.map((t) => [t.name, usd(t.monthlyCents), usd(annualMonthlyCents(t.monthlyCents)), t.trucks, t.bases, usd(t.onboardingCents)])).toEqual([
+      ["Starter", "$249", "$224.10", 10, 1, "$99"],
       ["Essential", "$499", "$449.10", 25, 1, "$199"],
       ["Growth", "$749", "$674.10", 50, 2, "$299"],
       ["Professional", "$999", "$899.10", 75, 3, "$399"],
@@ -96,6 +97,9 @@ describe("pricing", () => {
     expect(JSON.stringify(await import("@/lib/site/pricing"))).not.toMatch(/found/i);
   });
   it("picks the lowest tier that covers both trucks and dispatch bases", () => {
+    expect(tierFor(4, 1)?.name).toBe("Starter");
+    expect(tierFor(10, 1)?.name).toBe("Starter");
+    expect(tierFor(11, 1)?.name).toBe("Essential");
     expect(tierFor(25, 1)?.name).toBe("Essential");
     expect(tierFor(10, 2)?.name).toBe("Growth"); // few trucks, but two bases
     expect(tierFor(60, 1)?.name).toBe("Professional");

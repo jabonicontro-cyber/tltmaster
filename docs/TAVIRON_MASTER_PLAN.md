@@ -195,6 +195,7 @@ the Early Access gate; publishing it publicly is still the founder's decision.
 
 | Tier | Standard monthly | Annual commitment (−10%) | Hauling trucks | Dispatch bases | Onboarding (one-time) |
 | --- | ---: | ---: | ---: | ---: | ---: |
+| Starter (added 2026-11-05) | $249 | $224.10 | up to 10 | 1 | $99 |
 | Essential | $499 | $449.10 | up to 25 | 1 | $199 |
 | Growth | $749 | $674.10 | up to 50 | up to 2 | $299 |
 | Professional | $999 | $899.10 | up to 75 | up to 3 | $399 |
@@ -202,7 +203,14 @@ the Early Access gate; publishing it publicly is still the founder's decision.
 | Custom | Contact for quote | — | more than 100 or complex | multiple | from $599, by scope |
 
 The lowest tier satisfying **both** the truck and the base limit applies. Private founding prices (20% off,
-first 10 customers): $399.20 · $599.20 · $799.20 · $1,199.20.
+first 10 customers): $199.20 (Starter) · $399.20 · $599.20 · $799.20 · $1,199.20.
+
+**Starter (owner 2026-11-05, price set by Claude at the owner's request):** $249 a month for up to 10 hauling trucks
+and 1 dispatch base, $99 onboarding. Reasoning: at 10 trucks it is about $25 per truck, in line with per-truck dump
+truck dispatch tools (about $25-35 per truck with a 10-truck minimum, docs/research/COMPETITORS_2026-10.md) while
+including the whole platform; it keeps a clear step to Essential ($499 for 25 trucks); the onboarding fee is lower
+because small fleets have less data to load. Single owner-operators (1-3 trucks) pay more per truck than with the
+cheapest tools; they are not the core buyer. In the plan catalog via migration `20261120007400` (tested rollback).
 
 ### 5.2 Demo-request workflow (confirmed requirements)
 
@@ -370,10 +378,12 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 24. **PTO model decided by the owner 2026-10-13: all three accrual methods (annual grant, hours worked, per pay period), full-/part-time policies, waiting periods, separate or combined banks, approval chains, balance validation, configurable carryover/expiration (use-it-or-lose-it only where legal). Built: banks, append-only ledger, balance checks, and accruals by all three methods with caps and plan-year carryover/forfeiture (IMPLEMENTATION_PLAN §5ai). Next: approval chains and payroll/ELD hours integration.** Original question: Time off: who approves (default owner; grantable), whether self-approval is ever allowed, approval chains or manager scopes, which PTO policy model applies (annual grant, hourly accrual, per pay period; banks; carryover), and whether partial days need work schedules.
 25. Communications defaults to confirm (**decided by the owner 2026-10-12:** edit/own-delete window fixed at 5 minutes; message content kept 14 days unless legal hold; managers remove with a reason; in-app only for now — see COMMUNICATIONS.md): whether new group members see earlier history (default: from when they join), drivers on an active delivery (default: hold routine notifications and send one catch-up), auto-archive delay for finished workspaces (default 24 h), alert escalation intervals and roles (default owner), which alert types are enabled, and whether email/SMS/push delivery should be added (needs a provider and approval).
 
-26. **Starter plan (SF2, 2026-11-05):** price and limits for 1–10 trucks, if the owner wants one.
-27. **How customers pay Taviron at launch (LR5, 2026-11-05):** emailed invoice and bank transfer, or card through a
-    payment processor (needs explicit authorization for any billing code).
-28. **Freight scope after MK2 (2026-11-05):** load board connections and factoring exports, now or after launch.
+26. **Starter plan (SF2):** **decided 2026-11-05:** yes; the owner asked Claude to set the price: $249/month, up to 10 trucks, 1 base, $99 onboarding (§5.1).
+27. **How customers pay Taviron at launch (LR5):** **decided 2026-11-05: by invoice** (sent by Taviron; paid by bank
+    transfer or check). No card processing or billing code at launch.
+28. **Freight scope after MK2:** load board connections and factoring exports, now or after launch. Owner 2026-11-05:
+    limited freight experience (has used Princeton TMX, a shipper-side TMS); Claude proposes the freight scope from
+    research, the owner reviews it.
 
 ## 10. Subscription model (proposal / confirmed policies)
 
@@ -667,7 +677,7 @@ here without replacing earlier requirements; open questions go to §9. Last upda
 | MK2 | Freight loads (owner 2026-11-05): loads with several pickup and delivery stops and appointment windows, per-mile and flat rates, a rate confirmation attached to the load, bills of lading and proof of delivery per stop, extra charges (detention, layover, lumper, truck ordered not used) on the invoice, brokers as customers | requested 2026-11-05 | MK1 | review (migration) | DB + e2e (freight load start to invoice) |
 | MK3 | Freight demo company (owner 2026-11-05): a fictional regional freight carrier beside the aggregate demos, every role preview with realistic data, refreshed by Refresh demo data | requested 2026-11-05 | MK1, MK2 | auto | demo-parity e2e + demo-samples DB |
 | SF1 | Simple mode for small fleets (owner 2026-11-05): a company turns areas on and off (owner only); new small companies start with the essentials (orders, dispatch, tickets, invoices, trucks) and add the rest when ready. Hiding an area never grants or removes permissions, and safety rules stay on | requested 2026-11-05 | — | review (migration) | DB (owner only) + e2e (navigation follows the setting) |
-| SF2 | Starter plan for 1–10 trucks (owner 2026-11-05: small companies should be served) | proposal, **price is the owner's decision (§9)** | owner decision | approval | pricing page test |
+| SF2 | Starter plan for 1–10 trucks (owner 2026-11-05: small companies should be served) | **built 2026-11-05**: $249/month, up to 10 trucks, 1 base, $99 onboarding (price set by Claude at the owner's request, §5.1); pricing page, plan catalog (migration `20261120007400`, rollback), small-fleets page | — | review (migration) | unit (tiers, tierFor) + DB (catalog matches pricing.ts; Starter terms) + e2e (pricing page) |
 | CC1 | Compliance calendar (owner 2026-11-05): one list of every due date (driver credentials, truck documents, inspections, preventive service, IFTA quarter) with the same alerts and dispatch rules as today | requested 2026-11-05 | — | auto | unit + e2e |
 | DT1 | Detention charges from recorded wait times (owner 2026-11-05): wait beyond a customer's free time becomes a proposed charge on the invoice draft; a person approves it | requested 2026-11-05 | B111 wait times | review | unit + DB + e2e |
 | LR1 | Launch walkthrough (owner 2026-11-05: "make sure we aren't missing things"): every role (owner, dispatcher, office, driver, mechanic, customer, platform) through every page on phone, tablet and desktop, light and dark, accessibility settings on; aggregate and freight demos; one fix list, fixed | requested 2026-11-05 | — | auto | report + fixes with tests |

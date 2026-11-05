@@ -34,11 +34,17 @@ test("the public website is open to everyone, works on a phone, and shows the pr
   await expect(essential.getByText("$449.10", { exact: true })).toBeVisible();
   await expect(essential.getByRole("link", { name: "Request a Demo" })).toHaveAttribute("href", "/demo");
   await expect(page.getByRole("listitem", { name: "Enterprise" }).getByText("$1,499", { exact: true })).toBeVisible();
+  // Starter for small fleets (owner 2026-11-05).
+  const starter = page.getByRole("listitem", { name: "Starter" });
+  await expect(starter.getByText("$249", { exact: true })).toBeVisible();
+  await expect(starter.getByText("$224.10", { exact: true })).toBeVisible();
+  await expect(starter).toContainText("Up to 10 hauling trucks and 1 dispatch base");
   await expect(page.getByRole("link", { name: "Contact Us" })).toHaveAttribute("href", "/contact");
   await expect(page.getByText(/before applicable taxes/).first()).toBeVisible();
   // Founding-customer pricing is private and never shown.
   await expect(page.getByText(/found/i)).toHaveCount(0);
   await expect(page.getByText("$399.20")).toHaveCount(0);
+  await expect(page.getByText("$199.20")).toHaveCount(0);
   // The mobile menu works.
   await page.getByLabel("Menu").click();
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Platform" }).click();

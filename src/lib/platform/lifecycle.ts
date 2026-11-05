@@ -7,7 +7,7 @@ export type LifecycleTerms = "monthly" | "annual";
 
 export interface PlanVersion {
   id: string;
-  plan_key: "essential" | "growth" | "professional" | "enterprise" | "custom";
+  plan_key: "starter" | "essential" | "growth" | "professional" | "enterprise" | "custom";
   name: string;
   version: number;
   monthly_cents: number | null;

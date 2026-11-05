@@ -204,7 +204,7 @@ export const SEGMENTS: Segment[] = [
       ],
       note: "Shown in the demo company with fictional data.",
     },
-    plans: ["essential"],
+    plans: ["starter", "essential"],
     areas: ["dispatch", "fleet", "customers"],
     notYet: [],
   },
