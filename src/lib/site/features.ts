@@ -821,6 +821,22 @@ export const FEATURES: Feature[] = [
     verified: "2026-11-04",
   },
   {
+    id: "compliance-calendar",
+    name: "Compliance calendar",
+    category: "fleet",
+    problem: "Medical cards, registrations, permits and service dates live in different places, so one slips past its date before anyone notices.",
+    how: "Fleet → Compliance calendar lists every date the company records in one place: driver credentials, truck and trailer documents, date-based preventive service and the IFTA quarter, grouped as overdue, next 30 days and later, each linking to its record.",
+    value: "One list to check each week instead of five places to remember.",
+    points: ["Driver credentials, truck and trailer documents", "Preventive service by date", "IFTA quarter for companies that keep trip sheets", "Overdue, next 30 days and the 90 days after"],
+    limitations: ["Shows dates already recorded; it doesn't send reminders by itself", "Service by miles or hours shows on the Maintenance page"],
+    status: "available",
+    published: false, // publishing is the owner's decision
+    routes: ["/fleet/compliance"],
+    screenshots: [],
+    related: ["fuel-ifta"],
+    verified: "2026-11-05",
+  },
+  {
     id: "accountant-view",
     name: "Accountant view",
     category: "billing",

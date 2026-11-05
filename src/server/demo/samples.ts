@@ -134,6 +134,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Parts used per job (UX20): the sample part used from stock gets the part cost line that using it in the app adds,
   // so job cards show the parts cost.
   note("parts cost on jobs", await partCostLines(db));
+  // Compliance calendar (CC1): a driver training credential and a truck permit coming due, kept in the future.
+  note("compliance calendar", await complianceSamples(db, today));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.
   note("spreadsheet import", await rpcCount(db, "demo_import_samples"));
   note("shift offers", await rpcCount(db, "demo_shift_offer_samples"));
@@ -1463,6 +1465,51 @@ async function siteNote(db: Db): Promise<number> {
 
 /** A demo sample function that returns how many rows it added (0 before its migration is installed). */
 /** A sample billing tolerance (1 %, fictional) when the demo has none yet; 0 when already set or not installed. */
+/**
+ * Compliance calendar samples (CC1): one driver credential due in about three weeks and one truck permit due in about
+ * six, marked "(sample)". Added once; on later runs only these sample records are moved forward when they get within a
+ * week of their date, so a demo never shows them overdue and they never restrict a demo truck or driver. Real records
+ * and anything a prospect entered are never touched. Returns how many were added or moved.
+ */
+const SAMPLE_CREDENTIAL = "Safety training refresher (sample)";
+const SAMPLE_PERMIT = "Overweight permit (sample)";
+async function complianceSamples(db: Db, today: string): Promise<number> {
+  const quals = await db.from("driver_qualifications").select("id, expires_on").eq("kind", "other").eq("description", SAMPLE_CREDENTIAL).limit(1);
+  const docs = await db.from("vehicle_documents").select("id, expires_on").eq("title", SAMPLE_PERMIT).is("archived_at", null).limit(1);
+  if (missing(quals.error) || missing(docs.error)) return 0;
+  if (quals.error) throw new Error(`Demo samples (compliance calendar): ${quals.error.message}`);
+  if (docs.error) throw new Error(`Demo samples (compliance calendar): ${docs.error.message}`);
+  const soon = (d: string | null) => !d || d < addDays(today, 7);
+  let n = 0;
+  const q = (quals.data ?? [])[0] as { id: string; expires_on: string | null } | undefined;
+  if (q) {
+    if (soon(q.expires_on)) {
+      await must("compliance credential", db.from("driver_qualifications").update({ expires_on: addDays(today, 20) }).eq("id", q.id));
+      n++;
+    }
+  } else {
+    const driver = (await db.from("drivers").select("id").eq("active", true).order("name").limit(1)).data?.[0] as { id: string } | undefined;
+    if (driver) {
+      await must("compliance credential", db.from("driver_qualifications").insert({ driver_id: driver.id, kind: "other", description: SAMPLE_CREDENTIAL, issued_on: addDays(today, -345), expires_on: addDays(today, 20) }));
+      n++;
+    }
+  }
+  const d = (docs.data ?? [])[0] as { id: string; expires_on: string | null } | undefined;
+  if (d) {
+    if (soon(d.expires_on)) {
+      await must("compliance permit", db.from("vehicle_documents").update({ expires_on: addDays(today, 45) }).eq("id", d.id));
+      n++;
+    }
+  } else {
+    const truck = (await db.from("trucks").select("id").eq("active", true).order("unit_number").limit(1)).data?.[0] as { id: string } | undefined;
+    if (truck) {
+      await must("compliance permit", db.from("vehicle_documents").insert({ truck_id: truck.id, kind: "permit", title: SAMPLE_PERMIT, reference_number: "SAMPLE-PERMIT", issued_on: addDays(today, -320), expires_on: addDays(today, 45) }));
+      n++;
+    }
+  }
+  return n;
+}
+
 async function billingTolerance(db: Db): Promise<number> {
   const current = await db.from("billing_tolerance_settings").select("company_id").maybeSingle();
   if (missing(current.error)) return 0;

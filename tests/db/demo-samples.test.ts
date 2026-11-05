@@ -355,6 +355,14 @@ describe.skipIf(!available)("demo feature samples", () => {
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const partCostAgain = await q<{ n: string }>("select count(*) n from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
     expect(Number(partCostAgain.rows[0].n)).toBe(1);
+    // Compliance calendar (CC1): one sample credential and one sample permit, coming due (never overdue), added once.
+    const cal = await q<{ creds: string; permits: string; soonest: string }>(
+      `select (select count(*) from public.driver_qualifications where company_id = $1 and description = 'Safety training refresher (sample)') creds,
+              (select count(*) from public.vehicle_documents where company_id = $1 and title = 'Overweight permit (sample)') permits,
+              least((select min(expires_on) from public.driver_qualifications where company_id = $1 and description = 'Safety training refresher (sample)'),
+                    (select min(expires_on) from public.vehicle_documents where company_id = $1 and title = 'Overweight permit (sample)'))::text soonest`, [w.company]);
+    expect([Number(cal.rows[0].creds), Number(cal.rows[0].permits)]).toEqual([1, 1]);
+    expect(cal.rows[0].soonest > todayIn(TZ)).toBe(true);
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);

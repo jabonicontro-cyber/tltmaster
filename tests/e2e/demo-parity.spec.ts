@@ -166,6 +166,11 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await visit(page, "/dispatch?view=timeline");
         await expect(page.getByRole("table", { name: "Trucks by hour" }).getByRole("button").first(), `${role} timeline has loads`).toBeVisible();
       }
+      // Compliance calendar (CC1): the fleet roles see sample dates coming due.
+      if (nav.includes("/fleet")) {
+        await visit(page, "/fleet/compliance");
+        await expect(page.getByText(/Nothing due in the next 90 days/), `${role} compliance calendar has dates`).toHaveCount(0);
+      }
       // Time-off balances (20261112000100): the owner mode manages a real bank with balances and history.
       if (role === "owner") {
         await visit(page, "/time-off/balances");
