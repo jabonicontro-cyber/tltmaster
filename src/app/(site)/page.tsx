@@ -9,8 +9,8 @@ import { TIERS, usd } from "@/lib/site/pricing";
 import { publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
-  title: { absolute: "Taviron — Your entire trucking operation. Connected." },
-  description: "See what's happening. Know what to do next. Taviron connects quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness for trucking and hauling companies — with people approving every consequential step.",
+  title: { absolute: "Taviron · Your entire trucking operation. Connected." },
+  description: "See what's happening. Know what to do next. Taviron connects quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness for trucking and hauling companies, with people approving every consequential step.",
   alternates: { canonical: "/" },
 };
 
@@ -36,7 +36,7 @@ const STORY: StoryChapter[] = [
     body: (
       <>
         <p>Each plan shows the revenue it covers, estimated from your own order rates and labelled as an estimate.</p>
-        <p>Margin needs your costs — fuel, wages, maintenance. Until they are recorded, Taviron says so instead of guessing.</p>
+        <p>Margin needs your costs: fuel, wages and maintenance. Until they are recorded, Taviron says so instead of guessing.</p>
       </>
     ),
   },
@@ -46,7 +46,7 @@ const STORY: StoryChapter[] = [
     body: (
       <>
         <p>Choose service first and urgent orders and overdue requested dates lead the plan.</p>
-        <p>Recorded capacity, driver qualifications, shop dates and open safety reports are checked before anything is proposed — and again when a dispatcher approves.</p>
+        <p>Recorded capacity, driver qualifications, shop dates and open safety reports are checked before anything is proposed, and again when a dispatcher approves.</p>
       </>
     ),
   },
@@ -55,8 +55,8 @@ const STORY: StoryChapter[] = [
     title: "Compare plans, not guesses.",
     body: (
       <>
-        <p>See the same day planned for service, revenue, truck utilization, fewer empty trips or an even driver workload — with the trade-offs between them spelled out.</p>
-        <p>Where data is missing — hours of service, travel distance, unverified capacity — the plan says &ldquo;needs review&rdquo; rather than pretending.</p>
+        <p>See the same day planned for service, revenue, truck utilization, fewer empty trips or an even driver workload, with the trade-offs between them spelled out.</p>
+        <p>Where data is missing (hours of service, travel distance, unverified capacity), the plan says &ldquo;needs review&rdquo; rather than pretending.</p>
       </>
     ),
   },
@@ -65,7 +65,7 @@ const STORY: StoryChapter[] = [
     title: "The office work follows the truck.",
     body: (
       <>
-        <p>Tickets start on the driver&apos;s phone, are reviewed beside their order, and only verified deliveries reach billing — with invoice drafts prepared, never sent on their own.</p>
+        <p>Tickets start on the driver&apos;s phone, are reviewed beside their order, and only verified deliveries reach billing, with invoice drafts prepared, never sent on their own.</p>
         <p className="text-sm text-silver/80">In development: AI assistance for office work, built on the same checked records. People will still approve every consequential step.</p>
       </>
     ),
@@ -91,7 +91,7 @@ const ROLES = [
 
 const TRUST = [
   { title: "Separated by company", text: "Every company's records are isolated in the database, not just hidden on screen." },
-  { title: "A full audit trail", text: "Changes to key records — assignments, tickets, billing handoffs — are kept with who made them." },
+  { title: "A full audit trail", text: "Changes to key records (assignments, tickets, billing handoffs) are kept with who made them." },
   { title: "People decide", text: "Suggestions never act on their own. Assignments, ticket acceptance and handoffs need an authorized person." },
 ];
 
@@ -160,13 +160,13 @@ export default function HomePage() {
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <SectionHeading id="intel-title" title="Know what's happening. Understand why. Decide what comes next.">
-              <p>A driver reports a brake problem on a truck booked for tomorrow. Here is what Taviron does — and what it leaves to you.</p>
+              <p>A driver reports a brake problem on a truck booked for tomorrow. Here is what Taviron does, and what it leaves to you.</p>
             </SectionHeading>
             <ol className="mt-6 space-y-4">
               {[
                 ["Detect", "The shop opens a safety-critical work order from the report, which restricts the truck at once; its assigned loads appear in the Command Center as assignment problems."],
                 ["Explain", "Each item names the reason and links to the load, the truck and the work order."],
-                ["Compare", "Smart Dispatch lists the trucks and drivers that can still take each load — and the ones it left out, with the rule."],
+                ["Compare", "Smart Dispatch lists the trucks and drivers that can still take each load, and the ones it left out, with the rule."],
                 ["Decide", "A dispatcher approves the reassignment; approval re-checks it against the latest data. The truck stays restricted until an authorized inspection clears it."],
               ].map(([t, d], i) => (
                 <li key={t} style={order(i)} className="site-reveal flex gap-4">
@@ -208,7 +208,7 @@ export default function HomePage() {
         <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
           <div>
             <SectionHeading title="Assign with the rules already checked.">
-              <p>Loads are planned against each order and checked before a truck or driver is committed — and when something does not fit, Taviron says why.</p>
+              <p>Loads are planned against each order and checked before a truck or driver is committed. When something does not fit, Taviron says why.</p>
             </SectionHeading>
             <Points
               items={[
@@ -228,12 +228,12 @@ export default function HomePage() {
           <CatalogShot id="tickets" className="lg:order-first" />
           <div>
             <SectionHeading title="Quantities you can stand behind.">
-              <p>The ticket starts in the truck, not in a shoebox — and an order reaches billing only when its deliveries are verified.</p>
+              <p>The ticket starts in the truck, not in a shoebox, and an order reaches billing only when its deliveries are verified.</p>
             </SectionHeading>
             <Points
               items={[
                 "Drivers see their assignments on the phone and submit tickets with photos; the office enters paper tickets and scans.",
-                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason — nothing is overwritten.",
+                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason. Nothing is overwritten.",
                 "Partly delivered orders stay out of billing; invoice drafts are prepared for review, not sent.",
               ]}
             />
@@ -260,7 +260,7 @@ export default function HomePage() {
             <li className={`bg-navy-2 ${publishedFeatures().length % 2 === 0 ? "sm:col-span-2" : "sm:col-span-1"} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][publishedFeatures().length % 3]}`}>
               <Link href="/platform" className="group flex h-full flex-col justify-center p-5 hover:bg-navy">
                 <span className="font-semibold text-electric group-hover:underline">See every capability on the real app</span>
-                <span className="mt-1.5 text-sm text-silver/85">Screens from the demo company, what each one does — and what it does not do yet.</span>
+                <span className="mt-1.5 text-sm text-silver/85">Screens from the demo company, what each one does, and what it does not do yet.</span>
               </Link>
             </li>
           </ul>

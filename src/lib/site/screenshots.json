@@ -9,7 +9,7 @@
       "viewport": "desktop",
       "ready": "Command Center",
       "alt": "The Taviron Command Center for a demo company: the items that need attention, urgent ones first, with today's work",
-      "caption": "Command Center — the live demo company, fictional data."
+      "caption": "Command Center. The live demo company, fictional data."
     },
     {
       "id": "plan-the-day",
@@ -19,7 +19,7 @@
       "viewport": "desktop",
       "ready": "Proposed assignments",
       "alt": "Plan the day in a demo company: plans compared by loads covered, urgent loads and estimated revenue, with each proposed truck and driver and what still needs review",
-      "caption": "Plan the day — demo company, fictional data. Nothing is assigned until a dispatcher approves.",
+      "caption": "Plan the day. Demo company, fictional data. Nothing is assigned until a dispatcher approves.",
       "scroll": "Plans"
     },
     {
@@ -30,7 +30,7 @@
       "viewport": "desktop",
       "ready": "Smart Dispatch",
       "alt": "The dispatch board for a demo company: urgent orders, orders waiting for a date, Smart Dispatch suggestions and the day's loads",
-      "caption": "Dispatch — demo company, fictional data."
+      "caption": "Dispatch. Demo company, fictional data."
     },
     {
       "id": "order",
@@ -41,7 +41,7 @@
       "viewport": "desktop",
       "ready": "History",
       "alt": "An order in a demo company with its progress across dispatch, delivery tickets and billing readiness, and its history",
-      "caption": "Order detail — demo company, fictional data."
+      "caption": "Order detail. Demo company, fictional data."
     },
     {
       "id": "tickets",
@@ -51,7 +51,7 @@
       "viewport": "desktop",
       "ready": "Delivery Tickets",
       "alt": "Delivery Tickets in a demo company, filtered to tickets that need review: each with its paper ticket number, order and customer, delivered quantity, truck and driver",
-      "caption": "Delivery tickets — demo company, fictional data."
+      "caption": "Delivery tickets. Demo company, fictional data."
     },
     {
       "id": "driver",
@@ -61,7 +61,7 @@
       "viewport": "phone",
       "ready": "My Day",
       "alt": "The driver's My Day on a phone: today's load with site, truck and planned tons, and buttons to enter the ticket or report a problem",
-      "caption": "Driver portal on a phone — demo company, fictional data."
+      "caption": "Driver portal on a phone. Demo company, fictional data."
     },
     {
       "id": "maintenance",
@@ -71,7 +71,7 @@
       "viewport": "desktop",
       "ready": "Work orders",
       "alt": "Maintenance in a demo company: open work orders with urgency, a safety-critical brake defect holding a truck out of dispatch, and preventive schedules coming due",
-      "caption": "Maintenance — demo company, fictional data."
+      "caption": "Maintenance. Demo company, fictional data."
     },
     {
       "id": "fleet",
@@ -81,7 +81,7 @@
       "viewport": "desktop",
       "ready": "Fleet",
       "alt": "The fleet overview for a demo company: trucks and trailers with service status, documents expiring soon and equipment needing attention",
-      "caption": "Fleet — demo company, fictional data."
+      "caption": "Fleet. Demo company, fictional data."
     },
     {
       "id": "billing",
@@ -90,8 +90,8 @@
       "path": "/billing",
       "viewport": "desktop",
       "ready": "Billing",
-      "alt": "Billing readiness in a demo company: orders by readiness, with what still blocks each one — missing or unverified tickets, review exceptions — and the orders ready for an invoice draft",
-      "caption": "Billing readiness — demo company, fictional data. Drafts are prepared for review; nothing is sent."
+      "alt": "Billing readiness in a demo company: orders by readiness, with what still blocks each one (missing or unverified tickets, review exceptions) and the orders ready for an invoice draft",
+      "caption": "Billing readiness. Demo company, fictional data. Drafts are prepared for review; nothing is sent."
     },
     {
       "id": "communications",
@@ -101,7 +101,7 @@
       "viewport": "desktop",
       "ready": "Communications",
       "alt": "Communications in a demo company: the workspace for an order in dispatch, and notifications for expiring truck registrations and inspections, time-off requests and a critical truck restriction",
-      "caption": "Communications — demo company, fictional data."
+      "caption": "Communications. Demo company, fictional data."
     },
     {
       "id": "employees",
@@ -111,7 +111,7 @@
       "viewport": "desktop",
       "ready": "Showing 1–",
       "alt": "The employee directory in a demo company: drivers, dispatch, office and shop staff with their role, department, primary truck and status, including a driver on leave",
-      "caption": "Employees — demo company, fictional data."
+      "caption": "Employees. Demo company, fictional data."
     },
     {
       "id": "reports",
@@ -121,7 +121,7 @@
       "viewport": "desktop",
       "ready": "Verified delivered value",
       "alt": "The Reports page in a demo company for the last 30 days: delivery tickets and review times, verified delivered value from accepted tickets, and totals by customer, material and truck",
-      "caption": "Reports — demo company, fictional data. Measured from recorded tickets and orders; nothing is estimated."
+      "caption": "Reports. Demo company, fictional data. Measured from recorded tickets and orders; nothing is estimated."
     },
     {
       "id": "setup",
@@ -130,8 +130,8 @@
       "path": "/setup",
       "viewport": "desktop",
       "ready": "steps complete",
-      "alt": "Company setup in a demo company: a checklist of what Taviron needs before its checks and plans can rely on the data — company profile, people and roles, customers, materials and rates, trucks and drivers — with what is still missing",
-      "caption": "Company setup — demo company, fictional data."
+      "alt": "Company setup in a demo company: a checklist of what Taviron needs before its checks and plans can rely on the data (company profile, people and roles, customers, materials and rates, trucks and drivers), with what is still missing",
+      "caption": "Company setup. Demo company, fictional data."
     },
     {
       "id": "maintenance-estimates",
@@ -141,7 +141,7 @@
       "viewport": "desktop",
       "ready": "What each kind of job takes",
       "alt": "Time estimates in a demo company: typical hours per kind of job learned from logged labor, and estimate against actual by job and by mechanic",
-      "caption": "Time estimates — demo company, fictional data."
+      "caption": "Time estimates. Demo company, fictional data."
     },
     {
       "id": "speed-metrics",
@@ -152,7 +152,7 @@
       "viewport": "desktop",
       "ready": "Time to plan tomorrow",
       "alt": "Command Center speed figures in a demo company: time to plan tomorrow, delivery to billing-ready and ticket review pace, measured from recorded work",
-      "caption": "Speed on the Command Center — demo company, fictional data."
+      "caption": "Speed on the Command Center. Demo company, fictional data."
     },
     {
       "id": "truck-health",
@@ -163,7 +163,7 @@
       "ready": "Truck health",
       "scroll": "Truck health",
       "alt": "Truck health in a demo company's maintenance page: each truck that needs watching, with the reasons such as overdue service or repeated defects",
-      "caption": "Truck health — demo company, fictional data."
+      "caption": "Truck health. Demo company, fictional data."
     },
     {
       "id": "driver-scorecard",
@@ -174,7 +174,7 @@
       "ready": "Drivers",
       "scroll": "Drivers",
       "alt": "The drivers table in a demo company's reports: loads, on-time deliveries and same-day tickets per driver for the period, with no ranking",
-      "caption": "Driver scorecard — demo company, fictional data."
+      "caption": "Driver scorecard. Demo company, fictional data."
     },
     {
       "id": "quote-outcomes",
@@ -185,7 +185,7 @@
       "ready": "Quotes won and lost",
       "scroll": "Quotes won and lost",
       "alt": "Quotes won and lost in a demo company's reports: win rate, reasons for lost quotes and rates by material",
-      "caption": "Quotes won and lost — demo company, fictional data."
+      "caption": "Quotes won and lost. Demo company, fictional data."
     },
     {
       "id": "site-notes",
@@ -195,7 +195,7 @@
       "viewport": "desktop",
       "ready": "Site notes from customers",
       "alt": "Site notes customers sent from their portal in a demo company, waiting for the office to review before drivers see them",
-      "caption": "Site notes from customers — demo company, fictional data."
+      "caption": "Site notes from customers. Demo company, fictional data."
     },
     {
       "id": "accountant-view",
@@ -205,7 +205,7 @@
       "viewport": "desktop",
       "ready": "Accountant view",
       "alt": "The accountant view in a demo company: the year's invoiced, received and still-owed totals, invoices issued, receivables by age and fuel and IFTA by quarter",
-      "caption": "Accountant view — demo company, fictional data."
+      "caption": "Accountant view. Demo company, fictional data."
     },
     {
       "id": "hired-trucks",
@@ -215,7 +215,7 @@
       "viewport": "desktop",
       "ready": "Hired trucks",
       "alt": "Hired trucks in a demo company: outside haulers, their offers and confirmed jobs",
-      "caption": "Hired trucks — demo company, fictional data."
+      "caption": "Hired trucks. Demo company, fictional data."
     },
     {
       "id": "hauler-settlements",
@@ -226,7 +226,7 @@
       "ready": "Hired trucks",
       "scroll": "Settlements",
       "alt": "Hauler settlements in a demo company: each statement with the hauler, period, net amount and status",
-      "caption": "Hauler settlements — demo company, fictional data."
+      "caption": "Hauler settlements. Demo company, fictional data."
     },
     {
       "id": "safety-incidents",
@@ -236,7 +236,7 @@
       "viewport": "desktop",
       "ready": "Safety",
       "alt": "Safety incidents in a demo company: reported incidents with type, people involved, status and follow-up",
-      "caption": "Safety incidents — demo company, fictional data."
+      "caption": "Safety incidents. Demo company, fictional data."
     },
     {
       "id": "load-profit",
@@ -247,7 +247,7 @@
       "ready": "Reports",
       "scroll": "Profit",
       "alt": "Estimated profit per load and per customer in a demo company's reports, from the company's own cost rates",
-      "caption": "Profit per load — demo company, fictional data."
+      "caption": "Profit per load. Demo company, fictional data."
     },
     {
       "id": "parts-inventory",
@@ -257,7 +257,7 @@
       "viewport": "desktop",
       "ready": "Parts",
       "alt": "Shop parts in a demo company: parts on hand, reorder points and parts used on work orders",
-      "caption": "Shop parts — demo company, fictional data."
+      "caption": "Shop parts. Demo company, fictional data."
     },
     {
       "id": "pricing-help",
@@ -267,7 +267,7 @@
       "viewport": "desktop",
       "ready": "Pricing help",
       "alt": "A draft quote in a demo company with Pricing help: for each line, what the company's own won and lost quotes charged and a suggested rate with the reasoning",
-      "caption": "Quote pricing help — demo company, fictional data.",
+      "caption": "Quote pricing help. Demo company, fictional data.",
       "open": "^QTE-\\d+",
       "scroll": "Pricing help"
     },
@@ -279,7 +279,7 @@
       "viewport": "desktop",
       "ready": "Order to cash",
       "alt": "Order to cash in a demo company: each order's path from delivery to ticket review, billing and payment, with what is holding it up",
-      "caption": "Order to cash — demo company, fictional data."
+      "caption": "Order to cash. Demo company, fictional data."
     },
     {
       "id": "schedules",
@@ -289,7 +289,7 @@
       "viewport": "desktop",
       "ready": "Schedule",
       "alt": "Shift schedule in a demo company: drivers' shifts across the week with the loads forecast for each day",
-      "caption": "Shift schedules — demo company, fictional data."
+      "caption": "Shift schedules. Demo company, fictional data."
     },
     {
       "id": "route-planner",
@@ -299,7 +299,7 @@
       "viewport": "desktop",
       "ready": "Each truck's day as a route",
       "alt": "The dispatch board in a demo company with route planning: each truck's loads in order from the yard to every site",
-      "caption": "Route planning — demo company, fictional data."
+      "caption": "Route planning. Demo company, fictional data."
     },
     {
       "id": "company-import",
@@ -309,7 +309,7 @@
       "viewport": "desktop",
       "ready": "Import",
       "alt": "Spreadsheet import in a demo company's settings: upload customers, trucks, drivers and sites from a spreadsheet and check them before saving",
-      "caption": "Spreadsheet import — demo company, fictional data."
+      "caption": "Spreadsheet import. Demo company, fictional data."
     },
     {
       "id": "invoicing",
@@ -319,7 +319,7 @@
       "viewport": "desktop",
       "ready": "Invoices",
       "alt": "Invoices in a demo company: drafts, open, overdue, partly paid and paid invoices with amounts due",
-      "caption": "Invoices and receivables — demo company, fictional data."
+      "caption": "Invoices and receivables. Demo company, fictional data."
     },
     {
       "id": "morning-briefing",
@@ -329,7 +329,7 @@
       "viewport": "desktop",
       "ready": "Good",
       "alt": "The morning briefing in a demo company: today's loads, what needs attention and yesterday's results on one page",
-      "caption": "Morning briefing — demo company, fictional data."
+      "caption": "Morning briefing. Demo company, fictional data."
     },
     {
       "id": "customer-insights",
@@ -339,7 +339,7 @@
       "viewport": "desktop",
       "ready": "Customer insights",
       "alt": "Customer insights in a demo company: each customer's health, payment habits and the cash forecast",
-      "caption": "Customer health and cash forecast — demo company, fictional data."
+      "caption": "Customer health and cash forecast. Demo company, fictional data."
     },
     {
       "id": "wait-times",
@@ -349,7 +349,7 @@
       "viewport": "desktop",
       "ready": "Wait times",
       "alt": "Wait times in a demo company: how long trucks wait at each quarry and job site, from drivers' arrival and departure taps",
-      "caption": "Wait times — demo company, fictional data."
+      "caption": "Wait times. Demo company, fictional data."
     },
     {
       "id": "revenue-check",
@@ -359,7 +359,7 @@
       "viewport": "desktop",
       "ready": "Revenue check",
       "alt": "Revenue check in a demo company: deliveries not billed, billed less than delivered or below the price list, with estimated amounts",
-      "caption": "Revenue check — demo company, fictional data."
+      "caption": "Revenue check. Demo company, fictional data."
     },
     {
       "id": "gps-hours",
@@ -369,7 +369,7 @@
       "viewport": "desktop",
       "ready": "Locations",
       "alt": "Truck locations and driver hours in a demo company: each truck's last position on a map and each driver's hours left, with age and source",
-      "caption": "Truck locations and driver hours — demo company, fictional data."
+      "caption": "Truck locations and driver hours. Demo company, fictional data."
     },
     {
       "id": "fuel-ifta",
@@ -379,7 +379,7 @@
       "viewport": "desktop",
       "ready": "Fuel",
       "alt": "Fuel and IFTA in a demo company: fuel receipts, miles per state from trip sheets and the quarter's IFTA summary",
-      "caption": "Fuel and IFTA — demo company, fictional data."
+      "caption": "Fuel and IFTA. Demo company, fictional data."
     },
     {
       "id": "offline-driver",
@@ -389,7 +389,7 @@
       "viewport": "phone",
       "ready": "My Day",
       "alt": "The driver's My Day on a phone in a demo company: the day's loads are saved on the phone so they stay readable without signal",
-      "caption": "Works without signal — demo company, fictional data."
+      "caption": "Works without signal. Demo company, fictional data."
     },
     {
       "id": "inspections",
@@ -399,7 +399,7 @@
       "viewport": "desktop",
       "ready": "Inspections",
       "alt": "Digital inspections in a demo company: pre-trip and post-trip inspections by truck, with defects that opened work orders",
-      "caption": "Digital inspections — demo company, fictional data."
+      "caption": "Digital inspections. Demo company, fictional data."
     },
     {
       "id": "credit-holds",
@@ -409,7 +409,7 @@
       "viewport": "desktop",
       "ready": "On credit hold",
       "alt": "A customer on credit hold in a demo company: the hold, its reason and credit limit, shown wherever orders are dispatched",
-      "caption": "Credit holds — demo company, fictional data.",
+      "caption": "Credit holds. Demo company, fictional data.",
       "open": "^Harlow Homes \\(demo\\)$"
     },
     {
@@ -420,7 +420,7 @@
       "viewport": "desktop",
       "ready": "Booking",
       "alt": "The customer portal settings in a demo company, where dispatch opens days for customers to request loads",
-      "caption": "Customer self-booking — demo company, fictional data."
+      "caption": "Customer self-booking. Demo company, fictional data."
     }
   ]
 }

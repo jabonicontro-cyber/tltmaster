@@ -68,7 +68,7 @@ test("the office invoices a handed-off order, emails it and records a partial pa
 
     await page.getByRole("textbox", { name: "To", exact: true }).fill("ap@prairieview.example");
     await page.getByRole("button", { name: "Send invoice" }).click();
-    await expect(page.getByText(/Preview only — nothing was sent|Test mode: the email went to the test inbox|Emailed to the customer/)).toBeVisible();
+    await expect(page.getByText(/Preview only. Nothing was sent|Test mode: the email went to the test inbox|Emailed to the customer/)).toBeVisible();
 
     const pay = page.getByRole("form", { name: "Record a payment" });
     await pay.getByLabel("Amount ($)").fill("100.00");

@@ -79,7 +79,7 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
     return (
       <div role="status" className="rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-8 shadow-card">
         <CheckCircle2 className="size-8 text-brand" aria-hidden />
-        <h2 className="mt-4 text-xl font-bold text-cloud">Thank you — your message reached the Taviron team.</h2>
+        <h2 className="mt-4 text-xl font-bold text-cloud">Thank you. Your message reached the Taviron team.</h2>
         <p className="mt-2 text-silver">{kind === "demo" ? "We will follow up by email to arrange the walkthrough." : "We will reply by email."}</p>
       </div>
     );

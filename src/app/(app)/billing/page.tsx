@@ -356,7 +356,7 @@ function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }:
                       <Link href={`/billing/orders/${r.order_id}`} className={cn("font-semibold tabular hover:underline", r.reverted_at && "line-through")}>{r.order.order_number}</Link>
                       <span className="text-sm text-muted"> · {r.order.customer_name}</span>
                       {r.reverted_at && <div className="text-sm text-muted">Undone by {board.people[r.reverted_by ?? ""] ?? "someone"}: {r.revert_reason}</div>}
-                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff — check the invoice in your accounting system.</div>}
+                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff: check the invoice in your accounting system.</div>}
                       {qb.shown && <QuickBooksStatus sends={qb.sends[r.id] ?? []} entityNames={qb.entityNames} />}
                     </Td>
                     <Td className="hidden sm:table-cell tabular">{serviceDates(r.order.service_start, r.order.service_end)}</Td>

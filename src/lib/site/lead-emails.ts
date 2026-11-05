@@ -22,15 +22,15 @@ export function confirmationEmail(lead: LeadForEmail): { subject: string; text: 
   const what = lead.kind === "demo" ? "demo request" : "message";
   const subject = lead.kind === "demo" ? "We received your Taviron demo request" : "We received your message to Taviron";
   const greeting = `Hello ${firstName(lead.name)},`;
-  const thanks = `Thank you — your ${what} reached the Taviron team${lead.company_name ? ` (${lead.company_name})` : ""}.`;
+  const thanks = `Thank you. Your ${what} reached the Taviron team${lead.company_name ? ` (${lead.company_name})` : ""}.`;
   const next = lead.kind === "demo"
     ? "We will follow up by email to arrange a walkthrough. The demo is free and uses fictional data."
     : "We will reply by email.";
   const why = "You received this email because this address was entered on the Taviron website. If that was not you, you can ignore it.";
   return {
     subject,
-    text: [greeting, "", thanks, next, "", why, "", "— The Taviron team"].join("\n"),
-    html: renderEmailHtml({ preheader: thanks, heading: subject, paragraphs: [greeting, thanks, next, "— The Taviron team"], footer: why }),
+    text: [greeting, "", thanks, next, "", why, "", "The Taviron team"].join("\n"),
+    html: renderEmailHtml({ preheader: thanks, heading: subject, paragraphs: [greeting, thanks, next, "The Taviron team"], footer: why }),
   };
 }
 
@@ -51,13 +51,13 @@ export function notificationEmail(lead: LeadForEmail, opts: { leadUrl: string; c
     "",
     `Name: ${lead.name}`,
     `Email: ${lead.email}`,
-    `Company: ${lead.company_name || "—"}`,
-    `Phone: ${lead.phone || "—"}`,
+    `Company: ${lead.company_name || "not given"}`,
+    `Phone: ${lead.phone || "not given"}`,
   ];
   if (lead.kind === "demo") {
-    lines.push(`Hauling trucks: ${lead.truck_count ?? "—"}`, `Dispatch bases: ${lead.base_count ?? "—"}`);
+    lines.push(`Hauling trucks: ${lead.truck_count ?? "not given"}`, `Dispatch bases: ${lead.base_count ?? "not given"}`);
   }
-  lines.push("", lead.kind === "demo" ? "What they would most like Taviron to improve:" : "Message:", lead.message || "—", "", `Open the lead: ${opts.leadUrl}`);
+  lines.push("", lead.kind === "demo" ? "What they would most like Taviron to improve:" : "Message:", lead.message || "not given", "", `Open the lead: ${opts.leadUrl}`);
   const subject = `${label}: ${lead.company_name || lead.name}${opts.created ? "" : " (sent again)"}`;
   return {
     subject,

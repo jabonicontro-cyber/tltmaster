@@ -32,7 +32,7 @@ export const AREAS: PlatformArea[] = [
     label: "Smart Dispatch & Load Management",
     title: "Dispatch that checks the rules before it suggests anything.",
     summary: "Loads, assignments and the day's plan, with every constraint checked first.",
-    problem: "A dispatcher juggles requested dates, truck capacity, driver qualifications, time off and the shop schedule in their head — and a missed detail shows up as a late or refused load.",
+    problem: "A dispatcher juggles requested dates, truck capacity, driver qualifications, time off and the shop schedule in their head, and a missed detail shows up as a late or refused load.",
     value: "Smart Dispatch and Plan the day only propose trucks and drivers that pass the company's hard rules, explain every load they cannot cover, and leave the decision to the dispatcher.",
     workflow: [
       { step: "Confirmed order waits to be scheduled", detail: "Orders without a delivery date sit in Needs scheduling until someone picks a day, so nothing is forgotten." },
@@ -55,7 +55,7 @@ export const AREAS: PlatformArea[] = [
     label: "Fleet & Maintenance",
     title: "The shop and dispatch work from the same truck record.",
     summary: "Equipment records, work orders, preventive schedules and restrictions dispatch respects.",
-    problem: "A truck reported with bad brakes gets assigned anyway because the note never reached dispatch — or a service comes due without anyone noticing.",
+    problem: "A truck reported with bad brakes gets assigned anyway because the note never reached dispatch, or a service comes due without anyone noticing.",
     value: "A driver's report becomes a work order; a safety-critical defect restricts the truck until an authorized inspection clears it, and dispatch cannot assign it in the meantime.",
     workflow: [
       { step: "A driver reports a problem", detail: "Equipment and breakdown reports from the phone reach the dispatcher's queue and can open a work order." },
@@ -77,11 +77,11 @@ export const AREAS: PlatformArea[] = [
     label: "Customer & Order Management",
     title: "From the first quote to a delivery ready to bill.",
     summary: "Customers, price lists, quotes, orders, tickets and billing readiness, connected.",
-    problem: "A quote lives in email, the order in a spreadsheet and the delivery tickets in a folder — so what was promised, delivered and billed never quite match.",
+    problem: "A quote lives in email, the order in a spreadsheet and the delivery tickets in a folder, so what was promised, delivered and billed never quite match.",
     value: "One chain of records: the accepted quote becomes its order once, deliveries are verified against it, and only fully verified orders become ready to bill.",
     workflow: [
       { step: "Price it", detail: "Standard and customer-specific price lists with effective dates; quotes are versioned PDFs and issued versions are locked." },
-      { step: "Accept it", detail: "An accepted quote converts to one order, with its prices — a retry or double click does not make a second." },
+      { step: "Accept it", detail: "An accepted quote converts to one order, with its prices. A retry or double click does not make a second." },
       { step: "Deliver it", detail: "Loads are dispatched and every delivery ticket is reviewed beside its order; corrections are new revisions." },
       { step: "Hand it to billing", detail: "Differences between ordered and delivered quantities must be acknowledged; ready orders are handed off to accounting in batches with an audit trail." },
     ],
@@ -98,18 +98,18 @@ export const AREAS: PlatformArea[] = [
     slug: "intelligence",
     label: "Operational Intelligence & AI",
     title: "Know what's happening. Understand why. Decide what comes next.",
-    summary: "What needs attention, why, and the evidence behind it — with people deciding.",
+    summary: "What needs attention, why, and the evidence behind it, with people deciding.",
     problem: "Problems hide across the board, the shop and the ticket pile until a customer calls.",
-    value: "Taviron reads the same records the work happens in and surfaces what needs attention with the reason and the record to open — measured, never guessed.",
+    value: "Taviron reads the same records the work happens in and surfaces what needs attention with the reason and the record to open. Measured, never guessed.",
     workflow: [
       { step: "See what needs attention", detail: "The Command Center ranks urgent orders, loads without a truck, assignment problems, missing tickets, billing blocks and equipment out of service, each with its owner." },
-      { step: "Understand why", detail: "Every item names its reason — the rule a load breaks, the ticket that is missing — and links to the record." },
+      { step: "Understand why", detail: "Every item names its reason (the rule a load breaks, the ticket that is missing) and links to the record." },
       { step: "Compare the options", detail: "Plan the day shows the same day planned for different priorities, with the trade-offs and every load it cannot cover explained." },
       { step: "Decide", detail: "People approve assignments, accept tickets and hand off billing. Reports measure what happened from recorded loads, tickets and orders." },
     ],
     controls: [
       "Suggestions and plans propose; an authorized person approves every consequential step.",
-      "Where data is missing — hours of service, distances, costs — the screens say so instead of estimating.",
+      "Where data is missing (hours of service, distances, costs), the screens say so instead of estimating.",
       "Estimated revenue is labelled as an estimate; margin is not shown without recorded costs.",
     ],
     features: ["command-center", "plan-the-day", "reports"],
@@ -125,7 +125,7 @@ export const AREAS: PlatformArea[] = [
     title: "The next step reaches the right person, with the record attached.",
     summary: "Alerts, escalations, approvals and handoffs between the office, dispatch, the shop and drivers.",
     problem: "Hand-offs between the office, dispatch, the shop and drivers depend on someone remembering to call.",
-    value: "Taviron routes the next step to the person who can act on it, escalates what is urgent, and records who approved what — without acting on its own.",
+    value: "Taviron routes the next step to the person who can act on it, escalates what is urgent, and records who approved what, without acting on its own.",
     workflow: [
       { step: "An event happens", detail: "An urgent order is flagged, a driver reports a delay or breakdown, a ticket arrives, a truck goes out of service." },
       { step: "The right people are told", detail: "Operational alerts carry a priority; urgent orders escalate after the company's time limit until someone acknowledges them." },
@@ -199,7 +199,7 @@ export const SEGMENTS: Segment[] = [
       title: "Assign a load while checking the truck and the driver",
       steps: [
         "Open the day's board and pick a load without a truck.",
-        "Smart Dispatch suggests a truck and driver that pass the rules — and lists the trucks it left out and why.",
+        "Smart Dispatch suggests a truck and driver that pass the rules, and lists the trucks it left out and why.",
         "Approve the suggestion; the assignment is re-checked and appears on the driver's phone.",
       ],
       note: "Shown in the demo company with fictional data.",
@@ -211,7 +211,7 @@ export const SEGMENTS: Segment[] = [
   {
     slug: "growing-fleets",
     label: "Growing fleets",
-    title: "More trucks, more customers — the same clear picture.",
+    title: "More trucks, more customers, the same clear picture.",
     summary: "Connected workflows and early warnings as the operation gets busier.",
     intro: "With more trucks and more customer commitments, problems no longer fit on a whiteboard. Taviron connects dispatch, the shop and the office so a problem in one shows up where it matters.",
     needs: [
@@ -255,7 +255,7 @@ export const SEGMENTS: Segment[] = [
     plans: ["enterprise"],
     areas: ["control", "automation", "intelligence"],
     notYet: [
-      "Multiple dispatch bases with per-person base access are built and shown in the plan demos, but not yet generally available — ask us about your locations.",
+      "Multiple dispatch bases with per-person base access are built and shown in the plan demos, but not yet generally available. Ask us about your locations.",
       "Single sign-on and accounting integrations are not available yet.",
     ],
   },

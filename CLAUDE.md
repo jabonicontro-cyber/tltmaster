@@ -85,6 +85,8 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   `available`; docs/MARKETING.md); `capabilities.ts` is derived from it. Every shipped feature updates the catalog and,
   where it deserves a screen, `screenshots.json` plus a capture through `scripts/capture-screenshots.mjs` (quality gate);
   publishing stays a person's decision. Run `docs/RELEASE_CHECKLIST.md` before calling a release done.
+- **No em dashes on the public website (owner 2026-11-04):** site copy, captions, sign-in pages and published guides use
+  commas, colons, periods or parentheses instead (`tests/unit/site-no-em-dash.test.ts`).
 - **Honest data:**
   - Never invent business rules (pay formulas, pricing), contacts, customers, testimonials or metrics.
   - Missing data is shown as missing; estimates are labelled.

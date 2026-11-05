@@ -24,7 +24,7 @@ test("without signal, taps and tickets wait on the phone and reach the office on
   await page.getByLabel(/^Tons/).check();
   await page.getByLabel("Paper / scale ticket number").fill(f.ref);
   await page.getByRole("button", { name: "Send ticket" }).click();
-  await expect(page.getByRole("status")).toContainText("Saved on this phone — not sent yet");
+  await expect(page.getByRole("status")).toContainText("Saved on this phone, not sent yet");
 
   // Still without signal, the app opens on the day saved on the phone: an Arrived tap waits there too, with its time.
   await page.goto("/driver").catch(() => undefined);

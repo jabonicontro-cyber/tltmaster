@@ -39,7 +39,7 @@ export default async function EarlyAccessPage({ searchParams }: { searchParams: 
           <p className="text-xs font-semibold tracking-[0.2em] text-electric uppercase">Early Access</p>
           <h1 className="mt-4 text-3xl leading-tight font-bold tracking-tight text-balance text-cloud sm:text-4xl">Taviron is open by invitation.</h1>
           <p className="mt-4 text-[15px] leading-relaxed text-silver">
-            Operations software for aggregate and material haulers — quotes, orders, dispatch, drivers, delivery tickets and billing readiness in one place. Enter
+            Operations software for aggregate and material haulers: quotes, orders, dispatch, drivers, delivery tickets and billing readiness in one place. Enter
             the Early Access password you received to continue.
           </p>
 
@@ -55,7 +55,7 @@ export default async function EarlyAccessPage({ searchParams }: { searchParams: 
 
           <div className="mt-6 space-y-2 text-sm text-silver/85">
             <p>Don&apos;t have the password? Ask the person who invited you.</p>
-            <p>Invited by your company? Open the link in your invitation email — it works without a password.</p>
+            <p>Invited by your company? Open the link in your invitation email. It works without a password.</p>
             {site ? (
               <p>
                 New to Taviron?{" "}

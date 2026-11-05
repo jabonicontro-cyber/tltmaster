@@ -69,7 +69,7 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       r = await submitInspection(input);
     } catch (e) {
       if (isNetworkError(e) && keep()) return;
-      return setError("Not sent — no connection to the office. Check your signal and try again.");
+      return setError("Not sent: no connection to the office. Check your signal and try again.");
     }
     if (!r.ok) return setError(r.error);
     const failed = r.data.defects > 0 && photos.length ? await uploadPhotos("/maintenance/photos", { inspection: r.data.id }, photos) : 0;
@@ -130,7 +130,7 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       </button>
       {anyDefect && <PhotoPicker id="insp-photos" label="Photos of the defect (optional)" files={photos} onChange={setPhotos} hint="Up to 8. They go to the shop with the work order." />}
       <Field label="Remarks" htmlFor="insp-remarks" hint="Optional"><Textarea id="insp-remarks" rows={2} maxLength={1000} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Field>
-      {savedOffline && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200" role="status">Saved on this phone — not sent yet. It sends by itself when you have signal. Tell dispatch now about any safety defect.</p>}
+      {savedOffline && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200" role="status">Saved on this phone, not sent yet. It sends by itself when you have signal. Tell dispatch now about any safety defect.</p>}
       {safetyDefect && <p className="text-sm font-semibold text-critical" role="status">A safety defect takes this truck out of service until the shop clears it.</p>}
       <Button type="submit" loading={busy} disabled={!truckId || (truck ? !truck.pending.includes(kind) : false)}>Save inspection</Button>
     </form>

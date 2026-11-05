@@ -49,7 +49,7 @@ export default async function WelcomePage() {
       <div>
         <h1 className="text-xl font-bold text-ink">Welcome{setup.company ? ` to ${setup.company}` : ""}</h1>
         <p className="mt-1 text-sm text-ink">
-          You signed in with a temporary password. Create your own password now — only you will know it. Next time, sign in with
+          You signed in with a temporary password. Create your own password now. Only you will know it. Next time, sign in with
           your username <strong className="font-semibold">{setup.username}</strong> and this new password.
         </p>
       </div>

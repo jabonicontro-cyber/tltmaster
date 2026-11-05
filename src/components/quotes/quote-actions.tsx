@@ -279,7 +279,7 @@ function EmailDialog({ quoteId, editSeq, onClose }: { quoteId: string; editSeq: 
     <Dialog open onOpenChange={(o) => !o && !sending && onClose()} title="Email quote" description="The PDF of the current revision is attached. Sending locks this revision." size="lg">
       {preview ? (
         <div className="space-y-4">
-          <Notice tone="warning" title="Preview only — nothing was sent">
+          <Notice tone="warning" title="Preview only. Nothing was sent">
             {preview.reason} This is exactly what would be sent once email is configured.
           </Notice>
           <dl className="space-y-1 rounded-xl border border-line bg-surface p-3 text-sm">

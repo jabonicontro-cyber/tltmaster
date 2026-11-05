@@ -85,7 +85,7 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   // Hours of service are not in Taviron: the dispatcher confirms them before anything is assigned.
   const confirm = page.getByRole("dialog", { name: "Confirm hours of service" });
   await expect(confirm).toContainText("Taviron did not verify them");
-  await confirm.getByRole("button", { name: "I checked — assign" }).click();
+  await confirm.getByRole("button", { name: "I checked, assign" }).click();
   await expectToast(page, new RegExp(`${f.orderNumber} load 1: assigned to truck`));
   await expect(c).toHaveCount(0);
   const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
@@ -111,7 +111,7 @@ test("suggested crew on the board (B136): one click and the hours confirmation a
   await expect(confirm).toContainText("Taviron did not verify them");
   const before = await asUser(USERS.office.email, (q) => q("select count(*)::int as n from public.dispatch_assignments where load_id = $1", [f.loadId]));
   expect(before.rows[0].n).toBe(0);
-  await confirm.getByRole("button", { name: "I checked — assign" }).click();
+  await confirm.getByRole("button", { name: "I checked, assign" }).click();
   await expectToast(page, /Load 1 assigned to truck/);
   const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
   expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
@@ -131,7 +131,7 @@ test("same crew for the order's other loads (B136): offered after an assignment,
   const row = page.locator(`#load-${f.loadId}`);
   await row.scrollIntoViewIfNeeded();
   await row.getByRole("button", { name: /^Assign load 1 to truck .+ and .+$/ }).click({ timeout: 30_000 });
-  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked — assign" }).click();
+  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked, assign" }).click();
   await page.getByRole("button", { name: "Same crew for the other load" }).click();
   const dialog = page.getByRole("dialog", { name: "Assign 1 load" });
   await expect(dialog).toBeVisible();
@@ -174,7 +174,7 @@ test("a proposal that went stale is refused with an explanation instead of being
   // Meanwhile someone else assigns the load on the board.
   await asUser(USERS.office.email, (q) => q("select public.assign_load($1, $2, null, $3, 'Assigned elsewhere (e2e)', null)", [f.loadId, f.truckId, f.driverId]));
   await c.getByRole("button", { name: "Approve and assign" }).click();
-  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked — assign" }).click();
+  await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked, assign" }).click();
   await expect(page.getByRole("alert").filter({ hasText: "This proposal is no longer valid" })).toBeVisible();
   const rows = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
   expect(rows.rows).toEqual([{ note: "Assigned elsewhere (e2e)" }]);

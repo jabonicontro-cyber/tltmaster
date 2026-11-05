@@ -91,7 +91,7 @@ export function ClearanceActions({ id, clearance, unit = "truck" }: { id: string
           else { toast.success(r.message ?? "Started."); router.refresh(); }
         })}>Start inspection</Button>
       )}
-      <Button icon={<ShieldCheck className="size-4" />} onClick={() => { setNotes(""); setOutcome("passed"); }}>Passed — clear for service</Button>
+      <Button icon={<ShieldCheck className="size-4" />} onClick={() => { setNotes(""); setOutcome("passed"); }}>Passed, clear for service</Button>
       <Button variant="secondary" icon={<ShieldX className="size-4" />} onClick={() => { setNotes(""); setOutcome("failed"); }}>Failed</Button>
       <ConfirmDialog
         open={Boolean(outcome)}

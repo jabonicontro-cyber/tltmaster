@@ -56,7 +56,7 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
   await page.getByRole("button", { name: "Email quote" }).click();
   await expect(page.getByLabel("Subject")).not.toHaveValue("");
   await page.getByRole("button", { name: "Preview email" }).click();
-  await expect(page.getByText("Preview only — nothing was sent")).toBeVisible();
+  await expect(page.getByText("Preview only. Nothing was sent")).toBeVisible();
   await page.getByRole("dialog").getByRole("button", { name: "Close", exact: true }).last().click();
   await expect(page.getByText("Draft", { exact: true }).first()).toBeVisible();
 

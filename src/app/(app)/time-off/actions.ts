@@ -153,6 +153,6 @@ export async function runAccruals(): Promise<ActionResult<{ entries: number; hou
     if (error) return fail(dbErrorMessage(error));
     const r = data as { entries: number; hours: number; forfeitures: number };
     revalidatePath("/time-off", "layout");
-    return ok(r, r.entries || r.forfeitures ? `Posted ${r.entries} accrual${r.entries === 1 ? "" : "s"} (${Number(Number(r.hours).toFixed(2))} h)${r.forfeitures ? ` and ${r.forfeitures} plan-year forfeiture${r.forfeitures === 1 ? "" : "s"}` : ""}.` : "Nothing new to post — accruals are up to date.");
+    return ok(r, r.entries || r.forfeitures ? `Posted ${r.entries} accrual${r.entries === 1 ? "" : "s"} (${Number(Number(r.hours).toFixed(2))} h)${r.forfeitures ? ` and ${r.forfeitures} plan-year forfeiture${r.forfeitures === 1 ? "" : "s"}` : ""}.` : "Nothing new to post: accruals are up to date.");
   });
 }

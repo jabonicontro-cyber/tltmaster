@@ -5,7 +5,7 @@ import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "Trust & Security",
-  description: "How Taviron separates each company's data, checks permissions, records key changes, handles AI and onboards a company — and what is not in place yet.",
+  description: "How Taviron separates each company's data, checks permissions, records key changes, handles AI and onboards a company, and what is not in place yet.",
   alternates: { canonical: "/trust" },
 };
 
@@ -16,7 +16,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
   {
     title: "Your company's data stays yours",
     items: [
-      "Every business record carries its company, and row-level security in the database limits every query to the signed-in person's own company — not just the screen.",
+      "Every business record carries its company, and row-level security in the database limits every query to the signed-in person's own company, not just the screen.",
       "A company id or role sent from a browser is never trusted: the server takes them from the session.",
       "Demo companies hold fictional records only and never send anything to anyone.",
     ],
@@ -31,7 +31,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
   {
     title: "A record of what was done",
     items: [
-      "Key changes — assignments, ticket reviews and corrections, billing handoffs, permission changes — keep who made them and when.",
+      "Key changes (assignments, ticket reviews and corrections, billing handoffs, permission changes) keep who made them and when.",
       "Corrections are new revisions; the earlier version is kept, not overwritten.",
       "Consequential steps need an authorized person: suggestions, plans and AI never act on their own.",
     ],
@@ -40,7 +40,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
     title: "AI, handled carefully",
     items: [
       "AI assistance is not switched on yet. Before it can be, a capability needs its own switch, a usage limit and a passing evaluation.",
-      "When on, it reads only what the person may see, sends codes instead of names, email addresses or record ids, and stores usage counts — never the questions or answers.",
+      "When on, it reads only what the person may see, sends codes instead of names, email addresses or record ids, and stores usage counts, never the questions or answers.",
       "It can read and draft; it cannot assign, send, bill or change records.",
     ],
   },
@@ -55,7 +55,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
     title: "Going live is a joint decision",
     items: [
       "Onboarding covers company setup, users and permissions, data import with your review, the integrations you need, and testing your essential workflows before the go-live date is agreed with you.",
-      "Your subscription starts at your actual go-live, per your signed agreement — not when onboarding starts or data is imported.",
+      "Your subscription starts at your actual go-live, per your signed agreement, not when onboarding starts or data is imported.",
     ],
   },
 ];
@@ -71,7 +71,7 @@ export default function TrustPage() {
   return (
     <>
       <PageIntro title="Security you can check, not take on trust.">
-        <p>What Taviron does today to protect each company&apos;s records — and, just as plainly, what is not in place yet.</p>
+        <p>What Taviron does today to protect each company&apos;s records, and just as plainly, what is not in place yet.</p>
       </PageIntro>
       <Container className="grid gap-6 py-16 sm:py-20 md:grid-cols-2">
         {SECTIONS.map((s, n) => (

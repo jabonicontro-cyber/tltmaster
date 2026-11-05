@@ -7,10 +7,10 @@ export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy notice">
       <h2>This website</h2>
-      <p>When you send the demo request or contact form, we store what you enter — name, email, and optionally company, phone, role, fleet size and message — so the Taviron team can reply and keep track of the conversation.</p>
+      <p>When you send the demo request or contact form, we store what you enter (name, email, and optionally company, phone, role, fleet size and message) so the Taviron team can reply and keep track of the conversation.</p>
       <ul>
         <li>We do not sell this information or use it for advertising.</li>
-        <li>To limit abuse, we keep a one-way, keyed fingerprint of the network address a form came from — not the address itself — for a short time.</li>
+        <li>To limit abuse, we keep a one-way, keyed fingerprint of the network address a form came from (not the address itself) for a short time.</li>
         <li>This website sets no advertising or analytics cookies.</li>
       </ul>
       <h2>The app</h2>

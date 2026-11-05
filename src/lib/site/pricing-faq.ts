@@ -5,11 +5,11 @@ import { ANNUAL_DISCOUNT_PERCENT } from "./pricing";
 export const PRICING_FAQ: Faq[] = [
   {
     q: "Which tier fits my company?",
-    a: "The lowest tier that covers both your number of hauling trucks and your number of dispatch bases. Trucks are the active, company-managed hauling trucks you track in Taviron — including ones temporarily in the shop, in seasonal storage or in reserve. Pickups and maintenance vehicles don't count. A dispatch base is a location you dispatch from; several yards run as one base count once.",
+    a: "The lowest tier that covers both your number of hauling trucks and your number of dispatch bases. Trucks are the active, company-managed hauling trucks you track in Taviron, including ones temporarily in the shop, in seasonal storage or in reserve. Pickups and maintenance vehicles don't count. A dispatch base is a location you dispatch from; several yards run as one base count once.",
   },
   {
     q: "When does billing start?",
-    a: "The one-time onboarding fee is paid when you sign up. The monthly subscription starts at go-live — the date you and the Taviron team agree on — not during setup, configuration, testing or training.",
+    a: "The one-time onboarding fee is paid when you sign up. The monthly subscription starts at go-live (the date you and the Taviron team agree on), not during setup, configuration, testing or training.",
   },
   {
     q: "How does the annual commitment work?",

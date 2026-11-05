@@ -46,7 +46,7 @@ export const SITE_NAV: NavGroup[] = [
       { href: "/calculator", label: "Paperwork calculator", text: "What ticket paperwork costs you, from your own numbers." },
       ...(whatsNew ? [{ href: "/whats-new", label: "What's new", text: "The latest release highlights." }] : []),
       { href: "/faq", label: "FAQ", text: "Plain answers about the product, pricing and going live." },
-      { href: "/trust", label: "Trust & Security", text: "What protects your data — and what is not in place yet." },
+      { href: "/trust", label: "Trust & Security", text: "What protects your data, and what is not in place yet." },
     ],
   },
   {

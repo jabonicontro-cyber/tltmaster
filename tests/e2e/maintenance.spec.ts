@@ -61,7 +61,7 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
   await expectToast(page, "Status: Awaiting inspection.");
 
   await owner.reload();
-  await owner.getByRole("button", { name: "Passed — clear for service" }).click();
+  await owner.getByRole("button", { name: "Passed, clear for service" }).click();
   await owner.getByLabel("Inspection notes (optional)").fill("Adjusted and road tested");
   await owner.getByRole("button", { name: "Clear for service" }).click();
   await expectToast(owner, "Cleared. The truck is back in service.");

@@ -131,7 +131,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
                 {chosen && (
                   <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
                     description={`Assign ${l.order_number} load ${l.load_number} to ${chosen.driverLabel} with truck ${chosen.truckLabel}. ${HOS_CONFIRMATION}`}
-                    confirmLabel="I checked — assign" onConfirm={approve} />
+                    confirmLabel="I checked, assign" onConfirm={approve} />
                 )}
               </div>
             ) : (

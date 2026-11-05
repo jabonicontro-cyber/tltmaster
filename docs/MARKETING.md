@@ -52,6 +52,10 @@ Building a feature internally never makes it a public claim on its own:
 - a published feature has not been re-verified in 120 days;
 - ids or names are duplicated, or related ids are unknown.
 
+`tests/unit/site-no-em-dash.test.ts` fails on any em dash in public website copy, screenshot captions, the sign-in
+pages or the Help Center articles published as guides (owner 2026-11-04: they read as machine-written). Use a comma,
+colon, period or parentheses instead.
+
 `tests/unit/site-capabilities.test.ts` keeps the older checks. Link and route checks: the e2e site specs open every
 public page.
 

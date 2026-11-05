@@ -104,7 +104,7 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
       revalidateQuote(quoteId);
       return ok(
         { mode: "preview", reason: mode.reason, subject, to, cc, message, filename: loaded?.doc.filename ?? "quote.pdf" },
-        "Preview only — nothing was sent.",
+        "Preview only. Nothing was sent.",
       );
     }
 

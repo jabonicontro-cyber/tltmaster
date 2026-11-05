@@ -83,7 +83,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByLabel("Number of hauling trucks").fill("18");
   await page.getByLabel("Number of dispatch bases").fill("2");
   await page.getByRole("button", { name: "Request a demo" }).click();
-  await expect(page.getByText("Thank you — your message reached the Taviron team.")).toBeVisible();
+  await expect(page.getByText("Thank you. Your message reached the Taviron team.")).toBeVisible();
 
   // Validation is shown in the form (and checked again on the server).
   const other = await browser.newPage();

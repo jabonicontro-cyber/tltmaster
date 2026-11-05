@@ -13,7 +13,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
   return (
     <>
       <PageIntro title="Talk to the Taviron team.">
-        <p>Questions about the product, pricing or early access — send a message and the team will reply by email.</p>
+        <p>Questions about the product, pricing or early access? Send a message and the team will reply by email.</p>
       </PageIntro>
       <section>
         <Container className="max-w-3xl py-16">

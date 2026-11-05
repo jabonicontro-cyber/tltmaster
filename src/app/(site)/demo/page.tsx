@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 const STEPS = [
   { title: "Tell us about your operation", text: "A few details help us show the parts that matter to you." },
-  { title: "A guided walkthrough", text: "The Taviron team shows the live demo company — fictional customers, orders, trucks and drivers — from each role's point of view." },
+  { title: "A guided walkthrough", text: "The Taviron team shows the live demo company (fictional customers, orders, trucks and drivers) from each role's point of view." },
   { title: "Your questions, your data", text: "If it fits, we talk through how your records would be imported and checked before anything goes live." },
 ];
 

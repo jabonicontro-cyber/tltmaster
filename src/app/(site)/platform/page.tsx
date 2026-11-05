@@ -6,7 +6,7 @@ import { COMING_SOON, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: "Platform",
-  description: "What Taviron does today, feature by feature: Command Center, Plan the day, dispatch with Smart Dispatch, quotes and orders, the driver portal, delivery tickets, maintenance, fleet, billing readiness, communications and security — and what it does not do yet.",
+  description: "What Taviron does today, feature by feature: Command Center, Plan the day, dispatch with Smart Dispatch, quotes and orders, the driver portal, delivery tickets, maintenance, fleet, billing readiness, communications and security, and what it does not do yet.",
   alternates: { canonical: "/platform" },
 };
 
@@ -19,7 +19,7 @@ export default function PlatformPage() {
   return (
     <>
       <PageIntro title="Everything the hauling day touches, connected.">
-        <p>One system of record for the office, dispatch, the shop and the trucks. Every screen below is the real app, with the demo company&apos;s fictional data — and, just as plainly, each capability says what it does not do yet.</p>
+        <p>One system of record for the office, dispatch, the shop and the trucks. Every screen below is the real app, with the demo company&apos;s fictional data. Just as plainly, each capability says what it does not do yet.</p>
       </PageIntro>
 
       <nav aria-label="Capabilities" className="sticky top-16 z-20 border-b border-silver/10 bg-navy backdrop-blur">

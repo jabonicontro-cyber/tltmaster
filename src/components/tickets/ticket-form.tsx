@@ -212,7 +212,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           <p className="flex items-start gap-2 font-semibold">
             <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {confirmMessage}
           </p>
-          <Checkbox className="mt-2" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} label="Yes, this is a separate delivery — record it (it will be flagged for review)" />
+          <Checkbox className="mt-2" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} label="Yes, this is a separate delivery, record it (it will be flagged for review)" />
         </div>
       )}
 

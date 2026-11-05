@@ -289,7 +289,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         problem: "Saving says “Possible duplicate: …”.",
-        fix: "A customer with the same name, email or phone exists. Open the existing record, or tick **This is a different customer — create it anyway** and save again.",
+        fix: "A customer with the same name, email or phone exists. Open the existing record, or tick **This is a different customer, create it anyway** and save again.",
       },
       {
         problem: "“Customer not found or you do not have permission to edit it.”",
@@ -357,7 +357,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { problem: "“Write a short summary.”", fix: "Activity needs a summary. Add a few words describing the contact." },
       { problem: "“Enter the value in dollars, e.g. 12500.”", fix: "Type the value as a number without letters, or leave it empty if unknown." },
       { problem: "“Enter a probability from 0 to 100, or leave it empty.”", fix: "Use a whole number between 0 and 100." },
-      { problem: "“Say why it was lost — it helps the next quote.”", fix: "When the stage is Lost, fill in **If lost, why** before saving." },
+      { problem: "“Say why it was lost. It helps the next quote.”", fix: "When the stage is Lost, fill in **If lost, why** before saving." },
       { problem: "“CRM needs a database update”.", fix: "Activities, follow-ups and opportunities appear once the database update is installed by the owner. Customers and quotes work as before." },
     ],
     next: ["customer-pipeline", "quotes"],
@@ -536,7 +536,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Revisions**: every revision is kept; sent revisions are never changed.",
       "**Emails and deliveries**: every send attempt, including failures and previews.",
       "**History** of status changes.",
-      "**Pricing help** (drafts and sent quotes): for each priced line, the rates of your own won and lost quotes from the last 12 months — at a similar distance from your yard when there are enough — a suggested rate and why. Per-load lines are also compared with your measured cost per load when you can see billing. A suggestion only; customers never see it.",
+      "**Pricing help** (drafts and sent quotes): for each priced line, the rates of your own won and lost quotes from the last 12 months (at a similar distance from your yard when there are enough), a suggested rate and why. Per-load lines are also compared with your measured cost per load when you can see billing. A suggestion only; customers never see it.",
     ],
     tasks: [
       {
@@ -573,7 +573,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     troubleshooting: [
       {
-        problem: "The email dialog says “Email is not configured” or “Preview only — nothing was sent”.",
+        problem: "The email dialog says “Email is not configured” or “Preview only. Nothing was sent”.",
         fix: "No email provider is set up for your company, so Taviron shows exactly what would be sent. If you emailed the quote yourself, close the dialog and use **Mark as sent**.",
       },
       { problem: "“Test mode” appears in the email dialog.", fix: "The email goes to a test inbox, not the customer, and the quote is not marked sent." },
@@ -818,7 +818,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         fix: "Choose another truck, or have the inspection recorded in Maintenance → Clearance queue.",
       },
       { problem: "“A tractor needs a trailer for this load.”", fix: "Choose a trailer, or use a dump truck." },
-      { problem: "“On hold — loads cannot be assigned until the hold is released.”", fix: "Release the hold on the order first." },
+      { problem: "“On hold: loads cannot be assigned until the hold is released.”", fix: "Release the hold on the order first." },
     ],
     next: ["smart-dispatch", "route-planner"],
     related: ["plan-the-day", "load-build", "fleet-drivers"],
@@ -845,14 +845,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: [
           "Read the proposal and its reasons.",
           "Select **Approve and assign**.",
-          "In **Confirm hours of service**, check the driver's hours yourself and select **I checked — assign**.",
+          "In **Confirm hours of service**, check the driver's hours yourself and select **I checked, assign**.",
         ],
       },
       {
         title: "Assign the suggested crew straight from the board",
         steps: [
           "On the board, an unassigned load shows its suggested crew as a button, for example **101 · Isaac Moreno**.",
-          "Select it, check the driver's hours, and select **I checked — assign**. The same checks run as for **Approve and assign**.",
+          "Select it, check the driver's hours, and select **I checked, assign**. The same checks run as for **Approve and assign**.",
           "To pick someone else, select **Assign** next to it. If the customer is on credit hold or the board changed, the assign window opens with the suggested crew filled in.",
           "When the order has more open loads that day, the confirmation offers **Same crew for the other loads**: each load is checked, and nothing is saved until you select **Assign**.",
         ],
@@ -868,7 +868,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     prerequisites: ["Approving needs the permission to edit dispatch; everyone with dispatch access can see proposals."],
     troubleshooting: [
       {
-        problem: "“This proposal is no longer valid — … The proposals have been refreshed; review them again.”",
+        problem: "“This proposal is no longer valid: … The proposals have been refreshed; review them again.”",
         fix: "The board changed after the proposal was made. Review the refreshed proposals.",
       },
       {
@@ -915,7 +915,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: [
           "Tick the assignments you want.",
           "Select **Approve … selected**.",
-          "In **Confirm hours of service**, check hours yourself and select **I checked — approve**.",
+          "In **Confirm hours of service**, check hours yourself and select **I checked, approve**.",
         ],
       },
     ],
@@ -1116,7 +1116,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         fix: "Ask the office to link your login to your driver record (Fleet → Drivers). Until then no loads can be shown.",
       },
       {
-        problem: "“Not sent — no connection to the office. Nothing was saved on this phone.”",
+        problem: "“Not sent: no connection to the office. Nothing was saved on this phone.”",
         fix: "Check your signal and tap **Send again**, or call dispatch.",
       },
       { problem: "“Ticket entry opens on the day of the load.”", fix: "Wait until the delivery day to enter the ticket." },
@@ -1530,7 +1530,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "People authorized to clear vehicles for service.",
     whatYouSee: [
       "Work orders waiting for an authorized inspection.",
-      "**Start inspection**, then **Passed — clear for service** or **Failed**.",
+      "**Start inspection**, then **Passed, clear for service** or **Failed**.",
       "Only people allowed to clear vehicles for service can record the inspection.",
     ],
     tasks: [
@@ -1538,7 +1538,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         title: "Clear a vehicle for service",
         steps: [
           "Open **Clearance queue** and select **Start inspection** on the work order.",
-          "Select **Passed — clear for service**, add **Inspection notes (optional)**, and confirm with **Clear for service**.",
+          "Select **Passed, clear for service**, add **Inspection notes (optional)**, and confirm with **Clear for service**.",
         ],
       },
       {
@@ -1595,7 +1595,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         problem: "“… load … already has ticket …. Confirm that this is a separate delivery to add another.”",
-        fix: "If it really is another delivery, tick **Yes, this is a separate delivery — record it (it will be flagged for review)**.",
+        fix: "If it really is another delivery, tick **Yes, this is a separate delivery, record it (it will be flagged for review)**.",
       },
       { problem: "“You can enter the ticket from the day of the load.”", fix: "Wait until the load's delivery day." },
       { problem: "“Load … is canceled. Tickets can only be entered for planned loads.”", fix: "Check the load on the dispatch board." },
@@ -1681,7 +1681,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       { problem: "“Your company issues invoices in QuickBooks.”", fix: "Change who issues invoices in Settings → Invoicing, or send the order to QuickBooks from Billing." },
       { problem: "“This order already has an invoice.”", fix: "Open the existing invoice from Billing → Handed off. Void it first if it was wrong." },
-      { problem: "**Preview only — nothing was sent.**", fix: "Demo companies never send, and email may not be set up for your company yet. Download the PDF and send it yourself." },
+      { problem: "**Preview only. Nothing was sent.**", fix: "Demo companies never send, and email may not be set up for your company yet. Download the PDF and send it yourself." },
     ],
     next: ["billing"],
     related: ["billing"],
@@ -1793,7 +1793,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "pay-statements",
     title: "Driver pay statements",
-    summary: "Each driver's pay for a payroll period, ticket by ticket, to print — and on the driver's own My Day once the period is approved.",
+    summary: "Each driver's pay for a payroll period, ticket by ticket, to print, and on the driver's own My Day once the period is approved.",
     category: "people",
     routes: ["/payroll/periods/*", "/driver", "/driver/pay/*"],
     permissions: ["payroll.manage", "driver.portal"],
@@ -1876,11 +1876,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     permissions: ["driver.portal"],
     audience: "Drivers using Taviron on their phone.",
     whatYouSee: [
-      "With no signal, the app opens on **Your day as of …**: today's loads as they were when you last had signal. It may be out of date — check with dispatch before acting on it.",
+      "With no signal, the app opens on **Your day as of …**: today's loads as they were when you last had signal. It may be out of date. Check with dispatch before acting on it.",
       "**Waiting to send** on My Day: what is saved on your phone and not yet with the office.",
     ],
     tasks: [
-      { title: "Send a ticket without signal", steps: ["Fill in the ticket as usual (without photos) and tap **Send ticket**.", "It says **Saved on this phone — not sent yet**. Keep the paper ticket; it sends by itself when you have signal."] },
+      { title: "Send a ticket without signal", steps: ["Fill in the ticket as usual (without photos) and tap **Send ticket**.", "It says **Saved on this phone, not sent yet**. Keep the paper ticket; it sends by itself when you have signal."] },
       { title: "If something was not accepted", steps: ["It stays under **Waiting to send** with the reason.", "Tell the office what it was, then tap **Delete**."] },
     ],
     prerequisites: ["Open My Day once with signal each day, so today's loads are saved on the phone."],
@@ -2043,7 +2043,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Office and billing staff, owners.",
     whatYouSee: [
       "Views: **All orders**, **Missing tickets**, **Tickets to review**, **Exceptions**, **Ready to bill** and **Handed off**.",
-      "Each order's status: Missing documentation, Tickets need review, Blocked — exceptions, Work not completed, Ready to bill or Handed off.",
+      "Each order's status: Missing documentation, Tickets need review, Blocked: exceptions, Work not completed, Ready to bill or Handed off.",
       "On an order: **Order lines** (ordered against delivered), **Loads**, exceptions, an **Invoice draft** preview and **Billing history**.",
       "Handoff batches with **Download file (CSV)**.",
     ],
@@ -2073,8 +2073,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       { problem: "An order is not in **Ready to bill**.", fix: "An order is ready when it is completed, every load has an accepted ticket and every exception is acknowledged. The order's row says what still blocks it." },
       { problem: "“Enter the reason for accepting these exceptions.”", fix: "Write why the order can be billed as it stands." },
-      { problem: "“Tickets changed after the handoff — check the invoice in your accounting system.”", fix: "A ticket was corrected after handoff. Compare it with the invoice you entered." },
-      { problem: "“No longer current — exceptions changed”.", fix: "The tickets changed after the acknowledgment. Review and acknowledge again." },
+      { problem: "“Tickets changed after the handoff: check the invoice in your accounting system.”", fix: "A ticket was corrected after handoff. Compare it with the invoice you entered." },
+      { problem: "“No longer current: exceptions changed”.", fix: "The tickets changed after the acknowledgment. Review and acknowledge again." },
     ],
     next: ["order-to-cash"],
     related: ["ticket-review", "order-detail", "reports"],
@@ -2241,7 +2241,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "**On shift today**, **Off today** and **Without a schedule** when the shown week includes today.",
       "**Staffing forecast**: drivers on shift each day of the week next to the loads planned that day. **No driver** marks a day with loads and nobody scheduled.",
-      "**Week**: one row per person with each day's shift, **Off**, or — without a schedule. A moon marks a shift that ends the next day; time off shows on the person's days.",
+      "**Week**: one row per person with each day's shift, **Off**, or a dash without a schedule. A moon marks a shift that ends the next day; time off shows on the person's days.",
       "**Day**: one day as a timeline, each person's shift drawn across 24 hours so gaps and overlaps show at a glance.",
       "**Shift offers**: extra shifts offered to drivers, the shop or everyone, with who asked or accepted and the status.",
     ],
@@ -2380,7 +2380,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { problem: "“Say why the balance is adjusted.”", fix: "Adjustments need a reason; the employee sees it." },
       { problem: "“This would take the balance below zero (balance … h).”", fix: "A balance never goes below zero. Use a smaller adjustment." },
       { problem: "“A kind of time off can draw from one bank only; … already covers one of these.”", fix: "Remove that kind from the other bank first." },
-      { problem: "“Nothing new to post — accruals are up to date.”", fix: "No hours were due since the last run." },
+      { problem: "“Nothing new to post: accruals are up to date.”", fix: "No hours were due since the last run." },
     ],
     next: ["time-off"],
     related: ["settings-time-off-approval", "people"],

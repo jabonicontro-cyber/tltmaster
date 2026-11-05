@@ -11,7 +11,7 @@ export type Readiness = (typeof READINESS)[number];
 export const READINESS_LABELS: Record<Readiness, string> = {
   missing_documentation: "Missing documentation",
   needs_review: "Tickets need review",
-  blocked: "Blocked — exceptions",
+  blocked: "Blocked: exceptions",
   in_progress: "Work not completed",
   ready: "Ready to bill",
   handed_off: "Handed off",

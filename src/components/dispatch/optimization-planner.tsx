@@ -322,7 +322,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
               </Button>
               <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
                 description={`Assign ${chosen.length} selected load(s) from ${plan.label}. ${HOS_CONFIRMATION}`}
-                confirmLabel="I checked — approve" onConfirm={approve} />
+                confirmLabel="I checked, approve" onConfirm={approve} />
             </>
           ) : (
             <span className="text-sm text-muted">Viewing only — approving needs dispatch edit access.</span>

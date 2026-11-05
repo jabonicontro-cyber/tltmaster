@@ -302,7 +302,7 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
         onOpenChange={(o) => !o && setSuggest(null)}
         title="Confirm hours of service"
         description={suggest ? `Assign ${lk.orders.get(suggest.load.order_id)?.order_number ?? "this order"} load ${suggest.load.load_number} to ${suggest.s.driverLabel} with truck ${suggest.s.truckLabel}${suggest.s.trailerLabel ? ` and trailer ${suggest.s.trailerLabel}` : ""}. ${HOS_CONFIRMATION}` : ""}
-        confirmLabel="I checked — assign"
+        confirmLabel="I checked, assign"
         onConfirm={async () => {
           if (!suggest) return;
           const { load, s: sug } = suggest;
@@ -492,7 +492,7 @@ function OrderCard({
           {o.status === "confirmed"
             ? "This order is confirmed but not marked scheduled. Mark it scheduled on the order page to plan loads."
             : o.status === "on_hold"
-              ? "On hold — loads cannot be assigned until the hold is released."
+              ? "On hold: loads cannot be assigned until the hold is released."
               : "Completed — shown for reference."}
         </p>
       )}

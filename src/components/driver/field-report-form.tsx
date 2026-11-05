@@ -35,7 +35,7 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
       }
       setState({ kind: "failed", message: r.error });
     } catch {
-      setState({ kind: "failed", message: "Not sent — no connection to the office. Nothing was saved on this phone. Check your signal and tap Send again, or call dispatch." });
+      setState({ kind: "failed", message: "Not sent: no connection to the office. Nothing was saved on this phone. Check your signal and tap Send again, or call dispatch." });
     }
   }
 

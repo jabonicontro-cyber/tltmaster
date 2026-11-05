@@ -29,7 +29,7 @@ const SAVED: Record<string, string> = {
   issued: "Issued. The invoice is numbered and locked; send it or download the PDF.",
   sent: "Emailed to the customer with the PDF attached.",
   test_sent: "Test mode: the email went to the test inbox only and the invoice is not marked sent.",
-  previewed: "Preview only — nothing was sent (demo company or email not set up). Download the PDF to send it yourself.",
+  previewed: "Preview only. Nothing was sent (demo company or email not set up). Download the PDF to send it yourself.",
   payment: "Payment recorded.",
   payment_voided: "Payment voided. It stays on record with your reason.",
   voided: "Invoice voided. It stays on record with its number and your reason.",

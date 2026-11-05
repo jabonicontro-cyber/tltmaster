@@ -209,7 +209,7 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
       : checkPair(await getSmartDispatchInput(loadDate, loadDate), loadId, truckId, driverId);
     if (!check.ok) {
       revalidateBoard();
-      return fail(`This proposal is no longer valid — ${check.reasons.join(" ")} The proposals have been refreshed; review them again.`);
+      return fail(`This proposal is no longer valid: ${check.reasons.join(" ")} The proposals have been refreshed; review them again.`);
     }
     const supabase = await createClient();
     // Credit hold (B128): a proposal is not approved in one click; the load is assigned from the board with a reason.

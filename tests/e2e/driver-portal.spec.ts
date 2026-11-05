@@ -40,7 +40,7 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   // No signal (B133): the ticket is saved on the phone, never reported as sent; it goes out once signal returns.
   await page.context().setOffline(true);
   await page.getByRole("button", { name: "Send ticket" }).dblclick();
-  await expect(page.getByRole("status").filter({ hasText: "Saved on this phone — not sent yet" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Saved on this phone, not sent yet" })).toBeVisible();
   await expect(page).toHaveURL(new RegExp(`/ticket$`));
   await page.context().setOffline(false);
   await page.goto("/driver");

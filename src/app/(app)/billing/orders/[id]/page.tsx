@@ -63,7 +63,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
           {o.readiness === "handed_off" && (
             <> Batch {o.batch_number}{o.handoff_reference ? ` (${o.handoff_reference})` : ""}, {formatDateTime(o.handed_off_at, timezone)} by {person(o.handed_off_by)}.</>
           )}
-          {o.changed_since_handoff && <strong> Tickets changed after the handoff — check the invoice in your accounting system.</strong>}
+          {o.changed_since_handoff && <strong> Tickets changed after the handoff: check the invoice in your accounting system.</strong>}
         </Notice>
 
         <Card>
@@ -209,7 +209,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                   <li key={r.id} className="text-sm">
                     <div className="font-semibold">
                       Exceptions acknowledged ({r.exceptions.length})
-                      {r.fingerprint !== o.exceptions_fingerprint && <Badge tone="gray" className="ml-2">No longer current — exceptions changed</Badge>}
+                      {r.fingerprint !== o.exceptions_fingerprint && <Badge tone="gray" className="ml-2">No longer current: exceptions changed</Badge>}
                     </div>
                     <div className="text-muted">{person(r.decided_by)} · {formatDateTime(r.decided_at, timezone)}: “{r.reason}”</div>
                   </li>

@@ -91,7 +91,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
               <option value="prospect">Prospect (not ordering yet)</option>
             </Select>
           </Field>
-          {formError?.startsWith("Possible duplicate") && <Checkbox name="confirm_new" label="This is a different customer — create it anyway" />}
+          {formError?.startsWith("Possible duplicate") && <Checkbox name="confirm_new" label="This is a different customer, create it anyway" />}
         </div>
       )}
 

@@ -150,7 +150,7 @@ export const RELEASES: ReleaseHighlight[] = [
       "Nothing is assigned until a dispatcher approves; each approval is re-checked against current data",
     ],
     limitations: [
-      "Distances, drive times and hours of service are not calculated yet — each plan says so",
+      "Distances, drive times and hours of service are not calculated yet; each plan says so",
       "Margin is not evaluated until operating costs are recorded",
     ],
     releasedOn: "2026-10-13",

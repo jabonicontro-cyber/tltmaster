@@ -50,7 +50,7 @@ describe("lead emails", () => {
     expect(n.html).not.toMatch(/<script|<img/);
     expect(n.html).toContain("line one<br>line &lt;img");
     expect(n.html).toContain(`href="https://mytaviron.com/admin/leads/abc"`);
-    expect(n.text).toContain("Dispatch bases: —");
+    expect(n.text).toContain("Dispatch bases: not given");
   });
 
   it("drop the button when the lead link is not https (e.g. a misconfigured APP_BASE_URL)", () => {

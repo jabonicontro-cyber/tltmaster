@@ -74,7 +74,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
     const keep = () => {
       if (!queue) return false;
       if (photos.ids.length) {
-        setState({ kind: "failed", message: "Not sent — no connection. A ticket with photos needs signal: remove the photos to save it on this phone, or send it when you have signal.", offline: true });
+        setState({ kind: "failed", message: "Not sent: no connection. A ticket with photos needs signal: remove the photos to save it on this phone, or send it when you have signal.", offline: true });
         return true;
       }
       if (!enqueue({ id: submissionKey, userId: queue.userId, kind: "ticket", label: queue.label, payload: input })) return false;
@@ -101,7 +101,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       setState({ kind: "failed", message: r.error, offline: false });
     } catch {
       if (keep()) return;
-      setState({ kind: "failed", message: "Not sent — no connection to the office. Nothing was saved on this phone. Check your signal and tap Send again.", offline: true });
+      setState({ kind: "failed", message: "Not sent: no connection to the office. Nothing was saved on this phone. Check your signal and tap Send again.", offline: true });
     }
   }
 
@@ -192,7 +192,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
       )}
       {state.kind === "queued" && (
         <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 font-semibold text-amber-950 ring-1 ring-amber-200">
-          Saved on this phone — not sent yet. It sends by itself when you have signal; My Day shows it under Waiting to send. Keep the paper ticket.
+          Saved on this phone, not sent yet. It sends by itself when you have signal; My Day shows it under Waiting to send. Keep the paper ticket.
         </p>
       )}
       {state.kind === "failed" && (

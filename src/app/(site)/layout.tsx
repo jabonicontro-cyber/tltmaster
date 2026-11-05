@@ -6,7 +6,7 @@ import { siteIndexing } from "@/lib/site/indexing";
 import { PUBLIC_WEBSITE_URL } from "@/lib/site/urls";
 
 export const metadata: Metadata = {
-  title: { default: "Taviron — hauling operations software", template: "%s · Taviron" },
+  title: { default: "Taviron · Hauling operations software", template: "%s · Taviron" },
   description: "Orders, dispatch, drivers, delivery tickets and billing readiness for hauling companies, in one place.",
   robots: siteIndexing() ? { index: true, follow: true } : { index: false, follow: false, nocache: true },
   // Links shared in texts, email and social posts: absolute URLs on the public domain, one preview image

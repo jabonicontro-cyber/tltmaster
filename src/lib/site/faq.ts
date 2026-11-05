@@ -13,7 +13,7 @@ export const PRODUCT_FAQ: Faq[] = [
   },
   {
     q: "Who is it for?",
-    a: "Companies that haul for their own customers — from an owner who also dispatches a handful of trucks to operations with several dispatchers, a shop and an office team.",
+    a: "Companies that haul for their own customers, from an owner who also dispatches a handful of trucks to operations with several dispatchers, a shop and an office team.",
   },
   {
     q: "Does Taviron assign loads automatically?",
