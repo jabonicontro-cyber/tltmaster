@@ -1,11 +1,29 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 0000000000000000000. 2026-11-05 — launch plan (January 2027), both markets, outreach, overnight builds
+
+- **Owner decisions (master plan §11b, §9 Q26-Q28):** aggregate first, general freight and small fleets welcome (one
+  application); no outside services switched on until close to launch; launch target January 2027; Starter plan
+  ($249, 10 trucks, priced by Claude at the owner's request); customers pay Taviron by invoice; Colby: 50% of
+  onboarding and 5% of monthly revenue on accounts he is involved in, as a 1099 contractor.
+- **In Production (CI, migration workflow and deploy green):** accessibility mode (`20261120007300`), parts used per
+  job, Starter plan (`20261120007400`), Outreach in /admin with registry search and unsubscribe (`20261120007500`;
+  registry search not verified against the real FMCSA API from this environment), industry profile
+  (`20261120007600`), compliance calendar (`496360f`, promoting at the time of writing).
+- **Pushed, promoting:** simple mode, menu areas (`20261120007700`, `e628812`). Help articles for the new features
+  are committed with this note.
+- **Left for the owner:** detention charges (DT1) need a design review, because invoices are built from frozen
+  handoff snapshots, and each company sets its own rate. Form the LLC (INBiz), then send the exact name and address
+  for the legal pages. Upgrade Vercel and Supabase to Pro before the first paying customer. Finish Google Workspace
+  "Turn on Gmail" (MX) and SPF/DKIM/DMARC before outreach. Press **Refresh demo data** for the compliance calendar
+  samples.
 
 ## 000000000000000000. 2026-11-04 — owner walkthrough fixes (UX1–UX16; owner at work, "follow recommendations")
 

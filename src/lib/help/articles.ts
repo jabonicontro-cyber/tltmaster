@@ -2885,4 +2885,127 @@ export const HELP_ARTICLES: HelpArticle[] = [
     related: ["communications"],
     reviewed: REVIEWED,
   },
+  // ---------------------------------------------------------------------------------------------------------------
+  // Added 2026-11-05: accessibility mode, parts used per job, what you haul, menu areas, compliance calendar
+  // ---------------------------------------------------------------------------------------------------------------
+  {
+    id: "accessibility",
+    title: "Accessibility: larger text, high contrast, less motion, easier font",
+    summary: "Make Taviron easier to read and use on every device you sign in on.",
+    category: "getting-started",
+    routes: ["/profile"],
+    permissions: [],
+    audience: "Everyone who signs in, including customers in the customer portal.",
+    whatYouSee: [
+      "An **Accessibility** section on **My profile** with text size (**Standard**, **Larger**, **Largest**) and three switches: **High contrast**, **Reduce motion** and **Easier-to-read font**.",
+      "Changes apply at once. They are saved with your sign-in, so they follow you to your phone and other computers.",
+      "Only you see your settings; they don't change anything for anyone else in the company.",
+    ],
+    tasks: [
+      {
+        title: "Make the text bigger",
+        steps: ["Select your name at the top right, then **My profile**.", "Under **Accessibility**, choose **Larger** or **Largest**."],
+      },
+      {
+        title: "Turn on high contrast or the easier-to-read font",
+        steps: ["Open **My profile**.", "Under **Accessibility**, switch on **High contrast** or **Easier-to-read font**."],
+      },
+    ],
+    prerequisites: [],
+    troubleshooting: [
+      { problem: "The setting didn't follow me to another device.", fix: "Sign in on that device and open any page; the settings load from your account. If it still looks the same, refresh the page." },
+    ],
+    next: ["getting-started"],
+    related: ["profile"],
+    reviewed: "2026-11-05",
+    limitations: ["The public website doesn't use these settings; they apply inside Taviron and the customer portal."],
+  },
+  {
+    id: "parts-per-job",
+    title: "Parts used per job",
+    summary: "See how many parts a job used and what they cost, right on the job card.",
+    category: "maintenance",
+    routes: ["/maintenance/my-jobs", "/maintenance/work-orders", "/maintenance/work-orders/*"],
+    permissions: ["maintenance.view"],
+    audience: "Mechanics, shop leads and owners.",
+    whatYouSee: [
+      "On **My jobs** cards, the shop board and the work order list: a line like **2 parts used · $49.00 in parts**.",
+      "On a work order's **Parts used** tab, the same summary above the list of parts used from stock.",
+      "Countable parts add up by quantity (two filters are two parts); a measured part, like gallons of oil, counts once.",
+      "The dollar amount is the work order's part costs, from stock and bought in. People who don't see maintenance costs see only the count.",
+    ],
+    tasks: [
+      {
+        title: "Add a part to a job",
+        steps: ["Open the work order and select the **Parts used** tab.", "Choose the part and the quantity, then select **Use part**. A part with a known cost also adds a cost line."],
+      },
+    ],
+    prerequisites: ["Shop parts must be set up under **Maintenance → Parts** for parts used from stock."],
+    troubleshooting: [
+      { problem: "The count shows but no cost.", fix: "Either your role doesn't show maintenance costs, or the part has no received cost yet. Receive the part with a unit cost under **Maintenance → Parts**." },
+    ],
+    next: ["maintenance-parts"],
+    related: ["maintenance-work-orders"],
+    reviewed: "2026-11-05",
+  },
+  {
+    id: "what-you-haul",
+    title: "What you haul and which areas show in the menu",
+    summary: "Choose aggregate, general freight or both, and hide the areas your company doesn't use.",
+    category: "settings",
+    routes: ["/settings"],
+    permissions: ["settings.manage"],
+    audience: "Owners and administrators.",
+    whatYouSee: [
+      "Under **Settings → Company and branding**, a **What you haul** choice: **Aggregate and construction hauling**, **General freight** or **Both**.",
+      "The delivery documents section follows it: **Delivery Tickets**, **Bills of Lading** or **Tickets and BOLs** in the menu, page titles and tabs. Only words change; the rules stay the same.",
+      "Below it, **Areas in the menu**: switch off areas like **Quotes**, **Payroll** or **Schedule** to hide them from everyone's menu.",
+      "Hiding an area only tidies the menu. Nothing is deleted, permissions don't change, a hidden page still opens from a link, and safety areas always show.",
+    ],
+    tasks: [
+      {
+        title: "Use freight wording",
+        steps: ["Open **Settings → Company and branding**.", "Under **What you haul**, choose **General freight** and select **Save**."],
+      },
+      {
+        title: "Hide areas you don't use",
+        steps: ["Open **Settings → Company and branding**.", "Under **Areas in the menu**, switch off the areas you don't use and select **Save**."],
+      },
+    ],
+    prerequisites: ["Only people who manage settings can change these."],
+    troubleshooting: [
+      { problem: "I hid an area but someone still opened it.", fix: "That's expected: hiding changes the menu only. Use **Roles and permissions** to control who can open a page." },
+    ],
+    next: ["settings-roles-permissions"],
+    related: ["settings-company", "delivery-tickets"],
+    reviewed: "2026-11-05",
+  },
+  {
+    id: "compliance-calendar",
+    title: "Compliance calendar",
+    summary: "Every due date the company records, in one list: what's overdue and what's coming up.",
+    category: "fleet",
+    routes: ["/fleet/compliance"],
+    permissions: ["fleet.view"],
+    audience: "Owners, office staff and fleet managers.",
+    whatYouSee: [
+      "Three groups: **Overdue**, **Next 30 days** and **In 31 to 90 days**, soonest first.",
+      "Driver credentials (CDL, medical card and others), truck and trailer documents, preventive service by date, and the next IFTA return for companies that keep trip sheets.",
+      "Each line links to its record, where you renew or update it.",
+    ],
+    tasks: [
+      {
+        title: "Check what's due",
+        steps: ["Open **Fleet → Compliance calendar**.", "Start with **Overdue**, then **Next 30 days**. Select a line to open the record and update it."],
+      },
+    ],
+    prerequisites: ["Dates show only when they're recorded: add expiry dates to driver credentials and truck documents."],
+    troubleshooting: [
+      { problem: "Something I expected isn't listed.", fix: "Check that the record has an expiry date and that the truck or driver is active. Service due by miles or hours shows on the Maintenance page instead." },
+    ],
+    next: ["fleet-documents"],
+    related: ["fleet-drivers", "maintenance-preventive", "fuel-ifta"],
+    reviewed: "2026-11-05",
+    limitations: ["The calendar doesn't send reminders by itself; the existing alerts on each record still apply."],
+  },
 ];
