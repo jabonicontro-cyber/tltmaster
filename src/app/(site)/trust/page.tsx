@@ -71,7 +71,7 @@ export default function TrustPage() {
   return (
     <>
       <PageIntro title="Security you can check, not take on trust.">
-        <p>What Taviron does today to protect each company&apos;s records, and just as plainly, what is not in place yet.</p>
+        <p>What Taviron does today to protect each company&apos;s records, and what is not in place yet.</p>
       </PageIntro>
       <Container className="grid gap-6 py-16 sm:py-20 md:grid-cols-2">
         {SECTIONS.map((s, n) => (
