@@ -141,7 +141,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
         <h2 className="text-base font-bold text-ink">Sign-in ready for {c.personName}</h2>
         <p className="mt-1 text-sm text-muted">Hand it over one of these ways. The temporary password works until {formatDateTime(c.expiresAt)} and must be replaced at first sign-in.</p>
       </div>
-      <dl className="grid gap-2 rounded-xl bg-surface p-3 text-sm sm:grid-cols-3">
+      <dl className="grid grid-cols-1 gap-2 rounded-xl bg-surface p-3 text-sm sm:grid-cols-3">
         <div><dt className="text-muted">Username</dt><dd className="font-mono text-base font-semibold text-ink">{c.username}</dd></div>
         <div className="sm:col-span-2">
           <dt className="text-muted">Temporary password</dt>
@@ -154,7 +154,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
         </div>
       </dl>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="rounded-xl border border-line p-3">
           <h3 className="flex items-center gap-2 text-sm font-semibold text-ink"><Printer className="size-4" aria-hidden /> Print a sheet</h3>
           <p className="mt-1 text-xs text-muted">One page with the website, username, temporary password and simple steps.</p>

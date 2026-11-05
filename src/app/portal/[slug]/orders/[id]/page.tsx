@@ -26,7 +26,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
         <Badge tone={o.status === "canceled" ? "gray" : "brand"} className="text-sm">{o.status_label}</Badge>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Info label="Schedule" value={scheduleText(o) ?? (o.requested_date ? `Requested for ${formatDay(o.requested_date)}` : "Not scheduled yet")} />
         <Info label="Next delivery" value={o.next_load ? `${formatDay(o.next_load.date)}${o.next_load.start ? `, ${formatTime(o.next_load.start)}` : ""}` : "None planned"} />
         <Info label="Delivered" value={o.tickets_confirmed ? `${o.tickets_confirmed} confirmed (${formatQuantity(o.quantity_confirmed)})` : o.tickets_reported ? `${o.tickets_reported} being checked` : "Nothing yet"} />

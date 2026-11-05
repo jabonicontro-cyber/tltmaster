@@ -131,7 +131,7 @@ export default async function MaintenancePage() {
       />
       <MaintenanceTabs active="overview" />
 
-      <section aria-label="Overview" className="mb-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+      <section aria-label="Overview" className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>
           <CardHeader title="Availability" description={`${activeTrucks.length} active truck${activeTrucks.length === 1 ? "" : "s"}${trailers.filter((t) => t.active).length ? ` · ${trailers.filter((t) => t.active && t.service_status === "out_of_service").length} of ${trailers.filter((t) => t.active).length} trailers out of service` : ""}`} />
           <div className="flex flex-wrap items-center gap-6 px-5 pb-5 sm:px-6">

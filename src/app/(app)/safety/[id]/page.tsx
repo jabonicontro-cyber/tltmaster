@@ -51,13 +51,13 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
         }
         description={`${formatDateTime(incident.occurred_at, timezone)}${incident.location ? ` · ${incident.location}` : ""}`}
       />
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0 space-y-5">
           <Card>
             <CardHeader title="The report" description={`Reported by ${who(incident.reported_by)} on ${formatDateTime(incident.reported_at, timezone)}. Kept as it was reported.`} />
             <CardBody className="space-y-3">
               <p className="whitespace-pre-line">{incident.description}</p>
-              <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
+              <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
                 <div><dt className="text-muted">Truck</dt><dd className="font-medium">{incident.truck ?? "–"}</dd></div>
                 <div><dt className="text-muted">Driver</dt><dd className="font-medium">{incident.driver ?? "–"}</dd></div>
                 <div><dt className="text-muted">Order</dt><dd className="font-medium tabular">{incident.order_number ?? "–"}</dd></div>

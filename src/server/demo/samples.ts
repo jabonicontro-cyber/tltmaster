@@ -157,6 +157,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Pickups (UX7): open orders load at one of the demo's quarries or plants, so drivers see "Load at" with Navigate.
   // Orders numbered …5 are left without one (the "Not set" case). An existing pickup is never changed.
   note("order pickups", await orderPickups(db));
+  // Stops (MK2): one of today's assigned orders makes two deliveries from its pickup, with appointment windows and
+  // reference numbers, so the order page, the board and the driver's card show stops. Once per demo.
+  note("order stops", await orderStopSamples(db, today));
   // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
   // internal note, one closed recently). Once per demo.
   note("support cases", await rpcCount(db, "demo_support_samples"));
@@ -1569,6 +1572,55 @@ async function orderPickups(db: Db): Promise<number> {
     n++;
   }
   return n;
+}
+
+/**
+ * Stops on one of today's assigned open orders (MK2): load at the order's pickup (or a demo quarry), deliver to the
+ * order's job site, then to another site of the same customer when it has one. Only while the demo has no stops;
+ * 0 before 20261120007800 is installed. Places come from the demo's own records, never invented here.
+ */
+async function orderStopSamples(db: Db, today: string): Promise<number> {
+  const n = await count(db, "order_stops");
+  if (n === null || n > 0) return 0;
+  const loads = ((await db.from("order_loads").select("id, order_id, start_time").eq("load_date", today).eq("status", "planned").order("start_time")).data ?? []) as Array<{ id: string; order_id: string; start_time: string }>;
+  if (loads.length === 0) return 0;
+  const assigned = new Set((((await db.from("dispatch_assignments").select("load_id").in("load_id", loads.map((l) => l.id)).eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
+  const orderIds = [...new Set(loads.filter((l) => assigned.has(l.id)).map((l) => l.order_id))];
+  if (orderIds.length === 0) return 0;
+  type O = { id: string; customer_id: string; site_id: string | null; site_label: string | null; site_line1: string | null; site_city: string | null; site_state: string | null; site_postal_code: string | null; pickup_location_id: string | null; customer_po: string | null; order_number: string };
+  const orders = ((await db.from("orders").select("id, customer_id, site_id, site_label, site_line1, site_city, site_state, site_postal_code, pickup_location_id, customer_po, order_number")
+    .in("id", orderIds).in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).order("order_number")).data ?? []) as O[];
+  // Prefer an order whose customer has a second site, so the sample shows two deliveries.
+  let chosen: { o: O; second: { label: string; line1: string; city: string; state: string; postal_code: string } | null } | null = null;
+  for (const o of orders) {
+    if (!o.site_label && !o.site_line1 && !o.site_city) continue;
+    const others = ((await db.from("customer_sites").select("id, label, line1, city, state, postal_code").eq("customer_id", o.customer_id).eq("active", true).order("label")).data ?? []) as Array<{ id: string; label: string; line1: string | null; city: string | null; state: string | null; postal_code: string | null }>;
+    const second = others.find((x) => x.id !== o.site_id && x.label !== o.site_label);
+    const pick = { o, second: second ? { label: second.label, line1: second.line1 ?? "", city: second.city ?? "", state: second.state ?? "", postal_code: second.postal_code ?? "" } : null };
+    if (!chosen) chosen = pick;
+    if (second) { chosen = pick; break; }
+  }
+  if (!chosen) return 0;
+  const { o, second } = chosen;
+  let place = o.pickup_location_id
+    ? ((await db.from("company_locations").select("name, address_line1, city, state, postal_code").eq("id", o.pickup_location_id).maybeSingle()).data as { name: string; address_line1: string | null; city: string | null; state: string | null; postal_code: string | null } | null)
+    : null;
+  if (!place) place = ((await db.from("company_locations").select("name, address_line1, city, state, postal_code").eq("active", true).in("kind", ["quarry", "plant"]).order("name").limit(1).maybeSingle()).data as typeof place) ?? null;
+  if (!place) return 0;
+  const start = (loads.find((l) => l.order_id === o.id)?.start_time ?? "07:00").slice(0, 5);
+  const h0 = Number(start.slice(0, 2));
+  // Windows only when the day leaves room for them (a load starting late in the evening gets dates without times).
+  const timed = Number.isFinite(h0) && h0 <= 17;
+  const hour = (h: number) => (timed ? `${String(h).padStart(2, "0")}:${start.slice(3, 5)}` : "");
+  const stops = [
+    { kind: "pickup", name: place.name, address_line1: place.address_line1 ?? "", city: place.city ?? "", state: place.state ?? "", postal_code: place.postal_code ?? "", appointment_date: today, window_start: hour(h0), window_end: hour(h0 + 1), reference: `PU-${o.order_number.replace(/\D/g, "").slice(-4)}`, notes: "" },
+    { kind: "delivery", name: o.site_label || o.site_line1 || "Job site", address_line1: o.site_line1 ?? "", city: o.site_city ?? "", state: o.site_state ?? "", postal_code: o.site_postal_code ?? "", appointment_date: today, window_start: hour(h0 + 1), window_end: hour(h0 + 3), reference: o.customer_po ?? "", notes: second ? "Drop half the load here." : "" },
+    ...(second ? [{ kind: "delivery", name: second.label, address_line1: second.line1, city: second.city, state: second.state, postal_code: second.postal_code, appointment_date: today, window_start: hour(h0 + 3), window_end: hour(h0 + 5), reference: o.customer_po ?? "", notes: "Rest of the load. Call the site contact on arrival." }] : []),
+  ];
+  const { data, error } = await db.rpc("save_order_stops", { p_order: o.id, p_stops: stops });
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (order stops): ${error.message}`);
+  return Number(data ?? 0);
 }
 
 async function rpcCount(db: Db, fn: string): Promise<number> {

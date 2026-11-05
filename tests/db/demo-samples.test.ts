@@ -363,6 +363,11 @@ describe.skipIf(!available)("demo feature samples", () => {
                     (select min(expires_on) from public.vehicle_documents where company_id = $1 and title = 'Overweight permit (sample)'))::text soonest`, [w.company]);
     expect([Number(cal.rows[0].creds), Number(cal.rows[0].permits)]).toEqual([1, 1]);
     expect(cal.rows[0].soonest > todayIn(TZ)).toBe(true);
+    // Stops (MK2): one of today's assigned orders loads at its pickup and makes its deliveries, added once.
+    const stops = await q<{ order_id: string; kinds: string[] }>("select order_id, array_agg(kind order by seq) kinds from public.order_stops where company_id = $1 and removed_at is null group by order_id", [w.company]);
+    expect(stops.rows).toHaveLength(1);
+    expect(stops.rows[0].kinds[0]).toBe("pickup");
+    expect(stops.rows[0].kinds.slice(1).every((k) => k === "delivery") && stops.rows[0].kinds.length >= 2).toBe(true);
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);

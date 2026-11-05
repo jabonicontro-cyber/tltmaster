@@ -53,7 +53,7 @@ export default async function InspectionsPage() {
         )}
       </Card>
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-2">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title={`Defects: last ${DAYS} days`} description="Each opened a work order for the shop." />
           {defects.length === 0 ? <CardBody><EmptyState title="No defects reported" /></CardBody> : (

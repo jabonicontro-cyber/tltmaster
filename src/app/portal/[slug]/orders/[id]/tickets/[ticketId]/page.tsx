@@ -41,7 +41,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
             <p className="text-lg font-bold">{t.number}</p>
           </div>
         </header>
-        <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
+        <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
           <Row label="Customer" value={t.customer} />
           <Row label="Order" value={t.order.number} />
           <Row label="Delivered" value={delivered} />

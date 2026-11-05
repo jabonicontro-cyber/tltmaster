@@ -161,6 +161,9 @@ test("every demo mode opens its pages and each feature shows sample data", async
       }
       // Dispatch and the Route Planner are one page (owner 2026-10-26): its timeline and routes views have the day too.
       if (nav.includes("/dispatch")) {
+        // Stops (MK2, samples.ts orderStopSamples): one of today's orders shows its route instead of the job site.
+        await visit(page, "/dispatch");
+        await expect(page.getByText(/^Stops:/).first(), `${role} board shows a stops route`).toBeAttached();
         await visit(page, "/dispatch?view=routes");
         await expect(page.getByText(/No assigned loads on this day/), `${role} routes view has routes`).toHaveCount(0);
         await visit(page, "/dispatch?view=timeline");

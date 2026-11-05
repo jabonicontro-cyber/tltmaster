@@ -49,7 +49,7 @@ export default async function RevenueCheckPage({ searchParams }: { searchParams:
   return (
     <>
       {header}
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile icon={<CircleDollarSign />} tone={missed > 0 ? "amber" : "green"} label="Possible missed revenue" value={formatCents(missed)} muted={missed === 0}>
           {held > 0 ? `Estimated. Plus ${formatCents(held)} of billing held up (waiting for review), not missed.` : "Estimated from tickets and the orders' rates"}
         </StatTile>

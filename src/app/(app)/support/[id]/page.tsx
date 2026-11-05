@@ -35,7 +35,7 @@ export default async function SupportCasePage({ params, searchParams }: { params
       <PageHeader title={c.subject} description={`${c.customer_name} · ${SUPPORT_KINDS[c.kind] ?? "Other"} · opened ${formatDateTime(c.created_at, timezone)}${c.from_portal ? " in the portal" : " by the office"}`} />
       {sp.error ? <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div> : null}
       {sp.saved ? <p role="status" className="mb-4 text-sm text-muted">Case updated.</p> : null}
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="space-y-4">
           <ol className="space-y-3" aria-label="Messages">
             {c.messages.map((m) => (

@@ -164,7 +164,7 @@ function WelcomeEmail({ f, staff, values }: { f: ReturnType<typeof useForm>; sta
       <CardHeader title="Welcome email" description="A draft to send from your own email. Taviron does not send it: copy it, check it, and send it yourself." />
       <CardBody className="space-y-4">
         {staff ? (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Onboarding contact" htmlFor="we_contact"><Input id="we_contact" value={(f.data.onboarding_contact as string) ?? ""} onChange={(e) => f.set("onboarding_contact", e.target.value)} placeholder={values.onboarding_contact} /></Field>
             <Field label="Support contact (how to reach Taviron)" htmlFor="we_support"><Input id="we_support" value={(f.data.support_contact as string) ?? ""} onChange={(e) => f.set("support_contact", e.target.value)} placeholder={values.support_contact} /></Field>
             <Field label="Kickoff (date and how to join)" htmlFor="we_kickoff"><Input id="we_kickoff" value={kickoff} onChange={(e) => f.set("kickoff", e.target.value)} placeholder="Tuesday, November 4 at 9:00 (video call)" /></Field>
@@ -198,7 +198,7 @@ function Questionnaire({ f, missing }: { f: ReturnType<typeof useForm>; missing:
         <Card key={s.key}>
           <CardHeader title={s.title} description={s.description} />
           <CardBody>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               {s.fields.map((field) => {
                 const id = `q_${field.key}`;
                 const v = (f.data[field.key] as string | number | undefined) ?? "";
@@ -240,7 +240,7 @@ function DataImport({ templatesBase, checklistHref }: { templatesBase: string; c
     <Card>
       <CardHeader title="Prepare and import your data" description="Download a template, fill it from your current system, and upload it to the matching task in the onboarding checklist." />
       <CardBody className="space-y-4">
-        <ul className="grid gap-2 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {files.map((t) => (
             <li key={t.key}>
               <a href={`${templatesBase}/${t.key}`} download className="flex min-h-11 items-center gap-2 rounded-xl border border-line px-3 py-2 text-sm font-semibold text-ink hover:bg-surface">
@@ -293,7 +293,7 @@ function Worksheet({ f }: { f: ReturnType<typeof useForm> }) {
         <CardBody className="space-y-4">
           {scenarios.length === 0 ? <p className="text-sm text-muted">No scenarios yet. Example: “Truck 12 is out of service → it is not proposed for tomorrow&apos;s loads.”</p> : null}
           {scenarios.map((s, i) => (
-            <fieldset key={i} className="grid gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
+            <fieldset key={i} className="grid grid-cols-1 gap-3 rounded-xl border border-line p-3 sm:grid-cols-2">
               <legend className="px-1 text-xs font-semibold text-muted">Scenario {i + 1}</legend>
               <Field label="Rule" htmlFor={`s_rule_${i}`}>
                 <Select id={`s_rule_${i}`} value={s.rule} onChange={(e) => setScenarios(scenarios.map((x, j) => (j === i ? { ...x, rule: e.target.value } : x)))}>
@@ -340,7 +340,7 @@ function Integrations({ f, checks, staff, config }: { f: ReturnType<typeof useFo
               </span>
             } />
             <CardBody className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="Needed?" htmlFor={`i_need_${d.key}`}>
                   <Select id={`i_need_${d.key}`} value={p.needed ?? ""} onChange={(e) => setPlan(d.key, { needed: e.target.value })}>
                     <option value="">Not decided</option><option>Required</option><option>Nice to have</option><option>Not needed</option>
@@ -353,7 +353,7 @@ function Integrations({ f, checks, staff, config }: { f: ReturnType<typeof useFo
               </div>
               <p className="text-sm text-muted">If it fails: {d.fallback}</p>
               {staff ? (
-                <div className="grid gap-3 rounded-xl bg-surface p-3 sm:grid-cols-3">
+                <div className="grid grid-cols-1 gap-3 rounded-xl bg-surface p-3 sm:grid-cols-3">
                   <Field label="Verification" htmlFor={`c_st_${d.key}`}>
                     <Select id={`c_st_${d.key}`} value={status} onChange={(e) => setCheck(d.key, { status: e.target.value, ...(e.target.value === "verified" ? { verified_at: new Date().toISOString() } : {}) })}>
                       {(Object.keys(CHECK_STATUS_LABEL) as CheckStatus[]).filter((s) => d.available ? s !== "unavailable" : ["unavailable", "not_needed", "not_started"].includes(s))
@@ -427,7 +427,7 @@ function GoLive({ f, kit, staff, blockers, canSign, sign }: { f: ReturnType<type
               const it = items[i.key] ?? {};
               const s: GoLiveStatus = it.status ?? "not_started";
               return (
-                <li key={i.key} className="grid gap-3 py-3 sm:grid-cols-[1fr_12rem]">
+                <li key={i.key} className="grid grid-cols-1 gap-3 py-3 sm:grid-cols-[1fr_12rem]">
                   <div>
                     <p className="text-sm font-semibold text-ink">{i.title} {i.critical ? <Badge tone="critical-soft" className="ml-1">Critical</Badge> : null}</p>
                     <p className="text-xs text-muted">{i.evidenceHint}</p>
@@ -470,7 +470,7 @@ function GoLive({ f, kit, staff, blockers, canSign, sign }: { f: ReturnType<type
           ) : signedHere ? (
             <p className="text-sm text-ink">You have signed the current version.</p>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="Your full name" htmlFor="sign_name" required><Input id="sign_name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} /></Field>
               <Field label="Title" htmlFor="sign_title"><Input id="sign_title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></Field>
               <div className="sm:col-span-2">
@@ -512,7 +512,7 @@ function After({ f, live }: { f: ReturnType<typeof useForm>; live: boolean }) {
       <CardHeader title="After launch" description={live ? "Follow-ups after going live." : "These follow-ups start once the company is live."} />
       <CardBody className="space-y-3">
         {list.map((x, i) => (
-          <div key={i} className="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_16rem]">
+          <div key={i} className="grid grid-cols-1 gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_16rem]">
             <Checkbox label={x.title} checked={x.done} onChange={(e) => set(list.map((y, j) => (j === i ? { ...y, done: e.currentTarget.checked } : y)))} />
             <Input aria-label={`Notes: ${x.title}`} value={x.notes} maxLength={500} placeholder="Notes" onChange={(e) => set(list.map((y, j) => (j === i ? { ...y, notes: e.target.value } : y)))} />
           </div>

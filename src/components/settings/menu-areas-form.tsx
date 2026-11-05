@@ -24,7 +24,7 @@ export function MenuAreasForm({ hidden, canEdit }: { hidden: string[]; canEdit: 
         <p className="mt-1 text-sm text-muted">Hide what your company doesn&apos;t use, for everyone. It only tidies the menu: nothing is deleted, permissions stay the same, and safety areas always show.</p>
       </div>
       <FormError message={formError} />
-      <fieldset className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3" disabled={!canEdit}>
+      <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3" disabled={!canEdit}>
         <legend className="sr-only">Areas in the menu</legend>
         {OPTIONAL_AREAS.map((a) => (
           <label key={a.href} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 has-[:checked]:border-strong">

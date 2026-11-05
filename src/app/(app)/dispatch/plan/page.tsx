@@ -72,7 +72,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
         <details className="mt-3 border-t border-line pt-3" open={preset === null}>
           <summary className="cursor-pointer text-sm font-semibold text-ink">Adjust priorities{preset === null ? " · custom" : ""}</summary>
           <p className="mt-1 text-xs text-muted">0 = ignore, 5 = most important. Priorities rank feasible options only: safety, legal, qualification, capacity and maintenance rules always come first.</p>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {PRIORITY_KEYS.map((k) => (
               <label key={k} className="text-sm">
                 <span className="flex justify-between font-medium text-ink">{PRIORITY_LABELS[k]} <span className="tabular text-muted">{priorities[k]}</span></span>

@@ -20,7 +20,10 @@ import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
 import { lineProgress } from "@/lib/tickets/context";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
-import { getOrderDetail, getOrderPickup } from "@/server/data/orders";
+import { getOrderDetail, getOrderPickup, getOrderStops } from "@/server/data/orders";
+import { OrderStops } from "@/components/orders/order-stops";
+import { industryOf } from "@/lib/industry";
+import { stopsSummary } from "@/lib/orders/stops";
 import { OrderPickup } from "@/components/orders/order-pickup";
 import { getOrderReadiness } from "@/server/data/billing";
 import { getOrderUrgency } from "@/server/data/urgency";
@@ -41,7 +44,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
   const { back, base_saved: baseSaved, base_error: baseError, pickup_saved: pickupSaved, pickup_error: pickupError } = await searchParams;
-  const [bases, orderBase, pickup] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id)]);
+  const [bases, orderBase, pickup, stops, companySettings] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id), getOrderStops(id), getSettings().catch(() => null)]);
+  // Stops (MK2): shown for companies that haul freight, and on any order that already lists stops.
+  const showStops = stops.installed && (industryOf(companySettings?.industry) !== "aggregate" || stops.stops.length > 0);
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, customer, lines, events, audit, sourceQuote, sourceVersion, names, site: savedSite } = detail;
@@ -209,6 +214,13 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
               {baseError ? <div className="mt-3"><Notice tone="warning" title="Base not changed">{baseError}</Notice></div> : null}
             </CardBody>
           </Card>
+
+          {showStops && (
+            <Card>
+              <CardHeader title="Stops" description={stops.stops.length ? `${stopsSummary(stops.stops)}, in the order the truck makes them.` : "Pickups and deliveries, with appointment times and reference numbers."} />
+              <OrderStops orderId={id} stops={stops.stops} canEdit={can(access, "orders.edit") && !["completed", "canceled"].includes(order.status)} />
+            </Card>
+          )}
 
           <Card>
             <CardHeader

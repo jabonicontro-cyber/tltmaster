@@ -58,7 +58,7 @@ export default async function OutreachProspectPage({ params }: { params: Promise
         description={<Badge tone={p.status === "interested" ? "green" : "gray"}>{OUTREACH_STATUS_LABELS[p.status]}</Badge>}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Outreach", href: "/admin/outreach" }, { label: p.company_name }]}
       />
-      <div className="grid gap-5 lg:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title="Email" description="Filled in for this company from your saved email. Edit it in your mail program before sending if you like." />
           <CardBody><ProspectEmail id={p.id} email={email} blocked={blocked} /></CardBody>

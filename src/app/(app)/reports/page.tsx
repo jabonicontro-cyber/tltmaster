@@ -190,7 +190,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <Notice tone="warning" title="The report could not be produced">{error?.message?.includes("one year") ? "Choose a period of up to one year." : "Try again, or choose a shorter period."}</Notice>
       ) : (
         <div className="space-y-5">
-          <section aria-label="Key figures" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <section aria-label="Key figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {r.value ? (
               <Kpi icon={<CircleDollarSign className="size-4" aria-hidden />} label="Verified delivered value" value={formatCents(r.value.verified_value_cents)} spark={trend.map((t) => t.value)} sparkLabel="Verified value trend over the period">
                 <Delta now={r.value.verified_value_cents} before={prev?.value?.verified_value_cents ?? null} period={periodLabel} />
@@ -209,7 +209,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             ) : null}
           </section>
 
-          <div className="grid gap-4 xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
             {r.value ? (
               <section aria-label="Verified delivered value" className="xl:col-span-2">
                 <Card className="h-full">
@@ -247,11 +247,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <p className="absolute inset-x-0 bottom-1 text-3xl font-semibold tabular">{pct(r.deliveries.accepted, r.deliveries.tickets)}</p>
                   </div>
                   <p className="mt-2 text-sm"><span className="font-semibold tabular">{r.deliveries.accepted}/{r.deliveries.tickets}</span> <span className="text-muted">accepted</span></p>
-                  <dl className="mt-4 grid w-full grid-cols-3 gap-2 text-left">
+                  <div className="mt-4 grid w-full grid-cols-3 gap-2 text-left">
                     <MiniStat label="Waiting" value={String(r.deliveries.pending)} attention={r.deliveries.pending > 0} />
                     <MiniStat label="Corrected" value={pct(r.deliveries.corrected, r.deliveries.tickets)} />
                     <MiniStat label="Voided" value={pct(r.deliveries.voided, r.deliveries.tickets)} />
-                  </dl>
+                  </div>
                   <p className="mt-3 text-xs text-muted">Median from delivery to acceptance: {r.deliveries.median_hours_to_accept === null ? "–" : `${r.deliveries.median_hours_to_accept} h`}</p>
                 </div>
               ) : (
@@ -262,7 +262,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           </div>
 
           {r.value ? (
-            <div className="grid gap-4 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <Card>
                 <CardHeader title="By material" description="Share of verified value." />
                 {r.value.by_line.length === 0 ? (
@@ -290,7 +290,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           {r.billing || r.value ? (
             <Card>
               <CardHeader title="Needs attention" description="Work that is delivered but not yet billable or billed. All periods unless noted." />
-              <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
                 {r.billing ? <MiniStat label="Ready to bill, not handed off" value={String(r.billing.ready_not_handed_off)} sub={`Orders worth ${formatCents(r.billing.ready_ordered_total_cents)} as ordered`} attention={r.billing.ready_not_handed_off > 0} /> : null}
                 {r.billing ? <MiniStat label="Loads with no ticket" value={String(r.billing.loads_missing_tickets)} sub={`On ${r.billing.orders_with_missing_tickets} orders: charges at risk until entered`} attention={r.billing.loads_missing_tickets > 0} /> : null}
                 {r.value ? <MiniStat label="Accepted tickets not priced" value={String(r.value.unpriced_tickets)} sub="This period: other unit than the order line, or no rate" attention={r.value.unpriced_tickets > 0} /> : null}

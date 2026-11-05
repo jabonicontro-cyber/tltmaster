@@ -1,4 +1,5 @@
 import "server-only";
+import { routeLine } from "@/lib/orders/stops";
 import { addDays } from "@/lib/dates";
 import type { PastCrew } from "@/lib/dispatch/board";
 import { createClient } from "@/server/supabase/server";
@@ -124,6 +125,18 @@ export async function getDispatchDay(date: string, base: string | null = null) {
     .filter((a) => pastById.has(a.load_id))
     .map((a) => ({ order_id: pastById.get(a.load_id)!.order_id, load_date: pastById.get(a.load_id)!.load_date, starts_at: pastById.get(a.load_id)!.starts_at, truck_id: a.truck_id, trailer_id: a.trailer_id, driver_id: a.driver_id }));
 
+  // Stops (MK2): a one-line route per order that lists them ("Gary, IN → Joliet, IL (+1 stop)"); none before
+  // 20261120007800 is applied.
+  const stopRows = orderRows.length
+    ? await supabase.from("order_stops").select("order_id, seq, name, city, state").in("order_id", orderRows.map((o) => o.id)).is("removed_at", null).order("seq")
+    : { data: [], error: null };
+  const routes: Record<string, string> = {};
+  const byOrder = new Map<string, Array<{ name: string; city: string; state: string }>>();
+  for (const r of (stopRows.error ? [] : stopRows.data ?? []) as Array<{ order_id: string; name: string; city: string; state: string }>) {
+    byOrder.set(r.order_id, [...(byOrder.get(r.order_id) ?? []), r]);
+  }
+  for (const [id, list] of byOrder) routes[id] = routeLine(list);
+
   const hired = await hiredIds();
   const activeRows = ((assignments.data ?? []) as AssignmentRow[]).filter((a) => a.status === "active");
   const usedTrucks = new Set(activeRows.map((a) => a.truck_id));
@@ -152,6 +165,8 @@ export async function getDispatchDay(date: string, base: string | null = null) {
     units: (units.data ?? []) as UnitRow[],
     /** Live delivery tickets of the day's loads. */
     tickets,
+    /** Route line per order id, for orders that list stops (MK2). */
+    routes,
   };
 }
 

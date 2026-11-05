@@ -47,7 +47,7 @@ export function TriageCard({ workOrderId, triage, canManage, open, decidedByName
         {!waiting && decidedByName && <span className="text-xs text-muted">by {decidedByName}{triage.decisionNote ? ` · ${triage.decisionNote}` : ""}</span>}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <section aria-label="What was reported">
           <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted">Reported (quoted)</h4>
           {s.facts.length ? <ul className="space-y-1">{s.facts.map((f) => <li key={f} className="border-l-2 border-line pl-2 text-ink">“{f}”</li>)}</ul> : <p className="text-muted">Only the title: “{s.problem}”.</p>}
@@ -78,7 +78,7 @@ export function TriageCard({ workOrderId, triage, canManage, open, decidedByName
         </div>
       )}
       {mode === "edit" && (
-        <form aria-label="Edit suggestion" className="grid gap-3 border-t border-line pt-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => decideTriage({ workOrderId, triageId: triage.id, decision: "edited", ...edit })); }}>
+        <form aria-label="Edit suggestion" className="grid grid-cols-1 gap-3 border-t border-line pt-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); run(() => decideTriage({ workOrderId, triageId: triage.id, decision: "edited", ...edit })); }}>
           <Field label="Category" htmlFor="tri-cat"><Select id="tri-cat" value={edit.category} onChange={(e) => setEdit({ ...edit, category: e.target.value as typeof edit.category })}>{Object.entries(WO_CATEGORIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
           <Field label="Urgency" htmlFor="tri-urg"><Select id="tri-urg" value={edit.urgency} onChange={(e) => setEdit({ ...edit, urgency: e.target.value as typeof edit.urgency })}>{Object.entries(WO_URGENCIES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</Select></Field>
           <div className="sm:col-span-2"><Checkbox label="Safety-critical: keep the vehicle out of service until an inspection clears it" checked={edit.safety} onChange={(e) => setEdit({ ...edit, safety: e.target.checked })} /></div>

@@ -73,7 +73,7 @@ export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, t
             run(() => saveLocation({ ...draft, point: draft.point, source: draft.source }), () => setDraft(null));
           }}
         >
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Kind" htmlFor="loc-kind">
               <Select id="loc-kind" value={draft.kind} onChange={(e) => set({ kind: e.target.value as LocationKind })}>
                 {Object.entries(LOCATION_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}

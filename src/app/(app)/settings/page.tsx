@@ -357,7 +357,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                   </label>
                 ))}
               </fieldset>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field label="Payment terms (days)" htmlFor="terms_days" hint="0 = due on receipt"><Input id="terms_days" name="terms_days" inputMode="numeric" defaultValue={String(inv.termsDays)} disabled={!edit} /></Field>
               </div>
               <Field label="Footer on invoices" htmlFor="footer" hint="For example how to pay, or a thank-you"><Textarea id="footer" name="footer" rows={3} maxLength={500} defaultValue={inv.footer} disabled={!edit} /></Field>

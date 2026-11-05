@@ -17,7 +17,7 @@ test("a dispatcher messages a driver with a file; the driver reads it and replie
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Search people").fill(USERS.driver.name);
-  await dialog.getByRole("option", { name: new RegExp(USERS.driver.name) }).click();
+  await dialog.getByRole("button", { name: new RegExp(USERS.driver.name) }).click();
   await dialog.getByRole("button", { name: "Open conversation" }).click();
   await page.waitForURL(/\/communications\/c\/[0-9a-f-]{36}$/);
   const url = page.url();
@@ -134,7 +134,7 @@ test("authors edit and delete within 5 minutes; replies collapse; presence shows
   await page.getByRole("button", { name: "New message" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Search people").fill(USERS.driver.name);
-  await dialog.getByRole("option", { name: new RegExp(USERS.driver.name) }).click();
+  await dialog.getByRole("button", { name: new RegExp(USERS.driver.name) }).click();
   await dialog.getByRole("button", { name: "Open conversation" }).click();
   await page.waitForURL(/\/communications\/c\/[0-9a-f-]{36}$/);
   await page.getByLabel("Message", { exact: true }).fill(text);

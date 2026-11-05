@@ -41,7 +41,7 @@ export default async function FieldReportPage({ params, searchParams }: { params
         badges={<Badge tone={tone[r.status]}>{r.status}</Badge>}
         actions={can(access, "field_reports.manage") ? <ReportActions reportId={r.id} status={r.status} /> : undefined}
       />
-      <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <Card>
           <CardHeader title="What the driver reported" description={`Sent ${formatDateTime(r.created_at, timezone)}`} />
           <CardBody>

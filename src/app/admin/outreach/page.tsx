@@ -107,7 +107,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Pro
       </nav>
 
       {tab === "add" && (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card>
             <CardHeader title="From the FMCSA carrier registry" description="Public registration data, including the email address each carrier gives FMCSA." />
             <CardBody><OutreachImport /></CardBody>

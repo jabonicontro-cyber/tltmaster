@@ -49,7 +49,7 @@ export function NewCaseForm({ customers, customer, staff, me, links }: {
       </Field>
       {customer && (
         <>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="What it is about" htmlFor="sc-kind" required>
               <Select id="sc-kind" name="kind" defaultValue="">
                 <option value="" disabled>Choose…</option>

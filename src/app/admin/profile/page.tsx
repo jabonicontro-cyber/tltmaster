@@ -43,7 +43,7 @@ export default async function AdminProfilePage() {
       <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Platform access" description="Granted and revoked only by an operator with server access (scripts/platform-admin.mjs); it cannot be changed here." />
-        <dl className="grid gap-x-6 gap-y-3 px-5 pb-5 text-sm sm:grid-cols-2 sm:px-6">
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 px-5 pb-5 text-sm sm:grid-cols-2 sm:px-6">
           <div><dt className="text-muted">Role</dt><dd className="font-medium">{PLATFORM_ROLE_TITLE}</dd></div>
           <div><dt className="text-muted">Sign-in</dt><dd className="font-medium break-all">{me.email}</dd></div>
         </dl>

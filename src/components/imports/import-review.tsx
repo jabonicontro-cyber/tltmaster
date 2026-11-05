@@ -90,7 +90,7 @@ export function ImportReview({ batch, companyName, actions, afterApproved }: {
         </TableWrap>
       </div>
 
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         {review ? (
           <>
             <Card>

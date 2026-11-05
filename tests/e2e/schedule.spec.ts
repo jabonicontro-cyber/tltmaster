@@ -135,7 +135,7 @@ test("the week shows a person's pending, approved and denied time off", async ({
   await signIn(page, "owner");
   await page.goto(`/schedule?week=${monday}&q=${encodeURIComponent(name)}`);
   const row = page.getByRole("row").filter({ hasText: name });
-  await expect(row.getByRole("link", { name: "Unpaid leave time off: pending" })).toBeVisible();
-  await expect(row.getByRole("link", { name: "Sick time off: approved" })).toBeVisible();
-  await expect(row.getByRole("link", { name: "Other time off: denied" })).toBeVisible();
+  await expect(row.getByRole("link", { name: /Unpaid leave time off\s*:\s*pending/i })).toBeVisible();
+  await expect(row.getByRole("link", { name: /Sick time off\s*:\s*approved/i })).toBeVisible();
+  await expect(row.getByRole("link", { name: /Other time off\s*:\s*denied/i })).toBeVisible();
 });

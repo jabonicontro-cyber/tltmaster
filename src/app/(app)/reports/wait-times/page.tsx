@@ -68,7 +68,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
         </span>
       </div>
 
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile icon={<MapPin />} label="Median wait at job sites" value={minutesLabel(median(siteWaits))} muted={!siteWaits.length}>{siteWaits.length} visits with both times</StatTile>
         <StatTile icon={<Clock />} label="Median wait at pickups" value={minutesLabel(median(pickupWaits))} muted={!pickupWaits.length}>{pickupWaits.length} visits with both times</StatTile>
         <StatTile icon={<Hourglass />} tone={long ? "amber" : "neutral"} label="Waits over free time" value={long === null ? "–" : long} muted={!long}>

@@ -67,7 +67,7 @@ export function ImportUploader({ companyId, initial, action = stageImport }: {
       <input type="hidden" name="file_name" value={fileName} />
       <input type="hidden" name="csv" value={csv} />
       <input type="hidden" name="mapping" value={JSON.stringify(mapping)} />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="The spreadsheet contains" htmlFor="import-entity">
           <Select id="import-entity" value={entity} onChange={(e) => onEntity(e.target.value as ImportEntity)}>
             {IMPORT_ENTITIES.map((e) => (
@@ -84,7 +84,7 @@ export function ImportUploader({ companyId, initial, action = stageImport }: {
       {headers.length ? (
         <div className="space-y-3">
           <h3 className="font-bold">Match the columns</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {headers.map((h, i) => (
               <label key={i} className="block text-sm">
                 <span className="font-semibold">{h || `Column ${i + 1}`}</span>

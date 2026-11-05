@@ -82,7 +82,7 @@ export function AccountantAccess({ rows, today, timezone, defaultEnd, demo, comp
         {demo && <p className="text-sm text-muted">Demo companies do not create sign-ins: nothing real is created from a demo.</p>}
         <FormError message={invite.formError} />
         <input type="hidden" name="request_key" value={requestKey} />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Accountant's name" htmlFor="acc-name" error={invite.fieldError("full_name")} required><Input id="acc-name" name="full_name" maxLength={120} disabled={demo} /></Field>
           <Field label="Username" htmlFor="acc-username" error={invite.fieldError("username")} hint="They sign in with this." required><Input id="acc-username" name="username" maxLength={32} autoComplete="off" disabled={demo} /></Field>
           <Field label="Email" htmlFor="acc-email" error={invite.fieldError("email")} hint="Optional: to email the sign-in link."><Input id="acc-email" name="email" type="email" disabled={demo} /></Field>

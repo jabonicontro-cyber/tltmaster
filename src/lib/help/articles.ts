@@ -3008,4 +3008,45 @@ export const HELP_ARTICLES: HelpArticle[] = [
     reviewed: "2026-11-05",
     limitations: ["The calendar doesn't send reminders by itself; the existing alerts on each record still apply."],
   },
+  {
+    id: "order-stops",
+    title: "Stops on an order",
+    summary: "List a load's pickups and deliveries in order, with appointment times and reference numbers, for drivers and dispatch.",
+    category: "quotes-orders",
+    routes: ["/orders/*"],
+    permissions: ["orders.view"],
+    audience: "Office staff, dispatchers and owners; drivers see the stops on My Day.",
+    whatYouSee: [
+      "A **Stops** section on the order: each stop numbered in the order the truck makes it, marked **Pickup** or **Delivery**, with the place, address, appointment date and window, reference number and notes.",
+      "On the dispatch board the order shows its route (for example Gary, IN → Joliet, IL (+1 stop)) instead of the job site.",
+      "On the driver's load card the stops replace the single pickup and job site, each with a **Go** button that opens directions.",
+    ],
+    tasks: [
+      {
+        title: "Add stops to an order",
+        steps: [
+          "Open the order and select **Add stops** (or **Edit stops**).",
+          "Fill in each stop: shipper or receiver, address, appointment date and window, and the pickup number, PO or BOL as the reference.",
+          "Use **Add pickup** or **Add delivery** for more, and the arrows to change the order. The first stop must be a pickup and the last a delivery.",
+          "Select **Save stops**. Drivers on the order's loads see them on their next refresh.",
+        ],
+      },
+      {
+        title: "Remove the stops",
+        steps: ["Select **Edit stops**, then **Remove all stops**. The order goes back to its pickup and job site; the change is kept in the order's history."],
+      },
+    ],
+    prerequisites: [
+      "The section shows for companies that haul general freight (Settings → Company → What you haul) and on any order that already has stops.",
+      "Changing stops needs permission to edit orders, on an order that isn't completed or canceled.",
+    ],
+    troubleshooting: [
+      { problem: "I can't find Add stops.", fix: "Your company is set to aggregate hauling and the order has no stops yet. Choose General freight or Both under What you haul, or ask someone who can." },
+      { problem: "Save says the first stop must be a pickup.", fix: "Move a pickup to the top with the arrows; deliveries come after the truck has loaded." },
+    ],
+    next: ["what-you-haul"],
+    related: ["order-detail", "dispatch-board"],
+    reviewed: "2026-11-05",
+    limitations: ["Arrived and Left times are recorded for the pickup and the job site, not yet for each stop; per-stop proof of delivery and extra charges such as detention come later."],
+  },
 ];

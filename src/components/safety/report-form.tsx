@@ -70,7 +70,7 @@ export function IncidentReportForm({ today, now, trucks, drivers, chooseDriver, 
 
   return (
     <form action={submit} className="space-y-4" noValidate>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="What happened" htmlFor="kind" required error={fieldErrors.kind}>
           <Select id="kind" name="kind" defaultValue="" required>
             <option value="" disabled>Choose…</option>
@@ -95,7 +95,7 @@ export function IncidentReportForm({ today, now, trucks, drivers, chooseDriver, 
       <Field label="Describe what happened" htmlFor="description" required error={fieldErrors.description}>
         <Textarea id="description" name="description" rows={4} maxLength={4000} required />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Truck" htmlFor="truck_id">
           <Select id="truck_id" name="truck_id" defaultValue="">
             <option value="">None</option>

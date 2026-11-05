@@ -113,7 +113,7 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
       </Card>
 
       {manage && active.length > 0 && (
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
           <Card>
             <CardHeader title="Record a reading" description="Odometer and engine hours. A value lower than the last reading is refused." />
             <CardBody><ReadingForm trucks={active} /></CardBody>

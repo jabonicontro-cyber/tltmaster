@@ -28,7 +28,7 @@ export function BookingRequestForm({ slug, days, sites }: { slug: string; days: 
     <form ref={form} onSubmit={onSubmit} className="space-y-4" aria-label="Book loads">
       <FormError message={formError} />
       <input type="hidden" name="slug" value={slug} />
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Day" htmlFor="bk-day" required>
           <Select id="bk-day" name="day" required defaultValue={open[0]?.day ?? ""}>
             {days.map((d) => (

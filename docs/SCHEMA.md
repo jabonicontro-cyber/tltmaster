@@ -588,6 +588,21 @@ bills of lading), never rules. Updated through the existing company settings pol
 `company_settings.hidden_areas` (20261120007700, simple mode): optional menu areas the company hid; a check allows only
 the nine optional areas, so safety areas can't be hidden. Menu only.
 
+## Stops on an order (20261120007800, MK2 slice 1)
+
+| Table | Purpose |
+| --- | --- |
+| `order_stops` | An order's stops in order (`seq` 1–25): `kind` (`pickup` / `delivery`), place `name`, address (`address_line1`, `city`, `state`, `postal_code`), `appointment_date` with an optional `window_start` / `window_end` (both or neither, end after start, needs a date), `reference` (pickup number, PO, BOL), `notes`. `removed_at` marks a stop taken off the order (never deleted). Read with `orders.view` or `dispatch.view`; no client writes. |
+
+- `save_order_stops(order, stops jsonb)` (`orders.edit`): replaces the order's current stops with the list in order (ids of current stops are kept and updated, others added, the rest marked removed); the first stop must be a pickup and the last a delivery; refused on completed and canceled orders and for other companies' orders; audited as `order.stops_saved`.
+- `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
+- Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
+
+## Communications read speed (20261120007900)
+
+- `private.my_alert_ids()` returns the alerts the signed-in person is a recipient of; the read policies of `alerts`, `alert_recipients`, `alert_acknowledgments` and `alert_events` use it once per query instead of `private.alert_is_recipient` per row (same access). Index `alert_recipients_user_idx (user_id, company_id, alert_id)`.
+- `comm_inbox()` applies the message visibility rule inline (company, retention cut-off and legal hold read once) instead of calling `private.comm_message_visible` per message. Same results.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

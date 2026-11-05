@@ -51,7 +51,7 @@ export default async function BalancesPage() {
         integrations. Today one approver with the time-off approval permission decides, and hours worked are entered here.
       </Notice>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader title="Banks" description="A kind of time off draws from one bank at most. Kinds without a bank are not checked against a balance." />
           {banks.length === 0 ? (
@@ -112,7 +112,7 @@ export default async function BalancesPage() {
             </ul>
           )}
           {active.length > 0 && (
-            <div className="grid gap-5 border-t border-line p-4 sm:p-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-5 border-t border-line p-4 sm:p-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
               <div><h3 className="mb-3 text-sm font-semibold">New or replacement policy</h3><PolicyForm banks={active} /></div>
               <div><h3 className="mb-3 text-sm font-semibold">Record hours worked</h3><HoursForm employees={employees} /></div>
             </div>

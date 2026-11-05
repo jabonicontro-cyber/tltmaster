@@ -78,7 +78,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
                 <Link href="/admin/demo" className="pb-2 text-sm font-semibold text-brand-fg hover:underline">Plans and refresh in Demo Management</Link>
               </form>
               {demo ? (
-                <dl className="grid gap-3 text-sm sm:grid-cols-4">
+                <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-4">
                   <Fact label="Environment" value="Demo (fictional data)" />
                   <Fact label="Plan" value={demo.plan ? PLAN_LABEL[demo.plan] : "Not set"} />
                   <Fact label="Dispatch bases" value={String(demo.bases)} />
@@ -129,7 +129,7 @@ function Fact({ label, value }: { label: string; value: string }) {
 function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; demo: Demo | null; companyId: string | null; check: Check | null; labMissing: boolean }) {
   const impl = view.implementation;
   return (
-    <li id={`check-${view.key}`} className="grid gap-3 py-4 lg:grid-cols-[1fr_auto]">
+    <li id={`check-${view.key}`} className="grid grid-cols-1 gap-3 py-4 lg:grid-cols-[1fr_auto]">
       <div className="space-y-1">
         <p className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-ink">{view.title}</span>

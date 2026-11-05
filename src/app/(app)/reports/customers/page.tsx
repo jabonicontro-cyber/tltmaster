@@ -66,7 +66,7 @@ export default async function CustomerInsightsPage() {
         description="Your most profitable customers, those ordering less than usual or paying slower, and the money you can expect over the next four weeks, from your own orders, invoices and payments. Estimates are labelled; nothing is sent."
         actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
       />
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         {orders && <StatTile icon={<TrendingDown />} tone={less.length ? "amber" : "green"} label="Ordering less than usual" value={less.length} muted={!less.length}>Under half their usual month</StatTile>}
         {billing && <StatTile icon={<CalendarClock />} tone={slower.length ? "amber" : "green"} label="Paying slower" value={slower.length} muted={!slower.length}>10+ days slower than before</StatTile>}
         {forecast && <StatTile icon={<Wallet />} label="Expected next 4 weeks" value={formatCents(next4)} muted={!next4}>Estimate · plus {formatCents(forecast.late.cents)} already late</StatTile>}
@@ -118,7 +118,7 @@ export default async function CustomerInsightsPage() {
         </Card>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {orders && (
           <Card>
             <CardHeader title="Ordering less than usual" description="Last 30 days against their average month over the 3 months before. Customers who order at least twice a month." />

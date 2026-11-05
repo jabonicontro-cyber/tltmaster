@@ -32,7 +32,7 @@ export default async function ShopCapacityPage() {
       {!capacity.installed ? (
         <Notice tone="info" title="Not available yet">Shop capacity needs a database update that has not been installed yet.</Notice>
       ) : (
-        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_24rem]">
           <Card>
             <CardHeader title="Next 14 days" description={capacity.configured
               ? "Available hours are each mechanic's shift minus approved time off. Planned hours add up the estimates of scheduled work orders."

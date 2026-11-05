@@ -48,7 +48,7 @@ export function PaperworkCalculator() {
   const [values, setValues] = useState<Record<keyof PaperworkInput, string>>({ trucks: "", loadsPerTruck: "", daysPerWeek: "", minutesPerTicket: "", hourlyCost: "" });
   const result = paperworkCost(values);
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_0.9fr]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)]">
       <form className="grid gap-5 sm:grid-cols-2" aria-label="Your numbers" onSubmit={(e) => e.preventDefault()}>
         {FIELDS.map((f) => (
           <div key={f.key} className={f.key === "minutesPerTicket" ? "sm:col-span-2" : undefined}>

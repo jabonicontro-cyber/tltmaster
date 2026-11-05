@@ -110,7 +110,7 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
       <div className="space-y-4">
         <FormError message={error} />
         <h3 className="text-base font-bold text-ink">Check before creating</h3>
-        <dl className="grid gap-3 text-sm sm:grid-cols-2">
+        <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
           <div><dt className="text-muted">Customer</dt><dd className="font-semibold text-ink">{customers.find((c) => c.id === customer)?.name}</dd></div>
           <div><dt className="text-muted">Person</dt><dd className="font-semibold text-ink">{personName}{chosen ? "" : " (new contact)"}</dd></div>
           <div><dt className="text-muted">Username</dt><dd className="font-mono font-semibold text-ink">{normalized}</dd></div>
@@ -130,7 +130,7 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
   return (
     <div className="space-y-4">
       <FormError message={error} />
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Customer" htmlFor="signin_customer" required error={fieldErrors.customer}>
           <Select id="signin_customer" value={customer} onChange={(e) => { setCustomer(e.target.value); setContact(""); }}>
             <option value="">Choose…</option>

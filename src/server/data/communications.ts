@@ -269,18 +269,18 @@ export async function loadAlerts(status: "open" | "resolved" | "all" = "open"): 
   const supabase = await createClient();
   let q = supabase.from("alerts").select("*").order("created_at", { ascending: false }).limit(200);
   if (status !== "all") q = q.eq("status", status);
+  // Only the signed-in person's own current recipient rows (not the whole company's): "mine" is all the page needs.
+  const { data: { user } } = await supabase.auth.getUser();
   const [alerts, types, rec] = await Promise.all([
     q,
     supabase.from("alert_event_types").select("*").order("category"),
-    supabase.from("alert_recipients").select("alert_id, user_id, responsible, released_at"),
+    user ? supabase.from("alert_recipients").select("alert_id").eq("user_id", user.id).is("released_at", null) : Promise.resolve({ data: [], error: null }),
   ]);
   if (alerts.error) {
     if (missing(alerts.error)) return null;
     fail("alerts", alerts.error);
   }
-  const { data: { user } } = await supabase.auth.getUser();
-  const mine = new Set(((rec.data ?? []) as Array<{ alert_id: string; user_id: string; released_at: string | null }>)
-    .filter((r) => r.user_id === user?.id && !r.released_at).map((r) => r.alert_id));
+  const mine = new Set(((rec.data ?? []) as Array<{ alert_id: string }>).map((r) => r.alert_id));
   return { alerts: (alerts.data ?? []) as AlertRow[], types: (types.data ?? []) as AlertType[], mine };
 }
 

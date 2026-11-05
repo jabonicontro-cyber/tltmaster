@@ -96,7 +96,7 @@ export default async function EstimatesPage() {
             )}
           </Card>
 
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
             <Card>
               <CardHeader title="Estimate against actual by kind of job" description="Jobs where the shop recorded an estimate before finishing." />
               <PerfTable rows={byKind} label="Kind of job" name={(k) => WO_CATEGORIES[k as keyof typeof WO_CATEGORIES] ?? k} />

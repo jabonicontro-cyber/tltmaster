@@ -77,7 +77,7 @@ export default async function BriefingPage() {
         actions={<ButtonLink href="/command-center" variant="secondary">Command Center</ButtonLink>}
       />
 
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {billing && (
           <StatTile icon={<CircleDollarSign />} label="Delivered yesterday" value={ops?.value ? formatCents(ops.value.verified_value_cents) : "–"} muted={!ops?.value?.verified_value_cents}>
             Verified value of accepted tickets

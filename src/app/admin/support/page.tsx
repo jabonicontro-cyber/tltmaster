@@ -50,7 +50,7 @@ export default async function SupportPage() {
               </TableWrap>
             ) : <CardBody><p className="text-sm text-muted">No support requests yet.</p></CardBody>}
           </Card>
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
             <Card>
               <CardHeader title="Searches With No Result" description={`${o.searches} searches in the last 90 days. These are the questions the articles do not answer yet.`} />
               <CardBody>

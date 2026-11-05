@@ -8,7 +8,7 @@ export function ContactCard({ company }: { company: Pick<PortalCompany, "name" |
   return (
     <Card>
       <CardHeader title={`Contact ${company.name}`} />
-      <CardBody className="grid gap-3 text-sm sm:grid-cols-3">
+      <CardBody className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
         {company.contact_phone ? (
           <a href={`tel:${company.contact_phone.replace(/[^\d+]/g, "")}`} className="flex items-center gap-2 text-ink hover:underline"><Phone className="size-4 text-muted" aria-hidden />{company.contact_phone}</a>
         ) : null}

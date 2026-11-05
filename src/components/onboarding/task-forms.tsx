@@ -97,7 +97,7 @@ export function TaskAssignForm({ side, taskId, companyId, people, assignee, dueO
 }) {
   const { pending, onSubmit, formError } = useRefreshing(side === "staff" ? staffAssignOnboardingTask : assignOnboardingTask);
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end" aria-label="Owner and due date">
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end" aria-label="Owner and due date">
       <FormError message={formError} />
       <input type="hidden" name="task" value={taskId} />
       {companyId ? <input type="hidden" name="company" value={companyId} /> : null}

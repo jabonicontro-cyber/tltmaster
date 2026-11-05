@@ -46,7 +46,7 @@ export function SiteInfoForm({ slug, siteId, siteLabel }: { slug: string; siteId
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-2" aria-label={`Site details for ${siteLabel}`}>
+    <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label={`Site details for ${siteLabel}`}>
       <div className="sm:col-span-2"><FormError message={error} /></div>
       <input type="hidden" name="slug" value={slug} />
       <input type="hidden" name="site" value={siteId} />

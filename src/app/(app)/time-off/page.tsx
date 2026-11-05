@@ -101,7 +101,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
       {myBalances.length > 0 && (
         <Card className="mt-5">
           <CardHeader title="My balances" description="Available = balance minus your pending requests." />
-          <ul className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-3" aria-label="My balances">
+          <ul className="grid grid-cols-1 gap-px bg-line sm:grid-cols-2 lg:grid-cols-3" aria-label="My balances">
             {myBalances.map((b) => (
               <li key={b.bank_id} className="bg-card px-5 py-3 sm:px-6">
                 <p className="text-sm font-semibold">{b.name}</p>
@@ -115,7 +115,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
           </ul>
         </Card>
       )}
-      <div className="mt-5 grid gap-5 xl:grid-cols-2">
+      <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
         <Card>
           <CardHeader title={canApprove ? "Request or enter time off" : "Request time off"} />
           <CardBody>

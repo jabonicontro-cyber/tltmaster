@@ -32,7 +32,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
       ) : results.length === 0 ? (
         <EmptyState title={`Nothing found for “${q}”`} description="Only records you are allowed to open are searched." />
       ) : (
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {results.map((g) => (
             <Card key={g.key}>
               <CardHeader title={g.label} />

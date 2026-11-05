@@ -73,7 +73,7 @@ export default async function LocationsPage() {
         )}
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <CardHeader title="Trucks" description={`${current.length} of ${activeTrucks.length} with a current position · ${located.length - current.length} stale · ${activeTrucks.length - located.length} never recorded`} />
           <CardBody className="space-y-4">

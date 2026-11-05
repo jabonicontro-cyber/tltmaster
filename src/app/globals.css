@@ -167,7 +167,9 @@
 :root,
 .app-root {
   --color-brand-light: color-mix(in srgb, var(--color-brand) 10%, white);
-  --color-brand-fg: var(--color-brand);
+  /* Brand text sits on cards and on the grey page: a touch darker than the brand itself, so any brand that passes
+     4.5:1 on white (the branding rule) also passes on the page background (LR1, 2026-11-05). */
+  --color-brand-fg: color-mix(in srgb, var(--color-brand) 88%, black);
   /* Selected states (chips, tabs, the current view) in the company's colour, like the navigation pill (2026-10-27). */
   --color-strong: var(--color-brand);
   --color-nav: var(--color-card);
@@ -297,7 +299,7 @@
     --color-gray-300: var(--light-gray-300);
     --color-gray-700: var(--light-gray-700);
     --color-brand-light: color-mix(in srgb, var(--color-brand) 10%, white);
-    --color-brand-fg: var(--color-brand);
+    --color-brand-fg: color-mix(in srgb, var(--color-brand) 88%, black);
     --color-strong: var(--color-charcoal);
   }
 }

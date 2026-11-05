@@ -38,7 +38,7 @@ export function PortalSettingsForm({ values, entitled, canEdit }: { values: Port
           <Checkbox name="enabled" defaultChecked={values.enabled} disabled={!entitled} label={<span><strong>Portal on</strong>, invited customers can sign in.</span>} />
           <Checkbox name="public_page" defaultChecked={values.public_page} label="Public page: anyone with the link sees your welcome, contact details and published help (never orders or quotes)." />
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Name shown to customers" htmlFor="display_name" hint="Empty: your company name.">
             <Input id="display_name" name="display_name" defaultValue={values.display_name} maxLength={120} />
           </Field>
@@ -86,7 +86,7 @@ export function InviteForm({ customers, contacts }: { customers: Array<{ id: str
   const full = link ? `${typeof window === "undefined" ? "" : window.location.origin}${link.link}` : "";
   return (
     <div className="space-y-4">
-      <form ref={form} onSubmit={onSubmit} className="grid items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]" aria-label="Invite a customer contact">
+      <form ref={form} onSubmit={onSubmit} className="grid grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]" aria-label="Invite a customer contact">
         <FormError message={formError} />
         <Field label="Customer" htmlFor="invite-customer">
           <Select id="invite-customer" name="customer" required value={customer} onChange={(e) => setCustomer(e.target.value)}>
@@ -209,7 +209,7 @@ export function HelpArticleForm({ article }: { article?: { id: string; title: st
     <form ref={form} onSubmit={onSubmit} className="space-y-3">
       <FormError message={formError} />
       {article ? <input type="hidden" name="id" value={article.id} /> : null}
-      <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[2fr_1fr]">
         <Field label="Title" htmlFor={`t-${key}`}>
           <Input id={`t-${key}`} name="title" defaultValue={article?.title} required maxLength={160} />
         </Field>

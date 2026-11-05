@@ -61,7 +61,7 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
         {c.welcome ? <p className="mt-2 max-w-2xl whitespace-pre-line text-[15px] text-muted">{c.welcome}</p> : null}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {c.features.orders ? <Stat label="Open orders" value={active.length} href={`/portal/${slug}/orders`} /> : null}
         {c.features.quotes ? <Stat label="Quotes awaiting your answer" value={awaiting.length} href={`/portal/${slug}/quotes`} /> : null}
         {c.features.support ? <Stat label="New replies from us" value={answered.length} href={`/portal/${slug}/support`} /> : null}

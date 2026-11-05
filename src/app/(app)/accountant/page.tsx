@@ -54,14 +54,14 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
 
       {!data.invoicesInstalled ? <Notice title="Not available yet">Invoices need a database update that has not been installed yet.</Notice> : (
         <>
-          <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatTile icon={<FileText />} label={`Invoiced in ${year}`} value={formatCents(s.invoicedCents)} muted={!s.invoicedCents}>{s.issued.length} invoice{s.issued.length === 1 ? "" : "s"} issued</StatTile>
             <StatTile icon={<Receipt />} label="Sales tax invoiced" value={formatCents(s.taxCents)} muted={!s.taxCents}>On those invoices</StatTile>
             <StatTile icon={<Banknote />} label={`Received in ${year}`} value={formatCents(s.receivedCents)} muted={!s.receivedCents}>{s.payments.length} payment{s.payments.length === 1 ? "" : "s"}</StatTile>
             <StatTile icon={<Hourglass />} label="Still owed today" value={formatCents(s.outstandingCents)} muted={!s.outstandingCents}>All open invoices, any year</StatTile>
           </div>
 
-          <div className="mb-5 grid gap-5 lg:grid-cols-[2fr_1fr]">
+          <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
             <Card>
               <CardHeader title={`Invoices issued in ${year}`} description="Void invoices are left out. Paid and open amounts are as of today." />
               <div className="flex flex-wrap gap-4 px-5 pb-3 text-sm sm:px-6">
@@ -102,7 +102,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
         </>
       )}
 
-      <div className="mb-5 grid gap-5 lg:grid-cols-2">
+      <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title={`Fuel and IFTA · ${year}`} description="Miles from drivers' trip sheets and gallons from fuel receipts, per quarter. Download each quarter's IFTA summary for the return." />
           <ul className="divide-y divide-line border-t border-line" aria-label="IFTA quarters">

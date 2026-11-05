@@ -96,7 +96,7 @@ export function UsePartForm({ workOrderId, parts }: { workOrderId: string; parts
   const inStock = parts.filter((p) => p.on_hand > 0);
   if (!inStock.length) return <p className="text-sm text-muted">No parts in stock. Receive parts under Maintenance → Parts.</p>;
   return (
-    <form key={key} onSubmit={onSubmit} className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end" noValidate aria-label="Use a part">
+    <form key={key} onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end" noValidate aria-label="Use a part">
       <input type="hidden" name="work_order" value={workOrderId} />
       <div className="sm:col-span-3"><FormError message={formError} /></div>
       <Field label="Part" htmlFor="use-part">

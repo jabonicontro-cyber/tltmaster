@@ -58,7 +58,7 @@ export default async function HelpCenterPage({ searchParams }: { searchParams: P
       {guides.length ? (
         <section aria-labelledby="guides-heading" className="mb-8">
           <h2 id="guides-heading" className="mb-3 text-lg font-semibold">Show Me How</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {guides.map((g) => (
               <li key={g.id}>
                 <Card className="h-full">
@@ -80,7 +80,7 @@ export default async function HelpCenterPage({ searchParams }: { searchParams: P
           <Link key={c} href={`/help?category=${c}`} aria-current={category === c ? "page" : undefined} className={`rounded-full border px-3.5 py-1.5 text-sm font-medium ${category === c ? "border-strong bg-strong text-white" : "border-line bg-card text-muted hover:text-ink"}`}>{label}</Link>
         ))}
       </nav>
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {byCategory.map(({ c, list }) => (
           <section key={c} aria-labelledby={`cat-${c}`} className="rounded-panel border border-line/70 bg-card shadow-card">
             <h2 id={`cat-${c}`} className="border-b border-line px-4 py-3 text-base font-semibold">{HELP_CATEGORIES[c]}</h2>

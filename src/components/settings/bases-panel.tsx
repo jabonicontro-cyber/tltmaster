@@ -214,7 +214,7 @@ function BaseFields({ base, idPrefix }: { base?: DispatchBase; idPrefix: string 
   const id = (k: string) => `${idPrefix}-${k}`;
   const zones = base && !BASE_TIMEZONES.includes(base.timezone) ? [base.timezone, ...BASE_TIMEZONES] : BASE_TIMEZONES;
   return (
-    <div className="grid gap-3 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <Field label="Name" htmlFor={id("name")} required><Input id={id("name")} name="name" defaultValue={base?.name} required maxLength={80} /></Field>
       <Field label="Code" htmlFor={id("code")} required hint="Short, e.g. NORTH"><Input id={id("code")} name="code" defaultValue={base?.code} required maxLength={10} pattern="[A-Za-z0-9][A-Za-z0-9\-]{0,9}" className="uppercase" /></Field>
       <Field label="Street address" htmlFor={id("address")} className="sm:col-span-2"><Input id={id("address")} name="address_line1" defaultValue={base?.address_line1} maxLength={160} /></Field>

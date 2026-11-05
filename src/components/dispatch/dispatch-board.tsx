@@ -222,6 +222,7 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
                 creditHold={creditHolds[o.id] ?? null}
+                stopsRoute={day.routes?.[o.id] ?? null}
                 routeOpen={routeOrder === o.id}
                 onRoute={() => setRouteOrder((cur) => (cur === o.id ? null : o.id))}
                 selected={selected}
@@ -390,6 +391,7 @@ function OrderCard({
   order: o,
   urgent,
   creditHold,
+  stopsRoute,
   routeOpen,
   onRoute,
   selected,
@@ -415,6 +417,8 @@ function OrderCard({
   order: OrderListRow;
   urgent: boolean;
   creditHold: string | null;
+  /** The order's stops as one line (MK2), shown instead of the job site. */
+  stopsRoute: string | null;
   routeOpen: boolean;
   onRoute: () => void;
   selected: Set<string>;
@@ -464,9 +468,11 @@ function OrderCard({
           </div>
           <p className="font-semibold">{o.customer_name}{o.project_name ? <span className="font-normal text-muted"> · {o.project_name}</span> : null}</p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-            {site && (
+            {stopsRoute ? (
+              <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" aria-hidden /> <span className="sr-only">Stops: </span>{stopsRoute}</span>
+            ) : site ? (
               <span className="inline-flex items-center gap-1"><MapPin className="size-3.5" aria-hidden /> {site}</span>
-            )}
+            ) : null}
             {window && (
               <span className="inline-flex items-center gap-1"><Clock className="size-3.5" aria-hidden /> Window {window}</span>
             )}

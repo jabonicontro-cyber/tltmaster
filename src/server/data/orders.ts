@@ -5,6 +5,7 @@ import { addDays } from "@/lib/dates";
 import { OPEN_ORDER_STATUSES, ORDER_STATUSES } from "@/lib/orders/status";
 import { uuid } from "@/lib/schemas/common";
 import { referenceKey } from "@/lib/search";
+import type { OrderStop } from "@/lib/orders/stops";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import { getUserNames } from "./quotes";
 import { businessToday } from "./settings";
@@ -137,5 +138,31 @@ export async function getOrderPickup(id: string): Promise<{ installed: boolean; 
     locations: rows
       .map((r) => ({ id: r.id, name: r.name, kind: r.kind, address: [r.address_line1, r.city, r.state].filter(Boolean).join(", ") }))
       .sort((a, b) => rank[a.kind] - rank[b.kind] || a.name.localeCompare(b.name)),
+  };
+}
+
+/**
+ * The order's current stops in order (MK2, migration 20261120007800). `installed` is false before the migration is
+ * applied, so the page hides the stops section instead of failing.
+ */
+export async function getOrderStops(id: string): Promise<{ installed: boolean; stops: OrderStop[] }> {
+  if (!uuid.safeParse(id).success) return { installed: false, stops: [] };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("order_stops")
+    .select("id, seq, kind, name, address_line1, city, state, postal_code, appointment_date, window_start, window_end, reference, notes")
+    .eq("order_id", id)
+    .is("removed_at", null)
+    .order("seq");
+  if (error) return { installed: false, stops: [] };
+  const hm = (t: string | null) => (t ? t.slice(0, 5) : "");
+  return {
+    installed: true,
+    stops: ((data ?? []) as Array<Record<string, string | number | null>>).map((r) => ({
+      id: String(r.id), seq: Number(r.seq), kind: r.kind === "pickup" ? "pickup" : "delivery", name: String(r.name ?? ""),
+      address_line1: String(r.address_line1 ?? ""), city: String(r.city ?? ""), state: String(r.state ?? ""), postal_code: String(r.postal_code ?? ""),
+      appointment_date: r.appointment_date ? String(r.appointment_date) : "", window_start: hm(r.window_start as string | null), window_end: hm(r.window_end as string | null),
+      reference: String(r.reference ?? ""), notes: String(r.notes ?? ""),
+    })),
   };
 }

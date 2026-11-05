@@ -34,7 +34,7 @@ export function InvestigationForm({ id, kind, severity, findings, rootCause }: {
       className="space-y-4"
       action={(f) => run(() => saveInvestigation({ id, kind: String(f.get("kind")), severity: String(f.get("severity")), findings: String(f.get("findings") ?? ""), root_cause: String(f.get("root_cause") ?? "") }))}
     >
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="What happened" htmlFor="inv-kind">
           <Select id="inv-kind" name="kind" defaultValue={kind}>{Object.entries(INCIDENT_KINDS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
         </Field>
@@ -60,7 +60,7 @@ export function WitnessForm({ id }: { id: string }) {
   return (
     <form
       key={key}
-      className="grid gap-3 sm:grid-cols-2"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
       action={(f) => run(() => addWitness({ id, name: String(f.get("name") ?? ""), phone: String(f.get("phone") ?? ""), statement: String(f.get("statement") ?? "") }), () => setKey((k) => k + 1))}
     >
       <Field label="Name" htmlFor="w-name" required><Input id="w-name" name="name" maxLength={120} required /></Field>
@@ -77,7 +77,7 @@ export function ActionForm({ id, people, today }: { id: string; people: Array<{ 
   return (
     <form
       key={key}
-      className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_10rem]"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_12rem_10rem]"
       action={(f) => run(() => addCorrectiveAction({ id, description: String(f.get("description") ?? ""), assigned_to: String(f.get("assigned_to") ?? ""), due_on: String(f.get("due_on") ?? "") }), () => setKey((k) => k + 1))}
     >
       <Field label="Corrective action" htmlFor="a-desc" required><Input id="a-desc" name="description" maxLength={1000} required /></Field>

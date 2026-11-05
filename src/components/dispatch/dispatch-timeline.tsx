@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { useCallback, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
@@ -74,7 +75,6 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
         key={l.id}
         type="button"
         onClick={() => setRouteOrder(l.order_id)}
-        aria-label={label}
         title={label}
         style={pos(l)}
         className={cn(
@@ -86,7 +86,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
       >
         {/* The full order number on its own line (UX8): the load number and time move to the second line. */}
         <span className="truncate font-semibold tabular">{o?.order_number ?? "Order"}</span>
-        <span className="truncate text-[11px] opacity-75">Load {l.load_number} · {formatTime(l.start_time)}{site ? ` · ${site}` : ""}</span>
+        <span className="truncate text-[11px] opacity-75">Load {l.load_number} · {formatTime(l.start_time)}<span className="sr-only"> to {formatTime(l.end_time)}</span>{site ? ` · ${site}` : ""}{tone === "open" ? <span className="sr-only">, needs a truck</span> : null}</span>
       </button>
     );
   };
@@ -114,7 +114,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
       {planned.length === 0 && day.trucks.length === 0 ? (
         <EmptyState icon={<Truck className="size-6" />} title="Nothing to show for this day" description="Trucks and loads appear here once the fleet is set up and orders have loads." />
       ) : (
-        <div className="overflow-x-auto rounded-panel border border-line/70 bg-card shadow-card">
+        <ScrollRegion className="rounded-panel border border-line/70 bg-card shadow-card" label="Trucks by hour">
           {/* At least 5.5rem per hour so a one-hour load shows its whole order number; wider days scroll sideways. */}
           <div className="min-w-[56rem]" style={{ minWidth: `max(56rem, calc(14rem + ${span / 60} * 5.5rem))` }} role="table" aria-label="Trucks by hour">
             <div role="row" className="sticky top-0 z-10 flex border-b border-line/70 bg-card">
@@ -170,7 +170,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
               );
             })}
           </div>
-        </div>
+        </ScrollRegion>
       )}
 
       {routeOrder && <OrderRoutePanel orderId={routeOrder} date={day.date} onClose={close} />}

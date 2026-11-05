@@ -80,7 +80,7 @@ export function CompanyLifecycleControls({
                 <Notice tone="warning" title="This cannot be undone">
                   {total} records{preview.members ? ` and ${preview.members} memberships` : ""} will be removed. Sign-in accounts are kept (a person may belong to other companies). The deletion and these counts stay in the platform audit.
                 </Notice>
-                <ul className="grid gap-x-6 text-sm text-muted sm:grid-cols-2" aria-label="Records to delete">
+                <ul className="grid grid-cols-1 gap-x-6 text-sm text-muted sm:grid-cols-2" aria-label="Records to delete">
                   {Object.entries(preview.counts).map(([k, n]) => (
                     <li key={k} className="flex justify-between gap-3 border-b border-line py-1"><span>{k.replace(/_/g, " ")}</span><span className="tabular">{n}</span></li>
                   ))}

@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { clearScheduleDay, endSchedulePattern, setScheduleDay, setSchedulePattern } from "@/app/(app)/schedule/actions";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { Dialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import type { ActionResult } from "@/lib/action-result";
@@ -47,7 +48,7 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, to
   const dates = Array.from({ length: 7 }, (_, i) => addDays(from, i));
   return (
     <>
-      <div className="overflow-x-auto rounded-panel border border-line/70 bg-card shadow-card">
+      <ScrollRegion className="rounded-panel border border-line/70 bg-card shadow-card" label="Week schedule">
         <table className="w-full min-w-[760px] text-sm">
           <caption className="sr-only">Schedule for the week of {formatDate(from)}</caption>
           <thead className="bg-surface text-left text-xs font-semibold text-muted">
@@ -99,7 +100,7 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, to
             ))}
           </tbody>
         </table>
-      </div>
+      </ScrollRegion>
       <p className="mt-2 text-xs text-muted">☾ ends the next morning (overnight). A framed day was changed for that date only. – means no schedule: dispatch does not check that person.</p>
       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Time off key">
         <span>Time off:</span>
@@ -232,7 +233,6 @@ function TimeOffChip({ t }: { t: TimeOffMark }) {
   return (
     <Link
       href={`/time-off/${t.id}`}
-      aria-label={`${what} time off${hours}: ${state.toLowerCase()}`}
       className={cn(
         "mt-1 flex w-full flex-col items-center rounded-md border px-1 py-1 text-[11px] leading-tight font-semibold",
         t.status === "approved" && "border-green-200 bg-green-50 text-green-800",
@@ -240,8 +240,8 @@ function TimeOffChip({ t }: { t: TimeOffMark }) {
         t.status === "denied" && "border-red-200 bg-red-50 text-red-800",
       )}
     >
-      <span className={cn(t.status === "denied" && "line-through")}>{what}{hours}</span>
-      <span className="font-normal opacity-80">{state}</span>
+      <span className={cn(t.status === "denied" && "line-through")}>{what}<span className="sr-only"> time off</span>{hours}</span>
+      <span className="font-normal opacity-80"><span className="sr-only">: </span>{state}</span>
     </Link>
   );
 }

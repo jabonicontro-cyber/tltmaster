@@ -128,7 +128,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
           description={<>Routes appear once loads are assigned to trucks. <Link href={`/dispatch?date=${date}`} className="font-medium text-brand-fg hover:underline">Open the board</Link>.</>}
         />
       ) : (
-        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-5 xl:grid-cols-2">
           {routes.map((r) => {
             const t = routeTotals(r);
             return (
@@ -168,7 +168,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
                   </div>
                 )}
                 <ol className="px-5 py-3 sm:px-6" aria-label="Stops and legs">
-                  {r.legs.length === 0 && r.stops.map((s) => <StopRow key={s.loadId} label={`${s.orderNumber} · ${s.site}`} sub={`${s.customer} · ${s.start}–${s.end}`} located={Boolean(s.point)} />)}
+                  {r.legs.length === 0 && r.stops.map((s) => <li key={s.loadId}><StopRow label={`${s.orderNumber} · ${s.site}`} sub={`${s.customer} · ${s.start}–${s.end}`} located={Boolean(s.point)} /></li>)}
                   {r.legs.map((l, i) => {
                     const stop = r.stops.find((s) => `${s.orderNumber} · ${s.site}` === l.to);
                     return (

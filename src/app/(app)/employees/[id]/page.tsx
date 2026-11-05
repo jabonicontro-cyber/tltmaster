@@ -69,7 +69,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
         badges={<Badge tone={e.status === "active" ? "green" : e.status === "on_leave" ? "amber" : "gray"}>{EMPLOYEE_STATUSES[e.status]}</Badge>}
         actions={can(access, "employees.edit") && <ButtonLink href={`/employees/${id}/edit`} variant="secondary" icon={<Pencil className="size-4" />}>Edit</ButtonLink>}
       />
-      <div className="grid gap-5 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           <Card>
             <div className="flex items-center gap-4 p-4 sm:p-5">
@@ -79,7 +79,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                 <p className="text-sm text-muted">{DEPARTMENTS[e.department]} · {EMPLOYMENT_TYPES[e.employment_type]}</p>
               </div>
             </div>
-            <dl className="grid gap-x-6 gap-y-3 border-t border-line px-5 py-4 sm:grid-cols-2 sm:px-6">
+            <dl className="grid grid-cols-1 gap-x-6 gap-y-3 border-t border-line px-5 py-4 sm:grid-cols-2 sm:px-6">
               <Item label="Work email">{e.work_email}</Item>
               <Item label="Work phone">{e.work_phone}</Item>
               <Item label="Hire date">{e.hire_date ? formatDate(e.hire_date) : ""}</Item>

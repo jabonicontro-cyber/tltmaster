@@ -162,7 +162,7 @@ export default async function LoadBuildPage({ params, searchParams }: { params: 
               {ctx.unit && usable.length > 0 && (
                 <details className="mt-4 text-sm">
                   <summary className="cursor-pointer text-muted">Trucks considered ({usable.length})</summary>
-                  <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+                  <ul className="mt-2 grid grid-cols-1 gap-1 sm:grid-cols-2">
                     {usable.map((t) => (
                       <li key={t.id} className="tabular">{t.unit_number} · {trimNumber(truckCapacity(t, ctx.unit!)!)} {u}{t.capacity_verified_at ? "" : " (unverified)"}</li>
                     ))}

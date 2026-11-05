@@ -29,7 +29,7 @@ export function PreferencesForm({ initial }: { initial: Preferences }) {
     }}>
       <fieldset>
         <legend className="mb-2 text-sm font-semibold text-ink">Notify me about</legend>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {(Object.keys(NOTIFICATION_CATEGORIES) as Array<keyof typeof NOTIFICATION_CATEGORIES>).map((k) => (
             <Checkbox key={k} label={NOTIFICATION_CATEGORIES[k]} checked={p[`notify_${k}`]} onChange={(e) => setP({ ...p, [`notify_${k}`]: e.target.checked })} />
           ))}
@@ -39,7 +39,7 @@ export function PreferencesForm({ initial }: { initial: Preferences }) {
         <legend className="mb-2 text-sm font-semibold text-ink">Quiet hours</legend>
         <Checkbox label="Hold routine notifications during quiet hours (released afterwards; Critical alerts still notify)" checked={quiet} onChange={(e) => setQuiet(e.target.checked)} />
         {quiet && (
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="From" htmlFor="q-start"><Input id="q-start" type="time" value={p.quiet_start ?? "21:00"} onChange={(e) => setP({ ...p, quiet_start: e.target.value })} /></Field>
             <Field label="Until" htmlFor="q-end"><Input id="q-end" type="time" value={p.quiet_end ?? "06:00"} onChange={(e) => setP({ ...p, quiet_end: e.target.value })} /></Field>
             <Field label="Time zone" htmlFor="q-tz">
@@ -76,7 +76,7 @@ export function CompanySettingsForm({ initial }: { initial: CommSettings }) {
         managers can remove any message with a reason, which is recorded. Message content, including replies and files, is removed
         {" "}{RETENTION_DAYS} days after it was sent unless legal hold is on. Audit records are kept separately.
       </p>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Away after (minutes)" htmlFor="cs-away" hint="Presence turns Away after this long without activity (an estimate).">
           <Input id="cs-away" type="number" min={5} max={240} value={s.away_after_minutes} onChange={num("away_after_minutes")} />
         </Field>
@@ -119,7 +119,7 @@ function AlertSettingRow({ row }: { row: AlertRow }) {
         <p className="font-semibold text-ink">{r.type.label}</p>
         <p className="text-xs text-muted">Minimum: {PRIORITIES[r.type.min_priority]}</p>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Field label="Default priority" htmlFor={`ap-${r.type.code}`}>
           <Select id={`ap-${r.type.code}`} value={r.default_priority} onChange={(e) => setR({ ...r, default_priority: e.target.value as Priority })}>
             {allowedPriorities(r.type.min_priority).map((p) => <option key={p} value={p}>{PRIORITIES[p]}</option>)}
@@ -169,7 +169,7 @@ export function AdminSearch() {
   const [pending, setPending] = useState(false);
   return (
     <div className="space-y-3">
-      <form className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={async (e) => {
+      <form className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" onSubmit={async (e) => {
         e.preventDefault();
         setPending(true); setError(null);
         const r = await adminSearch({ query, reason });

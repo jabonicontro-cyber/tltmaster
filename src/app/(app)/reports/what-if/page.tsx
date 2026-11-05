@@ -49,7 +49,7 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
         actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
       />
       <form method="get" className="space-y-5" aria-label="What if">
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card>
             <CardHeader title="Add trucks" description="Trucks that work like your current fleet, if there is work for them." />
             <CardBody className="space-y-4">

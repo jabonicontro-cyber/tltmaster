@@ -154,7 +154,7 @@ export function OutreachImport() {
       )}
       {(mode === "search" || (table && !missing.length)) && (
         <>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Field label={mode === "search" ? "States" : "States (blank for all)"} htmlFor="outreach-states" hint="For example: TX, OK, KS">
               <Input id="outreach-states" value={states} onChange={(e) => reset(setStates)(e.target.value)} placeholder="TX, OK" />
             </Field>
@@ -202,7 +202,7 @@ export function AddProspectForm() {
   return (
     <form
       aria-label="Add a company"
-      className="grid gap-3 sm:grid-cols-2"
+      className="grid grid-cols-1 gap-3 sm:grid-cols-2"
       onSubmit={(e) => {
         e.preventDefault();
         run(() => addProspect(f), (d) => { if (d.id) router.push(`/admin/outreach/${d.id}`); });
@@ -238,7 +238,7 @@ export function OutreachSettingsForm({ initial }: { initial: OutreachSettings })
         run(() => saveOutreachSettings(s));
       }}
     >
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Sender's name" htmlFor="o-sender" required hint="Shown in the email and its footer.">
           <Input id="o-sender" value={s.sender_name} onChange={(e) => setS({ ...s, sender_name: e.target.value })} maxLength={120} />
         </Field>
@@ -255,7 +255,7 @@ export function OutreachSettingsForm({ initial }: { initial: OutreachSettings })
       <fieldset className="space-y-3">
         <legend className="text-sm font-semibold text-ink">Common questions</legend>
         {s.faq.map((f, i) => (
-          <div key={i} className="grid gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_2fr_auto]">
+          <div key={i} className="grid grid-cols-1 gap-2 rounded-xl border border-line p-3 sm:grid-cols-[1fr_2fr_auto]">
             <Input aria-label={`Question ${i + 1}`} value={f.q} onChange={(e) => setFaq(i, "q", e.target.value)} maxLength={200} />
             <Textarea aria-label={`Answer ${i + 1}`} rows={2} value={f.a} onChange={(e) => setFaq(i, "a", e.target.value)} maxLength={1000} />
             <Button variant="ghost" size="sm" onClick={() => setS({ ...s, faq: s.faq.filter((_, n) => n !== i) })}>Remove</Button>
@@ -309,7 +309,7 @@ export function ProspectManage({ id, status, notes, leadId }: { id: string; stat
   const locked = status === "do_not_contact";
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
         <Field label="Status" htmlFor="pr-status">
           <Select id="pr-status" value={st} disabled={locked} onChange={(e) => setSt(e.target.value)}>
             {OUTREACH_STATUSES.filter((s) => s !== "do_not_contact" || locked).map((s) => <option key={s} value={s}>{OUTREACH_STATUS_LABELS[s]}</option>)}

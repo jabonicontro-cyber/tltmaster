@@ -91,7 +91,7 @@ export function QuoteRequestForm({ slug, sites }: { slug: string; sites: Array<{
       <Field label="Material" htmlFor="material" required>
         <Input id="material" name="material" required maxLength={200} placeholder="e.g. Crushed limestone #57" />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Field label="Quantity" htmlFor="quantity" error={fieldError("quantity")}>
           <Input id="quantity" name="quantity" inputMode="decimal" maxLength={20} />
         </Field>
@@ -183,7 +183,7 @@ export function SupportForm({ slug, orders, defaultOrder, tickets = [], invoices
       <Field label="Subject" htmlFor="subject" required>
         <Input id="subject" name="subject" required maxLength={160} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {orders.length ? (
           <Field label="Order (optional)" htmlFor="order">
             <Select id="order" name="order" defaultValue={defaultOrder ?? ""}>

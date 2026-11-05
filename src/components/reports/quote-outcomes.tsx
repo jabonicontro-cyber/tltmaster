@@ -54,7 +54,7 @@ export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
           <CardBody><p className="text-sm text-muted">No quotes were decided in this period. <Link href="/quotes" className="font-semibold text-brand-fg hover:underline">Open quotes</Link></p></CardBody>
         ) : (
           <CardBody className="space-y-6">
-            <dl className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <div><dt className="text-sm text-muted">Win rate</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{pct(data.winRate)}</dd><dd className="text-xs text-muted">{data.won} won of {data.decided} decided</dd></div>
               <div><dt className="text-sm text-muted">Won value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.wonValueCents)}</dd><dd className="text-xs text-muted">Quoted totals of accepted quotes</dd></div>
               <div><dt className="text-sm text-muted">Lost value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.lostValueCents)}</dd><dd className="text-xs text-muted">{data.lost} declined or expired</dd></div>
@@ -93,7 +93,7 @@ export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
             )}
           </Card>
 
-          <div className="grid gap-4 xl:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <Card>
               <CardHeader title="By distance from the yard" description={`Straight-line miles from the yard to the job site, not road miles.${data.unlocated ? ` ${data.unlocated} quote${data.unlocated === 1 ? "" : "s"} without a map position for the site or the yard ${data.unlocated === 1 ? "is" : "are"} left out.` : ""}`} />
               {data.distance.length ? <GroupTable label="Quotes by distance" rows={data.distance} first="Distance" /> : <CardBody><p className="text-sm text-muted">Set the yard and job site positions (Route Planner) to see this.</p></CardBody>}

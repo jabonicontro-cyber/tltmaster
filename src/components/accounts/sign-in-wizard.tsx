@@ -130,7 +130,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
         <div className="space-y-5 rounded-panel border border-line/70 bg-card shadow-card p-4 sm:p-6">
           <fieldset>
             <legend className="text-sm font-semibold text-ink">What do they do?</legend>
-            <div className="mt-2 grid gap-2 sm:grid-cols-4">
+            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-4">
               {presets.map((p) => (
                 <label key={p.id} className={`flex min-h-12 cursor-pointer items-center gap-2 rounded-xl border px-3 py-2 text-sm ${preset === p.id ? "border-strong bg-surface font-semibold" : "border-line"}`}>
                   <input type="radio" name="preset" value={p.id} checked={preset === p.id} onChange={() => choosePreset(p.id)} className="size-4 accent-brand" />
@@ -140,7 +140,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
             </div>
             {presetInfo ? <p className="mt-2 text-xs text-muted">After signing in they start on {presetInfo.lands}. Access comes from the role below, not from the job title.</p> : null}
           </fieldset>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Name" htmlFor="full_name" required error={fieldErrors.full_name}>
               <Input id="full_name" value={name} maxLength={120} onChange={(e) => { setName(e.target.value); u.follow(e.target.value); }} />
             </Field>
@@ -188,7 +188,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
       ) : (
         <div className="space-y-4 rounded-panel border border-line/70 bg-card shadow-card p-4 sm:p-6">
           <h2 className="text-base font-bold text-ink">Check before creating</h2>
-          <dl className="grid gap-3 text-sm sm:grid-cols-2">
+          <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">Name</dt><dd className="font-semibold text-ink">{name}</dd></div>
             <div><dt className="text-muted">Username</dt><dd className="font-mono font-semibold text-ink">{normalized}</dd></div>
             <div><dt className="text-muted">Job title</dt><dd className="text-ink">{jobTitle || "–"}</dd></div>
@@ -199,7 +199,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
           <div>
             <h3 className="text-sm font-semibold text-ink">Role: {roleOption?.label}</h3>
             {roleOption?.permissions.length ? (
-              <ul className="mt-1 grid list-disc gap-x-6 pl-5 text-sm text-ink sm:grid-cols-2">
+              <ul className="mt-1 grid grid-cols-1 list-disc gap-x-6 pl-5 text-sm text-ink sm:grid-cols-2">
                 {roleOption.permissions.map((p) => <li key={p}>{p}</li>)}
               </ul>
             ) : <p className="text-sm text-muted">No permissions listed for this role.</p>}

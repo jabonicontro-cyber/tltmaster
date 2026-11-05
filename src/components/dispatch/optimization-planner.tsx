@@ -52,7 +52,7 @@ function Summary({ plan }: { plan: Plan }) {
       </dl>
       <details className="mt-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink">More plan details</summary>
-        <dl className="mt-2 grid gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
+        <dl className="mt-2 grid grid-cols-1 gap-x-6 gap-y-1 text-sm sm:grid-cols-2 lg:grid-cols-3">
           {details.map(([k, v]) => (
             <div key={k} className="flex justify-between gap-3 border-b border-line py-1">
               <dt className="text-muted">{k}</dt>

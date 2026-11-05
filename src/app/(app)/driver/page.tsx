@@ -4,6 +4,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
 import { directionsUrl, telUrl, type LoadPickup } from "@/lib/driver/navigate";
+import { appointmentText, STOP_KIND_LABELS, type DriverStop } from "@/lib/orders/stops";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -51,14 +52,44 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+/** The order's stops in order (MK2): what to pick up and drop where, with appointments and a way to navigate to each. */
+function RouteStops({ route }: { route: DriverStop[] }) {
+  return (
+    <ol className="space-y-2" aria-label="Stops">
+      {route.map((s) => {
+        const to = directionsUrl({ address: s.address || s.name });
+        const when = appointmentText(s);
+        return (
+          <li key={s.seq} className="flex gap-3 rounded-xl bg-surface px-3 py-2.5">
+            <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular", s.kind === "pickup" ? "bg-strong text-white" : "bg-ink/[0.08] text-ink")} aria-hidden>{s.seq}</span>
+            <div className="min-w-0 flex-1">
+              <p><span className="text-sm font-semibold text-muted">{STOP_KIND_LABELS[s.kind]}</span> <strong>{s.name}</strong></p>
+              {s.address ? <p className="text-sm text-muted">{s.address}</p> : null}
+              {when ? <p className="text-sm font-semibold tabular">{when}</p> : null}
+              {s.reference ? <p className="text-sm">Ref <strong>{s.reference}</strong></p> : null}
+              {s.notes ? <p className="whitespace-pre-line text-sm text-muted">{s.notes}</p> : null}
+            </div>
+            {to && (
+              <a href={to} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "sm", "min-h-11 shrink-0 self-center")} aria-label={`Navigate to stop ${s.seq}, ${s.name}`}>
+                <Navigation className="size-4" aria-hidden /> Go
+              </a>
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
   const checkDirections = directionsNeedAttention(a.site.directions_status, risk);
   // One tap to the phone's maps app (UX7): to the pickup, then the job site; Call when the order has a site contact number.
-  const toPickup = pickup ? directionsUrl(pickup) : null;
-  const toSite = directionsUrl({ address: [a.site.line1, a.site.city, a.site.state, a.site.postal_code].filter(Boolean).join(", ") });
+  const hasRoute = !!route && route.length > 0;
+  const toPickup = pickup && !hasRoute ? directionsUrl(pickup) : null;
+  const toSite = hasRoute ? null : directionsUrl({ address: [a.site.line1, a.site.city, a.site.state, a.site.postal_code].filter(Boolean).join(", ") });
   const call = telUrl(a.order.contact_phone);
   return (
     <li className={cn("overflow-hidden rounded-panel bg-card shadow-card ring-1", past ? "ring-brand" : "ring-line/60")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
@@ -70,10 +101,11 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
       </div>
       <div className="space-y-2 px-4 py-3 text-[15px]">
         <p className="font-bold">{a.order.customer_name}{a.order.project_name ? <span className="font-normal text-muted"> · {a.order.project_name}</span> : null}</p>
-        {pickup && (
+        {hasRoute && <RouteStops route={route!} />}
+        {pickup && !hasRoute && (
           <p className="flex gap-2"><Package className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Load at <strong>{pickup.name}</strong>{pickup.address ? <span className="text-muted"> · {pickup.address}</span> : null}</span></p>
         )}
-        {(a.site.label || site) && (
+        {!hasRoute && (a.site.label || site) && (
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
         )}
         <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "–"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
@@ -195,9 +227,11 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const reminders = qualificationReminders(h.qualifications, h.today);
   // These three are independent: read them together. Each is empty before its update is installed.
   const sb = await createClient();
-  const [fuelTrucksRes, inspRes, payRes, pickupRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups")]);
+  const [fuelTrucksRes, inspRes, payRes, pickupRes, routeRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups"), sb.rpc("driver_load_stops")]);
   // Where each load is picked up (UX7), keyed by load; empty before that update is installed.
   const pickups = (pickupRes.error ? {} : (pickupRes.data ?? {})) as Record<string, LoadPickup>;
+  // Stops (MK2): absent before 20261120007800 is applied, so the card keeps the pickup and job site.
+  const routes = (routeRes.error ? {} : (routeRes.data ?? {})) as Record<string, DriverStop[]>;
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
@@ -283,7 +317,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
@@ -361,7 +395,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label="Tickets still needed">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
         </section>
       )}
 
@@ -389,7 +423,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
         </section>
       )}
 

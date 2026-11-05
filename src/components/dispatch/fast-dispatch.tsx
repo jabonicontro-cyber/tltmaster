@@ -103,7 +103,7 @@ export function BulkAssignDialog({ loads, initial, active, lk, onClose, onDone }
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <Field label="Truck" htmlFor="bulk-truck">
               <Select id="bulk-truck" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
                 <option value="">Choose…</option>

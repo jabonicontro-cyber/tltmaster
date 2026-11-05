@@ -31,7 +31,7 @@ export default async function SiteNotesPage() {
           {notes.map((n) => (
             <Card key={n.id}>
               <CardHeader title={`${n.site} · ${n.customer}`} description={`Sent ${formatDateTime(n.submitted_at, timezone)}`} />
-              <CardBody className="grid gap-5 lg:grid-cols-2">
+              <CardBody className="grid grid-cols-1 gap-5 lg:grid-cols-2">
                 <div className="space-y-3 text-sm">
                   <dl className="grid grid-cols-[8rem_minmax(0,1fr)] gap-x-3 gap-y-1.5">
                     {[["Gate code", n.gate_code], ["Where to drop", n.drop_spot], ["Contact", [n.contact_name, n.contact_phone].filter(Boolean).join(", ")], ["Notes", n.notes]]

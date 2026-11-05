@@ -24,7 +24,7 @@ export function IndustryForm({ industry, canEdit }: { industry: Industry; canEdi
         <p className="mt-1 text-sm text-muted">Sets the words Taviron uses, like delivery tickets or bills of lading. Everything else works the same.</p>
       </div>
       <FormError message={formError} />
-      <fieldset className="grid gap-2 sm:grid-cols-3" disabled={!canEdit}>
+      <fieldset className="grid grid-cols-1 gap-2 sm:grid-cols-3" disabled={!canEdit}>
         <legend className="sr-only">What you haul</legend>
         {INDUSTRIES.map((i) => (
           <label key={i} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3 has-[:checked]:border-strong has-[:checked]:bg-surface">

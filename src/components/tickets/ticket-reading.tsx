@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ScrollRegion } from "@/components/ui/scroll-region";
 import { useState } from "react";
 import { ScanText } from "lucide-react";
 import { readTicketPhoto, type TicketReadingView } from "@/app/(app)/tickets/actions";
@@ -76,7 +77,7 @@ export function TicketReading({ ticketId, photos, ai, correctHref }: { ticketId:
           {!view.data.reading.readable ? (
             <p className="text-sm text-ink">The AI could not read a delivery ticket in this photo.</p>
           ) : (
-            <div className="overflow-x-auto">
+            <ScrollRegion label="AI reading cross-checks">
               <table className="w-full text-sm" aria-label="AI reading cross-checks">
                 <thead>
                   <tr className="text-left text-xs text-muted">
@@ -97,7 +98,7 @@ export function TicketReading({ ticketId, photos, ai, correctHref }: { ticketId:
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ScrollRegion>
           )}
           {differs > 0 && (
             <p className="text-sm text-ink">

@@ -35,7 +35,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
       <AdminFlash error={sp.error} saved={sp.saved} savedText={sp.saved === "retired" ? "Demo retired. You can create it again below."
         : sp.saved === "plan" ? `Demo now shows the ${PLAN_LABELS[sp.plan ?? ""] ?? "chosen"} plan: its dispatch bases and sample records follow the plan.`
         : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.` : "Saved."} />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title={demo ? demo.name : "No demo company yet"} description={demo ? `Started ${formatDateTime(demo.created_at)}` : "Start one to begin."} />
           <CardBody className="space-y-4">

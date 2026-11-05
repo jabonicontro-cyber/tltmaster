@@ -119,7 +119,7 @@ export function RouteBuilder({
   const missing = stops.filter((s) => !s.point);
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
       <section aria-labelledby="stops-title" className="space-y-4">
         <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
@@ -232,7 +232,7 @@ function RouteSummary({ result, route, routeIndex, setRouteIndex }: { result: Pl
           ))}
         </div>
       )}
-      <dl className="grid gap-3 sm:grid-cols-3">
+      <dl className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div>
           <dt className="text-xs text-muted">Distance</dt>
           <dd className="text-lg font-semibold tabular text-ink">{route ? `${route.miles} mi` : `${result.straightTotal} mi`}</dd>

@@ -1,11 +1,29 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000000000000. 2026-11-05 (day) — launch walkthrough round 1, freight stops (MK2 slice 1)
+
+- **LR1 round 1:** an automated sweep (scratchpad `walk.mjs`) opened every page of the driver, mechanic, dispatcher,
+  office and owner roles at desktop (light) and phone (dark) width and recorded errors, sideways scrolling, slow pages
+  and serious accessibility problems (axe). Fixed: Communications → Alerts never loaded for drivers (per-row recipient
+  policy; 85 s → 0.1 s) and the inbox took 7 s (per-message visibility check; 0.05 s), both in migration
+  `20261120007900` with the same access (checked row for row); sidebar group labels and brand-coloured text below
+  4.5:1 contrast (brand text is now 12% darker than the brand); wide tables, the week schedule, the dispatch timeline
+  and the AI ticket check were not reachable by keyboard (`ScrollRegion`); phone pages scrolling sideways (113 grids
+  with no base column, screen-reader captions outside their scroll box); invalid markup on Reports, the routes view and
+  the people picker; names that did not match visible text on the schedule and the timeline.
+- **MK2 slice 1, stops on an order:** migration `20261120007800` (tested rollback): pickups and deliveries in order
+  with address, appointment window, reference and notes. Order page section (freight companies or orders that have
+  stops), route line on the dispatch board, stops with directions on the driver's card; demo sample on one of today's
+  assigned orders. Per-stop arrived/left, rate confirmations, accessorial charges and brokers are next.
+- **Not done in this round:** customer portal and platform roles, tablet width and accessibility settings in the
+  sweep; the freight demo (MK3).
 
 ## 0000000000000000000. 2026-11-05 — launch plan (January 2027), both markets, outreach, overnight builds
 

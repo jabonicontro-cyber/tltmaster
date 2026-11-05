@@ -44,7 +44,7 @@ export default async function ClearancePage() {
           : "Only people allowed to clear vehicles for service record inspections. You can follow the queue here."}
       />
       <MaintenanceTabs active="clearance" />
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {groups.map((g) => (
           <Card key={g.key}>
             <CardHeader title={<span className="flex items-center gap-2">{g.title} <Badge tone={TONE[g.key]}>{g.rows.length}</Badge></span>} />

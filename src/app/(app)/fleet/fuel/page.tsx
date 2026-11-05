@@ -59,7 +59,7 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
         {!isCurrent && <ButtonLink href={`/fleet/fuel?q=${next}`} variant="secondary" size="sm">Next quarter</ButtonLink>}
         <a href={`/fleet/fuel/ifta.csv?q=${year}-${quarter}`} className="ml-auto text-sm font-semibold text-brand-fg hover:underline">Download IFTA summary (CSV)</a>
       </div>
-      <div className="mb-5 grid gap-4 sm:grid-cols-3">
+      <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatTile icon={<Route />} label="Miles" value={fmt(data.summary.miles, 0)} muted={!data.summary.miles}>From {data.sheets.filter((s) => !s.voided).length} trip sheets</StatTile>
         <StatTile icon={<Fuel />} label="Gallons bought" value={fmt(data.summary.gallons)} muted={!data.summary.gallons}>{data.purchases.filter((p) => !p.voided).length} purchases</StatTile>
         <StatTile icon={<Gauge />} label="Fleet MPG" value={data.summary.mpg === null ? "–" : fmt(data.summary.mpg, 2)} muted={data.summary.mpg === null}>{data.summary.mpg === null ? "Needs fuel and miles" : "Miles ÷ gallons, this quarter"}</StatTile>
@@ -88,13 +88,13 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
       </Card>
 
       {edit && (
-        <div className="mb-5 grid gap-5 lg:grid-cols-2">
+        <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-2">
           <Card><CardHeader title="Record a trip sheet" description="Drivers do this on My Day; the office can fill in a missing one." /><CardBody><TripSheetForm trucks={truckList} today={today} homeState={home} /></CardBody></Card>
           <Card><CardHeader title="Record fuel" description="From the receipt: state, gallons and total." /><CardBody><FuelForm trucks={truckList} today={today} homeState={home} /></CardBody></Card>
         </div>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Trip sheets" />
           {data.sheets.length === 0 ? <CardBody><EmptyState title="None this quarter" /></CardBody> : (

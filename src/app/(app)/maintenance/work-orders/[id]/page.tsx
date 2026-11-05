@@ -128,7 +128,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
         </Card>
       )}
 
-      <div className="grid gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[24rem_minmax(0,1fr)]">
         {/* Left: what the job is (redesign 2026-10-26, after the owner's work order reference). */}
         <div className="space-y-5">
           <Card>

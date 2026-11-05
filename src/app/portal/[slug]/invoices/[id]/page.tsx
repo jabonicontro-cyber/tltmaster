@@ -35,7 +35,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
             {i.terms_days !== null && <><dt className="text-muted">Terms</dt><dd className="text-right">{i.terms_days === 0 ? "Due on receipt" : `Net ${i.terms_days}`}</dd></>}
           </dl>
         </header>
-        <div className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+        <div className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
           <div>
             <p className="font-semibold text-ink">Bill to</p>
             <p className="whitespace-pre-line text-muted">{[str(b.name), str(b.line1), str(b.line2), [str(b.city), str(b.state), str(b.postal_code)].filter(Boolean).join(" ")].filter(Boolean).join("\n")}</p>
