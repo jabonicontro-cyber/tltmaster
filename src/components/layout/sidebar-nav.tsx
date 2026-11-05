@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { NAV_ITEMS } from "./nav";
+import { menuShows } from "@/lib/menu-areas";
 import { isAccountantOnly, type Permission } from "@/lib/permissions";
 
 /**
@@ -12,10 +13,10 @@ import { isAccountantOnly, type Permission } from "@/lib/permissions";
  * and the hover/focus expansion use them) but are faded out; group headings
  * become thin dividers. The phone menu never collapses.
  */
-export function SidebarNav({ permissions, onNavigate, collapsed = false, labels }: { permissions: Permission[]; onNavigate?: () => void; collapsed?: boolean; /** Labels that follow what the company hauls, by path. */ labels?: Record<string, string> }) {
+export function SidebarNav({ permissions, onNavigate, collapsed = false, labels, hidden = [] }: { permissions: Permission[]; onNavigate?: () => void; collapsed?: boolean; /** Labels that follow what the company hauls, by path. */ labels?: Record<string, string>; /** Optional areas the company hid (simple mode). */ hidden?: string[] }) {
   const pathname = usePathname();
   const accountant = isAccountantOnly(permissions);
-  const items = NAV_ITEMS.map((i) => (labels?.[i.href] ? { ...i, label: labels[i.href] } : i)).filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))) && (!accountant || i.accountant));
+  const items = NAV_ITEMS.filter((i) => menuShows(i.href, hidden)).map((i) => (labels?.[i.href] ? { ...i, label: labels[i.href] } : i)).filter((i) => (!i.permission || permissions.includes(i.permission)) && (!i.anyOf || i.anyOf.some((p) => permissions.includes(p))) && (!accountant || i.accountant));
   return (
     <nav aria-label="Main" className="flex flex-col gap-0.5 px-3">
       {items.map((item, i) => {

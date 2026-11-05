@@ -29,6 +29,8 @@ export interface ShellBranding {
   logoUrl: string; // "" when the company has no logo
   /** Menu labels that follow what the company hauls (src/lib/industry.ts), by path. */
   navLabels?: Record<string, string>;
+  /** Optional areas the company hid from the menu (src/lib/menu-areas.ts). */
+  hiddenNav?: string[];
 }
 
 /**
@@ -52,13 +54,13 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
       <UnsavedChangesGuard />
       <ServiceWorkerRegistration />
-      <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} labels={branding?.navLabels} />
+      <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} labels={branding?.navLabels} hidden={branding?.hiddenNav} />
 
       {access.isDemo ? <DemoWelcome initiallyOpen={welcome} companyName={access.companyName} /> : null}
       <header className="app-header no-print sticky top-0 z-20 bg-surface/80 backdrop-blur-md">
         <div className={cn(APP_CONTAINER, "flex h-14 items-center justify-between gap-3")}>
           <div className="flex min-w-0 items-center gap-1">
-            <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} labels={branding?.navLabels} />
+            <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} labels={branding?.navLabels} hidden={branding?.hiddenNav} />
             {/* Shrinks with the header on narrow phones instead of running under the icons on the right. */}
             <Link href="/command-center" className="block min-w-0 max-w-40 lg:hidden">
               <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" className="max-w-full" />

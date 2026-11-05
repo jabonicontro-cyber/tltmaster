@@ -585,6 +585,9 @@ them.
 `company_settings.industry`: `aggregate` (default), `freight` or `both`. Changes words in the app (delivery tickets or
 bills of lading), never rules. Updated through the existing company settings policy (settings.manage).
 
+`company_settings.hidden_areas` (20261120007700, simple mode): optional menu areas the company hid; a check allows only
+the nine optional areas, so safety areas can't be hidden. Menu only.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

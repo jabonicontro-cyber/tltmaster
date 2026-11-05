@@ -32,4 +32,19 @@ describe("industry profile", () => {
       expect(await read()).toBe("freight");
     });
   });
+
+  it("simple mode hides only known optional areas, set by people who manage settings", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(owner);
+      await s.query("update public.company_settings set hidden_areas = array['/quotes', '/payroll'] where company_id = $1", [TOP_LINE]);
+      expect((await s.query<{ h: string[] }>("select hidden_areas h from public.company_settings where company_id = $1", [TOP_LINE])).rows[0].h).toEqual(["/quotes", "/payroll"]);
+      // Safety can't be hidden: it isn't an optional area.
+      expect((await pgError(s.query("update public.company_settings set hidden_areas = array['/safety'] where company_id = $1", [TOP_LINE]))).code).toBe("23514");
+      await s.as(dispatcher);
+      expect((await s.query("update public.company_settings set hidden_areas = '{}' where company_id = $1 returning company_id", [TOP_LINE])).rowCount).toBe(0);
+    });
+  });
 });
+

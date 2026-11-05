@@ -29,6 +29,8 @@ import { CostRatesForm } from "@/components/settings/cost-rates-form";
 import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
 import { IndustryForm } from "@/components/settings/industry-form";
+import { MenuAreasForm } from "@/components/settings/menu-areas-form";
+import { hiddenAreasOf } from "@/lib/menu-areas";
 import { industryOf } from "@/lib/industry";
 import { summaryLines, type DailySummary } from "@/lib/summary/daily";
 import { parseRules } from "@/lib/fleet/health";
@@ -128,6 +130,11 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {"industry" in settings && (
           <div className="border-t border-line">
             <IndustryForm industry={industryOf(settings.industry)} canEdit={can(access, "settings.manage")} />
+          </div>
+        )}
+        {"hidden_areas" in settings && (
+          <div className="border-t border-line">
+            <MenuAreasForm hidden={hiddenAreasOf(settings.hidden_areas)} canEdit={can(access, "settings.manage")} />
           </div>
         )}
         <div className="border-t border-line">

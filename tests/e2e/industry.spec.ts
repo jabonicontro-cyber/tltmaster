@@ -45,3 +45,31 @@ test("people who can't manage settings see the choice but can't change it", asyn
     await expect(form.getByRole("button", { name: "Save" })).toHaveCount(0);
   }
 });
+
+// Simple mode (master plan SF1): the owner hides areas the company doesn't use; the menu follows, the pages still open.
+test("the owner hides unused areas from the menu, and can show them again", async ({ page }) => {
+  test.slow();
+  const reset = () => asUser(USERS.owner.email, (q) => q("update public.company_settings set hidden_areas = '{}' where company_id = (select private.current_company_id())"));
+  await reset();
+  try {
+    await signIn(page, "owner");
+    await page.goto("/settings?tab=company");
+    const form = page.getByRole("form", { name: "Areas in the menu" });
+    await form.getByRole("checkbox", { name: "Show Quotes" }).uncheck();
+    await form.getByRole("button", { name: "Save" }).click();
+    await expectToast(page, "Menu saved: 1 area hidden.");
+    const menu = page.getByRole("navigation", { name: "Main" }).first();
+    await expect(menu.getByRole("link", { name: "Quotes" })).toHaveCount(0);
+    await expect(menu.getByRole("link", { name: "Safety" })).toBeVisible();
+    // Menu only: the page still opens for people allowed to see it.
+    await page.goto("/quotes");
+    await expect(page.getByRole("heading", { level: 1, name: "Quotes" })).toBeVisible();
+    await page.goto("/settings?tab=company");
+    await page.getByRole("form", { name: "Areas in the menu" }).getByRole("checkbox", { name: "Show Quotes" }).check();
+    await page.getByRole("form", { name: "Areas in the menu" }).getByRole("button", { name: "Save" }).click();
+    await expectToast(page, "Menu saved: every area shows.");
+    await expect(page.getByRole("navigation", { name: "Main" }).first().getByRole("link", { name: "Quotes" })).toBeVisible();
+  } finally {
+    await reset();
+  }
+});

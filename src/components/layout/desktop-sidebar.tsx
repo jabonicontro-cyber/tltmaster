@@ -22,7 +22,7 @@ const CLOSE_DELAY = 250;
  * and the page makes room. Hover is only a mouse convenience — every label is reachable without it. Narrower screens
  * (phones, tablets in portrait) use the menu button (MobileNav).
  */
-export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPinned, labels }: { permissions: Permission[]; companyName: string | null; logoUrl: string; initiallyPinned: boolean; labels?: Record<string, string> }) {
+export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPinned, labels, hidden }: { permissions: Permission[]; companyName: string | null; logoUrl: string; initiallyPinned: boolean; labels?: Record<string, string>; hidden?: string[] }) {
   const [pinned, setPinned] = useState(initiallyPinned);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -119,7 +119,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         </button>
       </div>
       <div id="sidebar-nav" className="relative flex-1 overflow-x-hidden overflow-y-auto py-3">
-        <SidebarNav permissions={permissions} collapsed={!expanded} onNavigate={close} labels={labels} />
+        <SidebarNav permissions={permissions} collapsed={!expanded} onNavigate={close} labels={labels} hidden={hidden} />
       </div>
       <div className="shrink-0 px-3 pt-1 pb-3">
         <button

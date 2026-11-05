@@ -303,6 +303,8 @@ export interface CompanySettings {
   brand_sidebar_color: string;
   /** What the company hauls (20261120007600, master plan MK1); absent until installed (= aggregate). */
   industry?: string;
+  /** Optional areas hidden from the menu (20261120007700, SF1); absent until installed (= none). */
+  hidden_areas?: string[];
   /** Whether a logo is stored; the image itself is served by /brand/logo, never sent with the settings. */
   has_logo: boolean;
   updated_at: string;

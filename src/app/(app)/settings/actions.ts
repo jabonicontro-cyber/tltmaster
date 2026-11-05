@@ -7,6 +7,7 @@ import { parseMoneyToCents } from "@/lib/money";
 import { companySettingsSchema, inviteSchema, sequenceSchema, userAccessSchema } from "@/lib/schemas/settings";
 import { uuid } from "@/lib/schemas/common";
 import { INDUSTRIES, INDUSTRY_LABELS, type Industry } from "@/lib/industry";
+import { hiddenAreasOf } from "@/lib/menu-areas";
 import { PERMISSIONS, ROLES, type AppRole } from "@/lib/permissions";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -252,5 +253,20 @@ export async function saveIndustry(formData: FormData): Promise<ActionResult> {
     if (!data?.length) return fail("Settings could not be saved.");
     revalidatePath("/", "layout");
     return ok(undefined, `Saved: ${INDUSTRY_LABELS[industry as Industry]}.`);
+  });
+}
+
+/** Simple mode (SF1; settings.manage, checked again by RLS): the optional areas hidden from the menu. Menu only. */
+export async function saveMenuAreas(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    const shown = new Set(formData.getAll("show").map(String));
+    const hidden = hiddenAreasOf(formData.getAll("area").map(String).filter((a) => !shown.has(a)));
+    const supabase = await createClient();
+    const { data, error } = await supabase.from("company_settings").update({ hidden_areas: hidden }).eq("company_id", access.companyId!).select("company_id");
+    if (error) return fail(error.code === "42703" || error.code === "PGRST204" ? "This setting needs a database update that has not been installed yet." : dbErrorMessage(error));
+    if (!data?.length) return fail("Settings could not be saved.");
+    revalidatePath("/", "layout");
+    return ok(undefined, hidden.length ? `Menu saved: ${hidden.length} ${hidden.length === 1 ? "area" : "areas"} hidden.` : "Menu saved: every area shows.");
   });
 }
