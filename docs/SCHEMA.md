@@ -573,6 +573,13 @@ invoiced or sent to QuickBooks; locks the handoffs). Reads: RLS on billing.view;
 `my_shift_offer_audiences()` (20261120007100): who each of the caller's own visible shift offers is for, so My Day
 lists driver and everyone offers and My jobs shop and everyone offers. Read-only.
 
+## Accessibility settings (20261120007300)
+
+`user_accessibility` (personal, not business data, like `profiles`): one row per signed-in person (staff and portal
+accounts), `settings` jsonb with `textSize` (100, 115, 130), `highContrast`, `reduceMotion`, `readableFont`. Readable
+only by its owner; written only through `set_my_accessibility(settings)`, which keeps the four known keys and validates
+them.
+
 ## Planned tables (later phases)
 
 Maintenance and work orders, drivers, dispatch assignments, route plans and

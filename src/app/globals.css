@@ -590,3 +590,50 @@
     text-box-edge: cap alphabetic;
   }
 }
+
+/* Accessibility mode (owner 2026-11-05, src/lib/accessibility.ts) ---------------------------------------------
+   Set per person in My profile and saved with their account; applied as data attributes on <html> before the page
+   paints. App and customer portal only: the public website (.site) keeps its own design. */
+html[data-text-size="115"]:not(:has(.site)) {
+  font-size: 115%;
+}
+html[data-text-size="130"]:not(:has(.site)) {
+  font-size: 130%;
+}
+html[data-font="readable"]:not(:has(.site)) {
+  --font-sans: var(--font-readable), Verdana, "Segoe UI", system-ui, sans-serif;
+  font-family: var(--font-readable), Verdana, "Segoe UI", system-ui, sans-serif;
+  letter-spacing: 0.012em;
+  word-spacing: 0.06em;
+}
+html[data-font="readable"]:not(:has(.site)) body {
+  font-family: var(--font-readable), Verdana, "Segoe UI", system-ui, sans-serif;
+  line-height: 1.6;
+}
+/* High contrast: secondary text as dark as body text, clearly visible borders, thicker focus rings. */
+html[data-contrast="high"]:not(:has(.site)) body,
+html[data-contrast="high"]:not(:has(.site)) .app-root {
+  --color-muted: #2f343b;
+  --color-line: #7d848e;
+}
+html[data-theme="dark"][data-contrast="high"]:not(:has(.site)) body,
+html[data-theme="dark"][data-contrast="high"]:not(:has(.site)) .app-root {
+  --color-muted: #dcdee2;
+  --color-line: #80848c;
+}
+html[data-contrast="high"]:not(:has(.site)) :focus-visible {
+  outline-width: 3px !important;
+  outline-offset: 2px;
+}
+html[data-contrast="high"]:not(:has(.site)) a:not([class*="bg-"]) {
+  text-decoration-thickness: 2px;
+}
+/* Reduce motion: no animations or transitions, whatever the device setting says. */
+html[data-motion="reduce"]:not(:has(.site)) *,
+html[data-motion="reduce"]:not(:has(.site)) *::before,
+html[data-motion="reduce"]:not(:has(.site)) *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}

@@ -1,3 +1,5 @@
+import { AccessibilitySync } from "@/components/accessibility/accessibility-sync";
+import { getMyAccessibility } from "@/server/data/accessibility";
 import { isMechanicOnly } from "@/lib/companion";
 import type { ReactNode } from "react";
 import { cookies } from "next/headers";
@@ -18,7 +20,7 @@ import { autoRefreshDemo } from "@/server/demo/auto-refresh";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const access = await requireAccess();
-  const [companies, platformAdmin, profile, persona, branding] = await Promise.all([
+  const [companies, platformAdmin, profile, persona, branding, accessibility] = await Promise.all([
     myCompanies(),
     isPlatformAdmin(),
     getMyProfile(),
@@ -28,6 +30,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
       (s): ShellBranding => ({ color: s.brand_color, sidebarColor: s.brand_sidebar_color, logoUrl: s.has_logo ? `/brand/logo?c=${access.companyId}&v=${encodeURIComponent(s.updated_at)}` : "" }),
       (): ShellBranding => ({ color: "", sidebarColor: "", logoUrl: "" }),
     ),
+    getMyAccessibility(),
   ]);
   // Own employee avatar (fallback when there is no profile photo) and whether this login drives.
   const supabase = await createClient();
@@ -66,5 +69,5 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const shownPersona = platformAdmin ? null : persona;
   const picture = platformAdmin ? personPhoto(access.userId, profile?.photoUpdatedAt, "") : personPhoto(access.userId, profile?.photoUpdatedAt, persona?.avatarKey || ownAvatarKey);
   const me = shownPersona || profile ? { name: shownPersona?.name || profile?.displayName || profile?.fullName || access.fullName || "", photo: picture.src, fallbackPhoto: picture.fallbackSrc, presence } : null;
-  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} roleTitle={platformAdmin ? PLATFORM_ROLE_TITLE : undefined} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}>{children}</AppShell>;
+  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} roleTitle={platformAdmin ? PLATFORM_ROLE_TITLE : undefined} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}><AccessibilitySync settings={accessibility} />{children}</AppShell>;
 }

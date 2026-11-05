@@ -6,6 +6,8 @@ import { portalGate, portalPreview } from "@/server/portal";
 import { stopPortalPreview } from "@/app/admin/testing-lab/actions";
 import { PortalNav } from "@/components/portal/portal-nav";
 import { signOutOfPortal } from "../actions";
+import { AccessibilitySync } from "@/components/accessibility/accessibility-sync";
+import { getMyAccessibility } from "@/server/data/accessibility";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -23,9 +25,12 @@ export default async function PortalLayout({ children, params }: { children: Rea
   const gate = await portalGate(slug);
   const company = gate.kind === "customer" ? gate.context : gate.company;
   const preview = gate.kind === "customer" ? await portalPreview(slug) : null;
+  // Accessibility mode (owner 2026-11-05): the signed-in customer's own settings, from their account.
+  const accessibility = gate.kind === "customer" && !preview ? await getMyAccessibility() : null;
   const style = company ? brandingStyle({ logo: company.logo, color: company.color, sidebarColor: "" }) : {};
   return (
     <div className="app-root min-h-dvh bg-surface text-ink" style={style}>
+      <AccessibilitySync settings={accessibility} />
       <header className="border-b border-line bg-card">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-4">
           <Link href={`/portal/${slug}`} className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-strong">
@@ -47,6 +52,9 @@ export default async function PortalLayout({ children, params }: { children: Rea
           {gate.kind === "customer" && !preview ? (
             <div className="ml-auto flex items-center gap-3">
               <span className="hidden truncate text-sm text-muted sm:inline">{gate.context.customer.name}</span>
+              <Link href={`/portal/${slug}/accessibility`} className="rounded-xl px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">
+                Accessibility
+              </Link>
               <form action={signOutOfPortal}>
                 <input type="hidden" name="slug" value={slug} />
                 <button type="submit" className="rounded-xl px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">

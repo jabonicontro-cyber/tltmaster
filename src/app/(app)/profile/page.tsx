@@ -9,6 +9,8 @@ import { ROLE_LABELS } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { getMyProfile, photoUrl } from "@/server/data/profile";
 import { SecuritySection } from "@/components/security/security-section";
+import { AccessibilityForm } from "@/components/accessibility/accessibility-form";
+import { getMyAccessibility } from "@/server/data/accessibility";
 
 export const metadata = { title: "My profile" };
 
@@ -19,7 +21,7 @@ export const metadata = { title: "My profile" };
  */
 export default async function ProfilePage() {
   const access = await requireAccess();
-  const profile = await getMyProfile();
+  const [profile, accessibility] = await Promise.all([getMyProfile(), getMyAccessibility()]);
   const name = profile?.displayName || access.fullName || access.email;
   return (
     <div className="max-w-3xl">
@@ -44,6 +46,12 @@ export default async function ProfilePage() {
           </Card>
         </div>
       )}
+      <section aria-label="Accessibility">
+        <Card className="mt-5">
+          <CardHeader title="Accessibility" description="Make Taviron easier to read and use. Only you see these settings." />
+          <AccessibilityForm initial={accessibility} />
+        </Card>
+      </section>
       <SecuritySection />
       <Card className="mt-5">
         <CardHeader title="Managed by your company" description="Ask your company administrator to change these." />
