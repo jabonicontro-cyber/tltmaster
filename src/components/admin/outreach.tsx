@@ -9,9 +9,9 @@ import type { ActionResult } from "@/lib/action-result";
 import { parseCsv } from "@/lib/platform/imports";
 import {
   OUTREACH_STATUSES, OUTREACH_STATUS_LABELS, SEGMENTS, SEGMENT_LABELS, composeLinks, mapColumns, missingColumns, readCarrierRows,
-  type FaqItem, type OutreachSettings, type ProspectInput, type Segment,
+  type FaqItem, type OutreachSettings, type ProspectInput, type ReadResult, type Segment,
 } from "@/lib/platform/outreach";
-import { addProspect, convertProspect, importProspects, recordOutreach, saveOutreachSettings, updateProspect } from "@/app/admin/outreach/actions";
+import { addProspect, convertProspect, importProspects, recordOutreach, saveOutreachSettings, searchRegistry, updateProspect } from "@/app/admin/outreach/actions";
 
 function useRun() {
   const router = useRouter();
@@ -32,12 +32,13 @@ const MAX_FILE_BYTES = 80_000_000;
 const CHUNK = 500;
 
 /**
- * Add carriers from the FMCSA Company Census export (or any CSV with an email and a company name). The file is read in
- * this browser; only the matching rows are sent, in parts. Addresses that asked not to be contacted are skipped by the
+ * Add carriers from the FMCSA registry: search it directly (public data, no key) or upload an export or any CSV with an
+ * email and a company name. Nothing is saved until "Add". Addresses that asked not to be contacted are skipped by the
  * database.
  */
 export function OutreachImport() {
   const router = useRouter();
+  const [mode, setMode] = useState<"search" | "file">("search");
   const [table, setTable] = useState<string[][] | null>(null);
   const [fileName, setFileName] = useState("");
   const [readError, setReadError] = useState<string | null>(null);
@@ -48,14 +49,17 @@ export function OutreachImport() {
   const [activeOnly, setActiveOnly] = useState(true);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
+  const [found, setFound] = useState<(ReadResult & { truncated: boolean; max: number }) | null>(null);
 
+  const n = (v: string) => (v.trim() === "" || Number.isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v))));
+  const filters = { states: states.split(/[\s,]+/).filter(Boolean), minUnits: n(minUnits), maxUnits: n(maxUnits), segments, activeOnly };
   const map = useMemo(() => (table ? mapColumns(table[0] ?? []) : null), [table]);
   const missing = map ? missingColumns(map) : [];
-  const result = useMemo(() => {
+  const fromFile = useMemo(() => {
     if (!table || missing.length) return null;
-    const n = (v: string) => (v.trim() === "" || Number.isNaN(Number(v)) ? null : Math.max(0, Math.round(Number(v))));
     return readCarrierRows(table, { states: states.split(/[\s,]+/), minUnits: n(minUnits), maxUnits: n(maxUnits), segments, activeOnly });
   }, [table, missing.length, states, minUnits, maxUnits, segments, activeOnly]);
+  const result = mode === "search" ? found : fromFile;
 
   async function onFile(e: ChangeEvent<HTMLInputElement>) {
     setReadError(null);
@@ -74,10 +78,25 @@ export function OutreachImport() {
     setTable(parseCsv(await file.text()));
   }
 
+  async function search() {
+    setFound(null);
+    if (!filters.states.length) {
+      toast.error("Enter at least one state, like TX.");
+      return;
+    }
+    setBusy(true);
+    setProgress("Searching the FMCSA registry…");
+    const r = await searchRegistry(filters);
+    setBusy(false);
+    setProgress(null);
+    if (!r.ok) toast.error(r.error);
+    else setFound(r.data);
+  }
+
   async function add() {
     if (!result?.rows.length) return;
     setBusy(true);
-    const source = map && map.fields.dot_number !== undefined ? "fmcsa_census" : "csv";
+    const source = mode === "search" || (map && map.fields.dot_number !== undefined) ? "fmcsa_census" : "csv";
     const total = { added: 0, updated: 0, suppressed: 0, invalid: 0 };
     for (let i = 0; i < result.rows.length; i += CHUNK) {
       setProgress(`Adding ${Math.min(i + CHUNK, result.rows.length).toLocaleString()} of ${result.rows.length.toLocaleString()}…`);
@@ -94,35 +113,56 @@ export function OutreachImport() {
     setProgress(null);
     toast.success(`${total.added.toLocaleString()} added, ${total.updated.toLocaleString()} already on the list${total.suppressed ? `, ${total.suppressed} skipped (asked not to be contacted)` : ""}.`);
     setTable(null);
+    setFound(null);
     setFileName("");
     router.push("/admin/outreach");
     router.refresh();
   }
 
-  const toggle = (s: Segment) => setSegments((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  const toggle = (s: Segment) => {
+    setFound(null);
+    setSegments((cur) => (cur.includes(s) ? cur.filter((x) => x !== s) : [...cur, s]));
+  };
+  const reset = <T,>(set: (v: T) => void) => (v: T) => {
+    setFound(null);
+    set(v);
+  };
 
   return (
     <div className="space-y-4">
-      <ol className="list-decimal space-y-1 pl-5 text-sm text-muted">
-        <li>Open the FMCSA <a className="font-semibold text-brand-fg underline" href="https://data.transportation.gov/Trucking-and-Motorcoaches/Company-Census-File/az4n-8mr2" target="_blank" rel="noreferrer">Company Census File</a> and filter it (for example by state), then Export as CSV.</li>
-        <li>Choose the file here, pick who to reach, and add them. Your own CSV works too, as long as it has an email and a company name column.</li>
-      </ol>
-      <Field label="Carrier list (CSV)" htmlFor="outreach-file">
-        <Input id="outreach-file" type="file" accept=".csv,text/csv,text/plain" onChange={onFile} />
-      </Field>
-      {readError && <p role="alert" className="text-sm text-critical">{readError}</p>}
-      {map && missing.length > 0 && <p role="alert" className="text-sm text-critical">This file has no {missing.join(" or ")} column, so it can&apos;t be used.</p>}
-      {table && !missing.length && (
+      <div className="flex gap-1 rounded-full bg-surface p-1 text-sm" role="radiogroup" aria-label="How to find companies">
+        {([["search", "Search the registry"], ["file", "Upload a file"]] as const).map(([k, label]) => (
+          <button key={k} type="button" role="radio" aria-checked={mode === k} onClick={() => setMode(k)}
+            className={mode === k ? "flex-1 rounded-full bg-card px-3 py-1.5 font-semibold text-ink shadow-xs" : "flex-1 rounded-full px-3 py-1.5 text-muted hover:text-ink"}>
+            {label}
+          </button>
+        ))}
+      </div>
+      {mode === "search" ? (
+        <p className="text-sm text-muted">Searches the FMCSA Company Census (public, free) for carriers that listed an email address. Nothing is added until you choose to.</p>
+      ) : (
+        <>
+          <p className="text-sm text-muted">
+            Export the FMCSA <a className="font-semibold text-brand-fg underline" href="https://data.transportation.gov/Trucking-and-Motorcoaches/Company-Census-File/az4n-8mr2" target="_blank" rel="noreferrer">Company Census File</a> as CSV, or use your own list with an email and a company name column.
+          </p>
+          <Field label="Carrier list (CSV)" htmlFor="outreach-file">
+            <Input id="outreach-file" type="file" accept=".csv,text/csv,text/plain" onChange={onFile} />
+          </Field>
+          {readError && <p role="alert" className="text-sm text-critical">{readError}</p>}
+          {map && missing.length > 0 && <p role="alert" className="text-sm text-critical">This file has no {missing.join(" or ")} column, so it can&apos;t be used.</p>}
+        </>
+      )}
+      {(mode === "search" || (table && !missing.length)) && (
         <>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="States (blank for all)" htmlFor="outreach-states" hint="For example: TX, OK, KS">
-              <Input id="outreach-states" value={states} onChange={(e) => setStates(e.target.value)} placeholder="TX, OK" />
+            <Field label={mode === "search" ? "States" : "States (blank for all)"} htmlFor="outreach-states" hint="For example: TX, OK, KS">
+              <Input id="outreach-states" value={states} onChange={(e) => reset(setStates)(e.target.value)} placeholder="TX, OK" />
             </Field>
             <Field label="Trucks from" htmlFor="outreach-min">
-              <Input id="outreach-min" inputMode="numeric" value={minUnits} onChange={(e) => setMinUnits(e.target.value)} />
+              <Input id="outreach-min" inputMode="numeric" value={minUnits} onChange={(e) => reset(setMinUnits)(e.target.value)} />
             </Field>
             <Field label="Trucks up to" htmlFor="outreach-max">
-              <Input id="outreach-max" inputMode="numeric" value={maxUnits} onChange={(e) => setMaxUnits(e.target.value)} />
+              <Input id="outreach-max" inputMode="numeric" value={maxUnits} onChange={(e) => reset(setMaxUnits)(e.target.value)} />
             </Field>
             <div className="space-y-1.5 text-sm">
               <span className="font-semibold text-ink">Who</span>
@@ -131,19 +171,23 @@ export function OutreachImport() {
               ))}
             </div>
           </div>
-          {map?.active !== null && <Checkbox label="Active carriers only" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} />}
+          {(mode === "search" || map?.active !== null) && <div><Checkbox label="Active carriers only" checked={activeOnly} onChange={(e) => reset(setActiveOnly)(e.target.checked)} /></div>}
+          {mode === "search" && <div><Button variant={found ? "secondary" : "primary"} disabled={busy} onClick={search}>Search the registry</Button></div>}
           {result && (
             <p className="text-sm text-ink" data-testid="outreach-preview">
-              <span className="font-semibold">{result.rows.length.toLocaleString()}</span> of {result.total.toLocaleString()} companies in {fileName} match
+              <span className="font-semibold">{result.rows.length.toLocaleString()}</span> of {result.total.toLocaleString()} companies {mode === "file" ? `in ${fileName} ` : "found "}match
               {result.skipped.noEmail ? ` · ${result.skipped.noEmail.toLocaleString()} without an email` : ""}
               {result.skipped.duplicate ? ` · ${result.skipped.duplicate.toLocaleString()} repeated` : ""}.
-              {map && map.aggregateCargo.length === 0 && map.freightCargo.length === 0 ? " This file has no cargo columns, so everyone counts as Other." : ""}
+              {mode === "search" && found?.truncated ? " That's the most one search brings back; narrow the states or truck range to see the rest." : ""}
+              {mode === "file" && map && map.aggregateCargo.length === 0 && map.freightCargo.length === 0 ? " This file has no cargo columns, so everyone counts as Other." : ""}
             </p>
           )}
-          <div className="flex items-center gap-3">
-            <Button disabled={busy || !result?.rows.length} onClick={add}>Add {result?.rows.length ? result.rows.length.toLocaleString() : ""} to the list</Button>
-            {progress && <span className="text-sm text-muted" aria-live="polite">{progress}</span>}
-          </div>
+          {result && (
+            <div className="flex items-center gap-3">
+              <Button disabled={busy || !result.rows.length} onClick={add}>Add {result.rows.length ? result.rows.length.toLocaleString() : ""} to the list</Button>
+            </div>
+          )}
+          {progress && <p className="text-sm text-muted" aria-live="polite">{progress}</p>}
         </>
       )}
     </div>

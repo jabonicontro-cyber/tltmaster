@@ -26,6 +26,9 @@ test("outreach: from a carrier list to an email, and the unsubscribe link stops 
     `2345678,OTHER STATE ${id},TULSA,OK,ok-${id}@hauling.example,MARY,12,A,,X`,
     `3456789,NO EMAIL ${id},DALLAS,TX,,BOB,12,A,,X`,
   ].join("\n");
+  // Searching the registry directly is the default (it needs the internet, so the test uses the file upload).
+  await expect(page.getByRole("button", { name: "Search the registry" })).toBeVisible();
+  await page.getByRole("radio", { name: "Upload a file" }).click();
   await page.getByLabel("Carrier list (CSV)").setInputFiles({ name: "census.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
   await page.getByLabel("States (blank for all)").fill("TX");
   await expect(page.getByTestId("outreach-preview")).toContainText("1 of 3 companies");

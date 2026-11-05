@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { OUTREACH_STATUSES, SEGMENTS, type ProspectInput } from "@/lib/platform/outreach";
+import { OUTREACH_STATUSES, SEGMENTS, readCarrierRows, type ProspectInput, type ReadResult } from "@/lib/platform/outreach";
+import { MAX_ROWS, searchCensus } from "@/server/fmcsa";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { dbErrorMessage } from "@/server/errors";
 import { assertPlatformAdmin } from "@/server/platform";
@@ -111,4 +112,26 @@ export async function saveOutreachSettings(input: unknown): Promise<ActionResult
   if (error) return fail(dbErrorMessage(error));
   revalidatePath("/admin/outreach");
   return ok(undefined, "Email saved.");
+}
+
+const search = z.object({
+  states: z.array(z.string().trim().toUpperCase().regex(/^[A-Z]{2}$/)).min(1).max(10),
+  minUnits: z.number().int().min(0).max(100000).nullable(),
+  maxUnits: z.number().int().min(0).max(100000).nullable(),
+  segments: z.array(z.enum(SEGMENTS)).max(3),
+  activeOnly: z.boolean(),
+});
+
+/**
+ * Search the public FMCSA registry (free, no key; src/server/fmcsa.ts) and return the matching carriers with an email,
+ * ready to add. Nothing is saved here: the page shows what was found and the person adds it.
+ */
+export async function searchRegistry(input: unknown): Promise<ActionResult<ReadResult & { truncated: boolean; max: number }>> {
+  await assertPlatformAdmin();
+  const parsed = search.safeParse(input);
+  if (!parsed.success) return fail("Choose one to ten states (two letters, like TX).");
+  const r = await searchCensus(parsed.data);
+  if (!r.ok) return fail(r.error);
+  const read = readCarrierRows(r.table, { ...parsed.data, states: parsed.data.states });
+  return ok({ ...read, rows: read.rows.slice(0, 5000), truncated: r.truncated || read.rows.length > 5000, max: MAX_ROWS });
 }
