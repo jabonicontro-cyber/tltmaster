@@ -37,7 +37,7 @@ describe("expired vehicle documents policy", () => {
       expect((await eligibility(s, w.f.t1, w.f.d1, w.day)).blockers).toContain("truck_document_expired");
       const err = await pgError(assign(s, w.load.load_id, w.f.t1, null, w.f.d1));
       expect(err.message).toContain(`Truck ${w.unit}: insurance expired`);
-      expect(err.message).toMatch(/record the renewed document in Fleet, or change the company rule in Settings/);
+      expect(err.message).toMatch(/Record the renewed document in Fleet, or change the company rule in Settings/);
       // Another truck is fine.
       expect(await assign(s, w.load.load_id, w.f.t2, null, w.f.d1)).toBeTruthy();
     });

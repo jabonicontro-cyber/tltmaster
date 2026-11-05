@@ -50,7 +50,7 @@ test("a verified expired insurance blocks assignment; the rules are shown in Set
     }
   });
   expect(err).toContain(`Truck ${unit}: insurance expired`);
-  expect(err).toContain("record the renewed document in Fleet");
+  expect(err).toContain("Record the renewed document in Fleet");
 
   await page.goto("/settings?tab=dispatch");
   await expect(page.getByLabel("Insurance")).toHaveValue("block");
