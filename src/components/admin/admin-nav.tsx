@@ -9,6 +9,7 @@ import { APP_CONTAINER } from "@/lib/layout";
 const NAV = [
   { href: "/admin", label: "Launchpad" },
   { href: "/admin/leads", label: "Leads" },
+  { href: "/admin/outreach", label: "Outreach" },
   { href: "/admin/companies", label: "Companies" },
   { href: "/admin/plans", label: "Plans" },
   { href: "/admin/onboarding", label: "Onboarding" },
