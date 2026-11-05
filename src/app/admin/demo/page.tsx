@@ -9,7 +9,8 @@ import { formatDateTime } from "@/lib/dates";
 import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
-import { createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, setDemoPlan, startDemo } from "../actions";
+import { FREIGHT_DEMO } from "@/server/demo/freight-demo";
+import { createFreightDemo, createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, setDemoPlan, startDemo } from "../actions";
 
 export const metadata = { title: TERMS.demoManagement };
 
@@ -73,7 +74,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                     {prospectRows.map((p) => (
                       <li key={p.id} className="space-y-1 py-2">
                         <div><span className="font-medium text-ink">{p.name}</span> <span className="text-muted">· {p.slug} · created {formatDateTime(p.created_at)}</span></div>
-                        {p.name === PRAIRIE_LANTERN.name && (
+                        {(p.name === PRAIRIE_LANTERN.name || p.name === FREIGHT_DEMO.name) && (
                           <form action={refreshProspectDemo} className="flex flex-wrap items-center gap-3">
                             <input type="hidden" name="id" value={p.id} />
                             <SubmitButton size="sm" pendingLabel="Refreshing…">Refresh demo data</SubmitButton>
@@ -92,6 +93,12 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                 {!prospectRows.some((p) => p.name === PRAIRIE_LANTERN.name) && (
                   <form action={createProspectDemo}>
                     <SubmitButton variant="secondary" pendingLabel="Creating…">Create the {PRAIRIE_LANTERN.name} demo</SubmitButton>
+                  </form>
+                )}
+                {!prospectRows.some((p) => p.name === FREIGHT_DEMO.name) && (
+                  <form action={createFreightDemo} className="space-y-1">
+                    <SubmitButton variant="secondary" pendingLabel="Creating…">Create the {FREIGHT_DEMO.name} demo</SubmitButton>
+                    <p className="text-xs text-muted">A general-freight carrier (dry vans and flatbeds, shippers and receivers, bills of lading) beside the aggregate demos.</p>
                   </form>
                 )}
                 <p className="text-xs text-muted">

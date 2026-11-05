@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { vocabulary } from "@/lib/industry";
+import { getSettings } from "@/server/data/settings";
 import { DateInput } from "@/components/ui/date-input";
 import { CalendarRange, CheckCircle2, ChevronRight, Download, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
@@ -43,6 +45,8 @@ function serviceDates(a: string | null, b: string | null) {
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
+  // Ticket or BOL wording (MK1): from the company's What you haul.
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   const access = await requirePagePermission("billing.view");
   const sp = await searchParams;
   const view: BillingView = sp.view && sp.view in BILLING_VIEWS ? (sp.view as BillingView) : "orders";
@@ -201,7 +205,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                       </Td>
                       <Td align="right">
                         {l.assignment_id && canEnterTickets ? (
-                          <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
+                          <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>{words.enter}</ButtonLink>
                         ) : (
                           <ButtonLink href={`/dispatch?date=${l.load_date}`} size="sm" variant="secondary" icon={<CalendarRange className="size-4" />}>Dispatch</ButtonLink>
                         )}

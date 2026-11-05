@@ -4,6 +4,7 @@ import { todayIn } from "@/lib/dates";
 import { refreshNorthfield } from "./northfield-refresh";
 import { PRAIRIE_LANTERN } from "./prairie-lantern";
 import { refreshPrairieLantern } from "./prairie-lantern-refresh";
+import { FREIGHT_DEMO, refreshFreightDemo } from "./freight-demo";
 import { ensureFeatureSamples } from "./samples";
 
 // Demos refresh themselves (owner 2026-10-25; migration 20261120002800). When a demo owner opens a demo company, the
@@ -47,6 +48,9 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
       summary = `${r.loads} loads and ${r.added} missing records added`;
     } else if (c.name === PRAIRIE_LANTERN.name) {
       const r = await refreshPrairieLantern(db, timeZone);
+      summary = `${r.loads} loads and ${r.added} missing records added`;
+    } else if (c.name === FREIGHT_DEMO.name) {
+      const r = await refreshFreightDemo(db, timeZone);
       summary = `${r.loads} loads and ${r.added} missing records added`;
     } else {
       const r = await ensureFeatureSamples(db, day);

@@ -1,6 +1,6 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
@@ -28,8 +28,13 @@ project credentials. Read it together with:
   of lading for freight companies. MK3 groundwork: demo samples follow the demo's What you haul.
 - **In Production:** `f90fafe` (stops, walkthrough round 1, migrations 007800 and 007900) and `97cec5a` (per-stop
   times, round 2, migration 008000), each with CI, the migration workflow and the deploy green.
-- **Owner decision waiting:** make Prairie Lantern Freight (Colby's demo) the freight demo by switching its What you
-  haul to General freight, or create a separate freight demo company.
+- **MK3, freight demo company (owner chose a separate company):** "Cobalt Plains Freight" (Valparaiso, IN; general
+  freight) is created from Platform → Demo → **Create the Cobalt Plains Freight demo** (`src/server/demo/freight-demo.ts`):
+  shippers, receivers and a broker, dry vans and flatbeds, lanes with pickups and deliveries (one two-drop lane),
+  per-mile and flat linehaul, BOL numbers, delivered loads for the last 10 weekdays, today and tomorrow, one urgent
+  load, a truck in the shop, then the shared samples. Refresh demo data and the daily auto-refresh fill new days only.
+  Prairie Lantern is unchanged. The bill of lading page and billing say "Enter BOL" for freight companies. Owner step:
+  press the create button on Production, then add its owner with `scripts/platform-admin.mjs demo-owner`.
 - **Local only:** the full database suite fails 8 Command Center / Launchpad tests locally because of thousands of
   leftover test rows; CI (clean database) passes them.
 

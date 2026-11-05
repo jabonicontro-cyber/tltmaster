@@ -112,7 +112,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                       <Td className="hidden sm:table-cell tabular">{load.planned_quantity !== null ? `${trimNumber(load.planned_quantity)} ${(load.unit_code ?? "").replace(/_/g, " ")}` : <span className="text-muted">–</span>}</Td>
                       <Td align="right">
                         {canEdit && (
-                          <ButtonLink href={`/tickets/new?load=${load.id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
+                          <ButtonLink href={`/tickets/new?load=${load.id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>{words.enter}</ButtonLink>
                         )}
                       </Td>
                     </Tr>

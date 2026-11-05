@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { vocabulary } from "@/lib/industry";
+import { getSettings } from "@/server/data/settings";
 import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
 import { ClipboardList, FilePlus2 } from "lucide-react";
@@ -34,6 +36,8 @@ const LOAD_STATE: Record<string, { label: string; tone: "red" | "amber" | "green
 };
 
 export default async function OrderBillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  // Ticket or BOL wording (MK1): from the company's What you haul.
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   const { back } = await searchParams;
   const access = await requirePagePermission("billing.view");
   const { id } = await params;
@@ -105,7 +109,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                             ))}
                           </ul>
                           {l.documentation_state === "missing" && l.assignment_id && canEnterTickets && (
-                            <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" className="mt-1" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
+                            <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" className="mt-1" icon={<FilePlus2 className="size-4" />}>{words.enter}</ButtonLink>
                           )}
                         </Td>
                         <Td align="right" className="tabular">{l.planned_quantity !== null ? `${qty(l.planned_quantity)} ${l.planned_unit_code}` : "–"}</Td>

@@ -8,6 +8,7 @@ import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
 import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
+import { FREIGHT_DEMO, refreshFreightDemo, seedFreightDemo } from "@/server/demo/freight-demo";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { refreshNorthfield } from "@/server/demo/northfield-refresh";
 import { withDemoRefreshLock } from "@/server/demo/auto-refresh";
@@ -185,6 +186,26 @@ export async function createProspectDemo() {
 }
 
 /**
+ * Create the standing "Cobalt Plains Freight" demo (MK3: a general-freight carrier beside the aggregate demos), fill it
+ * with fictional freight data as its owner, and open it. Creates no login for anyone.
+ */
+export async function createFreightDemo() {
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_prospect_demo_create", {
+    p_name: FREIGHT_DEMO.name, p_city: FREIGHT_DEMO.city, p_state: FREIGHT_DEMO.state, p_timezone: FREIGHT_DEMO.timeZone,
+  });
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos need the database update 20261106000100, which is not installed yet." : dbErrorMessage(error));
+  try {
+    await seedFreightDemo(supabase);
+  } catch (e) {
+    back("/admin/demo", e instanceof Error ? e.message : "The demo data could not be created.");
+  }
+  (await cookies()).delete(PREVIEW_COOKIE);
+  revalidatePath("/", "layout");
+  redirect("/command-center?demo=prospect");
+}
+
+/**
  * Refresh a prospect demo's sample data (additive; see prairie-lantern-refresh.ts). Works inside the demo as
  * its owner: the platform admin must still be an active member (they are when they created it).
  */
@@ -194,12 +215,13 @@ export async function refreshProspectDemo(formData: FormData) {
   const supabase = await db();
   const { data: company } = await supabase.from("companies").select("name, demo_kind").eq("id", id.data).maybeSingle();
   if (!company || (company as { demo_kind: string }).demo_kind !== "prospect") back("/admin/demo", "Only a prospect demo you belong to can be refreshed.");
-  if ((company as { name: string }).name !== PRAIRIE_LANTERN.name) back("/admin/demo", "Refresh is available for the Prairie Lantern Freight demo.");
+  const name = (company as { name: string }).name;
+  if (name !== PRAIRIE_LANTERN.name && name !== FREIGHT_DEMO.name) back("/admin/demo", `Refresh is available for the ${PRAIRIE_LANTERN.name} and ${FREIGHT_DEMO.name} demos.`);
   const sw = await supabase.rpc("switch_company", { p_company_id: id.data });
   if (sw.error) back("/admin/demo", "You are no longer a member of this demo, so it cannot be refreshed from here.");
   let r: { added: number; loads: number } = { added: 0, loads: 0 };
   try {
-    r = await withDemoRefreshLock(supabase, () => refreshPrairieLantern(supabase));
+    r = await withDemoRefreshLock(supabase, () => (name === FREIGHT_DEMO.name ? refreshFreightDemo(supabase) : refreshPrairieLantern(supabase)));
   } catch (e) {
     const message = e instanceof Error ? e.message : "The demo could not be refreshed.";
     await recordRefresh(supabase, id.data ?? null, false, message);
