@@ -28,6 +28,8 @@ export interface Vocabulary {
   document: string;
   /** Entering one. */
   enter: string;
+  /** One delivery document, spelled out for drivers ("Delivery ticket", "Bill of lading"). */
+  single: string;
   /** In a sentence: "a ticket", "all BOLs". */
   one: string;
   many: string;
@@ -37,15 +39,15 @@ export interface Vocabulary {
 
 const WORDS: Record<Industry, Vocabulary> = {
   aggregate: {
-    documents: "Delivery Tickets", document: "Ticket", enter: "Enter ticket", one: "ticket", many: "tickets",
+    documents: "Delivery Tickets", document: "Ticket", enter: "Enter ticket", single: "Delivery ticket", one: "ticket", many: "tickets",
     description: "What was actually delivered, entered from paper or scale tickets. Separate from the dispatch plan and from billing.",
   },
   freight: {
-    documents: "Bills of Lading", document: "BOL", enter: "Enter BOL", one: "BOL", many: "BOLs",
+    documents: "Bills of Lading", document: "BOL", enter: "Enter BOL", single: "Bill of lading", one: "BOL", many: "BOLs",
     description: "What was actually delivered, entered from bills of lading and proof of delivery. Separate from the dispatch plan and from billing.",
   },
   both: {
-    documents: "Tickets and BOLs", document: "Ticket", enter: "Enter ticket or BOL", one: "ticket or BOL", many: "tickets and BOLs",
+    documents: "Tickets and BOLs", document: "Ticket", enter: "Enter ticket or BOL", single: "Ticket or BOL", one: "ticket or BOL", many: "tickets and BOLs",
     description: "What was actually delivered, entered from scale tickets, bills of lading and proof of delivery. Separate from the dispatch plan and from billing.",
   },
 };

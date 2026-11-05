@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
 import { directionsUrl, telUrl, type LoadPickup } from "@/lib/driver/navigate";
 import { appointmentText, STOP_KIND_LABELS, type DriverStop } from "@/lib/orders/stops";
+import { vocabulary, type Vocabulary } from "@/lib/industry";
+import { getSettings } from "@/server/data/settings";
+
+const capitalize = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Badge } from "@/components/ui/badge";
 import { StatTile } from "@/components/ui/stat-tile";
@@ -81,7 +85,7 @@ function RouteStops({ route }: { route: DriverStop[] }) {
   );
 }
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route }: { a: DriverAssignment; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, words = vocabulary("aggregate") }: { a: DriverAssignment; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -184,7 +188,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
       <div className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row">
         {a.can_submit_ticket ? (
           <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className={buttonClasses(hasTicket ? "secondary" : "primary", "md", big)}>
-            <FilePlus2 className="size-5" aria-hidden /> {hasTicket ? "Add another ticket" : "Enter delivery ticket"}
+            <FilePlus2 className="size-5" aria-hidden /> {hasTicket ? `Add another ${words.one}` : `Enter ${words.single.toLowerCase()}`}
           </Link>
         ) : (
           <p className="text-sm text-muted">Ticket entry opens on the day of the load.</p>
@@ -237,6 +241,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const pickups = (pickupRes.error ? {} : (pickupRes.data ?? {})) as Record<string, LoadPickup>;
   // Stops (MK2): absent before 20261120007800 is applied, so the card keeps the pickup and job site.
   const routes = (routeRes.error ? {} : (routeRes.data ?? {})) as Record<string, DriverStop[]>;
+  // Ticket or BOL wording (MK1): from the company's "What you haul"; aggregate wording when it can't be read.
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
@@ -300,7 +306,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           <span className="text-muted"><span className="sr-only">{today.length} loads today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
         </StatTile>
         <StatTile icon={<ClipboardCheck />} tone={earlier.length ? "amber" : "neutral"} label="Tickets to enter" value={earlier.length} muted={earlier.length === 0}>
-          <span className="text-muted"><span className="sr-only">{earlier.length} tickets to enter. </span>{earlier.length ? "from earlier days" : "all caught up"}</span>
+          <span className="text-muted"><span className="sr-only">{earlier.length} {words.many} to enter. </span>{earlier.length ? "from earlier days" : "all caught up"}</span>
         </StatTile>
       </div>
       {/* Pre-trip first, but one tap to open (UX6): the long form no longer pushes today's loads off the screen. */}
@@ -322,7 +328,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
@@ -398,9 +404,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       )}
 
       {earlier.length > 0 && (
-        <section aria-label="Tickets still needed">
-          <h2 className="mb-2 text-lg font-bold text-brand-fg">Tickets still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
+        <section aria-label={`${capitalize(words.many)} still needed`}>
+          <h2 className="mb-2 text-lg font-bold text-brand-fg">{capitalize(words.many)} still needed</h2>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
         </section>
       )}
 
@@ -428,7 +434,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
         </section>
       )}
 
@@ -452,11 +458,11 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       </Card>
 
       <Card>
-        <CardHeader title="My recent tickets" description="The office reviews every ticket. Questions about a ticket go to the office." />
+        <CardHeader title={`My recent ${words.many}`} description={`The office reviews every ${words.one}. Questions about a ${words.one} go to the office.`} />
         {h.tickets.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-muted sm:px-6">No tickets yet.</p>
+          <p className="px-5 py-4 text-sm text-muted sm:px-6">No {words.many} yet.</p>
         ) : (
-          <ul className="divide-y divide-line" aria-label="My recent tickets">
+          <ul className="divide-y divide-line" aria-label={`My recent ${words.many}`}>
             {h.tickets.map((t) => (
               <li key={t.id} className="px-5 py-3 sm:px-6">
                 <div className="flex flex-wrap items-center gap-2">

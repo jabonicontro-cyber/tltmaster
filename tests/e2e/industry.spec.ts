@@ -73,3 +73,21 @@ test("the owner hides unused areas from the menu, and can show them again", asyn
     await reset();
   }
 });
+
+test("a freight company's drivers enter bills of lading, not delivery tickets", async ({ page }) => {
+  test.slow();
+  const { driverFixture } = await import("./driver-fixture");
+  const reset = () => asUser(USERS.owner.email, (q) => q("update public.company_settings set industry = 'aggregate' where company_id = (select private.current_company_id())"));
+  await driverFixture();
+  await asUser(USERS.owner.email, (q) => q("update public.company_settings set industry = 'freight' where company_id = (select private.current_company_id())"));
+  try {
+    await signIn(page, "driver");
+    await page.goto("/driver");
+    await expect(page.getByRole("link", { name: "Enter bill of lading" }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: "BOLs still needed" })).toBeVisible();
+    await page.getByRole("link", { name: "Enter bill of lading" }).first().click();
+    await expect(page.getByRole("heading", { level: 1, name: "Bill of lading" })).toBeVisible();
+  } finally {
+    await reset();
+  }
+});

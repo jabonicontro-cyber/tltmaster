@@ -4,10 +4,14 @@ import { DriverTicketForm } from "@/components/driver/driver-ticket-form";
 import { buttonClasses } from "@/components/ui/button";
 import { ErrorState } from "@/components/ui/states";
 import { formatDate } from "@/lib/dates";
+import { vocabulary } from "@/lib/industry";
+import { getSettings } from "@/server/data/settings";
 import { requirePagePermission } from "@/server/auth";
 import { loadAssignmentForm } from "@/server/data/driver";
 
-export const metadata = { title: "Delivery ticket" };
+export async function generateMetadata() {
+  return { title: vocabulary((await getSettings().catch(() => null))?.industry).single };
+}
 
 /** Current local time in the business timezone, "HH:MM". */
 function nowIn(timezone: string) {
@@ -27,12 +31,13 @@ export default async function DriverTicketPage({ params }: { params: Promise<{ i
     );
   }
   const f = form.data;
+  const words = vocabulary((await getSettings().catch(() => null))?.industry);
   return (
     <div className="mx-auto max-w-xl px-0">
-      <h1 className="text-2xl font-black">Delivery ticket</h1>
+      <h1 className="text-2xl font-black">{words.single}</h1>
       <p className="mb-4 text-muted">{f.order.number} · load {f.load.number} · {formatDate(f.load.date)} · {f.order.customer_name}</p>
       {!f.can_submit_ticket ? (
-        <ErrorState title="Not yet" description="Ticket entry opens on the day of the load." action={<Link href="/driver" className={buttonClasses("secondary", "md", "min-h-12")}>Back to My Day</Link>} />
+        <ErrorState title="Not yet" description={`${words.single} entry opens on the day of the load.`} action={<Link href="/driver" className={buttonClasses("secondary", "md", "min-h-12")}>Back to My Day</Link>} />
       ) : (
         <DriverTicketForm
           assignmentId={f.assignment_id}

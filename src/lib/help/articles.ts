@@ -2958,7 +2958,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Owners and administrators.",
     whatYouSee: [
       "Under **Settings → Company and branding**, a **What you haul** choice: **Aggregate and construction hauling**, **General freight** or **Both**.",
-      "The delivery documents section follows it: **Delivery Tickets**, **Bills of Lading** or **Tickets and BOLs** in the menu, page titles and tabs. Only words change; the rules stay the same.",
+      "The delivery documents section follows it: **Delivery Tickets**, **Bills of Lading** or **Tickets and BOLs** in the menu, page titles and tabs, and drivers see **Enter bill of lading** on My Day. Only words change; the rules stay the same.",
       "Below it, **Areas in the menu**: switch off areas like **Quotes**, **Payroll** or **Schedule** to hide them from everyone's menu.",
       "Hiding an area only tidies the menu. Nothing is deleted, permissions don't change, a hidden page still opens from a link, and safety areas always show.",
     ],
