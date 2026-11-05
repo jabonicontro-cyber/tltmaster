@@ -132,7 +132,7 @@ export function RouteBuilder({
             )}
           </div>
           {stops.length === 0 ? (
-            <p className="text-sm text-muted">Add the first place below: usually the yard or the quarry.</p>
+            <p className="text-sm text-muted">Add the first place below: usually the yard, then the first pickup.</p>
           ) : (
             <ol className="space-y-2" aria-label="Stops in order">
               {stops.map((s, i) => (

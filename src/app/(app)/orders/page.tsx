@@ -23,11 +23,13 @@ import { businessToday } from "@/server/data/settings";
 
 import { baseOptions } from "@/server/data/bases";
 import { BaseFilter } from "@/components/bases/base-filter";
+import { getSay } from "@/server/industry";
 export const metadata = { title: "Orders" };
 
 type Search = { q?: string; status?: string; customer?: string; source?: string; when?: string; base?: string; page?: string };
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   const access = await requirePagePermission("orders.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
@@ -161,7 +163,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                   <tr>
                     <Th>Order</Th>
                     <Th>Customer</Th>
-                    <Th className="hidden md:table-cell">Job site / materials</Th>
+                    <Th className="hidden md:table-cell">{say("Job site / materials")}</Th>
                     <Th className="hidden sm:table-cell">Delivery</Th>
                     <Th className="hidden lg:table-cell">Source</Th>
                     <Th>Status</Th>

@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { loadCustomerContextFor, loadEditorReferenceData, newOrderEditorState } from "@/server/quotes/editor-data";
+import { getIndustry } from "@/server/industry";
 
 export const metadata = { title: "New order" };
 
@@ -28,6 +29,7 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
         description="For work that does not need a quote. The order number is assigned when you first save; the order stays a draft until you confirm it."
       />
       <QuoteEditor
+        industry={await getIndustry()}
         mode="order"
         initial={initial}
         initialContext={context && context.customer.active ? context : null}

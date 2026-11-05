@@ -7,6 +7,7 @@ import { getTruck } from "@/server/data/fleet";
 import { saveTruck } from "../../../actions";
 
 import { baseOptions, recordBase } from "@/server/data/bases";
+import { getIndustry } from "@/server/industry";
 export const metadata = { title: "Edit truck" };
 
 const dimensionsOf = (t: Record<string, number | null>) => ({ height_cm: t.height_cm, width_cm: t.width_cm, length_cm: t.length_cm, gross_weight_kg: t.gross_weight_kg, axle_count: t.axle_count });
@@ -25,7 +26,7 @@ export default async function EditTruckPage({ params }: { params: Promise<{ id: 
       />
       <Card>
         <CardBody>
-          <EquipmentForm
+          <EquipmentForm industry={await getIndustry()}
             kind="truck"
             initial={{ ...t, type: t.truck_type, capacity_verified: Boolean(t.capacity_verified_at) }}
             action={saveTruck.bind(null, id)}

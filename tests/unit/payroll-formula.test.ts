@@ -8,6 +8,10 @@ const ok = (src: string, inputs: Record<string, string | null>) => {
 };
 
 describe("pay formula engine", () => {
+  it("calculates per-mile pay for freight drivers (MK4)", () => {
+    expect(ok("miles * rate", { miles: "245", rate: "0.62" }).cents).toBe(BigInt(15190));
+    expect(validateFormula("miles * rate").ok).toBe(true);
+  });
   it("calculates per-ton pay exactly, rounding once to cents (half away from zero)", () => {
     expect(ok("tons * rate", { tons: "21.47", rate: "4.25" }).cents).toBe(BigInt(9125)); // 91.2475 → 91.25
     expect(ok("tons * rate", { tons: "0.1", rate: "0.2" }).cents).toBe(BigInt(2)); // 0.02 exactly (no float error)

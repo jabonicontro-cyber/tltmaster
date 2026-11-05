@@ -9,7 +9,8 @@ import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
-import { TRUCK_TYPES, TRUCK_TYPE_LABELS } from "@/lib/fleet/labels";
+import { TRUCK_TYPE_LABELS, truckTypesFor } from "@/lib/fleet/labels";
+import { getIndustry } from "@/server/industry";
 import { DOC_KINDS, DOC_LABELS, OFFER_STATUS, RATE_UNIT_LABELS, RATE_UNITS, documentStatus, offerPay, readyForOffers } from "@/lib/hired-trucks";
 import { formatCents } from "@/lib/money";
 import { formatTime } from "@/lib/orders/schedule";
@@ -43,6 +44,7 @@ const SETTLEMENT_STATUS = { draft: { label: "Draft", tone: "gray" }, approved: {
  * computed from accepted tickets at the offered rate and is a statement only: nothing is paid or exported.
  */
 export default async function HiredTrucksPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const truckTypes = truckTypesFor(await getIndustry());
   const access = await requirePagePermission("dispatch.view");
   const sp = await searchParams;
   const { today } = await businessToday();
@@ -203,7 +205,7 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
                       <form action={addHaulerTruck} className="mt-2 flex flex-wrap gap-2" aria-label={`Add a truck for ${h.name}`}>
                         <input type="hidden" name="hauler_id" value={h.id} />
                         <Input name="unit_number" placeholder="Unit" aria-label="Unit number" className="w-24" required maxLength={20} />
-                        <Select name="truck_type" aria-label="Truck type" className="w-44">{TRUCK_TYPES.map((t) => <option key={t} value={t}>{TRUCK_TYPE_LABELS[t]}</option>)}</Select>
+                        <Select name="truck_type" aria-label="Truck type" className="w-44">{truckTypes.map((t) => <option key={t} value={t}>{TRUCK_TYPE_LABELS[t]}</option>)}</Select>
                         <Input name="plate" placeholder="Plate" aria-label="License plate" className="w-28" maxLength={15} />
                         <SubmitButton size="sm" variant="secondary">Add truck</SubmitButton>
                       </form>

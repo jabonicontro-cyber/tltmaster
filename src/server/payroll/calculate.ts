@@ -33,6 +33,7 @@ export function ticketInputs(t: PayableTicket, rule: PayRuleVersion, billedCents
   return {
     quantity: qty,
     tons: t.unit_code === "ton" ? qty : null,
+    miles: t.unit_code === "mile" ? qty : null,
     loads: "1",
     rate: rule.rate,
     hours: null, // not recorded on delivery tickets

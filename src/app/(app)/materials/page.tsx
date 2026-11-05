@@ -7,8 +7,12 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listChargeItems, listMaterials, listPriceLists, listUnits } from "@/server/data/catalog";
 import { createClient } from "@/server/supabase/server";
+import { getIndustry, getWords } from "@/server/industry";
+import { haulsAggregate, vocabulary } from "@/lib/industry";
 
-export const metadata = { title: "Materials & Pricing" };
+export async function generateMetadata() {
+  return { title: (await getWords()).pricing };
+}
 
 const TABS = [
   { key: "materials", label: "Materials" },
@@ -18,6 +22,9 @@ const TABS = [
 ] as const;
 
 export default async function MaterialsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const industry = await getIndustry();
+  const words = vocabulary(industry);
+  const aggregate = haulsAggregate(industry);
   const access = await requirePagePermission("materials.view");
   const { tab: rawTab } = await searchParams;
   const tab = TABS.some((t) => t.key === rawTab) ? rawTab! : "materials";
@@ -43,7 +50,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
-      <PageHeader title="Materials & Pricing" description="Catalog and rates used to build quotes. Changing a rate never changes a saved quote." />
+      <PageHeader title={words.pricing} description={aggregate ? "Catalog and rates used to build quotes. Changing a rate never changes a saved quote." : "Linehaul and accessorial rates used to build quotes, plus any commodities you price separately. Changing a rate never changes a saved quote."} />
       <nav aria-label="Catalog sections" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {TABS.map((t) => (
           <Link
@@ -55,7 +62,7 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
               tab === t.key ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
-            <span className="pill-text">{t.label}</span>
+            <span className="pill-text">{t.key === "materials" ? words.materials[0].toUpperCase() + words.materials.slice(1) : t.key === "charges" && !aggregate ? "Linehaul & accessorials" : t.label}</span>
           </Link>
         ))}
       </nav>

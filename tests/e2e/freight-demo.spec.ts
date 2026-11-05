@@ -68,6 +68,25 @@ test("the platform team creates the freight demo and its owner sees a freight ca
   await expect(stops.getByRole("listitem").first()).toContainText(/Ref PU-/);
   await expect(owner.getByText("1 pickup, 2 deliveries, in the order the truck makes them.")).toBeVisible();
 
+  // Tailored to freight (MK4): the menu, Command Center, fleet and places speak freight; no dump bodies or quarries.
+  await expect(menu.getByRole("link", { name: "Rates & Charges" })).toBeVisible();
+  await visit(owner, "/command-center");
+  await expect(owner.getByText(/Missing bills of lading|BOLs to review/).first()).toBeVisible();
+  await expect(owner.getByText(/delivery ticket/i)).toHaveCount(0);
+  await visit(owner, "/fleet/trucks/new");
+  const types = await owner.getByLabel("Type").locator("option").allTextContents();
+  expect(types).toEqual(expect.arrayContaining(["Tractor (semi)", "Straight truck (box)"]));
+  expect(types.join(" ")).not.toMatch(/dump/i);
+  await expect(owner.getByLabel("Body volume (cubic yards)")).toHaveCount(0);
+  await visit(owner, "/fleet/trailers");
+  await expect(owner.getByRole("cell", { name: "Reefer (refrigerated)" })).toBeVisible();
+  await expect(owner.getByRole("cell", { name: /dump/i })).toHaveCount(0);
+  await visit(owner, "/dispatch?view=locations");
+  await expect(owner.getByText("Ridgeway Distribution Center (fictional)").first()).toBeVisible();
+  await expect(owner.getByText(/quarr|gravel pit/i)).toHaveCount(0);
+  await visit(owner, "/quotes/new");
+  await expect(owner.getByRole("button", { name: "Add linehaul / accessorial" })).toBeVisible();
+
   // Every demo mode opens its pages with data; drivers see bills of lading on My Day.
   const ctx = owner.context();
   try {

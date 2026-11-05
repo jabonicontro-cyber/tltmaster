@@ -6,7 +6,8 @@ import { Checkbox, Field, FormError, Input, Select, Textarea, describedBy } from
 import { Notice } from "@/components/ui/states";
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
-import { TRAILER_TYPE_LABELS, TRAILER_TYPES, TRUCK_TYPE_LABELS, TRUCK_TYPES, trimNumber } from "@/lib/fleet/labels";
+import { TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS, TRUCK_TYPES, trailerTypesFor, truckTypesFor, trimNumber } from "@/lib/fleet/labels";
+import { haulsAggregate } from "@/lib/industry";
 import type { EquipmentFormValues } from "./form-defaults";
 import { BaseField, type BaseOption } from "@/components/bases/base-field";
 import { cmToFeet, kgToPounds } from "@/lib/routing/dimensions";
@@ -26,13 +27,17 @@ interface Props {
   baseId?: string | null;
   /** Trucks: routing dimensions (metric, as stored); omitted until the database has the columns. */
   dimensions?: { height_cm: number | null; width_cm: number | null; length_cm: number | null; gross_weight_kg: number | null; axle_count: number | null };
+  /** What the company hauls (MK4): which types are offered, pounds and no body volume for freight. */
+  industry?: string;
 }
 
-export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [], bases, baseId, dimensions }: Props) {
+export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, trucks = [], bases, baseId, dimensions, industry }: Props) {
+  const aggregate = haulsAggregate(industry);
   const { pending, onSubmit, fieldError, formError } = useFormAction(action);
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
   const [weight, setWeight] = useState(trim(initial.weight_capacity));
-  const [weightUnit, setWeightUnit] = useState<string>(initial.weight_unit ?? "");
+  // Freight capacities are in pounds; a new unit starts there (an existing unit keeps its own).
+  const [weightUnit, setWeightUnit] = useState<string>(initial.weight_unit ?? (!aggregate && !trim(initial.weight_capacity) ? "lb" : ""));
   const [volume, setVolume] = useState(trim(initial.volume_capacity));
   const [verified, setVerified] = useState(initial.capacity_verified);
   const hasCapacity = Boolean(weight.trim() || volume.trim());
@@ -57,8 +62,8 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
           <Select {...f(typeName)} defaultValue={initial.type}>
             <option value="">Choose…</option>
             {kind === "truck"
-              ? TRUCK_TYPES.map((t) => <option key={t} value={t}>{TRUCK_TYPE_LABELS[t]}</option>)
-              : TRAILER_TYPES.map((t) => <option key={t} value={t}>{TRAILER_TYPE_LABELS[t]}</option>)}
+              ? truckTypesFor(industry, initial.type).map((t) => <option key={t} value={t}>{TRUCK_TYPE_LABELS[t]}</option>)
+              : trailerTypesFor(industry, initial.type).map((t) => <option key={t} value={t}>{TRAILER_TYPE_LABELS[t]}</option>)}
           </Select>
         </Field>
         <Field label="Year" htmlFor="model_year" error={fieldError("model_year")} className="sm:col-span-1">
@@ -86,7 +91,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
         <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Capacity</legend>
         <div className="sm:col-span-6">
           <Notice title="Only enter capacities you have confirmed">
-            Leave a capacity blank if it is not known. It will show as <strong>Unknown</strong>. Never estimate. Mark it verified only after checking a scale ticket,
+            Leave a capacity blank if it is not known. It will show as <strong>Unknown</strong>. Never estimate. Mark it verified only after checking {aggregate ? "a scale ticket" : "a certified scale weight"},
             registration or manufacturer specification, and note the source.
           </Notice>
         </div>
@@ -100,10 +105,13 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
             <option value="lb">Pounds</option>
           </Select>
         </Field>
-        <Field label="Body volume (cubic yards)" htmlFor="volume_capacity" error={fieldError("volume_capacity")} className="sm:col-span-3">
-          <Input {...f("volume_capacity")} value={volume} onChange={(e) => capacityChanged(() => setVolume(e.target.value))} inputMode="decimal" className="max-w-40 text-right tabular" placeholder="Unknown" />
-        </Field>
-        <Field label="Source" htmlFor="capacity_source" error={fieldError("capacity_source")} className="sm:col-span-4" hint="e.g. Scale ticket 3/14, registration, manufacturer spec">
+        {/* Body volume is a dump-body measure: freight carriers don't see it unless a unit already has one. */}
+        {(aggregate || volume.trim()) ? (
+          <Field label="Body volume (cubic yards)" htmlFor="volume_capacity" error={fieldError("volume_capacity")} className="sm:col-span-3">
+            <Input {...f("volume_capacity")} value={volume} onChange={(e) => capacityChanged(() => setVolume(e.target.value))} inputMode="decimal" className="max-w-40 text-right tabular" placeholder="Unknown" />
+          </Field>
+        ) : <input type="hidden" name="volume_capacity" value="" />}
+        <Field label="Source" htmlFor="capacity_source" error={fieldError("capacity_source")} className="sm:col-span-4" hint={aggregate ? "e.g. Scale ticket 3/14, registration, manufacturer spec" : "e.g. CAT scale 3/14, registration, manufacturer spec"}>
           <Input {...f("capacity_source")} defaultValue={initial.capacity_source} maxLength={200} />
         </Field>
         <div className="flex items-end sm:col-span-2">
@@ -152,7 +160,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
           <div className="sm:col-span-6">
             <p className="mb-2 text-sm font-semibold text-ink">Truck types that can pull this trailer</p>
             <div className="flex flex-wrap gap-x-5 gap-y-2">
-              {TRUCK_TYPES.map((t) => (
+              {TRUCK_TYPES.filter((t) => truckTypesFor(industry).includes(t) || initial.compatible_truck_types?.includes(t)).map((t) => (
                 <Checkbox key={t} name="compatible_truck_types" value={t} defaultChecked={initial.compatible_truck_types?.includes(t)} label={TRUCK_TYPE_LABELS[t]} />
               ))}
             </div>

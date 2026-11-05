@@ -16,6 +16,7 @@ import { getUserNames } from "@/server/data/quotes";
 import { createClient } from "@/server/supabase/server";
 import { ticketInputs, type PayableTicket } from "@/server/payroll/calculate";
 import { activateRule, draftRule, endRule } from "../actions";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Pay rules" };
 
@@ -24,6 +25,7 @@ export const metadata = { title: "Pay rules" };
  * person activates them; an active version never changes (a change is a new version with its own dates).
  */
 export default async function PayRulesPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const say = await getSay();
   await requirePagePermission("payroll.manage");
   const sp = await searchParams;
   const home = await loadPayrollHome();
@@ -52,12 +54,12 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <FlashToast messages={{ saved: { text: "Saved." } }} />
-      <PageHeader title="Pay rules" description="How your drivers' earnings are calculated from verified delivery tickets. Write it as a formula; nothing is paid until you activate it." crumbs={[{ label: "Payroll", href: "/payroll" }, { label: "Pay rules" }]} />
+      <PageHeader title="Pay rules" description={say("How your drivers' earnings are calculated from verified delivery tickets. Write it as a formula; nothing is paid until you activate it.")} crumbs={[{ label: "Payroll", href: "/payroll" }, { label: "Pay rules" }]} />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_400px]">
         <div className="space-y-5">
           {home.rules.length === 0 ? (
-            <EmptyState title="No pay rules yet" description="Taviron has no built-in pay rule. Write your company's agreed rule on the right (for example tons × rate per ton) then preview it on real tickets." />
+            <EmptyState title="No pay rules yet" description={say("Taviron has no built-in pay rule. Write your company's agreed rule on the right (for example tons × rate per ton) then preview it on real tickets.")} />
           ) : (
             home.rules.map((rule) => (
               <Card key={rule.id}>
@@ -76,9 +78,9 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
                       {v.approved_at && <p className="text-xs text-muted">Activated {formatDateTime(v.approved_at)} by {v.approved_by ? names[v.approved_by] ?? "former user" : "–"}</p>}
                       {v.status === "draft" && (
                         <div className="rounded-xl border border-line bg-surface/50 p-3">
-                          <p className="font-semibold">Preview on recent verified tickets</p>
+                          <p className="font-semibold">{say("Preview on recent verified tickets")}</p>
                           {preview(v).length === 0 ? (
-                            <p className="text-muted">No recent verified ticket matches this rule&apos;s unit and scope.</p>
+                            <p className="text-muted">{say("No recent verified ticket matches this rule's unit and scope.")}</p>
                           ) : (
                             <ul className="mt-1 space-y-1">
                               {preview(v).map(({ t, r }) => (
@@ -112,7 +114,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
           )}
         </div>
         <Card>
-          <CardHeader title="Write a rule" description="Saved as a draft. A new version of an existing rule keeps the old one for earlier tickets." />
+          <CardHeader title="Write a rule" description={say("Saved as a draft. A new version of an existing rule keeps the old one for earlier tickets.")} />
           <CardBody>
             <form action={draftRule} className="space-y-3">
               <Field label="Rule" htmlFor="rule_id">
@@ -126,7 +128,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
                 <Input id="formula" name="formula" required maxLength={500} placeholder="tons * rate" className="font-mono" />
               </Field>
               <Field label="Rate" htmlFor="rate" hint="The value of rate in the formula (e.g. dollars per ton)."><Input id="rate" name="rate" inputMode="decimal" placeholder="4.25" /></Field>
-              <Field label="Tickets in" htmlFor="unit_code">
+              <Field label={say("Tickets in")} htmlFor="unit_code">
                 <Select id="unit_code" name="unit_code" defaultValue="">
                   <option value="">Any unit</option>
                   {((units.data ?? []) as Array<{ code: string; label: string }>).map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}

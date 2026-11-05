@@ -54,6 +54,7 @@ import { saveBillingTolerance, saveCreditHoldSettings, saveInvoicingSettings } f
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
+import { getSay } from "@/server/industry";
 
 const BASE_SAVED: Record<string, string> = {
   created: "Base added.",
@@ -106,6 +107,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
 const GROUPS: Group[] = ["Company", "Operations", "Access", "System"];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ tab?: string; saved?: string; error?: string }> }) {
+  const say = await getSay();
   const access = await requireAccess();
   const { tab: rawTab, saved, error: actionError } = await searchParams;
   // Sign-ins and roles live on People now (owner 2026-10-14); old links keep working.
@@ -178,7 +180,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </CardBody>
         <CardHeader
           title="Wait times"
-          description="How long a truck may wait at a pickup or job site before Reports → Wait times flags it. Drivers tap Arrived and Left on My Day. Nothing is billed."
+          description={say("How long a truck may wait at a pickup or job site before Reports → Wait times flags it. Drivers tap Arrived and Left on My Day. Nothing is billed.")}
         />
         <CardBody>
           {wait.installed ? <WaitTimeForm freeMinutes={wait.freeMinutes} canEdit={can(access, "settings.manage")} /> : <p className="text-sm text-muted">Wait times need a database update that has not been installed yet.</p>}
@@ -288,7 +290,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </CardBody>
         <CardHeader
           title="End-of-day summary"
-          description={access.isDemo ? "Demo companies never send it; the figures below are what it would say today." : "One short email a day to the company's owners: loads delivered, tickets missing or waiting, trucks down, open driver reports and tomorrow's loads without a truck. Counts only. Text messages come once Twilio is set up."}
+          description={access.isDemo ? "Demo companies never send it; the figures below are what it would say today." : say("One short email a day to the company's owners: loads delivered, tickets missing or waiting, trucks down, open driver reports and tomorrow's loads without a truck. Counts only. Text messages come once Twilio is set up.")}
         />
         <CardBody className="space-y-4">
           {dsRow ? (
@@ -375,7 +377,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           {!tolerance.error && (
             <form action={saveBillingTolerance} className="mt-8 max-w-xl space-y-3 border-t border-line pt-6" aria-label="Billing tolerance">
               <h3 className="text-base font-semibold text-ink">Billing tolerance</h3>
-              <p className="text-sm text-muted">Scale weights rarely match the plan exactly. A difference between the tickets and the planned or ordered quantity within this percentage is not a billing exception; a larger one still is, and different units, missing tickets and zero rates always are. Empty: tickets must match exactly.</p>
+              <p className="text-sm text-muted">{say("Scale weights rarely match the plan exactly. A difference between the tickets and the planned or ordered quantity within this percentage is not a billing exception; a larger one still is, and different units, missing tickets and zero rates always are. Empty: tickets must match exactly.")}</p>
               <Field label="Allowed difference (%)" htmlFor="tolerance_percent" hint="Above 0 and up to 10, for example 1 or 2.5. Your company chooses the number."><Input id="tolerance_percent" name="tolerance_percent" inputMode="decimal" defaultValue={(tolerance.data as { percent: number | string | null } | null)?.percent?.toString() ?? ""} disabled={!edit} className="max-w-28" /></Field>
               {edit && <SubmitButton>Save</SubmitButton>}
             </form>

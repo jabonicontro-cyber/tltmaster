@@ -26,6 +26,7 @@ import type { ChargeItemRow, ContactRow, EffectivePrice, MaterialRow, SiteRow, U
 import { quickCreateCustomer } from "@/app/(app)/customers/actions";
 import { loadOrderCustomerContext, saveOrderDraft } from "@/app/(app)/orders/actions";
 import { loadCustomerContext, saveQuoteDraft } from "@/app/(app)/quotes/actions";
+import { haulsAggregate, vocabulary } from "@/lib/industry";
 
 export interface EditorLine {
   key: string;
@@ -87,6 +88,8 @@ export interface CustomerContext {
 }
 
 interface Props {
+  /** What the company hauls (MK4): freight carriers quote linehaul and accessorials, not materials. */
+  industry?: string;
   initial: EditorState;
   initialContext: CustomerContext | null;
   customers: Array<{ id: string; name: string; customer_number: string; is_sample: boolean }>;
@@ -121,9 +124,11 @@ function toCalcLine(l: EditorLine): CalcLine {
   };
 }
 
-export function QuoteEditor({ initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote" }: Props) {
+export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote" }: Props) {
   const router = useRouter();
   const isOrder = mode === "order";
+  const words = vocabulary(industry);
+  const aggregate = haulsAggregate(industry);
   const docLabel = isOrder ? "order" : "quote";
   const basePath = isOrder ? "/orders" : "/quotes";
   const [state, setState] = useState<EditorState>(initial);
@@ -613,7 +618,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       <Card>
         <CardHeader
           title="Line items"
-          description="Materials and hauling are separate lines. Rates are filled from the customer's price list, then standard rates."
+          description={`${words.linesHint} Rates are filled from the customer's price list, then standard rates.`}
         />
         {!hasCustomer ? (
           <CardBody>
@@ -623,7 +628,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
           <>
             {state.lines.length === 0 && (
               <CardBody>
-                <p className="text-muted">No lines yet. Add a material, a hauling charge or a custom line.</p>
+                <p className="text-muted">{aggregate ? "No lines yet. Add a material, a hauling charge or a custom line." : "No lines yet. Add the linehaul and any accessorial charges (detention, lumper, fuel)."}</p>
               </CardBody>
             )}
             <ol className="divide-y divide-line">
@@ -639,11 +644,11 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                     {/* Item */}
                     <div className="col-span-12 lg:col-span-4">
                       <label htmlFor={`line-${l.key}-item`} className="mb-1 block text-xs font-medium text-muted">
-                        {l.kind === "material" ? "Material" : "Charge"}
+                        {l.kind === "material" ? words.Material : "Charge"}
                       </label>
                       {l.kind === "material" ? (
                         <Select id={`line-${l.key}-item`} value={l.materialId ?? ""} onChange={(e) => chooseMaterial(l.key, e.target.value)}>
-                          <option value="">Choose material…</option>
+                          <option value="">Choose {words.material}…</option>
                           {activeMaterials.map((m) => (
                             <option key={m.id} value={m.id}>{m.name}</option>
                           ))}
@@ -798,8 +803,9 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
               })}
             </ol>
             <div className="flex flex-wrap gap-2 border-t border-line px-5 py-3 sm:px-6">
-              <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("material")}>Add material</Button>
-              <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("charge")}>Add hauling / charge</Button>
+              {/* Freight carriers price lanes, not materials: the material button shows only where materials are set up. */}
+              {(aggregate || activeMaterials.length > 0) && <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("material")}>Add {words.material}</Button>}
+              <Button variant="secondary" icon={<Plus className="size-4" />} onClick={() => addLine("charge")}>{aggregate ? "Add hauling / charge" : "Add linehaul / accessorial"}</Button>
             </div>
           </>
         )}
@@ -811,7 +817,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
           <CardHeader title="Instructions and terms" />
           <CardBody className="space-y-4">
             <Field label={isOrder ? "Job instructions (for the customer and crew)" : "Job instructions (printed on the quote)"} htmlFor="jobInstructions" error={fieldErrors.jobInstructions}>
-              <Textarea id="jobInstructions" rows={3} value={state.jobInstructions} onChange={(e) => update({ jobInstructions: e.target.value })} placeholder="Delivery window, where to dump, site access…" />
+              <Textarea id="jobInstructions" rows={3} value={state.jobInstructions} onChange={(e) => update({ jobInstructions: e.target.value })} placeholder={words.instructionsHint} />
             </Field>
             <Field label={isOrder ? "Terms" : "Terms (printed on the quote)"} htmlFor="terms" error={fieldErrors.terms}>
               <Textarea id="terms" rows={4} value={state.terms} onChange={(e) => update({ terms: e.target.value })} />

@@ -13,6 +13,7 @@ import { formatCents } from "@/lib/money";
 import { requirePagePermission } from "@/server/auth";
 import { accountantMe, loadAccountingYear, recordAccountantVisit } from "@/server/data/accountant-view";
 import { businessToday } from "@/server/data/settings";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Accountant view" };
 
@@ -24,6 +25,7 @@ const fmt = (n: number, d = 0) => n.toLocaleString("en-US", { maximumFractionDig
  * invite includes it. Read-only for everyone; owners see exactly what their accountant sees. Each visit is recorded.
  */
 export default async function AccountantPage({ searchParams }: { searchParams: Promise<{ year?: string }> }) {
+  const say = await getSay();
   const access = await requirePagePermission("accounting.view");
   const { today, timezone } = await businessToday();
   const sp = await searchParams;
@@ -136,7 +138,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
 
       {me?.payroll && (
         <Card className="mb-5">
-          <CardHeader title={`Driver payroll · ${year}`} description="Approved pay periods only: gross pay per driver from verified tickets and adjustments. Taxes and deductions are your payroll provider's." />
+          <CardHeader title={`Driver payroll · ${year}`} description={say("Approved pay periods only: gross pay per driver from verified tickets and adjustments. Taxes and deductions are your payroll provider's.")} />
           {!data.payroll ? <CardBody><p className="text-sm text-muted">Not available.</p></CardBody> : data.payroll.length === 0 ? <CardBody><EmptyState title="No approved pay periods this year" /></CardBody> : (
             <ul className="divide-y divide-line border-t border-line" aria-label="Pay periods">
               {data.payroll.map((p) => (

@@ -5,6 +5,7 @@ import type { DaySnapshot } from "@/lib/offline/store";
 import { loadAssignmentForm, loadDriverHome } from "@/server/data/driver";
 import { stopTimesForLoads } from "@/server/data/wait-times";
 import { createClient } from "@/server/supabase/server";
+import { getWords } from "@/server/industry";
 
 /**
  * Offline driver app (B133): today's loads for the phone to keep, read through the driver's own session and the same
@@ -29,6 +30,7 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
     savedAt: new Date().toISOString(),
     today: h.today,
     timezone: h.timezone,
+    enterLabel: (await getWords()).enter,
     driverName: h.driver.name,
     units,
     loads: todays.map((a, i) => {

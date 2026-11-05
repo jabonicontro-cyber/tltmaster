@@ -280,3 +280,8 @@ export function handoffCsv(batch: { batch_number: string; reference: string }, o
   }
   return rows.map((r) => r.map(csvCell).join(",")).join("\r\n") + "\r\n";
 }
+
+/** An explanation in the company's words (freight carriers read BOLs; src/lib/industry.ts adaptWording). */
+export function sayExplanation<T extends { why: string; action: string }>(e: T, say: (text: string) => string): T {
+  return { ...e, why: say(e.why), action: say(e.action) };
+}

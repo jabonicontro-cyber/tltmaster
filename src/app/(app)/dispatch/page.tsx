@@ -24,6 +24,7 @@ import { baseOptions, parseBaseFilter } from "@/server/data/bases";
 import { businessToday } from "@/server/data/settings";
 import { loadTruckHealth } from "@/server/data/truck-health";
 import { loadSiteWeather } from "@/server/weather";
+import { getWords } from "@/server/industry";
 
 export const metadata = { title: "Dispatch" };
 
@@ -85,7 +86,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   if (view === "routes" || view === "plan" || view === "locations") {
     return (
       <>
-        {header(view === "routes" ? "Each truck's day as a route, read from the board." : view === "plan" ? "Plan truck routes between your yards, quarries and job sites. Plans here never assign a load." : "The places your trucks use: yards, quarries, job sites.")}
+        {header(view === "routes" ? "Each truck's day as a route, read from the board." : view === "plan" ? `Plan truck routes between your ${(await getWords()).places}. Plans here never assign a load.` : `The places your trucks use: ${(await getWords()).places}.`)}
         <RouteViews access={access} view={view as RouteView} sp={{ truck: sp.truck, route: sp.route }} date={date} />
       </>
     );
@@ -177,7 +178,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>
           </p>
         )}
-        <DispatchBoard day={day} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard enterLabel={(await getWords()).enter} day={day} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

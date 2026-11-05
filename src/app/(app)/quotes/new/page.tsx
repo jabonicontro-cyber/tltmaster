@@ -4,6 +4,7 @@ import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { loadCustomerContextFor, loadEditorReferenceData, newEditorState } from "@/server/quotes/editor-data";
+import { getIndustry } from "@/server/industry";
 
 export const metadata = { title: "New quote" };
 
@@ -24,6 +25,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader title="New quote" crumbs={[{ label: "Quotes", href: "/quotes" }, { label: "New" }]} description="The quote number is assigned when you first save." />
       <QuoteEditor
+        industry={await getIndustry()}
         initial={initial}
         initialContext={context && context.customer.active ? context : null}
         customers={ref.customers}

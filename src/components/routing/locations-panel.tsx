@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import type { Point } from "@/lib/routing/route";
-import { LOCATION_KINDS, type CompanyLocation, type LocationKind } from "@/lib/routing/locations";
+import { LOCATION_KINDS, locationKindsFor, type CompanyLocation, type LocationKind } from "@/lib/routing/locations";
 import { AddressSearch } from "./address-search";
 import { RouteMap } from "./route-map";
+import { haulsAggregate } from "@/lib/industry";
 
 type Draft = {
   id?: string;
@@ -32,7 +33,9 @@ const empty: Draft = { kind: "quarry", name: "", line1: "", city: "", state: "",
 const SOURCE: Record<string, string> = { manual: "Coordinates entered by a person", geocoded: "Found from the address and confirmed", "": "No location yet" };
 
 /** Saved places other than customer sites: yards, terminals, quarries, plants and other pickups. */
-export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, tiles, yard }: {
+export function LocationsPanel({ industry, locations, canEdit, canSetYard, routingReady, tiles, yard }: {
+  /** What the company hauls: freight carriers save shippers and receivers, aggregate haulers quarries and plants. */
+  industry?: string;
   locations: CompanyLocation[];
   canEdit: boolean;
   canSetYard: boolean;
@@ -60,8 +63,8 @@ export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, t
     <div className="space-y-5">
       {located.length > 0 && <RouteMap stops={located.map((l) => ({ point: l.point!, label: l.name }))} tiles={tiles} title="Saved locations" connect={false} />}
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-sm text-muted">{locations.length ? `${locations.length} saved location${locations.length === 1 ? "" : "s"}. Customer job sites are kept with each customer.` : "No saved locations yet. Add the yard and the quarries or plants trucks load at."}</p>
-        {canEdit && !draft && <Button onClick={() => setDraft({ ...empty })}>Add a location</Button>}
+        <p className="text-sm text-muted">{locations.length ? `${locations.length} saved location${locations.length === 1 ? "" : "s"}. ${haulsAggregate(industry) ? "Customer job sites" : "Customer delivery locations"} are kept with each customer.` : haulsAggregate(industry) ? "No saved locations yet. Add the yard and the quarries or plants trucks load at." : "No saved locations yet. Add the yard and the shippers, receivers and warehouses your trucks visit."}</p>
+        {canEdit && !draft && <Button onClick={() => setDraft({ ...empty, kind: haulsAggregate(industry) ? "quarry" : "shipper" })}>Add a location</Button>}
       </div>
 
       {draft && (
@@ -76,11 +79,11 @@ export function LocationsPanel({ locations, canEdit, canSetYard, routingReady, t
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Kind" htmlFor="loc-kind">
               <Select id="loc-kind" value={draft.kind} onChange={(e) => set({ kind: e.target.value as LocationKind })}>
-                {Object.entries(LOCATION_KINDS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {locationKindsFor(industry, draft.kind).map((k) => <option key={k} value={k}>{LOCATION_KINDS[k]}</option>)}
               </Select>
             </Field>
             <Field label="Name" htmlFor="loc-name" required>
-              <Input id="loc-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} maxLength={120} placeholder="e.g. Kankakee Valley Quarry" />
+              <Input id="loc-name" value={draft.name} onChange={(e) => set({ name: e.target.value })} maxLength={120} placeholder={haulsAggregate(industry) ? "e.g. Kankakee Valley Quarry" : "e.g. Midwest Distribution Center"} />
             </Field>
             <Field label="Street" htmlFor="loc-line1"><Input id="loc-line1" value={draft.line1} onChange={(e) => set({ line1: e.target.value })} maxLength={160} /></Field>
             <div className="grid grid-cols-[1fr_5rem_6rem] gap-2">

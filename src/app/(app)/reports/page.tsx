@@ -23,6 +23,7 @@ import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 
 import { baseSummary, listBases, type BaseSummary, type DispatchBase } from "@/server/data/bases";
+import { getSay } from "@/server/industry";
 export const metadata = { title: "Reports" };
 
 interface Ranked { name: string | null; tickets: number; value_cents: number; quantity?: number; unit?: string }
@@ -126,6 +127,7 @@ async function run(supabase: Awaited<ReturnType<typeof createClient>>, from: str
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ days?: string; from?: string; to?: string }> }) {
+  const say = await getSay();
   const access = await requireAccess();
   const sp = await searchParams;
   const { today, timezone } = await businessToday();
@@ -161,7 +163,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     value: (x.r?.value?.verified_value_cents ?? 0) / 100,
     tickets: x.r?.deliveries?.tickets ?? 0,
     loads: (x.r?.fleet ?? []).reduce((t, f) => t + f.loads, 0),
-    detail: `${x.r?.deliveries?.tickets ?? 0} tickets`,
+    detail: say(`${x.r?.deliveries?.tickets ?? 0} tickets`),
     range: size > 1 ? `${short(slices[i].from)} – ${short(slices[i].to)}` : short(slices[i].from),
   }));
   const loads = (x: Report | null) => (x?.fleet ? x.fleet.reduce((t, f) => t + f.loads, 0) : null);
@@ -196,7 +198,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <Delta now={r.value.verified_value_cents} before={prev?.value?.verified_value_cents ?? null} period={periodLabel} />
               </Kpi>
             ) : null}
-            <Kpi icon={<Ticket className="size-4" aria-hidden />} label="Delivery tickets" value={r.deliveries ? String(r.deliveries.tickets) : "–"} spark={trend.map((t) => t.tickets)} sparkLabel="Delivery tickets over the period">
+            <Kpi icon={<Ticket className="size-4" aria-hidden />} label={say("Delivery tickets")} value={r.deliveries ? String(r.deliveries.tickets) : "–"} spark={trend.map((t) => t.tickets)} sparkLabel="Delivery tickets over the period">
               {r.deliveries ? <Delta now={r.deliveries.tickets} before={prev?.deliveries?.tickets ?? null} period={periodLabel} /> : null}
             </Kpi>
             <Kpi icon={<Truck className="size-4" aria-hidden />} label="Loads assigned" value={loads(r) === null ? "–" : String(loads(r))} spark={trend.map((t) => t.loads)} sparkLabel="Loads assigned over the period">
@@ -213,7 +215,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             {r.value ? (
               <section aria-label="Verified delivered value" className="xl:col-span-2">
                 <Card className="h-full">
-                  <CardHeader title="Verified delivered value" description={`Per ${size === 1 ? "day" : `${size} days`}. Accepted ticket quantities × the order's approved rate, before percentage charges, discounts and tax, not invoiced amounts.`} />
+                  <CardHeader title="Verified delivered value" description={say(`Per ${size === 1 ? "day" : `${size} days`}. Accepted ticket quantities × the order's approved rate, before percentage charges, discounts and tax, not invoiced amounts.`)} />
                   <div className="px-3 pb-4 sm:px-5">
                     {trend.some((t) => t.value > 0) ? (
                       <AreaChart points={trend.map((t) => ({ label: t.label, value: t.value, detail: `${t.range} · ${t.detail}` }))} format={(n) => compactMoney(n * 100)} label={`Verified delivered value per ${size === 1 ? "day" : `${size} days`}: ${trend.map((t) => `${t.range} ${formatCents(Math.round(t.value * 100))}`).join("; ")}`} />
@@ -239,11 +241,11 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             )}
             <section aria-label="Deliveries and rework">
             <Card className="h-full">
-              <CardHeader title="Ticket acceptance" description="Delivery tickets the office has accepted." />
+              <CardHeader title={say("Ticket acceptance")} description={say("Delivery tickets the office has accepted.")} />
               {r.deliveries ? (
                 <div className="flex flex-col items-center px-5 pb-6 text-center sm:px-6">
                   <div className="relative w-full max-w-64">
-                    <Gauge rate={r.deliveries.tickets ? r.deliveries.accepted / r.deliveries.tickets : null} label={`${pct(r.deliveries.accepted, r.deliveries.tickets)} of delivery tickets accepted`} />
+                    <Gauge rate={r.deliveries.tickets ? r.deliveries.accepted / r.deliveries.tickets : null} label={say(`${pct(r.deliveries.accepted, r.deliveries.tickets)} of delivery tickets accepted`)} />
                     <p className="absolute inset-x-0 bottom-1 text-3xl font-semibold tabular">{pct(r.deliveries.accepted, r.deliveries.tickets)}</p>
                   </div>
                   <p className="mt-2 text-sm"><span className="font-semibold tabular">{r.deliveries.accepted}/{r.deliveries.tickets}</span> <span className="text-muted">accepted</span></p>
@@ -255,7 +257,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   <p className="mt-3 text-xs text-muted">Median from delivery to acceptance: {r.deliveries.median_hours_to_accept === null ? "–" : `${r.deliveries.median_hours_to_accept} h`}</p>
                 </div>
               ) : (
-                <CardBody><p className="text-sm text-muted">Delivery tickets are not tracked yet.</p></CardBody>
+                <CardBody><p className="text-sm text-muted">{say("Delivery tickets are not tracked yet.")}</p></CardBody>
               )}
             </Card>
             </section>
@@ -264,17 +266,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           {r.value ? (
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
               <Card>
-                <CardHeader title="By material" description="Share of verified value." />
+                <CardHeader title={say("By material")} description="Share of verified value." />
                 {r.value.by_line.length === 0 ? (
                   <CardBody><p className="text-sm text-muted">No verified deliveries in this period.</p></CardBody>
                 ) : (
                   <div className="flex flex-col items-center gap-4 px-5 pb-5 sm:px-6">
-                    <Donut parts={r.value.by_line.slice(0, 6).map((l) => ({ label: l.name ?? "Not recorded", value: l.value_cents }))} center={compactMoney(r.value.verified_value_cents)} sub="verified" label={`Verified value by material: ${r.value.by_line.map((l) => `${l.name ?? "Not recorded"} ${formatCents(l.value_cents)}`).join("; ")}`} />
-                    <ul className="w-full space-y-2" aria-label="By material">
+                    <Donut parts={r.value.by_line.slice(0, 6).map((l) => ({ label: l.name ?? "Not recorded", value: l.value_cents }))} center={compactMoney(r.value.verified_value_cents)} sub="verified" label={say(`Verified value by material: `) + `${r.value.by_line.map((l) => `${l.name ?? "Not recorded"} ${formatCents(l.value_cents)}`).join("; ")}`} />
+                    <ul className="w-full space-y-2" aria-label={say("By material")}>
                       {r.value.by_line.slice(0, 6).map((l, i) => (
                         <li key={`${l.name}-${i}`} className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2.5 text-sm">
                           <span className="size-2.5 rounded-full" style={{ background: SERIES[i % SERIES.length] }} aria-hidden />
-                          <span className="truncate">{l.name ?? "Not recorded"} <span className="text-xs text-muted">· {l.quantity !== undefined ? `${trimNumber(l.quantity)} ${l.unit ?? ""}` : `${l.tickets} tickets`}</span></span>
+                          <span className="truncate">{l.name ?? "Not recorded"} <span className="text-xs text-muted">· {l.quantity !== undefined ? `${trimNumber(l.quantity)} ${l.unit ?? ""}` : say(`${l.tickets} tickets`)}</span></span>
                           <span className="font-semibold tabular">{formatCents(l.value_cents)}</span>
                         </li>
                       ))}
@@ -282,8 +284,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                   </div>
                 )}
               </Card>
-              <RankList title="By customer" empty="No verified deliveries in this period." rows={r.value.by_customer.map((c) => ({ name: c.name ?? "Not recorded", value: c.value_cents, display: formatCents(c.value_cents), sub: `${c.tickets} ticket${c.tickets === 1 ? "" : "s"}` }))} />
-              <RankList title="By truck" empty="No verified deliveries in this period." rows={r.value.by_truck.map((t) => ({ name: t.name ? `Truck ${t.name}` : "Not recorded", value: t.value_cents, display: formatCents(t.value_cents), sub: `${t.tickets} ticket${t.tickets === 1 ? "" : "s"}` }))} />
+              <RankList title="By customer" empty="No verified deliveries in this period." rows={r.value.by_customer.map((c) => ({ name: c.name ?? "Not recorded", value: c.value_cents, display: formatCents(c.value_cents), sub: say(`${c.tickets} ticket${c.tickets === 1 ? "" : "s"}`) }))} />
+              <RankList title="By truck" empty="No verified deliveries in this period." rows={r.value.by_truck.map((t) => ({ name: t.name ? `Truck ${t.name}` : "Not recorded", value: t.value_cents, display: formatCents(t.value_cents), sub: say(`${t.tickets} ticket${t.tickets === 1 ? "" : "s"}`) }))} />
             </div>
           ) : null}
 
@@ -292,8 +294,8 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <CardHeader title="Needs attention" description="Work that is delivered but not yet billable or billed. All periods unless noted." />
               <div className="grid grid-cols-1 gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
                 {r.billing ? <MiniStat label="Ready to bill, not handed off" value={String(r.billing.ready_not_handed_off)} sub={`Orders worth ${formatCents(r.billing.ready_ordered_total_cents)} as ordered`} attention={r.billing.ready_not_handed_off > 0} /> : null}
-                {r.billing ? <MiniStat label="Loads with no ticket" value={String(r.billing.loads_missing_tickets)} sub={`On ${r.billing.orders_with_missing_tickets} orders: charges at risk until entered`} attention={r.billing.loads_missing_tickets > 0} /> : null}
-                {r.value ? <MiniStat label="Accepted tickets not priced" value={String(r.value.unpriced_tickets)} sub="This period: other unit than the order line, or no rate" attention={r.value.unpriced_tickets > 0} /> : null}
+                {r.billing ? <MiniStat label={say("Loads with no ticket")} value={String(r.billing.loads_missing_tickets)} sub={`On ${r.billing.orders_with_missing_tickets} orders: charges at risk until entered`} attention={r.billing.loads_missing_tickets > 0} /> : null}
+                {r.value ? <MiniStat label={say("Accepted tickets not priced")} value={String(r.value.unpriced_tickets)} sub="This period: other unit than the order line, or no rate" attention={r.value.unpriced_tickets > 0} /> : null}
                 {r.billing ? <MiniStat label="Orders handed off" value={String(r.billing.handed_off_orders)} sub="This period, not reverted" /> : null}
               </div>
             </Card>

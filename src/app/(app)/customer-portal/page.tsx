@@ -16,6 +16,7 @@ import { businessToday } from "@/server/data/settings";
 import { formatDate } from "@/lib/dates";
 import { BOOKING_STATUS, capacityDays, TIME_WINDOW, type BookingStatus, type TimeWindow } from "@/lib/portal-booking";
 import { BookingDecision, BookingSettingsForm, CapacityForm } from "@/components/portal/booking-forms";
+import { getSay, getWords } from "@/server/industry";
 import {
   HelpArticleForm, InviteForm, PortalSettingsForm, QuoteRequestForm, QuoteResponseButtons, RevokeAccountButton, type PortalSettingsValues,
 } from "@/components/portal/staff-portal-forms";
@@ -70,7 +71,7 @@ export default async function CustomerPortalPage({ searchParams }: { searchParam
       <Card>
         <CardHeader title="Portal Settings" description="Your portal uses your company name, logo and colour from Company settings." />
         <CardBody>
-          <PortalSettingsForm values={settings} entitled={state.entitled} canEdit={can(access, "settings.manage")} />
+          <PortalSettingsForm documents={(await getWords()).documents} values={settings} entitled={state.entitled} canEdit={can(access, "settings.manage")} />
         </CardBody>
       </Card>
     );
@@ -321,6 +322,7 @@ async function AccessTab(access: Access, canEdit: boolean, open: boolean) {
 }
 
 async function HelpTab(canEdit: boolean) {
+  const say = await getSay();
   const supabase = await createClient();
   const [{ data }, { data: votes }] = await Promise.all([
     supabase.from("portal_help_articles").select("id, title, category, body, status, published_at, updated_at").order("category").order("title"),
@@ -357,7 +359,7 @@ async function HelpTab(canEdit: boolean) {
           </Card>
         ))
       ) : (
-        <EmptyState title="No help articles yet" description="Write answers to the questions your customers ask most: ordering, delivery windows, site access, tickets." />
+        <EmptyState title="No help articles yet" description={say("Write answers to the questions your customers ask most: ordering, delivery windows, site access, tickets.")} />
       )}
     </div>
   );

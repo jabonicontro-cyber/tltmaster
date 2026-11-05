@@ -1,18 +1,20 @@
 // Labels and display helpers for the fleet registry.
 import { formatDate } from "@/lib/dates";
+import { industryOf } from "@/lib/industry";
 import type { CdlClass, QualificationKind, ServiceStatus, TrailerType, TruckType, WeightUnit } from "@/server/data/types";
 
-export const TRUCK_TYPES: TruckType[] = ["single_axle_dump", "tandem_axle_dump", "tri_axle_dump", "quad_axle_dump", "tractor", "other"];
+export const TRUCK_TYPES: TruckType[] = ["single_axle_dump", "tandem_axle_dump", "tri_axle_dump", "quad_axle_dump", "tractor", "straight_truck", "other"];
 export const TRUCK_TYPE_LABELS: Record<TruckType, string> = {
   single_axle_dump: "Single-axle dump",
   tandem_axle_dump: "Tandem-axle dump",
   tri_axle_dump: "Tri-axle dump",
   quad_axle_dump: "Quad-axle dump",
   tractor: "Tractor (semi)",
+  straight_truck: "Straight truck (box)",
   other: "Other",
 };
 
-export const TRAILER_TYPES: TrailerType[] = ["end_dump", "belly_dump", "side_dump", "live_floor", "pup", "lowboy", "flatbed", "other"];
+export const TRAILER_TYPES: TrailerType[] = ["end_dump", "belly_dump", "side_dump", "live_floor", "pup", "dry_van", "reefer", "flatbed", "step_deck", "lowboy", "other"];
 export const TRAILER_TYPE_LABELS: Record<TrailerType, string> = {
   end_dump: "End dump",
   belly_dump: "Belly dump",
@@ -21,8 +23,30 @@ export const TRAILER_TYPE_LABELS: Record<TrailerType, string> = {
   pup: "Pup trailer",
   lowboy: "Lowboy",
   flatbed: "Flatbed",
+  dry_van: "Dry van",
+  reefer: "Reefer (refrigerated)",
+  step_deck: "Step deck",
   other: "Other",
 };
+
+// The types each kind of company is offered (MK4, migration 20261120008100): a freight carrier never picks from dump
+// bodies, an aggregate hauler never from vans and reefers. A unit already recorded with another type keeps it and still
+// shows it (the current value is always offered).
+const FREIGHT_TRUCKS: TruckType[] = ["tractor", "straight_truck", "other"];
+const AGGREGATE_TRUCKS: TruckType[] = ["single_axle_dump", "tandem_axle_dump", "tri_axle_dump", "quad_axle_dump", "tractor", "other"];
+const FREIGHT_TRAILERS: TrailerType[] = ["dry_van", "reefer", "flatbed", "step_deck", "lowboy", "other"];
+const AGGREGATE_TRAILERS: TrailerType[] = ["end_dump", "belly_dump", "side_dump", "live_floor", "pup", "lowboy", "flatbed", "other"];
+
+export function truckTypesFor(industry: unknown, current?: string | null): TruckType[] {
+  const i = industryOf(industry);
+  const list = i === "freight" ? FREIGHT_TRUCKS : i === "aggregate" ? AGGREGATE_TRUCKS : TRUCK_TYPES;
+  return TRUCK_TYPES.filter((t) => list.includes(t) || t === current);
+}
+export function trailerTypesFor(industry: unknown, current?: string | null): TrailerType[] {
+  const i = industryOf(industry);
+  const list = i === "freight" ? FREIGHT_TRAILERS : i === "aggregate" ? AGGREGATE_TRAILERS : TRAILER_TYPES;
+  return TRAILER_TYPES.filter((t) => list.includes(t) || t === current);
+}
 
 export const SERVICE_STATUS_LABELS: Record<ServiceStatus, string> = {
   in_service: "In service",
@@ -65,7 +89,9 @@ export interface CapacityFields {
 /** "22.5 tons · 18 cu yd", or null when nothing is recorded (unknown). */
 export function formatCapacity(e: CapacityFields): string | null {
   const parts: string[] = [];
-  if (e.weight_capacity !== null && e.weight_unit) parts.push(`${trimNumber(e.weight_capacity)} ${WEIGHT_UNIT_LABELS[e.weight_unit]}`);
+  // Pounds read with thousands separators ("45,000 lb"); tons keep their decimals ("22.5 tons").
+  const weight = e.weight_capacity !== null && e.weight_unit === "lb" ? Number(e.weight_capacity).toLocaleString("en-US", { maximumFractionDigits: 3 }) : e.weight_capacity !== null ? trimNumber(e.weight_capacity) : "";
+  if (e.weight_capacity !== null && e.weight_unit) parts.push(`${weight} ${WEIGHT_UNIT_LABELS[e.weight_unit]}`);
   if (e.volume_capacity !== null && e.volume_unit) parts.push(`${trimNumber(e.volume_capacity)} cu yd`);
   return parts.length ? parts.join(" · ") : null;
 }

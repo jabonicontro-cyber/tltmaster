@@ -8,6 +8,7 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getPriceList, listChargeItems, listMaterials, listUnits } from "@/server/data/catalog";
 import { businessToday } from "@/server/data/settings";
+import { getWords } from "@/server/industry";
 
 export const metadata = { title: "Price list" };
 
@@ -28,7 +29,7 @@ export default async function PriceListPage({ params }: { params: Promise<{ id: 
     <>
       <PageHeader
         title={list.name}
-        crumbs={[{ label: "Materials & Pricing", href: "/materials?tab=prices" }, { label: list.name }]}
+        crumbs={[{ label: (await getWords()).pricing, href: "/materials?tab=prices" }, { label: list.name }]}
         description={list.description}
         badges={
           <>

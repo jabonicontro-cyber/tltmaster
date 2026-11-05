@@ -7,6 +7,7 @@ import { getTrailer, truckOptions } from "@/server/data/fleet";
 import { saveTrailer } from "../../../actions";
 
 import { baseOptions, recordBase } from "@/server/data/bases";
+import { getIndustry } from "@/server/industry";
 export const metadata = { title: "Edit trailer" };
 
 export default async function EditTrailerPage({ params }: { params: Promise<{ id: string }> }) {
@@ -23,7 +24,7 @@ export default async function EditTrailerPage({ params }: { params: Promise<{ id
       />
       <Card>
         <CardBody>
-          <EquipmentForm
+          <EquipmentForm industry={await getIndustry()}
             kind="trailer"
             initial={{ ...t, type: t.trailer_type, capacity_verified: Boolean(t.capacity_verified_at) }}
             trucks={trucks}

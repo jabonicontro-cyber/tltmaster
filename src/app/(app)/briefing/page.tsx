@@ -22,6 +22,7 @@ import { shownName } from "@/server/data/profile";
 import { businessToday } from "@/server/data/settings";
 import { listStopTimes, waitTimeSettings } from "@/server/data/wait-times";
 import { createClient } from "@/server/supabase/server";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Morning briefing" };
 
@@ -32,6 +33,7 @@ const TONE: Record<BriefingAction["tone"], string> = { critical: "bg-critical", 
  * place that fixes it. Every figure comes from the records the person may see; nothing is done from here.
  */
 export default async function BriefingPage() {
+  const say = await getSay();
   const access = await requireAccess();
   if (!can(access, "dispatch.view") && !can(access, "billing.view")) redirect("/command-center");
   const { today, timezone } = await businessToday();
@@ -80,7 +82,7 @@ export default async function BriefingPage() {
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {billing && (
           <StatTile icon={<CircleDollarSign />} label="Delivered yesterday" value={ops?.value ? formatCents(ops.value.verified_value_cents) : "–"} muted={!ops?.value?.verified_value_cents}>
-            Verified value of accepted tickets
+            {say("Verified value of accepted tickets")}
           </StatTile>
         )}
         <StatTile icon={<Truck />} tone={s?.unassigned_loads ? "amber" : "green"} label="Loads today" value={s?.loads_today ?? "–"}>
@@ -106,10 +108,10 @@ export default async function BriefingPage() {
               <li key={a.key} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-4 sm:px-6">
                 <span className={cn("grid size-8 shrink-0 place-items-center rounded-full text-sm font-semibold text-white", TONE[a.tone])} aria-hidden>{i + 1}</span>
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-ink">{a.title}</p>
-                  <p className="text-sm text-muted">{a.detail}</p>
+                  <p className="font-semibold text-ink">{say(a.title)}</p>
+                  <p className="text-sm text-muted">{say(a.detail)}</p>
                 </div>
-                <ButtonLink href={a.href} size="sm" variant={i === 0 ? "primary" : "secondary"}>{a.cta}</ButtonLink>
+                <ButtonLink href={a.href} size="sm" variant={i === 0 ? "primary" : "secondary"}>{say(a.cta)}</ButtonLink>
               </li>
             ))}
           </ol>
@@ -124,7 +126,7 @@ export default async function BriefingPage() {
               <li key={a.key}>
                 <Link href={a.href} className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-ink/[0.03] sm:px-6">
                   <span className={cn("size-2 shrink-0 rounded-full", TONE[a.tone])} aria-hidden />
-                  <span className="min-w-0 flex-1 text-sm"><span className="font-medium text-ink">{a.title}</span> <span className="text-muted">· {a.detail}</span></span>
+                  <span className="min-w-0 flex-1 text-sm"><span className="font-medium text-ink">{say(a.title)}</span> <span className="text-muted">· {say(a.detail)}</span></span>
                   <ArrowRight className="size-4 shrink-0 text-muted/60" aria-hidden />
                 </Link>
               </li>

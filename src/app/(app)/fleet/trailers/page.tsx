@@ -3,12 +3,13 @@ import { EquipmentList } from "@/components/fleet/equipment-views";
 import { FleetNav } from "@/components/fleet/fleet-nav";
 import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
-import { TRAILER_TYPE_LABELS, TRAILER_TYPES } from "@/lib/fleet/labels";
+import { TRAILER_TYPE_LABELS, trailerTypesFor } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { buildDirectory, fleetContext, listTrailers } from "@/server/data/fleet";
 
 import { baseOptions } from "@/server/data/bases";
+import { getIndustry } from "@/server/industry";
 export const metadata = { title: "Trailers" };
 
 type Search = { q?: string; status?: string; type?: string; driver?: string; maintenance?: string; documents?: string; ownership?: string; sort?: string; base?: string };
@@ -29,7 +30,7 @@ export default async function TrailersPage({ searchParams }: { searchParams: Pro
         actions={canEdit && <ButtonLink href="/fleet/trailers/new" icon={<Plus className="size-4" />}>Add trailer</ButtonLink>}
       />
       <FleetNav active="Trailers" />
-      <EquipmentList kind="trailer" rows={rows} filters={sp} canEdit={canEdit} bases={bases} extras={extras} sources={{ maintenance: ctx.maintenance.available, documents: ctx.documents.available }} typeOptions={TRAILER_TYPES.map((t) => ({ value: t, label: TRAILER_TYPE_LABELS[t] }))} />
+      <EquipmentList kind="trailer" rows={rows} filters={sp} canEdit={canEdit} bases={bases} extras={extras} sources={{ maintenance: ctx.maintenance.available, documents: ctx.documents.available }} typeOptions={trailerTypesFor(await getIndustry(), sp.type).map((t) => ({ value: t, label: TRAILER_TYPE_LABELS[t] }))} />
     </>
   );
 }

@@ -14,10 +14,14 @@ import { formatTime } from "@/lib/orders/schedule";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { getLoadForTicket } from "@/server/data/tickets";
+import { getSay } from "@/server/industry";
 
-export const metadata = { title: "Enter delivery ticket" };
+export async function generateMetadata() {
+  return { title: (await getSay())("Enter delivery ticket") };
+}
 
 export default async function NewTicketPage({ searchParams }: { searchParams: Promise<{ load?: string; back?: string }> }) {
+  const say = await getSay();
   await requirePagePermission("tickets.edit");
   const { load: loadId, back } = await searchParams;
   if (!loadId || !uuid.safeParse(loadId).success) notFound();
@@ -30,14 +34,14 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
   return (
     <>
       <ReturnLink back={back} />
-      <PageHeader title={`Ticket for ${order.order_number} load ${load.load_number}`} crumbs={crumbs} description={`${order.customer_name}${order.project_name ? ` · ${order.project_name}` : ""}`} />
+      <PageHeader title={say(`Ticket for ${order.order_number} load ${load.load_number}`)} crumbs={crumbs} description={`${order.customer_name}${order.project_name ? ` · ${order.project_name}` : ""}`} />
       <Card className="mb-5">
         <CardBody>
           <DescriptionList
             items={[
               { label: "Planned", value: `${formatDate(load.load_date)}, ${formatTime(load.start_time)} – ${formatTime(load.end_time)}` },
               { label: "Planned quantity", value: load.planned_quantity !== null ? `${trimNumber(load.planned_quantity)} ${load.unit_code} (plan only)` : "Not planned" },
-              { label: "Job site", value: [order.site_label || order.site_line1, order.site_city].filter(Boolean).join(", ") },
+              { label: say("Job site"), value: [order.site_label || order.site_line1, order.site_city].filter(Boolean).join(", ") },
               { label: "Order", value: <Link href={`/orders/${order.id}`} className="underline">{order.order_number}</Link> },
             ]}
           />
@@ -48,12 +52,12 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
           Assign this load on the <Link href={`/dispatch?date=${load.load_date}`} className="underline">dispatch board</Link> before entering its ticket.
         </Notice>
       ) : load.status === "canceled" ? (
-        <Notice tone="warning" title="Load canceled">Tickets can only be entered for planned loads.</Notice>
+        <Notice tone="warning" title="Load canceled">{say("Tickets can only be entered for planned loads.")}</Notice>
       ) : (
         <>
           {existing.length > 0 && (
             <div className="mb-5">
-              <Notice tone="warning" title="This load already has a ticket">
+              <Notice tone="warning" title={say("This load already has a ticket")}>
                 {existing.map((t) => (
                   <Link key={t.id} href={`/tickets/${t.id}`} className="mr-2 font-semibold underline">{t.ticket_number}</Link>
                 ))}

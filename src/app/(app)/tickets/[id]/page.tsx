@@ -30,8 +30,11 @@ import { formatCents } from "@/lib/money";
 import { cn } from "@/lib/cn";
 import { ReturnLink } from "@/components/ui/return-link";
 import { returnTarget, withReturn } from "@/lib/safe-redirect";
+import { getSay } from "@/server/industry";
 
-export const metadata = { title: "Delivery ticket" };
+export async function generateMetadata() {
+  return { title: (await getSay())("Delivery ticket") };
+}
 
 const ACTION_LABELS = { submitted: "Submitted", flagged: "Flagged for review", accepted: "Accepted", voided: "Voided", corrected: "Corrected", photo_added: "Scan or photo added" } as const;
 const FIELD_LABELS: Record<string, string> = {
@@ -47,6 +50,7 @@ const FIELD_LABELS: Record<string, string> = {
 };
 
 export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ queue?: string; back?: string }> }) {
+  const say = await getSay();
   const access = await requirePagePermission("tickets.view");
   const { id } = await params;
   const { queue: queueParam, back } = await searchParams;
@@ -95,7 +99,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         badges={
           <>
             <TicketStatusBadge status={t.status} />
-            <CopyReference value={t.ticket_number} label="ticket number" />
+            <CopyReference value={t.ticket_number} label={say("ticket number")} />
             {t.revision > 1 && <span className="text-sm font-semibold text-muted">Revision {t.revision}</span>}
           </>
         }
@@ -152,7 +156,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         )}
         {t.status === "submitted" && t.review_reasons.length === 0 && (
           <Notice title="Received, not verified yet">
-            Nothing was flagged. Compare it with the paper ticket or photo, then accept it. Until then it does not count as verified for billing.
+            {say("Nothing was flagged. Compare it with the paper ticket or photo, then accept it. Until then it does not count as verified for billing.")}
           </Notice>
         )}
       </div>
@@ -160,14 +164,14 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
           <Card>
-            <CardHeader title="Delivery" description="As entered from the paper or scale ticket." />
+            <CardHeader title="Delivery" description={say("As entered from the paper or scale ticket.")} />
             <CardBody>
               <DescriptionList
                 items={[
                   { label: "Delivered", value: <span className="text-lg font-black tabular">{trimNumber(t.quantity)} {unitLabel(t.unit_code)}</span> },
                   { label: "Delivered at", value: formatDateTime(t.delivered_at, timezone) },
                   { label: "Material / line", value: s.line_description + (s.line_unit_code && s.line_unit_code !== t.unit_code ? ` (order line in ${unitLabel(s.line_unit_code)})` : "") },
-                  { label: "Paper / scale ticket #", value: t.external_reference },
+                  { label: say("Paper / scale ticket #"), value: t.external_reference },
                   {
                     label: "Planned for this load",
                     value: `${formatDate(s.load_date)}${s.planned_quantity !== null ? ` · ${trimNumber(s.planned_quantity)} ${unitLabel(s.planned_unit_code)} (plan only)` : ""}`,
@@ -183,13 +187,13 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           </Card>
 
           <Card>
-            <CardHeader title="Delivery context" description="From the order, the dispatch assignment and the other tickets on this order line. Same unit only. Nothing is converted." />
+            <CardHeader title="Delivery context" description={say("From the order, the dispatch assignment and the other tickets on this order line. Same unit only. Nothing is converted.")} />
             <CardBody className="space-y-4">
               {progress ? (
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="Order line progress">
                   <div><dt className="text-muted">Ordered</dt><dd className="font-semibold tabular">{progress.ordered} {unitLabel(progress.unit)}</dd></div>
-                  <div><dt className="text-muted">Verified on other tickets</dt><dd className="font-semibold tabular">{progress.verifiedOthers}</dd></div>
-                  <div><dt className="text-muted">This ticket</dt><dd className="font-semibold tabular">{progress.thisTicket ?? `other unit (${unitLabel(t.unit_code)})`}</dd></div>
+                  <div><dt className="text-muted">{say("Verified on other tickets")}</dt><dd className="font-semibold tabular">{progress.verifiedOthers}</dd></div>
+                  <div><dt className="text-muted">{say("This ticket")}</dt><dd className="font-semibold tabular">{progress.thisTicket ?? `other unit (${unitLabel(t.unit_code)})`}</dd></div>
                   <div>
                     <dt className="text-muted">Remaining after this</dt>
                     <dd className={cn("font-semibold tabular", progress.over && "text-brand-fg")}>{progress.over ? `${progress.remainingAfterThis.replace("-", "")} over the order` : progress.remainingAfterThis}</dd>
@@ -207,12 +211,12 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 <div>
                   <dt className="inline text-muted">Dispatch assignment: </dt>
                   <dd className="inline">
-                    {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand-fg">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : "matches this ticket"}
+                    {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand-fg">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : say("matches this ticket")}
                     {a?.status === "canceled" ? " (assignment since removed)" : ""}
                   </dd>
                 </div>
                 <div className="sm:col-span-2">
-                  <dt className="inline text-muted">Other tickets on this load: </dt>
+                  <dt className="inline text-muted">{say("Other tickets on this load:")}</dt>
                   <dd className="inline">
                     {loadTickets.length === 0 ? "none" : loadTickets.map((x, i) => (
                       <span key={x.id}>{i > 0 ? ", " : ""}<Link href={`/tickets/${x.id}`} className="font-semibold underline">{x.ticket_number}</Link> ({TICKET_STATUS_LABELS[x.status].toLowerCase()}, {trimNumber(x.quantity)} {unitLabel(x.unit_code)})</span>
@@ -225,7 +229,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
 
           {located ? (
             <Card>
-              <CardHeader title="Where it was sent" description={`Recorded by the driver's phone when the ticket was sent, ${formatDateTime(located.recorded_at, timezone)}. Shown to the customer with the confirmed ticket.`} />
+              <CardHeader title="Where it was sent" description={say(`Recorded by the driver's phone when the ticket was sent, ${formatDateTime(located.recorded_at, timezone)}. Shown to the customer with the confirmed ticket.`)} />
               <CardBody>
                 <p className="text-sm">
                   <span className="font-semibold tabular">{Number(located.latitude).toFixed(5)}, {Number(located.longitude).toFixed(5)}</span>
@@ -239,22 +243,22 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
 
           <Card>
             <CardHeader
-              title={`Paper ticket photos (${photos.length})`}
-              description={photos.length ? "From the driver or the office. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute." : "No photo or scan is attached yet."}
+              title={say(`Paper ticket photos (${photos.length})`)}
+              description={photos.length ? say("From the driver or the office. Kept with the ticket number through corrections and voids. Each opens a link valid for one minute.") : "No photo or scan is attached yet."}
             />
             {live && can(access, "tickets.edit") && (
               <div className="border-b border-line px-5 py-3 sm:px-6"><TicketScanUpload ticketId={t.id} /></div>
             )}
             {photos.length > 0 && (
               <CardBody>
-                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label="Paper ticket photos">
+                <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3" aria-label={say("Paper ticket photos")}>
                   {photos.map((p, i) => {
                     const rev = revisions.find((r) => r.id === p.ticket_id)?.revision;
                     return (
                       <li key={p.id}>
                         <a href={`/tickets/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl border border-line hover:border-strong">
                           {/* eslint-disable-next-line @next/next/no-img-element -- served through an authorized, short-lived link */}
-                          <img src={`/tickets/photos/${p.id}`} alt={`Paper ticket photo ${i + 1}`} loading="lazy" className="aspect-[3/4] w-full bg-surface object-cover" />
+                          <img src={`/tickets/photos/${p.id}`} alt={say(`Paper ticket photo ${i + 1}`)} loading="lazy" className="aspect-[3/4] w-full bg-surface object-cover" />
                         </a>
                         <p className="mt-1 text-xs text-muted">
                           {formatDateTime(p.attached_at, timezone)} · {Math.ceil(p.size_bytes / 1024)} KB{rev && revisions.length > 1 ? ` · revision ${rev}` : ""}
@@ -310,8 +314,8 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         </div>
 
         <Card className="self-start">
-          <CardHeader title="History" description="All actions on this ticket number, newest first." />
-          <ol className="px-5 py-3 sm:px-6" aria-label="Ticket history">
+          <CardHeader title="History" description={say("All actions on this ticket number, newest first.")} />
+          <ol className="px-5 py-3 sm:px-6" aria-label={say("Ticket history")}>
             {events.map((e) => (
               <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
                 <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />
@@ -324,7 +328,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 {e.details.changes &&
                   Object.entries(e.details.changes).map(([k, c]) => (
                     <p key={k} className="text-sm">
-                      <span className="text-muted">{FIELD_LABELS[k] ?? k}:</span>{" "}
+                      <span className="text-muted">{say(FIELD_LABELS[k] ?? k)}:</span>{" "}
                       {k.endsWith("_id") ? "changed" : (
                         <>
                           <span className="line-through decoration-muted">{k === "delivered_at" ? formatDateTime(String(c.from), timezone) : String(c.from ?? "–")}</span> →{" "}

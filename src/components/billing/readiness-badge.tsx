@@ -1,5 +1,6 @@
 import { Badge } from "@/components/ui/badge";
 import { READINESS_LABELS, type Readiness } from "@/lib/billing/rules";
+import { getSay } from "@/server/industry";
 
 const tones: Record<Readiness, "gray" | "blue" | "green" | "amber" | "red" | "dark"> = {
   missing_documentation: "red",
@@ -10,6 +11,7 @@ const tones: Record<Readiness, "gray" | "blue" | "green" | "amber" | "red" | "da
   handed_off: "blue",
 };
 
-export function ReadinessBadge({ readiness }: { readiness: Readiness }) {
-  return <Badge tone={tones[readiness]}>{READINESS_LABELS[readiness]}</Badge>;
+export async function ReadinessBadge({ readiness }: { readiness: Readiness }) {
+  const say = await getSay();
+  return <Badge tone={tones[readiness]}>{say(READINESS_LABELS[readiness])}</Badge>;
 }

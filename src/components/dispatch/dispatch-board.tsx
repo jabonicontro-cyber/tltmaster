@@ -54,7 +54,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** "Enter delivery ticket" in the company's words ("Enter BOL" for freight). */ enterLabel?: string; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -219,6 +219,7 @@ export function DispatchBoard({ day, suggestions = {}, canEdit, canEnterTickets 
             day.orders.map((o) => (
               <OrderCard
                 key={o.id}
+                enterLabel={enterLabel}
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
                 creditHold={creditHolds[o.id] ?? null}
@@ -403,6 +404,7 @@ function OrderCard({
   tickets,
   today,
   canEnterTickets,
+  enterLabel,
   focusLoadId,
   lk,
   canEdit,
@@ -414,6 +416,7 @@ function OrderCard({
   onUnassign,
   onCancelLoad,
 }: {
+  enterLabel: string;
   order: OrderListRow;
   urgent: boolean;
   creditHold: string | null;
@@ -577,6 +580,7 @@ function OrderCard({
                   )}
                   {l.notes && <p className="mt-1 text-sm text-muted">{l.notes}</p>}
                   <LoadTickets
+                    enterLabel={enterLabel}
                     tickets={tickets.filter((t) => t.load_id === l.id)}
                     canEnter={canEnterTickets && Boolean(current) && !canceled && l.load_date <= today}
                     loadId={l.id}
@@ -1000,7 +1004,7 @@ function AssignDialog({
 }
 
 /** Delivery tickets of a load: their status, or a link to enter one once the load's day has come. */
-function LoadTickets({ tickets, canEnter, loadId }: { tickets: DispatchDay["tickets"]; canEnter: boolean; loadId: string }) {
+function LoadTickets({ tickets, canEnter, loadId, enterLabel }: { tickets: DispatchDay["tickets"]; canEnter: boolean; loadId: string; enterLabel: string }) {
   if (!tickets.length && !canEnter) return null;
   return (
     <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
@@ -1013,7 +1017,7 @@ function LoadTickets({ tickets, canEnter, loadId }: { tickets: DispatchDay["tick
       ))}
       {!tickets.length && canEnter && (
         <Link href={`/tickets/new?load=${loadId}`} className="font-semibold text-brand-fg underline">
-          Enter delivery ticket
+          {enterLabel}
         </Link>
       )}
     </div>

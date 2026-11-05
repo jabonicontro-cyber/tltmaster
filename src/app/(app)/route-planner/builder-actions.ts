@@ -12,6 +12,7 @@ import { dbErrorMessage, guard } from "@/server/errors";
 import { RoutingError } from "@/server/routing/here";
 import { routingStatus } from "@/server/routing/service";
 import { createClient } from "@/server/supabase/server";
+import { LOCATION_KINDS, type LocationKind } from "@/lib/routing/locations";
 
 // Route builder (B10 core): saved locations, address search with confirmation, route calculation and saved routes.
 // Places named by id are read from the database with the caller's session (row-level security), never trusted from the
@@ -45,7 +46,7 @@ export async function searchAddress(input: { address: string }): Promise<ActionR
 
 const locationInput = z.object({
   id: uuid.optional(),
-  kind: z.enum(["yard", "terminal", "quarry", "plant", "pickup", "other"]),
+  kind: z.enum(Object.keys(LOCATION_KINDS) as [LocationKind, ...LocationKind[]]),
   name: z.string().trim().min(1, "Enter a name.").max(120),
   line1: z.string().trim().max(160).default(""),
   city: z.string().trim().max(80).default(""),

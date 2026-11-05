@@ -42,6 +42,7 @@ import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
 import { loadSpeed } from "@/server/data/speed";
 import { outlookTotals } from "@/lib/live/outlook";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Command Center" };
 
@@ -74,6 +75,7 @@ function activityHref(e: { entity_type: string; entity_id: string | null }) {
 }
 
 export default async function CommandCenterPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   const access = await requireAccess();
   const has = (p: Permission) => can(access, p);
   // People whose only responsibility is driving start on their own day.
@@ -193,12 +195,12 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     {myItems.items.slice(0, 3).map((item) => {
                       const action = exceptionAction(item, cardCan);
                       return (
-                        <li key={item.exception_key} aria-label={exceptionTitle(item)}>
+                        <li key={item.exception_key} aria-label={say(exceptionTitle(item))}>
                           <Link href={action.href} className="flex items-center gap-3 px-5 py-2.5 transition-colors hover:bg-ink/[0.03] sm:px-6">
                             <span className={cn("size-2 shrink-0 rounded-full", item.priority === 1 ? "bg-critical" : "bg-amber-500")} aria-hidden />
                             <span className="min-w-0 flex-1">
-                              <span className="block truncate text-sm font-medium text-ink">{exceptionTitle(item)}</span>
-                              <span className="block truncate text-xs text-muted">{KIND_LABELS[item.kind]}{item.customer_name ? ` · ${item.customer_name}` : ""}</span>
+                              <span className="block truncate text-sm font-medium text-ink">{say(exceptionTitle(item))}</span>
+                              <span className="block truncate text-xs text-muted">{say(KIND_LABELS[item.kind])}{item.customer_name ? ` · ${item.customer_name}` : ""}</span>
                             </span>
                             <span className="shrink-0 text-xs font-semibold text-brand-fg">{action.label}</span>
                           </Link>
@@ -215,7 +217,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             <Card>
               <CardHeader
                 title="Your loads today"
-                description="Because your account is linked to a driver record. Tickets and reports go through My Day."
+                description={say("Because your account is linked to a driver record. Tickets and reports go through My Day.")}
                 actions={<ButtonLink href="/driver" size="sm" variant="secondary" icon={<Route className="size-4" />}>Open My Day</ButtonLink>}
               />
               {myLoads.length === 0 ? (
@@ -226,7 +228,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     <li key={a.assignment_id} className="px-5 py-3 text-sm sm:px-6">
                       <p className="font-semibold">{formatTime(a.load.start_time)} – {formatTime(a.load.end_time)} · {a.order.number} load {a.load.number}</p>
                       <p className="text-muted">{a.order.customer_name} · {a.site.label || a.site.line1} · Truck {a.truck ?? "–"}{a.trailer ? ` + ${a.trailer}` : ""}</p>
-                      {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand-fg hover:underline">Send the ticket</Link>}
+                      {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand-fg hover:underline">{say("Send the ticket")}</Link>}
                     </li>
                   ))}
                 </ul>
@@ -243,7 +245,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ? EXCEPTION_KINDS.filter((k) => (s.by_kind[k] ?? 0) > 0)
           .map((k) => {
             const ex = queue?.ok ? queue.data.items.find((i) => i.kind === k) : undefined;
-            return { kind: k, label: KIND_LABELS[k], count: s.by_kind[k] ?? 0, urgent: s.urgent_by_kind?.[k] ?? 0, owner: KIND_OWNERS[k], example: ex ? exceptionTitle(ex) : undefined, href: href({ kind: k }) };
+            return { kind: k, label: say(KIND_LABELS[k]), count: s.by_kind[k] ?? 0, urgent: s.urgent_by_kind?.[k] ?? 0, owner: say(KIND_OWNERS[k]), example: ex ? say(exceptionTitle(ex)) : undefined, href: href({ kind: k }) };
           })
           .sort((a, b) => b.urgent - a.urgent || b.count - a.count)
       : [];
@@ -260,7 +262,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           <nav aria-label="Filter the queue" className="flex flex-wrap gap-2 border-b border-line/70 px-5 py-3 sm:px-6">
             <Chip href={href({})} active={!kind && !mine && !hidden} label="All" count={queue?.ok && !kind && !mine && !hidden ? queue.data.total : s ? s.exceptions.total - (s.exceptions.hidden ?? 0) : undefined} />
             {visibleKinds.map((k) => (
-              <Chip key={k} href={href({ kind: k })} active={kind === k && !mine && !hidden} label={KIND_LABELS[k]} count={s?.by_kind[k] ?? 0} />
+              <Chip key={k} href={href({ kind: k })} active={kind === k && !mine && !hidden} label={say(KIND_LABELS[k])} count={s?.by_kind[k] ?? 0} />
             ))}
             {s && s.exceptions.mine > 0 && <Chip href={href({ mine: true })} active={mine && !hidden} label="Assigned to me" count={s.exceptions.mine} />}
             {s && (s.exceptions.hidden ?? 0) > 0 && <Chip href={href({ hidden: true })} active={hidden} label="Hidden by you" count={s.exceptions.hidden} />}
@@ -284,7 +286,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
               description={
                 hidden ? "Items you hide come back here until they reappear in the queue."
                 : kind || mine ? "Choose “All” to see every open item."
-                : `No open items you can see${queue.data.hidden ? ` (${queue.data.hidden} hidden by you)` : ""}. Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports.`
+                : say(`No open items you can see${queue.data.hidden ? ` (${queue.data.hidden} hidden by you)` : ""}. Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports.`)
               }
             />
           ) : (
@@ -292,7 +294,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
               {hidden && <p className="border-b border-line bg-surface px-5 py-2 text-sm sm:px-6">These are still open for everyone else. They return to your queue when the time runs out.</p>}
               <ul className="grid grid-cols-1 gap-4 bg-surface/60 p-4 sm:grid-cols-2 sm:p-5" aria-label="Attention items">
                 {queue.data.items.map((item) => (
-                  <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
+                  <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} say={say} />
                 ))}
               </ul>
               <Pagination page={page} pageSize={QUEUE_PAGE_SIZE} total={queue.data.total} hrefFor={(p) => href({ kind, mine, hidden, page: p })} />
@@ -304,7 +306,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           <ErrorState title="The attention queue could not be loaded" description="This does not mean nothing needs attention. Open the modules directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
         ) : s.exceptions.total - (s.exceptions.hidden ?? 0) === 0 ? (
           <Card>
-            <EmptyState icon={<CheckCircle2 className="size-6" />} title="Nothing needs attention" description="Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports." />
+            <EmptyState icon={<CheckCircle2 className="size-6" />} title="Nothing needs attention" description={say("Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports.")} />
           </Card>
         ) : (
           <Card>
@@ -312,7 +314,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             {urgentItems.length > 0 && (
               <ul className={cn("grid grid-cols-1 gap-4 border-b border-line/70 bg-surface/60 p-4 sm:p-5", urgentItems.length > 1 && "sm:grid-cols-2")} aria-label="Attention items">
                 {urgentItems.map((item) => (
-                  <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} />
+                  <ExceptionCard key={item.exception_key} item={item} can={cardCan} people={people} timezone={timezone} now={now} back={back} say={say} />
                 ))}
               </ul>
             )}
@@ -326,7 +328,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ),
     });
 
-    const cards: MetricCard[] = s ? metricCards(s) : [];
+    const cards: MetricCard[] = s ? metricCards(s).map((c) => ({ ...c, label: say(c.label), sub: say(c.sub) })) : [];
     if (fleet) {
       cards.push({
         key: "drivers_ready",
@@ -368,7 +370,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       id: "speed",
       title: "Speed",
       place: "rail",
-      content: speed ? <SpeedSection speed={speed} /> : <ErrorState title="Speed figures could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." />,
+      content: speed ? <SpeedSection speed={speed} say={say} /> : <ErrorState title="Speed figures could not be loaded" description="No figures are shown rather than guessed. Try again in a moment." />,
     });
   }
 
@@ -391,7 +393,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     place: "full",
     content: (
       <Card>
-        <CardHeader title="What changed" description={has("audit.view") ? "Everything recorded in this company's audit log." : "Orders, quotes, dispatch, tickets and fleet, as your role allows."} />
+        <CardHeader title="What changed" description={has("audit.view") ? "Everything recorded in this company's audit log." : say("Orders, quotes, dispatch, tickets and fleet, as your role allows.")} />
         {!activity.ok ? (
           <div className="p-4"><ErrorState title="Activity could not be loaded" /></div>
         ) : activity.data.rows.length === 0 ? (
@@ -503,7 +505,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           </section>
         ) : (
           <div className="mb-5">
-            <ErrorState title="Priorities could not be loaded" description="This does not mean nothing needs attention. Open Dispatch, Delivery Tickets and Billing directly, or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
+            <ErrorState title="Priorities could not be loaded" description={say("This does not mean nothing needs attention. Open Dispatch, Delivery Tickets and Billing directly, or try again.")} action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
           </div>
         ))}
 

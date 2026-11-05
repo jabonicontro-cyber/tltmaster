@@ -430,8 +430,8 @@ export interface AuditEventRow {
 
 // Fleet -----------------------------------------------------------------------
 
-export type TruckType = "single_axle_dump" | "tandem_axle_dump" | "tri_axle_dump" | "quad_axle_dump" | "tractor" | "other";
-export type TrailerType = "end_dump" | "belly_dump" | "side_dump" | "live_floor" | "pup" | "lowboy" | "flatbed" | "other";
+export type TruckType = "single_axle_dump" | "tandem_axle_dump" | "tri_axle_dump" | "quad_axle_dump" | "tractor" | "straight_truck" | "other";
+export type TrailerType = "end_dump" | "belly_dump" | "side_dump" | "live_floor" | "pup" | "dry_van" | "reefer" | "flatbed" | "step_deck" | "lowboy" | "other";
 export type ServiceStatus = "in_service" | "out_of_service";
 export type WeightUnit = "ton" | "lb";
 export type VolumeUnit = "cu_yd";

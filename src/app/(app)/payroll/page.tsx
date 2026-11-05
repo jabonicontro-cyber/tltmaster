@@ -14,6 +14,7 @@ import { PERIOD_STATUS } from "@/lib/payroll/labels";
 import { requirePagePermission } from "@/server/auth";
 import { loadPayrollHome } from "@/server/data/payroll";
 import { createPeriod, savePayrollSettings } from "./actions";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Payroll" };
 
@@ -24,6 +25,7 @@ export const metadata = { title: "Payroll" };
  * calculation on; Taviron calculates gross earnings only.
  */
 export default async function PayrollPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+  const say = await getSay();
   await requirePagePermission("payroll.manage");
   const sp = await searchParams;
   const home = await loadPayrollHome();
@@ -31,7 +33,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
     return (
       <>
         <PageHeader title="Payroll" />
-        <ErrorState title="Payroll needs a database update" description="Apply migration 20261118000200 (owner step). Delivery tickets keep working as before." />
+        <ErrorState title="Payroll needs a database update" description={say("Apply migration 20261118000200 (owner step). Delivery tickets keep working as before.")} />
       </>
     );
   }
@@ -42,7 +44,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       <FlashToast messages={{ saved: { text: "Saved." } }} />
       <PageHeader
         title="Payroll"
-        description="Driver earnings from verified delivery tickets, with your company's own pay rules. Gross earnings only. No taxes, withholding or payments."
+        description={say("Driver earnings from verified delivery tickets, with your company's own pay rules. Gross earnings only. No taxes, withholding or payments.")}
         actions={<Link href="/payroll/rules" className="text-sm font-semibold text-brand-fg hover:underline">Pay rules</Link>}
       />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
@@ -50,14 +52,14 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
         <div className="mb-5">
           <Notice title="Calculation is off">
             {active.length === 0
-              ? `No pay rule is active yet${drafts.length ? ` (${drafts.length} draft${drafts.length === 1 ? "" : "s"} waiting for approval)` : ""}. Write your rule in Pay rules, preview it on real tickets, compare it with past payroll, then activate it.`
+              ? say(`No pay rule is active yet${drafts.length ? ` (${drafts.length} draft${drafts.length === 1 ? "" : "s"} waiting for approval)` : ""}. Write your rule in Pay rules, preview it on real tickets, compare it with past payroll, then activate it.`)
               : "A rule is active. Turn calculation on below when you are ready to calculate earnings for a period."}
           </Notice>
         </div>
       )}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_360px]">
         <Card>
-          <CardHeader title="Payroll periods" description="Open a period, calculate it from verified tickets, review exceptions, approve and export." />
+          <CardHeader title="Payroll periods" description={say("Open a period, calculate it from verified tickets, review exceptions, approve and export.")} />
           {home.periods.length === 0 ? (
             <EmptyState title="No payroll periods yet" description="Create the first one on the right." className="py-8" />
           ) : (
@@ -93,8 +95,8 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
             <CardHeader title="Settings" description="Who can see payroll: People → Sign-ins & roles (payroll access is the owner's by default)." />
             <CardBody>
               <form action={savePayrollSettings} className="space-y-3">
-                <Checkbox name="enabled" defaultChecked={home.settings.enabled} label="Calculate earnings from verified tickets" />
-                <p className="-mt-1 text-xs text-muted">Needs at least one active pay rule. Tickets become payable when the office accepts them.</p>
+                <Checkbox name="enabled" defaultChecked={home.settings.enabled} label={say("Calculate earnings from verified tickets")} />
+                <p className="-mt-1 text-xs text-muted">{say("Needs at least one active pay rule. Tickets become payable when the office accepts them.")}</p>
                 <Field label="Pay period" htmlFor="period_length">
                   <Select id="period_length" name="period_length" defaultValue={home.settings.period_length ?? ""}>
                     <option value="">Not set</option>

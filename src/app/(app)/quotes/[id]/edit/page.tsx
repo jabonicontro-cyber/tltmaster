@@ -6,6 +6,7 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getQuoteDetail } from "@/server/data/quotes";
 import { editorStateFromVersion, loadCustomerContextFor, loadEditorReferenceData } from "@/server/quotes/editor-data";
+import { getIndustry } from "@/server/industry";
 
 export const metadata = { title: "Edit quote" };
 
@@ -37,6 +38,7 @@ export default async function EditQuotePage({ params }: { params: Promise<{ id: 
         }
       />
       <QuoteEditor
+        industry={await getIndustry()}
         initial={editorStateFromVersion(quote, current, lines)}
         initialContext={context}
         customers={customers}

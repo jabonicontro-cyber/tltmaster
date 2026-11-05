@@ -15,6 +15,7 @@
 export const PAY_VARIABLES = {
   quantity: "Delivered quantity on the verified ticket, in the ticket's unit",
   tons: "Delivered tons (only when the ticket's unit is tons)",
+  miles: "Miles on the ticket (only when the ticket's unit is miles; freight per-mile pay)",
   loads: "Loads on the ticket (1 per ticket)",
   rate: "The rate configured on the pay rule",
   hours: "Hours recorded for the work (only when the company records them)",

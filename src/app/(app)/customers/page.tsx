@@ -13,12 +13,14 @@ import { requirePagePermission } from "@/server/auth";
 import { listCustomers } from "@/server/data/customers";
 import { pendingSiteNotes } from "@/server/data/site-notes";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Customers" };
 
 type Search = { q?: string; type?: string; status?: string; relationship?: string; tag?: string; sort?: string; page?: string };
 
 export default async function CustomersPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   const access = await requirePagePermission("customers.view");
   const sp = await searchParams;
   const page = pageParam(sp.page);
@@ -47,7 +49,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     <>
       <PageHeader
         title="Customers"
-        description="Customers and prospects, their contacts, job sites, activity and follow-ups."
+        description={say("Customers and prospects, their contacts, job sites, activity and follow-ups.")}
         actions={
           <>
             {crm && <ButtonLink href="/customers/pipeline" variant="secondary">Pipeline</ButtonLink>}

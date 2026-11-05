@@ -75,7 +75,7 @@ export function OfflineDay() {
                     <StopButtons load={l.loadId} stops={l.stops} timeZone={day.timezone} queue={{ userId: day.userId, label: `${l.orderNumber} load ${l.loadNumber}` }} />
                     {l.canSubmitTicket && (
                       <button type="button" onClick={() => setTicketFor(l.assignmentId)} className="min-h-12 w-full rounded-xl bg-action px-4 text-base font-semibold text-white">
-                        Enter delivery ticket
+                        {day.enterLabel ?? "Enter delivery ticket"}
                       </button>
                     )}
                   </li>

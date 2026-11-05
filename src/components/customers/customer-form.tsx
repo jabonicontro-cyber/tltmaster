@@ -155,7 +155,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
             <Checkbox name="tax_exempt" defaultChecked={initial.tax_exempt} label="Tax exempt (quotes will not charge tax)" />
           </div>
           <Field label="PO instructions" htmlFor="po_instructions" error={fieldError("po_instructions")} className="sm:col-span-6">
-            <Input {...f("po_instructions")} defaultValue={initial.po_instructions} placeholder="e.g. PO number on every ticket and invoice" />
+            <Input {...f("po_instructions")} defaultValue={initial.po_instructions} placeholder="e.g. PO number on every delivery document and invoice" />
           </Field>
           <Field label="Internal notes" htmlFor="notes" error={fieldError("notes")} className="sm:col-span-6" hint="Visible to staff only. Do not store sensitive personal information.">
             <Textarea {...f("notes")} defaultValue={initial.notes} rows={3} />

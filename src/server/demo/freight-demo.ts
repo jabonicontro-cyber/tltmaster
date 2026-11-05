@@ -86,12 +86,12 @@ export const FREIGHT_TRUCKS = [
   { unit: "C08", make: "Volvo", model: "VNL 660", year: 2018 },
 ];
 export const FREIGHT_TRAILERS = [
-  { unit: "V-11", type: "other", notes: "53 ft dry van", kind: "van" },
-  { unit: "V-12", type: "other", notes: "53 ft dry van", kind: "van" },
-  { unit: "V-13", type: "other", notes: "53 ft dry van, air ride", kind: "van" },
-  { unit: "V-14", type: "other", notes: "53 ft dry van", kind: "van" },
-  { unit: "F-21", type: "flatbed", notes: "48 ft flatbed, tarps and chains", kind: "flatbed" },
-  { unit: "F-22", type: "flatbed", notes: "48 ft step deck", kind: "flatbed" },
+  { unit: "V-11", type: "dry_van", notes: "53 ft dry van", kind: "van", lb: 45000 },
+  { unit: "V-12", type: "dry_van", notes: "53 ft dry van", kind: "van", lb: 45000 },
+  { unit: "V-13", type: "dry_van", notes: "53 ft dry van, air ride", kind: "van", lb: 45000 },
+  { unit: "V-14", type: "reefer", notes: "53 ft reefer (refrigerated)", kind: "van", lb: 43000 },
+  { unit: "F-21", type: "flatbed", notes: "48 ft flatbed, tarps and chains", kind: "flatbed", lb: 48000 },
+  { unit: "F-22", type: "step_deck", notes: "48 ft step deck", kind: "flatbed", lb: 48000 },
 ] as const;
 export const FREIGHT_DRIVERS = ["Nolan Brooks", "Priya Raman", "Tomas Villareal", "Grace Whitfield", "Jamal Ortiz", "Elena Novak", "Curtis Bell", "Sofia Marchetti"];
 export const FREIGHT_STAFF = [
@@ -145,6 +145,9 @@ export async function seedFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZone):
     { code: "TONU", name: "Truck ordered not used", kind: "surcharge", calc_method: "per_unit", default_unit_code: "each", description: "Load cancelled after the truck was dispatched." },
   ]).select("id"));
 
+  // A freight carrier works in miles, loads and hours: tons and cubic yards (dump-body units) are switched off in this
+  // demo's own unit list (each company has its own; nothing else changes).
+  await db.from("units_of_measure").update({ active: false }).in("code", ["ton", "cu_yd"]);
   const result = await refreshFreightDemo(db, timeZone, { seeding: true });
 
   // Truck C06 is in the shop; one medical card expires soon (the reminder shows).
@@ -205,7 +208,7 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
   const missingTrucks = FREIGHT_TRUCKS.filter((t) => !truck.has(t.unit));
   if (missingTrucks.length) {
     const rows = (await must("trucks", db.from("trucks").insert(missingTrucks.map((t) => ({
-      unit_number: t.unit, truck_type: "tractor", make: t.make, model: t.model, model_year: t.year, weight_capacity: 22, weight_unit: "ton", capacity_verified_at: new Date().toISOString(),
+      unit_number: t.unit, truck_type: "tractor", make: t.make, model: t.model, model_year: t.year,
     }))).select("id, unit_number"))) as Array<{ id: string; unit_number: string }>;
     for (const r of rows) truck.set(r.unit_number, r.id);
     added += rows.length;
@@ -213,9 +216,14 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
   const trailer = new Map(((await must("trailers", db.from("trailers").select("id, unit_number"))) as Array<{ id: string; unit_number: string }>).map((t) => [t.unit_number, t.id]));
   const missingTrailers = FREIGHT_TRAILERS.filter((t) => !trailer.has(t.unit));
   if (missingTrailers.length) {
-    const rows = (await must("trailers", db.from("trailers").insert(missingTrailers.map((t) => ({
-      unit_number: t.unit, trailer_type: t.type, weight_capacity: 22, weight_unit: "ton", compatible_truck_types: ["tractor"], notes: t.notes,
-    }))).select("id, unit_number"))) as Array<{ id: string; unit_number: string }>;
+    // Freight trailer types (dry van, reefer, step deck) need 20261120008100; before it they are recorded as Other and
+    // Flatbed with the same notes. Payload in pounds, verified (fictional sample units).
+    const make = (fallback: boolean) => db.from("trailers").insert(missingTrailers.map((t) => ({
+      unit_number: t.unit, trailer_type: fallback ? (t.type === "step_deck" ? "flatbed" : t.type === "flatbed" ? "flatbed" : "other") : t.type,
+      weight_capacity: t.lb, weight_unit: "lb", capacity_verified_at: new Date().toISOString(), compatible_truck_types: ["tractor"], notes: t.notes,
+    }))).select("id, unit_number");
+    const first = await make(false);
+    const rows = (first.error ? await must("trailers", make(true)) : first.data) as Array<{ id: string; unit_number: string }>;
     for (const r of rows) trailer.set(r.unit_number, r.id);
     added += rows.length;
   }

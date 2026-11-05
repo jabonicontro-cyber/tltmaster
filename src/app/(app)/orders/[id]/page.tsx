@@ -22,7 +22,7 @@ import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
 import { getOrderDetail, getOrderPickup, getOrderStops } from "@/server/data/orders";
 import { OrderStops } from "@/components/orders/order-stops";
-import { industryOf } from "@/lib/industry";
+import { haulsAggregate, industryOf } from "@/lib/industry";
 import { stopsSummary } from "@/lib/orders/stops";
 import { OrderPickup } from "@/components/orders/order-pickup";
 import { getOrderReadiness } from "@/server/data/billing";
@@ -37,10 +37,12 @@ import { directionsStatus } from "@/lib/sites";
 import { OrderBase } from "@/components/bases/order-base-form";
 import { baseOptions, recordBase } from "@/server/data/bases";
 import { OrderTrackingCard } from "@/components/portal/order-tracking-card";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Order" };
 
 export default async function OrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string; base_saved?: string; base_error?: string; pickup_saved?: string; pickup_error?: string }> }) {
+  const say = await getSay();
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
   const { back, base_saved: baseSaved, base_error: baseError, pickup_saved: pickupSaved, pickup_error: pickupError } = await searchParams;
@@ -292,7 +294,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   { label: order.source_quote_id ? "Bill to (as accepted)" : "Bill to", value: billing },
                   { label: "Contact", value: [order.contact_name, order.contact_email, order.contact_phone].filter(Boolean).join("\n") },
                   {
-                    label: "Job site",
+                    label: say("Job site"),
                     value: siteDirections && siteDirections !== "none" ? (
                       <>
                         {site}
@@ -305,7 +307,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                       site
                     ),
                   },
-                  ...(pickup.installed ? [{ label: "Pickup", value: <OrderPickup orderId={id} pickupId={pickup.pickupId} locations={pickup.locations} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
+                  // A freight order names its pickups as stops (MK2): the quarry/yard pickup picker is for aggregate hauls.
+                  ...(pickup.installed && (haulsAggregate(companySettings?.industry) || pickup.pickupId) ? [{ label: "Pickup", value: <OrderPickup orderId={id} pickupId={pickup.pickupId} locations={pickup.locations} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                   { label: "Project", value: order.project_name },
                   { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required: not entered</Badge> : "") },
                   { label: "Payment terms", value: billTo?.payment_terms ?? customer.payment_terms },
@@ -369,7 +372,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                     })}
                   </tbody>
                 </table>
-                <p className="mt-1 text-xs text-muted">From delivery tickets in each line&apos;s unit. Only verified (accepted) tickets count as delivered; prices are not changed by deliveries.</p>
+                <p className="mt-1 text-xs text-muted">{say("From delivery tickets in each line's unit. Only verified (accepted) tickets count as delivered; prices are not changed by deliveries.")}</p>
               </div>
             )}
             <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">

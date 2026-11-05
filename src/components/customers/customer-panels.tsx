@@ -256,7 +256,7 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
         open={verifying !== null}
         onOpenChange={(o) => !o && setVerifying(null)}
         title={`Verify directions for ${verifying?.label ?? "this site"}?`}
-        description="Confirm that you checked these directions are current today (gate codes, access, where to dump, hazards). Your name and the time are recorded. Changing the directions later clears the verification."
+        description="Confirm that you checked these directions are current today (gate codes, access, where to unload, hazards). Your name and the time are recorded. Changing the directions later clears the verification."
         confirmLabel="Mark verified"
         onConfirm={async () => {
           if (!verifying) return;
@@ -313,7 +313,7 @@ function SiteDialog({ customerId, site, verification, onClose, onSaved }: { cust
           <Field label="ZIP" htmlFor="site-postal_code" error={fieldError("postal_code")} className="sm:col-span-2">
             <Input {...f("postal_code")} defaultValue={site?.postal_code} inputMode="numeric" />
           </Field>
-          <Field label="Directions / access notes" htmlFor="site-directions" error={fieldError("directions")} className="sm:col-span-6" hint="Gate codes, where to dump, access restrictions. Printed on driver tickets later.">
+          <Field label="Directions / access notes" htmlFor="site-directions" error={fieldError("directions")} className="sm:col-span-6" hint="Gate codes, where to unload, access restrictions. Printed on driver tickets later.">
             <Textarea {...f("directions")} defaultValue={site?.directions} rows={3} />
           </Field>
           {verification ? (

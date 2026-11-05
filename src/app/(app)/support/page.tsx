@@ -18,6 +18,7 @@ import { businessToday } from "@/server/data/settings";
 import { listSupportCases, supportOverdue, type SupportFilter } from "@/server/data/support";
 import { createClient } from "@/server/supabase/server";
 import { saveSupportTarget } from "./actions";
+import { getWords } from "@/server/industry";
 
 export const metadata = { title: "Support" };
 
@@ -35,7 +36,7 @@ export default async function SupportPage({ searchParams }: { searchParams: Prom
   const target = settings?.first_reply_hours ?? null;
   const now = new Date();
   const header = (
-    <PageHeader title="Support" description="Customer cases from the portal and the ones you open for customers: delivery problems, billing questions, wrong material, anything else."
+    <PageHeader title="Support" description={`Customer cases from the portal and the ones you open for customers: ${(await getWords()).supportExamples}.`}
       actions={can(access, "customers.edit") ? <Link href="/support/new" className={buttonClasses("primary", "md")}><Plus className="size-4" aria-hidden /> New case</Link> : undefined} />
   );
   if (!installed) return <>{header}<Notice title="Not available yet">The support center needs a database update that has not been installed yet.</Notice></>;

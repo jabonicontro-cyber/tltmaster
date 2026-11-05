@@ -16,6 +16,6 @@ describe("industry profile", () => {
     // Plain punctuation in everything people read.
     for (const i of ["aggregate", "freight", "both"]) expect(JSON.stringify(vocabulary(i))).not.toContain("\u2014");
     expect(vocabulary("both").documents).toBe("Tickets and BOLs");
-    expect(navLabels("freight")).toEqual({ "/tickets": "Bills of Lading" });
+    expect(navLabels("freight")).toEqual({ "/tickets": "Bills of Lading", "/materials": "Rates & Charges" });
   });
 });

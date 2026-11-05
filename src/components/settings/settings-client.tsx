@@ -20,6 +20,7 @@ import { TIMEZONE_OPTIONS } from "@/lib/schemas/settings";
 import type { CompanySettings } from "@/server/data/types";
 import { brandingProblems, brandingStyle } from "@/lib/branding";
 import { inviteUser, removeSampleData, saveBranding, saveCompanySettings, saveSequence, setRolePermission, updateUserAccess } from "@/app/(app)/settings/actions";
+import { adaptWording } from "@/lib/industry";
 
 const ctl = (id: string, err?: string) => ({ id, name: id, ...describedBy(id, err) });
 
@@ -108,6 +109,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
 }
 
 export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySettings; canEdit: boolean }) {
+  const say = (t: string) => adaptWording(t, settings.industry);
   const router = useRouter();
   const { pending, onSubmit, fieldError: fe, formError } = useFormAction(saveCompanySettings, {
     onSuccess: (r) => {
@@ -176,10 +178,10 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             </Field>
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-2 sm:grid-cols-6">
-            <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Delivery tickets</legend>
+            <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">{say("Delivery tickets")}</legend>
             <div className="sm:col-span-6">
-              <Checkbox name="ticket_reference_required" defaultChecked={settings.ticket_reference_required} label="Require the paper or scale ticket number" />
-              <p className="mt-1 text-sm text-muted">When on, a ticket entered without that number is flagged for review. Turn it off if your tickets do not carry one. Applies to tickets entered from now on.</p>
+              <Checkbox name="ticket_reference_required" defaultChecked={settings.ticket_reference_required} label={say("Require the paper or scale ticket number")} />
+              <p className="mt-1 text-sm text-muted">{say("When on, a ticket entered without that number is flagged for review. Turn it off if your tickets do not carry one. Applies to tickets entered from now on.")}</p>
             </div>
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
@@ -196,9 +198,9 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
           </fieldset>
           {"site_review_days_standard" in settings ? (
             <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
-              <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Job site directions</legend>
+              <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">{say("Job site directions")}</legend>
               <p className="-mt-1 text-sm text-muted sm:col-span-6">
-                How often someone should re-check each job site&apos;s directions. When the time has passed, dispatch and drivers see that they are due for review. Leave empty for no interval. Changed directions always need a new check, and unverified safety or access directions are always flagged.
+                {say("How often someone should re-check each job site's directions. When the time has passed, dispatch and drivers see that they are due for review. Leave empty for no interval. Changed directions always need a new check, and unverified safety or access directions are always flagged.")}
               </p>
               <Field label="Standard sites: review every (days)" htmlFor="site_review_days_standard" error={fe("site_review_days_standard")} className="sm:col-span-3">
                 <Input {...ctl("site_review_days_standard", fe("site_review_days_standard"))} type="number" min={1} max={3650} defaultValue={settings.site_review_days_standard ?? ""} />

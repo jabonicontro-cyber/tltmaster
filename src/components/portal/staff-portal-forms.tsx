@@ -28,7 +28,7 @@ export type PortalSettingsValues = {
   feature_orders: boolean; feature_quotes: boolean; feature_documents: boolean; feature_support: boolean; feature_help: boolean; feature_tracking: boolean;
 };
 
-export function PortalSettingsForm({ values, entitled, canEdit }: { values: PortalSettingsValues; entitled: boolean; canEdit: boolean }) {
+export function PortalSettingsForm({ values, entitled, canEdit, documents = "Delivery tickets" }: { values: PortalSettingsValues; entitled: boolean; canEdit: boolean; /** The delivery documents in the company's words ("Bills of lading" for freight). */ documents?: string }) {
   const { pending, onSubmit, formError } = useRefreshing(savePortalSettings);
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -58,7 +58,7 @@ export function PortalSettingsForm({ values, entitled, canEdit }: { values: Port
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-sm font-semibold text-ink">What customers can use</legend>
           <Checkbox name="feature_orders" defaultChecked={values.feature_orders} label="Orders and delivery status" />
-          <Checkbox name="feature_documents" defaultChecked={values.feature_documents} label="Delivery tickets (customer copy: no driver or truck details)" />
+          <Checkbox name="feature_documents" defaultChecked={values.feature_documents} label={`${documents} (customer copy: no driver or truck details)`} />
           <Checkbox name="feature_quotes" defaultChecked={values.feature_quotes} label="Quotes: read sent quotes, answer them, request new ones" />
           <Checkbox name="feature_support" defaultChecked={values.feature_support} label="Support requests" />
           <Checkbox name="feature_help" defaultChecked={values.feature_help} label="Help articles" />

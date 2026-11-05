@@ -1,6 +1,6 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
@@ -35,6 +35,13 @@ project credentials. Read it together with:
   load, a truck in the shop, then the shared samples. Refresh demo data and the daily auto-refresh fill new days only.
   Prairie Lantern is unchanged. The bill of lading page and billing say "Enter BOL" for freight companies. Owner step:
   press the create button on Production, then add its owner with `scripts/platform-admin.mjs demo-owner`.
+- **MK4, freight mode tailored to freight (owner: "completely tailored to just freight"):** audited every page a freight
+  company's people open, then: freight equipment and places (migration `20261120008100`: straight trucks, dry vans,
+  reefers, step decks; shippers, receivers, warehouses; tested rollback), each company offered only its own types,
+  pounds and no body volume for freight; BOL and delivery-location wording across Command Center, billing, payroll,
+  reports, settings, dispatch, orders, quotes, customers, support and the portal (`adaptWording`, `getSay`); Rates &
+  Charges instead of Materials & Pricing; per-mile pay input (`miles`); shared demo samples follow What you haul.
+  Aggregate companies are unchanged.
 - **Local only:** the full database suite fails 8 Command Center / Launchpad tests locally because of thousands of
   leftover test rows; CI (clean database) passes them.
 

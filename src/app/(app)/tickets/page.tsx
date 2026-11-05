@@ -20,6 +20,7 @@ import { withReturn } from "@/lib/safe-redirect";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { listLoadsAwaitingTickets, listTickets, photoCounts, ticketCounts, TICKET_VIEWS, type TicketView } from "@/server/data/tickets";
+import { getSay } from "@/server/industry";
 
 export async function generateMetadata() {
   const s = await getSettings().catch(() => null);
@@ -29,6 +30,7 @@ export async function generateMetadata() {
 type Search = { view?: string; q?: string; reason?: string; photo?: string };
 
 export default async function TicketsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   const access = await requirePagePermission("tickets.view");
   const sp = await searchParams;
   const view: TicketView = sp.view && sp.view in TICKET_VIEWS ? (sp.view as TicketView) : "awaiting";
@@ -60,7 +62,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         title={words.documents}
         description={words.description}
       />
-      <nav aria-label="Ticket views" className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
+      <nav aria-label={say("Ticket views")} className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(TICKET_VIEWS) as TicketView[]).map((k) => (
           <Link
             key={k}
@@ -126,17 +128,17 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
         <Card>
           <FilterBar action="/tickets" query={sp.q} placeholder={`Search ${words.one} #, paper #, order #, customer, truck, driver…`} clearHref={`/tickets?view=${view}`}>
             <input type="hidden" name="view" value={view} />
-            <FilterSelect name="reason" label="Review reason" value={reason} options={[{ value: "", label: "Any" }, ...Object.entries(REVIEW_REASON_LABELS).map(([value, label]) => ({ value, label: label.split(" (")[0].replace(/\.$/, "") }))]} />
+            <FilterSelect name="reason" label="Review reason" value={reason} options={[{ value: "", label: "Any" }, ...Object.entries(REVIEW_REASON_LABELS).map(([value, label]) => ({ value, label: say(label.split(" (")[0].replace(/\.$/, "")) }))]} />
             <FilterSelect name="photo" label="Photo or scan" value={photoFilter} options={[{ value: "", label: "Any" }, { value: "with", label: "Attached" }, { value: "without", label: "Missing" }]} />
           </FilterBar>
           {clean.length > 0 && (
             <div className="flex flex-wrap items-center gap-3 border-b border-line px-5 py-2 sm:px-6">
               <BulkAccept tickets={clean} />
-              <span className="text-sm text-muted">Tickets with any review reason are reviewed one by one.</span>
+              <span className="text-sm text-muted">{say("Tickets with any review reason are reviewed one by one.")}</span>
             </div>
           )}
           {shown.length === 0 ? (
-            <EmptyState title={sp.q ? `No ${words.many} match this search` : `No ${words.many} · ${viewLabel(view).toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
+            <EmptyState title={sp.q ? `No ${words.many} match this search` : `No ${words.many} · ${viewLabel(view).toLowerCase()}`} description={view === "review" ? say("Tickets flagged for office review appear here.") : undefined} />
           ) : (
             <TableWrap>
               <Table>
@@ -156,7 +158,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                         <Link href={t.status === "needs_review" || t.status === "submitted" ? withReturn(`/tickets/${t.id}?queue=review`, listHref) : withReturn(`/tickets/${t.id}`, listHref)} className="font-semibold whitespace-nowrap tabular hover:text-brand-fg hover:underline">{t.ticket_number}</Link>
                         {t.revision > 1 && <span className="ml-1 text-xs text-muted">rev {t.revision}</span>}
                         {photos.get(t.ticket_number) ? (
-                          <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted" title="Paper ticket photo attached">
+                          <span className="ml-1 inline-flex items-center gap-0.5 text-xs text-muted" title={say("Paper ticket photo attached")}>
                             <Camera className="size-3.5" aria-hidden /><span className="sr-only">Photo attached</span>{photos.get(t.ticket_number)! > 1 ? photos.get(t.ticket_number) : ""}
                           </span>
                         ) : null}
@@ -174,7 +176,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                       <Td className="hidden md:table-cell">{t.snapshot.truck_unit}{t.snapshot.trailer_unit ? ` + ${t.snapshot.trailer_unit}` : ""} · {t.snapshot.driver_name}</Td>
                       <Td>
                         <TicketStatusBadge status={t.status} />
-                        {t.status === "needs_review" && t.review_reasons[0] && <div className="mt-1 max-w-56 text-xs text-muted">{reviewReasonLabel(t.review_reasons[0])}</div>}
+                        {t.status === "needs_review" && t.review_reasons[0] && <div className="mt-1 max-w-56 text-xs text-muted">{say(reviewReasonLabel(t.review_reasons[0]))}</div>}
                       </Td>
                     </Tr>
                   ))}

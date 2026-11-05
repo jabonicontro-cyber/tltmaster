@@ -10,6 +10,7 @@ import { lifecycle, OWNERS, STAGE_LABELS, STAGES, summarize, waitingDays, type S
 import { requirePagePermission } from "@/server/auth";
 import { orderToCashRows } from "@/server/data/order-to-cash";
 import { businessToday } from "@/server/data/settings";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Order to cash" };
 
@@ -17,6 +18,7 @@ type Search = { stage?: string; show?: string; q?: string };
 const LIMIT = 200;
 
 export default async function OrderToCashPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   await requirePagePermission("billing.view");
   const sp = await searchParams;
   const [rows, { today }] = await Promise.all([orderToCashRows(), businessToday()]);
@@ -35,7 +37,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
     <>
       <PageHeader
         title="Order to cash"
-        description="Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing. Nothing here changes an order."
+        description={say("Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing. Nothing here changes an order.")}
       />
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7" aria-label="Stages">
         {summary.map((s) => (
@@ -45,7 +47,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
               aria-current={stage === s.stage ? "true" : undefined}
               className="block rounded-panel border border-line/70 bg-card shadow-card px-3 py-2.5 hover:border-strong aria-[current=true]:border-strong"
             >
-              <span className="block text-xs font-medium text-muted">{STAGE_LABELS[s.stage]}</span>
+              <span className="block text-xs font-medium text-muted">{say(STAGE_LABELS[s.stage])}</span>
               <span className="mt-0.5 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{s.total}</span>
               <span className="block text-xs text-muted">{s.attention ? `${s.attention} need attention` : "Nothing waiting"} · {formatCents(s.cents)}</span>
             </Link>
@@ -60,11 +62,11 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
 
       <Card className="mt-5">
         <CardHeader
-          title={stage ? STAGE_LABELS[stage] : show === "attention" ? "Needs attention" : "All open orders"}
+          title={stage ? say(STAGE_LABELS[stage]) : show === "attention" ? "Needs attention" : "All open orders"}
           description={show === "attention" ? `${attention} order${attention === 1 ? "" : "s"} need someone to act. Oldest first within each stage.` : "Every open order, by stage."}
         />
         <FilterBar action="/order-to-cash" clearHref="/order-to-cash" placeholder="Search order, customer or project…" query={sp.q}>
-          <FilterSelect name="stage" label="Stage" value={stage ?? ""} options={[{ value: "", label: "All stages" }, ...STAGES.map((s) => ({ value: s, label: STAGE_LABELS[s] }))]} />
+          <FilterSelect name="stage" label="Stage" value={stage ?? ""} options={[{ value: "", label: "All stages" }, ...STAGES.map((s) => ({ value: s, label: say(STAGE_LABELS[s]) }))]} />
           <FilterSelect name="show" label="Show" value={show} options={[{ value: "attention", label: "Needs attention" }, { value: "all", label: "Everything" }]} />
         </FilterBar>
         {listed.length === 0 ? (
@@ -82,10 +84,10 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
                       <Link href={`/orders/${o.order_id}`} className="font-semibold hover:underline">{o.order_number}</Link>
                       <span className="block max-w-[14rem] truncate text-xs text-muted">{o.customer_name ?? "–"}{o.project_name ? ` · ${o.project_name}` : ""}</span>
                     </Td>
-                    <Td><Badge tone={l.attention ? "amber" : "gray"}>{STAGE_LABELS[l.stage]}</Badge></Td>
-                    <Td className="hidden max-w-sm text-sm md:table-cell">{l.why}</Td>
-                    <Td><Link href={l.href} className="text-sm font-medium text-brand-fg hover:underline">{l.next}</Link></Td>
-                    <Td className="hidden text-sm sm:table-cell">{OWNERS[l.owner]}</Td>
+                    <Td><Badge tone={l.attention ? "amber" : "gray"}>{say(STAGE_LABELS[l.stage])}</Badge></Td>
+                    <Td className="hidden max-w-sm text-sm md:table-cell">{say(l.why)}</Td>
+                    <Td><Link href={l.href} className="text-sm font-medium text-brand-fg hover:underline">{say(l.next)}</Link></Td>
+                    <Td className="hidden text-sm sm:table-cell">{say(OWNERS[l.owner])}</Td>
                     <Td className="hidden text-right text-sm tabular lg:table-cell">{days === null ? "–" : `${days} d`}</Td>
                   </Tr>
                 ))}

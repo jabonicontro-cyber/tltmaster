@@ -15,7 +15,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { QUANTITY_CHECK_LABELS, QUANTITY_POLICY, formatDifference, readinessExplanation } from "@/lib/billing/rules";
+import { QUANTITY_CHECK_LABELS, QUANTITY_POLICY, formatDifference, readinessExplanation, sayExplanation } from "@/lib/billing/rules";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
@@ -23,6 +23,7 @@ import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderBilling } from "@/server/data/billing";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Order billing" };
 
@@ -36,6 +37,7 @@ const LOAD_STATE: Record<string, { label: string; tone: "red" | "amber" | "green
 };
 
 export default async function OrderBillingPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ back?: string }> }) {
+  const say = await getSay();
   // Ticket or BOL wording (MK1): from the company's What you haul.
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
   const { back } = await searchParams;
@@ -44,7 +46,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const data = await getOrderBilling(id);
   if (!data) notFound();
   const { draft, status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone } = data;
-  const e = readinessExplanation(o.readiness, o);
+  const e = sayExplanation(readinessExplanation(o.readiness, o), say);
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
   const ticketsOf = (pred: (t: (typeof tickets)[number]) => boolean) => tickets.filter(pred);
@@ -67,11 +69,11 @@ export default async function OrderBillingPage({ params, searchParams }: { param
           {o.readiness === "handed_off" && (
             <> Batch {o.batch_number}{o.handoff_reference ? ` (${o.handoff_reference})` : ""}, {formatDateTime(o.handed_off_at, timezone)} by {person(o.handed_off_by)}.</>
           )}
-          {o.changed_since_handoff && <strong> Tickets changed after the handoff: check the invoice in your accounting system.</strong>}
+          {o.changed_since_handoff && <strong>{say("Tickets changed after the handoff: check the invoice in your accounting system.")}</strong>}
         </Notice>
 
         <Card>
-          <CardHeader title="Loads" description="Planned against delivered, from the current ticket revisions. Voided and replaced revisions do not count." />
+          <CardHeader title="Loads" description={say("Planned against delivered, from the current ticket revisions. Voided and replaced revisions do not count.")} />
           {loads.length === 0 ? (
             <CardBody><p className="text-sm text-muted">No planned loads.</p></CardBody>
           ) : (
@@ -80,7 +82,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                 <thead>
                   <tr>
                     <Th>Load</Th>
-                    <Th>Tickets</Th>
+                    <Th>{say("Tickets")}</Th>
                     <Th align="right">Planned</Th>
                     <Th align="right">Delivered</Th>
                     <Th className="hidden sm:table-cell">Comparison</Th>
@@ -93,7 +95,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                     return (
                       <Tr key={l.load_id}>
                         <Td>
-                          <span className="font-semibold">Load {l.load_number}</span> <Badge tone={st.tone}>{st.label}</Badge>
+                          <span className="font-semibold">Load {l.load_number}</span> <Badge tone={st.tone}>{say(st.label)}</Badge>
                           <div className="text-sm text-muted tabular">{formatDate(l.load_date)}, {formatTime(l.start_time)} – {formatTime(l.end_time)}</div>
                           <div className="text-sm text-muted">{l.truck_id ? `${names.trucks.get(l.truck_id) ?? "–"} · ${l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : "–"}` : "Not assigned"}</div>
                         </Td>
@@ -128,7 +130,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         </Card>
 
         <Card>
-          <CardHeader title="Order lines" description="Prices are the order's accepted prices and are never recalculated here. Delivered = live tickets for the line in the line's unit." />
+          <CardHeader title="Order lines" description={say("Prices are the order's accepted prices and are never recalculated here. Delivered = live tickets for the line in the line's unit.")} />
           <TableWrap>
             <Table aria-label="Order lines">
               <thead>
@@ -170,7 +172,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         <Card>
           <CardHeader
             title={`Exceptions (${o.exceptions_count})`}
-            description={QUANTITY_POLICY}
+            description={say(QUANTITY_POLICY)}
             actions={canManage && o.readiness === "blocked" ? (
               <AcknowledgeButton orderId={o.order_id} orderNumber={o.order_number} fingerprint={o.exceptions_fingerprint} count={o.exceptions_count} />
             ) : undefined}

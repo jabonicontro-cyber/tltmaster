@@ -51,6 +51,8 @@ export interface DaySnapshot {
   savedAt: string;
   today: string;
   timezone: string;
+  /** "Enter delivery ticket" in the company's words (MK4); older saved days have none. */
+  enterLabel?: string;
   driverName: string;
   loads: SnapshotLoad[];
   units: Array<{ code: string; label: string }>;

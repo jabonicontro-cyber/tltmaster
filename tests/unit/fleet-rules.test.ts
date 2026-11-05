@@ -74,7 +74,7 @@ describe("capacity display", () => {
     expect(formatCapacity(both)).toBe("22.5 tons · 18 cu yd");
     expect(capacityState(both)).toBe("unverified");
     expect(capacityState({ ...both, capacity_verified_at: V })).toBe("verified");
-    expect(formatCapacity({ ...base, weight_capacity: 45000, weight_unit: "lb" })).toBe("45000 lb");
+    expect(formatCapacity({ ...base, weight_capacity: 45000, weight_unit: "lb" })).toBe("45,000 lb");
     expect(trimNumber("40.000")).toBe("40");
     expect(weightInPounds("22.5", "ton")).toBe(45000);
     expect(weightInPounds(45000, "lb")).toBe(45000);

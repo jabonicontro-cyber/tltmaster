@@ -5,6 +5,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { MIN_DECIDED, type Group, type QuoteOutcomes } from "@/lib/quotes/outcomes";
+import { getSay } from "@/server/industry";
 
 // Quote win/loss on Reports (B95): measured from decided quotes only; no price is suggested or changed.
 
@@ -42,7 +43,8 @@ function GroupTable({ label, rows, first }: { label: string; rows: Group[]; firs
   );
 }
 
-export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
+export async function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
+  const say = await getSay();
   return (
     <section aria-label="Quotes won and lost" className="space-y-4">
       <Card>
@@ -67,7 +69,7 @@ export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
       {data.decided > 0 ? (
         <>
           <Card>
-            <CardHeader title="By material or service" description="Each quote counts once per material or catalog charge (such as hauling). Rates are the quoted price per unit of the decided version; a median needs two quotes on that side." />
+            <CardHeader title={say("By material or service")} description={say("Each quote counts once per material or catalog charge (such as hauling). Rates are the quoted price per unit of the decided version; a median needs two quotes on that side.")} />
             {data.materials.length === 0 ? (
               <CardBody><p className="text-sm text-muted">No catalog materials or charges on the decided quotes.</p></CardBody>
             ) : (

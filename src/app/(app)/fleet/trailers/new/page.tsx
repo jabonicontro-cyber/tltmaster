@@ -8,6 +8,7 @@ import { truckOptions } from "@/server/data/fleet";
 import { saveTrailer } from "../../actions";
 
 import { baseOptions } from "@/server/data/bases";
+import { getIndustry } from "@/server/industry";
 export const metadata = { title: "Add trailer" };
 
 export default async function NewTrailerPage({ searchParams }: { searchParams: Promise<{ truck?: string }> }) {
@@ -20,7 +21,7 @@ export default async function NewTrailerPage({ searchParams }: { searchParams: P
       <PageHeader title="Add trailer" crumbs={[{ label: "Fleet", href: "/fleet" }, { label: "Trailers", href: "/fleet/trailers" }, { label: "Add" }]} />
       <Card>
         <CardBody>
-          <EquipmentForm
+          <EquipmentForm industry={await getIndustry()}
             kind="trailer"
             initial={{ ...EMPTY_EQUIPMENT, default_truck_id: preset }}
             trucks={trucks}

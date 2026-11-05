@@ -84,12 +84,31 @@ describe.skipIf(!available)("freight demo company", () => {
       `select count(*) n from public.order_loads l where l.company_id = $1 and l.load_date = $2
          and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')`, [w.company, tomorrow])).rows[0].n;
     expect(Number(open)).toBeGreaterThanOrEqual(1);
-    const fleet = (await q<{ trucks: string; vans: string; beds: string; drivers: string }>(
-      `select (select count(*) from public.trucks where company_id = $1) trucks,
-              (select count(*) from public.trailers where company_id = $1 and notes like '%dry van%') vans,
-              (select count(*) from public.trailers where company_id = $1 and trailer_type = 'flatbed') beds,
-              (select count(*) from public.drivers where company_id = $1) drivers`, [w.company])).rows[0];
-    expect([Number(fleet.trucks), Number(fleet.vans), Number(fleet.beds), Number(fleet.drivers)]).toEqual([8, 4, 2, 8]);
+    // Freight equipment (MK4, 20261120008100): dry vans, a reefer, a flatbed and a step deck, payloads in pounds;
+    // no dump bodies anywhere (the shared hired-truck sample hires box trucks), and tons are not offered as a unit.
+    const fleet = (await q<{ trucks: string; vans: string; reefers: string; decks: string; drivers: string; dumps: string; tons: string; lb: string }>(
+      `select (select count(*) from public.trucks where company_id = $1 and truck_type = 'tractor') trucks,
+              (select count(*) from public.trailers where company_id = $1 and trailer_type = 'dry_van') vans,
+              (select count(*) from public.trailers where company_id = $1 and trailer_type = 'reefer') reefers,
+              (select count(*) from public.trailers where company_id = $1 and trailer_type in ('flatbed', 'step_deck')) decks,
+              (select count(*) from public.drivers where company_id = $1) drivers,
+              (select count(*) from public.trucks where company_id = $1 and truck_type::text like '%dump%')
+                + (select count(*) from public.trailers where company_id = $1 and trailer_type::text like '%dump%') dumps,
+              (select count(*) from public.units_of_measure where company_id = $1 and code in ('ton', 'cu_yd') and active) tons,
+              (select count(*) from public.trailers where company_id = $1 and weight_unit = 'lb') lb`, [w.company])).rows[0];
+    expect([fleet.trucks, fleet.vans, fleet.reefers, fleet.decks, fleet.dumps, fleet.tons, fleet.lb].map(Number)).toEqual([8, 3, 1, 2, 0, 0, 6]);
+    expect(Number(fleet.drivers)).toBeGreaterThanOrEqual(8);
+    // Shared samples speak freight: shippers and receivers instead of quarries, a brokerage instead of a stone yard,
+    // and the database-written sample cases reworded.
+    const words = (await q<{ quarries: string; stone: string; shippers: string; logistics: string }>(
+      `select (select count(*) from public.company_locations where company_id = $1 and kind in ('quarry', 'plant', 'pickup')) quarries,
+              (select count(*) from public.portal_support_requests where company_id = $1 and subject ilike '%stone%')
+                + (select count(*) from public.booking_requests where company_id = $1 and material ilike '%pour%')
+                + (select count(*) from public.billing_entities where company_id = $1 and name ilike '%stone%') stone,
+              (select count(*) from public.company_locations where company_id = $1 and kind in ('shipper', 'receiver', 'warehouse')) shippers,
+              (select count(*) from public.billing_entities where company_id = $1 and name ilike '%logistics%') logistics`, [w.company])).rows[0];
+    expect([words.quarries, words.stone].map(Number)).toEqual([0, 0]);
+    expect(Number(words.shippers)).toBeGreaterThanOrEqual(4);
   }, 300_000);
 
   it("a second Refresh adds no loads or records, and keeps the stops", async () => {

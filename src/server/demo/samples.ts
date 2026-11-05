@@ -166,7 +166,22 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
   // internal note, one closed recently). Once per demo.
   note("support cases", await rpcCount(db, "demo_support_samples"));
+  // Freight (MK4): the samples the database writes (support cases, portal booking, shift offer, safety findings) are
+  // reworded for a freight demo, so a freight carrier never sees quarries, stone or pours. Exact sample text only.
+  note("freight wording", await freightSampleWording(db));
   return result;
+}
+
+/** What the demo hauls (Settings → What you haul); aggregate when unknown or not installed. */
+async function demoIndustry(db: Db): Promise<string> {
+  const r = await db.from("company_settings").select("industry").maybeSingle();
+  return r.error ? "aggregate" : ((r.data as { industry?: string } | null)?.industry ?? "aggregate");
+}
+
+/** The database-written samples reworded for a freight demo (20261120008100); nothing before it is installed. */
+async function freightSampleWording(db: Db): Promise<number> {
+  if ((await demoIndustry(db)) !== "freight") return 0;
+  return rpcCount(db, "demo_freight_sample_wording");
 }
 
 /**
@@ -182,6 +197,11 @@ async function billingEntities(db: Db, companyId: string): Promise<number> {
   const save = (p: Record<string, unknown>) => db.rpc("billing_entity_save", { p_id: null, p });
   const hauling = await save({ name: `${base} Trucking (demo)`, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" });
   if (hauling.error) return 0;
+  // A freight carrier's second business is a brokerage (MK4); it has no rule, so everything bills from the carrier.
+  if ((await demoIndustry(db)) === "freight") {
+    const brokerage = await save({ name: `${base} Logistics (demo)`, invoice_prefix: "LG", city: "Fictional City", region: "ZZ" });
+    return brokerage.error ? 1 : 2;
+  }
   const materials = await save({ name: `${base} Stone & Sand (demo)`, invoice_prefix: "SS", city: "Fictional City", region: "ZZ" });
   if (materials.error) return 1;
   const rules = await db.rpc("billing_entity_rules_save", { p: { material: materials.data as string, hauling: hauling.data as string } });
@@ -342,7 +362,12 @@ async function siteDirections(db: Db, today: string, me: string): Promise<number
       await must("link order to site", db.rpc("update_order_details", { p_order_id: o.id, p_expected_edit_seq: null, p_payload: payload }));
     }
   };
-  const samples = [
+  // Freight receivers (MK4) get dock directions instead of dump-site ones.
+  const samples = (await demoIndustry(db)) === "freight" ? [
+    { risk: "safety_access", verify: false, directions: "Enter by the north gate only: trucks may not turn left from the highway. Check in at the guard shack; vest required on the dock." },
+    { risk: "safety_access", verify: true, directions: "Low canopy over doors 1 to 4 (13 ft 2 in): use doors 5 to 12. Chock wheels before the dock plate goes down." },
+    { risk: "standard", verify: false, directions: "Receiving at the back, doors 7 to 9. Drop the trailer in row B if the dock is full and call receiving." },
+  ] : [
     { risk: "safety_access", verify: false, directions: "Enter by the north gate only: the east entrance has a soft shoulder. Gate code from the site contact on arrival. Hard hat and vest past the scale house." },
     { risk: "safety_access", verify: true, directions: "Low power line over the back lot: dump only at the marked pad by the fence. Call the site contact before raising the bed." },
     { risk: "standard", verify: false, directions: "Dump at the north end of the lot, past the stockpiles. Turn around in the gravel area." },
@@ -1143,9 +1168,21 @@ export const DEMO_PLACES = [
   { kind: "other", name: "Overflow parking (demo, not located yet)", d: null, notes: "Demo: no location yet. Use Edit to place it on the map." },
 ] as const;
 
+/** The same sample places for a demo that hauls freight (MK4): shippers, a cross-dock and a drop yard, no quarries. */
+export const FREIGHT_DEMO_PLACES = [
+  { kind: "yard", name: "Main yard (demo)", d: [0, 0], notes: "Demo: trucks start and end the day here." },
+  { kind: "shipper", name: "Ridgeway Distribution Center (fictional)", d: [0.11, -0.04], notes: "Demo: live load at doors 12–20; check in at the guard shack." },
+  { kind: "shipper", name: "Lakeshore Paper Mill (fictional)", d: [-0.08, 0.12], notes: "Demo: drop-and-hook; empty trailers in row C." },
+  { kind: "warehouse", name: "Cross-dock, Portage (fictional)", d: [0.03, 0.19], notes: "Demo: appointments only, 24-hour dock." },
+  { kind: "terminal", name: "Intermodal ramp (fictional)", d: [-0.14, -0.09], notes: "Demo: container pickups by reservation." },
+  { kind: "receiver", name: "Drop yard, Hwy 24 (fictional)", d: [0.06, -0.16], notes: "Demo: gate code from dispatch; seal check on arrival." },
+  { kind: "other", name: "Overflow parking (demo, not located yet)", d: null, notes: "Demo: no location yet. Use Edit to place it on the map." },
+] as const;
+
 async function routePlanner(db: Db, today: string): Promise<number> {
   if ((await count(db, "company_locations")) === null) return 0;
   let n = 0;
+  const freight = (await demoIndustry(db)) === "freight";
   const settings = (await db.from("company_settings").select("yard_latitude, yard_longitude, city, state").maybeSingle()).data as { yard_latitude: number | null; yard_longitude: number | null; city: string | null; state: string | null } | null;
   const yard = settings?.yard_latitude != null && settings.yard_longitude != null ? { lat: Number(settings.yard_latitude), lng: Number(settings.yard_longitude) } : null;
   const town = { city: (settings?.city ?? "").slice(0, 80), state: (settings?.state ?? "").slice(0, 40) };
@@ -1156,7 +1193,7 @@ async function routePlanner(db: Db, today: string): Promise<number> {
     const existing = new Set((((await db.from("company_locations").select("name")).data ?? []) as Array<{ name: string }>).map((r) => r.name));
     const bases = ((await db.from("dispatch_bases").select("id, code, name").eq("active", true).neq("code", "MAIN").order("code")).data ?? []) as Array<{ id: string; code: string; name: string }>;
     const rows = [
-      ...DEMO_PLACES.map((p) => ({ kind: p.kind, name: p.name, notes: p.notes, ...at(p.d) })),
+      ...(freight ? FREIGHT_DEMO_PLACES : DEMO_PLACES).map((p) => ({ kind: p.kind, name: p.name, notes: p.notes, ...at(p.d) })),
       // A yard per extra base, spread around the main yard.
       ...bases.map((b, i) => ({ kind: "yard", name: `${b.name} yard (demo)`.slice(0, 120), notes: "Demo: this dispatch base's trucks start here.", base_id: b.id, ...at([0.22 * Math.cos(i * 2.1), 0.28 * Math.sin(i * 2.1)]) })),
     ].filter((r) => !existing.has(r.name)).map((r) => ({ ...town, ...r }));
@@ -1211,7 +1248,10 @@ async function routePlanner(db: Db, today: string): Promise<number> {
   const site = (((await db.from("customer_sites").select("id, label").not("latitude", "is", null).eq("active", true).order("label").limit(1)).data ?? []) as Array<{ id: string; label: string }>)[0];
   const sized = (((await db.from("trucks").select("id").eq("active", true).not("height_cm", "is", null).order("unit_number").limit(1)).data ?? []) as Array<{ id: string }>)[0];
   const place = (name: string, minutes: number) => (placeIds.has(name) ? { company_location_id: placeIds.get(name)!, label: name, service_minutes: minutes } : null);
-  const samples = [
+  const samples = freight ? [
+    { name: "Yard → Ridgeway DC → receiver (demo)", notes: "Demo: a typical first load of the day.", truck_id: null, stops: [place("Main yard (demo)", 0), place("Ridgeway Distribution Center (fictional)", 45), site ? { customer_site_id: site.id, label: site.label, service_minutes: 30 } : null, place("Main yard (demo)", 0)] },
+    { name: "Paper mill run via the cross-dock (demo)", notes: "Demo: a sized truck, so its height and weight go to the routing provider.", truck_id: sized?.id ?? null, stops: [place("Main yard (demo)", 0), place("Lakeshore Paper Mill (fictional)", 30), place("Cross-dock, Portage (fictional)", 40), place("Intermodal ramp (fictional)", 20), place("Main yard (demo)", 0)] },
+  ] : [
     { name: "Yard → North Pit → job site (demo)", notes: "Demo: a typical first load of the day.", truck_id: null, stops: [place("Main yard (demo)", 0), place("North Pit (fictional)", 25), site ? { customer_site_id: site.id, label: site.label, service_minutes: 15 } : null, place("Main yard (demo)", 0)] },
     { name: "Plant run via River Gravel (demo)", notes: "Demo: a sized truck, so its height and weight go to the routing provider.", truck_id: sized?.id ?? null, stops: [place("Main yard (demo)", 0), place("River Gravel Pit (fictional)", 20), place("Asphalt Plant 2 (fictional)", 30), place("Rail Terminal (fictional)", 20), place("Main yard (demo)", 0)] },
   ];
@@ -1721,10 +1761,13 @@ async function hiredTrucks(db: Db, today: string, companyId: string): Promise<nu
     added++;
   }
   if (((await count(db, "haulers")) ?? 0) > 0) return added;
+  const freight = (await demoIndustry(db)) === "freight";
   const far = addDays(today, 240);
   const makeHauler = async (name: string, contact: string, unit: string, driver: string, insuranceUntil: string) => {
     const h = await must("hauler", db.rpc("hauler_save", { p_id: null, p_name: name, p_contact_name: contact, p_phone: "555-0142", p_email: "", p_notes: "Demo hauler (fictional).", p_active: true })) as string;
-    const truck = await must("hauler truck", db.rpc("hauler_add_truck", { p_hauler: h, p_unit: unit, p_type: "tri_axle_dump", p_plate: "" })) as string;
+    // A freight demo hires box trucks (MK4, 20261120008100); a tractor before that type exists.
+    const boxTruck = freight ? await db.rpc("hauler_add_truck", { p_hauler: h, p_unit: unit, p_type: "straight_truck", p_plate: "" }) : null;
+    const truck = (boxTruck && !boxTruck.error ? boxTruck.data : await must("hauler truck", db.rpc("hauler_add_truck", { p_hauler: h, p_unit: unit, p_type: freight ? "tractor" : "tri_axle_dump", p_plate: "" }))) as string;
     const d = await must("hauler driver", db.rpc("hauler_add_driver", { p_hauler: h, p_name: driver, p_phone: "555-0143" })) as string;
     await must("hauler driver qualifications", db.from("driver_qualifications").insert([
       { driver_id: d, kind: "cdl", cdl_class: "A", expires_on: far, verified_at: new Date().toISOString() },
@@ -1747,7 +1790,7 @@ async function hiredTrucks(db: Db, today: string, companyId: string): Promise<nu
   let offers = 0;
   for (const [i, l] of open.entries()) {
     if (offers >= 2) break;
-    const sent = await db.rpc("hauler_offer_send", { p_load: l.id, p_truck: ready.truck, p_trailer: null, p_driver: ready.d, p_rate_cents: i === 0 ? 1450 : 9500, p_rate_unit: i === 0 ? "ton" : "load", p_note: "Demo offer (nothing is texted)." });
+    const sent = await db.rpc("hauler_offer_send", { p_load: l.id, p_truck: ready.truck, p_trailer: null, p_driver: ready.d, p_rate_cents: freight ? (i === 0 ? 85000 : 95000) : i === 0 ? 1450 : 9500, p_rate_unit: freight || i !== 0 ? "load" : "ton", p_note: "Demo offer (nothing is texted)." });
     if (sent.error) continue; // the rules refused this load (overlap, eligibility): try the next one
     offers++;
     if (offers === 2) {

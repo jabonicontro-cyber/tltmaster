@@ -598,6 +598,15 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Freight equipment and places (20261120008100, MK4)
+
+- Enum values `truck_type.straight_truck` and `trailer_type.dry_van`, `reefer`, `step_deck` (additive; the app offers
+  each company only the types for what it hauls, `src/lib/fleet/labels.ts`). `company_locations.kind` also accepts
+  `shipper`, `receiver` and `warehouse`. `private.import_stage_core` accepts `straight_truck`.
+- `public.demo_freight_sample_wording()` (definer, demo owner only): rewords the exact sample text of portal bookings,
+  the shift offer and safety findings when the demo hauls freight. `public.demo_support_samples()` writes its cases in
+  freight words for a freight demo (support messages are append-only, so they are never reworded afterwards).
+
 ## Arrived / Left at each stop (20261120008000, MK2 slice 2)
 
 - `load_stop_times.order_stop_id`: a stop's times use the key `stop:<order stop id>` in `stop` (check: `pickup` and

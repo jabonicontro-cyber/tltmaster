@@ -15,6 +15,7 @@ import { requireAccess } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
 import { listStopTimes, waitTimeSettings } from "@/server/data/wait-times";
 import { redirect } from "next/navigation";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Wait times" };
 
@@ -25,6 +26,7 @@ const PERIODS = [7, 30, 90];
  * places first. Track only (owner 2026-11-01): nothing here bills or charges detention.
  */
 export default async function WaitTimesPage({ searchParams }: { searchParams: Promise<{ days?: string }> }) {
+  const say = await getSay();
   const access = await requireAccess();
   if (!can(access, "dispatch.view") && !can(access, "billing.view")) redirect("/no-access?missing=dispatch.view");
   const sp = await searchParams;
@@ -35,7 +37,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
   const header = (
     <PageHeader
       title="Wait times"
-      description={`Time trucks spent at pickups and job sites, ${formatDate(from)} – ${formatDate(today)}, from the Arrived and Left times drivers tap on My Day. Nothing here is billed.`}
+      description={say(`Time trucks spent at pickups and job sites, ${formatDate(from)} – ${formatDate(today)}, from the Arrived and Left times drivers tap on My Day. Nothing here is billed.`)}
       actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
     />
   );
@@ -69,7 +71,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
       </div>
 
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile icon={<MapPin />} label="Median wait at job sites" value={minutesLabel(median(siteWaits))} muted={!siteWaits.length}>{siteWaits.length} visits with both times</StatTile>
+        <StatTile icon={<MapPin />} label={say("Median wait at job sites")} value={minutesLabel(median(siteWaits))} muted={!siteWaits.length}>{siteWaits.length} visits with both times</StatTile>
         <StatTile icon={<Clock />} label="Median wait at pickups" value={minutesLabel(median(pickupWaits))} muted={!pickupWaits.length}>{pickupWaits.length} visits with both times</StatTile>
         <StatTile icon={<Hourglass />} tone={long ? "amber" : "neutral"} label="Waits over free time" value={long === null ? "–" : long} muted={!long}>
           {hoursOver === null ? "Set a free time to flag long waits" : `${hoursOver.toFixed(1)} truck hours beyond free time`}
@@ -77,11 +79,11 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
       </div>
 
       {finished.length === 0 ? (
-        <Card><EmptyState title="No wait times yet" description="Drivers tap Arrived and Left at the pickup and the job site on My Day; the office can enter times too." /></Card>
+        <Card><EmptyState title="No wait times yet" description={say("Drivers tap Arrived and Left at the pickup and the job site on My Day; the office can enter times too.")} /></Card>
       ) : (
         <div className="space-y-5">
           <Card>
-            <CardHeader title="Slowest places" description="Median wait per pickup and job site, slowest first." />
+            <CardHeader title="Slowest places" description={say("Median wait per pickup and job site, slowest first.")} />
             <TableWrap>
               <Table aria-label="Wait by place">
                 <thead><Tr><Th>Place</Th><Th>Stop</Th><Th className="text-right">Visits</Th><Th className="text-right">Median</Th><Th className="text-right">Longest</Th><Th className="text-right">Over free time</Th></Tr></thead>

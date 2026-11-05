@@ -9,6 +9,7 @@ import { requirePagePermission } from "@/server/auth";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { getOrderDetail } from "@/server/data/orders";
 import { editorStateFromOrder, loadCustomerContextFor, loadEditorReferenceData } from "@/server/quotes/editor-data";
+import { getIndustry } from "@/server/industry";
 
 export const metadata = { title: "Edit order" };
 
@@ -44,6 +45,7 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
       <>
         {header}
         <QuoteEditor
+        industry={await getIndustry()}
           mode="order"
           initial={editorStateFromOrder(order, lines)}
           initialContext={context}

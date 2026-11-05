@@ -19,7 +19,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import {
-  EXCEPTION_KINDS, EXCEPTION_LABELS, QUANTITY_POLICY, READINESS, READINESS_LABELS, readinessExplanation,
+  EXCEPTION_KINDS, EXCEPTION_LABELS, QUANTITY_POLICY, READINESS, READINESS_LABELS, readinessExplanation, sayExplanation,
 } from "@/lib/billing/rules";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
@@ -33,6 +33,7 @@ import { getQuickBooksForHandoffs } from "@/server/data/accounting";
 import { BILLING_VIEWS, getBillingBoard, type BillingFilters, type BillingView } from "@/server/data/billing";
 import { invoicesByHandoff, invoicingSettings } from "@/server/data/invoices";
 import { createInvoice } from "./invoices/actions";
+import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Billing Readiness" };
 
@@ -45,6 +46,7 @@ function serviceDates(a: string | null, b: string | null) {
 }
 
 export default async function BillingPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const say = await getSay();
   // Ticket or BOL wording (MK1): from the company's What you haul.
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
   const access = await requirePagePermission("billing.view");
@@ -95,7 +97,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
             )}
           >
-            <span className="pill-text">{BILLING_VIEWS[k]}</span>
+            <span className="pill-text">{say(BILLING_VIEWS[k])}</span>
             {board.counts[k] ? <Badge tone="gray">{board.counts[k]}</Badge> : null}
           </Link>
         ))}
@@ -114,10 +116,10 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           </div>
           <FilterSelect name="customer" label="Customer" value={filters.customer} options={[{ value: "", label: "All customers" }, ...board.customers.map((c) => ({ value: c.id, label: c.name }))]} />
           {view === "orders" && (
-            <FilterSelect name="readiness" label="Status" value={filters.readiness} options={[{ value: "", label: "Any status" }, ...READINESS.filter((r) => r !== "handed_off").map((r) => ({ value: r, label: READINESS_LABELS[r] }))]} />
+            <FilterSelect name="readiness" label="Status" value={filters.readiness} options={[{ value: "", label: "Any status" }, ...READINESS.filter((r) => r !== "handed_off").map((r) => ({ value: r, label: say(READINESS_LABELS[r]) }))]} />
           )}
           {view === "exceptions" && (
-            <FilterSelect name="kind" label="Exception" value={filters.kind} options={[{ value: "", label: "All exceptions" }, ...EXCEPTION_KINDS.map((k) => ({ value: k, label: EXCEPTION_LABELS[k] }))]} />
+            <FilterSelect name="kind" label="Exception" value={filters.kind} options={[{ value: "", label: "All exceptions" }, ...EXCEPTION_KINDS.map((k) => ({ value: k, label: say(EXCEPTION_LABELS[k]) }))]} />
           )}
         </FilterBar>
 
@@ -126,7 +128,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <EmptyState
               icon={<CheckCircle2 className="size-6" />}
               title={board.view === "ready" ? "No orders are ready to bill" : "No orders match"}
-              description={board.view === "ready" ? "An order is ready when it is completed, every load has an accepted ticket and every exception is acknowledged." : "Scheduled, in-progress and completed orders appear here with what still blocks billing."}
+              description={board.view === "ready" ? say("An order is ready when it is completed, every load has an accepted ticket and every exception is acknowledged.") : "Scheduled, in-progress and completed orders appear here with what still blocks billing."}
             />
           ) : board.view === "ready" ? (
             <HandOffForm orders={board.orders} canManage={canManage} />
@@ -144,7 +146,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 </thead>
                 <tbody>
                   {board.orders.map((o) => {
-                    const e = readinessExplanation(o.readiness, o);
+                    const e = sayExplanation(readinessExplanation(o.readiness, o), say);
                     return (
                       <Tr key={o.order_id}>
                         <Td>
@@ -174,7 +176,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "missing" ? (
           board.loads.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 className="size-6" />} title="No delivered loads are missing a ticket" description="A load appears here once its planned end time has passed (or its order is completed) and it has no live ticket. Future loads are not listed." />
+            <EmptyState icon={<CheckCircle2 className="size-6" />} title={say("No delivered loads are missing a ticket")} description={say("A load appears here once its planned end time has passed (or its order is completed) and it has no live ticket. Future loads are not listed.")} />
           ) : (
             <TableWrap>
               <Table>
@@ -197,11 +199,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                       <Td className="hidden md:table-cell">{l.truck ? `${l.truck}${l.trailer ? ` + ${l.trailer}` : ""} · ${l.driver}` : <span className="text-muted">Not assigned</span>}</Td>
                       <Td className="text-sm">
                         {l.voided_numbers?.length
-                          ? `Ticket ${l.voided_numbers.join(", ")} was voided and not replaced.`
+                          ? say(`Ticket ${l.voided_numbers.join(", ")} was voided and not replaced.`)
                           : l.order_status === "completed" && new Date(l.ends_at) > new Date()
-                            ? "Order is completed; this load has no ticket."
-                            : "Load ended; no ticket entered."}
-                        <div className="text-muted">{l.assignment_id ? "Enter the ticket from the paper copy, or cancel the load if it did not run." : "No truck assigned. Assign it on the dispatch board and enter the ticket, or cancel the load if it did not run."}</div>
+                            ? say("Order is completed; this load has no ticket.")
+                            : say("Load ended; no ticket entered.")}
+                        <div className="text-muted">{l.assignment_id ? say("Enter the ticket from the paper copy, or cancel the load if it did not run.") : say("No truck assigned. Assign it on the dispatch board and enter the ticket, or cancel the load if it did not run.")}</div>
                       </Td>
                       <Td align="right">
                         {l.assignment_id && canEnterTickets ? (
@@ -218,13 +220,13 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "review" ? (
           board.tickets.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 className="size-6" />} title="No tickets waiting for review" description="Submitted and flagged tickets of scheduled and completed orders appear here until they are accepted, corrected or voided." />
+            <EmptyState icon={<CheckCircle2 className="size-6" />} title={say("No tickets waiting for review")} description={say("Submitted and flagged tickets of scheduled and completed orders appear here until they are accepted, corrected or voided.")} />
           ) : (
             <TableWrap>
               <Table>
                 <thead>
                   <tr>
-                    <Th>Ticket</Th>
+                    <Th>{say("Ticket")}</Th>
                     <Th className="hidden sm:table-cell">Order / customer</Th>
                     <Th>Delivered</Th>
                     <Th>Status · reason</Th>
@@ -260,9 +262,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "exceptions" ? (
           <>
-            <p className="border-b border-line px-5 py-3 text-sm text-muted sm:px-6">{QUANTITY_POLICY}</p>
+            <p className="border-b border-line px-5 py-3 text-sm text-muted sm:px-6">{say(QUANTITY_POLICY)}</p>
             {board.groups.length === 0 ? (
-              <EmptyState icon={<CheckCircle2 className="size-6" />} title="No exceptions" description="Quantity differences, units that cannot be compared, lines without tickets, missing POs and zero rates appear here." />
+              <EmptyState icon={<CheckCircle2 className="size-6" />} title="No exceptions" description={say("Quantity differences, units that cannot be compared, lines without tickets, missing POs and zero rates appear here.")} />
             ) : (
               <ul className="divide-y divide-line" aria-label="Orders with exceptions">
                 {board.groups.map(({ order: o, exceptions }) => (
@@ -305,13 +307,14 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   );
 }
 
-function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }: {
+async function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }: {
   board: Extract<Awaited<ReturnType<typeof getBillingBoard>>, { view: "handed_off" }>; canManage: boolean; highlight?: string;
   qb: Awaited<ReturnType<typeof getQuickBooksForHandoffs>>;
   /** Who issues the company's invoices (B99): with Taviron, each order gets Create invoice instead of Send to QuickBooks. */
   issuer: "quickbooks" | "taviron";
   invoices: Awaited<ReturnType<typeof invoicesByHandoff>>;
 }) {
+  const say = await getSay();
   const qb = issuer === "taviron" ? { ...qbAll, canSend: false } : qbAll;
   const unsent = (ids: Array<{ id: string; reverted_at: string | null }>) => ids.filter((o) => !o.reverted_at && !(qb.sends[o.id] ?? []).some((s) => s.status === "sent") ).map((o) => o.id);
   if (board.batches.length === 0) {
@@ -360,7 +363,7 @@ function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }:
                       <Link href={`/billing/orders/${r.order_id}`} className={cn("font-semibold tabular hover:underline", r.reverted_at && "line-through")}>{r.order.order_number}</Link>
                       <span className="text-sm text-muted"> · {r.order.customer_name}</span>
                       {r.reverted_at && <div className="text-sm text-muted">Undone by {board.people[r.reverted_by ?? ""] ?? "someone"}: {r.revert_reason}</div>}
-                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">Tickets changed after the handoff: check the invoice in your accounting system.</div>}
+                      {!r.reverted_at && r.changed && <div className="text-sm font-semibold text-amber-900">{say("Tickets changed after the handoff: check the invoice in your accounting system.")}</div>}
                       {qb.shown && <QuickBooksStatus sends={qb.sends[r.id] ?? []} entityNames={qb.entityNames} />}
                     </Td>
                     <Td className="hidden sm:table-cell tabular">{serviceDates(r.order.service_start, r.order.service_end)}</Td>
@@ -395,7 +398,8 @@ function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoices }:
  * stages counted in orders show a bar out of all orders on the board (an order can sit in more than one stage, so the
  * bars are not meant to add up). Loads and tickets get no bar against orders. Each opens its view.
  */
-function BillingPipeline({ counts, href, current }: { counts: Partial<Record<BillingView, number>>; href: (k: BillingView) => string; current: BillingView }) {
+async function BillingPipeline({ counts, href, current }: { counts: Partial<Record<BillingView, number>>; href: (k: BillingView) => string; current: BillingView }) {
+  const say = await getSay();
   const total = counts.orders ?? 0;
   if (!total) return null;
   // Each stage counts in its own unit (UX15): missing tickets are loads, review is tickets, the rest are orders. Only
@@ -420,7 +424,7 @@ function BillingPipeline({ counts, href, current }: { counts: Partial<Record<Bil
             <li key={st.key}>
               <Link href={href(st.key)} aria-current={st.key === current ? "page" : undefined} className="group block rounded-xl py-1 focus-visible:outline-2 focus-visible:outline-brand-fg">
                 <span className="flex items-baseline justify-between gap-2 text-sm">
-                  <span className={cn("font-medium group-hover:underline", st.key === current ? "text-ink" : "text-muted")}>{BILLING_VIEWS[st.key]}</span>
+                  <span className={cn("font-medium group-hover:underline", st.key === current ? "text-ink" : "text-muted")}>{say(BILLING_VIEWS[st.key])}</span>
                   <span className="whitespace-nowrap tabular text-ink"><span className="font-semibold">{n}</span> <span className="text-xs text-muted">{st.unit}{n === 1 ? "" : "s"}</span></span>
                 </span>
                 {st.ofBoard ? (
@@ -428,7 +432,7 @@ function BillingPipeline({ counts, href, current }: { counts: Partial<Record<Bil
                     <span className={cn("block h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none", st.bar)} style={{ width: `${n ? Math.max(3, Math.round((n / total) * 100)) : 0}%` }} />
                   </span>
                 ) : (
-                  <span className="mt-1.5 block text-xs text-muted">{st.key === "handed_off" ? "already handed to billing" : st.unit === "load" ? "delivered loads without a ticket" : "waiting for review"}</span>
+                  <span className="mt-1.5 block text-xs text-muted">{st.key === "handed_off" ? "already handed to billing" : st.unit === "load" ? say("delivered loads without a ticket") : "waiting for review"}</span>
                 )}
               </Link>
             </li>

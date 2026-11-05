@@ -42,7 +42,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
         ) : view === "plan" ? (
           <RouteBuilder locations={locs.locations} sites={sites} trucks={trucks.trucks} saved={saved} initialRouteId={sp.route ?? null} canEdit={can(access, "dispatch.edit")} routingReady={ready} tiles={ready} />
         ) : (
-          <LocationsPanel locations={locs.locations} canEdit={can(access, "dispatch.edit") || can(access, "settings.manage")} canSetYard={can(access, "settings.manage")} routingReady={ready} tiles={ready} yard={yard} />
+          <LocationsPanel industry={(settingsDay as { industry?: string }).industry} locations={locs.locations} canEdit={can(access, "dispatch.edit") || can(access, "settings.manage")} canSetYard={can(access, "settings.manage")} routingReady={ready} tiles={ready} yard={yard} />
         )}
       </>
     );

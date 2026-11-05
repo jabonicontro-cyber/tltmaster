@@ -7,6 +7,8 @@ import { can } from "@/lib/permissions";
 import { listItems, qboConfigured } from "@/server/accounting/qbo";
 import { requirePagePermission } from "@/server/auth";
 import { getAccountingSetup, type AccountingConnection } from "@/server/data/accounting";
+import { getIndustry } from "@/server/industry";
+import { haulsAggregate } from "@/lib/industry";
 
 export const metadata = { title: "Businesses and QuickBooks" };
 
@@ -38,7 +40,7 @@ export default async function BillingSetupPage({ searchParams }: { searchParams:
   return (
     <>
       <PageHeader title="Businesses and QuickBooks" crumbs={[{ label: "Billing", href: "/billing" }, { label: "Businesses and QuickBooks" }]}
-        description="When one company bills from more than one business (for example materials from a sand and gravel company, delivery from a trucking company), each business sends its own invoices from its own QuickBooks. Orders, dispatch and tickets stay as one."
+        description={haulsAggregate(await getIndustry()) ? "When one company bills from more than one business (for example materials from a sand and gravel company, delivery from a trucking company), each business sends its own invoices from its own QuickBooks. Orders, dispatch and tickets stay as one." : "When one company bills from more than one business (for example brokered loads from a logistics company, your own trucks from the carrier), each business sends its own invoices from its own QuickBooks. Orders, dispatch and bills of lading stay as one."}
         actions={manage && setup.entitiesInstalled ? <AddBusinessButton /> : undefined} />
       {sp.saved === "connected" && <div className="mb-4"><Notice title="QuickBooks connected">Choose the product or service for invoice lines below, then send handed-off orders from the Billing board.</Notice></div>}
       {sp.error && <div className="mb-4"><Notice tone="warning" title="QuickBooks">{sp.error}</Notice></div>}

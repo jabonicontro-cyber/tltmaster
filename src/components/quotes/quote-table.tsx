@@ -5,8 +5,10 @@ import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
 import { isPastExpiration } from "@/lib/quotes/status";
 import type { QuoteListRow } from "@/server/data/types";
+import { getSay } from "@/server/industry";
 
-export function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteListRow[]; today: string; showCustomer?: boolean }) {
+export async function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteListRow[]; today: string; showCustomer?: boolean }) {
+  const say = await getSay();
   return (
     <TableWrap>
       <Table>
@@ -14,7 +16,7 @@ export function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteLi
           <tr>
             <Th>Quote</Th>
             {showCustomer && <Th>Customer</Th>}
-            <Th className="hidden md:table-cell">Job site / project</Th>
+            <Th className="hidden md:table-cell">{say("Job site / project")}</Th>
             <Th className="hidden sm:table-cell">Expires</Th>
             <Th>Status</Th>
             <Th align="right">Total</Th>

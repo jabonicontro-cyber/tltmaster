@@ -17,12 +17,12 @@ const dotTone: Record<number, string> = { 1: "bg-critical", 2: "bg-amber-500", 3
  * the reasons and who acts next, then the one action that fixes it. Hiding and assigning are quiet icon buttons in the
  * tile's footer. Rendered as a list item so the queue stays a list for assistive technology.
  */
-export function ExceptionCard({ item, can, people, timezone, now, back }: { item: ExceptionItem & { hidden_until?: string | null }; can: { ticketsEdit: boolean; dispatch: boolean; assign: boolean }; people: Person[]; timezone: string; now: Date; back: string }) {
+export function ExceptionCard({ item, can, people, timezone, now, back, say = (t: string) => t }: { item: ExceptionItem & { hidden_until?: string | null }; can: { ticketsEdit: boolean; dispatch: boolean; assign: boolean }; people: Person[]; timezone: string; now: Date; back: string; /** Freight wording (adaptWording). */ say?: (text: string) => string }) {
   const action = exceptionAction(item, can);
   const hiddenUntil = item.hidden_until ?? null;
-  const title = exceptionTitle(item);
+  const title = say(exceptionTitle(item));
   const age = ageLabel(item.since, now);
-  const reasons = exceptionReasons(item);
+  const reasons = exceptionReasons(item).map(say);
   // The red edge marks urgent work: top-priority items, and an urgent order for as long as its flag is open —
   // acknowledging it is not resolving it (owner 2026-10-28).
   const urgent = item.priority === 1 || item.kind === "urgent_order";
@@ -37,7 +37,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
       <div className="flex items-center gap-2">
         <span className="inline-flex h-[22px] min-w-0 items-center gap-1.5 rounded-full bg-ink/[0.05] px-2.5 text-xs leading-4 font-medium text-ink/75">
           <span className={cn("size-1.5 shrink-0 rounded-full", dotTone[item.priority] ?? dotTone[3])} aria-hidden />
-          <span className="truncate">{KIND_LABELS[item.kind]}</span>
+          <span className="truncate">{say(KIND_LABELS[item.kind])}</span>
         </span>
         {urgent && <UrgentPill label={PRIORITY_LABELS[1] ?? "Urgent"} />}
         {age && (
@@ -55,7 +55,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
         </p>
       )}
       <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
-        {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : <span>{exceptionOwner(item)}</span>}
+        {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : <span>{say(exceptionOwner(item))}</span>}
         {item.assignment_note && <span className="line-clamp-1">· {item.assignment_note}</span>}
       </p>
       {hiddenUntil && <p className="mt-1.5 text-xs font-semibold text-muted">Hidden from your view until {formatDateTime(hiddenUntil, timezone)}, still open.</p>}
@@ -63,7 +63,7 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
       <div className="min-h-4 flex-1" aria-hidden />
       <div className="flex items-center gap-2 border-t border-line/70 pt-3.5">
         <ButtonLink href={withReturn(action.href, back)} size="sm" variant="secondary" icon={<ArrowRight className="size-4" />} className="min-w-0">
-          <span className="truncate">{action.label}</span>
+          <span className="truncate">{say(action.label)}</span>
         </ButtonLink>
         <span className="ml-auto flex shrink-0 items-center gap-0.5">
           {item.priority > 1 && <HideControl itemKey={item.exception_key} hiddenUntil={hiddenUntil} compact />}

@@ -15,6 +15,8 @@ import { PERIOD_STATUS } from "@/lib/payroll/labels";
 import { requirePagePermission } from "@/server/auth";
 import { loadPayrollHome, loadPeriod } from "@/server/data/payroll";
 import { addAdjustment, approvePeriod, calculate, recordExportOutcome, setEntry } from "../../actions";
+import { getIndustry, getSay } from "@/server/industry";
+import { haulsAggregate } from "@/lib/industry";
 
 export const metadata = { title: "Payroll period" };
 
@@ -23,6 +25,7 @@ const NOT_PAYABLE: Record<string, string> = { no_driver: "No driver on the ticke
 
 /** One payroll period: driver totals traced to tickets, exceptions to resolve, approval and export. */
 export default async function PayrollPeriodPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; n?: string }> }) {
+  const say = await getSay();
   await requirePagePermission("payroll.manage");
   const { id } = await params;
   const sp = await searchParams;
@@ -34,23 +37,25 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
   const name = (d: string | null) => (d ? drivers.get(d)?.name ?? "Driver" : "No driver");
   const live = entries.filter((e) => e.status === "calculated");
   const exceptions = entries.filter((e) => e.status === "exception");
+  // The quantity column follows what the company hauls: tons for aggregate, miles for freight (MK4).
+  const sumUnit = haulsAggregate(await getIndustry()) ? "ton" : "mile";
   const byDriver = new Map<string, { tickets: number; tons: number; earnings: number; adjustments: number }>();
   const row = (d: string) => byDriver.get(d) ?? (byDriver.set(d, { tickets: 0, tons: 0, earnings: 0, adjustments: 0 }), byDriver.get(d)!);
   for (const e of live) {
     const r = row(e.driver_id);
     r.tickets++;
     r.earnings += e.amount_cents ?? 0;
-    if (e.delivery_tickets?.unit_code === "ton") r.tons += Number(e.delivery_tickets.quantity);
+    if (e.delivery_tickets?.unit_code === sumUnit) r.tons += Number(e.delivery_tickets.quantity);
   }
   for (const a of adjustments) row(a.driver_id).adjustments += a.amount_cents;
   const total = [...byDriver.values()].reduce((n, r) => n + r.earnings + r.adjustments, 0);
   const enabled = home?.settings.enabled ?? false;
   return (
     <>
-      <FlashToast messages={{ saved: { text: sp.n !== undefined ? `${sp.n} ticket${sp.n === "1" ? "" : "s"} added to the period.` : "Saved." } }} />
+      <FlashToast messages={{ saved: { text: sp.n !== undefined ? say(`${sp.n} ticket${sp.n === "1" ? "" : "s"} added to the period.`) : "Saved." } }} />
       <PageHeader
         title={`Payroll ${formatDate(period.starts_on)} – ${formatDate(period.ends_on)}`}
-        description="Gross earnings from verified delivery tickets. Every amount links to its ticket and calculation."
+        description={say("Gross earnings from verified delivery tickets. Every amount links to its ticket and calculation.")}
         crumbs={[{ label: "Payroll", href: "/payroll" }, { label: `${formatDate(period.starts_on)} – ${formatDate(period.ends_on)}` }]}
         badges={<Badge tone={PERIOD_STATUS[period.status]?.tone ?? "gray"}>{PERIOD_STATUS[period.status]?.label ?? period.status}</Badge>}
       />
@@ -67,7 +72,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       {open && (
         <div className="mb-5 flex flex-wrap gap-3">
           {enabled ? (
-            <form action={calculate}><input type="hidden" name="period" value={period.id} /><SubmitButton pendingLabel="Calculating…" disabled={!work.payable.length}>Calculate {work.payable.length} ticket{work.payable.length === 1 ? "" : "s"}</SubmitButton></form>
+            <form action={calculate}><input type="hidden" name="period" value={period.id} /><SubmitButton pendingLabel="Calculating…" disabled={!work.payable.length}>Calculate {work.payable.length} {say(work.payable.length === 1 ? "ticket" : "tickets")}</SubmitButton></form>
           ) : (
             <Notice title="Calculation is off">Turn it on in <Link href="/payroll" className="underline">Payroll settings</Link> after a pay rule is active.</Notice>
           )}
@@ -81,7 +86,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
         ) : (
           <TableWrap className="rounded-none border-0">
             <Table>
-              <thead><tr><Th>Driver</Th><Th align="right">Tickets</Th><Th align="right">Tons</Th><Th align="right">Ticket earnings</Th><Th align="right">Adjustments</Th><Th align="right">Gross</Th></tr></thead>
+              <thead><tr><Th>Driver</Th><Th align="right">{say("Tickets")}</Th><Th align="right">{sumUnit === "ton" ? "Tons" : "Miles"}</Th><Th align="right">{say("Ticket earnings")}</Th><Th align="right">Adjustments</Th><Th align="right">Gross</Th></tr></thead>
               <tbody>
                 {[...byDriver].map(([d, r]) => (
                   <Tr key={d}>
@@ -104,7 +109,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
 
       {exceptions.length > 0 && (
         <Card className="mb-5">
-          <CardHeader title="Exceptions" description="Tickets Taviron could not calculate. Fix the cause (rule, ticket) and reverse the exception to recalculate, or exclude it with a reason." />
+          <CardHeader title="Exceptions" description={say("Tickets Taviron could not calculate. Fix the cause (rule, ticket) and reverse the exception to recalculate, or exclude it with a reason.")} />
           <ul className="divide-y divide-line">
             {exceptions.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm sm:px-6">
@@ -128,7 +133,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Not payable yet, and corrections" />
           <ul className="divide-y divide-line text-sm">
             {work.not_payable.map((t) => (
-              <li key={t.ticket_id} className="px-5 py-2.5 sm:px-6"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} · {NOT_PAYABLE[t.reason]}</li>
+              <li key={t.ticket_id} className="px-5 py-2.5 sm:px-6"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} · {say(NOT_PAYABLE[t.reason])}</li>
             ))}
             {work.corrections.map((c) => (
               <li key={c.entry_id} className="px-5 py-2.5 sm:px-6">
@@ -140,13 +145,13 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
       )}
 
       <Card className="mb-5">
-        <CardHeader title="Tickets in this period" />
+        <CardHeader title={say("Tickets in this period")} />
         {entries.length === 0 ? (
-          <p className="px-5 py-5 text-sm text-muted sm:px-6">No tickets recorded yet.</p>
+          <p className="px-5 py-5 text-sm text-muted sm:px-6">{say("No tickets recorded yet.")}</p>
         ) : (
           <TableWrap className="rounded-none border-0">
             <Table>
-              <thead><tr><Th>Ticket</Th><Th>Driver</Th><Th>Delivered</Th><Th align="right">Quantity</Th><Th>Rule and calculation</Th><Th align="right">Amount</Th></tr></thead>
+              <thead><tr><Th>{say("Ticket")}</Th><Th>Driver</Th><Th>Delivered</Th><Th align="right">Quantity</Th><Th>Rule and calculation</Th><Th align="right">Amount</Th></tr></thead>
               <tbody>
                 {entries.map((e) => (
                   <Tr key={e.id} id={`driver-${e.driver_id}`}>
@@ -180,7 +185,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
                   <Select id="adj-driver" name="driver" required defaultValue=""><option value="" disabled>Choose</option>{[...drivers.values()].map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</Select>
                 </Field>
                 <Field label="Amount ($, minus for a deduction)" htmlFor="adj-amount"><Input id="adj-amount" name="amount" required inputMode="decimal" placeholder="-4.25" /></Field>
-                <Field label="For a corrected ticket (optional)" htmlFor="adj-entry" className="sm:col-span-2">
+                <Field label={say("For a corrected ticket (optional)")} htmlFor="adj-entry" className="sm:col-span-2">
                   <Select id="adj-entry" name="entry" defaultValue=""><option value="">Not linked</option>{work.corrections.map((c) => <option key={c.entry_id} value={c.entry_id}>{c.ticket_number} ({name(c.driver_id)})</option>)}</Select>
                 </Field>
                 <Field label="Reason" htmlFor="adj-reason" className="sm:col-span-2"><Input id="adj-reason" name="reason" required minLength={3} maxLength={500} /></Field>
@@ -196,7 +201,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
             {open ? (
               <form action={approvePeriod} className="space-y-2">
                 <input type="hidden" name="period" value={period.id} />
-                <Checkbox name="confirm" label={`I checked the totals (${money(total)}) against the tickets`} />
+                <Checkbox name="confirm" label={say(`I checked the totals (${money(total)}) against the tickets`)} />
                 <SubmitButton pendingLabel="Approving…" disabled={exceptions.length > 0}>Approve and lock</SubmitButton>
                 {exceptions.length > 0 && <p className="text-sm text-amber-800">Resolve the {exceptions.length} exception{exceptions.length === 1 ? "" : "s"} first.</p>}
               </form>
@@ -204,7 +209,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
               <>
                 <div className="flex flex-wrap gap-2">
                   <a href={`/payroll/periods/${period.id}/export?format=summary_csv`} className={buttonClasses("secondary")}>Download summary (CSV)</a>
-                  <a href={`/payroll/periods/${period.id}/export?format=detail_csv`} className={buttonClasses("secondary")}>Download ticket detail (CSV)</a>
+                  <a href={`/payroll/periods/${period.id}/export?format=detail_csv`} className={buttonClasses("secondary")}>{say("Download ticket detail (CSV)")}</a>
                 </div>
                 {exports.length > 0 && (
                   <ul className="divide-y divide-line rounded-xl border border-line text-sm">

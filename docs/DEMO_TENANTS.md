@@ -33,10 +33,16 @@ Demo compatibility is part of the definition of done for every feature and UI ch
   flatbed carrier in Valparaiso, IN, created from `/admin/demo` (**Create the Cobalt Plains Freight demo**) and kept
   current by the same **Refresh demo data** and automatic refresh as Prairie Lantern (`src/server/demo/freight-demo.ts`).
   What you haul = General freight (bills of lading everywhere); shippers, a broker, two-drop loads, per-mile and flat
-  linehaul, detention, lumper and TONU charge items, 8 tractors, 4 dry vans and 2 flatbeds. Every load has
+  linehaul, detention, lumper and TONU charge items, 8 tractors, 3 dry vans, a reefer, a flatbed and a step deck (payloads in
+  pounds; tons and cubic yards switched off in its unit list). Every load has
   shipper-to-receiver stops with appointment windows and PU / PO / BOL references; delivered days carry BOL numbers.
   The seed sets up the company and then runs the Refresh, so the two never disagree. Tests: `tests/db/freight-demo.test.ts`,
   `tests/e2e/freight-demo.spec.ts`.
+- **Freight demos follow freight (MK4, 2026-11-05):** in a demo whose What you haul is General freight, the shared samples
+  add shippers, a cross-dock and a drop yard (no quarries), freight saved routes, dock directions, hired box trucks, a
+  brokerage as the second billing business, and freight support cases, booking, shift offer and safety findings
+  (`demo_support_samples`, `demo_freight_sample_wording`). Not an intentional difference: the same code path reads the
+  company setting, as every company's does.
 - **Freight demos (MK3, 2026-11-05):** samples follow the demo's own **What you haul** setting (Settings → Company).
   Aggregate demos get one order with a pickup and its deliveries; a demo set to **General freight** or **Both** also
   gets shipper-to-receiver stops on up to three of today's and tomorrow's orders (`freightStopSamples`), and its menu,
