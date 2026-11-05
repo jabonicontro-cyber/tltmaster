@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { partsSummaryFor } from "@/server/data/parts";
+import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { CalendarClock, Plus, Wrench } from "lucide-react";
 import { SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
 import { MaintenanceTabs } from "@/components/maintenance/tabs";
@@ -60,7 +62,11 @@ export default async function MaintenancePage() {
   const weekStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
   const shop = await listShopWorkload(open.map((w) => w.id), zonedTimeToUtc(weekStart, "00:00", timezone) ?? `${weekStart}T00:00:00Z`);
   // Shop insights (B120): repeat failures, parts a job usually needs, the truck's free days. Left out on any error.
-  const insights = await loadShopInsights(today, open.map((w) => w.id)).catch(() => null);
+  const [insights, partsUsed] = await Promise.all([
+    loadShopInsights(today, open.map((w) => w.id)).catch(() => null),
+    // Parts used per job on the board (UX20); the cost only for people who see maintenance costs.
+    partsSummaryFor(open.map((w) => w.id), can(access, "maintenance.costs")).catch(() => new Map()),
+  ]);
   const truckById = new Map(trucks.map((t) => [t.id, t]));
   const trailerById = new Map(trailers.map((t) => [t.id, t]));
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
@@ -200,6 +206,7 @@ export default async function MaintenancePage() {
                         </p>
                         <p className="mt-0.5 line-clamp-2 text-sm font-semibold text-ink">{w.title}</p>
                         <p className="mt-1 truncate text-xs text-muted">{workOrderUnit(w, truckUnits, trailerUnits)}</p>
+                        {partsSummaryText(partsUsed.get(w.id)) && <p className="mt-0.5 truncate text-xs text-muted tabular" data-testid="parts-summary">{partsSummaryText(partsUsed.get(w.id))}</p>}
                         <div className="mt-2 flex items-center justify-between gap-2">
                           <Badge tone={w.urgency === "immediate" ? "critical" : w.urgency === "high" ? "amber" : "gray"}>{WO_URGENCIES[w.urgency]}</Badge>
                           <span className="truncate text-xs text-muted">{w.assigned_to ? names.get(w.assigned_to) ?? "Former member" : "No lead"}</span>

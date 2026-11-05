@@ -131,6 +131,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("inspections", await rpcCount(db, "demo_inspection_samples"));
   // Parts inventory (B105): a small shelf with one low part and one used on an open work order.
   note("parts inventory", await rpcCount(db, "demo_parts_samples"));
+  // Parts used per job (UX20): the sample part used from stock gets the part cost line that using it in the app adds,
+  // so job cards show the parts cost.
+  note("parts cost on jobs", await partCostLines(db));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.
   note("spreadsheet import", await rpcCount(db, "demo_import_samples"));
   note("shift offers", await rpcCount(db, "demo_shift_offer_samples"));
@@ -1469,6 +1472,37 @@ async function billingTolerance(db: Db): Promise<number> {
   if (missing(error)) return 0;
   if (error) throw new Error(`Demo samples (billing tolerance): ${error.message}`);
   return 1;
+}
+
+/**
+ * Part cost lines for parts the demo used from stock (UX20), at the part's latest received cost, as part_use adds
+ * them. Only while the demo has no part cost lines at all, so a second run, or a cost the prospect entered, is left
+ * alone. A part with no known cost gets no line (nothing is invented). 0 before the parts update is installed.
+ */
+async function partCostLines(db: Db): Promise<number> {
+  const existing = await db.from("work_order_costs").select("id").eq("kind", "part").limit(1);
+  if (missing(existing.error)) return 0;
+  if (existing.error) throw new Error(`Demo samples (parts cost): ${existing.error.message}`);
+  if ((existing.data ?? []).length > 0) return 0;
+  const used = await db.from("part_movements").select("part_id, quantity, work_order_id, parts(name, part_number), work_orders(status)")
+    .eq("kind", "used").not("work_order_id", "is", null).limit(50);
+  if (missing(used.error)) return 0;
+  if (used.error) throw new Error(`Demo samples (parts cost): ${used.error.message}`);
+  const { data: costs, error } = await db.rpc("part_costs");
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (parts cost): ${error.message}`);
+  const unit = new Map(((costs ?? []) as Array<{ part_id: string; unit_cost_cents: number | null }>).map((c) => [c.part_id, c.unit_cost_cents]));
+  type Used = { part_id: string; quantity: number; work_order_id: string; parts: { name: string; part_number: string } | null; work_orders: { status: string } | null };
+  let n = 0;
+  for (const m of (used.data ?? []) as unknown as Used[]) {
+    const cents = unit.get(m.part_id);
+    if (cents === null || cents === undefined || !m.parts || ["closed", "canceled"].includes(m.work_orders?.status ?? "")) continue;
+    await must("parts cost", db.from("work_order_costs").insert({
+      work_order_id: m.work_order_id, kind: "part", description: m.parts.name.slice(0, 200), part_number: m.parts.part_number, quantity: -Number(m.quantity), unit_cost_cents: Number(cents),
+    }));
+    n += 1;
+  }
+  return n;
 }
 
 /** Pickups on open demo orders that have none (UX7); 0 before that update is installed or without loading places. */

@@ -69,7 +69,7 @@ function JobHeader({ job }: { job: OpenJob }) {
 }
 
 /** One of my jobs: the next step that fits its state, and a way into the full work order. */
-export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; timerHere: boolean; timerElsewhere: boolean }) {
+export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: { job: MyJob; timerHere: boolean; timerElsewhere: boolean; partsText?: string | null }) {
   const { pending, run } = useRun();
   const canStart = ["reported", "triaged", "scheduled", "awaiting_parts"].includes(job.status);
   // A quick note when the timer stops (what was found or done); it is kept with the time entry on the work order.
@@ -86,6 +86,7 @@ export function MyJobCard({ job, timerHere, timerElsewhere }: { job: MyJob; time
         {job.myRole === "lead" ? "You lead this job" : "You are helping"}
         {job.tasksTotal > 0 && <> · Checklist {job.tasksDone} of {job.tasksTotal}</>}
         {job.scheduledFor && <> · Scheduled {formatDate(job.scheduledFor)}</>}
+        {partsText && <> · <span data-testid="parts-summary">{partsText}</span></>}
       </p>
       <p className="mt-1 text-sm font-medium text-ink" data-testid="next-step">{mechanicNextStep(job, timerHere ? "here" : timerElsewhere ? "elsewhere" : "none")}</p>
       {timerHere && (

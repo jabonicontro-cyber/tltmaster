@@ -347,8 +347,14 @@ describe.skipIf(!available)("demo feature samples", () => {
     const notes = await q<{ n: string }>("select count(*) n from public.site_info_submissions where company_id = $1 and status = 'pending'", [w.company]);
     expect(Number(notes.rows[0].n)).toBe(1);
 
+    // Parts used per job (UX20): the brake shoe kit used from stock has its part cost line, at the received cost.
+    const partCost = await q<{ n: string; cents: string }>("select count(*) n, coalesce(sum(round(quantity * unit_cost_cents)), 0) cents from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
+    expect([Number(partCost.rows[0].n), Number(partCost.rows[0].cents)]).toEqual([1, 12800]);
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    const partCostAgain = await q<{ n: string }>("select count(*) n from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
+    expect(Number(partCostAgain.rows[0].n)).toBe(1);
     const again = await q<{ l: string; r: string }>("select (select count(*) from public.company_locations where company_id = $1) l, (select count(*) from public.saved_routes where company_id = $1) r", [w.company]);
     expect([Number(again.rows[0].l), Number(again.rows[0].r)]).toEqual([7, 2]);
     const decidedAgain = await q<{ n: string }>("select count(*) n from public.quote_versions v join public.quotes q on q.id = v.quote_id where q.company_id = $1 and v.project_name like 'Quote history (demo)%'", [w.company]);

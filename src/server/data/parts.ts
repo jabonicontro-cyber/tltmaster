@@ -1,4 +1,5 @@
 import "server-only";
+import { summarizeParts, type PartCostLine, type PartsSummary, type UsedMovement } from "@/lib/maintenance/parts-summary";
 import { uuid } from "@/lib/schemas/common";
 import { createClient } from "@/server/supabase/server";
 
@@ -41,4 +42,22 @@ export async function recentMovements(limit = 25, workOrderId?: string): Promise
   const { data, error } = await q;
   if (error) return [];
   return ((data ?? []) as PartMovement[]).map((m) => ({ ...m, quantity: Number(m.quantity) }));
+}
+
+/**
+ * Parts used per work order (UX20): parts from stock (countable by quantity, measured once), and the part cost total for people with
+ * maintenance.costs (RLS returns no cost lines to anyone else, so withCosts must match the person's permission).
+ * Before the parts update is installed the counts are zero.
+ */
+export async function partsSummaryFor(workOrderIds: string[], withCosts: boolean): Promise<Map<string, PartsSummary>> {
+  const ids = [...new Set(workOrderIds.filter((id) => uuid.safeParse(id).success))];
+  if (!ids.length) return new Map();
+  const supabase = await createClient();
+  const [moves, costs] = await Promise.all([
+    supabase.from("part_movements").select("work_order_id, part_id, kind, quantity, parts(unit)").eq("kind", "used").in("work_order_id", ids).limit(5000),
+    withCosts ? supabase.from("work_order_costs").select("work_order_id, kind, quantity, unit_cost_cents").eq("kind", "part").in("work_order_id", ids).limit(5000) : Promise.resolve(null),
+  ]);
+  type Row = Omit<UsedMovement, "unit"> & { parts: { unit: string } | null };
+  const used: UsedMovement[] = moves.error ? [] : ((moves.data ?? []) as unknown as Row[]).map((m) => ({ ...m, unit: m.parts?.unit ?? null }));
+  return summarizeParts(ids, used, costs && !costs.error ? ((costs.data ?? []) as PartCostLine[]) : withCosts ? [] : null);
 }

@@ -5,6 +5,8 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listMyJobs } from "@/server/data/maintenance-crew";
+import { partsSummaryFor } from "@/server/data/parts";
+import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { myShiftOffers } from "@/server/data/shift-offers";
 import { MyShiftOffers } from "@/components/schedule/shift-offers";
 
@@ -18,6 +20,8 @@ export default async function MyJobsPage() {
   const access = await requirePagePermission("maintenance.view");
   const manage = can(access, "maintenance.manage");
   const [jobs, shiftOffers] = await Promise.all([listMyJobs(access.userId), myShiftOffers("shop").catch(() => null)]);
+  // Parts used on each of my jobs (UX20); the cost only for people who see maintenance costs.
+  const parts = await partsSummaryFor(jobs.mine.map((j) => j.id), can(access, "maintenance.costs")).catch(() => new Map());
 
   return (
     <>
@@ -39,7 +43,7 @@ export default async function MyJobsPage() {
           {jobs.mine.length ? (
             <ul className="space-y-3">
               {jobs.mine.map((j) => (
-                <MyJobCard key={j.id} job={j} timerHere={jobs.myTimer?.workOrderId === j.id} timerElsewhere={Boolean(jobs.myTimer && jobs.myTimer.workOrderId !== j.id)} />
+                <MyJobCard key={j.id} job={j} partsText={partsSummaryText(parts.get(j.id))} timerHere={jobs.myTimer?.workOrderId === j.id} timerElsewhere={Boolean(jobs.myTimer && jobs.myTimer.workOrderId !== j.id)} />
               ))}
             </ul>
           ) : (

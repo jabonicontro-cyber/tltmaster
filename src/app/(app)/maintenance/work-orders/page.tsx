@@ -17,6 +17,8 @@ import { listAssignees, listTrailers, listTrucks, listWorkOrders } from "@/serve
 import { baseOptions } from "@/server/data/bases";
 import { BaseFilter } from "@/components/bases/base-filter";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
+import { partsSummaryFor } from "@/server/data/parts";
+import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 
 export const metadata = { title: "Work orders" };
 
@@ -40,6 +42,8 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
   const [{ rows, total }, trucks, trailers, assignees] = await Promise.all([
     listWorkOrders({ ...sp, base, page }), listTrucks(), listTrailers(), listAssignees(),
   ]);
+  // Parts used per job (UX20); the cost only for people who see maintenance costs.
+  const partsUsed = await partsSummaryFor(rows.map((w) => w.id), can(access, "maintenance.costs")).catch(() => new Map());
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
   const trailerUnits = new Map(trailers.map((t) => [t.id, t.unit_number]));
   const names = new Map(assignees.map((a) => [a.id, a.name]));
@@ -86,6 +90,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                     <Th className="hidden md:table-cell">Urgency</Th>
                     <Th className="hidden lg:table-cell">Mechanic</Th>
                     <Th className="hidden lg:table-cell">Scheduled</Th>
+                    <Th className="hidden xl:table-cell">Parts</Th>
                     <Th>Status</Th>
                   </tr>
                 </thead>
@@ -101,6 +106,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                       <Td className="hidden md:table-cell"><UrgencyBadge urgency={w.urgency} /></Td>
                       <Td className="hidden text-sm lg:table-cell">{w.assigned_to ? names.get(w.assigned_to) ?? "Former member" : <span className="text-muted">Unassigned</span>}</Td>
                       <Td className="hidden text-sm lg:table-cell">{w.scheduled_for ? formatDate(w.scheduled_for) : "–"}</Td>
+                      <Td className="hidden text-sm tabular xl:table-cell" data-testid="parts-summary">{partsSummaryText(partsUsed.get(w.id)) ?? <span className="text-muted">–</span>}</Td>
                       <Td><WoStatusBadge status={w.status} /></Td>
                     </Tr>
                   ))}

@@ -4,7 +4,8 @@ import { expectToast, signIn, unique } from "./helpers";
 import { USERS } from "./users";
 
 // Shop parts inventory (B105, migration 20261120004500): the owner adds a part and receives stock with a cost; a
-// mechanic uses parts on an open work order and cannot take more than is on hand; the work order shows the parts used.
+// mechanic uses parts on an open work order and cannot take more than is on hand; the work order shows the parts used,
+// and job cards show how many parts and (for people who see costs) what they cost (UX20).
 
 test("parts are received, used on a work order and never go below zero", async ({ page }) => {
   test.slow();
@@ -49,4 +50,17 @@ test("parts are received, used on a work order and never go below zero", async (
   await page.goto("/maintenance/parts");
   await expect(page.getByRole("table", { name: "Parts" }).getByRole("row").filter({ hasText: name })).toContainText("1 each");
   await expect(page.getByText("Stock value")).toHaveCount(0);
+
+  // Parts used per job (UX20): the mechanic sees the count without the cost; the owner sees both, on the work order,
+  // the work order list and the shop board.
+  await page.goto(`/maintenance/work-orders/${wo}?tab=parts`);
+  await expect(page.getByTestId("parts-summary")).toHaveText("2 parts used");
+  await page.context().clearCookies();
+  await signIn(page, "owner");
+  await page.goto(`/maintenance/work-orders/${wo}?tab=parts`);
+  await expect(page.getByTestId("parts-summary")).toHaveText("2 parts used · $49.00 in parts");
+  await page.goto(`/maintenance/work-orders?q=${encodeURIComponent(`e2e ${id}`)}`);
+  await expect(page.getByRole("row").filter({ hasText: `Service (e2e ${id})` }).getByTestId("parts-summary")).toHaveText("2 parts used · $49.00 in parts");
+  await page.goto("/maintenance");
+  await expect(page.getByRole("link").filter({ hasText: `Service (e2e ${id})` }).getByTestId("parts-summary")).toHaveText("2 parts used · $49.00 in parts");
 });

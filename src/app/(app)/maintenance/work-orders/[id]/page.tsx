@@ -1,4 +1,5 @@
 import { CopyReference } from "@/components/ui/copy-reference";
+import { summarizeParts, partsSummaryText } from "@/lib/maintenance/parts-summary";
 import Link from "next/link";
 import { UsePartForm } from "@/components/maintenance/parts-controls";
 import { listParts, recentMovements, type PartRow } from "@/server/data/parts";
@@ -66,6 +67,8 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   const manage = can(access, "maintenance.manage");
   const canClear = can(access, "maintenance.clear");
   const editable = manage && !["closed", "canceled"].includes(wo.status);
+  // Parts used on this job (UX20): parts from stock, and the part cost lines for people who see costs.
+  const partsLine = partsSummaryText(summarizeParts([wo.id], partsUsed.map((m) => ({ ...m, work_order_id: wo.id, unit: stock.parts.find((p) => p.id === m.part_id)?.unit ?? null })), canCosts && costs ? costs.map((c) => ({ ...c, work_order_id: wo.id })) : null).get(wo.id));
   const total = (costs ?? []).reduce((s, c) => s + Math.round(c.quantity * c.unit_cost_cents), 0);
   const estimate = "estimated_hours" in wo ? (wo as { estimated_hours: number | null }).estimated_hours : null;
   const doneTasks = crew.tasks.filter((t) => t.status === "done").length;
@@ -234,6 +237,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             )}
             {tab === "parts" && stock.installed && (
               <div className="space-y-4">
+                {partsLine && <p className="text-sm font-medium text-ink tabular" data-testid="parts-summary">{partsLine}</p>}
                 {partsUsed.filter((m) => m.kind === "used").length > 0 ? (
                   <ul className="divide-y divide-line rounded-xl ring-1 ring-line/60" aria-label="Parts used">
                     {partsUsed.filter((m) => m.kind === "used").map((m) => {
