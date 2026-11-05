@@ -160,6 +160,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Stops (MK2): one of today's assigned orders makes two deliveries from its pickup, with appointment windows and
   // reference numbers, so the order page, the board and the driver's card show stops. Once per demo.
   note("order stops", await orderStopSamples(db, today));
+  // Freight (MK3): a demo set to haul general freight (Settings → What you haul) gets shipper-to-receiver stops on a
+  // few of today's and tomorrow's orders, so it demonstrates a freight carrier. Aggregate demos are unchanged.
+  note("freight stops", await freightStopSamples(db, today));
   // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
   // internal note, one closed recently). Once per demo.
   note("support cases", await rpcCount(db, "demo_support_samples"));
@@ -1621,6 +1624,56 @@ async function orderStopSamples(db: Db, today: string): Promise<number> {
   if (missing(error)) return 0;
   if (error) throw new Error(`Demo samples (order stops): ${error.message}`);
   return Number(data ?? 0);
+}
+
+/**
+ * Freight stops (MK3) for a demo that hauls general freight: up to three of today's and tomorrow's open orders load at
+ * another customer's site (the shipper) and deliver to the order's own site, with appointment windows and reference
+ * numbers. Only while fewer than three orders have stops; only when the demo's industry is freight or both. Places
+ * come from the demo's own customers and sites.
+ */
+async function freightStopSamples(db: Db, today: string): Promise<number> {
+  const settings = await db.from("company_settings").select("industry").maybeSingle();
+  if (settings.error) return 0; // before 20261120007600
+  const industry = (settings.data as { industry?: string } | null)?.industry ?? "aggregate";
+  if (industry !== "freight" && industry !== "both") return 0;
+  const existing = await db.from("order_stops").select("order_id").is("removed_at", null);
+  if (missing(existing.error)) return 0;
+  const withStops = new Set(((existing.data ?? []) as Array<{ order_id: string }>).map((r) => r.order_id));
+  if (withStops.size >= 3) return 0;
+  type O = { id: string; customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; site_state: string | null; site_postal_code: string | null; customer_po: string | null; order_number: string };
+  const loads = ((await db.from("order_loads").select("order_id, load_date, start_time").in("load_date", [today, addDays(today, 1)]).eq("status", "planned").order("load_date").order("start_time")).data ?? []) as Array<{ order_id: string; load_date: string; start_time: string }>;
+  const first = new Map<string, { load_date: string; start_time: string }>();
+  for (const l of loads) if (!first.has(l.order_id) && !withStops.has(l.order_id)) first.set(l.order_id, l);
+  if (first.size === 0) return 0;
+  const orders = ((await db.from("orders").select("id, customer_id, site_label, site_line1, site_city, site_state, site_postal_code, customer_po, order_number")
+    .in("id", [...first.keys()]).in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).order("order_number")).data ?? []) as O[];
+  const shippers = ((await db.from("customer_sites").select("customer_id, label, line1, city, state, postal_code").eq("active", true).order("label").limit(50)).data ?? []) as Array<{ customer_id: string; label: string; line1: string | null; city: string | null; state: string | null; postal_code: string | null }>;
+  const customerRows = ((await db.from("customers").select("id, name")).data ?? []) as Array<{ id: string; name: string }>;
+  const names = new Map(customerRows.map((c) => [c.id, c.name]));
+  let n = 0;
+  for (const o of orders) {
+    if (withStops.size + n >= 3) break;
+    if (!o.site_label && !o.site_line1 && !o.site_city) continue;
+    const from = shippers.find((x) => x.customer_id !== o.customer_id && (x.city ?? "") !== (o.site_city ?? ""));
+    if (!from) continue;
+    const l = first.get(o.id)!;
+    const h = Number(l.start_time.slice(0, 2));
+    const timed = Number.isFinite(h) && h <= 15;
+    const at = (x: number) => (timed ? `${String(x).padStart(2, "0")}:${l.start_time.slice(3, 5)}` : "");
+    const ref = o.order_number.replace(/\D/g, "").slice(-4) || "0001";
+    const stops = [
+      { kind: "pickup", name: `${names.get(from.customer_id) ?? "Shipper"}, ${from.label}`, address_line1: from.line1 ?? "", city: from.city ?? "", state: from.state ?? "", postal_code: from.postal_code ?? "",
+        appointment_date: l.load_date, window_start: at(h), window_end: at(h + 1), reference: `PU-${ref}`, notes: "Check in at shipping. Count pallets before you sign." },
+      { kind: "delivery", name: o.site_label || o.site_line1 || "Receiver", address_line1: o.site_line1 ?? "", city: o.site_city ?? "", state: o.site_state ?? "", postal_code: o.site_postal_code ?? "",
+        appointment_date: l.load_date, window_start: at(h + 3), window_end: at(h + 5), reference: o.customer_po ? `PO ${o.customer_po}` : `BOL ${ref}`, notes: "" },
+    ];
+    const { error } = await db.rpc("save_order_stops", { p_order: o.id, p_stops: stops });
+    if (missing(error)) return n;
+    if (error) throw new Error(`Demo samples (freight stops): ${error.message}`);
+    n++;
+  }
+  return n;
 }
 
 async function rpcCount(db: Db, fn: string): Promise<number> {

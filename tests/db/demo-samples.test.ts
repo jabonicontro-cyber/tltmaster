@@ -473,6 +473,25 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect((await q("select 1 from public.user_preferences where company_id = $1 and key = 'demo_welcome'", [TOP_LINE])).rowCount).toBe(0);
   }, 60_000);
 
+  it("a demo set to haul general freight gets shipper-to-receiver stops on a few orders, and a repeat adds none", async () => {
+    await q("update public.company_settings set industry = 'freight' where company_id = $1", [w.company]);
+    try {
+      const today = todayIn(TZ);
+      await ensureFeatureSamples(as(w.owner), today);
+      const orders = async () => (await q<{ order_id: string; kinds: string[]; refs: string[] }>(
+        "select order_id, array_agg(kind order by seq) kinds, array_agg(reference order by seq) refs from public.order_stops where company_id = $1 and removed_at is null group by order_id", [w.company])).rows;
+      const first = await orders();
+      expect(first.length).toBeGreaterThanOrEqual(2);
+      expect(first.length).toBeLessThanOrEqual(3);
+      expect(first.every((o) => o.kinds[0] === "pickup" && o.kinds[o.kinds.length - 1] === "delivery")).toBe(true);
+      expect(first.some((o) => o.refs[0].startsWith("PU-"))).toBe(true);
+      await ensureFeatureSamples(as(w.owner), today);
+      expect((await orders()).length).toBe(first.length);
+    } finally {
+      await q("update public.company_settings set industry = 'aggregate' where company_id = $1", [w.company]);
+    }
+  }, 180_000);
+
   it("is refused for a real company, which is left untouched", async () => {
     const before = await counts(TOP_LINE);
     await expect(ensureFeatureSamples(as(w.realOwner), todayIn(TZ))).rejects.toThrow(/only added to demo companies/);

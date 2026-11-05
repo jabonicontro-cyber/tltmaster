@@ -29,6 +29,11 @@ Demo compatibility is part of the definition of done for every feature and UI ch
   that adds samples there reaches existing demos at their next Refresh (presenter demo: next Start/Reset), without
   recreating the company, duplicating records or removing users and demo owners. See §3 and the per-mode matrix in §5.
 
+- **Freight demos (MK3, 2026-11-05):** samples follow the demo's own **What you haul** setting (Settings → Company).
+  Aggregate demos get one order with a pickup and its deliveries; a demo set to **General freight** or **Both** also
+  gets shipper-to-receiver stops on up to three of today's and tomorrow's orders (`freightStopSamples`), and its menu,
+  pages and drivers say bills of lading. Same code and data paths as every company; switching back keeps the stops.
+
 ## 2. Intentional differences (the complete list)
 
 Each is enforced by `tests/unit/demo-parity.test.ts`: adding any other `isDemo` / `is_demo` / `demo_kind` branch to
