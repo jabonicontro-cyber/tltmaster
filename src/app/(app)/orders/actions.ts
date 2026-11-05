@@ -60,7 +60,7 @@ export async function convertQuoteToOrder(quoteId: string, creditReason?: string
     revalidatePath("/command-center");
     return ok(
       { orderId: r.order_id, orderNumber: r.order_number, created: r.created },
-      r.created ? `Order ${r.order_number} created.` : `This quote was already converted — opening order ${r.order_number}.`,
+      r.created ? `Order ${r.order_number} created.` : `This quote was already converted. Opening order ${r.order_number}.`,
     );
   });
 }

@@ -89,10 +89,10 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     <div className="text-xs text-muted">{l.email}</div>
                   </Td>
                   <Td>
-                    {l.company_name || <span className="text-muted">—</span>}
+                    {l.company_name || <span className="text-muted">–</span>}
                     {l.truck_count !== null || l.base_count !== null ? (
                       <div className="text-xs text-muted">
-                        {l.truck_count ?? "—"} truck{l.truck_count === 1 ? "" : "s"} · {l.base_count ?? "—"} base{l.base_count === 1 ? "" : "s"}
+                        {l.truck_count ?? "–"} truck{l.truck_count === 1 ? "" : "s"} · {l.base_count ?? "–"} base{l.base_count === 1 ? "" : "s"}
                       </div>
                     ) : l.fleet_size ? (
                       <div className="text-xs text-muted">{l.fleet_size}</div>
@@ -104,7 +104,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
                     {l.disposition === "spam" ? <Badge tone="gray">Spam</Badge> : null}
                   </Td>
                   <Td>{l.owner_name ?? <span className="text-muted">Unassigned</span>}</Td>
-                  <Td className={l.follow_up_on && l.follow_up_on <= today ? "font-semibold text-red-700" : undefined}>{l.follow_up_on ? formatDate(l.follow_up_on) : "—"}</Td>
+                  <Td className={l.follow_up_on && l.follow_up_on <= today ? "font-semibold text-red-700" : undefined}>{l.follow_up_on ? formatDate(l.follow_up_on) : "–"}</Td>
                   <Td className="whitespace-nowrap">{formatDateTime(l.last_submitted_at)}</Td>
                 </Tr>
               ))}

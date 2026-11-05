@@ -112,7 +112,7 @@ describe("Plan the day: why loads are blocked and what is unavailable", () => {
     const a = result.plans[0].assignments[0];
     expect(a.trailerLabel).toBe("T-53");
     expect(a.status).toBe("needs_review");
-    expect(a.review).toContain("Trailer T-53's registration on record expired 2026-10-09 — confirm it was renewed.");
+    expect(a.review).toContain("Trailer T-53's registration on record expired 2026-10-09. Confirm it was renewed.");
     const unchecked = optimizeWithAlternatives({ ...ctx, expiredDocuments: [], documentsChecked: false }, PRESETS.balanced.priorities, "balanced");
     expect(unchecked.dataNotes).toContain("Vehicle registrations, insurance and inspections could not be checked.");
   });

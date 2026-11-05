@@ -50,7 +50,7 @@ function load(opts: { network: "up" | "down" }) {
 }
 
 describe("companion app service worker", () => {
-  it("stores the offline page, an icon and the offline page's own build files — never company pages or data", async () => {
+  it("stores the offline page, an icon and the offline page's own build files. Never company pages or data", async () => {
     const sw = load({ network: "up" });
     await sw.run("install");
     expect([...sw.stored.keys()].sort()).toEqual(["/_next/static/chunks/app/offline/page-abc.js", "/_next/static/css/app-1.css", "/app-icons/icon-192.png", "/offline"]);

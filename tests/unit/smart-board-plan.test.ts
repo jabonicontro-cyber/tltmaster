@@ -11,10 +11,10 @@ const plan = (trucks: Array<[string, string[]]>, drivers: Array<[string, string[
 describe("board plan", () => {
   it("drops unit-specific details from the reason so the same cause groups together", () => {
     expect(reasonKey("Out of service (expected back 2026-10-14).")).toBe("Out of service.");
-    expect(reasonKey("Safety-critical work order WO-2026-0002 is open — the truck returns only through clearance in Maintenance."))
-      .toBe("Safety-critical work order is open — the truck returns only through clearance in Maintenance.");
+    expect(reasonKey("Safety-critical work order WO-2026-0002 is open. The truck returns only through clearance in Maintenance."))
+      .toBe("Safety-critical work order is open. The truck returns only through clearance in Maintenance.");
     expect(reasonKey("In the shop on this date (WO-2026-0007).")).toBe("In the shop on this date.");
-    expect(reasonKey("Its insurance expired 2026-09-24 (verified) — x")).toBe("Its insurance has expired (verified) — x");
+    expect(reasonKey("Its insurance expired 2026-09-24 (verified), x")).toBe("Its insurance has expired (verified), x");
     expect(reasonKey("Proposed for O-2026-0014 load 3, which is more urgent or earlier.")).toBe("Proposed for a more urgent or earlier load.");
   });
 

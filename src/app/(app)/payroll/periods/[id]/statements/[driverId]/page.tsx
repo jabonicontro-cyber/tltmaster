@@ -22,7 +22,7 @@ export default async function StatementPage({ params }: { params: Promise<{ id: 
   return (
     <>
       <PageHeader
-        title={`Pay statement — ${s.driver.name}`}
+        title={`Pay statement · ${s.driver.name}`}
         crumbs={[{ label: "Payroll", href: "/payroll" }, { label: `${formatDate(s.period.starts_on)} – ${formatDate(s.period.ends_on)}`, href: `/payroll/periods/${id}` }, { label: s.driver.name }]}
         actions={<div className="flex gap-2 print:hidden"><PrintButton /><ButtonLink href={`/payroll/periods/${id}`} variant="secondary">Period</ButtonLink></div>}
       />

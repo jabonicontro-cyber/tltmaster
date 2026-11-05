@@ -25,7 +25,7 @@ export default async function LocationsPage() {
   const canRecord = can(access, "dispatch.edit");
   const header = (
     <>
-      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work." />
+      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work." />
       <FleetNav active="Locations and hours" />
     </>
   );
@@ -128,8 +128,8 @@ export default async function LocationsPage() {
                       </div>
                       {h ? (
                         <p className="mt-0.5 text-sm text-muted">
-                          <span className={h.driveLeft !== null && h.driveLeft < 60 && !stale ? "font-medium text-critical" : undefined}>Drive {clockLabel(h.driveLeft) ?? "—"}</span>
-                          {" · "}Shift {clockLabel(h.shiftLeft) ?? "—"} · Cycle {clockLabel(h.cycleLeft) ?? "—"}
+                          <span className={h.driveLeft !== null && h.driveLeft < 60 && !stale ? "font-medium text-critical" : undefined}>Drive {clockLabel(h.driveLeft) ?? "–"}</span>
+                          {" · "}Shift {clockLabel(h.shiftLeft) ?? "–"} · Cycle {clockLabel(h.cycleLeft) ?? "–"}
                           <span className="block text-xs">{ageLabel(h.asOf, now)} · {RECORD_SOURCE_LABEL[h.source]}</span>
                         </p>
                       ) : <p className="mt-0.5 text-sm text-muted">No hours recorded</p>}

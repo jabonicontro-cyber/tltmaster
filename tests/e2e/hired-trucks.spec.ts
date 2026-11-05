@@ -113,7 +113,7 @@ test("an owner sets up a hauler, offers a load only once documents are current, 
   await expect(pending).toContainText("$14.50 per ton");
 
   await pending.getByRole("button", { name: "Accepted by phone" }).click();
-  await expect(pending).toContainText("Accepted — confirm it");
+  await expect(pending).toContainText("Accepted: confirm it");
   await pending.getByRole("button", { name: "Confirm and assign" }).click();
   await expect(page.getByText("Confirmed: the load is assigned to the hired truck.").first()).toBeVisible();
   const pay = page.getByRole("table", { name: "Hauler pay" });

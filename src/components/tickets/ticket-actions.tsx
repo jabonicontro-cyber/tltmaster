@@ -59,7 +59,7 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
           action === "accept"
             ? "Confirms the ticket matches the paper record. It does not bill the customer or change the order."
             : action === "void"
-              ? "The ticket stays on record as voided and no longer counts for the load. This cannot be undone — enter a new ticket if needed."
+              ? "The ticket stays on record as voided and no longer counts for the load. This cannot be undone. Enter a new ticket if needed."
               : "Marks the ticket as needing office review."
         }
         confirmLabel={action === "accept" ? "Accept" : action === "flag" ? "Flag" : "Void ticket"}

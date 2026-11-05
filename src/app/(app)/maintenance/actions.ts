@@ -101,7 +101,7 @@ export async function recordClearance(input: z.input<typeof clearanceInput>): Pr
     const { data: wo } = await supabase.from("work_orders").select("*").eq("id", parsed.data.id).maybeSingle();
     const unit = (wo as { trailer_id?: string | null } | null)?.trailer_id ? "trailer" : "truck";
     return ok(undefined, parsed.data.outcome === "failed"
-      ? "Inspection failed — the work order is back in progress."
+      ? "Inspection failed: the work order is back in progress."
       : r.returned_to_service ? `Cleared. The ${unit} is back in service.` : `Cleared. The ${unit} stays out of service (another restriction remains).`);
   });
 }

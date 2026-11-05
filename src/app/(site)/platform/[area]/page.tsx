@@ -1,3 +1,4 @@
+import { metaDescription, siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { AreaCards, ControlsAndLimits, WorkflowSteps } from "@/components/site/area-sections";
@@ -12,7 +13,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ area: string }> }): Promise<Metadata> {
   const a = areaBySlug((await params).area);
-  return a ? { title: a.label, description: `${a.summary} ${a.value}`.slice(0, 300), alternates: { canonical: `/platform/${a.slug}` } } : {};
+  return a ? { title: a.label, description: metaDescription(`${a.summary} ${a.value}`), alternates: { canonical: `/platform/${a.slug}` }, openGraph: siteOpenGraph(`/platform/${a.slug}`) } : {};
 }
 
 /** One platform area (src/lib/site/areas.ts): problem, workflow, the real screens of its published features, controls. */

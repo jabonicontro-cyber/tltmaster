@@ -76,7 +76,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
         {(a.site.label || site) && (
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
         )}
-        <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "—"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
+        <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "–"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
         {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {(a.load.unit_code ?? "").replace(/_/g, " ")}</strong></p>}
         {a.order.customer_po && <p className="text-sm text-muted">Customer PO {a.order.customer_po}</p>}
         {(toPickup || toSite || call) && (
@@ -269,7 +269,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         // Keyed by what is due: once the pre-trip is saved the panel starts closed again for the post-trip.
         <details key={preTripDue ? "pre-trip" : "post-trip"} className={cn("rounded-2xl border bg-card", preTripDue ? "border-amber-300 ring-1 ring-amber-200" : "border-line")}>
           <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-base font-semibold text-ink">
-            <span>{preTripDue ? "Pre-trip inspection — do this before you drive" : "Post-trip inspection"}</span>
+            <span>{preTripDue ? "Pre-trip inspection: do this before you drive" : "Post-trip inspection"}</span>
             <span className="text-sm font-medium text-brand-fg">Open</span>
           </summary>
           <div className="border-t border-line px-4 pt-3 pb-4">
@@ -313,7 +313,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
                     <SubmitButton name="answer" value="decline" variant="secondary" className={big}>Decline</SubmitButton>
                   </form>
                 ) : (
-                  <p className="mt-2"><Badge tone={o.status === "confirmed" ? "green" : "blue"}>{o.status === "confirmed" ? "Confirmed by dispatch" : "Accepted — waiting for dispatch"}</Badge></p>
+                  <p className="mt-2"><Badge tone={o.status === "confirmed" ? "green" : "blue"}>{o.status === "confirmed" ? "Confirmed by dispatch" : "Accepted: waiting for dispatch"}</Badge></p>
                 )}
               </li>
             ))}
@@ -345,7 +345,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
               <Wrench className="mt-0.5 size-4 shrink-0" aria-hidden />
               <span>
                 <strong>{n.equipment === "trailer" ? "Trailer" : "Truck"} {n.unit_number}: {n.title}</strong>
-                {" — "}
+                {" · "}
                 {n.notice === "canceled"
                   ? `the shop appointment${n.scheduled_for ? ` on ${formatDate(n.scheduled_for)}` : ""} was canceled.`
                   : n.notice === "rescheduled"

@@ -26,7 +26,7 @@ export function PrimaryTruckPicker({ employeeId, driverId, current, trucks }: { 
           <option value="">Unassigned</option>
           {trucks.map((t) => (
             <option key={t.id} value={t.id} disabled={Boolean(t.heldBy) && t.id !== current}>
-              {t.unit}{t.heldBy && t.id !== current ? ` — primary truck of ${t.heldBy}` : ""}
+              {t.unit}{t.heldBy && t.id !== current ? `, primary truck of ${t.heldBy}` : ""}
             </option>
           ))}
         </Select>

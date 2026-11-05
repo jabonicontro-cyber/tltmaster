@@ -79,18 +79,18 @@ export default async function BriefingPage() {
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {billing && (
-          <StatTile icon={<CircleDollarSign />} label="Delivered yesterday" value={ops?.value ? formatCents(ops.value.verified_value_cents) : "—"} muted={!ops?.value?.verified_value_cents}>
+          <StatTile icon={<CircleDollarSign />} label="Delivered yesterday" value={ops?.value ? formatCents(ops.value.verified_value_cents) : "–"} muted={!ops?.value?.verified_value_cents}>
             Verified value of accepted tickets
           </StatTile>
         )}
-        <StatTile icon={<Truck />} tone={s?.unassigned_loads ? "amber" : "green"} label="Loads today" value={s?.loads_today ?? "—"}>
+        <StatTile icon={<Truck />} tone={s?.unassigned_loads ? "amber" : "green"} label="Loads today" value={s?.loads_today ?? "–"}>
           {s?.loads_today == null ? "Not available" : s.unassigned_loads ? `${s.unassigned_loads} without a truck` : "All covered"}
         </StatTile>
-        <StatTile icon={<Wrench />} tone={s?.trucks_out_of_service ? "amber" : "neutral"} label="Trucks down" value={s?.trucks_out_of_service ?? "—"} muted={!s?.trucks_out_of_service}>
+        <StatTile icon={<Wrench />} tone={s?.trucks_out_of_service ? "amber" : "neutral"} label="Trucks down" value={s?.trucks_out_of_service ?? "–"} muted={!s?.trucks_out_of_service}>
           Out of service today
         </StatTile>
         {billing && (
-          <StatTile icon={<AlertTriangle />} tone={overdue?.length ? "amber" : "neutral"} label="Overdue" value={overdue ? formatCents(overdue.reduce((n, i) => n + balanceCents(i), 0)) : "—"} muted={!overdue?.length}>
+          <StatTile icon={<AlertTriangle />} tone={overdue?.length ? "amber" : "neutral"} label="Overdue" value={overdue ? formatCents(overdue.reduce((n, i) => n + balanceCents(i), 0)) : "–"} muted={!overdue?.length}>
             {overdue ? `${overdue.length} invoice${overdue.length === 1 ? "" : "s"} past terms` : "Invoicing not in use"}
           </StatTile>
         )}

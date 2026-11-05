@@ -81,7 +81,7 @@ export function PortalSignInForm({ customers, contacts, taken, companyName, emai
       setCreated(r.data);
       setStep("done");
     } catch {
-      setError("The server could not be reached. Nothing was lost: try Create again — it continues the same sign-in.");
+      setError("The server could not be reached. Nothing was lost: try Create again. It continues the same sign-in.");
     } finally {
       setPending(false);
     }

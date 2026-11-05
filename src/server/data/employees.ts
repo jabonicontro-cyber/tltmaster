@@ -155,7 +155,7 @@ export async function linkableLogins(companyId: string): Promise<Array<{ user_id
     .filter((m) => m.role && !taken.has(m.user_id))
     .map((m) => {
       const login = displayLogin(m.profiles?.email ?? "");
-      return { user_id: m.user_id, label: m.profiles?.full_name ? `${m.profiles.full_name} — ${login}` : login };
+      return { user_id: m.user_id, label: m.profiles?.full_name ? `${m.profiles.full_name} · ${login}` : login };
     })
     .sort((a, b) => a.label.localeCompare(b.label));
 }

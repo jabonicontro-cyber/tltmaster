@@ -154,7 +154,7 @@ export async function sendInvoice(formData: FormData) {
       cc: [],
       replyTo: env().EMAIL_REPLY_TO,
       subject: testing ? `[TEST] ${subject}` : subject,
-      text: testing ? `TEST MODE — intended for: ${to.join(", ")}\n\n${message}` : message,
+      text: testing ? `TEST MODE. Intended for: ${to.join(", ")}\n\n${message}` : message,
       attachments: [{ filename: filename!, content: pdf!.buffer, contentType: "application/pdf" }],
     },
     { idempotencyKey: `invoice-${id}-${randomUUID()}` },

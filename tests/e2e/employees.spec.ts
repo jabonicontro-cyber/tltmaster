@@ -128,7 +128,7 @@ test("a dispatcher assigns a driver's primary truck; a truck can be one driver's
 
   await page.goto(`/employees/${setup.e2}`);
   const option = page.getByLabel("Primary truck").locator("option", { hasText: `PT-${tag}` });
-  await expect(option).toHaveText(`PT-${tag} — primary truck of Primary One ${tag}`);
+  await expect(option).toHaveText(`PT-${tag}, primary truck of Primary One ${tag}`);
   await expect(option).toHaveAttribute("disabled", ""); // not selectable while another driver holds it
 
   await page.goto(`/employees?q=Primary%20One%20${tag}`);

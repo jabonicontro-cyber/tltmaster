@@ -16,7 +16,7 @@ const READINESS_TONE: Record<ReadinessItem["status"], "green" | "amber" | "gray"
 function eventLine(e: OnboardingEvent, staff: boolean): string {
   const who = e.actor_side === "system" ? "Taviron" : e.actor_side === "taviron" ? (staff && e.actor_name ? e.actor_name : "Taviron") : (e.actor_name ?? "Your team");
   switch (e.kind) {
-    case "status": return `${who}: ${e.from_status ? statusLabel(e.from_status) : "—"} → ${e.to_status ? statusLabel(e.to_status) : "—"}${e.body ? ` — ${e.body}` : ""}`;
+    case "status": return `${who}: ${e.from_status ? statusLabel(e.from_status) : "–"} → ${e.to_status ? statusLabel(e.to_status) : "–"}${e.body ? `: ${e.body}` : ""}`;
     case "comment": return `${who}${e.internal ? " (internal)" : ""}: ${e.body}`;
     default: return `${who}: ${e.body}`;
   }
@@ -36,7 +36,7 @@ export function OnboardingSummaryBar({ state, side }: { state: OnboardingState; 
     <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <p className="text-sm text-ink" aria-live="polite">
         <span className="font-semibold">{s.required_done} of {s.required}</span> required tasks finished
-        {s.ready ? " — every required task is approved or not applicable. Taviron agrees the go-live date with you separately; finishing onboarding never changes it and never starts billing." : "."}
+        {s.ready ? ", every required task is approved or not applicable. Taviron agrees the go-live date with you separately; finishing onboarding never changes it and never starts billing." : "."}
       </p>
       <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {items.map((i) => (

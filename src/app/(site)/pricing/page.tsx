@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { Check, Info } from "lucide-react";
 import { Container, CtaLink, FinalCta, PageIntro, order } from "@/components/site/ui";
@@ -6,8 +7,8 @@ import { PRICING_FAQ as FAQ } from "@/lib/site/pricing-faq";
 
 export const metadata: Metadata = {
   title: "Pricing",
-  description: "Taviron pricing by fleet size and dispatch bases: Essential, Growth, Professional, Enterprise and Custom, with annual-commitment pricing and a one-time onboarding fee.",
-  alternates: { canonical: "/pricing" },
+  description: "Taviron pricing by fleet size and dispatch bases, from Essential to Enterprise. The subscription starts at go-live.",
+  alternates: { canonical: "/pricing" }, openGraph: siteOpenGraph("/pricing"),
 };
 
 // Every tier includes the same software; tiers differ by how many hauling trucks and
@@ -45,7 +46,7 @@ export default function PricingPage() {
             {TIERS.map((t, n) => (
               <li key={t.key} aria-label={t.name} style={order(n % 5)} className="site-reveal site-lift flex flex-col rounded-xl border border-silver/15 bg-navy-2 p-6">
                 <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
-                <p className="mt-1 text-sm text-silver/85">
+                <p className="mt-1 text-sm text-silver">
                   Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
                 </p>
                 <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5">
@@ -53,7 +54,7 @@ export default function PricingPage() {
                   <span className="text-4xl font-semibold tracking-tight text-cloud tabular-nums">{usd(t.monthlyCents)}</span>
                   <span className="text-sm whitespace-nowrap text-silver">/ month</span>
                 </p>
-                <p className="mt-1.5 text-sm text-silver/85">
+                <p className="mt-1.5 text-sm text-silver">
                   {t.from ? "From " : ""}
                   <span className="font-semibold text-cloud tabular-nums">{usd(annualMonthlyCents(t.monthlyCents))}</span> / month with a 12-month commitment
                 </p>
@@ -61,7 +62,7 @@ export default function PricingPage() {
                   One-time onboarding: <span className="font-semibold text-cloud tabular-nums">{usd(t.onboardingCents)}</span>
                 </p>
                 <div className="mt-auto pt-6">
-                  <CtaLink href="/demo" className="w-full">Book a Demo</CtaLink>
+                  <CtaLink href="/demo" className="w-full">Request a Demo</CtaLink>
                 </div>
               </li>
             ))}
@@ -103,14 +104,14 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
-            <p className="mt-5 text-sm text-silver/80">
+            <p className="mt-5 text-sm text-silver">
               Support: email, Monday to Friday, 9 a.m.–5 p.m. Central, excluding U.S. federal holidays, with a first response targeted within one business day.
             </p>
           </div>
         </Container>
         <Container>
           <p className="flex gap-2 rounded-2xl border border-[#0c1a2b]/[0.06] bg-navy-2 p-4 text-sm text-silver">
-            <Info className="mt-0.5 size-4 shrink-0 text-silver/70" aria-hidden />
+            <Info className="mt-0.5 size-4 shrink-0 text-silver" aria-hidden />
             Prices are per company, in US dollars, before applicable taxes. Your tier, prices and terms are confirmed in a written service agreement; nothing is charged
             through this website.
           </p>

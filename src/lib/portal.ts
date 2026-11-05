@@ -132,8 +132,8 @@ export function responseLabel(response: string | null): string | null {
   if (!response) return null;
   const [kind, state] = response.split(":");
   const verb = kind === "accept" ? "You accepted" : "You declined";
-  if (state === "pending") return `${verb} — waiting for confirmation`;
-  if (state === "confirmed") return `${verb} — confirmed`;
+  if (state === "pending") return `${verb}: waiting for confirmation`;
+  if (state === "confirmed") return `${verb}: confirmed`;
   return null;
 }
 

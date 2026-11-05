@@ -190,9 +190,9 @@ export async function getBillingBoard(view: BillingView, f: BillingFilters) {
       .filter((l) => orderIds.has(l.order_id) && (!f.from || l.load_date >= f.from) && (!f.to || l.load_date <= f.to))
       .map((l) => ({
         ...l,
-        truck: l.truck_id ? names.trucks.get(l.truck_id) ?? "—" : null,
-        trailer: l.trailer_id ? names.trailers.get(l.trailer_id) ?? "—" : null,
-        driver: l.driver_id ? names.drivers.get(l.driver_id) ?? "—" : null,
+        truck: l.truck_id ? names.trucks.get(l.truck_id) ?? "–" : null,
+        trailer: l.trailer_id ? names.trailers.get(l.trailer_id) ?? "–" : null,
+        driver: l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : null,
       }));
     return { ...base, view, loads };
   }

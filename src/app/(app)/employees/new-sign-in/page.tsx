@@ -62,7 +62,7 @@ export default async function NewSignInPage({ searchParams }: { searchParams: Pr
         <SignInWizard
           presets={ROLE_PRESETS}
           roles={roles}
-          bases={(bases ?? []).filter((b) => b.active).map((b) => ({ id: b.id, label: `${b.code} — ${b.name}` }))}
+          bases={(bases ?? []).filter((b) => b.active).map((b) => ({ id: b.id, label: `${b.code} · ${b.name}` }))}
           employee={employee}
           companyName={access.companyName ?? "Your company"}
           emailConfigured={mail.configured}

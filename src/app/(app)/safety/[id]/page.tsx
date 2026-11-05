@@ -33,7 +33,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
   const manage = can(access, "safety.manage");
   const closed = incident.status === "closed";
   const people = Object.entries(names).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
-  const who = (u: string | null) => (u ? names[u] ?? "Former user" : "—");
+  const who = (u: string | null) => (u ? names[u] ?? "Former user" : "–");
   const blocked = !incident.findings.trim() ? "Record the findings in the investigation before closing." : incident.open_actions ? "Every corrective action must be done before closing." : null;
 
   return (
@@ -58,9 +58,9 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
             <CardBody className="space-y-3">
               <p className="whitespace-pre-line">{incident.description}</p>
               <dl className="grid gap-x-6 gap-y-1 text-sm sm:grid-cols-3">
-                <div><dt className="text-muted">Truck</dt><dd className="font-medium">{incident.truck ?? "—"}</dd></div>
-                <div><dt className="text-muted">Driver</dt><dd className="font-medium">{incident.driver ?? "—"}</dd></div>
-                <div><dt className="text-muted">Order</dt><dd className="font-medium tabular">{incident.order_number ?? "—"}</dd></div>
+                <div><dt className="text-muted">Truck</dt><dd className="font-medium">{incident.truck ?? "–"}</dd></div>
+                <div><dt className="text-muted">Driver</dt><dd className="font-medium">{incident.driver ?? "–"}</dd></div>
+                <div><dt className="text-muted">Order</dt><dd className="font-medium tabular">{incident.order_number ?? "–"}</dd></div>
               </dl>
               {incident.photos.length > 0 && (
                 <ul className="flex flex-wrap gap-2" aria-label="Photos">
@@ -85,7 +85,7 @@ export default async function IncidentPage({ params }: { params: Promise<{ id: s
               ) : (
                 <dl className="space-y-2 text-sm">
                   <div><dt className="text-muted">Findings</dt><dd className="whitespace-pre-line">{incident.findings || "Not recorded yet."}</dd></div>
-                  <div><dt className="text-muted">Root cause</dt><dd>{incident.root_cause || "—"}</dd></div>
+                  <div><dt className="text-muted">Root cause</dt><dd>{incident.root_cause || "–"}</dd></div>
                   {closed && <div><dt className="text-muted">Closed</dt><dd>{formatDateTime(incident.closed_at!, timezone)}{incident.closed_note ? ` · ${incident.closed_note}` : ""}</dd></div>}
                 </dl>
               )}

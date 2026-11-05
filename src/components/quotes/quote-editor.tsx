@@ -406,7 +406,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
           r = res.ok ? { ok: true, data: { id: res.data.quoteId, editSeq: res.data.editSeq }, message: res.message } : res;
         }
       } catch {
-        setFormError("The server could not be reached. Nothing was saved — your changes are still on this page. Try again.");
+        setFormError("The server could not be reached. Nothing was saved. Your changes are still on this page. Try again.");
         return;
       }
       if (!r.ok) {
@@ -537,7 +537,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
             <>
               <Field label="Contact" htmlFor="contactId" className="md:col-span-2">
                 <Select id="contactId" value={state.contactId} onChange={(e) => selectContact(e.target.value)}>
-                  <option value="">{contacts.length ? "Other / type below" : "No saved contacts — type below"}</option>
+                  <option value="">{contacts.length ? "Other / type below" : "No saved contacts: type below"}</option>
                   {contacts.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -558,7 +558,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                   <option value="">Not specified yet</option>
                   {sites.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.label} — {s.line1}
+                      {s.label} · {s.line1}
                     </option>
                   ))}
                   <option value="new">New address…</option>
@@ -671,7 +671,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                           </optgroup>
                           <optgroup label="Custom line">
                             {(["hauling", "service", "surcharge", "other", ...(canOverride ? ["discount"] : [])] as ChargeKind[]).map((k) => (
-                              <option key={k} value={`k:${k}`}>Custom — {CHARGE_KIND_LABELS[k]}</option>
+                              <option key={k} value={`k:${k}`}>Custom: {CHARGE_KIND_LABELS[k]}</option>
                             ))}
                           </optgroup>
                         </Select>
@@ -777,10 +777,10 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
                       )}
                       {override && (
                         <Badge tone={canOverride ? "amber" : "red"}>
-                          Override — configured {cat?.rate_cents !== null && cat?.rate_cents !== undefined ? formatCents(cat.rate_cents) : formatBp(cat?.percent_bp ?? 0)}
+                          Override: configured {cat?.rate_cents !== null && cat?.rate_cents !== undefined ? formatCents(cat.rate_cents) : formatBp(cat?.percent_bp ?? 0)}
                         </Badge>
                       )}
-                      {!cat && (l.materialId || l.chargeItemId) && <span className="text-muted">No configured rate — enter manually</span>}
+                      {!cat && (l.materialId || l.chargeItemId) && <span className="text-muted">No configured rate: enter manually</span>}
                       <div className="ml-auto flex gap-1">
                         <Button size="sm" variant="ghost" aria-label={`Move line ${i + 1} up`} disabled={i === 0} onClick={() => moveLine(i, -1)}>
                           <ArrowUp className="size-4" />
@@ -870,7 +870,7 @@ export function QuoteEditor({ initial, initialContext, customers: initialCustome
       <div className="no-print fixed inset-x-0 bottom-0 z-20 border-t border-line bg-card/95 px-4 py-3 shadow-[0_-2px_8px_rgba(0,0,0,0.06)] backdrop-blur lg:left-68">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
           <div className="text-sm text-muted">
-            {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : `New ${docLabel} — not saved yet`}
+            {dirty ? <span className="font-semibold text-amber-800">Unsaved changes</span> : state.quoteId ? "All changes saved" : `New ${docLabel}: not saved yet`}
             <span className="ml-3 font-bold text-ink tabular">Total {formatCents(totals.totalCents)}</span>
           </div>
           <div className="flex gap-2">

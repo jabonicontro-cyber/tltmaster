@@ -40,7 +40,7 @@ export function DriverForm({ initial, users, action, cancelHref, submitLabel, ba
           hint="If the driver already has a login, link it so the person is not entered twice. Their name comes from their account."
         >
           <Select {...f("user_id")} value={userId} onChange={(e) => setUserId(e.target.value)}>
-            <option value="">No account — enter the name below</option>
+            <option value="">No account: enter the name below</option>
             {users.map((u) => (
               <option key={u.id} value={u.id}>{u.name}</option>
             ))}

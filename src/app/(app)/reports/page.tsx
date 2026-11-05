@@ -38,7 +38,7 @@ interface Report {
 }
 
 const PERIODS = [7, 30, 90] as const;
-const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "—");
+const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "–");
 const compactMoney = (cents: number) => {
   const d = cents / 100;
   return d >= 1_000_000 ? `$${trimNumber(Math.round(d / 100_000) / 10)}M` : d >= 10_000 ? `$${trimNumber(Math.round(d / 100) / 10)}k` : `$${Math.round(d).toLocaleString("en-US")}`;
@@ -196,14 +196,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                 <Delta now={r.value.verified_value_cents} before={prev?.value?.verified_value_cents ?? null} period={periodLabel} />
               </Kpi>
             ) : null}
-            <Kpi icon={<Ticket className="size-4" aria-hidden />} label="Delivery tickets" value={r.deliveries ? String(r.deliveries.tickets) : "—"} spark={trend.map((t) => t.tickets)} sparkLabel="Delivery tickets over the period">
+            <Kpi icon={<Ticket className="size-4" aria-hidden />} label="Delivery tickets" value={r.deliveries ? String(r.deliveries.tickets) : "–"} spark={trend.map((t) => t.tickets)} sparkLabel="Delivery tickets over the period">
               {r.deliveries ? <Delta now={r.deliveries.tickets} before={prev?.deliveries?.tickets ?? null} period={periodLabel} /> : null}
             </Kpi>
-            <Kpi icon={<Truck className="size-4" aria-hidden />} label="Loads assigned" value={loads(r) === null ? "—" : String(loads(r))} spark={trend.map((t) => t.loads)} sparkLabel="Loads assigned over the period">
+            <Kpi icon={<Truck className="size-4" aria-hidden />} label="Loads assigned" value={loads(r) === null ? "–" : String(loads(r))} spark={trend.map((t) => t.loads)} sparkLabel="Loads assigned over the period">
               {loads(r) !== null ? <Delta now={loads(r)!} before={loads(prev)} period={periodLabel} /> : null}
             </Kpi>
             {r.billing ? (
-              <Kpi icon={<Timer className="size-4" aria-hidden />} label="Delivery → billing (median)" value={r.billing.median_days_delivery_to_handoff == null ? "—" : `${r.billing.median_days_delivery_to_handoff} days`}>
+              <Kpi icon={<Timer className="size-4" aria-hidden />} label="Delivery → billing (median)" value={r.billing.median_days_delivery_to_handoff == null ? "–" : `${r.billing.median_days_delivery_to_handoff} days`}>
                 <p className="text-xs text-muted">{r.billing.handed_off_orders} order{r.billing.handed_off_orders === 1 ? "" : "s"} handed off in this period</p>
               </Kpi>
             ) : null}
@@ -213,7 +213,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             {r.value ? (
               <section aria-label="Verified delivered value" className="xl:col-span-2">
                 <Card className="h-full">
-                  <CardHeader title="Verified delivered value" description={`Per ${size === 1 ? "day" : `${size} days`}. Accepted ticket quantities × the order's approved rate, before percentage charges, discounts and tax — not invoiced amounts.`} />
+                  <CardHeader title="Verified delivered value" description={`Per ${size === 1 ? "day" : `${size} days`}. Accepted ticket quantities × the order's approved rate, before percentage charges, discounts and tax, not invoiced amounts.`} />
                   <div className="px-3 pb-4 sm:px-5">
                     {trend.some((t) => t.value > 0) ? (
                       <AreaChart points={trend.map((t) => ({ label: t.label, value: t.value, detail: `${t.range} · ${t.detail}` }))} format={(n) => compactMoney(n * 100)} label={`Verified delivered value per ${size === 1 ? "day" : `${size} days`}: ${trend.map((t) => `${t.range} ${formatCents(Math.round(t.value * 100))}`).join("; ")}`} />
@@ -252,7 +252,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
                     <MiniStat label="Corrected" value={pct(r.deliveries.corrected, r.deliveries.tickets)} />
                     <MiniStat label="Voided" value={pct(r.deliveries.voided, r.deliveries.tickets)} />
                   </dl>
-                  <p className="mt-3 text-xs text-muted">Median from delivery to acceptance: {r.deliveries.median_hours_to_accept === null ? "—" : `${r.deliveries.median_hours_to_accept} h`}</p>
+                  <p className="mt-3 text-xs text-muted">Median from delivery to acceptance: {r.deliveries.median_hours_to_accept === null ? "–" : `${r.deliveries.median_hours_to_accept} h`}</p>
                 </div>
               ) : (
                 <CardBody><p className="text-sm text-muted">Delivery tickets are not tracked yet.</p></CardBody>
@@ -292,7 +292,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               <CardHeader title="Needs attention" description="Work that is delivered but not yet billable or billed. All periods unless noted." />
               <div className="grid gap-3 px-5 pb-5 sm:grid-cols-2 sm:px-6 xl:grid-cols-4">
                 {r.billing ? <MiniStat label="Ready to bill, not handed off" value={String(r.billing.ready_not_handed_off)} sub={`Orders worth ${formatCents(r.billing.ready_ordered_total_cents)} as ordered`} attention={r.billing.ready_not_handed_off > 0} /> : null}
-                {r.billing ? <MiniStat label="Loads with no ticket" value={String(r.billing.loads_missing_tickets)} sub={`On ${r.billing.orders_with_missing_tickets} orders — charges at risk until entered`} attention={r.billing.loads_missing_tickets > 0} /> : null}
+                {r.billing ? <MiniStat label="Loads with no ticket" value={String(r.billing.loads_missing_tickets)} sub={`On ${r.billing.orders_with_missing_tickets} orders: charges at risk until entered`} attention={r.billing.loads_missing_tickets > 0} /> : null}
                 {r.value ? <MiniStat label="Accepted tickets not priced" value={String(r.value.unpriced_tickets)} sub="This period: other unit than the order line, or no rate" attention={r.value.unpriced_tickets > 0} /> : null}
                 {r.billing ? <MiniStat label="Orders handed off" value={String(r.billing.handed_off_orders)} sub="This period, not reverted" /> : null}
               </div>

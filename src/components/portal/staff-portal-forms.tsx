@@ -35,8 +35,8 @@ export function PortalSettingsForm({ values, entitled, canEdit }: { values: Port
       <FormError message={formError} />
       <fieldset disabled={!canEdit} className="space-y-5">
         <div className="flex flex-col gap-2">
-          <Checkbox name="enabled" defaultChecked={values.enabled} disabled={!entitled} label={<span><strong>Portal on</strong> — invited customers can sign in.</span>} />
-          <Checkbox name="public_page" defaultChecked={values.public_page} label="Public page — anyone with the link sees your welcome, contact details and published help (never orders or quotes)." />
+          <Checkbox name="enabled" defaultChecked={values.enabled} disabled={!entitled} label={<span><strong>Portal on</strong>, invited customers can sign in.</span>} />
+          <Checkbox name="public_page" defaultChecked={values.public_page} label="Public page: anyone with the link sees your welcome, contact details and published help (never orders or quotes)." />
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Name shown to customers" htmlFor="display_name" hint="Empty: your company name.">
@@ -167,7 +167,7 @@ export function QuoteRequestForm({ request, status, quotes }: { request: string;
       {quotes.length ? (
         <Field label="Quote" htmlFor={`q-${request}`}>
           <Select id={`q-${request}`} name="quote" defaultValue="">
-            <option value="">—</option>
+            <option value="">–</option>
             {quotes.map((q) => (
               <option key={q.id} value={q.id}>{q.number}</option>
             ))}

@@ -11,7 +11,7 @@ import { usd } from "@/lib/site/pricing";
 import { addTask, logActivity, saveOpportunity, saveRelationship, setTaskStatus } from "@/app/(app)/customers/crm-actions";
 
 type Names = Record<string, string>;
-const money = (c: number | null) => (c === null ? "—" : usd(c));
+const money = (c: number | null) => (c === null ? "–" : usd(c));
 const stageTone = (s: string) => (s === "won" ? "green" : s === "lost" ? "gray" : s === "negotiation" || s === "quoting" ? "blue" : "gray") as "green" | "gray" | "blue";
 
 function PeopleSelect({ id, name, names, value, empty }: { id: string; name: string; names: Names; value?: string | null; empty: string }) {
@@ -68,8 +68,8 @@ export function HistoryCard({ history, timezone }: { history: CustomerHistory; t
         <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
           <div><dt className="text-xs text-muted">Orders</dt><dd className="text-lg font-semibold tabular">{history.orders}</dd><dd className="text-xs text-muted">{history.open_orders} open</dd></div>
           <div><dt className="text-xs text-muted">Ordered, last 12 months</dt><dd className="text-lg font-semibold tabular">{usd(history.ordered_cents_365d)}</dd><dd className="text-xs text-muted">order totals, not invoices</dd></div>
-          <div><dt className="text-xs text-muted">Delivered, last 12 months</dt><dd className="font-semibold tabular">{delivered.length ? delivered.map(([u, q]) => `${Number(q).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${u}`).join(" · ") : "—"}</dd><dd className="text-xs text-muted">{history.accepted_tickets} accepted tickets in all</dd></div>
-          <div><dt className="text-xs text-muted">Quotes won</dt><dd className="text-lg font-semibold tabular">{winRate === null ? "—" : `${winRate}%`}</dd><dd className="text-xs text-muted">{history.quotes.accepted} of {history.quotes.decided} decided · {history.quotes.open} open</dd></div>
+          <div><dt className="text-xs text-muted">Delivered, last 12 months</dt><dd className="font-semibold tabular">{delivered.length ? delivered.map(([u, q]) => `${Number(q).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${u}`).join(" · ") : "–"}</dd><dd className="text-xs text-muted">{history.accepted_tickets} accepted tickets in all</dd></div>
+          <div><dt className="text-xs text-muted">Quotes won</dt><dd className="text-lg font-semibold tabular">{winRate === null ? "–" : `${winRate}%`}</dd><dd className="text-xs text-muted">{history.quotes.accepted} of {history.quotes.decided} decided · {history.quotes.open} open</dd></div>
         </dl>
         {history.recent_orders.length > 0 && (
           <ul className="divide-y divide-line rounded-xl border border-line">
@@ -185,7 +185,7 @@ export function TasksCard({ customerId, tasks, names, canEdit, today }: { custom
           );
         })}
         {closed.map((t) => (
-          <li key={t.id} className="px-5 py-2 text-xs text-muted sm:px-6"><span className="line-through">{t.title}</span> — {t.status === "done" ? "done" : "canceled"}{t.completed_at ? ` ${formatDate(t.completed_at.slice(0, 10))}` : ""}</li>
+          <li key={t.id} className="px-5 py-2 text-xs text-muted sm:px-6"><span className="line-through">{t.title}</span>, {t.status === "done" ? "done" : "canceled"}{t.completed_at ? ` ${formatDate(t.completed_at.slice(0, 10))}` : ""}</li>
         ))}
       </ul>
       {canEdit && (
@@ -215,7 +215,7 @@ export function ActivityCard({ customerId, activities, contacts, names, canEdit,
             <input type="hidden" name="customer" value={customerId} />
             <Field label="Kind" htmlFor="act-kind"><Select id="act-kind" name="kind" defaultValue="call">{ACTIVITY_KINDS.map((k) => <option key={k} value={k}>{ACTIVITY_LABELS[k]}</option>)}</Select></Field>
             <Field label="With" htmlFor="act-contact">
-              <Select id="act-contact" name="contact_id" defaultValue=""><option value="">—</option>{contacts.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
+              <Select id="act-contact" name="contact_id" defaultValue=""><option value="">–</option>{contacts.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</Select>
             </Field>
             <Field label="On" htmlFor="act-on" hint="Empty = now"><DateInput id="act-on" name="occurred_on" /></Field>
             <Field label="Summary" htmlFor="act-subject" className="sm:col-span-3"><Input id="act-subject" name="subject" required maxLength={200} /></Field>

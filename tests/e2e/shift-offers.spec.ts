@@ -46,7 +46,7 @@ test("an offered shift is asked for on My Day and approved on the Schedule", asy
   const mine = page.getByRole("region", { name: "Open shifts" }).getByRole("listitem").filter({ hasText: note });
   await mine.getByRole("button", { name: "Ask for this shift" }).click();
   await expectToast(page, "Asked. A planner will decide.");
-  await expect(mine).toContainText("Asked — waiting");
+  await expect(mine).toContainText("Asked: waiting");
 
   await page.context().clearCookies();
   await signIn(page, "owner");

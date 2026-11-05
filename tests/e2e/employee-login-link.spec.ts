@@ -31,7 +31,7 @@ test("an owner links an existing login to an employee record and can unlink it",
   await signIn(page, "owner");
   await page.goto(`/employees/${f.empId}`);
   await expect(page.getByText(/^No sign-in\./)).toBeVisible();
-  await page.getByLabel("Link an existing login").selectOption({ label: `Linky ${f.tag} — e2e-link-${f.tag}@toplinetest.example` });
+  await page.getByLabel("Link an existing login").selectOption({ label: `Linky ${f.tag} · e2e-link-${f.tag}@toplinetest.example` });
   await page.getByRole("button", { name: "Link login" }).click();
   await expectToast(page, "Login linked.");
   await expect(page.getByText(/Signs in as Office staff/)).toBeVisible();

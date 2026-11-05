@@ -21,7 +21,7 @@ export default async function CommunicationsSettingsPage() {
   if (!prefs) return <CommunicationsUnavailable title="Communications settings" />;
   return (
     <>
-      <PageHeader title="Communications settings" description="Your notifications, and — for administrators — the company's rules. Taviron sends no email or text for Communications." />
+      <PageHeader title="Communications settings" description="Your notifications, and (for administrators) the company's rules. Taviron sends no email or text for Communications." />
       <CommunicationsTabs active="settings" counts={{ alerts: counts?.open, critical: counts?.critical }} />
       <div className="space-y-5">
         <Card>

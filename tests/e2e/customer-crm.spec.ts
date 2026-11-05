@@ -32,9 +32,9 @@ test("office works a prospect from first call to won, and the pipeline follows",
   await page.getByRole("button", { name: "Save account" }).click();
   await expect(page.getByText("Account saved.")).toBeVisible();
 
-  await page.getByLabel("Summary").fill("Intro call — wants three loads a week");
+  await page.getByLabel("Summary").fill("Intro call: wants three loads a week");
   await page.getByRole("button", { name: "Log activity" }).click();
-  await expect(page.getByRole("list", { name: "Activity history" })).toContainText("Intro call — wants three loads a week");
+  await expect(page.getByRole("list", { name: "Activity history" })).toContainText("Intro call: wants three loads a week");
 
   await page.getByLabel("Follow-up", { exact: true }).fill("Send rates");
   await page.getByLabel("Due", { exact: true }).fill(new Date(Date.now() + 86_400_000).toISOString().slice(0, 10));

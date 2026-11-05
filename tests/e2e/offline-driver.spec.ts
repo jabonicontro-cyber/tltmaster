@@ -35,7 +35,7 @@ test("without signal, taps and tickets wait on the phone and reach the office on
   await saved.getByRole("form", { name: "Pickup times" }).getByRole("button", { name: "Arrived" }).click();
   const waiting = page.getByRole("region", { name: "Waiting to send" });
   await expect(waiting).toContainText("Waiting to send (2)");
-  await expect(waiting).toContainText(`Arrived pickup — ${f.orderNumber} load 2`);
+  await expect(waiting).toContainText(`Arrived pickup · ${f.orderNumber} load 2`);
   await expect(waiting).toContainText(`Ticket for ${f.orderNumber} load 2`);
   await expect(saved.getByRole("form", { name: "Pickup times" })).toContainText("Arrived");
 

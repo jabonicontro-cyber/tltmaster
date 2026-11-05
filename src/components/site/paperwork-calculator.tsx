@@ -65,7 +65,7 @@ export function PaperworkCalculator() {
               aria-describedby={f.hint ? `${id}-${f.key}-hint` : undefined}
               className="mt-2 h-12 w-full rounded-xl border border-silver/25 bg-navy px-4 text-base text-cloud tabular-nums outline-none focus:border-electric focus:ring-2 focus:ring-electric/30"
             />
-            {f.hint ? <p id={`${id}-${f.key}-hint`} className="mt-1.5 text-sm text-silver/80">{f.hint}</p> : null}
+            {f.hint ? <p id={`${id}-${f.key}-hint`} className="mt-1.5 text-sm text-silver">{f.hint}</p> : null}
           </div>
         ))}
       </form>
@@ -92,7 +92,7 @@ export function PaperworkCalculator() {
         ) : (
           <p className="mt-5 text-[15px] leading-relaxed text-silver">Enter your trucks, loads, days and minutes per ticket to see what ticket paperwork takes today.</p>
         )}
-        <p className="mt-6 border-t border-silver/12 pt-4 text-sm leading-relaxed text-silver/80">
+        <p className="mt-6 border-t border-silver/12 pt-4 text-sm leading-relaxed text-silver">
           An estimate from the numbers you entered, not a promise of savings. Nothing you type leaves this page.
         </p>
       </div>

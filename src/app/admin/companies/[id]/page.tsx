@@ -193,7 +193,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
           <ul className="divide-y divide-line">
             {c.audit.map((a, i) => (
               <li key={`${a.at}:${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 px-5 py-2 text-sm sm:px-6">
-                <span>{activityText({ source: "platform", action: a.action })}{a.summary ? ` — ${a.summary}` : ""}</span>
+                <span>{activityText({ source: "platform", action: a.action })}{a.summary ? `: ${a.summary}` : ""}</span>
                 <span className="text-xs text-muted">{formatDateTime(a.at)} · {a.actor}</span>
               </li>
             ))}

@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Container, PageIntro } from "./ui";
 
 /** Shared frame for the privacy notice and terms: clearly marked as drafts until reviewed. */
-export function LegalPage({ title, children }: { title: string; children: ReactNode }) {
+export function LegalPage({ title, updated, children }: { title: string; /** When the text last changed, e.g. "November 5, 2026". */ updated: string; children: ReactNode }) {
   return (
     <>
       <PageIntro title={title} />
@@ -12,6 +12,7 @@ export function LegalPage({ title, children }: { title: string; children: ReactN
             Draft for early access, subject to change. This page has not yet been reviewed by a lawyer and may change at any time, including before general
             availability. A signed agreement with your company takes precedence over it.
           </p>
+          <p className="mt-4 text-sm text-silver">Last updated {updated}. Questions about this page or your information: use the <a href="/contact" className="font-semibold text-electric hover:underline">contact form</a>.</p>
           <div className="mt-8 space-y-6 text-silver [&_h2]:mt-10 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-cloud [&_li]:ml-5 [&_li]:list-disc [&_ul]:space-y-1.5">{children}</div>
         </Container>
       </section>

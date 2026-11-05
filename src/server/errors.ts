@@ -11,7 +11,16 @@ interface DbError {
 }
 
 /** Turn a PostgREST / Postgres error into a message safe to show users. */
+/** Database messages are shown as written, without em dashes (owner 2026-11-04): " — x" becomes ". X". */
 export function dbErrorMessage(error: DbError | null | undefined): string {
+  return plainDashes(dbErrorText(error));
+}
+
+export function plainDashes(text: string): string {
+  return text.replace(/ \u2014 (\S)/g, (_, c: string) => `. ${c.toUpperCase()}`).replace(/\u2014/g, "-");
+}
+
+function dbErrorText(error: DbError | null | undefined): string {
   if (!error) return "Something went wrong.";
   switch (error.code) {
     case "42501":

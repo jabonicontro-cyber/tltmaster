@@ -56,9 +56,9 @@ export function ExceptionCard({ item, can, people, timezone, now, back }: { item
       )}
       <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-muted">
         {item.assignee_name ? <Badge tone="blue">{item.assignee_name}</Badge> : <span>{exceptionOwner(item)}</span>}
-        {item.assignment_note && <span className="line-clamp-1">— {item.assignment_note}</span>}
+        {item.assignment_note && <span className="line-clamp-1">· {item.assignment_note}</span>}
       </p>
-      {hiddenUntil && <p className="mt-1.5 text-xs font-semibold text-muted">Hidden from your view until {formatDateTime(hiddenUntil, timezone)} — still open.</p>}
+      {hiddenUntil && <p className="mt-1.5 text-xs font-semibold text-muted">Hidden from your view until {formatDateTime(hiddenUntil, timezone)}, still open.</p>}
       {/* Footers line up across a row of tiles: the spacer takes the leftover height. */}
       <div className="min-h-4 flex-1" aria-hidden />
       <div className="flex items-center gap-2 border-t border-line/70 pt-3.5">

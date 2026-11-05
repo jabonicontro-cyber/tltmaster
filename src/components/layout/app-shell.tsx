@@ -60,7 +60,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
             {/* Shrinks with the header on narrow phones instead of running under the icons on the right. */}
             <Link href="/command-center" className="block min-w-0 max-w-40 lg:hidden">
               <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" className="max-w-full" />
-              <span className="sr-only"> — home</span>
+              <span className="sr-only">, home</span>
             </Link>
         </div>
         <div className="flex shrink-0 items-center gap-0 sm:gap-1">

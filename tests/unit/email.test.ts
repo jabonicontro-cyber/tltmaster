@@ -76,7 +76,7 @@ describe("email mode", () => {
     return mod.getEmailMode();
   }
 
-  it("defaults to preview mode — nothing is sent", async () => {
+  it("defaults to preview mode. Nothing is sent", async () => {
     expect((await modeWith({ EMAIL_PROVIDER: "" })).mode).toBe("preview");
   });
   it("stays in preview when resend is selected but not fully configured", async () => {
@@ -92,7 +92,7 @@ describe("email mode", () => {
     expect(m.mode).toBe("live");
   });
 
-  it("turns sending off — never live — when the test recipient is malformed", async () => {
+  it("turns sending off (never live) when the test recipient is malformed", async () => {
     const m = await modeWith({ EMAIL_PROVIDER: "resend", RESEND_API_KEY: "re_x", EMAIL_FROM: "a@example.com", EMAIL_TEST_RECIPIENT: "inbox at example" });
     expect(m.mode).toBe("preview");
     expect(m.mode === "preview" && m.reason).toMatch(/EMAIL_TEST_RECIPIENT is malformed/);

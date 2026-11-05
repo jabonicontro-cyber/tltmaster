@@ -31,14 +31,14 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
     if (!queue) return false;
     const event = String(fd.get("event")) as "arrive" | "depart";
     const at = new Date().toISOString();
-    const label = `${event === "arrive" ? "Arrived" : "Left"} ${STOP_LABEL[given.stop].toLowerCase()} — ${queue.label}`;
+    const label = `${event === "arrive" ? "Arrived" : "Left"} ${STOP_LABEL[given.stop].toLowerCase()} · ${queue.label}`;
     if (!enqueue({ id: crypto.randomUUID(), userId: queue.userId, kind: "stop", label, payload: { load, stop: given.stop, event, at } })) return false;
     announceOutbox();
     setKept((k) => ({ ...k, [event === "arrive" ? "arrivedAt" : "departedAt"]: at }));
     return true;
   };
   const send = async (fd: FormData) => {
-    const saved = { ok: true as const, data: undefined, message: "Saved on this phone — it sends when you have signal." };
+    const saved = { ok: true as const, data: undefined, message: "Saved on this phone. It sends when you have signal." };
     if (typeof navigator !== "undefined" && navigator.onLine === false && keep(fd)) return saved;
     try {
       return await markStop(fd);

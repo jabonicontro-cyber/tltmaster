@@ -29,7 +29,7 @@ export default async function EditWorkOrderPage({ params }: { params: Promise<{ 
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: wo.number, href: `/maintenance/work-orders/${id}` }, { label: "Edit" }]}
         title={`Edit ${wo.number}`}
-        description={trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck?.unit_number ?? "—"}`}
+        description={trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck?.unit_number ?? "–"}`}
       />
       <Card>
         <CardBody>

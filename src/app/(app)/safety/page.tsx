@@ -97,9 +97,9 @@ export default async function SafetyPage({ searchParams }: { searchParams: Promi
                         </Td>
                         <Td className="hidden md:table-cell">
                           <div className="tabular">{formatDateTime(r.occurred_at, timezone)}</div>
-                          <div className="max-w-xs truncate text-sm text-muted">{r.location || "—"}</div>
+                          <div className="max-w-xs truncate text-sm text-muted">{r.location || "–"}</div>
                         </Td>
-                        <Td className="hidden lg:table-cell">{r.truck ?? "—"} · {r.driver ?? "—"}</Td>
+                        <Td className="hidden lg:table-cell">{r.truck ?? "–"} · {r.driver ?? "–"}</Td>
                         <Td>
                           <Badge tone={STATUS_TONE[r.status]}>{INCIDENT_STATUSES[r.status]}</Badge>
                           {r.open_actions > 0 && (

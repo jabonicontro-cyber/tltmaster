@@ -221,7 +221,7 @@ export function RecoveryCodesStep({ next }: { next: string }) {
       </ol>
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={() => navigator.clipboard.writeText(codes.join("\n"))}>Copy Codes</Button>
-        <Button onClick={() => router.replace(next)}>I Saved Them — Continue</Button>
+        <Button onClick={() => router.replace(next)}>I Saved Them, Continue</Button>
       </div>
     </div>
   );

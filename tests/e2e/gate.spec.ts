@@ -201,7 +201,7 @@ test.describe("shared Early Access password", () => {
   test.skip(!SHARED, "Needs E2E_EARLY_ACCESS_PASSWORD (the server's EARLY_ACCESS_PASSWORD).");
   test.beforeEach(resetAttempts);
 
-  test("on a phone: show/hide, keyboard only, wrong password refused, right one opens sign-in — never the app", async ({ browser }) => {
+  test("on a phone: show/hide, keyboard only, wrong password refused, right one opens sign-in, never the app", async ({ browser }) => {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     const page = await ctx.newPage();
     await page.goto("/orders");

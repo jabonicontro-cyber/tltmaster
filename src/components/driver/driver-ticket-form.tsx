@@ -155,7 +155,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
             </div>
           </details>
         )}
-        {line && unit && unit !== line.unit_code && <p className="mt-2 text-sm text-amber-900">Different from the order unit — the office will check it. No conversion is made.</p>}
+        {line && unit && unit !== line.unit_code && <p className="mt-2 text-sm text-amber-900">Different from the order unit. The office will check it. No conversion is made.</p>}
         {errors.unit && <p className="mt-1 font-semibold text-red-700">{errors.unit}</p>}
       </fieldset>
 

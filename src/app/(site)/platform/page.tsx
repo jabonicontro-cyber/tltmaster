@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { ShieldCheck, Sparkles } from "lucide-react";
 import { FeatureBrief, FeatureStory, featureAnchor } from "@/components/site/feature-story";
@@ -6,8 +7,8 @@ import { COMING_SOON, publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: "Platform",
-  description: "What Taviron does today, feature by feature: Command Center, Plan the day, dispatch with Smart Dispatch, quotes and orders, the driver portal, delivery tickets, maintenance, fleet, billing readiness, communications and security, and what it does not do yet.",
-  alternates: { canonical: "/platform" },
+  description: "What Taviron does today, feature by feature, from quotes and dispatch to delivery tickets, maintenance and billing, and what it does not do yet.",
+  alternates: { canonical: "/platform" }, openGraph: siteOpenGraph("/platform"),
 };
 
 // Generated from the feature catalog (src/lib/site/features.ts; docs/MARKETING.md). Features with a screen get a full
@@ -76,7 +77,7 @@ export default function PlatformPage() {
                 <li key={c.name} style={order(n % 3)} className="site-reveal rounded-2xl border border-silver/10 bg-navy-2 px-5 py-4 shadow-card">
                   <p className="flex flex-wrap items-center gap-2 font-semibold text-cloud">
                     {c.name}
-                    <span className="inline-flex h-[22px] items-center rounded-full bg-electric/15 px-2.5 text-xs font-semibold text-electric"><span className="pill-text">Coming soon</span></span>
+                    <span className="inline-flex h-[22px] items-center rounded-full bg-electric/10 px-2.5 text-xs font-semibold text-cloud"><span className="pill-text">Coming soon</span></span>
                     {c.addOn && <span className="inline-flex h-[22px] items-center rounded-full border border-silver/20 px-2.5 text-xs font-semibold text-silver"><span className="pill-text">Optional add-on</span></span>}
                   </p>
                   <p className="mt-1.5 text-sm text-silver">{c.text}</p>

@@ -46,7 +46,7 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await page.goto("/driver");
   await expect(page.getByRole("region", { name: "Waiting to send" })).toHaveCount(0, { timeout: 30_000 });
   const recent = page.getByRole("list", { name: "My recent tickets" });
-  await expect(recent.getByText("Sent — waiting for office review").first()).toBeVisible();
+  await expect(recent.getByText("Sent: waiting for office review").first()).toBeVisible();
   const count = await office(async (q) => (await q("select count(*)::int as n from public.delivery_tickets where external_reference = $1", [f.ref])).rows[0].n as number);
   expect(count).toBe(1); // one ticket despite the double tap and the late send
   await expect(page.getByRole("region", { name: "Tickets still needed" })).toHaveCount(0);
@@ -59,7 +59,7 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await page.getByLabel("What happened?").fill("Air leak on the tag axle (e2e)");
   await page.getByRole("button", { name: "Send report" }).click();
   await expect(page.getByRole("status")).toContainText("Report sent to the office.");
-  await expect(page.getByRole("list", { name: "My reports" })).toContainText("Sent — not seen yet");
+  await expect(page.getByRole("list", { name: "My reports" })).toContainText("Sent: not seen yet");
 
   // Direct access to someone else's load or to office pages is refused.
   await page.goto(`/driver/assignments/${f.otherAssignment}/ticket`);
@@ -81,7 +81,7 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await expect(item.getByText("Urgent", { exact: true })).toBeVisible();
   await item.getByRole("link", { name: "Open the report" }).click();
   await expect(page).toHaveURL(/\/field-reports\/[0-9a-f-]{36}(\?back=[^\s]+)?$/);
-  await expect(page.getByRole("heading", { name: "Breakdown — Drew Driver" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Breakdown · Drew Driver" })).toBeVisible();
   await expect(page.getByText("Air leak on the tag axle (e2e)")).toBeVisible();
   await page.getByRole("button", { name: "Resolve" }).click();
   await page.getByRole("dialog").getByLabel("How was it resolved?").fill("Shop replaced the fitting (e2e)");

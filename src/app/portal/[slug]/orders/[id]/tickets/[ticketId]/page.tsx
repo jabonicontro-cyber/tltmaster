@@ -87,7 +87,7 @@ function Row({ label, value }: { label: string; value: string }) {
   return (
     <div>
       <dt className="text-muted">{label}</dt>
-      <dd className="font-semibold">{value || "—"}</dd>
+      <dd className="font-semibold">{value || "–"}</dd>
     </div>
   );
 }

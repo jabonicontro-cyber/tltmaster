@@ -38,7 +38,7 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
   const [data, trucks, home] = await Promise.all([loadFuel(from, to), truckOptions(), homeState()]);
   const header = (
     <>
-      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work." />
+      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work." />
       <FleetNav active="Fuel and IFTA" />
     </>
   );
@@ -62,11 +62,11 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatTile icon={<Route />} label="Miles" value={fmt(data.summary.miles, 0)} muted={!data.summary.miles}>From {data.sheets.filter((s) => !s.voided).length} trip sheets</StatTile>
         <StatTile icon={<Fuel />} label="Gallons bought" value={fmt(data.summary.gallons)} muted={!data.summary.gallons}>{data.purchases.filter((p) => !p.voided).length} purchases</StatTile>
-        <StatTile icon={<Gauge />} label="Fleet MPG" value={data.summary.mpg === null ? "—" : fmt(data.summary.mpg, 2)} muted={data.summary.mpg === null}>{data.summary.mpg === null ? "Needs fuel and miles" : "Miles ÷ gallons, this quarter"}</StatTile>
+        <StatTile icon={<Gauge />} label="Fleet MPG" value={data.summary.mpg === null ? "–" : fmt(data.summary.mpg, 2)} muted={data.summary.mpg === null}>{data.summary.mpg === null ? "Needs fuel and miles" : "Miles ÷ gallons, this quarter"}</StatTile>
       </div>
 
       <Card className="mb-5">
-        <CardHeader title={`IFTA summary — ${year} Q${quarter}`} description="Taxable gallons are each state's miles divided by the fleet MPG; net is taxable minus the gallons bought there (negative = credit). Apply this quarter's official IFTA tax rates to the net gallons." />
+        <CardHeader title={`IFTA summary · ${year} Q${quarter}`} description="Taxable gallons are each state's miles divided by the fleet MPG; net is taxable minus the gallons bought there (negative = credit). Apply this quarter's official IFTA tax rates to the net gallons." />
         {data.summary.rows.length === 0 ? <CardBody><EmptyState title="No trip sheets or fuel this quarter" /></CardBody> : (
           <TableWrap className="rounded-none border-0 border-t border-line">
             <Table aria-label="IFTA summary">
@@ -77,8 +77,8 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
                     <Td className="font-semibold">{r.jurisdiction}</Td>
                     <Td align="right" className="tabular">{fmt(r.miles, 0)}</Td>
                     <Td align="right" className="tabular">{fmt(r.gallonsBought)}</Td>
-                    <Td align="right" className="tabular">{r.taxableGallons === null ? "—" : fmt(r.taxableGallons)}</Td>
-                    <Td align="right" className="tabular">{r.netGallons === null ? "—" : fmt(r.netGallons)}</Td>
+                    <Td align="right" className="tabular">{r.taxableGallons === null ? "–" : fmt(r.taxableGallons)}</Td>
+                    <Td align="right" className="tabular">{r.netGallons === null ? "–" : fmt(r.netGallons)}</Td>
                   </Tr>
                 ))}
               </tbody>

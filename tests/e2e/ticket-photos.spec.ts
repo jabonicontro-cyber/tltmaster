@@ -52,7 +52,7 @@ test("a driver attaches paper-ticket photos (with a failed upload and a retry) a
   await page.context().setOffline(true);
   await page.locator("#ticket-photo").setInputFiles({ name: "back.png", mimeType: "image/png", buffer: png(40, 40) });
   const second = photos.getByRole("listitem", { name: "Photo 2" });
-  await expect(second.getByRole("alert")).toContainText("Not uploaded — no connection");
+  await expect(second.getByRole("alert")).toContainText("Not uploaded: no connection");
   await page.getByRole("button", { name: "Send ticket" }).click();
   await expect(page.getByText("A photo did not upload. Tap Retry, or remove it.")).toBeVisible();
   await page.context().setOffline(false);

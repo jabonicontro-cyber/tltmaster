@@ -11,7 +11,7 @@ export function PoweredByTaviron({ labelHidden = false, className }: { labelHidd
   return (
     <a
       href={`${PUBLIC_WEBSITE_URL}/`}
-      aria-label="Powered by Taviron — visit the Taviron website"
+      aria-label="Powered by Taviron: visit the Taviron website"
       className={cn(
         "group flex min-h-9 items-center gap-2 rounded-xl text-xs whitespace-nowrap text-nav-fg/55 transition-colors duration-150 hover:bg-nav-fg/[0.06] hover:text-nav-fg/85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nav-fg/60 motion-reduce:transition-none",
         className,

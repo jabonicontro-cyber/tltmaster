@@ -48,13 +48,13 @@ export default async function HelpArticlePage({ params, searchParams }: { params
         ) : null}
         {links(a.next).length || links(a.related).length ? (
           <Card><CardBody className="space-y-2"><h2 className="text-base font-semibold">Where to go next</h2>
-            <ul className="space-y-1 text-[15px]">{[...links(a.next), ...links(a.related).filter((r) => !a.next.includes(r.id))].map((r) => <li key={r.id}><Link className="font-semibold text-brand-fg underline" href={`/help/${r.id}`}>{r.title}</Link> <span className="text-muted">— {r.summary}</span></li>)}</ul>
+            <ul className="space-y-1 text-[15px]">{[...links(a.next), ...links(a.related).filter((r) => !a.next.includes(r.id))].map((r) => <li key={r.id}><Link className="font-semibold text-brand-fg underline" href={`/help/${r.id}`}>{r.title}</Link> <span className="text-muted">· {r.summary}</span></li>)}</ul>
           </CardBody></Card>
         ) : null}
 
         <section id="feedback" aria-labelledby="feedback-heading" className="rounded-panel border border-line/70 bg-card shadow-card p-4">
           <h2 id="feedback-heading" className="text-base font-semibold">Did this help?</h2>
-          {sp.feedback === "yes" || sp.feedback === "no" ? <p role="status" className="mt-1 text-sm text-muted">Thanks — your answer is saved. You can change it any time.</p> : null}
+          {sp.feedback === "yes" || sp.feedback === "no" ? <p role="status" className="mt-1 text-sm text-muted">Thanks, your answer is saved. You can change it any time.</p> : null}
           {sp.feedback === "error" ? <p role="status" className="mt-1 text-sm text-muted">Your answer could not be saved (feedback needs a database update that may not be installed yet).</p> : null}
           <form action={sendFeedback} className="mt-3 space-y-3">
             <input type="hidden" name="article" value={a.id} />

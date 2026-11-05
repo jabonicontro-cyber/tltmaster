@@ -139,7 +139,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           </Notice>
         )}
         {order.status === "draft" && (
-          <Notice title="Draft — not confirmed yet">
+          <Notice title="Draft: not confirmed yet">
             Lines, prices and terms can be changed until the order is confirmed. After that they are locked; details and the schedule can still be updated.
           </Notice>
         )}
@@ -150,7 +150,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 Source: <Link href={`/quotes/${sourceQuote.id}`} className="font-semibold underline">{sourceQuote.quote_number}</Link>
                 {sourceVersion && (
                   <>
-                    {" "}— revision{" "}
+                    {" · "}revision{" "}
                     <Link href={`/quotes/${sourceQuote.id}/versions/${sourceVersion.id}`} className="underline">{sourceVersion.version_no}</Link>
                   </>
                 )}
@@ -231,7 +231,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             />
             {dispatch.loads.length === 0 ? (
               <CardBody>
-                <p className="text-sm text-muted">No loads planned yet{canDispatch ? " — plan them on the dispatch board once the order is scheduled." : "."}</p>
+                <p className="text-sm text-muted">No loads planned yet{canDispatch ? ". Plan them on the dispatch board once the order is scheduled." : "."}</p>
               </CardBody>
             ) : (
               <ul className="divide-y divide-line" aria-label="Loads">
@@ -249,7 +249,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                         <Badge tone="gray">Canceled</Badge>
                       ) : a ? (
                         <span className="text-sm">
-                          Truck {dispatch.truckNames.get(a.truck_id) ?? "—"}
+                          Truck {dispatch.truckNames.get(a.truck_id) ?? "–"}
                           {a.trailer_id ? ` + ${dispatch.trailerNames.get(a.trailer_id) ?? "trailer"}` : ""} · {dispatch.driverNames.get(a.driver_id) ?? "driver"}
                         </span>
                       ) : (
@@ -295,7 +295,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   },
                   ...(pickup.installed ? [{ label: "Pickup", value: <OrderPickup orderId={id} pickupId={pickup.pickupId} locations={pickup.locations} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                   { label: "Project", value: order.project_name },
-                  { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required — not entered</Badge> : "") },
+                  { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required: not entered</Badge> : "") },
                   { label: "Payment terms", value: billTo?.payment_terms ?? customer.payment_terms },
                   { label: "Created", value: `${formatDateTime(order.created_at, timezone)} by ${who(order.created_by)}` },
                   ...(order.confirmed_at ? [{ label: "Confirmed", value: formatDateTime(order.confirmed_at, timezone) }] : []),
@@ -318,7 +318,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 order.source_quote_id
                   ? "Prices are as accepted on the quote, including any owner-approved overrides and discounts."
                   : linesEditable
-                    ? "Draft prices — can be changed until the order is confirmed."
+                    ? "Draft prices: can be changed until the order is confirmed."
                     : "Prices locked when the order was confirmed."
               }
             />

@@ -32,7 +32,7 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
   return (
     <div>
       <dt className="text-sm text-muted">{label}</dt>
-      <dd className="font-medium break-words">{children || "—"}</dd>
+      <dd className="font-medium break-words">{children || "–"}</dd>
     </div>
   );
 }

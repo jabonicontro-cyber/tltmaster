@@ -65,3 +65,19 @@ export function fieldErrors(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/**
+ * Outcomes the form page shows after a plain (no JavaScript) post. Only these codes travel in the URL, never free
+ * text, so a crafted link cannot put its own words in the page's alert.
+ */
+export const LEAD_ERRORS = {
+  invalid: "Check the form: a required field is missing or not valid.",
+  rate_limited: "Too many messages from this network. Please wait 15 minutes and try again.",
+  unavailable: "The form is not available right now. Please try again later.",
+  failed: "Your message could not be saved. Please try again later.",
+} as const;
+export type LeadErrorCode = keyof typeof LEAD_ERRORS;
+export const leadErrorText = (code: string | undefined): string | undefined =>
+  code && code in LEAD_ERRORS ? LEAD_ERRORS[code as LeadErrorCode] : undefined;
+/** Cookie set for one minute after a saved plain post, so "Thank you" shows only after a real submission. */
+export const LEAD_SENT_COOKIE = "taviron-lead-sent";

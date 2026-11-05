@@ -144,10 +144,10 @@ export function EquipmentList({
                     </Td>
                     <Td className="hidden sm:table-cell">{typeLabel(e)}</Td>
                     <Td className="hidden md:table-cell">
-                      {[e.model_year, e.make, e.model].filter(Boolean).join(" ") || <span className="text-muted">—</span>}
+                      {[e.model_year, e.make, e.model].filter(Boolean).join(" ") || <span className="text-muted">–</span>}
                       {"ownership" in e && e.ownership ? <div className="text-xs text-muted">{OWNERSHIP[e.ownership as Ownership]}</div> : null}
                     </Td>
-                    {kind === "truck" && <Td className="hidden lg:table-cell">{x.driver ?? <span className="text-muted">—</span>}</Td>}
+                    {kind === "truck" && <Td className="hidden lg:table-cell">{x.driver ?? <span className="text-muted">–</span>}</Td>}
                     <Td className="hidden xl:table-cell"><CapacityText e={e} /></Td>
                     <Td>
                       {x.availability ? <AvailabilityBadge a={x.availability} /> : <ServiceStatusBadge status={e.service_status} active={e.active} />}
@@ -167,7 +167,7 @@ export function EquipmentList({
                         {x.documents && x.documents.expired > 0 && <span className="font-medium text-critical">{x.documents.expired} document{x.documents.expired === 1 ? "" : "s"} expired</span>}
                         {x.documents && x.documents.expiring > 0 && <span className="text-amber-800">{x.documents.expiring} expiring soon</span>}
                         {x.documents && x.documents.notRecorded.length > 0 && <span className="text-xs text-muted">No {x.documents.notRecorded.map((k) => k.toLowerCase()).join(" or ")} on file</span>}
-                        {!x.maintenance && !(x.documents && (x.documents.expired || x.documents.expiring || x.documents.notRecorded.length)) && <span className="text-muted">—</span>}
+                        {!x.maintenance && !(x.documents && (x.documents.expired || x.documents.expiring || x.documents.notRecorded.length)) && <span className="text-muted">–</span>}
                       </div>
                     </Td>
                   </Tr>
@@ -206,7 +206,7 @@ export function EquipmentDetails({ e, timezone, who, extra = [] }: { e: Equipmen
 export function CapacityCard({ e, timezone, who }: { e: Equipment; timezone: string; who: (id: string | null) => string }) {
   return (
     <Card>
-      <CardHeader title="Capacity" description="Recorded values only — unknown capacities are never estimated." />
+      <CardHeader title="Capacity" description="Recorded values only: unknown capacities are never estimated." />
       <CardBody>
         <DescriptionList
           items={[

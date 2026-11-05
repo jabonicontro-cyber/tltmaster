@@ -20,7 +20,7 @@ test("an owner's brand color applies to their own company only", async ({ page, 
   await expect.poll(() => brandVar(page)).toBe("#1f6feb");
   await expect(page.getByText(/Powered by Taviron/)).toBeVisible();
   // The company's identity leads the workspace; urgency keeps its fixed red whatever the company's colors.
-  await expect(page.getByRole("link", { name: /Top Line Trucking — home/ }).first()).toBeVisible();
+  await expect(page.getByRole("link", { name: /Top Line Trucking\s?, home/ }).first()).toBeVisible();
   const urgent = page.getByRole("region", { name: "Attention summary" }).getByRole("link", { name: /^\d+ urgent/ });
   if (await urgent.count()) expect(await urgent.evaluate((el) => getComputedStyle(el).backgroundColor)).toBe("rgb(185, 28, 28)");
 

@@ -24,7 +24,7 @@ export default async function SupportPage() {
   const title = new Map(HELP_ARTICLES.map((a) => [a.id, a.title]));
   return (
     <>
-      <PageHeader title="Support" description="Requests customers sent from Help, and where the Help Center falls short — read live from what people did (last 90 days for searches)." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Support" }]} />
+      <PageHeader title="Support" description="Requests customers sent from Help, and where the Help Center falls short, read live from what people did (last 90 days for searches)." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Support" }]} />
       {error || !o ? (
         <EmptyState title="Not available yet" description="Support requests and help feedback need the database update 20261120000400." />
       ) : (
@@ -41,7 +41,7 @@ export default async function SupportPage() {
                         <Td className="whitespace-nowrap text-sm">{formatDateTime(r.created_at)}</Td>
                         <Td>{r.company} {r.is_demo ? <Badge className="ml-1">Demo</Badge> : null}</Td>
                         <Td className="max-w-md text-sm whitespace-pre-wrap">{r.message}</Td>
-                        <Td className="text-sm">{r.page || "—"}{r.article_id ? <span className="block text-xs text-muted">{title.get(r.article_id) ?? r.article_id}</span> : null}</Td>
+                        <Td className="text-sm">{r.page || "–"}{r.article_id ? <span className="block text-xs text-muted">{title.get(r.article_id) ?? r.article_id}</span> : null}</Td>
                         <Td><Badge tone={r.status === "new" ? "amber" : "gray"}>{r.status === "new" ? "New" : r.status === "answered" ? "Answered" : "Closed"}</Badge></Td>
                       </Tr>
                     ))}

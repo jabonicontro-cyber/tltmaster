@@ -45,7 +45,7 @@ export function ScheduleForm({ trucks, defaultTruck }: { trucks: Truck[]; defaul
         <Field label="Every … engine hours" htmlFor="pm-interval_hours" error={fieldError("interval_hours")} className="sm:col-span-2">
           <Input {...f("interval_hours")} inputMode="decimal" />
         </Field>
-        <Field label="Last done on" htmlFor="pm-last_done_on" error={fieldError("last_done_on")} className="sm:col-span-2" hint="Leave empty if unknown — the schedule shows as “not enough data”.">
+        <Field label="Last done on" htmlFor="pm-last_done_on" error={fieldError("last_done_on")} className="sm:col-span-2" hint="Leave empty if unknown. The schedule shows as “not enough data”.">
           <DateInput {...f("last_done_on")} />
         </Field>
         <Field label="Odometer when last done" htmlFor="pm-last_done_miles" error={fieldError("last_done_miles")} className="sm:col-span-2">

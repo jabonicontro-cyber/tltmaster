@@ -126,7 +126,7 @@ export function OrderDetailsForm({ order, customer, contacts, sites, canEditCust
         <CardBody className="grid grid-cols-1 gap-4 md:grid-cols-6">
           <Field label="Contact" htmlFor="contactId" className="md:col-span-2">
             <Select id="contactId" value={state.contactId} onChange={(e) => selectContact(e.target.value)}>
-              <option value="">{contacts.length ? "Other / type below" : "No saved contacts — type below"}</option>
+              <option value="">{contacts.length ? "Other / type below" : "No saved contacts: type below"}</option>
               {!knownContact && <option value={state.contactId}>{order.contactName} (archived)</option>}
               {contacts.map((c) => (
                 <option key={c.id} value={c.id}>
@@ -152,7 +152,7 @@ export function OrderDetailsForm({ order, customer, contacts, sites, canEditCust
               {!knownSite && <option value={state.siteId}>{order.siteLabel || order.siteLine1} (archived)</option>}
               {sites.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.label} — {s.line1}
+                  {s.label} · {s.line1}
                 </option>
               ))}
               <option value="new">{order.siteId === "new" ? "Address typed on the order" : "New address…"}</option>

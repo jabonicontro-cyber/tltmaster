@@ -96,9 +96,9 @@ describe("order history", () => {
       unknown_field: { from: 1, to: 2 },
     });
     expect(c).toEqual([
-      { field: "customer_po", label: "Customer PO", from: "—", to: "PO-1" },
+      { field: "customer_po", label: "Customer PO", from: "–", to: "PO-1" },
       { field: "internal_notes", label: "Internal notes", from: null, to: null },
-      { field: "window_start", label: "Window from", from: "—", to: "07:00" },
+      { field: "window_start", label: "Window from", from: "–", to: "07:00" },
     ]);
   });
 

@@ -130,7 +130,7 @@ export function QualificationsPanel({ driverId, qualifications, today, soon, tim
         open={Boolean(removing)}
         onOpenChange={(o) => !o && setRemoving(null)}
         title={removing ? `Remove ${qualificationName(removing)}?` : ""}
-        description="Only remove entries made by mistake. Keep expired qualifications — add the renewed one as a new entry. The removal is recorded in the history."
+        description="Only remove entries made by mistake. Keep expired qualifications. Add the renewed one as a new entry. The removal is recorded in the history."
         confirmLabel="Remove"
         tone="danger"
         onConfirm={async () => {
@@ -170,7 +170,7 @@ function QualificationDialog({ driverId, qualification, onClose, onSaved }: { dr
           {kind === "cdl" && (
             <Field label="Class" htmlFor="q-cdl_class" required error={fieldError("cdl_class")} className="sm:col-span-1">
               <Select {...f("cdl_class")} defaultValue={qualification?.cdl_class ?? ""} onChange={changed}>
-                <option value="">—</option>
+                <option value="">–</option>
                 {CDL_CLASSES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
@@ -193,7 +193,7 @@ function QualificationDialog({ driverId, qualification, onClose, onSaved }: { dr
           <Field label="Issued" htmlFor="q-issued_on" error={fieldError("issued_on")} className="sm:col-span-2">
             <DateInput min="1900-01-01" {...f("issued_on")} defaultValue={qualification?.issued_on ?? ""} onChange={changed} />
           </Field>
-          <Field label="Expires" htmlFor="q-expires_on" error={fieldError("expires_on")} className="sm:col-span-2" hint="Leave blank only if unknown — it will not count as valid.">
+          <Field label="Expires" htmlFor="q-expires_on" error={fieldError("expires_on")} className="sm:col-span-2" hint="Leave blank only if unknown. It will not count as valid.">
             <DateInput min="1900-01-01" {...f("expires_on")} defaultValue={qualification?.expires_on ?? ""} onChange={changed} />
           </Field>
           <Field label="Notes" htmlFor="q-notes" error={fieldError("notes")} className="sm:col-span-4">

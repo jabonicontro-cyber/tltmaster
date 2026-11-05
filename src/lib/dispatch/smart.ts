@@ -406,18 +406,18 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${formatDate(t.expected_return_date)})` : ""}.`);
   const shop = ix.shopByTruck.get(t.id) ?? NONE;
   const restricted = shop.find((v) => v.safety_critical);
-  if (restricted) out.push(`Safety-critical work order ${restricted.number} is open — the truck returns only through clearance in Maintenance.`);
+  if (restricted) out.push(`Safety-critical work order ${restricted.number} is open. The truck returns only through clearance in Maintenance.`);
   const visit = shop.find((v) => v.scheduled_for === l.load_date && v.status !== "awaiting_inspection");
   if (visit) out.push(`In the shop on this date (${visit.number}).`);
   const safety = (ix.reportsByTruck.get(t.id) ?? NONE).filter((r) => r.kind === "breakdown" || r.kind === "inspection_issue");
-  if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved — resolve the report before assigning it.");
+  if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved. Resolve the report before assigning it.");
   const base = baseCheck(t.base_id, l, input).block;
   if (base) out.push(base);
   const tractor = t.truck_type === "tractor";
-  if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.");
+  if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers. Assign it on the board.");
   else if (tractor && !input.pickTrailer!(t, l, null, taken.busy)) out.push("No usable trailer is free at this time (compatible, in service, not booked, enough combined capacity).");
   for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => x.blocks && x.expires_on < l.load_date)) {
-    out.push(`Its ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
+    out.push(`Its ${documentLabel(d)} (verified): the company rule blocks it until the renewed document is recorded in Fleet.`);
   }
   // A tractor's capacity is checked together with its trailer (pickTrailer).
   if (!(tractor && input.pickTrailer) && l.planned_quantity !== null && comparableUnit(l.unit_code)) {
@@ -447,8 +447,8 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, taken: Overlaps, input: 
   if (r) blockers.push(`Proposed for ${r.load.order_number} load ${r.load.load_number}, which is more urgent or earlier.`);
   const warnings = checks.warnings.map(eligibilityMessage);
   if (base.warn) warnings.push(base.warn);
-  if (pendingLeave) warnings.push("Has a pending time-off request for this time — confirm before relying on them.");
-  if (ix.onLeave.has(d.id)) warnings.push("Their employee record says On leave — confirm they are working that day.");
+  if (pendingLeave) warnings.push("Has a pending time-off request for this time. Confirm before relying on them.");
+  if (ix.onLeave.has(d.id)) warnings.push("Their employee record says On leave. Confirm they are working that day.");
   return { blockers, warnings };
 }
 
@@ -501,7 +501,7 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
       reasons.push(`Uses ${Math.round(used * 100)}% of its recorded capacity (${fmt(cap)} ${unitLabel(l.unit_code)}).`);
     } else {
       score -= 5;
-      warnings.push(`Capacity in ${unitLabel(l.unit_code)} is not recorded — check the truck can carry ${fmt(l.planned_quantity)} ${unitLabel(l.unit_code)}.`);
+      warnings.push(`Capacity in ${unitLabel(l.unit_code)} is not recorded. Check the truck can carry ${fmt(l.planned_quantity)} ${unitLabel(l.unit_code)}.`);
     }
   }
   if (t.capacity_verified_at === null && (t.weight_capacity !== null || t.volume_capacity !== null)) {
@@ -510,12 +510,12 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
   }
   const ix = indexOf(input);
   for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => !x.blocks && x.expires_on < l.load_date)) {
-    warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"} — confirm it was renewed.`);
+    warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"}: confirm it was renewed.`);
   }
   const inShop = (ix.shopByTruck.get(t.id) ?? NONE).find((v) => v.status === "in_progress" || v.status === "awaiting_parts");
   if (inShop) {
     score -= 10;
-    warnings.push(`Shop work ${inShop.number} is ${inShop.status.replace("_", " ")} — check with the shop.`);
+    warnings.push(`Shop work ${inShop.number} is ${inShop.status.replace("_", " ")}: check with the shop.`);
   }
   if ((ix.reportsByTruck.get(t.id) ?? NONE).some((r) => r.kind === "equipment_issue")) {
     score -= 10;
@@ -660,13 +660,13 @@ export function recommend(input: SmartInput): LoadPlan[] {
       for (const t of excludedTrucks) {
         const truck = input.trucks.find((x) => x.id === t.id)!;
         if (truck.service_status === "out_of_service" && truck.expected_return_date && t.reasons.length === 1) {
-          options.push(`Truck ${t.label} is expected back in service on ${formatDate(truck.expected_return_date)}${truck.expected_return_date > load.load_date ? " — after this load's date" : ""}.`);
+          options.push(`Truck ${t.label} is expected back in service on ${formatDate(truck.expected_return_date)}${truck.expected_return_date > load.load_date ? ", after this load's date" : ""}.`);
         }
-        if (t.reasons.length === 1 && t.reasons[0].startsWith("Already booked") ) options.push(`Truck ${t.label} is free at another time that day — moving the load's time would need the customer's agreement.`);
+        if (t.reasons.length === 1 && t.reasons[0].startsWith("Already booked") ) options.push(`Truck ${t.label} is free at another time that day. Moving the load's time would need the customer's agreement.`);
       }
       for (const d of excludedDrivers) {
         if (d.reasons.every((r) => /not been verified/.test(r))) options.push(`${d.label} would be eligible once the qualification is verified in Fleet → Drivers.`);
-        if (d.reasons.length === 1 && d.reasons[0].startsWith("Already booked")) options.push(`${d.label} is free at another time that day — moving the load's time would need the customer's agreement.`);
+        if (d.reasons.length === 1 && d.reasons[0].startsWith("Already booked")) options.push(`${d.label} is free at another time that day. Moving the load's time would need the customer's agreement.`);
       }
       // Feasible on a later day? (same hours; resources' existing bookings only)
       for (let i = 1; i <= 3; i++) {
@@ -677,7 +677,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
         const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, NO_OVERLAPS, input).blockers.length === 0);
         if (anyTruck && anyDriver) {
           const late = load.requested_date !== null && day > load.requested_date;
-          options.push(`A truck and a driver are available on ${day} at the same time${late ? ` — later than the customer's requested date (${load.requested_date}); confirm with the customer first` : ""}.`);
+          options.push(`A truck and a driver are available on ${day} at the same time${late ? `, later than the customer's requested date (${load.requested_date}); confirm with the customer first` : ""}.`);
           break;
         }
       }

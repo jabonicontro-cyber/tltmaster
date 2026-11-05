@@ -8,7 +8,7 @@ import { formatCents } from "@/lib/money";
 
 const BASIS: Record<QuantityBasis, { label: string; tone: "green" | "amber" | "gray" }> = {
   delivered: { label: "Delivered (accepted tickets)", tone: "green" },
-  ordered_no_tickets: { label: "Ordered — confirm", tone: "amber" },
+  ordered_no_tickets: { label: "Ordered: confirm", tone: "amber" },
   ordered_fixed: { label: "As ordered", tone: "gray" },
   percentage: { label: "Percentage", tone: "gray" },
 };
@@ -26,7 +26,7 @@ export function InvoiceDraftCard({ draft }: { draft: InvoiceDraft }) {
         title={
           <span className="flex flex-wrap items-center gap-2">
             <FileText className="size-5 text-muted" aria-hidden /> Invoice draft
-            <Badge tone={draft.stage === "draft" ? "green" : "amber"}>{draft.stage === "draft" ? "Draft" : "Preview — not ready for billing"}</Badge>
+            <Badge tone={draft.stage === "draft" ? "green" : "amber"}>{draft.stage === "draft" ? "Draft" : "Preview: not ready for billing"}</Badge>
           </span>
         }
         description="Prepared from accepted delivery tickets and the order's approved prices. This is not an invoice: nothing has been issued, sent or recorded in accounting."
@@ -63,7 +63,7 @@ export function InvoiceDraftCard({ draft }: { draft: InvoiceDraft }) {
                 </Td>
                 <Td><Badge tone={BASIS[l.basis].tone}>{BASIS[l.basis].label}</Badge></Td>
                 <Td align="right" className="tabular">
-                  {l.quantity === null ? "—" : `${trimNumber(l.quantity)} ${l.unitCode ?? ""}`}
+                  {l.quantity === null ? "–" : `${trimNumber(l.quantity)} ${l.unitCode ?? ""}`}
                   {l.basis === "delivered" && l.orderedQuantity !== null && l.orderedQuantity !== l.quantity ? (
                     <div className="text-xs text-muted">ordered {trimNumber(l.orderedQuantity)}</div>
                   ) : null}

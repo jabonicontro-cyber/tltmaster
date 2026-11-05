@@ -34,7 +34,7 @@ describe("pay formula engine", () => {
     expect(evaluateFormula("tons / rate", { tons: "1", rate: "0" })).toMatchObject({ ok: false, reason: "invalid" });
   });
 
-  it("accepts only the listed inputs and operators — nothing is executed as code", () => {
+  it("accepts only the listed inputs and operators. Nothing is executed as code", () => {
     for (const bad of ["process.exit()", "tons; rate", "constructor", "tons ** 2", "price * tons", "tons * rate > 3", "if(tons, 1)", "", "1.1234567 * tons", "`x`", "tons[0]"]) {
       expect(validateFormula(bad).ok, bad).toBe(false);
     }

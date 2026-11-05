@@ -18,7 +18,7 @@ export function TruckHealthCard({ rows, canSetRules }: { rows: TruckHealthRow[];
       <Card>
         <CardHeader
           title="Truck health"
-          description={`${good} of ${rows.length} truck${rows.length === 1 ? "" : "s"} Good. From open defects, unplanned repairs in the last 90 days, open repairs and overdue service${canSetRules ? " — rules in Settings → Dispatch rules" : ""}. Information only: safety restrictions are what block dispatch.`}
+          description={`${good} of ${rows.length} truck${rows.length === 1 ? "" : "s"} Good. From open defects, unplanned repairs in the last 90 days, open repairs and overdue service${canSetRules ? ", rules in Settings → Dispatch rules" : ""}. Information only: safety restrictions are what block dispatch.`}
         />
         {flagged.length === 0 ? (
           <CardBody><p className="text-sm text-muted">Every truck reads Good.</p></CardBody>

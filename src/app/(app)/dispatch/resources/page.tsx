@@ -59,8 +59,8 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
   const primaryNote = (truckId: string | undefined) => {
     const t = truckId ? r.trucks.find((x) => x.id === truckId) : undefined;
     if (!t) return null;
-    if (!t.availability.ready) return `${t.availability.label} this day — pair with another truck.`;
-    if (t.shopToday) return "In the shop this day — pair with another truck.";
+    if (!t.availability.ready) return `${t.availability.label} this day: pair with another truck.`;
+    if (t.shopToday) return "In the shop this day. Pair with another truck.";
     return null;
   };
   const onLeave = (d: (typeof r.drivers)[number]) => d.timeOff.some((t) => t.status === "approved" && t.full_day);
@@ -73,7 +73,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
       <PageHeader
         crumbs={[{ label: "Dispatch", href: `/dispatch?date=${date}` }, { label: "Availability" }]}
         title="Driver & truck availability"
-        description={`${formatDateLong(date)}${date === today ? " — today" : ""}. Mechanical availability, bookings, shop visits and driver qualifications. Hours of service are shown separately and are not verified.`}
+        description={`${formatDateLong(date)}${date === today ? ", today" : ""}. Mechanical availability, bookings, shop visits and driver qualifications. Hours of service are shown separately and are not verified.`}
         actions={<div className="flex gap-2">
           <ButtonLink href={href(addDays(date, -1))} variant="secondary" icon={<ChevronLeft className="size-4" />} aria-label="Previous day">Previous</ButtonLink>
           <ButtonLink href={href(addDays(date, 1))} variant="secondary" icon={<ChevronRight className="size-4" />} aria-label="Next day">Next</ButtonLink>
@@ -92,7 +92,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
 
       {leaveConflicts.length > 0 && (
         <Card className="mb-5">
-          <CardHeader title="Assignments to review" description="These drivers have approved time off overlapping an active assignment. Nothing was canceled — reassign or confirm with the driver." />
+          <CardHeader title="Assignments to review" description="These drivers have approved time off overlapping an active assignment. Nothing was canceled. Reassign or confirm with the driver." />
           <ul className="divide-y divide-line">
             {leaveConflicts.map(({ driver, booking }) => (
               <li key={booking.load_id + driver.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 text-sm sm:px-6">
@@ -130,7 +130,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                     <div className="mt-1 max-w-72 text-xs text-muted">{t.shopToday ? `${t.shopToday.number}: ${t.shopToday.title}` : t.availability.ready ? (t.availability.upcoming[0] ? `Next shop visit ${t.availability.upcoming[0].date}` : "") : t.availability.detail}</div>
                   </Td>
                   <Td className="text-sm"><Bookings items={t.bookings} timezone={r.timezone} date={date} /></Td>
-                  <Td className="hidden text-sm md:table-cell">{t.driver ? <Link href={`/fleet/drivers/${t.driver.id}`} className="hover:underline">{t.driver.name}</Link> : <span className="text-muted">—</span>}</Td>
+                  <Td className="hidden text-sm md:table-cell">{t.driver ? <Link href={`/fleet/drivers/${t.driver.id}`} className="hover:underline">{t.driver.name}</Link> : <span className="text-muted">–</span>}</Td>
                 </Tr>
               ))}
               {trucks.length === 0 && <Tr><Td className="text-muted" colSpan={4}>No trucks match.</Td></Tr>}
@@ -155,7 +155,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                     )}
                   </Td>
                   <Td className="text-sm">
-                    {d.timeOff.length === 0 ? <span className="text-muted">—</span> : (
+                    {d.timeOff.length === 0 ? <span className="text-muted">–</span> : (
                       <ul className="space-y-1">
                         {d.timeOff.map((t, i) => (
                           <li key={i}>
@@ -169,7 +169,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                   <Td className="text-sm"><Bookings items={d.bookings} timezone={r.timezone} date={date} /></Td>
                   <Td className="hidden md:table-cell"><Badge tone="gray">Not verified</Badge></Td>
                   <Td className="hidden text-sm lg:table-cell">
-                    {d.primaryTruck ? <Link href={`/fleet/trucks/${d.primaryTruck.id}`} className="tabular hover:underline">{d.primaryTruck.unit}</Link> : <span className="text-muted">—</span>}
+                    {d.primaryTruck ? <Link href={`/fleet/trucks/${d.primaryTruck.id}`} className="tabular hover:underline">{d.primaryTruck.unit}</Link> : <span className="text-muted">–</span>}
                     {primaryNote(d.primaryTruck?.id) && <div className="mt-1 max-w-48 text-xs text-muted" data-testid="primary-truck-note">{primaryNote(d.primaryTruck?.id)}</div>}
                   </Td>
                 </Tr>

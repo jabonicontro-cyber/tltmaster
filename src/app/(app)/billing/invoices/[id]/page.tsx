@@ -125,7 +125,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                     <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-sm sm:px-6">
                       <span className={p.voided_at ? "font-semibold tabular line-through" : "font-semibold tabular"}>{formatCents(p.amount_cents)}</span>
                       <span>{PAYMENT_METHODS[p.method]}{p.reference ? ` #${p.reference}` : ""}</span>
-                      <span className="text-muted">received {formatDate(p.received_on)} · recorded by {p.recorded_by ? names[p.recorded_by] ?? "Former user" : "—"}</span>
+                      <span className="text-muted">received {formatDate(p.received_on)} · recorded by {p.recorded_by ? names[p.recorded_by] ?? "Former user" : "–"}</span>
                       {p.note && <span className="text-muted">· {p.note}</span>}
                       {p.voided_at ? (
                         <span className="w-full text-muted">Voided: {p.void_reason}</span>

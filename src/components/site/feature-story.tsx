@@ -29,7 +29,7 @@ function Media({ shot }: { shot: Shot }) {
         <div className="overflow-hidden rounded-[30px] border-[6px] border-[#1d2b3d] bg-black shadow-[0_40px_80px_-24px_rgb(0_0_0/0.8)] ring-1 ring-silver/25">
           <Image src={`/site/${shot.file}`} alt={shot.alt} width={780} height={1688} className="h-auto w-full" sizes="300px" />
         </div>
-        <figcaption className="mt-3 text-center text-xs text-silver/75">{shot.caption}</figcaption>
+        <figcaption className="mt-3 text-center text-xs text-silver">{shot.caption}</figcaption>
       </figure>
     );
   }
@@ -45,9 +45,9 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
       <div className={`grid items-center gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-14 ${flip ? "lg:[&>*:first-child]:order-last" : ""}`}>
         <div className="site-reveal">
           {/* The category is information (where the capability sits in the day), so it stays, in sentence case. */}
-          <p className="text-sm font-medium text-silver/75">{CATEGORY[feature.category]}</p>
+          <p className="text-sm font-medium text-silver">{CATEGORY[feature.category]}</p>
           <h2 id={titleId} className="mt-3 site-title text-3xl font-bold text-cloud sm:text-4xl">{feature.name}</h2>
-          <p className="mt-5 text-[15px] leading-relaxed text-silver/80"><span className="font-semibold text-cloud">The problem. </span>{feature.problem}</p>
+          <p className="mt-5 text-[15px] leading-relaxed text-silver"><span className="font-semibold text-cloud">The problem. </span>{feature.problem}</p>
           <p className="mt-3 text-[17px] leading-relaxed text-silver">{feature.how}</p>
           <p className="mt-3 text-[17px] leading-relaxed font-medium text-cloud">{feature.value}</p>
           <ul className="mt-5 space-y-2" aria-label={`${feature.name}: what you can check in the demo`}>
@@ -61,7 +61,7 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
           {feature.limitations.length > 0 && (
             <ul className="mt-4 space-y-1.5" aria-label={`${feature.name}: not yet`}>
               {feature.limitations.map((l) => (
-                <li key={l} className="flex gap-2 text-xs text-silver/70">
+                <li key={l} className="flex gap-2 text-xs text-silver">
                   <CircleDashed className="mt-0.5 size-3.5 shrink-0" aria-hidden />
                   <span>{l}</span>
                 </li>
@@ -70,9 +70,9 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
           )}
           {related.length > 0 && (
             <p className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-              <span className="text-silver/60">Works with</span>
+              <span className="text-silver">Works with</span>
               {related.map((r) => (
-                <a key={r.id} href={`#${featureAnchor(r.id)}`} className="font-semibold text-electric hover:underline">
+                <a key={r.id} href={`/platform#${featureAnchor(r.id)}`} className="inline-flex min-h-6 items-center font-semibold text-electric hover:underline">
                   {r.name}
                 </a>
               ))}
@@ -89,11 +89,11 @@ export function FeatureStory({ feature, flip }: { feature: Feature; flip?: boole
 export function FeatureBrief({ feature }: { feature: Feature }) {
   return (
     <article id={featureAnchor(feature.id)} className="scroll-mt-24 rounded-xl border border-silver/10 bg-navy-2 p-6" aria-labelledby={`${featureAnchor(feature.id)}-title`}>
-      <p className="text-sm font-medium text-silver/75">{CATEGORY[feature.category]}</p>
+      <p className="text-sm font-medium text-silver">{CATEGORY[feature.category]}</p>
       <h3 id={`${featureAnchor(feature.id)}-title`} className="mt-2 text-xl font-bold text-cloud">{feature.name}</h3>
-      <p className="mt-3 text-sm leading-relaxed text-silver/80">{feature.problem}</p>
+      <p className="mt-3 text-sm leading-relaxed text-silver">{feature.problem}</p>
       <p className="mt-2 text-sm leading-relaxed text-silver">{feature.how}</p>
-      {feature.limitations.length > 0 && <p className="mt-3 text-xs text-silver/65">Not yet: {feature.limitations.join(" ")}</p>}
+      {feature.limitations.length > 0 && <p className="mt-3 text-xs text-silver">Not yet: {feature.limitations.join(" ")}</p>}
     </article>
   );
 }

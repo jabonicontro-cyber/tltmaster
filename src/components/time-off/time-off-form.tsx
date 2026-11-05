@@ -81,7 +81,7 @@ export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
         </Field>
       )}
       {bank && kind === "partial" && <p className="text-sm text-muted sm:col-span-6">The hours between the start and end time are taken from {bank.name}.</p>}
-      <Field label="Comment (optional)" htmlFor="to-reason" error={fieldError("reason")} className="sm:col-span-6" hint="Visible to you and to people who manage time off — never to dispatch.">
+      <Field label="Comment (optional)" htmlFor="to-reason" error={fieldError("reason")} className="sm:col-span-6" hint="Visible to you and to people who manage time off. Never to dispatch.">
         <Textarea {...f("reason")} rows={2} maxLength={1000} />
       </Field>
       <div className="sm:col-span-6"><Button type="submit" loading={pending}>Send request</Button></div>

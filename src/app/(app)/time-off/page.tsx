@@ -109,7 +109,7 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
                 <p className="text-xs text-muted">Balance {formatHours(b.balance)}{b.pending ? ` · ${formatHours(b.pending)} pending` : ""}</p>
                 {!b.eligible && <p className="mt-1 text-xs text-muted">Your employment type cannot use this bank.</p>}
                 {b.usable_from && <p className="mt-1 text-xs text-muted">Usable from {formatDate(b.usable_from)}.</p>}
-                {b.hire_date_missing && <p className="mt-1 text-xs text-muted">No hire date is recorded, so the waiting period cannot be checked — ask the office.</p>}
+                {b.hire_date_missing && <p className="mt-1 text-xs text-muted">No hire date is recorded, so the waiting period cannot be checked. Ask the office.</p>}
               </li>
             ))}
           </ul>

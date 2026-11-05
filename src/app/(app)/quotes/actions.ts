@@ -154,7 +154,7 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
         cc: actualCc,
         replyTo: env().EMAIL_REPLY_TO,
         subject: testing ? `[TEST] ${subject}` : subject,
-        text: testing ? `TEST MODE — intended for: ${[...to, ...cc].join(", ")}\n\n${message}` : message,
+        text: testing ? `TEST MODE. Intended for: ${[...to, ...cc].join(", ")}\n\n${message}` : message,
         attachments: [{ filename, content: pdf.buffer, contentType: "application/pdf" }],
       },
       { idempotencyKey: `quote-${versionId}-${randomUUID()}` },

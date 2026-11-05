@@ -175,7 +175,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
             )}
             {plan.blocked && plan.blocked.options.length > 0 ? (
               <div>
-                <p className="text-xs font-semibold text-ink">Ideas — each needs your decision; nothing is changed automatically</p>
+                <p className="text-xs font-semibold text-ink">Ideas: each needs your decision; nothing is changed automatically</p>
                 <ul className="list-disc pl-5 text-muted">{plan.blocked.options.map((o) => <li key={o}>{o}</li>)}</ul>
               </div>
             ) : null}
@@ -245,7 +245,7 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
       </span></nav>
       <details className="border-b border-line px-5 py-2 text-xs text-muted sm:px-6">
         <summary className="cursor-pointer">
-          Proposals only — nothing is assigned until you approve. <span className="font-medium text-amber-900">Hours of service are not checked.</span> <span className="underline">About these proposals</span>
+          Proposals only: nothing is assigned until you approve. <span className="font-medium text-amber-900">Hours of service are not checked.</span> <span className="underline">About these proposals</span>
         </summary>
         <ul className="mt-1.5 list-disc space-y-0.5 pl-5" aria-label="Limits of these proposals">
           <li>Every approval is checked again against current availability, qualifications, capacity, bookings and the shop schedule.</li>

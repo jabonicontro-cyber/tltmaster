@@ -139,7 +139,7 @@ function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; 
         <p className="text-sm text-muted">{view.what}</p>
         {view.note ? <p className="text-sm text-muted">{view.note}</p> : null}
         {view.migration ? <p className="text-xs text-muted">Needs migration {view.migration} on the database you are using.</p> : null}
-        {check ? <p className="text-xs text-muted">{CHECK_LABELS[check.status]} {formatDateTime(check.checked_at)}{check.checked_by ? ` by ${check.checked_by}` : ""}{check.note ? ` — ${check.note}` : ""}</p> : null}
+        {check ? <p className="text-xs text-muted">{CHECK_LABELS[check.status]} {formatDateTime(check.checked_at)}{check.checked_by ? ` by ${check.checked_by}` : ""}{check.note ? `: ${check.note}` : ""}</p> : null}
       </div>
       <div className="flex flex-col items-start gap-2 lg:items-end">
         <OpenControl view={view} demo={demo} companyId={companyId} />
@@ -151,7 +151,7 @@ function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; 
               {companyId ? <input type="hidden" name="company" value={companyId} /> : null}
               <label className="sr-only" htmlFor={`st-${view.key}`}>Result</label>
               <Select id={`st-${view.key}`} name="status" defaultValue="tested" className="h-9 w-auto text-sm">
-                <option value="tested">Tested — works</option>
+                <option value="tested">Tested: works</option>
                 <option value="failing">Failing</option>
                 <option value="needs_config">Needs configuration</option>
                 <option value="blocked">Blocked</option>

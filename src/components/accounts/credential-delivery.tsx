@@ -74,7 +74,7 @@ export function LoginSheet({ c, includePassword }: { c: DeliveryCredential; incl
       <h2 className="mt-6 text-lg font-bold">If something goes wrong</h2>
       <ul className="mt-2 list-disc space-y-1 pl-6 text-base">
         <li>The temporary password stops working on <strong>{formatDateTime(c.expiresAt)}</strong>. After that, ask {c.companyName} for a new sheet.</li>
-        <li>Forgot your password later? Ask {c.companyName} for a new sheet — nobody there can see your password.</li>
+        <li>Forgot your password later? Ask {c.companyName} for a new sheet. Nobody there can see your password.</li>
         <li>On a shared computer, untick &ldquo;Stay signed in&rdquo; when you sign in, and sign out when you are done.</li>
       </ul>
       <p className="mt-6 rounded-xl bg-[#f1f5f9] p-3 text-sm">
@@ -191,7 +191,7 @@ export function CredentialDelivery({ c, email, onEmail, onRecord, onDone }: {
         </div>
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3">
-        <p className="text-xs text-muted">Closing this panel forgets the temporary password here. It does not cancel it — use Reissue to replace it.</p>
+        <p className="text-xs text-muted">Closing this panel forgets the temporary password here. It does not cancel it. Use Reissue to replace it.</p>
         <Button variant="secondary" onClick={onDone}>Done</Button>
       </div>
 

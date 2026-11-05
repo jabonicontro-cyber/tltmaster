@@ -57,7 +57,7 @@ export function PriceEntriesTable({ priceListId, entries, materials, charges, un
     <>
       <CardHeader
         title="Rates"
-        description="To change a price going forward use “Change rate” — the old rate is kept as history. Saved quotes keep the rate they were created with."
+        description="To change a price going forward use “Change rate”. The old rate is kept as history. Saved quotes keep the rate they were created with."
         actions={canEdit && <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setAdding(true)}>Add rate</Button>}
       />
       {visible.length === 0 ? (
@@ -248,7 +248,7 @@ function ChangeRateDialog({ priceListId, entry, itemName, today, onClose }: { pr
     <Dialog
       open
       onOpenChange={(o) => !o && !pending && onClose()}
-      title={`Change rate — ${itemName}`}
+      title={`Change rate · ${itemName}`}
       description={`Current: ${isPercent ? formatBp(entry.percent_bp ?? 0) : formatCents(entry.rate_cents ?? 0)} since ${formatDate(entry.effective_from)}. The current rate ends the day before the new one starts.`}
       size="sm"
     >

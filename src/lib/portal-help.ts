@@ -28,7 +28,7 @@ export const PORTAL_GENERAL_HELP: PortalGeneralArticle[] = [
     id: "quotes",
     title: "How do quotes work here?",
     category: "Using This Portal",
-    body: "Use Request a Quote to tell the company what you need. They reply with a priced quote, which appears under Your Quotes. You can accept or decline it there; the company confirms your answer before anything is scheduled. A quote past its “valid until” date can no longer be accepted — request a new one.",
+    body: "Use Request a Quote to tell the company what you need. They reply with a priced quote, which appears under Your Quotes. You can accept or decline it there; the company confirms your answer before anything is scheduled. A quote past its “valid until” date can no longer be accepted, request a new one.",
   },
   {
     id: "tickets",

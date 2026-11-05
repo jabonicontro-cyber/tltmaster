@@ -416,7 +416,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                           {ENTITY_LABELS[b.entity as ImportEntity] ?? b.entity}
                           <div className="text-xs text-muted tabular">{b.status === "review" ? `${b.to_import} of ${b.rows} to import` : created != null ? `${created} created` : `${b.rows} rows`}</div>
                         </Td>
-                        <Td className="hidden text-sm md:table-cell">{b.created_by ?? "—"}</Td>
+                        <Td className="hidden text-sm md:table-cell">{b.created_by ?? "–"}</Td>
                         <Td><Badge tone={st.tone}>{st.label}</Badge></Td>
                       </Tr>
                     );

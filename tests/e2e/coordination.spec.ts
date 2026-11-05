@@ -103,7 +103,7 @@ test("the office flags an urgent order, dispatch acknowledges it on the board, a
     await expect(row).toContainText("Acknowledged by dispatch");
     // In the Command Center it is now "being worked on", with who acknowledged it.
     await dp.goto("/command-center?kind=urgent_order");
-    const item = dp.getByRole("listitem", { name: `${f.orderNumber} is urgent — acknowledged by dispatch` });
+    const item = dp.getByRole("listitem", { name: `${f.orderNumber} is urgent · acknowledged by dispatch` });
     await expect(item).toContainText(`acknowledged by ${USERS.dispatcher.name}`);
     await expect(item).toContainText("No truck assigned yet.");
     // Acknowledged is not resolved: the urgent order keeps its red edge until the flag is closed (owner 2026-10-28).

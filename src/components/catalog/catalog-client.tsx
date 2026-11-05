@@ -178,7 +178,7 @@ export function ChargesTable({ rows, units, canEdit }: { rows: ChargeItemRow[]; 
     <>
       <CardHeader
         title="Hauling, services and other charges"
-        description="Delivery charges, hourly trucking, surcharges and discounts — kept separate from material prices."
+        description="Delivery charges, hourly trucking, surcharges and discounts, kept separate from material prices."
         actions={
           canEdit && (
             <Button size="sm" icon={<Plus className="size-4" />} onClick={() => { setMethod("per_unit"); setEditing("new"); }}>

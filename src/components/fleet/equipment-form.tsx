@@ -86,7 +86,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
         <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Capacity</legend>
         <div className="sm:col-span-6">
           <Notice title="Only enter capacities you have confirmed">
-            Leave a capacity blank if it is not known — it will show as <strong>Unknown</strong>. Never estimate. Mark it verified only after checking a scale ticket,
+            Leave a capacity blank if it is not known. It will show as <strong>Unknown</strong>. Never estimate. Mark it verified only after checking a scale ticket,
             registration or manufacturer specification, and note the source.
           </Notice>
         </div>
@@ -95,7 +95,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
         </Field>
         <Field label="Unit" htmlFor="weight_unit" error={fieldError("weight_unit")} className="sm:col-span-1">
           <Select {...f("weight_unit")} value={weightUnit} onChange={(e) => capacityChanged(() => setWeightUnit(e.target.value))}>
-            <option value="">—</option>
+            <option value="">–</option>
             <option value="ton">Tons</option>
             <option value="lb">Pounds</option>
           </Select>
@@ -156,7 +156,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
                 <Checkbox key={t} name="compatible_truck_types" value={t} defaultChecked={initial.compatible_truck_types?.includes(t)} label={TRUCK_TYPE_LABELS[t]} />
               ))}
             </div>
-            <p className="mt-1 text-sm text-muted">Leave all unchecked if not known — compatibility will show as not recorded.</p>
+            <p className="mt-1 text-sm text-muted">Leave all unchecked if not known. Compatibility will show as not recorded.</p>
           </div>
           <Field label="Usually paired with truck" htmlFor="default_truck_id" error={fieldError("default_truck_id")} className="sm:col-span-2" hint="The trailer keeps its own service status.">
             <Select {...f("default_truck_id")} defaultValue={initial.default_truck_id ?? ""}>

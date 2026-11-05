@@ -80,10 +80,10 @@ export default async function PartsPage({ searchParams }: { searchParams: Promis
                             {p.part_number && <span className="ml-2 text-sm text-muted tabular">{p.part_number}</span>}
                             {isLow(p) && <Badge tone="amber" className="ml-2">Low</Badge>}
                           </Td>
-                          <Td className="hidden text-sm md:table-cell">{p.location || "—"}</Td>
+                          <Td className="hidden text-sm md:table-cell">{p.location || "–"}</Td>
                           <Td align="right" className="font-semibold tabular">{qty(p.on_hand)} <span className="font-normal text-muted">{p.unit}</span></Td>
-                          <Td align="right" className="hidden tabular sm:table-cell">{p.reorder_point ? qty(p.reorder_point) : "—"}</Td>
-                          {canCosts && <Td align="right" className="hidden tabular lg:table-cell">{c?.unit != null ? formatCents(c.unit) : "—"}</Td>}
+                          <Td align="right" className="hidden tabular sm:table-cell">{p.reorder_point ? qty(p.reorder_point) : "–"}</Td>
+                          {canCosts && <Td align="right" className="hidden tabular lg:table-cell">{c?.unit != null ? formatCents(c.unit) : "–"}</Td>}
                           {manage && (
                             <Td align="right">
                               <span className="inline-flex flex-wrap justify-end gap-1">

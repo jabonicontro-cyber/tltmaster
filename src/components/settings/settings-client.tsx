@@ -334,7 +334,7 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
                   <div className="flex items-center gap-3">
                     <Avatar name={u.full_name || u.email} src={u.photo} size={36} />
                     <div className="min-w-0">
-                      <div className="font-semibold">{u.full_name || "—"} {u.id === currentUserId && <span className="text-sm font-normal text-muted">(you)</span>}</div>
+                      <div className="font-semibold">{u.full_name || "–"} {u.id === currentUserId && <span className="text-sm font-normal text-muted">(you)</span>}</div>
                       <div className="text-sm break-all text-muted">{u.email}{u.phone ? ` · ${u.phone}` : ""}</div>
                     </div>
                   </div>

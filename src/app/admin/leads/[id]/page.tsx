@@ -113,8 +113,8 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             <CardBody>
               <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-muted">Email</dt><dd><a href={`mailto:${lead.email}`} className="font-semibold underline">{lead.email}</a></dd></div>
-                <div><dt className="text-muted">Phone</dt><dd>{lead.phone || "—"}</dd></div>
-                <div><dt className="text-muted">Company</dt><dd>{lead.company_name || "—"}</dd></div>
+                <div><dt className="text-muted">Phone</dt><dd>{lead.phone || "–"}</dd></div>
+                <div><dt className="text-muted">Company</dt><dd>{lead.company_name || "–"}</dd></div>
                 {lead.kind === "demo" || lead.truck_count !== null ? (
                   <>
                     <div><dt className="text-muted">Hauling trucks</dt><dd>{lead.truck_count ?? "Not given"}</dd></div>

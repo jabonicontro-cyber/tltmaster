@@ -59,7 +59,7 @@ test("an owner gives an accountant read-only access until a date, then ends it",
     await acct.waitForURL(/\/accountant/);
     await expect(acct.getByRole("heading", { name: "Accountant view" })).toBeVisible();
     await expect(acct.getByText(/Your access ends /)).toBeVisible();
-    await expect(acct.getByRole("region", { name: /Driver payroll/ }).or(acct.getByText(/Driver payroll —/))).toBeVisible();
+    await expect(acct.getByRole("region", { name: /Driver payroll/ }).or(acct.getByText(/Driver payroll · /))).toBeVisible();
     const nav = (await acct.getByRole("navigation", { name: "Main" }).getByRole("link").allTextContents()).map((t) => t.trim()).filter(Boolean);
     expect(nav.sort()).toEqual(["Accountant view", "Billing", "Reports"]);
     const csv = await acct.request.get(`/accountant/export?kind=invoices&year=${new Date().getFullYear() - 1}`);

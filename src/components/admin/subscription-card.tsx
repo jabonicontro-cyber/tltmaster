@@ -9,7 +9,7 @@ import { OFFER_LABELS, STAGE_LABELS, STAGE_TONES, TERMS_LABELS, type Lifecycle, 
 import { usd } from "@/lib/site/pricing";
 import { cancelSubscription, goLiveNow, recordOnboardingFee, setGoLiveDate, setLifecycleTerms } from "@/app/admin/lifecycle-actions";
 
-const money = (c: number | null | undefined) => (c === null || c === undefined ? "—" : usd(c));
+const money = (c: number | null | undefined) => (c === null || c === undefined ? "–" : usd(c));
 
 /**
  * A customer company's subscription lifecycle for the platform team: plan and terms, onboarding fee, go-live and
@@ -39,7 +39,7 @@ export function SubscriptionCard({ companyId, life, plans }: { companyId: string
             <div><dt className="text-xs text-muted">Offer</dt><dd>{OFFER_LABELS[life.offer]}</dd></div>
             {life.onboarding_fee_note && <div><dt className="text-xs text-muted">Fee record</dt><dd>{life.onboarding_fee_note}</dd></div>}
             {life.commitment_months_left !== null && <div><dt className="text-xs text-muted">Commitment</dt><dd>{life.commitment_months_left} monthly payment{life.commitment_months_left === 1 ? "" : "s"} left</dd></div>}
-            {life.canceled_at && <div className="col-span-2"><dt className="text-xs text-muted">Canceled</dt><dd>{formatDateTime(life.canceled_at)} — {life.cancel_reason}{life.cancel_balance_cents ? ` · balance ${money(life.cancel_balance_cents)}` : ""}</dd></div>}
+            {life.canceled_at && <div className="col-span-2"><dt className="text-xs text-muted">Canceled</dt><dd>{formatDateTime(life.canceled_at)} · {life.cancel_reason}{life.cancel_balance_cents ? ` · balance ${money(life.cancel_balance_cents)}` : ""}</dd></div>}
           </dl>
         )}
 
@@ -50,7 +50,7 @@ export function SubscriptionCard({ companyId, life, plans }: { companyId: string
               <Select id="plan_version_id" name="plan_version_id" defaultValue={life?.plan?.id ?? ""} required>
                 <option value="" disabled>Choose a plan</option>
                 {current.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name} — {p.monthly_cents === null ? "quoted" : `${p.from_price ? "from " : ""}${usd(p.monthly_cents)}/mo, onboarding ${usd(p.onboarding_cents ?? 0)}`}</option>
+                  <option key={p.id} value={p.id}>{p.name} · {p.monthly_cents === null ? "quoted" : `${p.from_price ? "from " : ""}${usd(p.monthly_cents)}/mo, onboarding ${usd(p.onboarding_cents ?? 0)}`}</option>
                 ))}
                 {life?.plan && !current.some((p) => p.id === life.plan!.id) && <option value={life.plan.id}>{life.plan.name} v{life.plan.version} (earlier price)</option>}
               </Select>

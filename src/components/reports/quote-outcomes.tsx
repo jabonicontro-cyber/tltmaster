@@ -8,7 +8,7 @@ import { MIN_DECIDED, type Group, type QuoteOutcomes } from "@/lib/quotes/outcom
 
 // Quote win/loss on Reports (B95): measured from decided quotes only; no price is suggested or changed.
 
-const pct = (r: number | null) => (r === null ? "—" : `${Math.round(r * 100)}%`);
+const pct = (r: number | null) => (r === null ? "–" : `${Math.round(r * 100)}%`);
 
 function Rate({ g }: { g: Group }) {
   if (g.winRate === null) return <span className="text-xs text-muted">Needs {MIN_DECIDED} decided</span>;
@@ -58,7 +58,7 @@ export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
               <div><dt className="text-sm text-muted">Win rate</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{pct(data.winRate)}</dd><dd className="text-xs text-muted">{data.won} won of {data.decided} decided</dd></div>
               <div><dt className="text-sm text-muted">Won value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.wonValueCents)}</dd><dd className="text-xs text-muted">Quoted totals of accepted quotes</dd></div>
               <div><dt className="text-sm text-muted">Lost value</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{formatCents(data.lostValueCents)}</dd><dd className="text-xs text-muted">{data.lost} declined or expired</dd></div>
-              <div><dt className="text-sm text-muted">Time to a decision</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{data.medianDaysToDecision === null ? "—" : `${data.medianDaysToDecision} days`}</dd><dd className="text-xs text-muted">Median, from first sent</dd></div>
+              <div><dt className="text-sm text-muted">Time to a decision</dt><dd className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{data.medianDaysToDecision === null ? "–" : `${data.medianDaysToDecision} days`}</dd><dd className="text-xs text-muted">Median, from first sent</dd></div>
             </dl>
           </CardBody>
         )}
@@ -83,8 +83,8 @@ export function QuoteOutcomesSection({ data }: { data: QuoteOutcomes }) {
                         <Td align="right" className="tabular">{m.won}</Td>
                         <Td align="right" className="tabular">{m.lost}</Td>
                         <Td><Rate g={m} /></Td>
-                        <Td align="right" className="tabular">{m.medianWonCents === null ? "—" : `${formatCents(m.medianWonCents)} / ${m.unit}`}</Td>
-                        <Td align="right" className="tabular">{m.medianLostCents === null ? "—" : `${formatCents(m.medianLostCents)} / ${m.unit}`}</Td>
+                        <Td align="right" className="tabular">{m.medianWonCents === null ? "–" : `${formatCents(m.medianWonCents)} / ${m.unit}`}</Td>
+                        <Td align="right" className="tabular">{m.medianLostCents === null ? "–" : `${formatCents(m.medianLostCents)} / ${m.unit}`}</Td>
                       </Tr>
                     ))}
                   </tbody>

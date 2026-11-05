@@ -61,7 +61,7 @@ test("the owner sets a rule, calculates a period from a verified ticket, approve
   await page.getByLabel("Where this rule comes from").fill("Fictional test rule");
   await page.getByRole("button", { name: "Save draft" }).click();
   const rule = page.locator("section").filter({ hasText: `Per ton ${f.driver}` });
-  await expect(rule.getByText("Draft — not used")).toBeVisible();
+  await expect(rule.getByText("Draft: not used")).toBeVisible();
   // Bad formulas are refused with a reason before anything is saved.
   await page.getByLabel("Formula").fill("tons * price");
   await page.getByLabel("First day").fill(f.day);

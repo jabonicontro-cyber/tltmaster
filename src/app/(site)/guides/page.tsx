@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { Fragment, type ReactNode } from "react";
 import { Container, FinalCta, PageIntro } from "@/components/site/ui";
@@ -5,8 +6,8 @@ import { publicGuides } from "@/lib/site/guides";
 
 export const metadata: Metadata = {
   title: "Guides",
-  description: "Step-by-step guides to Taviron's everyday work: quotes, orders, planning the day, dispatch, driver reports, delivery tickets, billing readiness, shop work orders and time off.",
-  alternates: { canonical: "/guides" },
+  description: "Step-by-step guides to everyday work in Taviron: quotes, orders, dispatch, delivery tickets, billing readiness, shop work orders and time off.",
+  alternates: { canonical: "/guides" }, openGraph: siteOpenGraph("/guides"),
 };
 
 /** Help articles mark control names with **bold**; on the website they are shown as strong text. */
@@ -44,14 +45,14 @@ export default function GuidesPage() {
                 {g.tasks.map((t) => (
                   <div key={t.title} className="site-reveal rounded-xl border border-silver/12 bg-navy-2/60 p-5 sm:p-6">
                     <h3 className="font-semibold text-cloud">{t.title}</h3>
-                    <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[15px] leading-relaxed text-silver marker:text-silver/60">
+                    <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-[15px] leading-relaxed text-silver marker:text-silver">
                       {t.steps.map((s) => <li key={s}><Rich text={s} /></li>)}
                     </ol>
                   </div>
                 ))}
               </div>
               {g.limitations?.length ? (
-                <p className="mt-4 text-sm leading-relaxed text-silver/80"><span className="font-semibold">Good to know: </span><Rich text={g.limitations.join(" ")} /></p>
+                <p className="mt-4 text-sm leading-relaxed text-silver"><span className="font-semibold">Good to know: </span><Rich text={g.limitations.join(" ")} /></p>
               ) : null}
             </section>
           ))}

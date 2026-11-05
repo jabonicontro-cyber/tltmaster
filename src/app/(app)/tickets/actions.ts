@@ -173,7 +173,7 @@ export async function acceptCleanTickets(input: z.input<typeof bulkInput>): Prom
     revalidateTickets();
     for (const o of orders) revalidatePath(`/orders/${o}`);
     const n = results.filter((r) => r.outcome === "accepted").length;
-    return ok({ results }, `${n} ticket${n === 1 ? "" : "s"} accepted.${results.length > n ? ` ${results.length - n} not accepted — see the list.` : ""}`);
+    return ok({ results }, `${n} ticket${n === 1 ? "" : "s"} accepted.${results.length > n ? ` ${results.length - n} not accepted. See the list.` : ""}`);
   });
 }
 

@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, FinalCta, PageIntro } from "@/components/site/ui";
@@ -7,7 +8,7 @@ import { PRICING_FAQ } from "@/lib/site/pricing-faq";
 export const metadata: Metadata = {
   title: "FAQ",
   description: "Answers about what Taviron does, dispatch and AI, drivers, billing, demos, data protection, pricing, onboarding and support.",
-  alternates: { canonical: "/faq" },
+  alternates: { canonical: "/faq" }, openGraph: siteOpenGraph("/faq"),
 };
 
 function Group({ id, title, items }: { id: string; title: string; items: Faq[] }) {

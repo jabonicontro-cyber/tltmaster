@@ -155,14 +155,14 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                       </Td>
                       <Td className="hidden md:table-cell">{DEPARTMENTS[e.department]}</Td>
                       <Td className="hidden text-sm lg:table-cell">
-                        <div className="break-all">{e.work_email || "—"}</div>
+                        <div className="break-all">{e.work_email || "–"}</div>
                         <div className="whitespace-nowrap text-muted">{e.work_phone}</div>
                       </Td>
                       <Td className="hidden text-sm sm:table-cell">
                         <SignIn userId={e.user_id} member={e.user_id ? signInOf.get(e.user_id) : undefined} account={e.user_id ? accounts?.get(e.user_id) : undefined} />
                       </Td>
                       <Td className="hidden xl:table-cell">
-                        {e.driver_id ? (e.primary_truck ? <span>Truck <strong className="tabular">{e.primary_truck}</strong></span> : <span className="text-muted">No primary truck</span>) : <span className="text-muted">—</span>}
+                        {e.driver_id ? (e.primary_truck ? <span>Truck <strong className="tabular">{e.primary_truck}</strong></span> : <span className="text-muted">No primary truck</span>) : <span className="text-muted">–</span>}
                       </Td>
                       <Td><Badge tone={STATUS_TONE[e.status]}>{EMPLOYEE_STATUSES[e.status]}</Badge></Td>
                     </Tr>

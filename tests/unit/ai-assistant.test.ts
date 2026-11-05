@@ -25,7 +25,7 @@ function item(over: Partial<ExceptionItem>): ExceptionItem {
 }
 
 const QUEUE: ExceptionItem[] = [
-  item({ kind: "urgent_order", priority: 1, load_id: null, load_number: null, details: { state: "awaiting_acknowledgement", reason: "Paving crew waiting — call Maria Okafor", active_assignments: 0 } }),
+  item({ kind: "urgent_order", priority: 1, load_id: null, load_number: null, details: { state: "awaiting_acknowledgement", reason: "Paving crew waiting: call Maria Okafor", active_assignments: 0 } }),
   item({}),
   item({
     kind: "equipment_report", order_id: ID(102), order_number: "ORD-1043", load_id: ID(202), load_number: 1, equipment_kind: "truck", equipment_id: ID(301), unit_number: "12",

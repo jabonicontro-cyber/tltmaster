@@ -23,7 +23,7 @@ export const RATE_UNIT_LABELS: Record<RateUnit, string> = { ton: "per ton", load
 
 export const OFFER_STATUS: Record<string, { label: string; tone: "amber" | "green" | "gray" | "blue" }> = {
   offered: { label: "Waiting for the hauler", tone: "amber" },
-  accepted: { label: "Accepted — confirm it", tone: "blue" },
+  accepted: { label: "Accepted: confirm it", tone: "blue" },
   declined: { label: "Declined", tone: "gray" },
   withdrawn: { label: "Withdrawn", tone: "gray" },
   confirmed: { label: "Confirmed", tone: "green" },

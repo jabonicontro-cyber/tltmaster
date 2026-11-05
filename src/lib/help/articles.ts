@@ -1735,7 +1735,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     tasks: [{ title: "Start the day", steps: ["Open **Morning briefing** in the sidebar.", "Work through **Do these first** from the top; each button opens the place to fix it."] }],
     prerequisites: [],
-    troubleshooting: [{ problem: "A figure shows **—**.", fix: "You may not have access to it (for example money figures need billing access), or the feature is not set up yet." }],
+    troubleshooting: [{ problem: "A figure shows **–**.", fix: "You may not have access to it (for example money figures need billing access), or the feature is not set up yet." }],
     next: ["dispatch-board"],
     related: ["billing-revenue-check"],
     reviewed: "2026-11-02",

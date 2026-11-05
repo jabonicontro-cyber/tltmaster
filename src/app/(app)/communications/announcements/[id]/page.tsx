@@ -20,7 +20,7 @@ export default async function AnnouncementPage({ params }: { params: Promise<{ i
   if (data === null) notFound();
   const { announcement: a, receipts, revisions } = data;
   const names = new Map((directory ?? []).map((p) => [p.user_id, p.name]));
-  const name = (u: string | null) => (u ? names.get(u) ?? "Former employee" : "—");
+  const name = (u: string | null) => (u ? names.get(u) ?? "Former employee" : "–");
   const mine = receipts.find((r) => r.user_id === access.userId);
   const canAnnounce = can(access, "comms.announce");
   const audience = (directory ?? []).filter((p) => p.user_id !== a.published_by && (!a.department || p.department === a.department));

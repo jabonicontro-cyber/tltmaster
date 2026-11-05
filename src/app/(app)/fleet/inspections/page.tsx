@@ -28,7 +28,7 @@ export default async function InspectionsPage() {
   const [data, trucks] = await Promise.all([loadInspections(addDays(today, -(DAYS - 1)), true), truckOptions()]);
   const header = (
     <>
-      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work." />
+      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work." />
       <FleetNav active="Inspections" />
     </>
   );
@@ -55,13 +55,13 @@ export default async function InspectionsPage() {
 
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader title={`Defects — last ${DAYS} days`} description="Each opened a work order for the shop." />
+          <CardHeader title={`Defects: last ${DAYS} days`} description="Each opened a work order for the shop." />
           {defects.length === 0 ? <CardBody><EmptyState title="No defects reported" /></CardBody> : (
             <ul className="divide-y divide-line border-t border-line" aria-label="Defects">
               {defects.map((r) => (
                 <li key={r.id} className="px-5 py-3 text-sm sm:px-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-semibold">Truck {r.truck?.unit_number ?? "—"}</span>
+                    <span className="font-semibold">Truck {r.truck?.unit_number ?? "–"}</span>
                     <span className="text-muted">{formatDate(r.inspected_on)} · {KIND_LABEL[r.kind]}{r.driver ? ` · ${r.driver.name}` : ""}</span>
                     {r.safety_defect && <Badge tone="critical">Safety</Badge>}
                     {r.work_order && <Link href={`/maintenance/work-orders/${r.work_order.id}`} className="ml-auto font-semibold text-brand-fg hover:underline">{r.work_order.number}</Link>}
@@ -81,13 +81,13 @@ export default async function InspectionsPage() {
       </div>
 
       <Card>
-        <CardHeader title={`All inspections — last ${DAYS} days`} />
+        <CardHeader title={`All inspections: last ${DAYS} days`} />
         {data.rows.length === 0 ? <CardBody><EmptyState title="No inspections yet" description="Drivers record pre-trip and post-trip inspections on My Day." /></CardBody> : (
           <ul className="divide-y divide-line border-t border-line" aria-label="Inspections">
             {data.rows.map((r) => (
               <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
                 <span className="w-24 text-muted">{formatDate(r.inspected_on)}</span>
-                <span className="font-semibold">Truck {r.truck?.unit_number ?? "—"}</span>
+                <span className="font-semibold">Truck {r.truck?.unit_number ?? "–"}</span>
                 <span className="min-w-0 flex-1 text-muted">{KIND_LABEL[r.kind]}{r.driver ? ` · ${r.driver.name}` : " · Office"}{r.odometer !== null ? ` · ${r.odometer.toLocaleString("en-US")} mi` : ""}</span>
                 {r.defect_count === 0 ? <Badge tone="green">No defects</Badge> : <Badge tone={r.safety_defect ? "critical" : "amber"}>{r.defect_count} defect{r.defect_count > 1 ? "s" : ""}</Badge>}
               </li>

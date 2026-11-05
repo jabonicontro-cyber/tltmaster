@@ -25,7 +25,7 @@ export default async function TrailersPage({ searchParams }: { searchParams: Pro
     <>
       <PageHeader
         title="Fleet"
-        description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work."
+        description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work."
         actions={canEdit && <ButtonLink href="/fleet/trailers/new" icon={<Plus className="size-4" />}>Add trailer</ButtonLink>}
       />
       <FleetNav active="Trailers" />

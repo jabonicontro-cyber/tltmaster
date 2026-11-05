@@ -25,7 +25,7 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
   if (!detail) notFound();
   const { request: r, events } = detail;
   const [people, names, me, { timezone, today }, chain] = await Promise.all([getUserNames(), employeeNames(), myEmployee(access.userId), businessToday(), approvalChain()]);
-  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
+  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "–");
   const own = me?.id === r.employee_id;
   const approver = can(access, "time_off.approve");
   // With an approval chain, the pending request waits for one step; only that step's role decides (checked again by the database).
@@ -39,14 +39,14 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
     <>
       <PageHeader
         crumbs={[{ label: "Time off", href: "/time-off" }, { label: "Request" }]}
-        title={`${names.get(r.employee_id)?.name ?? "Employee"} — ${TIME_OFF_CATEGORIES[r.category]}`}
+        title={`${names.get(r.employee_id)?.name ?? "Employee"} · ${TIME_OFF_CATEGORIES[r.category]}`}
         badges={<Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge>}
         actions={<TimeOffActions id={r.id} canDecide={canDecide} canCancel={canCancel} />}
       />
       {step && chain && (
         <p className="mb-4 text-sm">
           <span className="font-medium">Waiting for step {step.step_no} of {chain.length}: {step.label}</span>
-          <span className="text-muted"> — decided by {ROLE_LABELS[step.role as AppRole] ?? step.role}{step.step_no < chain.length ? ". Approving passes it to the next step." : "."}</span>
+          <span className="text-muted">, decided by {ROLE_LABELS[step.role as AppRole] ?? step.role}{step.step_no < chain.length ? ". Approving passes it to the next step." : "."}</span>
         </p>
       )}
       {approver && own && r.status === "pending" && <p className="mb-4 text-sm text-muted">This is your own request: another approver must decide it.</p>}
@@ -59,8 +59,8 @@ export default async function TimeOffRequestPage({ params }: { params: Promise<{
                 { label: "Dates", value: r.full_day ? (r.start_date === r.end_date ? formatDate(r.start_date) : `${formatDate(r.start_date)} – ${formatDate(r.end_date)} (${calendarDays(r.start_date, r.end_date)} calendar days)`) : formatDate(r.start_date) },
                 { label: "Time", value: r.full_day ? "Full day" : `${formatTime(r.start_time)}–${formatTime(r.end_time)} (${r.hours} hours)` },
                 { label: "Category", value: TIME_OFF_CATEGORIES[r.category] },
-                { label: "Comment", value: r.reason || "—", wide: true },
-                ...(r.decided_at ? [{ label: "Decision", value: `${TIME_OFF_STATUSES[r.status === "canceled" ? "approved" : r.status]} by ${who(r.decided_by)}, ${formatDateTime(r.decided_at, timezone)}${r.decision_note ? ` — ${r.decision_note}` : ""}`, wide: true }] : []),
+                { label: "Comment", value: r.reason || "–", wide: true },
+                ...(r.decided_at ? [{ label: "Decision", value: `${TIME_OFF_STATUSES[r.status === "canceled" ? "approved" : r.status]} by ${who(r.decided_by)}, ${formatDateTime(r.decided_at, timezone)}${r.decision_note ? `: ${r.decision_note}` : ""}`, wide: true }] : []),
               ]} />
             </CardBody>
           </Card>

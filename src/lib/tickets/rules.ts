@@ -22,7 +22,7 @@ export function unitRequiresWhole(code: string): boolean {
 
 /** Reasons the database attaches to a ticket that needs office review. */
 export const REVIEW_REASON_LABELS: Record<string, string> = {
-  unit_differs_from_order_line: "Unit differs from the order line's unit (no conversion is made — check the quantity).",
+  unit_differs_from_order_line: "Unit differs from the order line's unit (no conversion is made. Check the quantity).",
   delivered_on_other_day: "Delivered on a different day than the load was planned.",
   equipment_differs_from_assignment: "Truck, trailer or driver differs from the dispatch assignment.",
   missing_external_reference: "No paper / scale ticket number was entered.",
@@ -47,7 +47,7 @@ export interface ReasonHelp {
 export const REVIEW_REASON_HELP: Record<string, ReasonHelp> = {
   unit_differs_from_order_line: {
     why: "Billing compares and prices quantities only in the order line's unit; a ticket in another unit is never converted.",
-    next: "Check the paper ticket. Correct the unit or quantity if it was typed wrong; otherwise accept it — billing will show a difference to acknowledge.",
+    next: "Check the paper ticket. Correct the unit or quantity if it was typed wrong; otherwise accept it. Billing will show a difference to acknowledge.",
     who: "Office reviewer (tickets.review)",
   },
   delivered_on_other_day: {

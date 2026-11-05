@@ -128,7 +128,7 @@ export async function requestQuote(formData: FormData): Promise<ActionResult<{ i
   if (error) return fail(portalError(error));
   revalidatePath(`/portal/${slug}/quotes`);
   const r = data as { id: string; duplicate: boolean };
-  return ok(r, r.duplicate ? "We already have this request — no duplicate was created." : "Request sent. We will reply with a quote.");
+  return ok(r, r.duplicate ? "We already have this request. No duplicate was created." : "Request sent. We will reply with a quote.");
 }
 
 export async function respondToQuote(formData: FormData): Promise<ActionResult> {

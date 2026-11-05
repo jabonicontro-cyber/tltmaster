@@ -32,7 +32,7 @@ export function BookingRequestForm({ slug, days, sites }: { slug: string; days: 
         <Field label="Day" htmlFor="bk-day" required>
           <Select id="bk-day" name="day" required defaultValue={open[0]?.day ?? ""}>
             {days.map((d) => (
-              <option key={d.day} value={d.day} disabled={!d.open}>{dayLabel(d.day)}{d.open ? "" : " — full"}</option>
+              <option key={d.day} value={d.day} disabled={!d.open}>{dayLabel(d.day)}{d.open ? "" : ", full"}</option>
             ))}
           </Select>
         </Field>

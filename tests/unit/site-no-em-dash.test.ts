@@ -31,3 +31,11 @@ describe("public website copy", () => {
     expect(found).toEqual([]);
   });
 });
+
+describe("database messages", () => {
+  it("are shown without em dashes", async () => {
+    const { dbErrorMessage } = await import("@/server/errors");
+    expect(dbErrorMessage({ code: "P0001", message: "Quote Q-1 is sent. Only drafts can be edited — create a revision to make changes." } as never))
+      .toBe("Quote Q-1 is sent. Only drafts can be edited. Create a revision to make changes.");
+  });
+});

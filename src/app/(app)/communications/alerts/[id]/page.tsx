@@ -19,8 +19,8 @@ const REASONS: Record<string, string> = { designated: "Designated", escalation: 
 
 function eventText(kind: string, d: Record<string, unknown>, name: (id: unknown) => string) {
   switch (kind) {
-    case "priority_changed": return `${PRIORITIES[d.from as Priority] ?? d.from} → ${PRIORITIES[d.to as Priority] ?? d.to}${d.reason ? ` — ${d.reason}` : ""}`;
-    case "reassigned": return `${name(d.from)} → ${name(d.to)}${d.reason ? ` — ${d.reason}` : ""}`;
+    case "priority_changed": return `${PRIORITIES[d.from as Priority] ?? d.from} → ${PRIORITIES[d.to as Priority] ?? d.to}${d.reason ? `: ${d.reason}` : ""}`;
+    case "reassigned": return `${name(d.from)} → ${name(d.to)}${d.reason ? `: ${d.reason}` : ""}`;
     case "escalated": return `Level ${d.level}: ${Array.isArray(d.to) ? (d.to as unknown[]).map(name).join(", ") || "nobody in the escalation roles" : ""}`;
     case "resolved": return String(d.note ?? "");
     case "occurred_again": return String(d.detail ?? "");
@@ -75,14 +75,14 @@ export default async function AlertPage({ params }: { params: Promise<{ id: stri
           <CardBody>
             <DescriptionList items={[
               { label: "Type", value: type.label },
-              { label: "Details", value: a.detail || "—" },
-              { label: "Source", value: a.link ? <Link className="text-brand-fg hover:underline" href={a.link}>Open the related record</Link> : "—" },
+              { label: "Details", value: a.detail || "–" },
+              { label: "Source", value: a.link ? <Link className="text-brand-fg hover:underline" href={a.link}>Open the related record</Link> : "–" },
               { label: "Raised", value: formatDateTime(a.created_at) },
               { label: "Occurrences", value: a.occurrences > 1 ? `${a.occurrences} (last ${formatDateTime(a.last_occurred_at)})` : "1" },
               { label: "Acknowledgment", value: a.priority === "informational" ? "Not required (informational)" : ACK_SCOPES[a.ack_scope] },
               { label: "Minimum priority", value: PRIORITIES[type.min_priority] },
               ...(a.status === "open" && a.escalation_due_at ? [{ label: "Escalates", value: `${formatDateTime(a.escalation_due_at)} if not acknowledged` }] : []),
-              ...(a.status === "resolved" ? [{ label: "Resolved", value: `${formatDateTime(a.resolved_at)} by ${name(a.resolved_by)} — ${a.resolution_note || "no note"}` }] : []),
+              ...(a.status === "resolved" ? [{ label: "Resolved", value: `${formatDateTime(a.resolved_at)} by ${name(a.resolved_by)} · ${a.resolution_note || "no note"}` }] : []),
             ]} />
           </CardBody>
         </Card>

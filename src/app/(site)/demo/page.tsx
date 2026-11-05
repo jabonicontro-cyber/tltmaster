@@ -1,3 +1,6 @@
+import { siteOpenGraph } from "@/lib/site/og";
+import { cookies } from "next/headers";
+import { LEAD_SENT_COOKIE, leadErrorText } from "@/lib/site/lead";
 import type { Metadata } from "next";
 import { LeadForm } from "@/components/site/lead-form";
 import { Container, PageIntro } from "@/components/site/ui";
@@ -6,7 +9,7 @@ import { AREAS, SEGMENTS } from "@/lib/site/areas";
 export const metadata: Metadata = {
   title: "Request a demo",
   description: "Ask for a walkthrough of Taviron with the live demo company and fictional data.",
-  alternates: { canonical: "/demo" },
+  alternates: { canonical: "/demo" }, openGraph: siteOpenGraph("/demo"),
 };
 
 const STEPS = [
@@ -37,7 +40,7 @@ export default async function DemoPage({ searchParams }: { searchParams: Promise
               </li>
             ))}
           </ol>
-          <LeadForm kind="demo" sent={sp.sent === "1"} initialError={sp.error?.slice(0, 200)} initialMessage={topic ? `Interested in: ${topic}` : undefined} />
+          <LeadForm kind="demo" sent={sp.sent === "1" && (await cookies()).get(LEAD_SENT_COOKIE)?.value === "1"} initialError={leadErrorText(sp.error)} initialMessage={topic ? `Interested in: ${topic}` : undefined} />
         </Container>
       </section>
     </>

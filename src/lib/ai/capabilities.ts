@@ -45,7 +45,7 @@ export const AI_CAPABILITIES: AiCapability[] = [
   {
     id: "ops_assistant",
     label: "Ask Taviron",
-    description: "Answers questions about your own company's operations — the attention queue, an order's status, maintenance, the week ahead, measured totals for a period, how a page works — from records you may see, with links to them. Read only: it never assigns, sends, bills or changes anything.",
+    description: "Answers questions about your own company's operations. The attention queue, an order's status, maintenance, the week ahead, measured totals for a period, how a page works, from records you may see, with links to them. Read only: it never assigns, sends, bills or changes anything.",
     permission: "orders.view",
     anyPermission: ["orders.view", "dispatch.view", "maintenance.view", "tickets.view", "billing.view"],
     maxToolKind: "read",
@@ -59,7 +59,7 @@ export const AI_CAPABILITIES: AiCapability[] = [
   {
     id: "ticket_reading",
     label: "Read a ticket photo",
-    description: "Reads the paper or scale ticket photo on a delivery ticket — ticket number, date, material, quantity, weights and truck — and compares each value with what was entered and with the order. Shown to the reviewer as an AI reading to check; it never changes, accepts or bills a ticket.",
+    description: "Reads the paper or scale ticket photo on a delivery ticket (ticket number, date, material, quantity, weights and truck) and compares each value with what was entered and with the order. Shown to the reviewer as an AI reading to check; it never changes, accepts or bills a ticket.",
     permission: "tickets.review",
     maxToolKind: "read",
     evalVersion: 1,

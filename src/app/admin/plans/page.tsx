@@ -50,7 +50,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
                     <Td><span className="font-semibold">{p.name}</span> <span className="text-muted">v{p.version}</span> {p.current && <Badge tone="green">Current</Badge>}{p.note && <span className="block text-xs text-muted">{p.note}</span>}</Td>
                     <Td align="right" className="tabular">{p.monthly_cents === null ? "Quoted" : `${p.from_price ? "from " : ""}${usd(p.monthly_cents)}`}</Td>
                     <Td align="right" className="tabular">{p.onboarding_cents === null ? "Quoted" : usd(p.onboarding_cents)}</Td>
-                    <Td className="text-xs text-muted">{p.trucks ? `${p.trucks} trucks · ${p.bases} base${p.bases === 1 ? "" : "s"}` : "—"}</Td>
+                    <Td className="text-xs text-muted">{p.trucks ? `${p.trucks} trucks · ${p.bases} base${p.bases === 1 ? "" : "s"}` : "–"}</Td>
                     <Td className="whitespace-nowrap">{formatDate(p.effective_from)}</Td>
                     <Td align="right">{p.companies}</Td>
                   </Tr>

@@ -1,3 +1,4 @@
+import { metaDescription, siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Check } from "lucide-react";
@@ -12,7 +13,7 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: { params: Promise<{ segment: string }> }): Promise<Metadata> {
   const s = segmentBySlug((await params).segment);
-  return s ? { title: `For ${s.label.toLowerCase()}`, description: `${s.summary} ${s.intro}`.slice(0, 300), alternates: { canonical: `/solutions/${s.slug}` } } : {};
+  return s ? { title: `For ${s.label.toLowerCase()}`, description: metaDescription(`${s.summary} ${s.intro}`), alternates: { canonical: `/solutions/${s.slug}` }, openGraph: siteOpenGraph(`/solutions/${s.slug}`) } : {};
 }
 
 /** One audience (src/lib/site/areas.ts): what it needs, a demo scenario, the plans that usually fit (pricing.ts). */
@@ -79,7 +80,7 @@ export default async function SolutionPage({ params }: { params: Promise<{ segme
             ))}
           </ul>
           {seg.notYet.length > 0 ? (
-            <ul className="mt-8 space-y-2 text-sm text-silver/85" aria-label="Not available yet">
+            <ul className="mt-8 space-y-2 text-sm text-silver" aria-label="Not available yet">
               {seg.notYet.map((n) => <li key={n}>{n}</li>)}
             </ul>
           ) : null}

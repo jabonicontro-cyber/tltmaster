@@ -223,7 +223,7 @@ export function ConversationView(props: {
         <section aria-label="Pinned messages" className="border-b border-line bg-surface/60 px-4 py-3">
           <h3 className="mb-1 flex items-center gap-1 text-xs font-semibold text-muted"><Pin className="size-3.5" aria-hidden />Pinned</h3>
           <ul className="space-y-1">
-            {pinned.map((m) => <li key={m.id} className="text-sm text-ink"><a href={`#m-${m.id}`} className="hover:underline">{m.body}</a> <span className="text-xs text-muted">— {name(m.author_id)}</span></li>)}
+            {pinned.map((m) => <li key={m.id} className="text-sm text-ink"><a href={`#m-${m.id}`} className="hover:underline">{m.body}</a> <span className="text-xs text-muted">· {name(m.author_id)}</span></li>)}
           </ul>
         </section>
       )}

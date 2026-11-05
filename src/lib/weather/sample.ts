@@ -22,5 +22,5 @@ export function sampleNow(index: number): { temperatureF: number; conditions: st
 
 /** A fictional NWS-style alert for a demo delivery site, ending this evening. */
 export function sampleAlert(today: string): { event: string; severity: string; headline: string; endsAt: string } {
-  return { event: "Wind Advisory", severity: "Moderate", headline: "Wind Advisory until 7:00 PM — gusts up to 45 mph (sample, demo)", endsAt: `${today}T19:00:00-05:00` };
+  return { event: "Wind Advisory", severity: "Moderate", headline: "Wind Advisory until 7:00 PM, gusts up to 45 mph (sample, demo)", endsAt: `${today}T19:00:00-05:00` };
 }

@@ -63,7 +63,7 @@ export default async function CustomerInsightsPage() {
     <>
       <PageHeader
         title="Customer insights"
-        description="Your most profitable customers, those ordering less than usual or paying slower, and the money you can expect over the next four weeks — from your own orders, invoices and payments. Estimates are labelled; nothing is sent."
+        description="Your most profitable customers, those ordering less than usual or paying slower, and the money you can expect over the next four weeks, from your own orders, invoices and payments. Estimates are labelled; nothing is sent."
         actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
       />
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
@@ -108,7 +108,7 @@ export default async function CustomerInsightsPage() {
                   {profit.has_rates && (
                     <span className="w-40 text-right">
                       <span className={cn("font-semibold tabular", c.profit_cents < 0 ? "text-critical" : "text-ink")}>{formatCents(c.profit_cents)}</span>
-                      <span className="text-muted"> · {c.revenue_cents > 0 ? `${Math.round((c.profit_cents / c.revenue_cents) * 100)}%` : "—"}</span>
+                      <span className="text-muted"> · {c.revenue_cents > 0 ? `${Math.round((c.profit_cents / c.revenue_cents) * 100)}%` : "–"}</span>
                     </span>
                   )}
                 </li>

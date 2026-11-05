@@ -101,7 +101,7 @@ export function pricingHelp(input: PricingInput, history: DecidedQuote[], costPe
     return { ...base, verdict: "below_cost", reason: `Below your average cost of ${money(cost)} per delivered load (last 90 days).` };
   }
   if (medianWon === null) {
-    return { ...base, verdict: "no_history", reason: wonRates.length ? `Only ${wonRates.length} won quote for this item and unit — not enough to suggest a rate.` : "No won quotes for this item and unit yet." };
+    return { ...base, verdict: "no_history", reason: wonRates.length ? `Only ${wonRates.length} won quote for this item and unit, not enough to suggest a rate.` : "No won quotes for this item and unit yet." };
   }
   if (input.rateCents === null) {
     return { ...base, verdict: "in_line", reason: `Typical winning rate in ${scope}: ${money(medianWon)}${per}.` };
@@ -110,7 +110,7 @@ export function pricingHelp(input: PricingInput, history: DecidedQuote[], costPe
     return { ...base, verdict: "high", reason: `At or above the typical rate on quotes you lost (${money(medianLost)}${per}) in ${scope}.` };
   }
   if (input.rateCents < Math.min(...wonRates)) {
-    return { ...base, verdict: "low", reason: `Below every rate you have won at (lowest ${money(Math.min(...wonRates))}${per}) — you may be leaving money on the table.` };
+    return { ...base, verdict: "low", reason: `Below every rate you have won at (lowest ${money(Math.min(...wonRates))}${per}). You may be leaving money on the table.` };
   }
   return { ...base, verdict: "in_line", reason: `In line with the rates you win at in ${scope} (typical ${money(medianWon)}${per}).` };
 }

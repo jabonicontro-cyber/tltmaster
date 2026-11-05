@@ -17,7 +17,7 @@ export const metadata = { title: "Time estimates" };
 
 /** Over or under, in words, without judging a single job: within 10% counts as on estimate. */
 function Verdict({ v }: { v: number | null }) {
-  if (v === null) return <span className="text-muted">—</span>;
+  if (v === null) return <span className="text-muted">–</span>;
   const label = Math.abs(v) <= 0.1 ? "On estimate" : v > 0 ? "Over" : "Under";
   return <span className={cn("font-semibold tabular", Math.abs(v) <= 0.1 ? "text-green-700" : v > 0 ? "text-amber-800" : "text-ink")}>{label} {Math.abs(v) > 0.1 ? `${Math.round(Math.abs(v) * 100)}%` : ""}</span>;
 }
@@ -89,7 +89,7 @@ export default async function EstimatesPage() {
                   <li key={k.category} className="grid grid-cols-[10rem_minmax(0,1fr)_13rem] items-center gap-4 text-sm">
                     <span className="font-medium text-ink">{WO_CATEGORIES[k.category as keyof typeof WO_CATEGORIES] ?? k.category}</span>
                     {k.learned ? <ShareBar value={k.learned.hours} max={maxHours} /> : <span className="text-xs text-muted">Needs {MIN_JOBS} completed jobs ({k.jobs} so far)</span>}
-                    <span className="text-right tabular">{k.learned ? <><strong>{k.learned.hours} h</strong> <span className="text-muted">({k.learned.low}–{k.learned.high}) · {k.learned.jobs} jobs</span></> : "—"}</span>
+                    <span className="text-right tabular">{k.learned ? <><strong>{k.learned.hours} h</strong> <span className="text-muted">({k.learned.low}–{k.learned.high}) · {k.learned.jobs} jobs</span></> : "–"}</span>
                   </li>
                 ))}
               </ul>
@@ -119,9 +119,9 @@ export default async function EstimatesPage() {
                     {jobs.slice(0, 25).map((j) => (
                       <Tr key={j.id}>
                         <Td><Link href={`/maintenance/work-orders/${j.id}`} className="font-medium text-ink hover:underline">{j.title}</Link><div className="text-xs text-muted">{WO_CATEGORIES[j.category as keyof typeof WO_CATEGORIES] ?? j.category}</div></Td>
-                        <Td className="hidden md:table-cell">{j.lead ? names.get(j.lead) ?? "Former member" : "—"}</Td>
-                        <Td className="hidden whitespace-nowrap sm:table-cell">{j.completedAt ? formatDate(j.completedAt.slice(0, 10)) : "—"}</Td>
-                        <Td align="right" className="tabular">{j.estimated !== null ? `${j.estimated} h` : "—"}</Td>
+                        <Td className="hidden md:table-cell">{j.lead ? names.get(j.lead) ?? "Former member" : "–"}</Td>
+                        <Td className="hidden whitespace-nowrap sm:table-cell">{j.completedAt ? formatDate(j.completedAt.slice(0, 10)) : "–"}</Td>
+                        <Td align="right" className="tabular">{j.estimated !== null ? `${j.estimated} h` : "–"}</Td>
                         <Td align="right" className="tabular">{Math.round(j.hours * 10) / 10} h</Td>
                         <Td align="right">{j.estimated !== null ? <Verdict v={(j.hours - j.estimated) / j.estimated} /> : <span className="text-xs text-muted">No estimate</span>}</Td>
                       </Tr>

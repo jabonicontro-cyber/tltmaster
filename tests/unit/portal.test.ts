@@ -20,8 +20,8 @@ describe("customer portal formatting", () => {
   });
 
   it("labels the customer's quote answer from its state", () => {
-    expect(responseLabel("accept:pending")).toBe("You accepted — waiting for confirmation");
-    expect(responseLabel("decline:confirmed")).toBe("You declined — confirmed");
+    expect(responseLabel("accept:pending")).toBe("You accepted: waiting for confirmation");
+    expect(responseLabel("decline:confirmed")).toBe("You declined: confirmed");
     expect(responseLabel("accept:dismissed")).toBeNull();
     expect(responseLabel(null)).toBeNull();
   });

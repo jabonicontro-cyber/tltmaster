@@ -23,7 +23,7 @@ export function TimeOffActions({ id, canDecide, canCancel }: { id: string; canDe
         onOpenChange={(o) => !o && setAction(null)}
         title={action === "approved" ? "Approve time off" : action === "denied" ? "Deny time off" : "Cancel this request"}
         description={action === "approved"
-          ? "Approved leave blocks the driver for overlapping loads. Existing assignments are not canceled — you will see which ones need review."
+          ? "Approved leave blocks the driver for overlapping loads. Existing assignments are not canceled. You will see which ones need review."
           : action === "denied" ? "The employee sees the decision and your note." : "The dates become free again."}
         confirmLabel={action === "approved" ? "Approve" : action === "denied" ? "Deny" : "Cancel request"}
         tone={action === "approved" ? "primary" : "danger"}

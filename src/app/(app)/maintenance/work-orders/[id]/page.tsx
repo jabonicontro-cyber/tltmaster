@@ -62,7 +62,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   // never written over it.
   const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
   const learned = learnedEstimate({ id: wo.id, category: wo.category, equipment, title: wo.title }, history.jobs);
-  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
+  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "–");
   const manage = can(access, "maintenance.manage");
   const canClear = can(access, "maintenance.clear");
   const editable = manage && !["closed", "canceled"].includes(wo.status);
@@ -87,7 +87,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Work orders", href: "/maintenance/work-orders" }, { label: wo.number }]}
         title={`${wo.number} · ${wo.title}`}
-        description={`${unitWord} ${unit?.unit_number ?? "—"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
+        description={`${unitWord} ${unit?.unit_number ?? "–"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
         badges={<>
           <WoStatusBadge status={wo.status} />
           <CopyReference value={wo.number} label="work order number" />
@@ -136,9 +136,9 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 ["Priority", <span key="p" className="flex flex-wrap items-center gap-1.5"><UrgencyBadge urgency={wo.urgency} />{wo.safety_critical && <SafetyBadge />}</span>],
                 ["Status", <WoStatusBadge key="s" status={wo.status} />],
                 ["Scheduled for", wo.scheduled_for ? formatDate(wo.scheduled_for) : "Not scheduled"],
-                ["Due by", wo.due_on ? formatDate(wo.due_on) : "—"],
+                ["Due by", wo.due_on ? formatDate(wo.due_on) : "–"],
                 ["Estimate", <EstimateValue key="e" shop={estimate} learned={learned} />],
-                [unitWord, <span key="u">{unit?.unit_number ?? "—"} · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}{can(access, "fleet.view") && unitHref ? <> · <Link href={unitHref} className="underline">Record</Link></> : null}</span>],
+                [unitWord, <span key="u">{unit?.unit_number ?? "–"} · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}{can(access, "fleet.view") && unitHref ? <> · <Link href={unitHref} className="underline">Record</Link></> : null}</span>],
                 [crew.installed ? "Lead mechanic" : "Mechanic", wo.assigned_to ? who(wo.assigned_to) : "Unassigned"],
                 ...(driver ? [["Driver", driver.name] as const] : []),
                 ["Odometer at service", fmtNum(wo.odometer_at_service, " mi")],
@@ -157,17 +157,17 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 {wo.findings && <p><span className="text-muted">Findings: </span>{wo.findings}</p>}
                 {schedule && <p><span className="text-muted">Schedule: </span><Link href="/maintenance/preventive" className="underline">{schedule.name}</Link></p>}
                 {wo.field_report_id && can(access, "field_reports.view") && <p><Link href={`/field-reports/${wo.field_report_id}`} className="underline">Driver report</Link></p>}
-                {wo.cleared_at && <p><span className="text-muted">Cleared: </span>{who(wo.cleared_by)}, {formatDateTime(wo.cleared_at, timezone)}{wo.clearance_notes ? ` — ${wo.clearance_notes}` : ""}</p>}
+                {wo.cleared_at && <p><span className="text-muted">Cleared: </span>{who(wo.cleared_by)}, {formatDateTime(wo.cleared_at, timezone)}{wo.clearance_notes ? `: ${wo.clearance_notes}` : ""}</p>}
                 {wo.clearance_status === "failed" && <p><span className="text-muted">Failed inspection: </span>{wo.clearance_notes}</p>}
                 {wo.status === "canceled" && <p><span className="text-muted">Cancel reason: </span>{wo.cancel_reason}</p>}
               </CardBody>
             )}
             <dl className="grid grid-cols-4 border-t border-line/70 text-center" aria-label="Work order totals">
               {[
-                ["Tasks", crew.installed ? `${doneTasks}/${crew.tasks.length}` : "—"],
-                ["Parts", canCosts && costs ? String(costs.filter((c) => c.kind === "part").length) : "—"],
+                ["Tasks", crew.installed ? `${doneTasks}/${crew.tasks.length}` : "–"],
+                ["Parts", canCosts && costs ? String(costs.filter((c) => c.kind === "part").length) : "–"],
                 ["Time", crew.installed ? `${Math.floor(crew.totalMinutes / 60)}:${String(crew.totalMinutes % 60).padStart(2, "0")}` : fmtNum(wo.labor_hours, " h")],
-                ["Total cost", canCosts && costs ? fmtMoney(total) : "—"],
+                ["Total cost", canCosts && costs ? fmtMoney(total) : "–"],
               ].map(([label, value]) => (
                 <div key={label} className="border-line/70 px-2 py-3 [&:not(:first-child)]:border-l">
                   <dt className="text-xs text-muted">{label}</dt>
@@ -212,7 +212,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                         {costs.map((c) => (
                           <Tr key={c.id}>
                             <Td><div className="font-medium">{c.description}</div><div className="text-xs text-muted">{COST_KINDS[c.kind]}{c.part_number ? ` · ${c.part_number}` : ""}</div></Td>
-                            <Td className="hidden text-sm sm:table-cell">{c.vendor_name || "—"}</Td>
+                            <Td className="hidden text-sm sm:table-cell">{c.vendor_name || "–"}</Td>
                             <Td className="text-right tabular">{c.quantity}</Td>
                             <Td className="text-right tabular">{fmtMoney(c.unit_cost_cents)}</Td>
                             <Td className="text-right font-medium tabular">{fmtMoney(Math.round(c.quantity * c.unit_cost_cents))}</Td>

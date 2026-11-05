@@ -33,7 +33,7 @@ export const COLBY_CUSTOMERS = [
   { name: "Fieldhouse Hardwood Courts", city: "Lafayette", state: "IN", site: "Court shop, bay 2", line1: "14 Baseline Example Way" },
 ];
 
-export const CAM_WEBSTER = { name: "Cam Webster", title: "Driver — long haul", avatar: "avatar-02" };
+export const CAM_WEBSTER = { name: "Cam Webster", title: "Driver: long haul", avatar: "avatar-02" };
 
 /** Rates are fictional demo values, like every other lane in this demo. */
 const LANES = [

@@ -24,7 +24,7 @@ export function ReportActions({ reportId, status }: { reportId: string; status: 
         title={action === "acknowledge" ? "Acknowledge the report" : "Resolve the report"}
         description={action === "acknowledge"
           ? "Tells the driver the office has seen it. It stays open until resolved."
-          : "Closes the report. Change the truck's service status or reassign loads in Fleet or Dispatch — resolving does not do that."}
+          : "Closes the report. Change the truck's service status or reassign loads in Fleet or Dispatch. Resolving does not do that."}
         confirmLabel={action === "acknowledge" ? "Acknowledge" : "Resolve"}
         onConfirm={async () => {
           if (!action) return;

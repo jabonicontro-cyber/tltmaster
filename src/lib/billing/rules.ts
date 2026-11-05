@@ -78,10 +78,10 @@ function explain(readiness: Readiness, o: ReadinessCounts): { why: string; actio
     case "in_progress":
       return {
         // "Loads are still to run" would repeat the count just given, so it is left out when the count is shown.
-        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}${o.fulfillment_gap && !(o.fulfillment_gap === "loads_upcoming" && o.loads_not_due) ? ` — not fully delivered: ${FULFILLMENT_GAP_LABELS[o.fulfillment_gap].toLowerCase()}` : ""}.`,
+        why: `Order is ${o.status.replace(/_/g, " ")}${o.loads_not_due ? `; ${plural(o.loads_not_due, "load")} still to run` : ""}${o.fulfillment_gap && !(o.fulfillment_gap === "loads_upcoming" && o.loads_not_due) ? `, not fully delivered: ${FULFILLMENT_GAP_LABELS[o.fulfillment_gap].toLowerCase()}` : ""}.`,
         action: o.fulfillment_gap === "quantity_short"
           ? "Partly delivered orders stay out of billing. Plan the remaining loads, or mark the order Completed if the rest will not be delivered."
-          : "It becomes billable once every load has run with an accepted ticket and the ordered quantities are delivered — or mark the order Completed when all work is done.",
+          : "It becomes billable once every load has run with an accepted ticket and the ordered quantities are delivered, or mark the order Completed when all work is done.",
       };
     case "ready":
       return {
@@ -111,7 +111,7 @@ export const EXCEPTION_LABELS: Record<ExceptionKind, string> = {
 export const EXCEPTION_HELP: Record<ExceptionKind, string> = {
   load_quantity: "The tickets on this load add up to a different quantity than was planned. Confirm the tickets are right before billing.",
   load_units_differ: "A ticket on this load is in a different unit than the plan, so they cannot be compared. No conversion is made.",
-  line_quantity: "Accepted deliveries add up to a different quantity than the order line. The order's price is not changed — decide what to invoice.",
+  line_quantity: "Accepted deliveries add up to a different quantity than the order line. The order's price is not changed. Decide what to invoice.",
   line_units_differ: "A ticket for this line is in a different unit than the line, so they cannot be compared. No conversion is made.",
   line_no_tickets: "No delivery ticket references this line (often a hauling or service charge). Confirm the quantity to invoice.",
   line_zero_rate: "This line has a rate of $0.00. Confirm it is intentional.",
@@ -130,8 +130,8 @@ export type QuantityCheck = (typeof QUANTITY_CHECKS)[number];
 
 export const QUANTITY_CHECK_LABELS: Record<QuantityCheck, string> = {
   no_tickets: "No tickets",
-  not_planned: "Not compared — no planned quantity",
-  units_differ: "Not compared — units differ",
+  not_planned: "Not compared: no planned quantity",
+  units_differ: "Not compared: units differ",
   match: "Matches",
   over: "Over",
   under: "Under",
@@ -140,7 +140,7 @@ export const QUANTITY_CHECK_LABELS: Record<QuantityCheck, string> = {
 
 /** Signed difference text: "+1.5" / "-0.53". */
 export function formatDifference(value: number | string | null | undefined): string {
-  if (value === null || value === undefined) return "—";
+  if (value === null || value === undefined) return "–";
   const s = String(value).replace(/(\.\d*?)0+$/, "$1").replace(/\.$/, "");
   return s.startsWith("-") ? s : s === "0" ? "0" : `+${s}`;
 }

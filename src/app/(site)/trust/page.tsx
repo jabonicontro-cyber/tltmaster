@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { CircleDashed, ShieldCheck } from "lucide-react";
@@ -6,7 +7,7 @@ import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
 export const metadata: Metadata = {
   title: "Trust & Security",
   description: "How Taviron separates each company's data, checks permissions, records key changes, handles AI and onboards a company, and what is not in place yet.",
-  alternates: { canonical: "/trust" },
+  alternates: { canonical: "/trust" }, openGraph: siteOpenGraph("/trust"),
 };
 
 // Every statement below describes a control that exists in the product or a practice we follow today (CLAUDE.md,
@@ -93,8 +94,8 @@ export default function TrustPage() {
           <h2 id="not-yet-title" className="site-title text-2xl font-bold text-cloud sm:text-3xl">Not in place yet.</h2>
           <ul className="mt-6 space-y-3">
             {NOT_YET.map((n) => (
-              <li key={n} className="flex gap-3 text-[15px] leading-relaxed text-silver/85">
-                <CircleDashed className="mt-0.5 size-5 shrink-0 text-silver/60" aria-hidden />
+              <li key={n} className="flex gap-3 text-[15px] leading-relaxed text-silver">
+                <CircleDashed className="mt-0.5 size-5 shrink-0 text-silver" aria-hidden />
                 <span>{n}</span>
               </li>
             ))}

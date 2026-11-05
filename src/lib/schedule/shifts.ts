@@ -28,7 +28,7 @@ export function clockTime(t: string | null): string {
 export function cellText(d: ShiftDay): string {
   if (d.status === "shift") return `${shortTime(d.start)}–${shortTime(d.end)}`;
   if (d.status === "off") return "Off";
-  return "—";
+  return "–";
 }
 
 /** One line for My Day: "6:00 AM – 4:30 PM · 30 min break", "Day off", or null without a schedule. */

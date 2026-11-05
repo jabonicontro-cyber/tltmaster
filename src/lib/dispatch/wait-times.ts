@@ -73,6 +73,6 @@ export function summarizeByPlace(rows: StopTime[], freeMinutes: number | null): 
 
 /** "1 h 5 min", "45 min". */
 export function minutesLabel(m: number | null): string {
-  if (m === null) return "—";
+  if (m === null) return "–";
   return m >= 60 ? `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ""}` : `${m} min`;
 }

@@ -44,7 +44,7 @@ export function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteLi
                   </Td>
                 )}
                 <Td className="hidden md:table-cell">
-                  <div>{q.project_name || q.site_label || q.site_line1 || <span className="text-muted">—</span>}</div>
+                  <div>{q.project_name || q.site_label || q.site_line1 || <span className="text-muted">–</span>}</div>
                   {q.site_city && <div className="text-sm text-muted">{q.site_city}</div>}
                 </Td>
                 <Td className={`hidden whitespace-nowrap sm:table-cell ${overdue ? "font-semibold text-amber-800" : ""}`}>

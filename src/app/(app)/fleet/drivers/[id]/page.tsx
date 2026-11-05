@@ -105,7 +105,7 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
                   {
                     label: "User account",
                     value: d.user_id
-                      ? `Linked${d.account_role ? ` — ${ROLE_LABELS[d.account_role as AppRole] ?? d.account_role}` : ""}${d.account_active === false ? " (account inactive)" : ""}`
+                      ? `Linked${d.account_role ? `: ${ROLE_LABELS[d.account_role as AppRole] ?? d.account_role}` : ""}${d.account_active === false ? " (account inactive)" : ""}`
                       : "No login",
                   },
                   { label: "Employee number", value: d.employee_number },

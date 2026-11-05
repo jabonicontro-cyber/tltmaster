@@ -220,7 +220,7 @@ export default async function MaintenancePage() {
           <Card>
             <CardHeader
               title="Suggested shop order"
-              description={<>Ranked by fixed rules: safety, urgency, downtime, due dates and parts. It only suggests — nothing is assigned or scheduled automatically. <span className="whitespace-nowrap">No AI service is connected.</span></>}
+              description={<>Ranked by fixed rules: safety, urgency, downtime, due dates and parts. It only suggests. Nothing is assigned or scheduled automatically. <span className="whitespace-nowrap">No AI service is connected.</span></>}
             />
             {top.length === 0 ? (
               <EmptyState title="No open work orders" description="New work orders and due preventive services appear here." icon={<Wrench className="size-6" />} />
@@ -257,8 +257,8 @@ export default async function MaintenancePage() {
                     {outOfService.map((t) => (
                       <Tr key={t.id}>
                         <Td><Link href={t.href} className="font-semibold text-ink hover:underline">{t.label}</Link></Td>
-                        <Td className="text-sm">{t.out_of_service_reason || "—"}</Td>
-                        <Td className="tabular">{t.out_of_service_since ? `${daysBetween(t.out_of_service_since, today)} d` : "—"}</Td>
+                        <Td className="text-sm">{t.out_of_service_reason || "–"}</Td>
+                        <Td className="tabular">{t.out_of_service_since ? `${daysBetween(t.out_of_service_since, today)} d` : "–"}</Td>
                         <Td className="hidden sm:table-cell">{t.expected_return_date ? formatDate(t.expected_return_date) : "Not set"}</Td>
                       </Tr>
                     ))}
@@ -395,11 +395,11 @@ export default async function MaintenancePage() {
                     <p className="mt-0.5 text-muted">
                       Usually needs:{" "}
                       {j.parts.map((p, i) => (
-                        <span key={p.partId} className={cn(p.short && "font-medium text-amber-800")}>{i ? ", " : ""}{p.name} ({p.typical} {p.unit}, {p.onHand} on hand{p.short ? " — order more" : ""})</span>
+                        <span key={p.partId} className={cn(p.short && "font-medium text-amber-800")}>{i ? ", " : ""}{p.name} ({p.typical} {p.unit}, {p.onHand} on hand{p.short ? ". Order more" : ""})</span>
                       ))}
                     </p>
                   )}
-                  {j.freeDays && j.freeDays.length > 0 && <p className="mt-0.5 text-muted">No loads planned on {j.freeDays.map((d) => formatDate(d)).join(", ")} — a good day for the shop.</p>}
+                  {j.freeDays && j.freeDays.length > 0 && <p className="mt-0.5 text-muted">No loads planned on {j.freeDays.map((d) => formatDate(d)).join(", ")}: a good day for the shop.</p>}
                 </li>
               ))}
             </ul>

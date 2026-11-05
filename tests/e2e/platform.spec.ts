@@ -32,7 +32,7 @@ test("the public website is open to everyone, works on a phone, and shows the pr
   const essential = page.getByRole("listitem", { name: "Essential" });
   await expect(essential.getByText("$499", { exact: true })).toBeVisible();
   await expect(essential.getByText("$449.10", { exact: true })).toBeVisible();
-  await expect(essential.getByRole("link", { name: "Book a Demo" })).toHaveAttribute("href", "/demo");
+  await expect(essential.getByRole("link", { name: "Request a Demo" })).toHaveAttribute("href", "/demo");
   await expect(page.getByRole("listitem", { name: "Enterprise" }).getByText("$1,499", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Contact Us" })).toHaveAttribute("href", "/contact");
   await expect(page.getByText(/before applicable taxes/).first()).toBeVisible();
@@ -190,7 +190,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.getByRole("link", { name: "Lena Park" }).click();
   await expect(page.getByText("Pay (confidential)")).toBeVisible();
   await page.goto("/orders");
-  await expect(page.getByText("Brightwater office park — topsoil", { exact: true })).toBeVisible();
+  await expect(page.getByText("Brightwater office park: topsoil", { exact: true })).toBeVisible();
   await expect(page.getByText(/Prairie View|Top Line/)).toHaveCount(0); // nothing from any other company
 
   // The owner sees Billing; the dispatcher preview hides it, and the page itself refuses.
@@ -208,7 +208,7 @@ test("live demo: a separate company with fictional data; role previews only narr
   await page.goto("/command-center");
   await changeView(/^Driver [A-Z]/);
   await expect(page).toHaveURL(/\/driver/);
-  await expect(page.getByText("4th St water main — bedding stone").first()).toBeVisible();
+  await expect(page.getByText("4th St water main, bedding stone").first()).toBeVisible();
   await expect(page.getByTestId("greeting")).toHaveText(`Hi, ${PLATFORM_USER.name.split(" ")[0]}!`);
   // Ticket history from earlier days, with different customers and statuses.
   await expect(page.getByText(/^Daniel Mitchell · /)).toBeVisible();
@@ -343,7 +343,7 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByRole("list", { name: "Setup steps" }).getByRole("listitem")).toHaveCount(4);
   await expect(page.getByText("Nobody can sign in to this company yet.")).toBeVisible();
-  await expect(page.getByText(/Company created — Created company/)).toBeVisible();
+  await expect(page.getByText(/Company created: Created company/)).toBeVisible();
   // The same name is refused instead of creating a duplicate company.
   await page.goto("/admin/onboarding");
   await page.getByLabel("Company name").fill(name);
@@ -386,7 +386,7 @@ test("customer lifecycle: plan and founding offer, onboarding fee, go-live only 
   await page.goto(`/admin/companies/${id}`);
   const sub = page.getByRole("region", { name: "Subscription" });
   await expect(sub).toContainText("Not set up");
-  await sub.getByLabel("Plan").selectOption({ label: "Essential — $499/mo, onboarding $199" });
+  await sub.getByLabel("Plan").selectOption({ label: "Essential · $499/mo, onboarding $199" });
   await sub.getByLabel("Offer").selectOption("founding");
   await sub.getByRole("button", { name: "Save plan and terms" }).click();
   await expect(sub).toContainText("$399.20");

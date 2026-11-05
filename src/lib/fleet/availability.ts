@@ -66,7 +66,7 @@ export function vehicleAvailability(
     .filter((w) => w.scheduled_for && w.scheduled_for >= today && !IN_SHOP.has(w.status) && w.status !== "awaiting_inspection")
     .map((w) => ({ date: w.scheduled_for!, number: w.number, title: w.title }))
     .sort((a, b) => a.date.localeCompare(b.date));
-  if (!v.active) return { state: "inactive", label: "Inactive", detail: "Deactivated — not part of the working fleet.", ready: false, upcoming };
+  if (!v.active) return { state: "inactive", label: "Inactive", detail: "Deactivated: not part of the working fleet.", ready: false, upcoming };
 
   const safety = openWorkOrders.filter((w) => w.safety_critical);
   const awaiting = safety.find((w) => w.status === "awaiting_inspection");

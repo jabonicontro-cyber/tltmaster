@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
@@ -10,8 +11,8 @@ import { publishedFeatures } from "@/lib/site/features";
 
 export const metadata: Metadata = {
   title: { absolute: "Taviron · Your entire trucking operation. Connected." },
-  description: "See what's happening. Know what to do next. Taviron connects quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness for trucking and hauling companies, with people approving every consequential step.",
-  alternates: { canonical: "/" },
+  description: "Quotes, orders, dispatch, drivers, delivery tickets, maintenance and billing readiness for hauling companies, in one place. People approve every step.",
+  alternates: { canonical: "/" }, openGraph: siteOpenGraph("/"),
 };
 
 // Every statement on this page matches a capability listed as available in
@@ -66,7 +67,7 @@ const STORY: StoryChapter[] = [
     body: (
       <>
         <p>Tickets start on the driver&apos;s phone, are reviewed beside their order, and only verified deliveries reach billing, with invoice drafts prepared, never sent on their own.</p>
-        <p className="text-sm text-silver/80">In development: AI assistance for office work, built on the same checked records. People will still approve every consequential step.</p>
+        <p className="text-sm text-silver">In development: AI assistance for office work, built on the same checked records. People will still approve every consequential step.</p>
       </>
     ),
   },
@@ -175,7 +176,7 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <p className="mt-6 text-sm text-silver/80">Shown in the demo company with fictional data. AI assistance is built but not switched on yet; everything above works without it.</p>
+            <p className="mt-6 text-sm text-silver">Shown in the demo company with fictional data. AI assistance is built but not switched on yet; everything above works without it.</p>
             <Link href="/platform/intelligence" className="mt-4 inline-block text-[15px] font-semibold text-electric hover:underline">How Taviron surfaces what needs attention</Link>
           </div>
           <CatalogShot id="command-center" />
@@ -193,10 +194,10 @@ export default function HomePage() {
               <li key={f.title} style={order(i % 6)} className="site-reveal bg-navy-2 p-5">
                 <div className="flex items-center justify-between">
                   <f.icon className="size-5 text-electric" aria-hidden />
-                  <span className="text-xs text-silver/60 tabular-nums">{i + 1}</span>
+                  <span className="text-xs text-silver tabular-nums">{i + 1}</span>
                 </div>
                 <h3 className="mt-4 font-semibold text-cloud">{f.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-silver/90">{f.text}</p>
+                <p className="mt-1 text-sm leading-relaxed text-silver">{f.text}</p>
               </li>
             ))}
           </ol>
@@ -252,7 +253,7 @@ export default function HomePage() {
               <li key={f.id} style={order(i % 3)} className="site-reveal bg-navy">
                 <Link href={`/platform#feature-${f.id}`} className="group flex h-full flex-col p-5 hover:bg-navy-2 focus-visible:bg-navy-2">
                   <span className="font-semibold text-cloud group-hover:text-electric">{f.name}</span>
-                  <span className="mt-1.5 text-sm leading-relaxed text-silver/85">{f.value}</span>
+                  <span className="mt-1.5 text-sm leading-relaxed text-silver">{f.value}</span>
                 </Link>
               </li>
             ))}
@@ -260,7 +261,7 @@ export default function HomePage() {
             <li className={`bg-navy-2 ${publishedFeatures().length % 2 === 0 ? "sm:col-span-2" : "sm:col-span-1"} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][publishedFeatures().length % 3]}`}>
               <Link href="/platform" className="group flex h-full flex-col justify-center p-5 hover:bg-navy">
                 <span className="font-semibold text-electric group-hover:underline">See every capability on the real app</span>
-                <span className="mt-1.5 text-sm text-silver/85">Screens from the demo company, what each one does, and what it does not do yet.</span>
+                <span className="mt-1.5 text-sm text-silver">Screens from the demo company, what each one does, and what it does not do yet.</span>
               </Link>
             </li>
           </ul>
@@ -290,8 +291,8 @@ export default function HomePage() {
               <h3 className="text-xl font-semibold text-cloud">From {usd(TIERS[0].monthlyCents)} a month for up to {TIERS[0].trucks} trucks.</h3>
               <p className="mt-2 text-[15px] leading-relaxed text-silver">A one-time onboarding fee is separate from the monthly price. The subscription starts at your go-live, not while you set up and test.</p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <CtaLink href="/pricing">Compare Plans</CtaLink>
-                <CtaLink href="/demo" variant="ghost">Request a Walkthrough</CtaLink>
+                <CtaLink href="/demo">Request a Demo</CtaLink>
+                <CtaLink href="/pricing" variant="ghost">Compare Plans</CtaLink>
               </div>
             </div>
             <ol className="grid gap-3 sm:grid-cols-2">
@@ -317,7 +318,7 @@ export default function HomePage() {
               <li key={r.title} style={order(i)} className="site-reveal border-t border-silver/15 pt-5">
                 <r.icon className="size-5 text-electric" aria-hidden />
                 <h3 className="mt-4 font-semibold text-cloud">{r.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-silver/90">{r.text}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-silver">{r.text}</p>
               </li>
             ))}
           </ul>
@@ -339,7 +340,7 @@ export default function HomePage() {
             {TRUST.map((t, i) => (
               <div key={t.title} style={order(i)} className="site-reveal border-t border-silver/15 pt-5">
                 <dt className="font-semibold text-cloud">{t.title}</dt>
-                <dd className="mt-1.5 text-sm leading-relaxed text-silver/90">{t.text}</dd>
+                <dd className="mt-1.5 text-sm leading-relaxed text-silver">{t.text}</dd>
               </div>
             ))}
           </dl>

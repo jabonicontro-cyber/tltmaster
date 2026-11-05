@@ -102,7 +102,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                         <div className="text-sm text-muted">{[order.site_label || order.site_line1, order.site_city].filter(Boolean).join(", ")}</div>
                       </Td>
                       <Td className="hidden md:table-cell">{truck}{trailer ? ` + ${trailer}` : ""} · {driver}</Td>
-                      <Td className="hidden sm:table-cell tabular">{load.planned_quantity !== null ? `${trimNumber(load.planned_quantity)} ${(load.unit_code ?? "").replace(/_/g, " ")}` : <span className="text-muted">—</span>}</Td>
+                      <Td className="hidden sm:table-cell tabular">{load.planned_quantity !== null ? `${trimNumber(load.planned_quantity)} ${(load.unit_code ?? "").replace(/_/g, " ")}` : <span className="text-muted">–</span>}</Td>
                       <Td align="right">
                         {canEdit && (
                           <ButtonLink href={`/tickets/new?load=${load.id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
@@ -129,7 +129,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
             </div>
           )}
           {shown.length === 0 ? (
-            <EmptyState title={sp.q ? "No tickets match this search" : `No tickets — ${TICKET_VIEWS[view].toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
+            <EmptyState title={sp.q ? "No tickets match this search" : `No tickets · ${TICKET_VIEWS[view].toLowerCase()}`} description={view === "review" ? "Tickets flagged for office review appear here." : undefined} />
           ) : (
             <TableWrap>
               <Table>

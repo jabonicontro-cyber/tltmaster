@@ -173,7 +173,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     if (dow === 0 || dow === 6) continue; // weekdays only
     const c = 5 + (n % 3);
     const product = ["LS-53", "ST-8", "SND-F", "RR-3"][n % 4];
-    const o = await order(c, day, `${CUSTOMERS[c].site} — ${MATERIALS.find((m) => m.code === product)!.name}`, [line(product, "60")], "Check in at the scale house on arrival.", [day, day]);
+    const o = await order(c, day, `${CUSTOMERS[c].site} · ${MATERIALS.find((m) => m.code === product)!.name}`, [line(product, "60")], "Check in at the scale house on arrival.", [day, day]);
     for (let k = 0; k < 3; k++) {
       const [unit, driver] = crews[(n + k) % crews.length];
       const cap = unit === "107" ? 8 : unit === "103" || unit === "104" ? 15 : 20;
@@ -181,7 +181,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
       await assign(l, truck[unit], driver);
       const qty = (cap - 0.4 + ((n + k) % 3) * 0.2).toFixed(2);
       const t = await ticket(l, o.lineId, day, `${String(8 + k * 2).padStart(2, "0")}:05`, qty, `NF-${day.replaceAll("-", "").slice(2)}-${k + 1}`);
-      if ((n + k) % 7 === 3) await review(t, "flag", "Scale weight and ticket copy differ — check the scale ticket (demo).");
+      if ((n + k) % 7 === 3) await review(t, "flag", "Scale weight and ticket copy differ. Check the scale ticket (demo).");
       else if (back > 8 || k < 2) await review(t, "accept");
     }
     n++;
@@ -189,7 +189,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
   // 1. Last week: delivered and verified, but each ticket is a little under the planned 22 t, so billing shows
   //    quantity exceptions to acknowledge. (Ready to bill and Handed off come from samples.ts billing().)
-  const o1 = await order(1, lastWeek, "County Rd 9 widening — base course", [line("LS-53", "88")], "Spread on the east shoulder; flagger at the north end.", [lastWeek, lastWeek]);
+  const o1 = await order(1, lastWeek, "County Rd 9 widening, base course", [line("LS-53", "88")], "Spread on the east shoulder; flagger at the north end.", [lastWeek, lastWeek]);
   for (const [i, t] of [["101", avery], ["102", marco], ["105", priya], ["101", theo]].entries()) {
     const l = await load(o1.order_id, lastWeek, `0${7 + i}:00`, `0${7 + i}:45`, "22");
     await assign(l, truck[t[0]], t[1]);
@@ -197,7 +197,7 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   }
 
   // 2. Yesterday: tickets waiting for review, one flagged.
-  const o2 = await order(0, yesterday, "Cedar Ridge phase 3 — pad prep", [line("SND-F", "66")], "Use the Oak St entrance. Dump at the marked pads only.", [yesterday, today]);
+  const o2 = await order(0, yesterday, "Cedar Ridge phase 3, pad prep", [line("SND-F", "66")], "Use the Oak St entrance. Dump at the marked pads only.", [yesterday, today]);
   const y = [];
   for (const [i, t] of [["101", avery], ["105", marco], ["102", priya]].entries()) {
     const l = await load(o2.order_id, yesterday, `${10 + i}:00`, `${10 + i}:50`, "22");
@@ -205,10 +205,10 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
     y.push(await ticket(l, o2.lineId, yesterday, `${10 + i}:40`, i === 2 ? "14.10" : (22.1 - i * 0.3).toFixed(2), `CR-77${i}1`));
   }
   await review(y[0], "accept");
-  await review(y[2], "flag", "Quantity well under the planned load — confirm with the scale ticket.");
+  await review(y[2], "flag", "Quantity well under the planned load. Confirm with the scale ticket.");
 
   // 3. Today: in progress, one load for the driver preview.
-  const o3 = await order(3, today, "4th St water main — bedding stone", [line("ST-8", "44")], "Call the site foreman 30 minutes out. No trucks on 4th St before 7:00.", [today, today]);
+  const o3 = await order(3, today, "4th St water main, bedding stone", [line("ST-8", "44")], "Call the site foreman 30 minutes out. No trucks on 4th St before 7:00.", [today, today]);
   // Tandems carry 15 t (assigning more than a truck's recorded capacity is refused).
   const l3a = await load(o3.order_id, today, "07:30", "08:30", "15");
   const a3 = await assign(l3a, truck["103"], me);
@@ -217,16 +217,16 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
   await must("delay report", db.rpc("driver_submit_field_report", { p_payload: { assignment_id: a3, kind: "delay", description: "Waiting about 25 minutes at the quarry scale (demo).", submission_key: randomUUID() } }));
 
   // 4. Today: urgent, a load still unassigned.
-  const o4 = await order(2, today, "Brightwater office park — topsoil", [line("TS-SC", "36")], "Deliver behind building B. Landscaping crew on site from 8:00.", [today, today]);
+  const o4 = await order(2, today, "Brightwater office park: topsoil", [line("TS-SC", "36")], "Deliver behind building B. Landscaping crew on site from 8:00.", [today, today]);
   await load(o4.order_id, today, "13:00", "14:00", "12", "cu_yd");
   await must("urgent", db.rpc("flag_order_urgent", { p_order_id: o4.order_id, p_reason: "Customer moved the planting crew to this afternoon (demo)." }));
 
   // 5. Tomorrow: planned, not yet assigned.
-  const o5 = await order(4, tomorrow, "Harlow Meadows — driveway base", [line("LS-53", "66")], "Model homes 1–3. Keep the sidewalk clear.", [tomorrow, tomorrow]);
+  const o5 = await order(4, tomorrow, "Harlow Meadows: driveway base", [line("LS-53", "66")], "Model homes 1–3. Keep the sidewalk clear.", [tomorrow, tomorrow]);
   for (const [s, e] of [["07:00", "08:00"], ["08:30", "09:30"], ["10:00", "11:00"]]) await load(o5.order_id, tomorrow, s, e, "22");
 
   // 6. A draft order and a draft quote.
-  await order(1, tomorrow, "County Rd 9 — shoulder stone (draft)", [line("RR-3", "40")], "", null);
+  await order(1, tomorrow, "County Rd 9: shoulder stone (draft)", [line("RR-3", "40")], "", null);
   await must("quote", db.rpc("save_quote_draft", { p_payload: {
     customer_id: cust[4].id, quote_date: today, valid_until: addDays(today, 30), tax_rate_bp: 0, site_label: CUSTOMERS[4].site, site_line1: CUSTOMERS[4].line1, site_city: CUSTOMERS[4].city,
     lines: [line("LS-53", "220"), line("TS-SC", "80")],
@@ -241,8 +241,8 @@ export async function seedDemoCompany(db: Db, userId: string, timeZone: string):
 
 /** Job titles of the demo drivers (their employee records). */
 export const DRIVER_TITLES: Record<string, string> = {
-  "Avery Lindqvist": "Driver — tri-axle", "Marco Delgado": "Driver — tri-axle", "Priya Raman": "Driver — quad-axle", "Theo Brandt": "Driver — tandem", "Nia Okafor": "Driver — single-axle",
-  "Grace Whitfield": "Driver — end dump", "Isaac Moreno": "Driver — belly dump", "Talia Novak": "Driver — tri-axle", "Ruben Castillo": "Driver — relief",
+  "Avery Lindqvist": "Driver: tri-axle", "Marco Delgado": "Driver: tri-axle", "Priya Raman": "Driver: quad-axle", "Theo Brandt": "Driver: tandem", "Nia Okafor": "Driver: single-axle",
+  "Grace Whitfield": "Driver: end dump", "Isaac Moreno": "Driver: belly dump", "Talia Novak": "Driver: tri-axle", "Ruben Castillo": "Driver: relief",
 };
 
 /** Which illustrated avatar (public/avatars) each demo person uses — matched to their job. */

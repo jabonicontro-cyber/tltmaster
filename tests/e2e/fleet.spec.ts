@@ -133,15 +133,15 @@ test("trailers, drivers and qualifications drive eligibility", async ({ page }) 
 
   // Combination checks on the overview.
   await page.goto("/fleet");
-  await page.getByLabel("Truck", { exact: true }).selectOption({ label: `${tractor} — Tractor (semi)` });
-  await page.getByLabel("Trailer", { exact: true }).selectOption({ label: `${trailer} — End dump` });
+  await page.getByLabel("Truck", { exact: true }).selectOption({ label: `${tractor} · Tractor (semi)` });
+  await page.getByLabel("Trailer", { exact: true }).selectOption({ label: `${trailer} · End dump` });
   await page.getByLabel("Driver", { exact: true }).selectOption({ label: driver });
   await page.getByRole("button", { name: "Check eligibility" }).click();
   const result = page.getByRole("status");
   await expect(result.getByText(/^Eligible on/)).toBeVisible();
   await expect(result.getByText("Truck capacity is recorded but not verified.")).toBeVisible();
 
-  await page.getByLabel("Truck", { exact: true }).selectOption({ label: `${dump} — Quad-axle dump` });
+  await page.getByLabel("Truck", { exact: true }).selectOption({ label: `${dump} · Quad-axle dump` });
   await page.getByRole("button", { name: "Check eligibility" }).click();
   await expect(result.getByText(/^Not eligible on/)).toBeVisible();
   await expect(result.getByText("This trailer is not recorded as compatible with this truck type.")).toBeVisible();

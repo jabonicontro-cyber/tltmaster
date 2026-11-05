@@ -1,5 +1,5 @@
 import { after } from "next/server";
-import { fieldErrors, leadSchema, looksAutomated } from "@/lib/site/lead";
+import { LEAD_ERRORS, LEAD_SENT_COOKIE, fieldErrors, leadSchema, looksAutomated, type LeadErrorCode } from "@/lib/site/lead";
 import { notifyLead } from "@/server/leads/notify";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { rateKey } from "@/server/early-access";
@@ -13,7 +13,7 @@ import { rateKey } from "@/server/early-access";
 const MAX_BYTES = 32_000;
 const SAVED = "Thank you. Your message reached the Taviron team.";
 
-type Result = { ok: true; message: string } | { ok: false; error: string; fieldErrors?: Record<string, string> };
+type Result = { ok: true; message: string } | { ok: false; error: string; code: LeadErrorCode; fieldErrors?: Record<string, string> };
 
 function sameOrigin(request: Request): boolean {
   const origin = request.headers.get("origin");
@@ -50,9 +50,12 @@ async function readBody(request: Request): Promise<{ json: boolean; data: Record
 
 function respond(json: boolean, result: Result, status: number, back: string): Response {
   if (json) return Response.json(result, { status, headers: { "cache-control": "no-store" } });
-  // Without JavaScript: back to the form page with the outcome.
-  const q = result.ok ? "sent=1" : `error=${encodeURIComponent(result.error)}`;
-  return new Response(null, { status: 303, headers: { location: `${back}?${q}`, "cache-control": "no-store" } });
+  // Without JavaScript: back to the form page with the outcome, as a fixed code (never free text in the URL). A saved
+  // post also sets a one-minute cookie, so a "?sent=1" link alone shows no thank-you.
+  if (result.ok) {
+    return new Response(null, { status: 303, headers: { location: `${back}?sent=1`, "cache-control": "no-store", "set-cookie": `${LEAD_SENT_COOKIE}=1; Path=/; Max-Age=60; HttpOnly; SameSite=Lax; Secure` } });
+  }
+  return new Response(null, { status: 303, headers: { location: `${back}?error=${result.code}`, "cache-control": "no-store" } });
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -81,11 +84,11 @@ export async function POST(request: Request): Promise<Response> {
   });
   if (!parsed.success) {
     const errors = fieldErrors(parsed.error);
-    return respond(body.json, { ok: false, error: Object.values(errors)[0] ?? "Check the form.", fieldErrors: errors }, 422, back);
+    return respond(body.json, { ok: false, code: "invalid", error: Object.values(errors)[0] ?? "Check the form.", fieldErrors: errors }, 422, back);
   }
 
   if (!adminAvailable()) {
-    return respond(body.json, { ok: false, error: "The form is not available right now. Please try again later." }, 503, back);
+    return respond(body.json, { ok: false, code: "unavailable", error: LEAD_ERRORS.unavailable }, 503, back);
   }
   try {
     const { data, error } = await createAdminClient().rpc("lead_submit", { p_lead: parsed.data, p_ip_hash: rateKey(clientIp(request)) });
@@ -100,11 +103,11 @@ export async function POST(request: Request): Promise<Response> {
       return respond(body.json, { ok: true, message: SAVED }, 200, back);
     }
     if (r.reason === "rate_limited") {
-      return respond(body.json, { ok: false, error: "Too many messages from this network. Please wait 15 minutes and try again." }, 429, back);
+      return respond(body.json, { ok: false, code: "rate_limited", error: LEAD_ERRORS.rate_limited }, 429, back);
     }
-    return respond(body.json, { ok: false, error: "Check the form and try again." }, 422, back);
+    return respond(body.json, { ok: false, code: "invalid", error: "Check the form and try again." }, 422, back);
   } catch (e) {
     console.error("Lead could not be saved", e instanceof Error ? e.message : e);
-    return respond(body.json, { ok: false, error: "Your message could not be saved. Please try again later." }, 500, back);
+    return respond(body.json, { ok: false, code: "failed", error: LEAD_ERRORS.failed }, 500, back);
   }
 }

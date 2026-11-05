@@ -8,7 +8,7 @@ describe("profile photo helpers", () => {
     expect(initialsOf("Émile")).toBe("É");
     expect(initialsOf("dana.dispatch@toplinetest.example")).toBe("DD");
     expect(initialsOf("")).toBe("?");
-    expect(initialsOf("—")).toBe("?");
+    expect(initialsOf("–")).toBe("?");
   });
 
   it("crops the centered square so photos are not stretched", () => {

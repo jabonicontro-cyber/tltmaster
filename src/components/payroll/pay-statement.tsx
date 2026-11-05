@@ -25,7 +25,7 @@ export function PayStatement({ s, company }: { s: PayStatementData; company: str
       <header className="flex flex-wrap justify-between gap-4 border-b border-line pb-4">
         <div>
           <p className="text-sm text-muted">{company}</p>
-          <h2 className="text-xl font-semibold">Pay statement — {s.driver.name}</h2>
+          <h2 className="text-xl font-semibold">Pay statement: {s.driver.name}</h2>
           <p className="text-sm text-muted">{formatDate(s.period.starts_on)} – {formatDate(s.period.ends_on)}</p>
         </div>
         <p className="text-right text-sm text-muted">{s.lines.length} ticket{s.lines.length === 1 ? "" : "s"}</p>
@@ -35,7 +35,7 @@ export function PayStatement({ s, company }: { s: PayStatementData; company: str
         {s.lines.length === 0 ? <li className="py-3 text-sm text-muted">No paid tickets in this period.</li> : s.lines.map((l, i) => (
           <li key={i} className="flex items-start justify-between gap-3 py-3">
             <span className="min-w-0">
-              <span className="block font-semibold tabular">{l.ticket ?? "—"} <span className="font-normal text-muted">· {formatDate(l.delivered_on)}</span></span>
+              <span className="block font-semibold tabular">{l.ticket ?? "–"} <span className="font-normal text-muted">· {formatDate(l.delivered_on)}</span></span>
               <span className="block text-sm text-muted">{[l.order_number, `${qty(l.quantity)} ${l.unit}`, l.reference].filter(Boolean).join(" · ")}</span>
             </span>
             <span className="shrink-0 font-semibold tabular">{money(l.amount_cents)}</span>
@@ -49,8 +49,8 @@ export function PayStatement({ s, company }: { s: PayStatementData; company: str
             {s.lines.length === 0 ? <Tr><Td colSpan={5} className="text-muted">No paid tickets in this period.</Td></Tr> : s.lines.map((l, i) => (
               <Tr key={i}>
                 <Td className="whitespace-nowrap">{formatDate(l.delivered_on)}</Td>
-                <Td>{l.ticket ?? "—"}{l.reference ? <span className="block text-xs text-muted">{l.reference}</span> : null}</Td>
-                <Td>{l.order_number ?? "—"}</Td>
+                <Td>{l.ticket ?? "–"}{l.reference ? <span className="block text-xs text-muted">{l.reference}</span> : null}</Td>
+                <Td>{l.order_number ?? "–"}</Td>
                 <Td align="right" className="tabular">{qty(l.quantity)} {l.unit}</Td>
                 <Td align="right" className="tabular">{money(l.amount_cents)}</Td>
               </Tr>

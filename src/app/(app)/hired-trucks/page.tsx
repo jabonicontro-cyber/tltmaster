@@ -256,7 +256,7 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
         <>
           <h2 className="mt-9 mb-3 text-lg font-semibold text-ink">Hauler pay</h2>
           <Card>
-            <CardHeader title="Confirmed jobs" description="Accepted tickets times the offered rate, unit for unit. A statement to review — nothing is paid or exported." />
+            <CardHeader title="Confirmed jobs" description="Accepted tickets times the offered rate, unit for unit. A statement to review. Nothing is paid or exported." />
             {confirmed.length === 0 ? (
               <EmptyState title="No confirmed jobs yet" className="py-8" />
             ) : (
@@ -271,7 +271,7 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
                           <Td>{o.load.order_number} load {o.load.load_number}<span className="block text-xs text-muted">{formatDate(o.load.load_date)}</span></Td>
                           <Td>{haulerName.get(o.hauler_id)}<span className="block text-xs text-muted">Truck {truckName.get(o.truck_id)} · {driverName.get(o.driver_id)}</span></Td>
                           <Td className="tabular">{formatCents(o.rate_cents)} {RATE_UNIT_LABELS[o.rate_unit]}</Td>
-                          <Td align="right" className="tabular">{p.quantity === null ? "—" : `${p.quantity} ${o.rate_unit}${p.quantity === 1 ? "" : "s"}`}</Td>
+                          <Td align="right" className="tabular">{p.quantity === null ? "–" : `${p.quantity} ${o.rate_unit}${p.quantity === 1 ? "" : "s"}`}</Td>
                           <Td align="right" className="tabular">{p.amountCents === null ? <span className="text-xs text-muted">{p.note}</span> : formatCents(p.amountCents)}</Td>
                         </Tr>
                       );

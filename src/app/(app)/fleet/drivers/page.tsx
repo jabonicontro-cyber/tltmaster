@@ -38,7 +38,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Fleet"
-        description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work."
+        description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work."
         actions={canEdit && <ButtonLink href="/fleet/drivers/new" icon={<Plus className="size-4" />}>Add driver</ButtonLink>}
       />
       <FleetNav active="Drivers" />

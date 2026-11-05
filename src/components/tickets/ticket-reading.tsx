@@ -90,8 +90,8 @@ export function TicketReading({ ticketId, photos, ai, correctHref }: { ticketId:
                   {view.data.checks.map((c) => (
                     <tr key={c.key} aria-label={c.label}>
                       <td className="py-2 pr-3 text-muted">{c.label}</td>
-                      <td className="py-2 pr-3 font-medium text-ink tabular">{c.read ?? "—"}</td>
-                      <td className="py-2 pr-3 text-ink tabular">{c.recorded ?? "—"}{c.note && <span className="block text-xs text-muted">{c.note}</span>}</td>
+                      <td className="py-2 pr-3 font-medium text-ink tabular">{c.read ?? "–"}</td>
+                      <td className="py-2 pr-3 text-ink tabular">{c.recorded ?? "–"}{c.note && <span className="block text-xs text-muted">{c.note}</span>}</td>
                       <td className="py-2"><Badge tone={VERDICT[c.verdict].tone}>{VERDICT[c.verdict].text}</Badge></td>
                     </tr>
                   ))}

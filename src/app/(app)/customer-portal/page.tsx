@@ -143,7 +143,7 @@ async function Inbox(canSeeQuotes: boolean, canReply: boolean, canEditQuotes: bo
                   <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm">
                     <span>
                       <span className="block font-semibold text-ink">
-                        {r.response === "accept" ? "Accepted" : "Declined"} quote <Link href={`/quotes/${r.quote_id}`} className="hover:underline">{q?.quote_number ?? "—"}</Link> · {names.get(q?.customer_id ?? "") ?? ""}
+                        {r.response === "accept" ? "Accepted" : "Declined"} quote <Link href={`/quotes/${r.quote_id}`} className="hover:underline">{q?.quote_number ?? "–"}</Link> · {names.get(q?.customer_id ?? "") ?? ""}
                       </span>
                       <span className="block text-muted">{r.signer_name} · {WHEN.format(new Date(r.created_at))}{r.note ? ` · “${r.note}”` : ""}</span>
                     </span>

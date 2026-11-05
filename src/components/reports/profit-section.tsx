@@ -22,7 +22,7 @@ export interface ProfitReport {
   by_truck: ProfitRow[];
 }
 
-const margin = (revenue: number, profit: number) => (revenue > 0 ? `${Math.round((profit / revenue) * 100)}%` : "—");
+const margin = (revenue: number, profit: number) => (revenue > 0 ? `${Math.round((profit / revenue) * 100)}%` : "–");
 
 function Rows({ rows, label, hours = false }: { rows: ProfitRow[]; label: string; hours?: boolean }) {
   return (

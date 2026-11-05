@@ -29,7 +29,7 @@ export function repeatFailures(jobs: PastJob[], today: string): RepeatFailure[] 
   }
   return [...by.values()].filter((g) => g.n >= 3).map((g) => ({
     unitId: g.unit, unitLabel: g.label, category: g.category, count: g.n,
-    detail: `${g.n} ${CATEGORY_LABEL[g.category] ?? g.category} jobs in 90 days — worth finding the root cause.`,
+    detail: `${g.n} ${CATEGORY_LABEL[g.category] ?? g.category} jobs in 90 days. Worth finding the root cause.`,
   })).sort((a, b) => b.count - a.count);
 }
 

@@ -35,7 +35,7 @@ export function AvailabilityCard({ a, timezone }: { a: Availability; timezone: s
                 <li key={u.number} className="flex items-center gap-2"><CalendarClock className="size-4 text-muted" aria-hidden />{formatDate(u.date)} · {u.number} · {u.title}</li>
               ))}
             </ul>
-            <p className="mt-1 text-xs text-muted">Smart Dispatch does not yet check future shop dates — plan loads around them.</p>
+            <p className="mt-1 text-xs text-muted">Smart Dispatch does not yet check future shop dates. Plan loads around them.</p>
           </div>
         )}
         <span className="sr-only">{timezone}</span>
@@ -97,7 +97,7 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules =
     <Card>
       <CardHeader
         title="Documents"
-        description="Registration, insurance, inspection certificates, permits and ownership papers — the details and dates. File upload is not available yet."
+        description="Registration, insurance, inspection certificates, permits and ownership papers. The details and dates. File upload is not available yet."
       />
       <CardBody className="space-y-4">
         {!docs.available ? <Unavailable what="Document tracking" /> : (
@@ -110,7 +110,7 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules =
                   return (
                     <li key={d.id} className="font-medium text-critical">
                       {DOCUMENT_KINDS[d.kind as DocumentKind]} expired {formatDate(d.expires_on)}.
-                      {rule && <span className="font-normal text-ink"> {rule === "block" && verified ? "Blocks dispatch until the renewed document is recorded." : rule === "block" ? "Blocks dispatch once verified — confirm whether it was renewed." : "Dispatch is warned (company rule)."}</span>}
+                      {rule && <span className="font-normal text-ink"> {rule === "block" && verified ? "Blocks dispatch until the renewed document is recorded." : rule === "block" ? "Blocks dispatch once verified. Confirm whether it was renewed." : "Dispatch is warned (company rule)."}</span>}
                     </li>
                   );
                 })}

@@ -17,7 +17,7 @@ export function OrderPickup({ orderId, pickupId, locations, canEdit }: { orderId
     <span className="text-muted">Not set</span>
   );
   if (!canEdit) return text;
-  if (locations.length === 0) return <span className="text-muted">Not set — add your quarries and plants to Saved locations in the Route planner first.</span>;
+  if (locations.length === 0) return <span className="text-muted">Not set: add your quarries and plants to Saved locations in the Route planner first.</span>;
   return (
     <form action={changeOrderPickup} className="flex flex-wrap items-center gap-2">
       <input type="hidden" name="order" value={orderId} />

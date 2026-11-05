@@ -39,7 +39,7 @@ export interface RolePreset {
 
 /** Practical starting points; the role (and its permissions in Settings → Roles) is what grants access. */
 export const ROLE_PRESETS: RolePreset[] = [
-  { id: "driver", label: "Driver", role: "driver", jobTitle: "Driver", lands: "My Day (their loads, tickets and notices) — built for a phone" },
+  { id: "driver", label: "Driver", role: "driver", jobTitle: "Driver", lands: "My Day (their loads, tickets and notices), built for a phone" },
   { id: "mechanic", label: "Mechanic", role: "mechanic", jobTitle: "Mechanic", lands: "My jobs (their work orders, timer and checklist)" },
   { id: "dispatcher", label: "Dispatcher", role: "dispatcher", jobTitle: "Dispatcher", lands: "Dispatch (the board and Plan the day)" },
   { id: "office", label: "Office employee", role: "office", jobTitle: "Office", lands: "Command Center (quotes, orders, tickets, billing)" },
@@ -87,7 +87,7 @@ export interface InstructionInput {
 /** Plain-text instructions for copying (the password only when explicitly included). */
 export function instructionsText(i: InstructionInput, expiresLabel: string): string {
   const lines = [
-    `${i.companyName} — your ${i.kind === "portal" ? "customer portal" : "Taviron"} sign-in`,
+    `${i.companyName}: your ${i.kind === "portal" ? "customer portal" : "Taviron"} sign-in`,
     "",
     `Hello ${i.personName},`,
     "",

@@ -38,7 +38,7 @@ type Search = { view?: string; q?: string; from?: string; to?: string; customer?
 
 
 function serviceDates(a: string | null, b: string | null) {
-  if (!a) return "—";
+  if (!a) return "–";
   return b && b !== a ? `${formatDate(a)} – ${formatDate(b)}` : formatDate(a);
 }
 

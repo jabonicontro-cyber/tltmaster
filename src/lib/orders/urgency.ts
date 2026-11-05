@@ -36,8 +36,8 @@ export const URGENCY_NEXT_OWNER: Record<UrgencyState, string> = {
   waiting_for_information: "Office: provide the missing information",
   blocked: "Dispatch and office: remove the blocker",
   assigned: "Dispatch: resolve once delivered or confirmed",
-  resolved: "Nobody — closed",
-  canceled: "Nobody — closed",
+  resolved: "Nobody: closed",
+  canceled: "Nobody: closed",
 };
 
 export const OPEN_URGENCY_STATES: UrgencyState[] = ["awaiting_acknowledgement", "acknowledged", "evaluating", "waiting_for_information", "blocked", "assigned"];
@@ -77,7 +77,7 @@ export const URGENCY_REASONS: Record<string, string> = {
   urgent_acknowledged: "Dispatch acknowledged it; not assigned yet.",
   urgent_evaluating: "Dispatch is evaluating trucks and drivers.",
   urgent_waiting_for_information: "Waiting for information before it can be planned.",
-  urgent_blocked: "Blocked — see the note.",
+  urgent_blocked: "Blocked: see the note.",
   urgent_assigned: "A truck is assigned; resolve it once delivered or confirmed.",
   urgent_ack_overdue: "Not acknowledged within the company's escalation time.",
   urgent_deadline_passed: "The needed-by time has passed.",

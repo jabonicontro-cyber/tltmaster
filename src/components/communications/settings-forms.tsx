@@ -144,7 +144,7 @@ function AlertSettingRow({ row }: { row: AlertRow }) {
         </fieldset>
       </div>
       <div className="flex flex-wrap items-center gap-4">
-        <Checkbox label={safety ? "On (safety alert — cannot be turned off)" : "On"} checked={r.enabled || safety} disabled={safety} onChange={(e) => setR({ ...r, enabled: e.target.checked })} />
+        <Checkbox label={safety ? "On (safety alert: cannot be turned off)" : "On"} checked={r.enabled || safety} disabled={safety} onChange={(e) => setR({ ...r, enabled: e.target.checked })} />
         <Button size="sm" variant="secondary" loading={pending} onClick={async () => {
           setPending(true);
           const res = await saveAlertSetting({ type: r.type.code, enabled: r.enabled || safety, default_priority: r.default_priority, ack_scope: r.ack_scope, escalation_minutes: r.escalation_minutes, escalation_roles: r.escalation_roles });

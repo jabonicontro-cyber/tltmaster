@@ -42,7 +42,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
       <FlashToast messages={{ saved: { text: "Saved." } }} />
       <PageHeader
         title="Payroll"
-        description="Driver earnings from verified delivery tickets, with your company's own pay rules. Gross earnings only — no taxes, withholding or payments."
+        description="Driver earnings from verified delivery tickets, with your company's own pay rules. Gross earnings only. No taxes, withholding or payments."
         actions={<Link href="/payroll/rules" className="text-sm font-semibold text-brand-fg hover:underline">Pay rules</Link>}
       />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
@@ -69,7 +69,7 @@ export default async function PayrollPage({ searchParams }: { searchParams: Prom
                     <Tr key={p.id}>
                       <Td><Link href={`/payroll/periods/${p.id}`} className="font-semibold hover:underline">{formatDate(p.starts_on)} – {formatDate(p.ends_on)}</Link></Td>
                       <Td><Badge tone={PERIOD_STATUS[p.status]?.tone ?? "gray"}>{PERIOD_STATUS[p.status]?.label ?? p.status}</Badge></Td>
-                      <Td align="right">{p.totals ? p.totals.drivers.length : "—"}</Td>
+                      <Td align="right">{p.totals ? p.totals.drivers.length : "–"}</Td>
                       <Td align="right" className="tabular">{p.totals ? `$${centsText(p.totals.total_cents)}` : <span className="text-muted">Not approved yet</span>}</Td>
                     </Tr>
                   ))}

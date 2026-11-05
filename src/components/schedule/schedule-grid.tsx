@@ -100,7 +100,7 @@ export function ScheduleGrid({ people, from, canManage, patterns, faces = {}, to
           </tbody>
         </table>
       </div>
-      <p className="mt-2 text-xs text-muted">☾ ends the next morning (overnight). A framed day was changed for that date only. — means no schedule: dispatch does not check that person.</p>
+      <p className="mt-2 text-xs text-muted">☾ ends the next morning (overnight). A framed day was changed for that date only. – means no schedule: dispatch does not check that person.</p>
       <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" aria-label="Time off key">
         <span>Time off:</span>
         <span className="inline-flex items-center gap-1"><span className="size-2 rounded-full bg-green-600" aria-hidden /> Approved</span>

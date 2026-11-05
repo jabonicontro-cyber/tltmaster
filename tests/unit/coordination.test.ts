@@ -87,7 +87,7 @@ describe("urgent orders", () => {
 
   it("explains an urgent order: what, who acts next, and where to act", () => {
     const e = item({ state: "awaiting_acknowledgement", reason: "Pour moved up" });
-    expect(exceptionTitle(e)).toBe("O-2026-0001 is urgent — awaiting acknowledgement");
+    expect(exceptionTitle(e)).toBe("O-2026-0001 is urgent · awaiting acknowledgement");
     expect(exceptionOwner(e)).toBe("Dispatch: acknowledge it");
     expect(exceptionAction(e, { ticketsEdit: false, dispatch: true })).toEqual({ label: "Open and acknowledge", href: "/orders/o1" });
     expect(exceptionOwner(item({ state: "evaluating", acknowledged_by_name: "Dana" }))).toBe("Dispatch: decide and assign (acknowledged by Dana)");

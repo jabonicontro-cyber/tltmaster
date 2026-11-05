@@ -102,7 +102,7 @@ test("alerts, settings and the workspace preview respect safety rules and permis
   await page.goto("/communications/settings");
   await expect(page.getByRole("heading", { name: "Alert policies" })).toBeVisible();
   // Safety alerts cannot be turned off, and the minimum priority is the only floor offered.
-  await expect(page.getByLabel(/safety alert — cannot be turned off/)).toBeDisabled();
+  await expect(page.getByLabel(/safety alert: cannot be turned off/)).toBeDisabled();
   await expect(page.locator("#ap-maintenance\\.safety_restriction option")).toHaveCount(1);
   // The edit window and message retention are fixed policies, not settings.
   await expect(page.getByText(/authors can edit or delete a message for 5 minutes/)).toBeVisible();

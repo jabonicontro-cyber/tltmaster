@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PaperworkCalculator } from "@/components/site/paperwork-calculator";
@@ -6,7 +7,7 @@ import { Container, FinalCta, PageIntro } from "@/components/site/ui";
 export const metadata: Metadata = {
   title: "Ticket paperwork calculator",
   description: "Work out how many office hours delivery-ticket paperwork takes your hauling company each week, and what it costs a year, from your own numbers.",
-  alternates: { canonical: "/calculator" },
+  alternates: { canonical: "/calculator" }, openGraph: siteOpenGraph("/calculator"),
 };
 
 export default function CalculatorPage() {

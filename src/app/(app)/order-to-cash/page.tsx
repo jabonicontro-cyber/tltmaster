@@ -35,7 +35,7 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
     <>
       <PageHeader
         title="Order to cash"
-        description="Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing — nothing here changes an order."
+        description="Every open order from confirmation to billing: where it is, what needs attention, why, and which team acts next. Read from the same records as Orders, Dispatch, Tickets and Billing. Nothing here changes an order."
       />
       <ul className="grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-7" aria-label="Stages">
         {summary.map((s) => (
@@ -80,13 +80,13 @@ export default async function OrderToCashPage({ searchParams }: { searchParams: 
                   <Tr key={o.order_id}>
                     <Td>
                       <Link href={`/orders/${o.order_id}`} className="font-semibold hover:underline">{o.order_number}</Link>
-                      <span className="block max-w-[14rem] truncate text-xs text-muted">{o.customer_name ?? "—"}{o.project_name ? ` · ${o.project_name}` : ""}</span>
+                      <span className="block max-w-[14rem] truncate text-xs text-muted">{o.customer_name ?? "–"}{o.project_name ? ` · ${o.project_name}` : ""}</span>
                     </Td>
                     <Td><Badge tone={l.attention ? "amber" : "gray"}>{STAGE_LABELS[l.stage]}</Badge></Td>
                     <Td className="hidden max-w-sm text-sm md:table-cell">{l.why}</Td>
                     <Td><Link href={l.href} className="text-sm font-medium text-brand-fg hover:underline">{l.next}</Link></Td>
                     <Td className="hidden text-sm sm:table-cell">{OWNERS[l.owner]}</Td>
-                    <Td className="hidden text-right text-sm tabular lg:table-cell">{days === null ? "—" : `${days} d`}</Td>
+                    <Td className="hidden text-right text-sm tabular lg:table-cell">{days === null ? "–" : `${days} d`}</Td>
                   </Tr>
                 ))}
               </tbody>

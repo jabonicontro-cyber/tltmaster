@@ -493,12 +493,12 @@ function OrderCard({
             ? "This order is confirmed but not marked scheduled. Mark it scheduled on the order page to plan loads."
             : o.status === "on_hold"
               ? "On hold: loads cannot be assigned until the hold is released."
-              : "Completed — shown for reference."}
+              : "Completed: shown for reference."}
         </p>
       )}
 
       {loads.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-muted sm:px-6">No loads planned for this day{canEdit && dispatchable ? " — add one to assign a truck." : "."}</p>
+        <p className="px-5 py-4 text-sm text-muted sm:px-6">No loads planned for this day{canEdit && dispatchable ? ". Add one to assign a truck." : "."}</p>
       ) : (
         <ol className="divide-y divide-line">
           {loads.map((l) => {
@@ -581,7 +581,7 @@ function OrderCard({
                       <ul className="mt-1 space-y-1">
                         {previous.map((a) => (
                           <li key={a.id}>
-                            {assignmentText(a, lk)} — <span className="text-muted">{a.cancel_reason}{a.canceled_at ? `, ${formatDateTime(a.canceled_at)}` : ""}</span>
+                            {assignmentText(a, lk)}: <span className="text-muted">{a.cancel_reason}{a.canceled_at ? `, ${formatDateTime(a.canceled_at)}` : ""}</span>
                           </li>
                         ))}
                       </ul>
@@ -652,9 +652,9 @@ function AssignmentSummary({ a, lk }: { a: AssignmentRow; lk: Lookup }) {
 }
 
 function stateLabel(s: ResourceState, lk: Lookup) {
-  if (s.state === "unavailable") return `Unavailable — ${eligibilityMessage(s.reasons[0])}`;
+  if (s.state === "unavailable") return `Unavailable · ${eligibilityMessage(s.reasons[0])}`;
   if (s.state === "busy") return `Already assigned ${describeBooking(s.with[0], lk)}`;
-  return s.warnings.length ? `Available — ${eligibilityMessage(s.warnings[0])}` : "Available";
+  return s.warnings.length ? `Available · ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
 function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }> }) {
@@ -802,7 +802,7 @@ function LoadDialog({ order, load, date, units, onClose, onSaved }: { order: Ord
           </Field>
           <Field label="Unit" htmlFor="load-unit" error={fieldErrors.unitCode}>
             <Select id="load-unit" value={values.unitCode} onChange={set("unitCode")}>
-              <option value="">—</option>
+              <option value="">–</option>
               {units.map((u) => (
                 <option key={u.code} value={u.code}>{u.label}</option>
               ))}
@@ -874,7 +874,7 @@ function AssignDialog({
             <optgroup key={g} label={g === "available" ? "Available" : g === "busy" ? "Already assigned at this time" : "Unavailable"}>
               {groups[g].map(({ item, s }) => (
                 <option key={item.id} value={item.id}>
-                  {label(item)} — {stateLabel(s, lk)}
+                  {label(item)} · {stateLabel(s, lk)}
                 </option>
               ))}
             </optgroup>

@@ -136,7 +136,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
         open={markOpen}
         onOpenChange={setMarkOpen}
         title={`Mark ${quoteNumber} as sent`}
-        description="Use this when the quote was delivered outside the system — printed, handed over, or emailed from another program. This version will be locked; later changes need a revision."
+        description="Use this when the quote was delivered outside the system, printed, handed over, or emailed from another program. This version will be locked; later changes need a revision."
         confirmLabel="Mark as sent"
         onConfirm={async () => {
           const r = await markQuoteSent(quoteId, editSeq, note);
@@ -171,7 +171,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
       <ConfirmDialog
         open={Boolean(statusTarget)}
         onOpenChange={(o) => !o && setStatusTarget(null)}
-        title={statusTarget ? `${STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} — ${quoteNumber}` : ""}
+        title={statusTarget ? `${STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} · ${quoteNumber}` : ""}
         description={
           statusTarget === "accepted"
             ? "Records that the customer accepted the current revision and creates its order (status Confirmed) with the accepted prices. Scheduling the order stays a separate step."
@@ -199,7 +199,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
               id="status-note"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={statusTarget === "accepted" ? "e.g. Accepted by phone — Pat Morgan" : ""}
+              placeholder={statusTarget === "accepted" ? "e.g. Accepted by phone, Pat Morgan" : ""}
             />
           </Field>
         )}

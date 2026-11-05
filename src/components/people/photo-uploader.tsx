@@ -71,7 +71,7 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
         }
       } catch {
         setFailed(blob);
-        setError("The photo could not be sent — check your connection and try again.");
+        setError("The photo could not be sent. Check your connection and try again.");
       }
     });
 
@@ -155,7 +155,7 @@ export function PhotoUploader({ name, src }: { name: string; src: string }) {
   }
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-      <Avatar name={name} src={shown} size={96} label={shown ? "Your profile photo" : `No photo — initials of ${name}`} />
+      <Avatar name={name} src={shown} size={96} label={shown ? "Your profile photo" : `No photo: initials of ${name}`} />
       <div className="space-y-2">
         <input ref={input} type="file" accept="image/*" className="sr-only" id="photo" aria-label="Choose a profile photo" tabIndex={-1} aria-describedby="photo-help" onChange={(e) => pick(e.target.files?.[0])} disabled={pending} />
         <div className="flex flex-wrap gap-2">

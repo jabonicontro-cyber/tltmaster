@@ -38,6 +38,6 @@ export function StatCard({ href, label, value, hint, alert }: { href: string; la
 }
 
 export const fmtNum = (n: number | null | undefined, unit = "") =>
-  n === null || n === undefined ? "—" : `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}${unit}`;
+  n === null || n === undefined ? "–" : `${n.toLocaleString("en-US", { maximumFractionDigits: 1 })}${unit}`;
 
 export const fmtMoney = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });

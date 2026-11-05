@@ -116,7 +116,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
               {lines.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.description}
-                  {l.quantity !== null ? ` — ordered ${trimNumber(l.quantity)} ${unitLabel(l.unit_code).toLowerCase()}` : ""}
+                  {l.quantity !== null ? `, ordered ${trimNumber(l.quantity)} ${unitLabel(l.unit_code).toLowerCase()}` : ""}
                 </option>
               ))}
             </Select>
@@ -146,7 +146,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           {line?.unit_code && v.unitCode && v.unitCode !== line.unit_code && (
             <div className="sm:col-span-6">
               <Notice tone="warning" title="Different unit">
-                The order line is in {unitLabel(line.unit_code).toLowerCase()}; this ticket is in {unitLabel(v.unitCode).toLowerCase()}. No conversion is made — the ticket will be
+                The order line is in {unitLabel(line.unit_code).toLowerCase()}; this ticket is in {unitLabel(v.unitCode).toLowerCase()}. No conversion is made. The ticket will be
                 flagged for office review.
               </Notice>
             </div>
@@ -157,7 +157,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           <Field label="Delivery time" htmlFor="t-time" required error={fieldErrors.deliveredTime} className="sm:col-span-2">
             <Input id="t-time" type="time" value={v.deliveredTime} onChange={set("deliveredTime")} />
           </Field>
-          <Field label="Paper / scale ticket #" htmlFor="t-ref" error={fieldErrors.externalReference} className="sm:col-span-2" hint="Leave blank only if there is none — it will be flagged.">
+          <Field label="Paper / scale ticket #" htmlFor="t-ref" error={fieldErrors.externalReference} className="sm:col-span-2" hint="Leave blank only if there is none. It will be flagged.">
             <Input id="t-ref" maxLength={60} value={v.externalReference} onChange={set("externalReference")} autoComplete="off" />
           </Field>
         </CardBody>
@@ -190,7 +190,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
               ))}
             </Select>
           </Field>
-          {differs && <p className="text-sm text-amber-900 sm:col-span-3">Differs from the dispatch assignment — the ticket will be flagged for review.</p>}
+          {differs && <p className="text-sm text-amber-900 sm:col-span-3">Differs from the dispatch assignment. The ticket will be flagged for review.</p>}
           <Field label="Notes" htmlFor="t-notes" error={fieldErrors.notes} className="sm:col-span-3">
             <Textarea id="t-notes" rows={2} maxLength={2000} value={v.notes} onChange={set("notes")} />
           </Field>

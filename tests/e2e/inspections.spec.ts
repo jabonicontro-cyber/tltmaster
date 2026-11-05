@@ -13,7 +13,7 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   await expect(page).toHaveURL(/\/driver$/);
   await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible({ timeout: 30_000 });
   // UX6: the pre-trip is a prominent panel that opens on tap, so today's loads stay near the top.
-  await page.getByText("Pre-trip inspection — do this before you drive").click();
+  await page.getByText("Pre-trip inspection: do this before you drive").click();
 
   const form = page.getByRole("form", { name: "Vehicle inspection" });
   const truck = form.getByLabel("Truck");

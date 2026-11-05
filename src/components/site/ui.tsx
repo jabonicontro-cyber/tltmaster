@@ -54,7 +54,7 @@ export function Screenshot({ src, alt, width, height, caption, className, priori
         <span className="size-2.5 rounded-full bg-silver/20" />
       </div>
       <Image src={src} alt={alt} width={width} height={height} className="h-auto w-full" priority={priority} sizes="(min-width: 1152px) 1104px, 100vw" />
-      {caption ? <figcaption className="border-t border-silver/10 px-4 py-2.5 text-xs text-silver/75">{caption}</figcaption> : null}
+      {caption ? <figcaption className="border-t border-silver/10 px-4 py-2.5 text-xs text-silver">{caption}</figcaption> : null}
     </figure>
   );
 }

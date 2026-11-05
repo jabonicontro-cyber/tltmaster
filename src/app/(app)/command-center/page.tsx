@@ -225,7 +225,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                   {myLoads.map((a) => (
                     <li key={a.assignment_id} className="px-5 py-3 text-sm sm:px-6">
                       <p className="font-semibold">{formatTime(a.load.start_time)} – {formatTime(a.load.end_time)} · {a.order.number} load {a.load.number}</p>
-                      <p className="text-muted">{a.order.customer_name} · {a.site.label || a.site.line1} · Truck {a.truck ?? "—"}{a.trailer ? ` + ${a.trailer}` : ""}</p>
+                      <p className="text-muted">{a.order.customer_name} · {a.site.label || a.site.line1} · Truck {a.truck ?? "–"}{a.trailer ? ` + ${a.trailer}` : ""}</p>
                       {a.tickets.length === 0 && a.can_submit_ticket && <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className="font-semibold text-brand-fg hover:underline">Send the ticket</Link>}
                     </li>
                   ))}

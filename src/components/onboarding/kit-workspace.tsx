@@ -127,7 +127,7 @@ function Overview({ kit, missing, blockers, issuesOpen, checklistHref, staff }: 
   ];
   return (
     <Card>
-      <CardHeader title="Your path to go-live" description="Setup, training and testing happen before go-live. Your subscription starts at your actual go-live, per your signed agreement — not when onboarding starts or data is imported." />
+      <CardHeader title="Your path to go-live" description="Setup, training and testing happen before go-live. Your subscription starts at your actual go-live, per your signed agreement, not when onboarding starts or data is imported." />
       <CardBody className="space-y-4">
         <ol className="divide-y divide-line rounded-xl border border-line">
           {steps.map((s, i) => (
@@ -386,7 +386,7 @@ function Testing({ f }: { f: ReturnType<typeof useForm> }) {
         {issues.length === 0 ? <p className="text-sm text-muted">No issues recorded.</p> : null}
         {issues.map((x, i) => (
           <fieldset key={i} className={cn("grid gap-3 rounded-xl border p-3 sm:grid-cols-4", x.critical && x.status !== "resolved" ? "border-critical" : "border-line")}>
-            <legend className="px-1 text-xs font-semibold text-muted">Issue {i + 1}{x.critical && x.status !== "resolved" ? " — blocks go-live" : ""}</legend>
+            <legend className="px-1 text-xs font-semibold text-muted">Issue {i + 1}{x.critical && x.status !== "resolved" ? ", blocks go-live" : ""}</legend>
             <Field label="What happened" htmlFor={`t_ti_${i}`} className="sm:col-span-2"><Input id={`t_ti_${i}`} value={x.title} maxLength={200} onChange={(e) => set(issues.map((y, j) => (j === i ? { ...y, title: e.target.value } : y)))} /></Field>
             <Field label="Owner" htmlFor={`t_ow_${i}`}><Input id={`t_ow_${i}`} value={x.owner} maxLength={120} onChange={(e) => set(issues.map((y, j) => (j === i ? { ...y, owner: e.target.value } : y)))} /></Field>
             <Field label="Status" htmlFor={`t_st_${i}`}>

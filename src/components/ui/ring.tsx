@@ -28,7 +28,7 @@ export function Ring({ part, whole, label, caption, tone = "brand", size = 104 }
           )}
         </svg>
         <span className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl leading-none font-semibold tracking-[-0.03em] tabular text-ink">{whole > 0 ? part : "—"}</span>
+          <span className="text-2xl leading-none font-semibold tracking-[-0.03em] tabular text-ink">{whole > 0 ? part : "–"}</span>
           {whole > 0 && <span className="mt-1 text-[11px] tabular text-muted">of {whole}</span>}
         </span>
       </div>

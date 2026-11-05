@@ -114,7 +114,7 @@ describe("explanations", () => {
     expect(formatDifference("1.000")).toBe("+1");
     expect(formatDifference(0)).toBe("0");
     expect(formatDifference("0.000")).toBe("0");
-    expect(formatDifference(null)).toBe("—");
+    expect(formatDifference(null)).toBe("–");
   });
 });
 

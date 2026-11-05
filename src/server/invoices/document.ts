@@ -23,7 +23,7 @@ export async function buildInvoiceDocument(inv: Invoice): Promise<InvoiceDocumen
     isVoid: inv.status === "void",
     number,
     issueDate: inv.issue_date ? formatDate(inv.issue_date) : "Not issued",
-    dueDate: inv.due_date ? formatDate(inv.due_date) : "—",
+    dueDate: inv.due_date ? formatDate(inv.due_date) : "–",
     terms: inv.terms_days === 0 ? "Due on receipt" : `Net ${inv.terms_days}`,
     sender,
     billTo: { name: b.name, customerNumber: b.customer_number ?? "", addressLines: [b.line1, b.line2, cityLine].filter((l): l is string => Boolean(l && l.trim())) },

@@ -7,7 +7,7 @@ export const PERIOD_STATUS: Record<string, { label: string; tone: "gray" | "blue
 };
 
 export const RULE_STATUS: Record<string, { label: string; tone: "gray" | "green" | "amber" }> = {
-  draft: { label: "Draft — not used", tone: "amber" },
+  draft: { label: "Draft: not used", tone: "amber" },
   active: { label: "Active", tone: "green" },
   retired: { label: "Retired", tone: "gray" },
 };

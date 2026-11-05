@@ -7,7 +7,7 @@ import { CheckCircle2 } from "lucide-react";
 type Kind = "demo" | "contact";
 
 const input =
-  "mt-1.5 block w-full rounded-xl border border-[#0c1a2b]/15 bg-white px-3 py-2.5 text-base text-cloud placeholder:text-silver/60 focus:border-electric focus:ring-2 focus:ring-electric/35 focus:outline-none aria-[invalid=true]:border-red-600";
+  "mt-1.5 block w-full rounded-xl border border-[#0c1a2b]/15 bg-white px-3 py-2.5 text-base text-cloud placeholder:text-silver focus:border-electric focus:ring-2 focus:ring-electric/35 focus:outline-none aria-[invalid=true]:border-red-600";
 
 /**
  * Demo request / contact form. Posts JSON to /api/leads; without JavaScript

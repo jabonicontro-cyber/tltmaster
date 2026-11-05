@@ -5,8 +5,8 @@
 
 export interface Branding {
   logo: string; // data:image/(png|jpeg|webp);base64,… or ""
-  color: string; // "#rrggbb" or "" — buttons, links, highlights
-  sidebarColor: string; // "#rrggbb" or "" — the navigation background
+  color: string; // "#rrggbb" or "", buttons, links, highlights
+  sidebarColor: string; // "#rrggbb" or "". The navigation background
 }
 
 export const EMPTY_BRANDING: Branding = { logo: "", color: "", sidebarColor: "" };

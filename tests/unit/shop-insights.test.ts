@@ -9,7 +9,7 @@ describe("shop insights", () => {
   it("flags three or more same-kind repairs on one truck in 90 days, never PM or inspections", () => {
     const jobs = [job("a", "103", "brakes", 10), job("b", "103", "brakes", 40), job("c", "103", "brakes", 80), job("d", "103", "brakes", 120),
       job("e", "104", "preventive", 5), job("f", "104", "preventive", 30), job("g", "104", "preventive", 60), job("h", "105", "tires", 3), job("i", "105", "tires", 9)];
-    expect(repeatFailures(jobs, TODAY)).toEqual([{ unitId: "103", unitLabel: "Truck 103", category: "brakes", count: 3, detail: "3 brake jobs in 90 days — worth finding the root cause." }]);
+    expect(repeatFailures(jobs, TODAY)).toEqual([{ unitId: "103", unitLabel: "Truck 103", category: "brakes", count: 3, detail: "3 brake jobs in 90 days. Worth finding the root cause." }]);
   });
 
   it("learns which parts a kind of job usually needs and whether stock covers it", () => {

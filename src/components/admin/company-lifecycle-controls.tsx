@@ -46,7 +46,7 @@ export function CompanyLifecycleControls({
           <div className="space-y-3 border-t border-line pt-5">
             <p className="flex flex-wrap items-center gap-2 text-sm">
               <Badge>Archived</Badge>
-              <span className="text-muted">Reason: {company.archive_reason || "—"}</span>
+              <span className="text-muted">Reason: {company.archive_reason || "–"}</span>
             </p>
             <form action={restoreCompany}>
               <input type="hidden" name="id" value={company.id} />

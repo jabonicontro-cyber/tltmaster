@@ -129,7 +129,7 @@ const loadRef = (e: ExceptionItem) => `${e.order_number ?? "Order"}${e.load_numb
 export function exceptionTitle(e: ExceptionItem): string {
   switch (e.kind) {
     case "urgent_order":
-      return `${e.order_number ?? "Order"} is urgent — ${URGENCY_LABELS[(e.details.state as UrgencyState) ?? "awaiting_acknowledgement"].toLowerCase()}`;
+      return `${e.order_number ?? "Order"} is urgent · ${URGENCY_LABELS[(e.details.state as UrgencyState) ?? "awaiting_acknowledgement"].toLowerCase()}`;
     case "order_unscheduled":
       return `${e.order_number ?? "Order"}${e.customer_name ? ` (${e.customer_name})` : ""} needs a delivery date`;
     case "missing_ticket":

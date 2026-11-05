@@ -54,7 +54,7 @@ export default async function ShopCapacityPage() {
                       return (
                         <Tr key={d.date} className={d.working_day ? undefined : "bg-surface"}>
                           <Td className="whitespace-nowrap font-medium">{WEEKDAY[new Date(`${d.date}T12:00:00Z`).getUTCDay()]} {formatDate(d.date)}{!d.working_day && <span className="ml-1 text-xs text-muted">closed</span>}</Td>
-                          <Td className="text-right tabular">{d.working_day ? d.mechanics : "—"}</Td>
+                          <Td className="text-right tabular">{d.working_day ? d.mechanics : "–"}</Td>
                           <Td>
                             <div className="flex items-center gap-2">
                               <div className="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-surface" aria-hidden>
@@ -70,7 +70,7 @@ export default async function ShopCapacityPage() {
                                 {notes.map((n) => <Badge key={n} tone={n.includes("over") || n.includes("bays") || n.includes("closed") ? "red" : "amber"}>{n}</Badge>)}
                                 {d.skill_gaps.map((g) => <Link key={g.id} href={`/maintenance/work-orders/${g.id}`}><Badge tone="amber">{g.number}: no {WO_CATEGORIES[g.category as keyof typeof WO_CATEGORIES]?.toLowerCase() ?? g.category} skill on shift</Badge></Link>)}
                               </span>
-                            ) : <span className="text-muted">—</span>}
+                            ) : <span className="text-muted">–</span>}
                           </Td>
                         </Tr>
                       );

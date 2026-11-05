@@ -168,7 +168,7 @@ function RespondButton({ offer }: { offer: MyShiftOffer }) {
     return (
       <form onSubmit={withdraw.onSubmit} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="offer" value={offer.id} />
-        <Badge tone="amber">{offer.myStatus === "requested" ? "Asked — waiting" : "Accepted — waiting"}</Badge>
+        <Badge tone="amber">{offer.myStatus === "requested" ? "Asked: waiting" : "Accepted: waiting"}</Badge>
         <Button type="submit" size="sm" variant="ghost" loading={withdraw.pending}>Withdraw</Button>
         <FormError message={withdraw.formError} />
       </form>

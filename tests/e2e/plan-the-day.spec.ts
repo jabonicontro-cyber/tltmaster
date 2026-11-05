@@ -27,7 +27,7 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   const plans = page.getByRole("tablist", { name: "Plans" });
   await expect(plans.getByRole("tab").first()).toContainText("Balanced (your priorities)");
   await expect(page.getByText("Loads covered")).toBeVisible();
-  await expect(page.getByText("Not evaluated — no cost data")).toBeVisible();
+  await expect(page.getByText("not evaluated (no cost data)")).toBeVisible();
   const missing = page.getByRole("region", { name: "Missing or estimated information" });
   await expect(missing).toContainText("Hours of service are not checked");
   await expect(missing).toContainText("Travel distance and drive time are not calculated");
@@ -112,7 +112,7 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   await page.getByLabel("Day", { exact: true }).fill(far);
   await page.getByRole("button", { name: "Show plan" }).click();
   await page.waitForURL(new RegExp(`date=${far}.*preset=service|preset=service.*date=${far}`));
-  await expect(page.getByText(/Planning the day —/)).toHaveCount(0);
+  await expect(page.getByText(/Planning the day: /)).toHaveCount(0);
   await expect(page.getByRole("status").filter({ hasText: "Nothing to plan" }).or(page.getByRole("tablist", { name: "Plans" }))).toBeVisible();
   const empty = page.getByRole("status").filter({ hasText: "Nothing to plan" });
   if (await empty.count()) {

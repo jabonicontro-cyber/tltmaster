@@ -22,7 +22,7 @@ export function PricingHelpCard({ help }: { help: QuotePricingHelp }) {
     <Card className="print:hidden">
       <CardHeader
         title={<span className="inline-flex items-center gap-2"><Lightbulb className="size-4 text-brand-fg" aria-hidden />Pricing help</span>}
-        description={`From your decided quotes of the last 12 months${help.miles !== null ? ` · this job is about ${Math.round(help.miles)} mi from your yard (straight line)` : ""}${help.costShown ? " · per-load lines compared with your measured cost per load" : ""}. A suggestion only — you set the price; customers never see this.`}
+        description={`From your decided quotes of the last 12 months${help.miles !== null ? ` · this job is about ${Math.round(help.miles)} mi from your yard (straight line)` : ""}${help.costShown ? " · per-load lines compared with your measured cost per load" : ""}. A suggestion only. You set the price; customers never see this.`}
       />
       <ul className="divide-y divide-line border-t border-line" aria-label="Pricing help">
         {help.lines.map((l) => {
@@ -34,7 +34,7 @@ export function PricingHelpCard({ help }: { help: QuotePricingHelp }) {
                 <span className="text-sm text-muted">per {l.unitLabel.replace(/s$/, "").toLowerCase()}</span>
                 <Badge tone={v.tone}>{v.label}</Badge>
                 <span className="ml-auto text-sm tabular">
-                  Yours <strong className="text-ink">{l.rateCents === null ? "—" : formatCents(l.rateCents)}</strong>
+                  Yours <strong className="text-ink">{l.rateCents === null ? "–" : formatCents(l.rateCents)}</strong>
                   {l.suggestedCents !== null && <> · Suggested <strong className="text-ink">{formatCents(l.suggestedCents)}</strong></>}
                 </span>
               </div>

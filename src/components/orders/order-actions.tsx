@@ -127,7 +127,7 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
       <ConfirmDialog
         open={Boolean(target)}
         onOpenChange={(o) => !o && setTarget(null)}
-        title={target ? `${orderTransitionLabel(status, target)} — ${orderNumber}` : ""}
+        title={target ? `${orderTransitionLabel(status, target)} · ${orderNumber}` : ""}
         description={target ? describe(status, target, sourceQuoteId) : undefined}
         confirmLabel={target ? orderTransitionLabel(status, target) : "Confirm"}
         tone={target === "canceled" ? "danger" : "primary"}
@@ -163,7 +163,7 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
               value={note}
               maxLength={1000}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={target === "on_hold" ? "e.g. Site not ready — customer will call" : target === "canceled" ? "e.g. Customer canceled the project" : ""}
+              placeholder={target === "on_hold" ? "e.g. Site not ready, customer will call" : target === "canceled" ? "e.g. Customer canceled the project" : ""}
             />
           </Field>
         )}

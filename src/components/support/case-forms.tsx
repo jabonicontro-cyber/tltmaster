@@ -120,7 +120,7 @@ export function CaseReplyForm({ request, closed }: { request: string; closed: bo
             className={internal === v ? "rounded-full bg-card px-3 py-1.5 text-ink shadow-xs" : "rounded-full px-3 py-1.5 text-muted"}>{l}</button>
         ))}
       </div>
-      <Field label={internal ? "Note (staff only — never shown to the customer)" : "Reply"} htmlFor="sc-body">
+      <Field label={internal ? "Note (staff only: never shown to the customer)" : "Reply"} htmlFor="sc-body">
         <Textarea id="sc-body" rows={4} maxLength={4000} value={body} onChange={(e) => setBody(e.target.value)} className={internal ? "bg-amber-50/60" : undefined} />
       </Field>
       <PhotoPicker id="sc-reply-files" label="Attachments (optional)" empty="Add photos or PDFs" accept={SUPPORT_ACCEPT} camera={false} files={files} onChange={setFiles} max={SUPPORT_MAX_FILES} />

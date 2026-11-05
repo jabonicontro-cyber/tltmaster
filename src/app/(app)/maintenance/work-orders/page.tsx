@@ -100,7 +100,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
                       <Td className="tabular">{workOrderUnit(w, truckUnits, trailerUnits)}</Td>
                       <Td className="hidden md:table-cell"><UrgencyBadge urgency={w.urgency} /></Td>
                       <Td className="hidden text-sm lg:table-cell">{w.assigned_to ? names.get(w.assigned_to) ?? "Former member" : <span className="text-muted">Unassigned</span>}</Td>
-                      <Td className="hidden text-sm lg:table-cell">{w.scheduled_for ? formatDate(w.scheduled_for) : "—"}</Td>
+                      <Td className="hidden text-sm lg:table-cell">{w.scheduled_for ? formatDate(w.scheduled_for) : "–"}</Td>
                       <Td><WoStatusBadge status={w.status} /></Td>
                     </Tr>
                   ))}

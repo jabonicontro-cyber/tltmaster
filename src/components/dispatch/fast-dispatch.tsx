@@ -75,7 +75,7 @@ function Results({ results, items, lk }: { results: BatchResult[]; items: BatchI
       {results.map((r) => (
         <li key={r.loadId} className="flex items-start gap-2 px-3 py-2 text-sm">
           {r.ok ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-green-700" aria-hidden /> : <XCircle className="mt-0.5 size-4 shrink-0 text-critical" aria-hidden />}
-          <span><span className="font-semibold">{loadLabel(byLoad.get(r.loadId)!, lk)}</span> — {r.message}</span>
+          <span><span className="font-semibold">{loadLabel(byLoad.get(r.loadId)!, lk)}</span>, {r.message}</span>
         </li>
       ))}
     </ul>

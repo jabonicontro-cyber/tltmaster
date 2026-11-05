@@ -38,7 +38,7 @@ export function OfflineDay() {
   return (
     <div className="w-full max-w-xl space-y-4 text-left">
       <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-[15px] font-semibold text-amber-950 ring-1 ring-amber-200">
-        Your day as of {saved}. No connection: this may be out of date — check with dispatch before acting on it.
+        Your day as of {saved}. No connection: this may be out of date. Check with dispatch before acting on it.
       </p>
       <OutboxList items={items} />
       {editing ? (

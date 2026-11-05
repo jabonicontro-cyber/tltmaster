@@ -41,7 +41,7 @@ export interface FieldChange {
 }
 
 function show(field: string, value: unknown): string {
-  if (value === null || value === undefined || value === "") return "—";
+  if (value === null || value === undefined || value === "") return "–";
   if (field === "total_cents" && typeof value === "number") return `$${(value / 100).toFixed(2)}`;
   if (field === "tax_rate_bp" && typeof value === "number") return `${(value / 100).toFixed(2)}%`;
   if ((field === "window_start" || field === "window_end") && typeof value === "string") return value.slice(0, 5);

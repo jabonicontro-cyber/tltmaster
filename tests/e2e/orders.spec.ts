@@ -38,7 +38,7 @@ test("create a direct order, confirm it, schedule it and take it through deliver
   const orderNumber = (await page.getByRole("heading", { level: 1 }).textContent())!.trim();
   expect(orderNumber).toMatch(/^ORD-\d{4,}$/);
   await expect(page.getByText("Direct order", { exact: true })).toBeVisible();
-  await expect(page.getByText("Draft — not confirmed yet")).toBeVisible();
+  await expect(page.getByText("Draft: not confirmed yet")).toBeVisible();
   await expect(page.getByText("$175.56").first()).toBeVisible();
   await expect(page.getByText("PO-E2E-DIRECT", { exact: true })).toBeVisible();
 

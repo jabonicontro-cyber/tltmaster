@@ -34,7 +34,7 @@ test("availability shows shop visits, safety restrictions and unverified hours o
   await expect(page.getByRole("row", { name: new RegExp(`^AV-SHOP-${tag}`) })).toContainText("In the shop this day");
   await expect(page.getByRole("row", { name: new RegExp(`^AV-SAFE-${tag}`) })).toContainText("Safety restricted");
   await expect(page.getByRole("row", { name: new RegExp(`^AV-OK-${tag}`) })).toContainText("Available");
-  await expect(page.getByRole("row", { name: new RegExp(`AV-Driver ${tag}`) }).getByTestId("primary-truck-note")).toHaveText("Safety restricted this day — pair with another truck.");
+  await expect(page.getByRole("row", { name: new RegExp(`AV-Driver ${tag}`) }).getByTestId("primary-truck-note")).toHaveText("Safety restricted this day: pair with another truck.");
 
   await page.goto(`/dispatch/resources?date=${today}&q=AV-&show=available`);
   await expect(page.getByRole("row", { name: new RegExp(`^AV-OK-${tag}`) })).toBeVisible();

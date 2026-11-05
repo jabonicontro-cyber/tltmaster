@@ -1,11 +1,12 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/legal";
 
-export const metadata: Metadata = { title: "Terms", description: "Terms for using the Taviron website and early access (draft).", alternates: { canonical: "/terms" } };
+export const metadata: Metadata = { title: "Terms", description: "Terms for using the Taviron website and early access (draft).", alternates: { canonical: "/terms" }, openGraph: siteOpenGraph("/terms") };
 
 export default function TermsPage() {
   return (
-    <LegalPage title="Terms of use">
+    <LegalPage title="Terms of use" updated="November 5, 2026">
       <h2>Early access</h2>
       <p>Taviron is in early access. Features may change, and some described as planned may not be built. Access to the app is by invitation and may be withdrawn.</p>
       <h2>Pricing</h2>

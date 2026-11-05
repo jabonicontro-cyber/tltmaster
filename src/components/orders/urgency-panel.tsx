@@ -99,7 +99,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
                 <span className="font-semibold">
                   {e.action === "flagged" ? "Flagged urgent" : e.action === "updated" ? "Reason or deadline changed" : e.action === "closed_with_order" ? "Closed with the order" : URGENCY_LABELS[e.to_state]}
                 </span>
-                {e.note ? ` — ${e.note}` : ""}
+                {e.note ? `: ${e.note}` : ""}
                 <div className="text-xs text-muted">{formatDateTime(e.occurred_at, timezone)} · {who(e.actor_id)}</div>
               </li>
             ))}

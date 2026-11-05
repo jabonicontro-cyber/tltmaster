@@ -26,7 +26,7 @@ export interface Priorities {
   service: number; // urgent orders, overdue and due-soon requested dates
   revenue: number; // estimated load revenue (never margin: costs are unknown)
   utilization: number; // use of each truck's recorded capacity
-  efficiency: number; // keeping a truck and driver on one site or job (fewer empty repositioning trips — proxy)
+  efficiency: number; // keeping a truck and driver on one site or job (fewer empty repositioning trips, proxy)
   balance: number; // spreading loads evenly across drivers
   crews: number; // keeping a driver on one truck through the day, and on their primary truck (0 = off; master plan §9 Q20)
 }
@@ -186,7 +186,7 @@ function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, tru
   const cap = capacity(truck, load.unit_code, trailer);
   if (load.planned_quantity !== null && cap !== null && load.planned_quantity > cap) out.push(`Planned ${load.planned_quantity} ${load.unit_code ?? ""} exceeds the recorded capacity of ${equipmentLabel(truck, trailer)}.`);
   for (const d of (input.documentIssues ?? []).filter((x) => x.trailer_id === trailer.id && x.blocks && x.expires_on < load.load_date)) {
-    out.push(`Trailer ${trailer.unit_number}'s ${documentLabel(d)} (verified) — the company rule blocks it until the renewed document is recorded in Fleet.`);
+    out.push(`Trailer ${trailer.unit_number}'s ${documentLabel(d)} (verified). The company rule blocks it until the renewed document is recorded in Fleet.`);
   }
   return out;
 }
@@ -275,15 +275,15 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   else if (load.planned_quantity !== null && (trailer ? !trailer.capacity_verified_at : !truck.capacity_verified_at)) r.push(`${trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck.unit_number}`}'s capacity is not verified.`);
   if (trailer && !trailer.compatible_truck_types.length) r.push(`Trailer ${trailer.unit_number}'s compatible truck types are not recorded.`);
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
-  if (trailer && (input.trailerShopVisits ?? []).some((v) => v.trailer_id === trailer.id && (v.status === "in_progress" || v.status === "awaiting_parts"))) r.push(`Trailer ${trailer.unit_number} has shop work in progress or waiting for parts — check with the shop.`);
+  if (trailer && (input.trailerShopVisits ?? []).some((v) => v.trailer_id === trailer.id && (v.status === "in_progress" || v.status === "awaiting_parts"))) r.push(`Trailer ${trailer.unit_number} has shop work in progress or waiting for parts. Check with the shop.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
-  if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave — confirm they are working that day.");
+  if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave. Confirm they are working that day.");
   for (const d of input.expiredDocuments ?? []) {
     if (d.expires_on >= load.load_date || (d as { blocks?: boolean }).blocks) continue; // blocking ones never reach a plan
     const kind = d.kind.replace(/_/g, " ");
-    if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);
-    if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${d.expires_on} — confirm it was renewed.`);
+    if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${d.expires_on}. Confirm it was renewed.`);
+    if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${d.expires_on}. Confirm it was renewed.`);
   }
   if (input.maintenanceChecked === false) r.push("Maintenance shop dates could not be checked.");
   if (input.timeOffChecked === false) r.push("Driver time off could not be checked.");

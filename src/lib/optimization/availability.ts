@@ -75,7 +75,7 @@ export function explainLoad(input: OptimizationInput, loadId: string): LoadExpla
   else if (!freeTrucks.length) summary = `None of the ${count(input.trucks.length, "truck", "trucks")} can take this load (reasons below).`;
   else if (!freeDrivers.length) summary = `None of the ${count(input.drivers.length, "driver", "drivers")} can take this load (reasons below).`;
   else if (tractorsOnly && !freeTrailers.length) summary = (input.trailers ?? []).length ? `Every free truck is a tractor and none of the ${count((input.trailers ?? []).length, "trailer is", "trailers are")} free (reasons below).` : "Every free truck is a tractor and there are no active trailers.";
-  else summary = `${count(freeTrucks.length, "truck", "trucks")} and ${count(freeDrivers.length, "driver", "drivers")} are free on their own, but no combination passes every rule — check capacity, trailer compatibility and driver qualifications for this load (Smart Dispatch on the Dispatch board lists each pair).`;
+  else summary = `${count(freeTrucks.length, "truck", "trucks")} and ${count(freeDrivers.length, "driver", "drivers")} are free on their own, but no combination passes every rule. Check capacity, trailer compatibility and driver qualifications for this load (Smart Dispatch on the Dispatch board lists each pair).`;
   return { loadId, unavailable, summary };
 }
 

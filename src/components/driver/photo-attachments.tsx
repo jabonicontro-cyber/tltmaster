@@ -55,7 +55,7 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
       if (xhr.status === 200 && json.attachmentId) update(p.key, { status: "uploaded", progress: 100, attachmentId: json.attachmentId });
       else update(p.key, { status: "failed", error: json.error ?? "The photo was not saved. Try again." });
     };
-    xhr.onerror = () => update(p.key, { status: "failed", error: "Not uploaded — no connection. Nothing was saved. Tap Retry when you have signal." });
+    xhr.onerror = () => update(p.key, { status: "failed", error: "Not uploaded: no connection. Nothing was saved. Tap Retry when you have signal." });
     xhr.send(body);
   }
 

@@ -44,7 +44,7 @@ export function ReadinessBadge({ readiness }: { readiness: EligibilityResult }) 
   if (readiness.warnings.length)
     return (
       <Badge tone="amber">
-        <AlertTriangle className="size-3" aria-hidden /> Eligible — check
+        <AlertTriangle className="size-3" aria-hidden /> Eligible: check
       </Badge>
     );
   return (

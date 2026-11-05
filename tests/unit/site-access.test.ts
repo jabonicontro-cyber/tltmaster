@@ -20,7 +20,7 @@ describe("early-access cookie", () => {
     expect(verifySiteAccess(t, "", NOW)).toBeNull();
   });
 
-  it("contains no code and no personal data — only the grant id and times", () => {
+  it("contains no code and no personal data, only the grant id and times", () => {
     const t = signSiteAccess({ g: G, x: NOW + 60, c: NOW }, SECRET);
     expect(JSON.parse(Buffer.from(t.split(".")[1], "base64url").toString())).toEqual({ g: G, x: NOW + 60, c: NOW });
   });

@@ -31,15 +31,15 @@ export function reportNeedsEquipment(kind: ReportKind): boolean {
 }
 
 export const REPORT_STATUS_LABELS: Record<string, string> = {
-  open: "Sent — not seen yet",
+  open: "Sent: not seen yet",
   acknowledged: "Seen by the office",
   resolved: "Resolved",
 };
 
 /** What a ticket's status means for the driver. */
 export const DRIVER_TICKET_STATUS: Record<TicketStatus, string> = {
-  submitted: "Sent — waiting for office review",
-  needs_review: "Sent — the office will check it",
+  submitted: "Sent: waiting for office review",
+  needs_review: "Sent: the office will check it",
   accepted: "Accepted by the office",
   voided: "Voided by the office",
   superseded: "Replaced by a correction",

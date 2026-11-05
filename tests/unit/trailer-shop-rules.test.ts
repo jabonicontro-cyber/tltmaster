@@ -38,6 +38,6 @@ describe("work order unit", () => {
     const trailers = new Map([["b", "T-4"]]);
     expect(workOrderUnit({ truck_id: "a" }, trucks, trailers)).toBe("Truck 12");
     expect(workOrderUnit({ truck_id: null, trailer_id: "b" }, trucks, trailers)).toBe("Trailer T-4");
-    expect(workOrderUnit({ truck_id: "x" }, trucks, trailers)).toBe("Truck —");
+    expect(workOrderUnit({ truck_id: "x" }, trucks, trailers)).toBe("Truck –");
   });
 });

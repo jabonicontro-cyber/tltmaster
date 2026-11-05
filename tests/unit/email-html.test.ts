@@ -34,7 +34,7 @@ describe("branded HTML email", () => {
   it("keeps line breaks and shows missing values as a dash", () => {
     const html = renderEmailHtml({ heading: "H", paragraphs: ["a\nb"], details: [["Phone", "  "]], footer: "F" });
     expect(html).toContain("a<br>b");
-    expect(html).toContain(">—<");
+    expect(html).toContain(">–<");
   });
 });
 

@@ -88,7 +88,7 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
       <Poller />
       <PageHeader
         title="Communications"
-        description="Messages, groups and operational workspaces for your company. Everything stays inside Taviron — nothing is sent by email or text."
+        description="Messages, groups and operational workspaces for your company. Everything stays inside Taviron. Nothing is sent by email or text."
         actions={<div className="flex flex-wrap items-center gap-3">
           <PresencePicker value={presence} />
           <NewConversation people={home.directory} canGroup={can(access, "comms.groups")} me={access.userId} />

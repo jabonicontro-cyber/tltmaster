@@ -9,7 +9,7 @@ describe("greeting", () => {
   });
 
   it("falls back to a neutral greeting rather than guessing", () => {
-    for (const v of [null, undefined, "", "   ", "pat@example.com", "1234", "—"]) expect(greeting(v)).toBe("Welcome back!");
+    for (const v of [null, undefined, "", "   ", "pat@example.com", "1234", "–"]) expect(greeting(v)).toBe("Welcome back!");
     expect(firstNameOf("x".repeat(41))).toBeNull();
   });
 });

@@ -96,7 +96,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
       setCreated(r.data);
       setStep("done");
     } catch {
-      setError("The server could not be reached. Nothing was lost: try Create again — it continues the same sign-in.");
+      setError("The server could not be reached. Nothing was lost: try Create again. It continues the same sign-in.");
     } finally {
       setPending(false);
     }
@@ -161,8 +161,8 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
             </Field>
             <Field label="Sign-in status" htmlFor="status">
               <Select id="status" value={status} onChange={(e) => setStatus(e.target.value as "active" | "inactive")}>
-                <option value="active">On — they can sign in after setup</option>
-                <option value="inactive">Off for now — turn it on later</option>
+                <option value="active">On: they can sign in after setup</option>
+                <option value="inactive">Off for now: turn it on later</option>
               </Select>
             </Field>
           </div>
@@ -191,7 +191,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
           <dl className="grid gap-3 text-sm sm:grid-cols-2">
             <div><dt className="text-muted">Name</dt><dd className="font-semibold text-ink">{name}</dd></div>
             <div><dt className="text-muted">Username</dt><dd className="font-mono font-semibold text-ink">{normalized}</dd></div>
-            <div><dt className="text-muted">Job title</dt><dd className="text-ink">{jobTitle || "—"}</dd></div>
+            <div><dt className="text-muted">Job title</dt><dd className="text-ink">{jobTitle || "–"}</dd></div>
             <div><dt className="text-muted">Email</dt><dd className="text-ink">{email || "None (print or copy the instructions)"}</dd></div>
             <div><dt className="text-muted">Bases</dt><dd className="text-ink">{chosenBases.length ? bases.filter((b) => chosenBases.includes(b.id)).map((b) => b.label).join(", ") : "Every base"}</dd></div>
             <div><dt className="text-muted">Sign-in</dt><dd className="text-ink">{status === "active" ? "On after setup" : "Off until you turn it on"}</dd></div>

@@ -75,8 +75,8 @@ export const compensationSchema = z
 
 /** Display a rate for people allowed to see it. */
 export function formatPay(c: { pay_type: PayType; rate_cents: number | null; rate_percent: number | null }): string {
-  if (c.pay_type === "percentage") return `${c.rate_percent ?? "—"}% of revenue`;
-  const amount = c.rate_cents === null ? "—" : (c.rate_cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
+  if (c.pay_type === "percentage") return `${c.rate_percent ?? "–"}% of revenue`;
+  const amount = c.rate_cents === null ? "–" : (c.rate_cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
   const unit = { hourly: " / hour", salary: " / year", per_load: " / load", other: "" }[c.pay_type];
   return `${amount}${unit}`;
 }

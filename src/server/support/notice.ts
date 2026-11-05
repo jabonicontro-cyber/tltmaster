@@ -28,7 +28,7 @@ export async function sendSupportNotice(requestId: string, isDemo: boolean): Pro
   const testing = mode.mode === "test";
   const result = await mode.provider.send(
     { to: testing ? [mode.testRecipient] : r.emails, cc: [], replyTo: env().EMAIL_REPLY_TO, subject: testing ? `[TEST] ${subject}` : subject,
-      text: testing ? `TEST MODE — intended for: ${r.emails.join(", ")}\n\n${text}` : text, html, attachments: [] },
+      text: testing ? `TEST MODE. Intended for: ${r.emails.join(", ")}\n\n${text}` : text, html, attachments: [] },
     { idempotencyKey: `support-${requestId}-${randomUUID()}` },
   );
   if (!result.ok) {

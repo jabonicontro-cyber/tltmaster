@@ -90,9 +90,9 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
                       <Link href={`/payroll/periods/${period.id}/statements/${d}`} className="ml-2 text-xs font-semibold text-brand-fg hover:underline">Statement</Link>
                     </Td>
                     <Td align="right">{r.tickets}</Td>
-                    <Td align="right" className="tabular">{r.tons ? r.tons.toFixed(2) : "—"}</Td>
+                    <Td align="right" className="tabular">{r.tons ? r.tons.toFixed(2) : "–"}</Td>
                     <Td align="right" className="tabular">{money(r.earnings)}</Td>
-                    <Td align="right" className="tabular">{r.adjustments ? money(r.adjustments) : "—"}</Td>
+                    <Td align="right" className="tabular">{r.adjustments ? money(r.adjustments) : "–"}</Td>
                     <Td align="right" className="tabular font-semibold">{money(r.earnings + r.adjustments)}</Td>
                   </Tr>
                 ))}
@@ -108,7 +108,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <ul className="divide-y divide-line">
             {exceptions.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center gap-3 px-5 py-3 text-sm sm:px-6">
-                <span className="min-w-0 flex-[1_1_16rem]"><Link href={`/tickets/${e.ticket_id}`} className="font-semibold hover:underline">{e.delivery_tickets?.ticket_number}</Link> · {name(e.driver_id)} — <span className="text-amber-800">{e.exception}</span></span>
+                <span className="min-w-0 flex-[1_1_16rem]"><Link href={`/tickets/${e.ticket_id}`} className="font-semibold hover:underline">{e.delivery_tickets?.ticket_number}</Link> · {name(e.driver_id)}: <span className="text-amber-800">{e.exception}</span></span>
                 {open && (
                   <form action={setEntry} className="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="period" value={period.id} /><input type="hidden" name="id" value={e.id} />
@@ -128,11 +128,11 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Not payable yet, and corrections" />
           <ul className="divide-y divide-line text-sm">
             {work.not_payable.map((t) => (
-              <li key={t.ticket_id} className="px-5 py-2.5 sm:px-6"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} — {NOT_PAYABLE[t.reason]}</li>
+              <li key={t.ticket_id} className="px-5 py-2.5 sm:px-6"><Link href={`/tickets/${t.ticket_id}`} className="font-semibold hover:underline">{t.ticket_number}</Link> · {name(t.driver_id)} · {NOT_PAYABLE[t.reason]}</li>
             ))}
             {work.corrections.map((c) => (
               <li key={c.entry_id} className="px-5 py-2.5 sm:px-6">
-                <Link href={`/tickets/${c.ticket_id}`} className="font-semibold hover:underline">{c.ticket_number}</Link> · {name(c.driver_id)} — paid {money(c.amount_cents)} in the period starting {formatDate(c.paid_in)}, then {c.ticket_status === "voided" ? "voided" : "corrected"}. Settle it with an adjustment below (link it to this ticket).
+                <Link href={`/tickets/${c.ticket_id}`} className="font-semibold hover:underline">{c.ticket_number}</Link> · {name(c.driver_id)}: paid {money(c.amount_cents)} in the period starting {formatDate(c.paid_in)}, then {c.ticket_status === "voided" ? "voided" : "corrected"}. Settle it with an adjustment below (link it to this ticket).
               </li>
             ))}
           </ul>
@@ -155,7 +155,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
                     <Td className="whitespace-nowrap">{e.delivery_tickets ? formatDate(e.delivery_tickets.delivered_at.slice(0, 10)) : ""}</Td>
                     <Td align="right" className="tabular">{e.delivery_tickets ? `${e.delivery_tickets.quantity} ${e.delivery_tickets.unit_code}` : ""}</Td>
                     <Td className="text-xs">{e.rule_version_id ? <span className="font-semibold">{ruleNames.get(e.rule_version_id)}</span> : null}<span className="block text-muted">{e.breakdown || e.exception || e.note}</span></Td>
-                    <Td align="right" className="tabular">{e.amount_cents !== null && e.status === "calculated" ? money(e.amount_cents) : "—"}</Td>
+                    <Td align="right" className="tabular">{e.amount_cents !== null && e.status === "calculated" ? money(e.amount_cents) : "–"}</Td>
                   </Tr>
                 ))}
               </tbody>
@@ -169,7 +169,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
           <CardHeader title="Adjustments" description="Additions or deductions entered by a person, with a reason. Nothing is deducted automatically." />
           {adjustments.length > 0 && (
             <ul className="divide-y divide-line text-sm">
-              {adjustments.map((a) => <li key={a.id} className="px-5 py-2.5 sm:px-6"><span className="font-semibold tabular">{money(a.amount_cents)}</span> · {name(a.driver_id)} — {a.reason}</li>)}
+              {adjustments.map((a) => <li key={a.id} className="px-5 py-2.5 sm:px-6"><span className="font-semibold tabular">{money(a.amount_cents)}</span> · {name(a.driver_id)} · {a.reason}</li>)}
             </ul>
           )}
           {open && (
@@ -191,7 +191,7 @@ export default async function PayrollPeriodPage({ params, searchParams }: { para
         </Card>
 
         <Card>
-          <CardHeader title={open ? "Approve" : "Export"} description={open ? "Approving locks the period with these totals. Later changes go into a later period." : `Approved ${period.approved_at ? formatDateTime(period.approved_at) : ""}. Files are gross earnings for your bookkeeper — not a verified QuickBooks or payroll-provider import.`} />
+          <CardHeader title={open ? "Approve" : "Export"} description={open ? "Approving locks the period with these totals. Later changes go into a later period." : `Approved ${period.approved_at ? formatDateTime(period.approved_at) : ""}. Files are gross earnings for your bookkeeper, not a verified QuickBooks or payroll-provider import.`} />
           <CardBody className="space-y-4">
             {open ? (
               <form action={approvePeriod} className="space-y-2">

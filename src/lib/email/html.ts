@@ -52,7 +52,7 @@ export function renderEmailHtml(layout: EmailLayout): string {
         .map(
           ([label, value]) =>
             `<tr><td style="padding:8px 12px 8px 0;border-top:1px solid ${LINE};font-size:14px;color:${MUTED};vertical-align:top;white-space:nowrap;">${escapeHtml(label)}</td>` +
-            `<td style="padding:8px 0;border-top:1px solid ${LINE};font-size:14px;color:${NAVY};vertical-align:top;">${value.trim() ? text(value) : "—"}</td></tr>`,
+            `<td style="padding:8px 0;border-top:1px solid ${LINE};font-size:14px;color:${NAVY};vertical-align:top;">${value.trim() ? text(value) : "–"}</td></tr>`,
         )
         .join("")}</table>`
     : "";

@@ -138,9 +138,9 @@ export async function listLoadsAwaitingTickets() {
         load: l,
         order: orderById.get(l.order_id)!,
         assignment: a,
-        truck: names.trucks.get(a.truck_id) ?? "—",
-        trailer: a.trailer_id ? names.trailers.get(a.trailer_id) ?? "—" : null,
-        driver: names.drivers.get(a.driver_id) ?? "—",
+        truck: names.trucks.get(a.truck_id) ?? "–",
+        trailer: a.trailer_id ? names.trailers.get(a.trailer_id) ?? "–" : null,
+        driver: names.drivers.get(a.driver_id) ?? "–",
       };
     });
   return { rows, today };

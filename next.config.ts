@@ -9,6 +9,9 @@ const securityHeaders = [
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
   // Location is allowed for this site only: a driver's phone records where a ticket was submitted (B98, owner 2026-10-27).
   { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(self)" },
+  // HTTPS only (launch checklist 2026-11-05): browsers that have visited never use plain HTTP for a year. Subdomains
+  // and the preload list are left out until every subdomain is confirmed on HTTPS.
+  { key: "Strict-Transport-Security", value: "max-age=31536000" },
 ];
 
 // The public website may be indexed only when SITE_INDEXING=on (read at build
@@ -22,6 +25,8 @@ const nextConfig: NextConfig = {
   // Every page in this app is private and per-user; we render on each request.
   poweredByHeader: false,
   serverExternalPackages: ["@react-pdf/renderer"],
+  // Smaller website images where the browser supports AVIF (falls back to WebP).
+  images: { formats: ["image/avif", "image/webp"] },
   turbopack: {
     rules: {
       "*.css": {

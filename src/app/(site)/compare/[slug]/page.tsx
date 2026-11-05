@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -12,7 +13,7 @@ export function generateStaticParams() {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const c = COMPARISONS.find((x) => x.slug === slug);
-  return c ? { title: c.label, description: c.description, alternates: { canonical: `/compare/${c.slug}` } } : {};
+  return c ? { title: c.label, description: c.description, alternates: { canonical: `/compare/${c.slug}` }, openGraph: siteOpenGraph(`/compare/${c.slug}`) } : {};
 }
 
 /** An honest comparison with a way of working (src/lib/site/compare.ts): no named competitors, and the other side's strengths said. */
@@ -49,7 +50,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 <tr key={r.topic} className="site-reveal grid gap-2 border-t border-silver/12 py-5 md:table-row">
                   <th scope="row" className="font-semibold text-cloud md:border-t md:border-silver/12 md:py-5 md:pr-6 md:align-top">{r.topic}</th>
                   <td className="flex gap-2.5 text-[15px] leading-relaxed text-silver md:table-cell md:border-t md:border-silver/12 md:py-5 md:pr-6 md:align-top">
-                    <Minus className="mt-1 size-4 shrink-0 text-silver/60 md:hidden" aria-hidden />
+                    <Minus className="mt-1 size-4 shrink-0 text-silver md:hidden" aria-hidden />
                     <span><span className="sr-only md:hidden">{c.otherLabel}: </span>{r.other}</span>
                   </td>
                   <td className="flex gap-2.5 text-[15px] leading-relaxed text-cloud md:table-cell md:border-t md:border-silver/12 md:py-5 md:align-top">
@@ -80,7 +81,7 @@ export default async function ComparePage({ params }: { params: Promise<{ slug: 
                 <li key={p} className="border-t border-silver/15 pt-4 text-[15px] leading-relaxed text-silver">{p}</li>
               ))}
             </ul>
-            <p className="mt-6 text-sm text-silver/80">
+            <p className="mt-6 text-sm text-silver">
               Every Taviron statement on this page is a feature you can see in the demo.{" "}
               <Link href="/platform" className="font-semibold text-electric hover:underline">See the real screens</Link>
             </p>

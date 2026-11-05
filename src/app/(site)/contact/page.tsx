@@ -1,11 +1,14 @@
+import { siteOpenGraph } from "@/lib/site/og";
+import { cookies } from "next/headers";
+import { LEAD_SENT_COOKIE, leadErrorText } from "@/lib/site/lead";
 import type { Metadata } from "next";
 import { LeadForm } from "@/components/site/lead-form";
 import { Container, PageIntro } from "@/components/site/ui";
 
 export const metadata: Metadata = {
   title: "Contact",
-  description: "Send the Taviron team a message.",
-  alternates: { canonical: "/contact" },
+  description: "Questions about Taviron, pricing or early access? Send the team a message and get a reply by email.",
+  alternates: { canonical: "/contact" }, openGraph: siteOpenGraph("/contact"),
 };
 
 export default async function ContactPage({ searchParams }: { searchParams: Promise<{ sent?: string; error?: string }> }) {
@@ -17,7 +20,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
       </PageIntro>
       <section>
         <Container className="max-w-3xl py-16">
-          <LeadForm kind="contact" sent={sp.sent === "1"} initialError={sp.error?.slice(0, 200)} />
+          <LeadForm kind="contact" sent={sp.sent === "1" && (await cookies()).get(LEAD_SENT_COOKIE)?.value === "1"} initialError={leadErrorText(sp.error)} />
         </Container>
       </section>
     </>

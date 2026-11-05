@@ -158,8 +158,8 @@ export default async function BalancesPage() {
                     <Td className="font-medium">{names.get(e.employee_id)?.name ?? "Employee"}<span className="block text-xs text-muted">{bankName.get(e.bank_id)} · {formatDate(e.effective_on)}</span></Td>
                     <Td>{LEDGER_KINDS[e.kind]}</Td>
                     <Td className="text-right tabular">{e.hours > 0 ? "+" : ""}{formatHours(e.hours)}</Td>
-                    <Td className="hidden md:table-cell">{e.note || "—"}</Td>
-                    <Td className="hidden text-xs text-muted sm:table-cell">{e.created_by ? people[e.created_by] ?? "Former member" : "—"}<span className="block">{formatDateTime(e.created_at, timezone)}</span></Td>
+                    <Td className="hidden md:table-cell">{e.note || "–"}</Td>
+                    <Td className="hidden text-xs text-muted sm:table-cell">{e.created_by ? people[e.created_by] ?? "Former member" : "–"}<span className="block">{formatDateTime(e.created_at, timezone)}</span></Td>
                   </Tr>
                 ))}
               </tbody>

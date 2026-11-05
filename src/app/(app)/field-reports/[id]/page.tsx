@@ -36,7 +36,7 @@ export default async function FieldReportPage({ params, searchParams }: { params
       <ReturnLink back={back} />
       <PageHeader
         crumbs={[{ label: "Driver Reports", href: "/field-reports" }, { label: REPORT_KIND_LABELS[r.kind] }]}
-        title={`${REPORT_KIND_LABELS[r.kind]} — ${r.snapshot.driver_name}`}
+        title={`${REPORT_KIND_LABELS[r.kind]} · ${r.snapshot.driver_name}`}
         description={`${r.snapshot.order_number} load ${r.snapshot.load_number} · ${formatDate(r.snapshot.load_date)}${r.snapshot.customer_name ? ` · ${r.snapshot.customer_name}` : ""}`}
         badges={<Badge tone={tone[r.status]}>{r.status}</Badge>}
         actions={can(access, "field_reports.manage") ? <ReportActions reportId={r.id} status={r.status} /> : undefined}
@@ -49,9 +49,9 @@ export default async function FieldReportPage({ params, searchParams }: { params
           </CardBody>
           <CardBody className="border-t border-line">
             <DescriptionList items={[
-              { label: "Equipment", value: unit ? `${r.equipment} ${unit}` : `Truck ${r.snapshot.truck_unit ?? "—"}${r.snapshot.trailer_unit ? ` · trailer ${r.snapshot.trailer_unit}` : ""}` },
-              { label: "Acknowledged", value: r.acknowledged_at ? `${who(r.acknowledged_by)}, ${formatDateTime(r.acknowledged_at, timezone)}${r.acknowledge_note ? ` — ${r.acknowledge_note}` : ""}` : "Not yet" },
-              { label: "Resolved", value: r.resolved_at ? `${who(r.resolved_by)}, ${formatDateTime(r.resolved_at, timezone)} — ${r.resolution_note}` : "Not yet" },
+              { label: "Equipment", value: unit ? `${r.equipment} ${unit}` : `Truck ${r.snapshot.truck_unit ?? "–"}${r.snapshot.trailer_unit ? ` · trailer ${r.snapshot.trailer_unit}` : ""}` },
+              { label: "Acknowledged", value: r.acknowledged_at ? `${who(r.acknowledged_by)}, ${formatDateTime(r.acknowledged_at, timezone)}${r.acknowledge_note ? `: ${r.acknowledge_note}` : ""}` : "Not yet" },
+              { label: "Resolved", value: r.resolved_at ? `${who(r.resolved_by)}, ${formatDateTime(r.resolved_at, timezone)} · ${r.resolution_note}` : "Not yet" },
             ]} />
           </CardBody>
         </Card>

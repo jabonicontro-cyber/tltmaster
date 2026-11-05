@@ -128,7 +128,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   const holds = await creditHolds([...new Set(dayOrders.map((o) => o.customer_id).filter((c): c is string => Boolean(c)))]);
   const creditHoldByOrder = Object.fromEntries(dayOrders.flatMap((o) => { const h = o.customer_id ? holds.get(o.customer_id) : undefined; return h ? [[o.id, `${h.name} is ${holdSummary(h)}`]] : []; }));
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
-  const description = `${weekday}, ${formatDateLong(date)}${date === today ? " — today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`;
+  const description = `${weekday}, ${formatDateLong(date)}${date === today ? ", today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`;
 
   if (view === "timeline") {
     const parts = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone: timezone }).formatToParts(new Date());
@@ -167,7 +167,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             <section aria-label="Weather at job sites" className="mb-4 rounded-panel border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
               <p className="font-semibold">Weather at job sites{weather?.sample ? " (sample forecast, demo)" : ""}</p>
               <ul className="mt-1 space-y-0.5">
-                {onDay.map((a) => <li key={a.siteId}>{a.hazards.map((h) => h.label).join(" · ")} at {a.site} — {a.loads} load{a.loads === 1 ? "" : "s"} ({a.orders.join(", ")})</li>)}
+                {onDay.map((a) => <li key={a.siteId}>{a.hazards.map((h) => h.label).join(" · ")} at {a.site} · {a.loads} load{a.loads === 1 ? "" : "s"} ({a.orders.join(", ")})</li>)}
               </ul>
             </section>
           ) : null;

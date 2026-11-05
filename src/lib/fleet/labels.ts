@@ -85,7 +85,7 @@ export function weightInPounds(value: string | number, unit: WeightUnit): number
 
 export function equipmentTitle(e: { unit_number: string; model_year: number | null; make: string; model: string }): string {
   const desc = [e.model_year, e.make, e.model].filter(Boolean).join(" ");
-  return desc ? `${e.unit_number} — ${desc}` : e.unit_number;
+  return desc ? `${e.unit_number} · ${desc}` : e.unit_number;
 }
 
 export function qualificationName(q: { kind: QualificationKind; cdl_class: CdlClass | null; description: string }): string {

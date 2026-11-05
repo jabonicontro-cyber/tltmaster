@@ -64,7 +64,7 @@ test("set up an authenticator, be asked for it at sign-in, refuse a wrong code, 
   await expect(list.getByRole("listitem")).toHaveCount(10);
   const codes = await list.getByRole("listitem").allTextContents();
   expect(codes).toHaveLength(10);
-  await page.getByRole("button", { name: "I Saved Them — Continue" }).click();
+  await page.getByRole("button", { name: "I Saved Them, Continue" }).click();
   await expect(page).toHaveURL(/\/profile/);
   await expect(page.getByText("Two-step on")).toBeVisible();
 

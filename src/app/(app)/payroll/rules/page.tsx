@@ -57,7 +57,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_400px]">
         <div className="space-y-5">
           {home.rules.length === 0 ? (
-            <EmptyState title="No pay rules yet" description="Taviron has no built-in pay rule. Write your company's agreed rule on the right — for example tons × rate per ton — then preview it on real tickets." />
+            <EmptyState title="No pay rules yet" description="Taviron has no built-in pay rule. Write your company's agreed rule on the right (for example tons × rate per ton) then preview it on real tickets." />
           ) : (
             home.rules.map((rule) => (
               <Card key={rule.id}>
@@ -73,7 +73,7 @@ export default async function PayRulesPage({ searchParams }: { searchParams: Pro
                       <p><code className="rounded bg-surface px-1.5 py-0.5">{v.formula}</code>{v.rate !== null ? <span className="ml-2">rate {v.rate}</span> : null}{v.unit_code ? <span className="ml-2 text-muted">tickets in {v.unit_code}</span> : null}</p>
                       <p className="text-muted">{scopeText(v.scope)}</p>
                       {v.evidence_note && <p className="text-muted">Source: {v.evidence_note}</p>}
-                      {v.approved_at && <p className="text-xs text-muted">Activated {formatDateTime(v.approved_at)} by {v.approved_by ? names[v.approved_by] ?? "former user" : "—"}</p>}
+                      {v.approved_at && <p className="text-xs text-muted">Activated {formatDateTime(v.approved_at)} by {v.approved_by ? names[v.approved_by] ?? "former user" : "–"}</p>}
                       {v.status === "draft" && (
                         <div className="rounded-xl border border-line bg-surface/50 p-3">
                           <p className="font-semibold">Preview on recent verified tickets</p>

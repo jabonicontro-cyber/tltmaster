@@ -57,7 +57,7 @@ test("billing holds a customer; dispatch sees it and gives a reason to assign; b
   await choose(dialog.getByLabel("Truck"), truck);
   await choose(dialog.getByLabel("Driver"), driver);
   await dialog.getByRole("button", { name: "Assign", exact: true }).click();
-  await expect(dialog.getByText(/is on credit hold \(put on hold by billing\) — Two invoices 60 days late \(test\)/)).toBeVisible();
+  await expect(dialog.getByText(/is on credit hold \(put on hold by billing\): Two invoices 60 days late \(test\)/)).toBeVisible();
   const anyway = dialog.getByRole("button", { name: "Assign anyway" });
   await expect(anyway).toBeDisabled();
   await dialog.getByLabel("Reason for going ahead").fill("Owner approved by phone (test)");

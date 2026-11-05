@@ -46,8 +46,8 @@ export function ControlsAndLimits({ controls, notYet, id }: { controls: string[]
             <h2 className="site-title text-2xl font-bold text-cloud sm:text-3xl">Not available yet.</h2>
             <ul className="mt-6 space-y-3" aria-label="Not available yet">
               {notYet.map((n) => (
-                <li key={n} className="flex gap-3 text-[15px] leading-relaxed text-silver/85">
-                  <CircleDashed className="mt-0.5 size-5 shrink-0 text-silver/60" aria-hidden />
+                <li key={n} className="flex gap-3 text-[15px] leading-relaxed text-silver">
+                  <CircleDashed className="mt-0.5 size-5 shrink-0 text-silver" aria-hidden />
                   <span>{n}</span>
                 </li>
               ))}

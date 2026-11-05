@@ -83,7 +83,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
       ) : (
         <Notice title="Truck routing by HERE">
           Road distances and driving times use HERE&apos;s standard truck profile (truck dimensions are not recorded in Taviron yet). Notices are
-          HERE&apos;s own; a route without notices is not a guarantee the road is clear — check closures and seasonal limits.
+          HERE&apos;s own; a route without notices is not a guarantee the road is clear. Check closures and seasonal limits.
           {usage?.capped && " Some legs were not routed on this page: choose one truck to route the rest."}
         </Notice>
       )}

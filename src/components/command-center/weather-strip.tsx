@@ -35,7 +35,7 @@ export function WeatherStrip({ weather, today, timezone }: { weather: WeatherRes
             <span key={b.name} className="inline-flex items-center gap-2">
               <CloudSun className="size-4 text-brand-fg" aria-hidden />
               <span className="text-muted">{b.name}</span>
-              <span className="font-semibold tabular text-ink">{b.temperatureF === null ? "—" : `${b.temperatureF}°F`}</span>
+              <span className="font-semibold tabular text-ink">{b.temperatureF === null ? "–" : `${b.temperatureF}°F`}</span>
               <span className="text-ink">{b.conditions}</span>
             </span>
           ))
@@ -59,7 +59,7 @@ export function WeatherStrip({ weather, today, timezone }: { weather: WeatherRes
                   <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
                   <span className="min-w-0">
                     <span className="font-semibold">{a.event}</span>{weather.sample ? " (sample)" : ""} at {a.site}
-                    {a.endsAt ? <> — until {until(a.endsAt, today, timezone)}</> : null}
+                    {a.endsAt ? <>, until {until(a.endsAt, today, timezone)}</> : null}
                     <span className={cn("block text-xs", severe ? "text-white/85" : "text-amber-800")}>
                       {a.orders.length} deliver{a.orders.length === 1 ? "y" : "ies"} today ({a.orders.join(", ")}) · Open dispatch
                     </span>

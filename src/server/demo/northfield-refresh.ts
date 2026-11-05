@@ -30,13 +30,13 @@ async function must<T>(label: string, p: PromiseLike<{ data: T; error: { message
 
 /** Recurring jobs: customer (index into CUSTOMERS), product (MATERIALS code) and the site instructions. */
 const JOBS = [
-  { c: 0, code: "SND-F", project: "Cedar Ridge — pad fill", note: "Use the Oak St entrance. Dump at the marked pads only." },
-  { c: 1, code: "LS-53", project: "County Rd 9 — base course", note: "Spread on the east shoulder; flagger at the north end." },
-  { c: 3, code: "ST-8", project: "4th St water main — bedding stone", note: "Call the site foreman 30 minutes out." },
-  { c: 4, code: "LS-53", project: "Harlow Meadows — driveway base", note: "Keep the sidewalk clear." },
-  { c: 5, code: "SND-F", project: "Township salt dome pad — fill", note: "Check in at the public works office." },
-  { c: 6, code: "ST-8", project: "Summit batch plant — stone stockpile", note: "Dump on the north pile; scale ticket required." },
-  { c: 7, code: "RR-3", project: "Oakmont Elementary — drainage riprap", note: "No trucks during school drop-off (7:30–8:15)." },
+  { c: 0, code: "SND-F", project: "Cedar Ridge: pad fill", note: "Use the Oak St entrance. Dump at the marked pads only." },
+  { c: 1, code: "LS-53", project: "County Rd 9: base course", note: "Spread on the east shoulder; flagger at the north end." },
+  { c: 3, code: "ST-8", project: "4th St water main, bedding stone", note: "Call the site foreman 30 minutes out." },
+  { c: 4, code: "LS-53", project: "Harlow Meadows: driveway base", note: "Keep the sidewalk clear." },
+  { c: 5, code: "SND-F", project: "Township salt dome pad, fill", note: "Check in at the public works office." },
+  { c: 6, code: "ST-8", project: "Summit batch plant: stone stockpile", note: "Dump on the north pile; scale ticket required." },
+  { c: 7, code: "RR-3", project: "Oakmont Elementary: drainage riprap", note: "No trucks during school drop-off (7:30–8:15)." },
 ];
 /** Truck, trailer (or none) and driver that usually run together. */
 const CREWS: Array<[string, string | null, string]> = [

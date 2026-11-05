@@ -67,7 +67,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader
         title="Orders"
-        description="Work the customer has committed to — from accepted quotes or entered directly. Schedule them and track them through delivery."
+        description="Work the customer has committed to, from accepted quotes or entered directly. Schedule them and track them through delivery."
         actions={canCreate && <ButtonLink href="/orders/new" icon={<Plus className="size-4" />} data-guide="orders-new">New order</ButtonLink>}
       />
       <nav aria-label="Quick filters" className="mb-5 grid grid-cols-3 gap-2 sm:gap-3 xl:grid-cols-6">
@@ -89,7 +89,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                 <Icon className="size-4.5" aria-hidden />
               </span>
               <span>
-                <span className={cn("block text-xl font-semibold tabular sm:text-2xl", !active && "attention" in v && n ? "text-amber-800" : undefined)}>{n ?? "—"}</span>
+                <span className={cn("block text-xl font-semibold tabular sm:text-2xl", !active && "attention" in v && n ? "text-amber-800" : undefined)}>{n ?? "–"}</span>
                 <span className={cn("block truncate text-xs sm:text-sm", active ? "text-white/80" : "text-muted")}>{v.label}</span>
               </span>
             </Link>
@@ -146,7 +146,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       </div>
                       <OrderStatusBadge status={o.status} />
                     </div>
-                    <p className="mt-1 truncate text-sm text-muted">{[o.project_name || o.site_label || o.site_line1, o.material_summary].filter(Boolean).join(" · ") || "—"}</p>
+                    <p className="mt-1 truncate text-sm text-muted">{[o.project_name || o.site_label || o.site_line1, o.material_summary].filter(Boolean).join(" · ") || "–"}</p>
                     <div className="mt-1 flex items-center justify-between gap-3 text-sm">
                       <span className={scheduled ? "text-ink" : "text-muted"}>{scheduled || "Not scheduled"}</span>
                       <span className="font-semibold tabular">{formatCents(o.total_cents)}</span>
@@ -192,7 +192,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                           {o.contact_name && <div className="text-sm text-muted">{o.contact_name}</div>}
                         </Td>
                         <Td className="hidden max-w-xs md:table-cell">
-                          <div className="truncate">{o.project_name || o.site_label || o.site_line1 || <span className="text-muted">—</span>}</div>
+                          <div className="truncate">{o.project_name || o.site_label || o.site_line1 || <span className="text-muted">–</span>}</div>
                           {(o.site_city || o.material_summary) && (
                             <div className="truncate text-sm text-muted" title={o.material_summary ?? undefined}>
                               {[o.site_city, o.material_summary].filter(Boolean).join(" · ")}

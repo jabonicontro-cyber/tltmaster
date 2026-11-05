@@ -6,7 +6,7 @@ export function QuoteDocumentView({ doc }: { doc: QuoteDocument }) {
     <article className="force-light print-area relative mx-auto max-w-[8.5in] bg-white px-8 py-8 text-[13px] leading-snug text-ink shadow-sm ring-1 ring-line sm:px-12">
       {doc.isDraft && (
         <div className="mb-4 rounded border-2 border-dashed border-amber-400 bg-amber-50 px-3 py-2 text-center text-sm font-bold tracking-wide text-amber-900 uppercase">
-          Draft — not yet sent to the customer
+          Draft: not yet sent to the customer
         </div>
       )}
       <header className="flex flex-wrap items-start justify-between gap-6 border-b-4 border-brand pb-4">
@@ -51,7 +51,7 @@ export function QuoteDocumentView({ doc }: { doc: QuoteDocument }) {
         </div>
         <div>
           <h2 className="mb-1 text-[11px] font-bold tracking-wider text-muted uppercase">Contact</h2>
-          {doc.contact.name ? <p className="font-semibold">{doc.contact.name}</p> : <p className="text-muted">—</p>}
+          {doc.contact.name ? <p className="font-semibold">{doc.contact.name}</p> : <p className="text-muted">–</p>}
           {doc.contact.email && <p>{doc.contact.email}</p>}
           {doc.contact.phone && <p>{doc.contact.phone}</p>}
         </div>

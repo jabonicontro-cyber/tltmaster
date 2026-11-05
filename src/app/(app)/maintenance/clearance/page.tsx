@@ -25,12 +25,12 @@ export default async function ClearancePage() {
   ]);
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
   const trailerUnits = new Map(trailers.map((t) => [t.id, t.unit_number]));
-  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "—");
+  const who = (u: string | null) => (u ? people[u] ?? "Former member" : "–");
   const waiting = open.filter((w) => w.status === "awaiting_inspection");
   const groups: Array<{ key: ClearanceStatus; title: string; rows: WorkOrderRow[]; empty: string }> = [
     { key: "awaiting", title: "Awaiting inspection", rows: waiting.filter((w) => w.clearance_status === "awaiting"), empty: "Nothing is waiting." },
     { key: "in_progress", title: "Inspection in progress", rows: waiting.filter((w) => w.clearance_status === "in_progress"), empty: "No inspection is in progress." },
-    { key: "failed", title: "Failed inspection — back in the shop", rows: recent.filter((w) => w.clearance_status === "failed" && w.status !== "canceled"), empty: "No failed inspections in the last 14 days." },
+    { key: "failed", title: "Failed inspection: back in the shop", rows: recent.filter((w) => w.clearance_status === "failed" && w.status !== "canceled"), empty: "No failed inspections in the last 14 days." },
     { key: "cleared", title: "Cleared for service (last 14 days)", rows: recent.filter((w) => w.clearance_status === "cleared"), empty: "Nothing cleared in the last 14 days." },
   ];
 

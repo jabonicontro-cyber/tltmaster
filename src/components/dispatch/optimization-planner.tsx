@@ -46,7 +46,7 @@ function Summary({ plan }: { plan: Plan }) {
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Loads covered" value={`${m.covered} of ${m.loads}`} note={plan.uncovered.length ? `${plan.uncovered.length} blocked` : "Every open load"} />
         <Stat label="Estimated revenue" value={money(m.revenueCoveredCents)}
-          note={`${m.revenueUnknownLoads ? `+ ${m.revenueUnknownLoads} without a rate · ` : ""}Margin: Not evaluated — no cost data`} />
+          note={`${m.revenueUnknownLoads ? `+ ${m.revenueUnknownLoads} without a rate · ` : ""}Margin: not evaluated (no cost data)`} />
         <Stat label="Trucks / drivers used" value={`${m.trucksUsed} / ${m.driversUsed}`} />
         <Stat label="Need review" value={String(review)} note={review ? "Check before approving" : "None"} />
       </dl>
@@ -79,7 +79,7 @@ function UnavailableList({ items }: { items: Unavailable[] }) {
     <ul className="mt-2 space-y-1 text-sm">
       {items.map((u) => (
         <li key={`${u.kind}:${u.id}`}>
-          <span className="font-semibold text-ink">{u.label}</span> <span className="text-muted">— {u.reasons.join(" ")}</span>
+          <span className="font-semibold text-ink">{u.label}</span> <span className="text-muted">· {u.reasons.join(" ")}</span>
         </li>
       ))}
     </ul>
@@ -325,7 +325,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
                 confirmLabel="I checked, approve" onConfirm={approve} />
             </>
           ) : (
-            <span className="text-sm text-muted">Viewing only — approving needs dispatch edit access.</span>
+            <span className="text-sm text-muted">Viewing only: approving needs dispatch edit access.</span>
           )}
         </div>
       </section>

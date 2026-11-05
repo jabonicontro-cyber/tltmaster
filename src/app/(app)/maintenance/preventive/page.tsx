@@ -66,7 +66,7 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Preventive" }]}
         title="Preventive maintenance"
-        description="Services by calendar days, miles and/or engine hours — whichever comes first. Missing or old readings are shown, never assumed."
+        description="Services by calendar days, miles and/or engine hours, whichever comes first. Missing or old readings are shown, never assumed."
         actions={manage && <GenerateDueButton />}
       />
       <MaintenanceTabs active="preventive" />
@@ -96,13 +96,13 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
                           <li key={t.label} className={t.state === "overdue" ? "font-medium text-critical" : t.state === "unknown" ? "text-muted italic" : undefined}>{t.label}</li>
                         ))}
                       </ul>
-                      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700">Reading older than 30 days — record a new one.</div>}
+                      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700">Reading older than 30 days. Record a new one.</div>}
                     </Td>
                     <Td><PmStateBadge state={p.state} /></Td>
                     <Td className="hidden md:table-cell">
                       {p.open_work_order_id
                         ? <Link href={`/maintenance/work-orders/${p.open_work_order_id}`} className="font-medium whitespace-nowrap underline">{p.open_work_order_number}</Link>
-                        : <span className="text-muted">—</span>}
+                        : <span className="text-muted">–</span>}
                     </Td>
                   </Tr>
                 ))}
@@ -119,7 +119,7 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
             <CardBody><ReadingForm trucks={active} /></CardBody>
           </Card>
           <Card>
-            <CardHeader title="Add a schedule" description="Enter at least one interval. Due work orders are created when you choose “Create work orders for due services” — never twice for the same service." />
+            <CardHeader title="Add a schedule" description="Enter at least one interval. Due work orders are created when you choose “Create work orders for due services”. Never twice for the same service." />
             <CardBody><ScheduleForm trucks={active} defaultTruck={sp.truck} /></CardBody>
           </Card>
         </div>

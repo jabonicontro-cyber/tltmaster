@@ -227,7 +227,7 @@ export function rankWorkOrders<T extends PriorityInput>(items: T[], today: strin
       const reasons: string[] = [`${WO_URGENCIES[w.urgency]} urgency`];
       if (w.safety_critical) {
         score += 100;
-        reasons.unshift("Safety-critical defect — truck restricted until cleared");
+        reasons.unshift("Safety-critical defect: truck restricted until cleared");
       }
       if (w.status === "awaiting_inspection") {
         score += 20;
@@ -263,8 +263,8 @@ export function workOrderUnit(
   trucks: Map<string, string>,
   trailers: Map<string, string>,
 ): string {
-  if (w.trailer_id) return `Trailer ${trailers.get(w.trailer_id) ?? "—"}`;
-  return `Truck ${(w.truck_id && trucks.get(w.truck_id)) ?? "—"}`;
+  if (w.trailer_id) return `Trailer ${trailers.get(w.trailer_id) ?? "–"}`;
+  return `Truck ${(w.truck_id && trucks.get(w.truck_id)) ?? "–"}`;
 }
 
 /**

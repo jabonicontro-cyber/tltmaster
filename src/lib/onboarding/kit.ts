@@ -161,7 +161,7 @@ export const INTEGRATIONS: IntegrationDef[] = [
   { key: "ai", name: "AI assistance", purpose: "Optional suggestions and drafts (always reviewed by a person)", systemOfRecord: "Taviron (AI provider processes requests)", available: true, configKey: "ai", fallback: "Everything works without AI." },
   { key: "accounting", name: "Accounting system", purpose: "Invoices and payments", systemOfRecord: "Your accounting system", available: false, fallback: "Billing hand-off CSV, entered in your accounting system." },
   { key: "eld", name: "ELD / telematics / hours of service", purpose: "Driver hours and truck locations", systemOfRecord: "Your ELD provider", available: false, fallback: "Hours of service checked manually; drivers confirm on My Day." },
-  { key: "payments", name: "Payments", purpose: "Collect customer payments", systemOfRecord: "—", available: false, fallback: "Payments stay in your current process." },
+  { key: "payments", name: "Payments", purpose: "Collect customer payments", systemOfRecord: "–", available: false, fallback: "Payments stay in your current process." },
 ];
 
 export type CheckStatus = "not_started" | "configured" | "verified" | "failed" | "not_needed" | "unavailable";
@@ -212,7 +212,7 @@ export function goLiveBlockers(items: Record<string, { status?: GoLiveStatus; no
 export const WELCOME_PLACEHOLDERS = ["company_name", "primary_contact", "onboarding_contact", "kickoff", "support_contact"] as const;
 export type WelcomeValues = Partial<Record<(typeof WELCOME_PLACEHOLDERS)[number], string>>;
 
-export const DEFAULT_WELCOME_SUBJECT = "Welcome to Taviron, {{company_name}} — your onboarding plan";
+export const DEFAULT_WELCOME_SUBJECT = "Welcome to Taviron, {{company_name}}: your onboarding plan";
 export const DEFAULT_WELCOME_BODY = `Hello {{primary_contact}},
 
 Welcome to Taviron. I'm {{onboarding_contact}}, and I'll guide {{company_name}} from setup to go-live.
@@ -226,7 +226,7 @@ How onboarding works
 6. Testing and training: your team tries real workflows; we fix issues before launch.
 7. Go-live acceptance: we review the acceptance checklist together, and your owner and Taviron sign it off.
 
-Onboarding, setup, training and testing all happen before your agreed go-live. Your recurring subscription starts at your actual go-live, as set out in your signed agreement — not when onboarding starts or your data is imported.
+Onboarding, setup, training and testing all happen before your agreed go-live. Your recurring subscription starts at your actual go-live, as set out in your signed agreement, not when onboarding starts or your data is imported.
 
 Questions any time: {{support_contact}}.
 

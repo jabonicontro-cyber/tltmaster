@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -8,7 +9,7 @@ import { publicHighlights } from "@/lib/site/releases";
 export const metadata: Metadata = {
   title: "What's new",
   description: "New in Taviron: release highlights for hauling and aggregate companies, with what each one does and what it does not do yet.",
-  alternates: { canonical: "/whats-new" },
+  alternates: { canonical: "/whats-new" }, openGraph: siteOpenGraph("/whats-new"),
 };
 
 const dateFmt = new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
@@ -40,7 +41,7 @@ export default function WhatsNewPage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-4 text-sm text-silver/80"><span className="font-semibold">Not yet: </span>{r.limitations.join(" · ")}</p>
+                <p className="mt-4 text-sm text-silver"><span className="font-semibold">Not yet: </span>{r.limitations.join(" · ")}</p>
                 {r.image ? (
                   <figure className="mt-6 overflow-hidden rounded-xl border border-silver/15 bg-navy-2 shadow-card">
                     <Image src={r.image.src} alt={r.image.alt} width={2880} height={1800} sizes="(min-width: 896px) 830px, 100vw" className="h-auto w-full" />

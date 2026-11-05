@@ -27,7 +27,7 @@ export function useFormAction<T>(
       } catch (e) {
         // Redirects thrown by the action are handled by Next.js.
         if (e && typeof e === "object" && "digest" in e) throw e;
-        setResult({ ok: false, error: "The server could not be reached. Your changes were not saved — try again." });
+        setResult({ ok: false, error: "The server could not be reached. Your changes were not saved. Try again." });
       }
     });
   }

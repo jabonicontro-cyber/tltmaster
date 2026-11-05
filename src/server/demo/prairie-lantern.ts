@@ -202,7 +202,7 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
 
   // People: drivers, office and shop staff, and the owner (no contact details invented).
   if (await installed(db, "employees")) {
-    const titles = ["Driver — regional", "Driver — regional", "Driver — flatbed", "Driver — dry van", "Driver — flatbed", "Driver — regional", "Driver — local", "Driver — flatbed", "Driver — local", "Driver — relief"];
+    const titles = ["Driver: regional", "Driver: regional", "Driver: flatbed", "Driver: dry van", "Driver: flatbed", "Driver: regional", "Driver: local", "Driver: flatbed", "Driver: local", "Driver: relief"];
     const people = (await must("employees", db.from("employees").insert([
       { full_name: "Colby Chapman", job_title: "Owner", department: "management", employment_type: "full_time", status: "active", hire_date: null, driver_id: null, user_id: null, work_email: "", work_phone: "" },
       ...STAFF.map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: "full_time", status: "active", hire_date: addDays(today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" })),

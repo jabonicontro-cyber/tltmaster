@@ -75,8 +75,8 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
                     <tbody>
                       {s.issued.map((i) => (
                         <Tr key={i.id}>
-                          <Td className="font-semibold">{i.number ?? "—"}</Td>
-                          <Td>{i.issue_date ? formatDate(i.issue_date) : "—"}</Td>
+                          <Td className="font-semibold">{i.number ?? "–"}</Td>
+                          <Td>{i.issue_date ? formatDate(i.issue_date) : "–"}</Td>
                           <Td>{i.customer_name}</Td>
                           <Td align="right" className="tabular">{formatCents(i.total_cents)}</Td>
                           <Td><Badge tone={i.status === "paid" ? "green" : "gray"}>{i.status.replace(/_/g, " ")}</Badge></Td>
@@ -104,7 +104,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
 
       <div className="mb-5 grid gap-5 lg:grid-cols-2">
         <Card>
-          <CardHeader title={`Fuel and IFTA — ${year}`} description="Miles from drivers' trip sheets and gallons from fuel receipts, per quarter. Download each quarter's IFTA summary for the return." />
+          <CardHeader title={`Fuel and IFTA · ${year}`} description="Miles from drivers' trip sheets and gallons from fuel receipts, per quarter. Download each quarter's IFTA summary for the return." />
           <ul className="divide-y divide-line border-t border-line" aria-label="IFTA quarters">
             {data.quarters.map((q) => (
               <li key={q.quarter} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
@@ -118,7 +118,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
           </ul>
         </Card>
         <Card>
-          <CardHeader title={`Hauler settlements — ${year}`} description="What hired haulers were owed for their jobs, after commission and deductions." />
+          <CardHeader title={`Hauler settlements · ${year}`} description="What hired haulers were owed for their jobs, after commission and deductions." />
           {data.settlements === null ? <CardBody><p className="text-sm text-muted">Not available.</p></CardBody> : data.settlements.length === 0 ? <CardBody><EmptyState title="No settlements this year" /></CardBody> : (
             <ul className="divide-y divide-line border-t border-line" aria-label="Hauler settlements">
               {data.settlements.map((h) => (
@@ -136,7 +136,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
 
       {me?.payroll && (
         <Card className="mb-5">
-          <CardHeader title={`Driver payroll — ${year}`} description="Approved pay periods only: gross pay per driver from verified tickets and adjustments. Taxes and deductions are your payroll provider's." />
+          <CardHeader title={`Driver payroll · ${year}`} description="Approved pay periods only: gross pay per driver from verified tickets and adjustments. Taxes and deductions are your payroll provider's." />
           {!data.payroll ? <CardBody><p className="text-sm text-muted">Not available.</p></CardBody> : data.payroll.length === 0 ? <CardBody><EmptyState title="No approved pay periods this year" /></CardBody> : (
             <ul className="divide-y divide-line border-t border-line" aria-label="Pay periods">
               {data.payroll.map((p) => (

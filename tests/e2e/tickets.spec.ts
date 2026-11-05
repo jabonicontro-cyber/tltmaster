@@ -63,7 +63,7 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await row.getByRole("link", { name: "Enter ticket" }).click();
   await expect(page.getByRole("heading", { name: `Ticket for ${f.orderNumber} load 1` })).toBeVisible();
 
-  await page.getByLabel("Order line").selectOption({ label: "Gravel #53 limestone — ordered 44 tons" });
+  await page.getByLabel("Order line").selectOption({ label: "Gravel #53 limestone, ordered 44 tons" });
   await page.getByLabel("Delivered quantity").fill("2.5");
   await page.getByLabel("Unit").selectOption({ label: "Loads (whole numbers)" });
   await expect(page.getByText("Quantities in load must be whole numbers.")).toBeVisible();
@@ -116,7 +116,7 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   // A second ticket for the same load needs an explicit confirmation and is flagged.
   await page.goto(`/tickets/new?load=${f.loadId}`);
   await expect(page.getByText("This load already has a ticket")).toBeVisible();
-  await page.getByLabel("Order line").selectOption({ label: "Gravel #53 limestone — ordered 44 tons" });
+  await page.getByLabel("Order line").selectOption({ label: "Gravel #53 limestone, ordered 44 tons" });
   await page.getByLabel("Delivered quantity").fill("3");
   await page.getByLabel("Unit").selectOption({ label: "Tons" });
   await page.getByLabel("Delivery time").fill("09:15");

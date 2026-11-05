@@ -58,12 +58,12 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     for (const item of items) {
       const hold = holds.get(loadCustomers.get(item.loadId) ?? "");
       if (hold) {
-        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned — ${hold.name} is ${holdSummary(hold)}. Assign it from the board to give a reason.`, warnings: [] });
+        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned: ${hold.name} is ${holdSummary(hold)}. Assign it from the board to give a reason.`, warnings: [] });
         continue;
       }
       const check = checkAssignment(await getOptimizationInput(date), item.loadId, item.truckId, item.trailerId, item.driverId);
       if (!check.ok) {
-        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned — no longer valid: ${check.reasons.join(" ")}`, warnings: [] });
+        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned. No longer valid: ${check.reasons.join(" ")}`, warnings: [] });
         continue;
       }
       const { data, error } = await supabase.rpc("assign_load", {

@@ -48,7 +48,7 @@ export async function decideTimeOff(input: z.input<typeof decision>): Promise<Ac
     refresh(parsed.data.id);
     if (r.status === "pending") return ok({ conflicts: 0 }, `Step approved. The request now waits for step ${r.step}.`);
     const n = r.conflicts?.length ?? 0;
-    return ok({ conflicts: n }, parsed.data.decision === "denied" ? "Request denied." : n ? `Approved. ${n} assignment${n === 1 ? "" : "s"} overlap this leave — review them in Dispatch.` : "Request approved.");
+    return ok({ conflicts: n }, parsed.data.decision === "denied" ? "Request denied." : n ? `Approved. ${n} assignment${n === 1 ? "" : "s"} overlap this leave. Review them in Dispatch.` : "Request approved.");
   });
 }
 

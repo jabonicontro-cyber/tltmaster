@@ -95,7 +95,7 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                   <Tr key={r.customer_id}>
                     <Td><Link href={`/customers/${r.customer_id}`} className="font-medium hover:underline">{r.customer_name}</Link></Td>
                     {AGING_BUCKETS.map((b) => (
-                      <Td key={b} align="right" className={cn("tabular", b !== "current" && "hidden md:table-cell", r.buckets[b] && b !== "current" ? "font-semibold text-critical" : !r.buckets[b] && "text-muted/60")}>{r.buckets[b] ? formatCents(r.buckets[b]) : "—"}</Td>
+                      <Td key={b} align="right" className={cn("tabular", b !== "current" && "hidden md:table-cell", r.buckets[b] && b !== "current" ? "font-semibold text-critical" : !r.buckets[b] && "text-muted/60")}>{r.buckets[b] ? formatCents(r.buckets[b]) : "–"}</Td>
                     ))}
                     <Td align="right" className="font-semibold tabular">{formatCents(r.total)}</Td>
                   </Tr>
@@ -132,10 +132,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                       <div className="text-xs text-muted">{ordersWord(i.order_number, true)} {i.order_number}</div>
                     </Td>
                     <Td className="text-sm">{i.customer_name}</Td>
-                    <Td className="hidden text-sm tabular md:table-cell">{i.issue_date ? formatDate(i.issue_date) : "—"}</Td>
-                    <Td className={cn("hidden text-sm tabular sm:table-cell", state === "overdue" && "font-semibold text-critical")}>{i.due_date ? formatDate(i.due_date) : "—"}</Td>
+                    <Td className="hidden text-sm tabular md:table-cell">{i.issue_date ? formatDate(i.issue_date) : "–"}</Td>
+                    <Td className={cn("hidden text-sm tabular sm:table-cell", state === "overdue" && "font-semibold text-critical")}>{i.due_date ? formatDate(i.due_date) : "–"}</Td>
                     <Td align="right" className="tabular">{formatCents(i.total_cents)}</Td>
-                    <Td align="right" className="font-semibold tabular">{i.status === "issued" ? formatCents(balanceCents(i)) : "—"}</Td>
+                    <Td align="right" className="font-semibold tabular">{i.status === "issued" ? formatCents(balanceCents(i)) : "–"}</Td>
                     <Td><Badge tone={STATE_LABEL[state].tone}>{STATE_LABEL[state].label}</Badge></Td>
                   </Tr>
                 ))}

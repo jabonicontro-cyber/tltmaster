@@ -64,8 +64,8 @@ function InvoicePdf({ doc }: { doc: InvoiceDocument }) {
   return (
     <Document title={doc.title} author={doc.sender.name} subject={`Invoice for ${doc.billTo.name}`} creator={PRODUCT_NAME}>
       <Page size="LETTER" style={s.page}>
-        {doc.isDraft && <Text style={[s.banner, { borderColor: "#D97706", backgroundColor: "#FFFBEB", color: "#78350F" }]}>DRAFT — NOT YET ISSUED</Text>}
-        {doc.isVoid && <Text style={[s.banner, { borderColor: "#B91C1C", backgroundColor: "#FEF2F2", color: "#7F1D1D" }]}>VOID — THIS INVOICE IS CANCELED</Text>}
+        {doc.isDraft && <Text style={[s.banner, { borderColor: "#D97706", backgroundColor: "#FFFBEB", color: "#78350F" }]}>DRAFT: NOT YET ISSUED</Text>}
+        {doc.isVoid && <Text style={[s.banner, { borderColor: "#B91C1C", backgroundColor: "#FEF2F2", color: "#7F1D1D" }]}>VOID: THIS INVOICE IS CANCELED</Text>}
         <View style={[s.header, { borderBottomColor: brand }]}>
           <View>
             {/* eslint-disable-next-line jsx-a11y/alt-text -- react-pdf Image has no alt */}

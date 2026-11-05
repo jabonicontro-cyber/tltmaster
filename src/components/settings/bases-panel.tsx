@@ -163,7 +163,7 @@ export function BasesPanel({
             <div>
               <h3 id="base-access-heading" className="text-base font-semibold">Who Works Where</h3>
               <p className="text-sm text-muted">
-                By default everyone works with every base. Limit a person to some bases and they only see and change those bases&apos; trucks, drivers and orders — the database applies it to every page. Owners always see every base.
+                By default everyone works with every base. Limit a person to some bases and they only see and change those bases&apos; trucks, drivers and orders. The database applies it to every page. Owners always see every base.
               </p>
             </div>
             <TableWrap>

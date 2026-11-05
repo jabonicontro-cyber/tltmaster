@@ -84,9 +84,9 @@ test("office follows an order from a missing ticket to a billing handoff and bac
   });
   await page.goto(`/billing?view=exceptions&q=${f.orderNumber}`);
   const group = page.getByRole("list", { name: "Orders with exceptions" }).getByRole("listitem").filter({ hasText: f.orderNumber });
-  await expect(group.getByRole("row").filter({ hasText: "Load: delivered differs from planned — load 1" })).toContainText("-0.53");
-  await expect(group.getByRole("row").filter({ hasText: "Order line: delivered differs from ordered — line 1" })).toContainText("-22.53");
-  await expect(group.getByText("Order line: no ticket — line 2")).toBeVisible();
+  await expect(group.getByRole("row").filter({ hasText: "Load: delivered differs from planned, load 1" })).toContainText("-0.53");
+  await expect(group.getByRole("row").filter({ hasText: "Order line: delivered differs from ordered, line 1" })).toContainText("-22.53");
+  await expect(group.getByText("Order line: no ticket, line 2")).toBeVisible();
   await group.getByRole("button", { name: "Acknowledge" }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Acknowledge" }).click();
   await expect(page.getByRole("dialog").getByText("Enter the reason")).toBeVisible();

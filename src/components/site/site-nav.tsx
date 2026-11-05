@@ -77,7 +77,7 @@ export function SiteNav() {
                       className="block rounded-2xl px-3 py-2.5 hover:bg-[#0c1a2b]/[0.04] aria-[current=page]:bg-[#0c1a2b]/[0.05]"
                     >
                       <span className="block text-sm font-semibold text-cloud">{l.label}</span>
-                      {l.text ? <span className="mt-0.5 block text-xs leading-snug text-silver/80">{l.text}</span> : null}
+                      {l.text ? <span className="mt-0.5 block text-xs leading-snug text-silver">{l.text}</span> : null}
                     </Link>
                   </li>
                 ))}

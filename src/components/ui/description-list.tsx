@@ -8,7 +8,7 @@ export function DescriptionList({ items, className }: { items: Array<{ label: st
         <div key={item.label} className={item.wide ? "sm:col-span-2" : undefined}>
           <dt className="text-sm text-muted">{item.label}</dt>
           <dd className="mt-0.5 text-[15px] break-words whitespace-pre-line text-ink">
-            {item.value === "" || item.value === null || item.value === undefined ? <span className="text-muted">—</span> : item.value}
+            {item.value === "" || item.value === null || item.value === undefined ? <span className="text-muted">–</span> : item.value}
           </dd>
         </div>
       ))}

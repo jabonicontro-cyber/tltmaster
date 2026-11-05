@@ -26,9 +26,9 @@ export const metadata = { title: "Quote" };
 
 const DELIVERY_LABEL = {
   sent: { label: "Sent", tone: "green" },
-  failed: { label: "Failed — not sent", tone: "red" },
-  preview: { label: "Preview only — not sent", tone: "gray" },
-  test_sent: { label: "Test email — not to customer", tone: "amber" },
+  failed: { label: "Failed: not sent", tone: "red" },
+  preview: { label: "Preview only: not sent", tone: "gray" },
+  test_sent: { label: "Test email: not to customer", tone: "amber" },
 } as const;
 
 export default async function QuotePage({ params }: { params: Promise<{ id: string }> }) {
@@ -98,9 +98,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           </Notice>
         )}
         {quote.status === "accepted" && (
-          <Notice title={order ? `Accepted — converted to order ${order.order_number}` : "Accepted"}>
+          <Notice title={order ? `Accepted: converted to order ${order.order_number}` : "Accepted"}>
             Accepted {quote.accepted_at ? formatDateTime(quote.accepted_at, timezone) : ""}
-            {quote.status_note ? ` — ${quote.status_note}` : ""}.{" "}
+            {quote.status_note ? `: ${quote.status_note}` : ""}.{" "}
             {order ? (
               <>
                 The order was created from revision{" "}
@@ -122,7 +122,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
           <Card>
-            <CardHeader title="Details" description={current.locked_at ? `Issued ${formatDateTime(current.locked_at, timezone)} — this revision can no longer change.` : "Draft — can still be edited."} />
+            <CardHeader title="Details" description={current.locked_at ? `Issued ${formatDateTime(current.locked_at, timezone)}: this revision can no longer change.` : "Draft: can still be edited."} />
             <CardBody>
               <DescriptionList
                 items={[
@@ -132,7 +132,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                   { label: "Project", value: current.project_name },
                   { label: "Quote date", value: formatDate(current.quote_date) },
                   { label: "Valid until", value: formatDate(current.valid_until) },
-                  { label: "Customer PO", value: current.customer_po || (customer.po_required ? <Badge tone="amber">Required — not entered</Badge> : "") },
+                  { label: "Customer PO", value: current.customer_po || (customer.po_required ? <Badge tone="amber">Required: not entered</Badge> : "") },
                   { label: "Sales tax", value: current.tax_rate_bp ? formatBp(current.tax_rate_bp) : "None" },
                   { label: "Job instructions", value: current.job_instructions, wide: true },
                   { label: "Internal notes", value: current.internal_notes, wide: true },
@@ -142,7 +142,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           </Card>
 
           <Card>
-            <CardHeader title={`Line items — revision ${current.version_no}`} />
+            <CardHeader title={`Line items: revision ${current.version_no}`} />
             <QuoteLinesTable lines={lines} />
             <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
               <dl className="w-full max-w-xs space-y-1 text-[15px]">
@@ -182,7 +182,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
                             {d.note && <div className="mt-1 text-sm text-muted">{d.note}</div>}
                           </Td>
                           <Td className="text-sm">
-                            {d.to_addresses.join(", ") || "—"}
+                            {d.to_addresses.join(", ") || "–"}
                             {d.cc_addresses.length > 0 && <div className="text-muted">cc {d.cc_addresses.join(", ")}</div>}
                           </Td>
                           <Td className="hidden text-sm md:table-cell">

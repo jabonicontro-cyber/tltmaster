@@ -51,9 +51,9 @@ export function CreditPanel({ customerId, hold, limitCents, canManage }: { custo
             {hold.reasons.map((r) => (
               <li key={r}>
                 <span className="font-semibold text-ink">{REASON[r]}</span>
-                {r === "manual" && hold.note ? <span className="text-muted"> — {hold.note}</span> : null}
-                {r === "overdue" && hold.oldestOverdueDays !== null ? <span className="text-muted"> — oldest {hold.oldestOverdueDays} days past due</span> : null}
-                {r === "over_limit" && hold.openCents !== null && hold.creditLimitCents !== null ? <span className="text-muted"> — {formatCents(hold.openCents)} open of {formatCents(hold.creditLimitCents)}</span> : null}
+                {r === "manual" && hold.note ? <span className="text-muted">, {hold.note}</span> : null}
+                {r === "overdue" && hold.oldestOverdueDays !== null ? <span className="text-muted">, oldest {hold.oldestOverdueDays} days past due</span> : null}
+                {r === "over_limit" && hold.openCents !== null && hold.creditLimitCents !== null ? <span className="text-muted">, {formatCents(hold.openCents)} open of {formatCents(hold.creditLimitCents)}</span> : null}
               </li>
             ))}
           </ul>

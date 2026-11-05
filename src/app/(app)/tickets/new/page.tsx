@@ -54,7 +54,7 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
                 {existing.map((t) => (
                   <Link key={t.id} href={`/tickets/${t.id}`} className="mr-2 font-semibold underline">{t.ticket_number}</Link>
                 ))}
-                — enter another only for a separate delivery (for example a split load). You will be asked to confirm.
+               . Enter another only for a separate delivery (for example a split load). You will be asked to confirm.
               </Notice>
             </div>
           )}

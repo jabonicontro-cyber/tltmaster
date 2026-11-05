@@ -24,7 +24,7 @@ import { getOrderBilling } from "@/server/data/billing";
 
 export const metadata = { title: "Order billing" };
 
-const qty = (v: number | string | null | undefined) => (v === null || v === undefined ? "—" : trimNumber(v));
+const qty = (v: number | string | null | undefined) => (v === null || v === undefined ? "–" : trimNumber(v));
 
 const LOAD_STATE: Record<string, { label: string; tone: "red" | "amber" | "green" | "gray" }> = {
   missing: { label: "Missing ticket", tone: "red" },
@@ -51,7 +51,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
       <ReturnLink back={back} />
       <PageHeader
         crumbs={[{ label: "Billing", href: "/billing" }, { label: o.order_number }]}
-        title={`Billing — ${o.order_number}`}
+        title={`Billing · ${o.order_number}`}
         description={`${o.customer_name ?? ""}${o.project_name ? ` · ${o.project_name}` : ""}${o.customer_po ? ` · PO ${o.customer_po}` : ""}`}
         badges={<ReadinessBadge readiness={o.readiness} />}
         actions={<ButtonLink href={`/orders/${o.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open order</ButtonLink>}
@@ -91,7 +91,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                         <Td>
                           <span className="font-semibold">Load {l.load_number}</span> <Badge tone={st.tone}>{st.label}</Badge>
                           <div className="text-sm text-muted tabular">{formatDate(l.load_date)}, {formatTime(l.start_time)} – {formatTime(l.end_time)}</div>
-                          <div className="text-sm text-muted">{l.truck_id ? `${names.trucks.get(l.truck_id) ?? "—"} · ${l.driver_id ? names.drivers.get(l.driver_id) ?? "—" : "—"}` : "Not assigned"}</div>
+                          <div className="text-sm text-muted">{l.truck_id ? `${names.trucks.get(l.truck_id) ?? "–"} · ${l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : "–"}` : "Not assigned"}</div>
                         </Td>
                         <Td>
                           {lt.length === 0 && <span className="text-sm text-muted">None</span>}
@@ -108,8 +108,8 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                             <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" className="mt-1" icon={<FilePlus2 className="size-4" />}>Enter ticket</ButtonLink>
                           )}
                         </Td>
-                        <Td align="right" className="tabular">{l.planned_quantity !== null ? `${qty(l.planned_quantity)} ${l.planned_unit_code}` : "—"}</Td>
-                        <Td align="right" className="tabular">{l.delivered_quantity !== null ? `${qty(l.delivered_quantity)} ${l.planned_unit_code}` : l.live_count ? `in ${(l.ticket_units ?? []).join(", ")}` : "—"}</Td>
+                        <Td align="right" className="tabular">{l.planned_quantity !== null ? `${qty(l.planned_quantity)} ${l.planned_unit_code}` : "–"}</Td>
+                        <Td align="right" className="tabular">{l.delivered_quantity !== null ? `${qty(l.delivered_quantity)} ${l.planned_unit_code}` : l.live_count ? `in ${(l.ticket_units ?? []).join(", ")}` : "–"}</Td>
                         <Td className="hidden sm:table-cell text-sm">
                           {QUANTITY_CHECK_LABELS[l.quantity_check]}
                           {l.quantity_difference !== null && l.quantity_check !== "match" && <span className="font-semibold tabular"> ({formatDifference(l.quantity_difference)})</span>}
@@ -144,7 +144,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                       {l.pending_count > 0 && <div className="text-xs text-muted">{l.pending_count} ticket(s) not accepted yet</div>}
                     </Td>
                     <Td align="right" className="tabular">{qty(l.ordered_quantity)} {l.unit_code}</Td>
-                    <Td align="right" className="tabular">{l.delivered_quantity !== null ? `${qty(l.delivered_quantity)} ${l.unit_code}` : l.live_count ? `in ${(l.ticket_units ?? []).join(", ")}` : "—"}</Td>
+                    <Td align="right" className="tabular">{l.delivered_quantity !== null ? `${qty(l.delivered_quantity)} ${l.unit_code}` : l.live_count ? `in ${(l.ticket_units ?? []).join(", ")}` : "–"}</Td>
                     <Td className="hidden sm:table-cell text-sm">
                       {QUANTITY_CHECK_LABELS[l.quantity_check]}
                       {l.quantity_difference !== null && !["match", "in_progress"].includes(l.quantity_check) && <span className="font-semibold tabular"> ({formatDifference(l.quantity_difference)})</span>}

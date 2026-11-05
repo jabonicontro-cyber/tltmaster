@@ -103,7 +103,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
       <Link href="/command-center" className={cn("flex h-[5rem] shrink-0 items-center", expanded ? "px-3" : "px-4")}>
         <SidebarLogo name={companyName} logoUrl={logoUrl} compact={!expanded} />
         {/* The name comes from what is shown (company name or its mark), so voice control matches it (WCAG 2.5.3). */}
-        <span className="sr-only"> — home</span>
+        <span className="sr-only">, home</span>
       </Link>
       <div className="shrink-0 px-3 pt-3">
         <button

@@ -23,7 +23,7 @@ export default async function QuoteVersionPage({ params }: { params: Promise<{ i
     <>
       <div className="no-print">
         <PageHeader
-          title={`${quote.quote_number} — revision ${version.version_no}`}
+          title={`${quote.quote_number}: revision ${version.version_no}`}
           crumbs={[{ label: "Quotes", href: "/quotes" }, { label: quote.quote_number, href: `/quotes/${id}` }, { label: `Revision ${version.version_no}` }]}
           actions={
             <>

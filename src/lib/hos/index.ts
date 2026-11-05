@@ -44,7 +44,7 @@ export function feedHosProvider(records: HoursRecord[], status: Pick<StatusInfo,
 /** What the dispatcher confirms before approving a proposal (shown in the dialog and recorded on the assignment). */
 export const HOS_CONFIRMATION = "I checked that each driver has the hours of service for these loads. Taviron did not verify them from current provider data.";
 
-export const HOS_REQUIRED_MESSAGE = "Confirm that you checked each driver's hours of service first — Taviron could not verify them from current provider data.";
+export const HOS_REQUIRED_MESSAGE = "Confirm that you checked each driver's hours of service first. Taviron could not verify them from current provider data.";
 
 /** The assignment note: what was approved, and that hours were confirmed by a person, not verified by Taviron. */
 export function approvalNote(what: string, confirmed: boolean): string {

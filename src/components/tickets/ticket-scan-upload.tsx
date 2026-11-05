@@ -46,7 +46,7 @@ export function TicketScanUpload({ ticketId }: { ticketId: string }) {
         setState({ kind: "failed", error: msg, blob, key });
       }
     };
-    xhr.onerror = () => setState({ kind: "failed", error: "No connection. The image is kept here — try again.", blob, key });
+    xhr.onerror = () => setState({ kind: "failed", error: "No connection. The image is kept here. Try again.", blob, key });
     xhr.send(body);
   }
 

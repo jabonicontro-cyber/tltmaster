@@ -143,7 +143,7 @@ export function outlookTotals(days: readonly OutlookDay[]): OutlookTotals {
 export function nextSteps(days: readonly OutlookDay[], today: string): Array<{ key: string; text: string; href: string; urgent: boolean }> {
   const out: Array<{ key: string; text: string; href: string; urgent: boolean }> = [];
   for (const d of days) {
-    if (d.conflicts > 0) out.push({ key: `conflict:${d.date}`, text: `${d.conflicts} booked load${d.conflicts === 1 ? "" : "s"} on ${d.date === today ? "today" : formatDate(d.date)} use${d.conflicts === 1 ? "s" : ""} a truck that cannot run that day — reassign before it starts.`, href: `/dispatch?date=${d.date}`, urgent: true });
+    if (d.conflicts > 0) out.push({ key: `conflict:${d.date}`, text: `${d.conflicts} booked load${d.conflicts === 1 ? "" : "s"} on ${d.date === today ? "today" : formatDate(d.date)} use${d.conflicts === 1 ? "s" : ""} a truck that cannot run that day. Reassign before it starts.`, href: `/dispatch?date=${d.date}`, urgent: true });
   }
   for (const d of days) {
     if (d.unassigned > 0) out.push({ key: `gap:${d.date}`, text: `${d.unassigned} load${d.unassigned === 1 ? "" : "s"} on ${d.date === today ? "today" : formatDate(d.date)} still need${d.unassigned === 1 ? "s" : ""} a truck and driver.`, href: `/dispatch?date=${d.date}`, urgent: d.date === today });

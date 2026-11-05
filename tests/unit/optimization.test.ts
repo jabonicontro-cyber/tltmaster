@@ -96,7 +96,7 @@ describe("optimization core", () => {
     const plan = optimize(input({ loads: [load("A")], hoursOfServiceVerified: true, driversOnLeave: ["d-Avery"] }), PRESETS.balanced.priorities);
     expect(plan.assignments).toHaveLength(1);
     expect(plan.assignments[0].status).toBe("needs_review");
-    expect(plan.assignments[0].review).toContain("The driver's employee record says On leave — confirm they are working that day.");
+    expect(plan.assignments[0].review).toContain("The driver's employee record says On leave. Confirm they are working that day.");
   });
 
   it("keeps a truck on one site when efficiency matters, and spreads work when balance matters", () => {

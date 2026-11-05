@@ -19,8 +19,8 @@ const ROW_STATUS: Record<ImportRow["status"], { label: string; tone: "green" | "
 const OUTCOME: Record<string, string> = {
   created: "Created",
   removed: "Removed by revert",
-  kept_changed: "Kept (changed since import) — deactivated",
-  kept_in_use: "Kept (in use) — deactivated",
+  kept_changed: "Kept (changed since import), deactivated",
+  kept_in_use: "Kept (in use): deactivated",
   deactivated: "Made inactive by undo",
 };
 
@@ -80,7 +80,7 @@ export function ImportReview({ batch, companyName, actions, afterApproved }: {
                         <span className="text-muted">Skip</span>
                       )
                     ) : (
-                      <span>{OUTCOME[r.outcome] ?? (r.decision === "skip" ? "Skipped" : "—")}</span>
+                      <span>{OUTCOME[r.outcome] ?? (r.decision === "skip" ? "Skipped" : "–")}</span>
                     )}
                   </Td>
                 </Tr>

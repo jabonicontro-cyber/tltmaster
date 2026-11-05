@@ -32,7 +32,7 @@ export function StaffingForecast({ days, today }: { days: StaffingDay[]; today: 
                 {d.loads !== null && <span className="w-2.5 rounded-full bg-ink/20 sm:w-3.5" style={{ height: `${Math.max(4, (d.loads / most) * 80)}px` }} />}
               </div>
               <span className="mt-2 text-xs font-medium text-muted" aria-hidden>{WEEKDAY.format(new Date(`${d.date}T12:00:00Z`))}</span>
-              <span className="text-sm font-semibold tabular text-ink" aria-hidden>{d.drivers}<span className="font-normal text-muted">/{d.loads ?? "—"}</span></span>
+              <span className="text-sm font-semibold tabular text-ink" aria-hidden>{d.drivers}<span className="font-normal text-muted">/{d.loads ?? "–"}</span></span>
               {short ? (
                 <Link href={`/dispatch?date=${d.date}`} className="mt-0.5 text-[11px] font-semibold text-critical hover:underline">No driver</Link>
               ) : d.unknown ? (

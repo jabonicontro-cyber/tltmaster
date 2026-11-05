@@ -140,7 +140,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
           </Notice>
           <Notice title="Role previews">
             Inside the demo, a bar at the top lets you view the app as {PREVIEW_ROLES.map((r) => PREVIEW_LABELS[r]).join(", ")}. A preview only hides what that role
-            would not see — it never grants anything. The server and database keep checking your real access.
+            would not see: it never grants anything. The server and database keep checking your real access.
           </Notice>
         </div>
       </div>

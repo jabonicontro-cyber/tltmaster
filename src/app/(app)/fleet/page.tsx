@@ -59,7 +59,7 @@ export default async function FleetPage() {
 
   return (
     <>
-      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready — or not ready — for work." />
+      <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work." />
       <FleetNav active="Overview" />
 
       {empty && (
@@ -102,7 +102,7 @@ export default async function FleetPage() {
 
       {docAttention.length > 0 && (
         <Card className="mt-5">
-          <CardHeader title="Vehicle documents needing renewal" description="Expired, or expiring within 30 days. No reminders are sent — this list is the reminder." />
+          <CardHeader title="Vehicle documents needing renewal" description="Expired, or expiring within 30 days. No reminders are sent. This list is the reminder." />
           <CappedList
             label="Vehicle documents needing renewal"
             items={docAttention.map(({ kind, v, att }) => (
@@ -174,8 +174,8 @@ export default async function FleetPage() {
       <div className="mt-5">
         <EligibilityChecker
           today={o.today}
-          trucks={trucks.map((t) => ({ id: t.id, label: `${t.unit_number} — ${TRUCK_TYPE_LABELS[t.truck_type]}`, inactive: !t.active }))}
-          trailers={trailers.map((t) => ({ id: t.id, label: `${t.unit_number} — ${TRAILER_TYPE_LABELS[t.trailer_type]}`, inactive: !t.active }))}
+          trucks={trucks.map((t) => ({ id: t.id, label: `${t.unit_number} · ${TRUCK_TYPE_LABELS[t.truck_type]}`, inactive: !t.active }))}
+          trailers={trailers.map((t) => ({ id: t.id, label: `${t.unit_number} · ${TRAILER_TYPE_LABELS[t.trailer_type]}`, inactive: !t.active }))}
           drivers={drivers.map((d) => ({ id: d.id, label: d.display_name, inactive: !d.active }))}
         />
       </div>

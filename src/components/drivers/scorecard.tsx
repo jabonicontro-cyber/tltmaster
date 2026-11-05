@@ -4,7 +4,7 @@ import { share, type ScoreRow } from "@/lib/drivers/scorecard";
 
 // Driver scorecard (B96). Managers: every driver, alphabetical, no ranking. A driver: their own figures only.
 
-const fmt = (p: number | null) => (p === null ? "—" : `${p}%`);
+const fmt = (p: number | null) => (p === null ? "–" : `${p}%`);
 
 export function DriverScorecardTable({ rows }: { rows: ScoreRow[] }) {
   return (
@@ -25,7 +25,7 @@ export function DriverScorecardTable({ rows }: { rows: ScoreRow[] }) {
                     <Td className="font-semibold">{r.driver_name}</Td>
                     <Td align="right" className="tabular">{r.loads}</Td>
                     <Td align="right" className="tabular">{fmt(share(r.on_time, r.loads))}</Td>
-                    <Td align="right" className="tabular">{r.own_tickets ? `${fmt(share(r.same_day, r.own_tickets))} of ${r.own_tickets}` : "—"}</Td>
+                    <Td align="right" className="tabular">{r.own_tickets ? `${fmt(share(r.same_day, r.own_tickets))} of ${r.own_tickets}` : "–"}</Td>
                     <Td align="right" className="tabular">{r.reports}</Td>
                   </Tr>
                 ))}
@@ -42,7 +42,7 @@ export function MyScorecard({ row, days }: { row: ScoreRow; days: number }) {
   const items = [
     { label: "Loads delivered", value: String(row.loads), note: "" },
     { label: "On time", value: fmt(share(row.on_time, row.loads)), note: "By the end of the planned window" },
-    { label: "Tickets entered same day", value: row.own_tickets ? fmt(share(row.same_day, row.own_tickets)) : "—", note: row.own_tickets ? `${row.same_day} of ${row.own_tickets}` : "None entered from your phone yet" },
+    { label: "Tickets entered same day", value: row.own_tickets ? fmt(share(row.same_day, row.own_tickets)) : "–", note: row.own_tickets ? `${row.same_day} of ${row.own_tickets}` : "None entered from your phone yet" },
     { label: "Problems reported", value: String(row.reports), note: "Delays, breakdowns and equipment" },
   ];
   return (

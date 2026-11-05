@@ -438,8 +438,8 @@ export async function loadWorkspaceChoices(date: string) {
   const loadRows = (loads.data ?? []) as unknown as LoadRow[];
   const sites = [...new Set(loadRows.map((l) => l.orders?.site_line1?.trim()).filter((s): s is string => Boolean(s)))].sort();
   return {
-    orders: ((orders.data ?? []) as unknown as OrderRow[]).map((o) => ({ id: o.id, label: `${o.order_number} — ${o.customers?.name ?? "Customer"}${o.site_line1 ? ` — ${o.site_line1}` : ""}` })),
-    loads: loadRows.filter((l) => l.status !== "canceled").map((l) => ({ id: l.id, label: `${l.orders?.order_number ?? "Order"} load ${l.load_number}${l.orders?.site_line1 ? ` — ${l.orders.site_line1}` : ""}` })),
+    orders: ((orders.data ?? []) as unknown as OrderRow[]).map((o) => ({ id: o.id, label: `${o.order_number} · ${o.customers?.name ?? "Customer"}${o.site_line1 ? `: ${o.site_line1}` : ""}` })),
+    loads: loadRows.filter((l) => l.status !== "canceled").map((l) => ({ id: l.id, label: `${l.orders?.order_number ?? "Order"} load ${l.load_number}${l.orders?.site_line1 ? `: ${l.orders.site_line1}` : ""}` })),
     sites,
   };
 }

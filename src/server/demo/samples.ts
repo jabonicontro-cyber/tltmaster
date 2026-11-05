@@ -409,7 +409,7 @@ async function billing(db: Db, today: string): Promise<number> {
     let day = addDays(today, -back);
     while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, -1); // a weekday
     const o = (await must("billing order", db.rpc("save_order_draft", { p_payload: {
-      customer_id: tmpl.customer_id, order_date: day, project_name: `${tmpl.site_label ?? "Site"} — ${src.description}`,
+      customer_id: tmpl.customer_id, order_date: day, project_name: `${tmpl.site_label ?? "Site"} · ${src.description}`,
       job_instructions: "Demo: delivered exactly as ordered.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
       lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: String(qty * 2), unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
     } }))) as { order_id: string; order_number: string };
@@ -462,7 +462,7 @@ async function needsScheduling(db: Db, today: string): Promise<number> {
   if (!tmpl) return 0;
   const src = tmpl.order_lines.find((l) => l.calc_method === "per_unit" && l.unit_code)!;
   const o = (await must("waiting order", db.rpc("save_order_draft", { p_payload: {
-    customer_id: tmpl.customer_id, order_date: today, project_name: `${tmpl.site_label ?? "Site"} — next phase`,
+    customer_id: tmpl.customer_id, order_date: today, project_name: `${tmpl.site_label ?? "Site"}: next phase`,
     job_instructions: "Demo: the customer will call with a start date.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
     lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "40", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
   } }))) as { order_id: string };
@@ -569,7 +569,7 @@ async function previousCrew(db: Db, today: string): Promise<number> {
     n++;
   }
 
-  const TOMORROW_NOTE = "Demo: open — copy today's crew from the board.";
+  const TOMORROW_NOTE = "Demo: open. Copy today's crew from the board.";
   const exists = ((await db.from("order_loads").select("id").eq("order_id", order.id).eq("load_date", day).eq("notes", TOMORROW_NOTE).neq("status", "canceled").limit(1)).data ?? []).length > 0;
   if (!exists) {
     const saved = await db.rpc("save_order_load", { p_payload: { order_id: order.id, load_date: day, start_time: "07:30", end_time: "09:00", planned_quantity: "", unit_code: "", notes: TOMORROW_NOTE } });
@@ -876,7 +876,7 @@ async function issuedQuote(db: Db, today: string): Promise<number> {
     ...(site ? { site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
     lines: [{ ...base, quantity: String(Number(base.quantity ?? 1) * 6) }],
   } }))) as { quote_id: string; edit_seq: number };
-  await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: printed and handed to the customer at the yard (fictional — nothing was sent)." }));
+  await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: printed and handed to the customer at the yard (fictional. Nothing was sent)." }));
   return 1;
 }
 
@@ -918,7 +918,7 @@ async function quoteHistory(db: Db, today: string): Promise<number> {
       ...(site ? { site_id: site.id, site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
       lines: [{ kind: m.kind, calc_method: "per_unit", ...(m.material_id ? { material_id: m.material_id } : { charge_item_id: m.charge_item_id }), description: m.description, unit_code: m.unit_code, quantity: String(m.unit_code === "load" ? 2 + (i % 3) : 18 + i * 6), unit_rate_cents: Math.max(100, Math.round(Number(m.unit_rate_cents) * p.markup)) }],
     } }))) as { quote_id: string; edit_seq: number };
-    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional — nothing was sent)." }));
+    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional. Nothing was sent)." }));
     await must("decide", db.rpc("set_quote_status", { p_quote_id: saved.quote_id, p_status: p.outcome, p_note: p.reason }));
     n++;
   }
@@ -958,7 +958,7 @@ async function pricingHistory(db: Db, today: string): Promise<number> {
       ...(site ? { site_id: site.id, site_label: site.label, site_line1: site.line1, site_city: site.city } : {}),
       lines: [{ kind: line.kind, calc_method: "per_unit", ...(line.material_id ? { material_id: line.material_id } : { charge_item_id: line.charge_item_id }), description: line.description, unit_code: line.unit_code, quantity: String(line.unit_code === "load" ? 3 : 40 + i * 10), unit_rate_cents: Math.max(100, Math.round(line.unit_rate_cents * p.markup)) }],
     } }))) as { quote_id: string; edit_seq: number };
-    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional — nothing was sent)." }));
+    await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: handed to the customer outside Taviron (fictional. Nothing was sent)." }));
     await must("decide", db.rpc("set_quote_status", { p_quote_id: saved.quote_id, p_status: p.outcome, p_note: p.reason }));
     n++;
   }
@@ -1364,7 +1364,7 @@ async function shiftSchedules(db: Db, today: string): Promise<number> {
   };
   const drivers = people.filter((p) => p.driver_id && p.department !== "management");
   for (const [i, d] of drivers.entries()) {
-    if (i === drivers.length - 1 && drivers.length > 2) continue; // no schedule: shown as "—", not checked by dispatch
+    if (i === drivers.length - 1 && drivers.length > 2) continue; // no schedule: shown as "–", not checked by dispatch
     if (i === 1) await pattern(d.id, "rotation", 8, [0, 1, 2, 3].map((day) => ({ day, start: "20:00", end: "06:00" })), "Demo: night rotation, 4 on / 4 off");
     else await pattern(d.id, "weekly", 7, weekday("06:00", "16:30"), "Demo: day crew");
   }

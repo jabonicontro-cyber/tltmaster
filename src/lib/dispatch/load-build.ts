@@ -172,7 +172,7 @@ export function buildLoads(input: BuildInput): BuildResult {
   const dates = distributeLoads(quantities.length, input.days, input.loadsPerDay, input.mode);
   if (!dates) {
     const needed = Math.ceil(quantities.length / input.loadsPerDay);
-    blockers.push(`${quantities.length} loads at ${input.loadsPerDay} a day need ${needed} day${needed === 1 ? "" : "s"}; the order is scheduled for ${input.days.length}. Change the order's dates (with approval) or the loads per day — firm dates are not moved automatically.`);
+    blockers.push(`${quantities.length} loads at ${input.loadsPerDay} a day need ${needed} day${needed === 1 ? "" : "s"}; the order is scheduled for ${input.days.length}. Change the order's dates (with approval) or the loads per day, firm dates are not moved automatically.`);
     return { ok: false, remaining, loads: [], eligibleTrucks: carriers.length, blockers, warnings };
   }
   if (input.loadsPerDay > carriers.length) {

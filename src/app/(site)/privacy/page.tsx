@@ -1,13 +1,14 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { LegalPage } from "@/components/site/legal";
 
-export const metadata: Metadata = { title: "Privacy", description: "How Taviron handles information from this website and the app (draft).", alternates: { canonical: "/privacy" } };
+export const metadata: Metadata = { title: "Privacy", description: "How Taviron handles information from this website and the app (draft).", alternates: { canonical: "/privacy" }, openGraph: siteOpenGraph("/privacy") };
 
 export default function PrivacyPage() {
   return (
-    <LegalPage title="Privacy notice">
+    <LegalPage title="Privacy notice" updated="November 5, 2026">
       <h2>This website</h2>
-      <p>When you send the demo request or contact form, we store what you enter (name, email, and optionally company, phone, role, fleet size and message) so the Taviron team can reply and keep track of the conversation.</p>
+      <p>When you send the demo request or contact form, we store what you enter (name and email, and optionally company, phone, number of trucks and dispatch bases, and message) so the Taviron team can reply and keep track of the conversation.</p>
       <ul>
         <li>We do not sell this information or use it for advertising.</li>
         <li>To limit abuse, we keep a one-way, keyed fingerprint of the network address a form came from (not the address itself) for a short time.</li>

@@ -63,7 +63,7 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           <StatTile icon={<CalendarClock />} tone={pipe.expiring ? "amber" : "neutral"} label="Expiring this week" value={pipe.expiring} muted={pipe.expiring === 0}>
             <span className="text-muted"><span className="sr-only">{pipe.expiring} </span>{pipe.expiring ? "follow up before they lapse" : "nothing lapses in 7 days"}</span>
           </StatTile>
-          <StatTile icon={<Trophy />} tone="green" label="Won, last 90 days" value={outcomes?.winRate == null ? "—" : `${Math.round(outcomes.winRate * 100)}%`} muted={!outcomes?.decided}>
+          <StatTile icon={<Trophy />} tone="green" label="Won, last 90 days" value={outcomes?.winRate == null ? "–" : `${Math.round(outcomes.winRate * 100)}%`} muted={!outcomes?.decided}>
             <Link href="/reports" className="text-muted underline-offset-2 hover:underline">{outcomes?.decided ? `${outcomes.won} of ${outcomes.decided} decided` : "no quotes decided yet"}</Link>
           </StatTile>
         </div>

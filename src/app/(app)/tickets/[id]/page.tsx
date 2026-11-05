@@ -123,11 +123,11 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         )}
         {t.status === "voided" && (
           <Notice tone="warning" title="Voided">
-            {t.void_reason} — {who(t.voided_by)}, {formatDateTime(t.voided_at, timezone)}. The ticket no longer counts for the load.
+            {t.void_reason} · {who(t.voided_by)}, {formatDateTime(t.voided_at, timezone)}. The ticket no longer counts for the load.
           </Notice>
         )}
         {t.review_reasons.length > 0 && t.status !== "voided" && (
-          <Notice tone="warning" title={t.status === "accepted" ? "Flags raised when submitted — resolved: accepted by a reviewer" : t.status === "superseded" ? "Flags on this revision" : "Needs office review before it counts as verified"}>
+          <Notice tone="warning" title={t.status === "accepted" ? "Flags raised when submitted (resolved: accepted by a reviewer)" : t.status === "superseded" ? "Flags on this revision" : "Needs office review before it counts as verified"}>
             <ul className="space-y-2" aria-label="Review reasons">
               {t.review_reasons.map((r) => {
                 const help = REVIEW_REASON_HELP[r];
@@ -171,7 +171,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                   },
                   { label: "Truck · driver", value: `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""} · ${s.driver_name}` },
                   { label: "Entered", value: `${formatDateTime(t.created_at, timezone)} by ${who(t.created_by)}` },
-                  ...(t.reviewed_at ? [{ label: "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? ` — ${t.review_note}` : ""}` }] : []),
+                  ...(t.reviewed_at ? [{ label: "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? `: ${t.review_note}` : ""}` }] : []),
                   ...(t.correction_reason ? [{ label: "Correction reason", value: t.correction_reason, wide: true }] : []),
                   { label: "Notes", value: t.notes, wide: true },
                 ]}
@@ -180,7 +180,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
           </Card>
 
           <Card>
-            <CardHeader title="Delivery context" description="From the order, the dispatch assignment and the other tickets on this order line. Same unit only — nothing is converted." />
+            <CardHeader title="Delivery context" description="From the order, the dispatch assignment and the other tickets on this order line. Same unit only. Nothing is converted." />
             <CardBody className="space-y-4">
               {progress ? (
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="Order line progress">
@@ -198,9 +198,9 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 <p className="text-sm text-muted">The order line could not be loaded.</p>
               )}
               <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
-                {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} per {unitLabel(context.line.unit_code).replace(/s$/, "")} — not changed by tickets</dd></div>}
+                {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} per {unitLabel(context.line.unit_code).replace(/s$/, "")}: not changed by tickets</dd></div>}
                 {context.order && <div><dt className="inline text-muted">Customer PO: </dt><dd className="inline">{context.order.customer_po || "none on the order"}</dd></div>}
-                {context.order && <div><dt className="inline text-muted">Site: </dt><dd className="inline">{[context.order.site_label, context.order.site_city].filter(Boolean).join(", ") || "—"}</dd></div>}
+                {context.order && <div><dt className="inline text-muted">Site: </dt><dd className="inline">{[context.order.site_label, context.order.site_city].filter(Boolean).join(", ") || "–"}</dd></div>}
                 <div>
                   <dt className="inline text-muted">Dispatch assignment: </dt>
                   <dd className="inline">
@@ -295,7 +295,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                         </Td>
                         <Td className="tabular">{trimNumber(r.quantity)} {r.unit_code}</Td>
                         <Td className="hidden sm:table-cell">{formatDateTime(r.delivered_at, timezone)}</Td>
-                        <Td className="hidden md:table-cell">{r.external_reference || "—"}</Td>
+                        <Td className="hidden md:table-cell">{r.external_reference || "–"}</Td>
                         <Td><TicketStatusBadge status={r.status} /></Td>
                       </Tr>
                     ))}
@@ -324,8 +324,8 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                       <span className="text-muted">{FIELD_LABELS[k] ?? k}:</span>{" "}
                       {k.endsWith("_id") ? "changed" : (
                         <>
-                          <span className="line-through decoration-muted">{k === "delivered_at" ? formatDateTime(String(c.from), timezone) : String(c.from ?? "—")}</span> →{" "}
-                          {k === "delivered_at" ? formatDateTime(String(c.to), timezone) : String(c.to ?? "—")}
+                          <span className="line-through decoration-muted">{k === "delivered_at" ? formatDateTime(String(c.from), timezone) : String(c.from ?? "–")}</span> →{" "}
+                          {k === "delivered_at" ? formatDateTime(String(c.to), timezone) : String(c.to ?? "–")}
                         </>
                       )}
                     </p>

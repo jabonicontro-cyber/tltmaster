@@ -26,7 +26,7 @@ export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, i
       <CardHeader
         title="Security"
         description="Two-step verification asks for a code from your phone after your password."
-        actions={<Badge tone={enrolled ? "green" : required ? "amber" : "gray"}>{enrolled ? "Two-step on" : required ? "Required — not set up" : "Two-step off"}</Badge>}
+        actions={<Badge tone={enrolled ? "green" : required ? "amber" : "gray"}>{enrolled ? "Two-step on" : required ? "Required: not set up" : "Two-step off"}</Badge>}
       />
       <div className="space-y-4 px-5 pb-5 text-sm sm:px-6">
         {reason ? <p className="text-muted">{reason}</p> : null}

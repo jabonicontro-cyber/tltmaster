@@ -71,7 +71,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <StatTile icon={<MapPin />} label="Median wait at job sites" value={minutesLabel(median(siteWaits))} muted={!siteWaits.length}>{siteWaits.length} visits with both times</StatTile>
         <StatTile icon={<Clock />} label="Median wait at pickups" value={minutesLabel(median(pickupWaits))} muted={!pickupWaits.length}>{pickupWaits.length} visits with both times</StatTile>
-        <StatTile icon={<Hourglass />} tone={long ? "amber" : "neutral"} label="Waits over free time" value={long === null ? "—" : long} muted={!long}>
+        <StatTile icon={<Hourglass />} tone={long ? "amber" : "neutral"} label="Waits over free time" value={long === null ? "–" : long} muted={!long}>
           {hoursOver === null ? "Set a free time to flag long waits" : `${hoursOver.toFixed(1)} truck hours beyond free time`}
         </StatTile>
       </div>
@@ -93,7 +93,7 @@ export default async function WaitTimesPage({ searchParams }: { searchParams: Pr
                       <Td className="text-right tabular">{p.visits}</Td>
                       <Td className={cn("text-right font-semibold tabular", isLong(p.medianMinutes, free) && "text-amber-800")}>{minutesLabel(p.medianMinutes)}</Td>
                       <Td className="text-right tabular">{minutesLabel(p.longest)}</Td>
-                      <Td className="text-right tabular">{p.long === null ? "—" : p.long ? <Badge tone="amber">{p.long} {p.long === 1 ? "wait" : "waits"} · {minutesLabel(p.minutesOver)} over</Badge> : "0"}</Td>
+                      <Td className="text-right tabular">{p.long === null ? "–" : p.long ? <Badge tone="amber">{p.long} {p.long === 1 ? "wait" : "waits"} · {minutesLabel(p.minutesOver)} over</Badge> : "0"}</Td>
                     </Tr>
                   ))}
                 </tbody>

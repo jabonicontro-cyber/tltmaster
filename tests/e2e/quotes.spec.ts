@@ -48,7 +48,7 @@ test("create, price, save, preview, PDF, mark sent, revise and accept a quote", 
 
   // Print preview
   await page.getByRole("link", { name: "Preview / print" }).click();
-  await expect(page.getByText("Draft — not yet sent to the customer")).toBeVisible();
+  await expect(page.getByText("Draft: not yet sent to the customer")).toBeVisible();
   await expect(page.getByText("PO-E2E-1")).toBeVisible();
   await page.goto(quoteUrl);
 

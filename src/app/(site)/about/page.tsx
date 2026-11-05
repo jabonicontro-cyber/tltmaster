@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, FinalCta, PageIntro, order } from "@/components/site/ui";
@@ -5,8 +6,8 @@ import { SEGMENTS } from "@/lib/site/areas";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Why Taviron exists and the principles it is built on.",
-  alternates: { canonical: "/about" },
+  description: "Why Taviron exists, who it is built for, and the principles behind how it handles your operation and your data.",
+  alternates: { canonical: "/about" }, openGraph: siteOpenGraph("/about"),
 };
 
 const PRINCIPLES = [

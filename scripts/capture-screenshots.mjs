@@ -72,7 +72,8 @@ await page.mouse.move(1100, 600);
 const welcome = page.getByRole("button", { name: "Explore the demo" });
 if (await welcome.isVisible().catch(() => false)) await welcome.click();
 const account = page.getByRole("button", { name: /^Account menu/ });
-const label = (await account.getAttribute("aria-label")) ?? "";
+// The button's accessible name ends with "(demo company)" while the demo badge shows (screen-reader text in the button).
+const label = (await account.textContent()) ?? "";
 if (!label.includes("(demo company)")) {
   // Already presenting is fine; anything else is not a demo company.
   await account.click();
@@ -83,7 +84,7 @@ if (!label.includes("(demo company)")) {
   await account.click();
   await page.getByRole("menuitemcheckbox", { name: "Presentation mode" }).click();
   // The switch is saved by a server action; wait until the page shows it (no demo badge) before capturing anything.
-  await page.waitForFunction(() => !/\(demo company\)/.test(document.querySelector("[aria-label^='Account menu']")?.getAttribute("aria-label") ?? "(demo company)"), null, { timeout: 20_000 })
+  await page.waitForFunction(() => !/\(demo company\)/.test([...document.querySelectorAll("button")].find((b) => /Account menu/.test(b.textContent ?? ""))?.textContent ?? "(demo company)"), null, { timeout: 20_000 })
     .catch(() => { throw new Error("Presentation mode did not turn on."); });
 }
 
@@ -97,7 +98,7 @@ async function gate(shot) {
   const facts = await page.evaluate(() => ({
     brokenImages: [...document.images].filter((i) => !i.complete || i.naturalWidth === 0).length,
     overflow: document.documentElement.scrollWidth - window.innerWidth,
-    demoBadge: /\(demo company\)/.test(document.querySelector("[aria-label^='Account menu']")?.getAttribute("aria-label") ?? ""),
+    demoBadge: [...document.querySelectorAll("button")].some((b) => /Account menu.*\(demo company\)/.test(b.textContent ?? "")),
     devOverlay: Boolean(document.querySelector("nextjs-portal")),
     errorPage: /This page could not be loaded|Application error/.test(document.body.innerText),
   }));

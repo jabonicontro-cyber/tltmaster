@@ -45,7 +45,7 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
     <>
       <PageHeader
         title="What if"
-        description="Try a change before you make it. Results are estimates from your own last 90 days — averages per truck and per load — and nothing is changed."
+        description="Try a change before you make it. Results are estimates from your own last 90 days (averages per truck and per load) and nothing is changed."
         actions={<ButtonLink href="/reports" variant="secondary">Reports</ButtonLink>}
       />
       <form method="get" className="space-y-5" aria-label="What if">
@@ -57,8 +57,8 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
               {t ? (
                 <dl className="grid grid-cols-3 gap-3 text-sm" aria-label="Add trucks result">
                   <div><dt className="text-muted">Extra loads / month</dt><dd className="text-2xl font-semibold tabular">+{t.extraLoadsPerMonth}</dd></div>
-                  <div><dt className="text-muted">Revenue / month</dt><dd className="text-2xl font-semibold tabular">{t.extraRevenueCents === null ? "—" : signed(t.extraRevenueCents)}</dd></div>
-                  <div><dt className="text-muted">Profit / month</dt><dd className="text-2xl font-semibold tabular">{t.extraProfitCents === null ? "—" : signed(t.extraProfitCents)}</dd></div>
+                  <div><dt className="text-muted">Revenue / month</dt><dd className="text-2xl font-semibold tabular">{t.extraRevenueCents === null ? "–" : signed(t.extraRevenueCents)}</dd></div>
+                  <div><dt className="text-muted">Profit / month</dt><dd className="text-2xl font-semibold tabular">{t.extraProfitCents === null ? "–" : signed(t.extraProfitCents)}</dd></div>
                 </dl>
               ) : <p className="text-sm text-muted">Not enough delivered loads in the last 90 days to estimate.</p>}
               <p className="text-xs text-muted">
@@ -80,7 +80,7 @@ export default async function WhatIfPage({ searchParams }: { searchParams: Promi
                   </div>
                   <dl className="text-sm" aria-label="Rate change result">
                     <dt className="text-muted">Per month, if they order the same</dt>
-                    <dd className="text-2xl font-semibold tabular">{rate === null ? "—" : signed(rate)}</dd>
+                    <dd className="text-2xl font-semibold tabular">{rate === null ? "–" : signed(rate)}</dd>
                   </dl>
                   <p className="text-xs text-muted">From {formatCents(chosen.revenue_cents)} of delivered work for {chosen.name} on {chosen.loads} loads in the last 90 days. A price change can also change how much they order.</p>
                 </>

@@ -1,3 +1,4 @@
+import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import { Building2, Gauge, Receipt, Route, Truck, Users, Wrench } from "lucide-react";
 import { Container, FinalCta, PageIntro, SectionHeading, order } from "@/components/site/ui";
@@ -5,7 +6,7 @@ import { Container, FinalCta, PageIntro, SectionHeading, order } from "@/compone
 export const metadata: Metadata = {
   title: "Solutions",
   description: "How Taviron fits aggregate and material haulers, dump truck fleets and growing operations, and each role inside them.",
-  alternates: { canonical: "/solutions" },
+  alternates: { canonical: "/solutions" }, openGraph: siteOpenGraph("/solutions"),
 };
 
 const COMPANIES = [

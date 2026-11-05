@@ -65,7 +65,7 @@ export function OrderRoutePanel({ orderId, date, onClose, inline = false }: { or
             <dl className="grid grid-cols-3 gap-2">
               <Stat label="Open loads" value={String(r.openLoads)} tone={r.openLoads ? "warn" : undefined} />
               <Stat label="Assigned" value={String(r.assignedLoads)} />
-              <Stat label="To the site" value={driveTotal(r) !== null ? `${driveTotal(r)} mi` : "—"} />
+              <Stat label="To the site" value={driveTotal(r) !== null ? `${driveTotal(r)} mi` : "–"} />
             </dl>
 
             {!r.routing.ready && <p className="rounded-2xl bg-surface px-3 py-2 text-xs text-muted">{r.routing.reason}</p>}

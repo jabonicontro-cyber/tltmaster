@@ -18,7 +18,7 @@ export function OrderProgress({ steps }: { steps: ProgressStep[] }) {
     <Card>
       <CardHeader
         title="Progress"
-        description="From the order's loads, assignments, tickets and billing review — nothing here is entered twice. Driver pay is not tracked yet."
+        description="From the order's loads, assignments, tickets and billing review. Nothing here is entered twice. Driver pay is not tracked yet."
       />
       <ol className="grid grid-cols-1 divide-y divide-line md:grid-cols-3 md:divide-x md:divide-y-0" aria-label="Order progress">
         {steps.map((s) => {
@@ -27,7 +27,7 @@ export function OrderProgress({ steps }: { steps: ProgressStep[] }) {
             <li key={s.key} className="flex flex-col gap-1.5 px-5 py-3 sm:px-6" aria-label={`${s.label}: ${I.label}`}>
               <p className="flex items-center gap-1.5 text-sm font-bold text-ink">
                 <I.icon className={cn("size-4", I.className)} aria-hidden /> {s.label}
-                <span className="sr-only"> — {I.label}</span>
+                <span className="sr-only">, {I.label}</span>
               </p>
               <p className="text-sm">{s.summary}</p>
               {s.owner && <p className="text-xs text-muted">Next: {s.owner}</p>}

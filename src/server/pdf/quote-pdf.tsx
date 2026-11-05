@@ -52,7 +52,7 @@ function QuotePdf({ doc }: { doc: QuoteDocument }) {
   return (
     <Document title={doc.title} author={doc.company.name} subject={`Quote for ${doc.billTo.name}`} creator={PRODUCT_NAME}>
       <Page size="LETTER" style={s.page}>
-        {doc.isDraft && <Text style={s.draft}>DRAFT — NOT YET SENT TO THE CUSTOMER</Text>}
+        {doc.isDraft && <Text style={s.draft}>DRAFT: NOT YET SENT TO THE CUSTOMER</Text>}
         <View style={s.header}>
           <View>
             <View style={s.brandRow}>
@@ -87,7 +87,7 @@ function QuotePdf({ doc }: { doc: QuoteDocument }) {
           </View>
           <View style={s.col}>
             <Text style={s.h}>CONTACT</Text>
-            <Text style={s.bold}>{doc.contact.name || "—"}</Text>
+            <Text style={s.bold}>{doc.contact.name || "–"}</Text>
             {doc.contact.email ? <Text>{doc.contact.email}</Text> : null}
             {doc.contact.phone ? <Text>{doc.contact.phone}</Text> : null}
           </View>

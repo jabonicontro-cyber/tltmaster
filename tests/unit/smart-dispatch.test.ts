@@ -62,7 +62,7 @@ describe("Smart Dispatch recommendations", () => {
     const [p] = recommend(input({ loads: [load("A")], trucks: [truck("101", { service_status: "out_of_service", expected_return_date: "2026-10-14" })] }));
     expect(p.proposal).toBeNull();
     expect(p.excludedTrucks[0].reasons[0]).toBe("Out of service (expected back Oct 14, 2026).");
-    expect(p.blocked?.options.join(" ")).toMatch(/expected back in service on Oct 14, 2026 — after this load's date/);
+    expect(p.blocked?.options.join(" ")).toMatch(/expected back in service on Oct 14, 2026, after this load's date/);
   });
 
   it("5. an unresolved breakdown or inspection report blocks the truck; an equipment issue only warns", () => {
@@ -79,7 +79,7 @@ describe("Smart Dispatch recommendations", () => {
     const [p] = recommend(input({ loads: [load("A")], trucks }));
     expect(Object.fromEntries(p.excludedTrucks.map((e) => [e.label, e.reasons[0]]))).toEqual({
       SMALL: "Planned 20 ton exceeds its recorded capacity of 15 ton.",
-      TRAC: "A tractor needs a trailer; Smart Dispatch does not choose trailers — assign it on the board.",
+      TRAC: "A tractor needs a trailer; Smart Dispatch does not choose trailers. Assign it on the board.",
     });
     expect(p.proposal?.truckLabel).toBe("UNK");
     expect(p.proposal?.warnings[0]).toMatch(/Capacity in ton is not recorded/);
@@ -114,7 +114,7 @@ describe("Smart Dispatch recommendations", () => {
     const [p] = recommend(input({ loads: [load("A", { requested_date: TODAY })], bookings }));
     expect(p.proposal).toBeNull();
     expect(p.blocked?.why).toEqual(["None of the 1 trucks can take this load (see the reasons below).", "None of the 1 drivers can take this load (see the reasons below)."]);
-    expect(p.blocked?.options.join(" ")).toMatch(/available on 2026-10-13 at the same time — later than the customer's requested date \(2026-10-12\); confirm with the customer first/);
+    expect(p.blocked?.options.join(" ")).toMatch(/available on 2026-10-13 at the same time, later than the customer's requested date \(2026-10-12\); confirm with the customer first/);
   });
 
   it("10/14. rejected pairs are not proposed again; reconsidering brings them back (approval itself is re-checked in the database)", () => {
@@ -206,11 +206,11 @@ describe("Smart Dispatch and time off", () => {
     const issue = (over: Record<string, unknown>) => ({ truck_id: "t-101", trailer_id: null, kind: "insurance", expires_on: "2026-09-30", verified: true, action: "block" as const, blocks: true, ...over });
     const blocked = recommend(input({ loads: [load("A")], trucks: [truck("101"), truck("102")], documentIssues: [issue({})] }))[0];
     expect(blocked.proposal?.truckLabel).toBe("102");
-    expect(blocked.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired 2026-09-30 \(verified\) — the company rule blocks it/);
+    expect(blocked.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired 2026-09-30 \(verified\): the company rule blocks it/);
 
     const unverified = recommend(input({ loads: [load("A")], documentIssues: [issue({ verified: false, blocks: false })] }))[0];
     expect(unverified.proposal?.truckLabel).toBe("101");
-    expect(unverified.proposal!.warnings.join(" ")).toMatch(/insurance expired 2026-09-30 on record \(not verified\) — confirm it was renewed/);
+    expect(unverified.proposal!.warnings.join(" ")).toMatch(/insurance expired 2026-09-30 on record \(not verified\): confirm it was renewed/);
 
     const inspection = recommend(input({ loads: [load("A")], documentIssues: [issue({ kind: "inspection", action: "warn", blocks: false })] }))[0];
     expect(inspection.proposal?.truckLabel).toBe("101");

@@ -68,7 +68,7 @@ export function LiveOutlook({ outlook, today, compact = false, moreHref }: { out
             )}
           </div>
           <InfoTip label="Next 7 days">
-            Planned loads, trucks that can run and drivers available, day by day — read from dispatch, the shop schedule and time off. Nothing is predicted.
+            Planned loads, trucks that can run and drivers available, day by day, read from dispatch, the shop schedule and time off. Nothing is predicted.
             {outlook.valueShown && " The value is an estimate: each open load's planned quantity × its order's rates; surcharges are not included."}
           </InfoTip>
         </div>

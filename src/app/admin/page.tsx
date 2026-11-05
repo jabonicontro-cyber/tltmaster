@@ -56,10 +56,10 @@ export default async function LaunchpadPage() {
   const kpiNote = consoleRes.error?.code === "PGRST202" ? "Needs database update 20261118000300" : "Could not be read";
   const now = Date.parse(p.as_of); // ages are measured at the moment the figures were read
   const kpis = [
-    { label: "Customer companies", value: k ? String(k.customers.live) : "—", sub: k ? `live · ${k.customers.total} active in all` : kpiNote, href: "/admin/companies" },
-    { label: "Monthly recurring revenue", value: k ? usd(k.mrr.cents) : "—", sub: k ? `agreed amounts of ${k.mrr.live} live compan${k.mrr.live === 1 ? "y" : "ies"}${k.mrr.free ? ` (${k.mrr.free} free beta)` : ""}` : kpiNote, href: "/admin/companies" },
-    { label: "Pipeline", value: k ? String(k.pipeline.open) : "—", sub: k ? `open leads · ${k.pipeline.demo_scheduled} demo scheduled · ${k.pipeline.overdue} overdue` : kpiNote, href: "/admin/leads" },
-    { label: "Onboarding", value: k ? String(k.customers.onboarding + k.customers.fee_due) : "—", sub: k ? `${k.customers.fee_due} fee due · ${k.customers.go_live_14d} going live within 14 days` : kpiNote, href: "/admin/companies" },
+    { label: "Customer companies", value: k ? String(k.customers.live) : "–", sub: k ? `live · ${k.customers.total} active in all` : kpiNote, href: "/admin/companies" },
+    { label: "Monthly recurring revenue", value: k ? usd(k.mrr.cents) : "–", sub: k ? `agreed amounts of ${k.mrr.live} live compan${k.mrr.live === 1 ? "y" : "ies"}${k.mrr.free ? ` (${k.mrr.free} free beta)` : ""}` : kpiNote, href: "/admin/companies" },
+    { label: "Pipeline", value: k ? String(k.pipeline.open) : "–", sub: k ? `open leads · ${k.pipeline.demo_scheduled} demo scheduled · ${k.pipeline.overdue} overdue` : kpiNote, href: "/admin/leads" },
+    { label: "Onboarding", value: k ? String(k.customers.onboarding + k.customers.fee_due) : "–", sub: k ? `${k.customers.fee_due} fee due · ${k.customers.go_live_14d} going live within 14 days` : kpiNote, href: "/admin/companies" },
   ];
   const urgent = p.attention.items.filter((i) => i.priority === 1).length;
   const metrics = [
@@ -71,7 +71,7 @@ export default async function LaunchpadPage() {
   ];
   return (
     <>
-      <PageHeader title="Launchpad" description="What needs you today across leads, customer companies, imports and demos — read live from the platform records." />
+      <PageHeader title="Launchpad" description="What needs you today across leads, customer companies, imports and demos, read live from the platform records." />
       <FlashToast messages={{ saved: { text: "Acknowledged. It stays on the list until its cause is resolved." } }} />
 
       <ul className="mb-4 grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4" aria-label="Business KPIs">
@@ -129,7 +129,7 @@ export default async function LaunchpadPage() {
                         {i.detail}
                         {i.since && i.kind !== "lead_overdue" ? ` · ${ageText(i.since, now)} ago` : ""}
                       </p>
-                      {ack && <p className="mt-0.5 text-xs text-muted">Acknowledged by {ack.by} · {formatDateTime(ack.at)}{ack.note ? ` — ${ack.note}` : ""} · still open</p>}
+                      {ack && <p className="mt-0.5 text-xs text-muted">Acknowledged by {ack.by} · {formatDateTime(ack.at)}{ack.note ? `: ${ack.note}` : ""} · still open</p>}
                     </div>
                     <div className="ml-auto flex flex-wrap items-center gap-3">
                       {k && !ack && (
@@ -180,7 +180,7 @@ export default async function LaunchpadPage() {
                     <p className="flex flex-wrap items-center gap-2 font-semibold text-ink">{d.name} <Badge>{d.kind === "presenter" ? "Presenter" : "Prospect"}</Badge></p>
                     <p className={cn("text-xs", d.last_refresh_ok === false ? "font-semibold text-critical" : "text-muted")}>
                       {d.last_refresh_at
-                        ? `${d.last_refresh_ok ? "Last refreshed" : "Last refresh failed"} ${formatDateTime(d.last_refresh_at)}${d.last_refresh_summary ? ` — ${d.last_refresh_summary}` : ""}`
+                        ? `${d.last_refresh_ok ? "Last refreshed" : "Last refresh failed"} ${formatDateTime(d.last_refresh_at)}${d.last_refresh_summary ? `: ${d.last_refresh_summary}` : ""}`
                         : `Created ${formatDate(d.created_at.slice(0, 10))}; no refresh recorded yet`}
                     </p>
                   </li>
@@ -200,7 +200,7 @@ export default async function LaunchpadPage() {
           <ul className="divide-y divide-line" aria-label="Recent activity">
             {p.activity.map((a, idx) => {
               const href = activityHref(a);
-              const text = `${activityText(a)}${a.summary ? ` — ${a.summary}` : ""}`;
+              const text = `${activityText(a)}${a.summary ? `: ${a.summary}` : ""}`;
               return (
                 <li key={`${a.at}:${idx}`} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 px-5 py-2 text-sm sm:px-6">
                   {href ? <Link href={href} className="min-w-0 break-words hover:underline">{text}</Link> : <span className="min-w-0 break-words">{text}</span>}
