@@ -71,6 +71,7 @@ repeats the same steps with new projects — never point staging at production d
    | `EARLY_ACCESS_PASSWORD` | the shared Early Access password you give to prospects: 12–128 characters, e.g. four random words (**Sensitive**). Empty: only personal site codes work (§3b) |
    | `EARLY_ACCESS_PASSWORD_MAX_DEVICES` | `500` (optional): devices admitted with the password at the same time, 1–1000 |
    | `EMAIL_PROVIDER` | `preview` (quote emails are shown, not sent, until Resend is set up) |
+   | `SENTRY_DSN` | Optional, Production only (LR4): server errors go to Sentry with personal details removed (`src/lib/monitoring/sentry.ts`). Unset = nothing sent. Uptime monitors use `/api/health` (docs/LAUNCH.md §4). |
    | `PUBLIC_SITE` | `on` when you decide the public website (home, pricing, demo request…) should be open to everyone. Empty (default): it stays behind the Early Access page like the rest |
    | `SITE_INDEXING` | leave empty on staging (search engines are told not to index anything). `on` lets them index the public pages only (`SITE_PAGES` in `src/lib/site/paths.ts`) — decide before launch |
 

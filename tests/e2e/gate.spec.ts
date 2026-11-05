@@ -319,3 +319,9 @@ test("without a shared password configured on the server, a password is refused 
   await expect(page).toHaveURL(/\/early-access/);
   await resetAttempts();
 });
+
+test("uptime monitors reach the health check without the early-access password (LR4)", async ({ request }) => {
+  const r = await request.get("/api/health", { maxRedirects: 0 });
+  expect(r.status()).toBe(200);
+  expect((await r.json()).ok).toBe(true);
+});

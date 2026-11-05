@@ -493,6 +493,20 @@ New local-only migration: `20261120002600_route_planner_core` (applies automatic
 - **Launch target: January 2027.** Until then: load everything, finish what is "in development", perfect it, and
   find what is missing.
 
+**Owner decisions 2026-11-05 (evening), "testing mode by December, live by January":**
+- **Testing:** Top Line Trucking only, real daily work from **Monday 2026-12-01** (Dec 1 to 14 alongside its current
+  method, then Taviron only). Outside customers start in January.
+- **Hosting (S3):** approved from December: Vercel Pro and Supabase Pro (daily backups), a separate production
+  database before Top Line's real data goes in; the owner upgrades in each dashboard.
+- **Monitoring (LR4):** Sentry free tier and UptimeRobot free tier; the owner creates the accounts, Claude wires them in
+  (switched on for December testing).
+- **Legal (LR5, W7):** drafts are fine for testing with a simple free-beta agreement; a lawyer reviews terms and privacy
+  before January (Claude prepares a review packet).
+- **Real data (LR3):** the owner sends Top Line's spreadsheets; Claude imports them through the company import with a
+  preview the owner approves.
+- **Detention (DT1):** off until set per customer (free minutes and hourly rate per customer; no invented default).
+- **Truck-day dispatching (UX11):** by January, after the December essentials.
+
 **Phases (each item is a §12 row):**
 1. **November: one product for more than aggregate.** MK1 industry profile, MK2 freight loads, MK3 freight demo,
    SF1 simple mode, CC1 compliance calendar, DT1 detention charges.
