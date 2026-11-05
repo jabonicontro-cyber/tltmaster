@@ -370,6 +370,11 @@ Severity: **Critical** (safety, data loss, tenant leak) · **High** (blocks laun
 24. **PTO model decided by the owner 2026-10-13: all three accrual methods (annual grant, hours worked, per pay period), full-/part-time policies, waiting periods, separate or combined banks, approval chains, balance validation, configurable carryover/expiration (use-it-or-lose-it only where legal). Built: banks, append-only ledger, balance checks, and accruals by all three methods with caps and plan-year carryover/forfeiture (IMPLEMENTATION_PLAN §5ai). Next: approval chains and payroll/ELD hours integration.** Original question: Time off: who approves (default owner; grantable), whether self-approval is ever allowed, approval chains or manager scopes, which PTO policy model applies (annual grant, hourly accrual, per pay period; banks; carryover), and whether partial days need work schedules.
 25. Communications defaults to confirm (**decided by the owner 2026-10-12:** edit/own-delete window fixed at 5 minutes; message content kept 14 days unless legal hold; managers remove with a reason; in-app only for now — see COMMUNICATIONS.md): whether new group members see earlier history (default: from when they join), drivers on an active delivery (default: hold routine notifications and send one catch-up), auto-archive delay for finished workspaces (default 24 h), alert escalation intervals and roles (default owner), which alert types are enabled, and whether email/SMS/push delivery should be added (needs a provider and approval).
 
+26. **Starter plan (SF2, 2026-11-05):** price and limits for 1–10 trucks, if the owner wants one.
+27. **How customers pay Taviron at launch (LR5, 2026-11-05):** emailed invoice and bank transfer, or card through a
+    payment processor (needs explicit authorization for any billing code).
+28. **Freight scope after MK2 (2026-11-05):** load board connections and factoring exports, now or after launch.
+
 ## 10. Subscription model (proposal / confirmed policies)
 
 Prices in §5.1 are the founder's and shown on the gated pricing page. The policies below are the founder's stated rules; **none is implemented** and no
@@ -465,6 +470,28 @@ New local-only migration: `20261120002600_route_planner_core` (applies automatic
 | Owner console | Payments, invoices, payment failures | Blocked (no payment provider; needs approval) | — |
 | Website | Positioning, catalog-backed claims, pricing, B80 design fixes | Verified (B80 local; full suite pending) | `tests/e2e/website.spec.ts` |
 | Website | Public demo selector and Customer View demo, help/how-to | Not started | Depends on the demo selector |
+
+## 11b. Launch plan: January 2027 (owner 2026-11-05)
+
+**Owner decisions 2026-11-05:**
+- **Markets:** aggregate hauling stays the focus and the identity, and the product must also feel usable for small
+  general-freight carriers and small fleets that are interested. One application, never a separate freight version:
+  a company's industry changes words, defaults and which areas show, not the code path.
+- **No more switch-ons until close to launch:** Twilio texts, QuickBooks, GPS providers, OpenAI and any other outside
+  service stay off. Work that only needs an account or keys waits for the launch switch-on (LR6); anything with a
+  long approval lead time is prepared on paper beforehand, still switched off.
+- **Launch target: January 2027.** Until then: load everything, finish what is "in development", perfect it, and
+  find what is missing.
+
+**Phases (each item is a §12 row):**
+1. **November: one product for more than aggregate.** MK1 industry profile, MK2 freight loads, MK3 freight demo,
+   SF1 simple mode, CC1 compliance calendar, DT1 detention charges.
+2. **December: finish and perfect.** LR1 full walkthrough of every role, page and device with a fix list; LR2 finish
+   every catalog item marked "in development" (or move it to "coming soon" honestly); LR3 load real data (the owner's
+   own company first); LR4 operations readiness (error monitoring, backups restore drill, uptime, support inbox);
+   LR5 legal and commercial (entity name, terms and privacy review, how customers pay Taviron).
+3. **January: switch on and go live.** LR6 one switch-on checklist (keys, provider approvals, verify each with a test
+   company), the site made public with prices, first customers onboarded.
 
 ## 12. Feature backlog (living; process in docs/DEVELOPMENT_WORKFLOW.md)
 
@@ -636,3 +663,16 @@ here without replacing earlier requirements; open questions go to §9. Last upda
 | UX18 | Launch checklist (owner's 20-item list, audit 2026-11-05) | **built 2026-11-05**: contrast (0 axe violations on 26 pages), 20 broken in-page links, fixed-code form errors (no free text in URLs; thank-you only after a real send), HSTS, og:url on every page, AVIF, descriptions under 160 characters, one CTA label, privacy field list, legal pages dated and pointing to the contact form. **Owner decisions 2026-11-05:** site stays behind the early-access gate for now (PUBLIC_SITE / SITE_INDEXING not set); prices public at launch; no analytics for now; no Turnstile for now; privacy contact = the contact form; legal entity name to come (legal review still open, W7) | site | review | site e2e, axe |
 | UX19 | Accessibility mode (owner 2026-11-05): larger text, high contrast, reduce motion, easier-to-read font; saved with the person's account (every device); app and customer portal only | **built 2026-11-05**: My profile → Accessibility and the portal's Accessibility page; applies at once, saved with the account (migration `20261120007300`, tested rollback, `set_my_accessibility` validates), applied before paint from this browser's copy and synced from the account on any new device; the public website ignores it. Demos: works for every role preview, no sample data needed (a personal setting) | profile, theme | review (migration) | unit + e2e (every role) |
 | UX20 | Mechanic "parts summary count" = parts used per job (count and cost on job cards and work orders) (owner 2026-11-05) | **built 2026-11-05**: My jobs cards, the shop board, the work order list (wide screens) and the work order's Parts used tab show "2 parts used · $49.00 in parts". Countable parts add up by quantity; a measured part (gallons, feet) counts once. The cost is the work order's part cost lines (stock and bought-in) and shows only to people with maintenance costs. No migration. Demos: Refresh adds the part cost line for the sample part used from stock (idempotent) | parts, maintenance | auto | unit (parts-summary) + DB (demo-samples) + e2e (parts) |
+| MK1 | Industry profile (owner 2026-11-05: aggregate first, general freight welcome): a company setting (aggregate hauling, general freight, both) that sets the words people see (ticket or bill of lading, quarry or shipper, tons or miles), default units and rates, and which areas show first. One application: words and defaults only, never a separate version | requested 2026-11-05 | — | review (migration) | unit (vocabulary) + e2e (each profile) + demo parity |
+| MK2 | Freight loads (owner 2026-11-05): loads with several pickup and delivery stops and appointment windows, per-mile and flat rates, a rate confirmation attached to the load, bills of lading and proof of delivery per stop, extra charges (detention, layover, lumper, truck ordered not used) on the invoice, brokers as customers | requested 2026-11-05 | MK1 | review (migration) | DB + e2e (freight load start to invoice) |
+| MK3 | Freight demo company (owner 2026-11-05): a fictional regional freight carrier beside the aggregate demos, every role preview with realistic data, refreshed by Refresh demo data | requested 2026-11-05 | MK1, MK2 | auto | demo-parity e2e + demo-samples DB |
+| SF1 | Simple mode for small fleets (owner 2026-11-05): a company turns areas on and off (owner only); new small companies start with the essentials (orders, dispatch, tickets, invoices, trucks) and add the rest when ready. Hiding an area never grants or removes permissions, and safety rules stay on | requested 2026-11-05 | — | review (migration) | DB (owner only) + e2e (navigation follows the setting) |
+| SF2 | Starter plan for 1–10 trucks (owner 2026-11-05: small companies should be served) | proposal, **price is the owner's decision (§9)** | owner decision | approval | pricing page test |
+| CC1 | Compliance calendar (owner 2026-11-05): one list of every due date (driver credentials, truck documents, inspections, preventive service, IFTA quarter) with the same alerts and dispatch rules as today | requested 2026-11-05 | — | auto | unit + e2e |
+| DT1 | Detention charges from recorded wait times (owner 2026-11-05): wait beyond a customer's free time becomes a proposed charge on the invoice draft; a person approves it | requested 2026-11-05 | B111 wait times | review | unit + DB + e2e |
+| LR1 | Launch walkthrough (owner 2026-11-05: "make sure we aren't missing things"): every role (owner, dispatcher, office, driver, mechanic, customer, platform) through every page on phone, tablet and desktop, light and dark, accessibility settings on; aggregate and freight demos; one fix list, fixed | requested 2026-11-05 | — | auto | report + fixes with tests |
+| LR2 | Finish everything marked "in development" on the site catalog (AI ticket reading built and evaluated with mocks, driver payroll from tickets, customer portal, multiple bases, help center, job site directions, sales pipeline, plan explanations) or mark it "coming soon" honestly | requested 2026-11-05 | AI capabilities stay off until LR6 | per item | per item |
+| LR3 | Load real data before launch: the owner's own company first (customers, trucks, drivers, rates, open orders) through the import, checked with the owner | requested 2026-11-05 | owner provides the files | review | import report |
+| LR4 | Operations readiness: error monitoring, a tested restore from backup, uptime checks, a support inbox and how incidents are handled | requested 2026-11-05 | monitoring service needs owner approval (paid service rule) | approval | restore drill report |
+| LR5 | Legal and commercial readiness: legal entity name, terms and privacy reviewed, how customers pay Taviron at launch (invoice or card; no billing code without authorization) | requested 2026-11-05 | owner decisions (§9) | approval | — |
+| LR6 | Launch switch-on (January 2027): Twilio (with business texting registration started early, still off), QuickBooks production approval, GPS provider, OpenAI with passing evaluations, email sending checks; each verified with a test company before customers use it | requested 2026-11-05 | owner accounts and keys | approval | verification report per service |
