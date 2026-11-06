@@ -124,3 +124,42 @@ export async function createPlanVersion(formData: FormData) {
   revalidatePath("/admin/plans");
   go("/admin/plans", "saved", "version");
 }
+
+// Subscription notices (SUB1, 20261120008800): renewal on/off, and a person's decision on a proposed plan change.
+export async function setRenewal(formData: FormData) {
+  const { id, path } = companyPath(formData);
+  const supabase = await db();
+  const { error } = await supabase.rpc("platform_set_renewal", { p_company: id, p_renew: formData.get("renew") === "on" });
+  if (error) go(path, "error", dbErrorMessage(error));
+  revalidatePath(path);
+  go(path, "saved", "renewal");
+}
+
+export async function scheduleTierChange(formData: FormData) {
+  const { path } = companyPath(formData);
+  const supabase = await db();
+  const change = uuid.safeParse(formData.get("change"));
+  const plan = uuid.safeParse(formData.get("plan_version_id"));
+  const day = String(formData.get("effective_on") ?? "");
+  const agreed = dollarsToCents(String(formData.get("agreed_monthly") ?? ""));
+  if (!change.success) go(path, "error", "This plan change is no longer open.");
+  if (!isOperationalDate(day)) go(path, "error", "Choose the date the change takes effect.");
+  if (agreed === null) go(path, "error", "Enter the agreed monthly price in dollars, e.g. 599.00.");
+  const { error } = await supabase.rpc("platform_tier_change_schedule", {
+    p_change: change.data!, p_plan_version: plan.success ? plan.data : null, p_effective: day, p_agreed_monthly_cents: agreed!,
+  });
+  if (error) go(path, "error", dbErrorMessage(error));
+  revalidatePath(path);
+  go(path, "saved", "tier-change");
+}
+
+export async function cancelTierChange(formData: FormData) {
+  const { path } = companyPath(formData);
+  const supabase = await db();
+  const change = uuid.safeParse(formData.get("change"));
+  if (!change.success) go(path, "error", "This plan change is no longer open.");
+  const { error } = await supabase.rpc("platform_tier_change_cancel", { p_change: change.data!, p_reason: String(formData.get("reason") ?? "").slice(0, 300) });
+  if (error) go(path, "error", dbErrorMessage(error));
+  revalidatePath(path);
+  go(path, "saved", "tier-change");
+}

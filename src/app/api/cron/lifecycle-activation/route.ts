@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { authorizedCron } from "@/server/cron";
 import { createAdminClient } from "@/server/supabase/admin";
+import { sendSubscriptionNotices } from "@/server/subscription/notices";
 
 // Scheduled go-live (Vercel Cron, vercel.json): customer companies whose go-live day has come become live
 // (public.lifecycle_activate_due_cron, idempotent — a second run activates nothing). Only a request carrying CRON_SECRET
@@ -28,5 +29,10 @@ export async function GET(request: Request) {
     console.error("lifecycle-activation: database call failed", run.error.code);
     return json({ error: missing ? "Needs the database update 20261118000300, which is not installed yet." : "Activation failed." }, missing ? 503 : 500);
   }
-  return json({ ok: true, activated: run.data });
+  // Subscription notices (SUB1, 20261120008800) ride on this daily job (the hosting plan's cron slots are limited):
+  // renewal reminders, grace periods and scheduled plan changes, then the pending customer emails. Before that update
+  // is installed this part reports itself as not installed and activation still succeeds.
+  const subs = await admin.rpc("subscription_run_cron");
+  const notices = subs.error ? null : await sendSubscriptionNotices(admin);
+  return json({ ok: true, activated: run.data, subscriptions: subs.error ? (subs.error.code === "PGRST202" ? "not installed" : "failed") : subs.data, notices });
 }

@@ -9,6 +9,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { ErrorState, Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
+import { PlanUsageCard, type SubscriptionState } from "@/components/admin/plan-usage-card";
 import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
 import { HiredTrucksCard, type HiredTrucksEntitlement } from "@/components/admin/hired-trucks-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
@@ -84,6 +85,10 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const he = await supabase.rpc("platform_hired_trucks_entitlement", { p_company: id });
   const hired = he.error ? null : (he.data as HiredTrucksEntitlement);
   const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
+  // Subscription notices (20261120008800): live customer companies only; not shown before that update.
+  const lifeData = (life?.data ?? null) as Lifecycle | null;
+  const subRes = !c.is_demo && lifeData?.stage === "live" ? await supabase.rpc("platform_subscription_state", { p_company: id }) : null;
+  const subState = subRes && !subRes.error ? (subRes.data as SubscriptionState | null) : null;
   const steps = [
     { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
     { label: "Customers", done: c.setup.customers > 0, hint: `${c.setup.customers} active` },
@@ -143,6 +148,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       ) : (
         <SubscriptionCard companyId={c.id} life={(life?.data ?? null) as Lifecycle | null} plans={(plans?.data ?? []) as PlanVersion[]} />
       ))}
+      {subState && lifeData && <PlanUsageCard companyId={c.id} state={subState} plans={(plans?.data ?? []) as PlanVersion[]} terms={lifeData.terms} />}
 
       <Card className="mt-5">
         <CardHeader title="Imports" />

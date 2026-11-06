@@ -598,6 +598,16 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Subscription notices (20261120008800, SUB1)
+
+Private (platform) tables: `subscription_events` (one row per company, kind and period; customer `notice_status`
+pending | sent | previewed | failed | not_needed), `subscription_grace` (one open grace per company),
+`tier_changes` (due → scheduled → applied, or canceled; one open per company); `company_lifecycle.renewal_off`.
+`private.subscription_run_core` (daily, idempotent) is called by `subscription_run_cron` (service role, from the
+lifecycle cron) and `platform_subscription_run` (platform admins). Platform functions: `platform_subscription_state`,
+`platform_set_renewal`, `platform_tier_change_schedule` (later date and agreed price required), `platform_tier_change_cancel`
+(reason required). Service-role only: `subscription_pending_notices` (with owner emails), `subscription_notice_mark`.
+
 ## Trucks for the day (20261120008600, UX11)
 
 - `orders.job_type` (`loads` default | `truck_day`) and `orders.truck_billing` (`tickets` | `hours`). Changing the job

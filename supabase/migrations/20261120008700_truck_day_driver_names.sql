@@ -36,7 +36,7 @@ begin
     select e.rate_cents, case when pl.is_standard then 'standard' else 'customer' end into v_rate, v_rate_source
       from public.price_list_entries e
       join public.price_lists pl on pl.id = e.price_list_id and pl.company_id = v_company and pl.active
-      join public.charge_items ci on ci.id = e.charge_item_id and ci.company_id = v_company and ci.kind = 'hauling'
+      join public.charge_items ci on ci.id = e.charge_item_id and ci.company_id = v_company and ci.kind = 'hauling' and ci.active
       left join public.customers c on c.id = v_order.customer_id and c.company_id = v_company
      where e.unit_code = 'hour' and e.rate_cents is not null
        and (pl.id = c.price_list_id or pl.is_standard)

@@ -368,8 +368,8 @@ agreement (master plan §10 onboarding) is **Not implemented**.
 | --- | --- |
 | "Support: email, Monday to Friday, 9 a.m.–5 p.m. Central, excluding U.S. federal holidays, with a first response targeted within one business day." | Matches master plan §10 (confirmed policy). Conflicts with Trust page and FAQ ("support terms are set out in your service agreement"). No support inbox or ticketing for Taviron exists yet (LR4). |
 | "The one-time onboarding fee is paid when you sign up. The monthly subscription starts at go-live." | Fee recording exists in the platform console; payment is by invoice (master plan §9 Q27). No billing code. |
-| Annual commitment renews "unless you turn renewal off, and you are reminded before it renews" | **Not implemented** (no reminders or renewal automation). |
-| Over a tier: "30-day grace period, and we email you … moves to the lowest tier that fits from the next billing date. No plan change happens without notice." | **Not implemented** (no truck counting against plans, no emails; master plan §10 "none is implemented"). |
+| Annual commitment renews "unless you turn renewal off, and you are reminded before it renews" | **Built 2026-11-06 (SUB1, migration 20261120008800):** reminders 30, 7 and 1 day before the anniversary of the commitment start, emailed to the company's owners; renewal can be turned off per company by the platform team. Emails go out only once email sending is configured (otherwise recorded as not sent). |
+| Over a tier: "30-day grace period, and we email you … moves to the lowest tier that fits from the next billing date. No plan change happens without notice." | **Built 2026-11-06 (SUB1):** daily count of active non-hired trucks and active bases; a 30-day grace with an email at the start and a week before the end; then the lowest fitting plan is proposed to the platform team, who schedules it (date and agreed price, emailed to the customer); it applies on that date. Not yet: excluding pickups and maintenance vehicles from the count (no vehicle flag), automatic downgrades, and the billing-date convention (§9 Q13). |
 | "There is no free trial." / "Nothing is charged through this website." | True. |
 | "Prices are per company, in US dollars, before applicable taxes." | Tax treatment **Not decided** (master plan §9 Q15). |
 | "Every tier includes the whole platform" | Hired trucks is an add-on switched on per company (`src/lib/site/features.ts`); its price is **Not decided**. |
@@ -455,7 +455,7 @@ agreement (master plan §10 onboarding) is **Not implemented**.
 4. Lead form says data is used "only to reply"; the lead is tracked as a sales pipeline.
 5. Pricing page publishes support hours and a response target; the Trust page and FAQ say support terms are in the
    service agreement.
-6. Pricing FAQ promises renewal reminders and overage emails and automatic tier moves; none is built.
+6. Pricing FAQ promises renewal reminders, overage emails and tier moves: built 2026-11-06 (SUB1), with a person scheduling each tier move; the count does not yet exclude pickups and maintenance vehicles.
 7. Terms say demo content is entirely fictional and resemblance coincidental; one prospect demo uses real people's
    names by the owner's choice (docs/DEMO_TENANTS.md §1).
 8. Trust page says there is no self-service export; several CSV exports exist (a full export does not).
