@@ -212,7 +212,7 @@ export function ChargesTable({ rows, units, canEdit }: { rows: ChargeItemRow[]; 
                     {r.code && <div className="font-mono text-xs text-muted">{r.code}</div>}
                   </Td>
                   <Td>{CHARGE_KIND_LABELS[r.kind]}</Td>
-                  <Td className="hidden sm:table-cell">{r.calc_method === "per_unit" ? `Per ${unitLabel(r.default_unit_code).toLowerCase()}` : "% of subtotal"}</Td>
+                  <Td className="hidden sm:table-cell">{r.calc_method === "per_unit" ? `Per ${unitLabel(r.default_unit_code).toLowerCase()}${r.ticket_required === false ? ", no ticket needed" : ""}` : "% of subtotal"}</Td>
                   <Td className="hidden md:table-cell">{r.taxable_default ? "Yes" : "No"}</Td>
                   <Td>{r.active ? <Badge tone="green">Active</Badge> : <Badge>Inactive</Badge>}</Td>
                   {canEdit && (
@@ -264,6 +264,12 @@ export function ChargesTable({ rows, units, canEdit }: { rows: ChargeItemRow[]; 
               <div className="flex items-end pb-2 sm:col-span-3">
                 <Checkbox name="taxable_default" defaultChecked={c?.taxable_default ?? false} label="Taxable by default" />
               </div>
+              {method === "per_unit" && (
+                <div className="sm:col-span-6">
+                  <Checkbox name="ticket_required" defaultChecked={c?.ticket_required ?? true} label="Billed from delivery tickets" />
+                  <p className="mt-1 text-xs text-muted">Turn off for charges billed per occurrence, such as detention, lumper or truck ordered not used: their order lines don&apos;t wait for a ticket before billing.</p>
+                </div>
+              )}
               <Field label="Description" htmlFor="description" error={fe("description")} className="sm:col-span-6">
                 <Textarea {...ctl("description", fe("description"))} defaultValue={c?.description} rows={2} />
               </Field>

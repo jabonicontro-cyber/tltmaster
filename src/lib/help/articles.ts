@@ -1763,6 +1763,33 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Estimates from history, labelled; nothing is sent to customers."],
   },
   {
+    id: "billing-detention",
+    title: "Detention charges",
+    summary: "Bill waiting time past a customer's free time, from the Arrived and Left times drivers tap. A person adds each charge; nothing is billed by itself.",
+    category: "tickets-billing",
+    routes: ["/billing/orders", "/customers"],
+    permissions: ["billing.view"],
+    audience: "Office and billing staff. Owners and office staff set each customer's free time and rate.",
+    whatYouSee: [
+      "On the customer page, **Detention**: off until you enter the free time in minutes and an hourly rate.",
+      "On an order's billing page, **Detention**: each stop where the recorded wait passed the free time, with the hours and amount.",
+      "**Added to the order** or **Not billed** with the reason, once decided.",
+    ],
+    tasks: [
+      { title: "Turn detention on for a customer", steps: ["Open the customer.", "Under **Detention**, enter the free time (for example 120 minutes) and the rate per hour, and select **Save**."] },
+      { title: "Bill a wait", steps: ["Open the order from **Billing**.", "Under **Detention**, check the wait and select **Add to order**. The charge becomes an order line and goes out with the invoice."] },
+      { title: "Don't bill a wait", steps: ["Select **Don't bill**, enter why, and select **Record**."] },
+    ],
+    prerequisites: ["Drivers (or dispatch) record **Arrived** and **Left** at the stop.", "The unit **hour** in Rates and pricing → Units."],
+    troubleshooting: [
+      { problem: "No detention shows for an order.", fix: "The customer has no free time and rate set, the waits were within the free time, or a time is missing." },
+      { problem: "**Add to order** is not offered.", fix: "The order was handed off for billing. Undo the handoff first, or you need billing permission." },
+    ],
+    next: ["reports-wait-times"],
+    related: ["reports-wait-times"],
+    reviewed: "2026-11-06",
+  },
+  {
     id: "reports-wait-times",
     title: "Wait times",
     summary: "See how long trucks wait at pickups and job sites, from the Arrived and Left times drivers tap, with the slowest places first.",

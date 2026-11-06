@@ -28,6 +28,8 @@ export const chargeItemSchema = z
     calc_method: z.enum(["per_unit", "percent_of_subtotal"], { error: "Choose how the charge is calculated." }),
     default_unit_code: z.preprocess((v) => (v === "" ? null : v), z.string().nullable()),
     taxable_default: checkbox,
+    // Charges billed per occurrence (detention, lumper, truck ordered not used) don't wait for a ticket (20261120008200).
+    ticket_required: checkbox,
   })
   .refine((v) => v.calc_method !== "per_unit" || v.default_unit_code, {
     message: "Per-unit charges need a default unit.",

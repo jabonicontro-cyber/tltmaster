@@ -262,3 +262,31 @@ export async function setCustomerCreditLimit(customerId: string, dollars: string
     return ok(undefined, cents === null ? "No credit limit." : "Credit limit saved.");
   });
 }
+
+/**
+ * Detention for this customer (DT1, owner 2026-11-05: off until set per customer). Both blank = off; otherwise free
+ * minutes (0 to 1440) and an hourly rate in dollars. Billing then sees proposals from recorded waits.
+ */
+export async function setCustomerDetention(customerId: string, freeMinutes: string, dollarsPerHour: string): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("customers.edit");
+    if (!uuid.safeParse(customerId).success) return fail("Customer not found.");
+    const free = freeMinutes.trim();
+    const rate = dollarsPerHour.replace(/[$,\s]/g, "");
+    if (!free && !rate) {
+      const { data, error } = await (await createClient()).from("customers").update({ detention_free_minutes: null, detention_rate_cents: null }).eq("id", customerId).select("id");
+      if (error) return fail(dbErrorMessage(error));
+      if (!data?.length) return fail("Customer not found.");
+      revalidatePath(`/customers/${customerId}`);
+      return ok(undefined, "Detention off for this customer.");
+    }
+    if (!/^\d{1,4}$/.test(free) || Number(free) > 1440) return fail("Enter the free time in minutes, from 0 to 1440.");
+    if (!/^\d+(\.\d{1,2})?$/.test(rate) || Number(rate) <= 0) return fail("Enter the hourly rate in dollars, for example 75.");
+    const { data, error } = await (await createClient()).from("customers")
+      .update({ detention_free_minutes: Number(free), detention_rate_cents: Math.round(Number(rate) * 100) }).eq("id", customerId).select("id");
+    if (error) return fail(dbErrorMessage(error));
+    if (!data?.length) return fail("Customer not found.");
+    revalidatePath(`/customers/${customerId}`);
+    return ok(undefined, "Detention saved.");
+  });
+}

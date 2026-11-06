@@ -169,7 +169,32 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Freight (MK4): the samples the database writes (support cases, portal booking, shift offer, safety findings) are
   // reworded for a freight demo, so a freight carrier never sees quarries, stone or pours. Exact sample text only.
   note("freight wording", await freightSampleWording(db));
+  // Detention (DT1): the customer whose recorded waits run longest gets free time and an hourly rate, so billing sees
+  // proposals; extra charges (detention, lumper, truck ordered not used) are billed without a ticket. Once per demo.
+  note("detention", await detentionSample(db));
   return result;
+}
+
+/** Demo sample rate and free time for detention: fictional, set on one demo customer only. */
+const DEMO_DETENTION = { freeMinutes: 30, rateCents: 7500 };
+
+async function detentionSample(db: Db): Promise<number> {
+  const probe = await db.from("customers").select("id").not("detention_rate_cents", "is", null).limit(1);
+  if (probe.error) return 0; // before 20261120008200
+  let n = 0;
+  const extras = await db.from("charge_items").update({ ticket_required: false }).in("code", ["DETENTION", "DET-HR", "LUMPER", "TONU"]).eq("ticket_required", true).select("id");
+  n += extras.data?.length ?? 0;
+  if ((probe.data ?? []).length) return n;
+  const waits = ((await db.from("load_stop_times").select("order_id, arrived_at, departed_at").not("arrived_at", "is", null).not("departed_at", "is", null).limit(500)).data ?? []) as Array<{ order_id: string; arrived_at: string; departed_at: string }>;
+  const longest = waits
+    .map((w) => ({ order: w.order_id, minutes: (Date.parse(w.departed_at) - Date.parse(w.arrived_at)) / 60000 }))
+    .filter((w) => w.minutes > DEMO_DETENTION.freeMinutes)
+    .sort((a, b) => b.minutes - a.minutes)[0];
+  if (!longest) return n;
+  const order = (await db.from("orders").select("customer_id").eq("id", longest.order).maybeSingle()).data as { customer_id: string } | null;
+  if (!order) return n;
+  const set = await db.from("customers").update({ detention_free_minutes: DEMO_DETENTION.freeMinutes, detention_rate_cents: DEMO_DETENTION.rateCents }).eq("id", order.customer_id).select("id");
+  return n + (set.data?.length ?? 0);
 }
 
 /** What the demo hauls (Settings → What you haul); aggregate when unknown or not installed. */

@@ -598,6 +598,19 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Detention and charges billed without a ticket (20261120008200, DT1)
+
+- `charge_items.ticket_required` (default true): false for per-occurrence charges; `billing_line_status` leaves their
+  order lines out, so they never wait for a ticket.
+- `customers.detention_free_minutes`, `customers.detention_rate_cents`: both or neither (`customers_detention_pair`).
+- `load_stop_times.detention_status` (`applied` / `dismissed`), `detention_order_line_id`, `detention_reason`,
+  `detention_decided_by`, `detention_decided_at`: each stop is decided once.
+- `private.detention_rows(company, order)` computes every proposal (wait in whole minutes, billable = wait minus free,
+  hours rounded to 0.01, amount = hours x rate rounded to the cent); `detention_proposals(order)` (billing.view),
+  `detention_apply(stop_time)` and `detention_dismiss(stop_time, reason)` (billing.manage). `detention_apply` sets
+  `tlt.billed_extra` for its own transaction, the one exception to the confirmed-order guards: an inserted line and the
+  totals it changes (never an update or delete of a line, never the customer, tax rate or terms).
+
 ## Freight equipment and places (20261120008100, MK4)
 
 - Enum values `truck_type.straight_truck` and `trailer_type.dry_van`, `reefer`, `step_deck` (additive; the app offers

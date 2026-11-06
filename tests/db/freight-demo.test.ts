@@ -109,6 +109,11 @@ describe.skipIf(!available)("freight demo company", () => {
               (select count(*) from public.billing_entities where company_id = $1 and name ilike '%logistics%') logistics`, [w.company])).rows[0];
     expect([words.quarries, words.stone].map(Number)).toEqual([0, 0]);
     expect(Number(words.shippers)).toBeGreaterThanOrEqual(4);
+    // Detention (DT1): one demo customer has free time and a rate; extra charges are billed without a ticket.
+    const det = (await q<{ customers: string; ticketless: string }>(
+      `select (select count(*) from public.customers where company_id = $1 and detention_rate_cents is not null) customers,
+              (select count(*) from public.charge_items where company_id = $1 and code in ('DET-HR', 'LUMPER', 'TONU') and not ticket_required) ticketless`, [w.company])).rows[0];
+    expect([Number(det.customers), Number(det.ticketless)]).toEqual([1, 3]);
   }, 300_000);
 
   it("a second Refresh adds no loads or records, and keeps the stops", async () => {

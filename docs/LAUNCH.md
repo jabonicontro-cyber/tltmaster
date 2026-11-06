@@ -72,7 +72,7 @@ before outside customers in January.
 | Item | Status |
 | --- | --- |
 | Health check `/api/health` and Sentry reporting (LR4) | Built (off until `SENTRY_DSN`) |
-| Detention proposals from recorded waits, off until set per customer (DT1) | To do |
+| Detention proposals from recorded waits, off until set per customer (DT1) | Built |
 | Freight loads, rest of MK2: accessorial charges on the invoice, rate confirmation file, proof of delivery per stop, brokers as customers | To do |
 | Import ready for Top Line's files (LR3) | To do |
 | Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | To do |

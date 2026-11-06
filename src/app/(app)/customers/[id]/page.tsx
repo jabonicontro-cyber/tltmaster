@@ -24,6 +24,7 @@ import { directionsStatus } from "@/lib/sites";
 import { ActivityCard, HistoryCard, OpportunitiesCard, RelationshipCard, TasksCard } from "@/components/customers/crm-panels";
 import type { Relationship } from "@/lib/crm/labels";
 import { loadCustomerCrm } from "@/server/data/crm";
+import { DetentionPanel } from "@/components/customers/detention-panel";
 
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const access = await requirePagePermission("customers.view");
@@ -133,6 +134,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             <CreditPanel customerId={customer.id} hold={hold} limitCents={(customer as { credit_limit_cents?: number | null }).credit_limit_cents ?? null} canManage={can(access, "billing.manage")} />
           )}
           {can(access, "billing.view") && <CustomerBalance customerId={customer.id} today={today} />}
+          {"detention_rate_cents" in customer && (can(access, "billing.view") || can(access, "customers.edit")) && (
+            <DetentionPanel customerId={customer.id} freeMinutes={customer.detention_free_minutes ?? null} rateCents={customer.detention_rate_cents ?? null} canEdit={can(access, "customers.edit")} />
+          )}
           <Card>
             <CardHeader title="Details" />
             <CardBody>

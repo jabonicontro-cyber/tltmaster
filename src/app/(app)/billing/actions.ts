@@ -87,3 +87,32 @@ export async function revertHandoff(input: z.input<typeof revertInput>): Promise
     return ok(undefined, "Handoff undone. The order is back in billing review.");
   });
 }
+
+const detentionInput = z.object({ stopTimeId: z.string().uuid(), orderId: z.string().uuid(), reason: z.string().max(300).optional() });
+
+/** Adds a proposed detention charge to the order (DT1); the database recomputes it from the recorded times. */
+export async function applyDetention(input: z.input<typeof detentionInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    const parsed = detentionInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const { error } = await (await createClient()).rpc("detention_apply", { p_stop_time: parsed.data.stopTimeId });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/billing/orders/${parsed.data.orderId}`);
+    revalidatePath(`/orders/${parsed.data.orderId}`);
+    return ok(undefined, "Detention added to the order.");
+  });
+}
+
+/** Records that a proposed detention is not billed, with the reason (DT1). */
+export async function dismissDetention(input: z.input<typeof detentionInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    const parsed = detentionInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const { error } = await (await createClient()).rpc("detention_dismiss", { p_stop_time: parsed.data.stopTimeId, p_reason: parsed.data.reason ?? "" });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/billing/orders/${parsed.data.orderId}`);
+    return ok(undefined, "Recorded as not billed.");
+  });
+}

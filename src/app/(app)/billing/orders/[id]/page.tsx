@@ -24,6 +24,8 @@ import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderBilling } from "@/server/data/billing";
 import { getSay } from "@/server/industry";
+import { DetentionCard, type DetentionRow } from "@/components/billing/detention-card";
+import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Order billing" };
 
@@ -51,6 +53,9 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const canEnterTickets = can(access, "tickets.edit");
   const ticketsOf = (pred: (t: (typeof tickets)[number]) => boolean) => tickets.filter(pred);
   const person = (uid: string | null) => people[uid ?? ""] ?? "Someone";
+  // Detention proposals (DT1, 20261120008200): none before the migration or when the customer has no detention set.
+  const detention = await (await createClient()).rpc("detention_proposals", { p_order: id });
+  const detentionRows = (detention.error ? [] : detention.data ?? []) as DetentionRow[];
 
   return (
     <>
@@ -128,6 +133,8 @@ export default async function OrderBillingPage({ params, searchParams }: { param
             </TableWrap>
           )}
         </Card>
+
+        {detentionRows.length > 0 && <DetentionCard orderId={id} rows={detentionRows} canManage={canManage} locked={o.readiness === "handed_off"} />}
 
         <Card>
           <CardHeader title="Order lines" description={say("Prices are the order's accepted prices and are never recalculated here. Delivered = live tickets for the line in the line's unit.")} />
