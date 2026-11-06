@@ -617,6 +617,8 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
   hourly hauling rate; nothing estimated), `driver_truck_days()` (the caller's own slots), `portal_order_trucks(slug,
   order)` (today's trucks of the customer's own order; truck unit only, never the driver).
 - Rollback restores `private.prepare_ticket` (20261022000100) and removes the functions, table and columns.
+- 20261120008700: `truck_day_hours` names the driver from their sign-in profile when the driver record has no name
+  (as tickets do); rollback restores the 008600 definition.
 
 ## Portal: delivered and left per ordered line (20261120008500, UX5)
 
