@@ -598,6 +598,12 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Extra charges after the work (20261120008400, MK2)
+
+- `public.order_add_charge(order, charge_item, quantity, unit_rate_cents, note)` (billing.manage): only active per-unit
+  charges with `ticket_required = false`; scheduled or completed orders before the billing handoff; uses the same
+  `tlt.billed_extra` exception as detention; audited (`billing.charge_added`).
+
 ## Import: job sites, trailers, driver credentials (20261120008300, LR3)
 
 - `private.import_batches.entity` also accepts `sites` and `trailers`; `private.import_fields`, `import_stage_core`,

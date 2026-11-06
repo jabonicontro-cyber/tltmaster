@@ -53,3 +53,23 @@ test("billing adds a proposed detention charge and dismisses another with a reas
     await asUser(USERS.owner.email, (q) => q("update public.customers set detention_free_minutes = null, detention_rate_cents = null where name = $1", [CUSTOMER]));
   }
 });
+
+test("billing adds a per-occurrence charge (lumper) to a confirmed order", async ({ page }) => {
+  const fx = await driverFixture();
+  const name = `Lumper e2e ${Date.now().toString(36)}`;
+  await asUser(USERS.owner.email, (q) => q("insert into public.charge_items (name, kind, calc_method, default_unit_code, ticket_required) values ($1, 'service', 'per_unit', 'each', false)", [name]));
+  try {
+    await signIn(page, "office");
+    await page.goto(`/billing/orders/${fx.orderId}`);
+    const form = page.getByRole("form", { name: "Add a charge" });
+    await form.getByLabel("Charge").selectOption({ label: name });
+    await form.getByLabel(/^Quantity/).fill("1");
+    await form.getByLabel("Rate ($)").fill("85");
+    await form.getByLabel("Note (on the invoice)").fill("Receiver unload fee");
+    await form.getByRole("button", { name: "Add" }).click();
+    await expectToast(page, "Charge added to the order.");
+    await expect(page.getByText(`${name}: Receiver unload fee`).first()).toBeVisible();
+  } finally {
+    await asUser(USERS.owner.email, (q) => q("update public.charge_items set active = false where name = $1", [name]));
+  }
+});

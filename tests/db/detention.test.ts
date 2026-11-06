@@ -79,3 +79,33 @@ describe("detention", () => {
     });
   });
 });
+
+describe("extra charges after the work (MK2 accessorials, 20261120008400)", () => {
+  it("billing adds a per-occurrence charge to a confirmed order; ticket-based charges and other roles are refused", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const office = await s.createUser("office");
+      const dispatcher = await s.createUser("dispatcher");
+      const today = await businessToday(s);
+      const order = await scheduledOrder(s, office, addDays(today, -1), addDays(today, 2), addDays(today, -1));
+      await s.as(owner);
+      const lumper = (await s.query<{ id: string }>("insert into public.charge_items (code, name, kind, calc_method, default_unit_code, ticket_required) values ('LUMPER-T', 'Lumper (test)', 'service', 'per_unit', 'each', false) returning id")).rows[0].id;
+      const ticketed = (await s.query<{ id: string }>("insert into public.charge_items (code, name, kind, calc_method, default_unit_code) values ('HAUL-T', 'Haul (test)', 'hauling', 'per_unit', 'ton') returning id")).rows[0].id;
+      await s.as(office);
+      const before = Number((await s.query<{ total_cents: string }>("select total_cents from public.orders where id = $1", [order.id])).rows[0].total_cents);
+      const line = (await s.query<{ id: string }>("select public.order_add_charge($1, $2, 1, 8500, 'Receiver unload fee') as id", [order.id, lumper])).rows[0].id;
+      const added = (await s.query<{ description: string; amount_cents: string }>("select description, amount_cents::text from public.order_lines where id = $1", [line])).rows[0];
+      expect(added).toEqual({ description: "Lumper (test): Receiver unload fee", amount_cents: "8500" });
+      expect(Number((await s.query<{ total_cents: string }>("select total_cents from public.orders where id = $1", [order.id])).rows[0].total_cents)).toBe(before + 8500);
+      expect((await s.query("select 1 from public.billing_line_status where line_id = $1", [line])).rowCount).toBe(0);
+
+      expect((await pgError(s.query("select public.order_add_charge($1, $2, 1, 100)", [order.id, ticketed]))).message).toMatch(/per occurrence/);
+      expect((await pgError(s.query("select public.order_add_charge($1, $2, 0, 100)", [order.id, lumper]))).code).toBe("22023");
+      expect((await pgError(s.query("select public.order_add_charge($1, $2, 1, 0)", [order.id, lumper]))).code).toBe("22023");
+      // Lines of a confirmed order still can't be changed directly.
+      expect((await pgError(s.query("update public.order_lines set amount_cents = 1 where id = $1", [line]))).code).toBe("42501");
+      await s.as(dispatcher);
+      expect((await pgError(s.query("select public.order_add_charge($1, $2, 1, 100)", [order.id, lumper]))).code).toBe("42501");
+    });
+  });
+});

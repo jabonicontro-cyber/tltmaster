@@ -116,3 +116,28 @@ export async function dismissDetention(input: z.input<typeof detentionInput>): P
     return ok(undefined, "Recorded as not billed.");
   });
 }
+
+const chargeInput = z.object({
+  orderId: z.string().uuid(),
+  chargeItemId: z.string().uuid({ message: "Choose a charge." }),
+  quantity: z.string().regex(/^\d+(\.\d{1,3})?$/, "Enter the quantity, for example 1 or 2.5."),
+  rate: z.string().regex(/^\d+(\.\d{1,2})?$/, "Enter the rate in dollars, for example 85."),
+  note: z.string().max(200).optional(),
+});
+
+/** Adds a per-occurrence charge (lumper, truck ordered not used, ...) to a confirmed order before handoff (MK2). */
+export async function addOrderCharge(input: z.input<typeof chargeInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    const parsed = chargeInput.safeParse({ ...input, rate: input.rate.replace(/[$,\s]/g, "") });
+    if (!parsed.success) return validationFailure(parsed.error);
+    const { error } = await (await createClient()).rpc("order_add_charge", {
+      p_order: parsed.data.orderId, p_charge_item: parsed.data.chargeItemId, p_quantity: Number(parsed.data.quantity),
+      p_unit_rate_cents: Math.round(Number(parsed.data.rate) * 100), p_note: parsed.data.note ?? "",
+    });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath(`/billing/orders/${parsed.data.orderId}`);
+    revalidatePath(`/orders/${parsed.data.orderId}`);
+    return ok(undefined, "Charge added to the order.");
+  });
+}
