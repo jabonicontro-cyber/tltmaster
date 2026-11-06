@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Textarea } from "@/components/ui/form";
-import { planTruckDay, releaseTruck } from "@/app/(app)/dispatch/truck-day-actions";
+import { applyTruckHours, planTruckDay, releaseTruck } from "@/app/(app)/dispatch/truck-day-actions";
 
 // Truck-day jobs (UX11): plan N trucks for a day, and release one truck (dispatch or its own driver; the database
 // decides who may).
@@ -106,4 +106,29 @@ export function releasedText(at: string, source: string | null | undefined, time
   const who = source === "driver" ? "by the driver" : source === "site" ? "by the site contact" : source === "dispatch" ? "by dispatch" : "";
   const time = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(at));
   return `Released ${time}${who ? ` ${who}` : ""}`;
+}
+
+/** Billing: add the reviewed truck-hours to the order as one line (a person approves; never twice per truck). */
+export function AddTruckHoursButton({ orderId, summary }: { orderId: string; summary: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  async function add(): Promise<string | void> {
+    const r = await applyTruckHours({ orderId });
+    if (!r.ok) return r.error;
+    toast.success(r.message ?? "Truck hours added.");
+    router.refresh();
+  }
+  return (
+    <>
+      <Button size="sm" onClick={() => setOpen(true)}>Add to order</Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Add these truck-hours to the order?"
+        description={`${summary} One hourly line is added to the order and goes out with the invoice. Trucks already added are never added twice.`}
+        confirmLabel="Add to order"
+        onConfirm={add}
+      />
+    </>
+  );
 }

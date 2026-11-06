@@ -1,4 +1,6 @@
--- Rollback of 20261120008700: truck_day_hours as defined in 20261120008600.
+-- Rollback of 20261120008700 (by hand, owner approval only): truck_day_hours as defined in 20261120008600; the apply
+-- function and the per-truck billed marker are removed (truck-hours lines already added stay on their orders).
+drop function if exists public.truck_hours_apply(uuid);
 create or replace function public.truck_day_hours(p_order uuid)
 returns jsonb
 language plpgsql
@@ -71,3 +73,5 @@ end;
 $$;
 revoke all on function public.truck_day_hours(uuid) from public, anon;
 grant execute on function public.truck_day_hours(uuid) to authenticated;
+
+alter table public.order_loads drop column if exists truck_hours_line_id;

@@ -112,6 +112,24 @@ describe("truck-day jobs", () => {
       await s.query("select public.save_truck_hours_settings('scheduled', 24, 'review')");
       h = (await s.query<{ r: Hours }>("select public.truck_day_hours($1) r", [order.id])).rows[0].r;
       for (const t of h.trucks) expect(t.billable).toBe(t.hours);
+      // Add to order (008700): needs an hourly rate; then one hourly line for both trucks, and never twice.
+      expect((await pgError(s.query("select public.truck_hours_apply($1)", [order.id]))).message).toMatch(/No hourly rate/);
+      await s.asAdmin();
+      const hauling = (await s.query<{ id: string }>("insert into public.charge_items (company_id, code, name, kind, calc_method, default_unit_code) values ($1, $2, 'Hauling by the hour (test)', 'hauling', 'per_unit', 'hour') returning id", [TOP_LINE, `HH-${randomUUID().slice(0, 6)}`])).rows[0].id;
+      const list = (await s.query<{ id: string }>("select id from public.price_lists where company_id = $1 and is_standard and active limit 1", [TOP_LINE])).rows[0].id;
+      await s.query("insert into public.price_list_entries (company_id, price_list_id, charge_item_id, unit_code, rate_cents, effective_from) values ($1, $2, $3, 'hour', 9500, '2020-01-01')", [TOP_LINE, list, hauling]);
+      await s.as(dispatcher);
+      expect((await pgError(s.query("select public.truck_hours_apply($1)", [order.id]))).code).toBe("42501");
+      await s.as(owner);
+      const before2 = (await s.query<{ r: Hours }>("select public.truck_day_hours($1) r", [order.id])).rows[0].r;
+      const expected = Math.round(before2.trucks.reduce((n, t) => n + Number(t.billable), 0) * 100) / 100;
+      const added = (await s.query<{ r: { hours: number; amount_cents: number; trucks: number } }>("select public.truck_hours_apply($1) r", [order.id])).rows[0].r;
+      expect(added).toMatchObject({ trucks: 2, hours: expected, amount_cents: Math.round(expected * 9500) });
+      const line = (await s.query<{ description: string; unit_code: string; quantity: string }>("select description, unit_code, quantity from public.order_lines where order_id = $1 order by line_no desc limit 1", [order.id])).rows[0];
+      expect(line.unit_code).toBe("hour");
+      expect(line.description).toMatch(/^Truck hours: /);
+      expect(((await s.query<{ r: { trucks: Array<{ billed: boolean }> } }>("select public.truck_day_hours($1) r", [order.id])).rows[0].r).trucks.every((t) => t.billed)).toBe(true);
+      expect((await pgError(s.query("select public.truck_hours_apply($1)", [order.id]))).message).toMatch(/already added/);
       // "Arrived" without a recorded arrival gives no hours (never guessed).
       await s.query("select public.save_truck_hours_settings('arrived', null, 'review')");
       h = (await s.query<{ r: Hours }>("select public.truck_day_hours($1) r", [order.id])).rows[0].r;

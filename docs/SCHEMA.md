@@ -618,7 +618,9 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
   order)` (today's trucks of the customer's own order; truck unit only, never the driver).
 - Rollback restores `private.prepare_ticket` (20261022000100) and removes the functions, table and columns.
 - 20261120008700: `truck_day_hours` names the driver from their sign-in profile when the driver record has no name
-  (as tickets do); rollback restores the 008600 definition.
+  (as tickets do) and reports `billed` per truck; `order_loads.truck_hours_line_id`; `truck_hours_apply(order)`
+  (billing.manage) adds one hourly line (charge item TRUCK-HOURS, billed without a ticket) for the counted trucks not
+  billed yet, recomputes totals under `tlt.billed_extra`, marks the trucks, audits. Rollback restores the 008600 function.
 
 ## Portal: delivered and left per ordered line (20261120008500, UX5)
 

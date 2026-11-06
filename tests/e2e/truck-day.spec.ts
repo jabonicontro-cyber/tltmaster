@@ -98,4 +98,26 @@ test("an order runs as trucks for the day: plan, assign, driver card, release, b
   const hours = office.getByRole("table", { name: "Truck-hours" });
   await expect(hours.getByRole("row")).toHaveCount(3);
   await expect(office.getByText("Truck-hours are off.")).toBeVisible();
+
+  // With the company's rule and an hourly rate, billing adds the released truck's hours to the order once.
+  await asUser(USERS.owner.email, async (q) => {
+    await q("select public.save_truck_hours_settings('scheduled', null, 'review')");
+    const item = (await q("insert into public.charge_items (code, name, kind, calc_method, default_unit_code) values ($1, 'Hauling by the hour (e2e ' || $1 || ')', 'hauling', 'per_unit', 'hour') returning id", [`HH-${id}`])).rows[0].id;
+    const list = (await q("select id from public.price_lists where is_standard and active limit 1")).rows[0].id;
+    await q("insert into public.price_list_entries (price_list_id, charge_item_id, unit_code, rate_cents, effective_from) values ($1, $2, 'hour', 9000, '2020-01-01')", [list, item]);
+  });
+  try {
+    await office.reload();
+    await expect(office.getByText("1 truck,", { exact: false })).toBeVisible();
+    await office.getByRole("button", { name: "Add to order" }).click();
+    await office.getByRole("dialog").getByRole("button", { name: "Add to order" }).click();
+    await expectToast(office, /Truck hours added to the order: .* h for 1 truck\./);
+    await expect(office.getByText("Added to the order", { exact: true })).toBeVisible();
+    await expect(office.getByRole("button", { name: "Add to order" })).toHaveCount(0);
+  } finally {
+    await asUser(USERS.owner.email, async (q) => {
+      await q("select public.save_truck_hours_settings(null, null, 'review')");
+      await q("update public.charge_items set active = false where code = $1", [`HH-${id}`]);
+    });
+  }
 });

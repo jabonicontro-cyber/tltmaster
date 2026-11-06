@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { formatCents } from "@/lib/money";
 import { formatDate } from "@/lib/dates";
+import { AddTruckHoursButton } from "@/components/dispatch/truck-day";
 
 // Truck-hours of a truck-day order (UX11): computed from the company's setting for billing review; nothing is added to
 // the order or an invoice here. Missing data is shown as missing, never estimated.
@@ -17,7 +18,7 @@ export type TruckHours = {
   rate_source: "order" | "customer" | "standard" | null;
   trucks: Array<{
     load_id: string; load_number: number; date: string; truck: string; driver: string; start: string | null; released_at: string | null;
-    release_source: string | null; trips: number; hours: number | string | null; billable: number | string | null; short: boolean;
+    release_source: string | null; trips: number; billed?: boolean; hours: number | string | null; billable: number | string | null; short: boolean;
     missing: "off" | "not_released" | "no_arrival" | null;
   }>;
 };
@@ -30,13 +31,15 @@ const MISSING: Record<string, string> = {
 
 const hoursText = (h: number) => `${h.toFixed(2)} h`;
 
-export function TruckHoursCard({ data, timeZone }: { data: TruckHours; timeZone: string }) {
+export function TruckHoursCard({ data, timeZone, canManage = false, locked = false, orderId }: { data: TruckHours; timeZone: string; canManage?: boolean; locked?: boolean; orderId: string }) {
   const time = (iso: string | null) => (iso ? new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso)) : "–");
   const byHours = data.billing === "hours";
   const counted = data.trucks.filter((t) => t.billable !== null);
   const total = counted.reduce((n, t) => n + Number(t.billable), 0);
   const allCounted = data.trucks.length > 0 && counted.length === data.trucks.length;
   const shortCount = data.trucks.filter((t) => t.short).length;
+  const toAdd = data.trucks.filter((t) => t.billable !== null && !t.billed);
+  const toAddHours = toAdd.reduce((n, t) => n + Number(t.billable), 0);
   const basisText = data.basis === "arrived" ? "from the recorded arrival until release" : data.basis === "scheduled" ? "from the scheduled start until release" : null;
   const rateText = data.rate_cents == null ? null
     : `${formatCents(data.rate_cents)} per hour (${data.rate_source === "order" ? "the order's hourly line" : data.rate_source === "customer" ? "the customer's price list" : "the standard price list"})`;
@@ -45,7 +48,7 @@ export function TruckHoursCard({ data, timeZone }: { data: TruckHours; timeZone:
     <Card>
       <CardHeader
         title={<span className="inline-flex items-center gap-2">Trucks for the day{shortCount > 0 && data.shortfall === "review" ? <Badge tone="amber">{shortCount} below the minimum</Badge> : null}</span>}
-        description={byHours ? "Billed by truck-hours. A computed figure for review; nothing is added to the order or an invoice here." : "Billed by ticket quantity. Hours are shown for reference."}
+        description={byHours ? "Billed by truck-hours. A computed figure for review: it goes on the order only when billing selects Add to order." : "Billed by ticket quantity. Hours are shown for reference."}
       />
       <CardBody className="space-y-3">
         {!data.basis ? (
@@ -82,6 +85,7 @@ export function TruckHoursCard({ data, timeZone }: { data: TruckHours; timeZone:
                     <td className="py-2 pr-3 tabular">{t.released_at ? `${time(t.released_at)}${t.release_source ? ` (${t.release_source === "site" ? "site contact" : t.release_source})` : ""}` : "–"}</td>
                     <td className="py-2 pr-3 text-right tabular">{t.trips}</td>
                     <td className="py-2 text-right tabular">
+                      {t.billed ? <span className="block text-xs text-green-700">Added to the order</span> : null}
                       {t.missing ? <span className="text-muted">{MISSING[t.missing]}</span> : (
                         <>
                           {hoursText(Number(t.billable))}
@@ -103,6 +107,12 @@ export function TruckHoursCard({ data, timeZone }: { data: TruckHours; timeZone:
               ? <> × {rateText} = <strong className="tabular">{formatCents(Math.round(total * Number(data.rate_cents)))}</strong></>
               : <span className="text-muted"> · No hourly rate: add an hourly line to the order or an hourly hauling rate to the customer&apos;s price list.</span>)}
           </p>
+        )}
+        {byHours && canManage && !locked && toAdd.length > 0 && data.rate_cents != null && (
+          <div className="flex flex-wrap items-center gap-3 border-t border-line pt-3">
+            <p className="text-sm text-muted">{toAdd.length} {toAdd.length === 1 ? "truck" : "trucks"}, {hoursText(toAddHours)} not on the order yet.</p>
+            <AddTruckHoursButton orderId={orderId} summary={`${hoursText(toAddHours)} × ${formatCents(Number(data.rate_cents))} = ${formatCents(Math.round(toAddHours * Number(data.rate_cents)))}.`} />
+          </div>
         )}
       </CardBody>
     </Card>

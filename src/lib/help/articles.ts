@@ -1808,6 +1808,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { title: "Set an order to trucks for the day", steps: ["Open the order.", "Under **How it runs**, choose **Trucks for the day** and how it is billed, and select **Save how it runs**."] },
       { title: "Plan the trucks", steps: ["On **Dispatch**, open the day.", "On the order, select **Add trucks**, enter how many trucks, from when and until when (planned), and select **Add trucks**.", "Assign a truck and driver to each line as usual."] },
       { title: "Release a truck", steps: ["Dispatch: select **Release** on the truck's line. The driver: **I'm released** on My Day. The site contact: **Release truck** in the portal.", "The truck's time stops then, and the truck and driver are free for a later job the same day."] },
+      { title: "Bill the truck-hours", steps: ["Open the order from **Billing**.", "Under **Trucks for the day**, check each truck's hours and select **Add to order**. One hourly line is added; trucks already added are marked and never added twice."] },
       { title: "Choose which hours count", steps: ["Open **Settings → Invoicing**.", "Under **Trucks for the day: which hours count**, choose the scheduled start or the driver's recorded arrival, an optional minimum per truck, and what happens below it."] },
     ],
     prerequisites: ["Billing by truck-hours needs an hourly rate: an hourly line on the order, or an hourly hauling rate on the customer's price list."],

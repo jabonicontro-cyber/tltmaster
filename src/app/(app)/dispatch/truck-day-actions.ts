@@ -115,3 +115,21 @@ export async function saveTruckHoursSettings(formData: FormData): Promise<void> 
   revalidatePath("/settings");
   go("saved", "invoicing");
 }
+
+const applyInput = z.object({ orderId: z.uuid("Invalid order.") });
+
+/** Billing adds the reviewed truck-hours to the order as one hourly line (billing.manage; never twice per truck). */
+export async function applyTruckHours(input: z.input<typeof applyInput>): Promise<ActionResult<{ hours: number; amountCents: number }>> {
+  return guard(async () => {
+    await assertPermission("billing.manage");
+    const parsed = applyInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("truck_hours_apply", { p_order: parsed.data.orderId });
+    if (error) return fail(dbErrorMessage(error));
+    const r = data as { hours: number; amount_cents: number; trucks: number };
+    revalidateJob(parsed.data.orderId);
+    revalidatePath("/billing");
+    return ok({ hours: r.hours, amountCents: r.amount_cents }, `Truck hours added to the order: ${Number(r.hours).toFixed(2)} h for ${r.trucks} ${r.trucks === 1 ? "truck" : "trucks"}.`);
+  });
+}

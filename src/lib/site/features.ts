@@ -379,7 +379,7 @@ export const FEATURES: Feature[] = [
     how: "An order runs as trucks for the day: dispatch adds the trucks in one step and assigns them like any load, drivers enter a ticket for every trip, and dispatch, the driver or the customer's site contact releases each truck. Billing sees each truck's hours from the company's own rule.",
     value: "The release time is recorded when it happens, so truck-hours come from the day itself instead of memory, and a released truck is free for its next job.",
     points: ["One step for N trucks for the day, each assigned with the usual checks", "Release by dispatch, the driver or the site contact, recorded with who and when", "Truck-hours from the scheduled start or the recorded arrival, with an optional minimum per truck"],
-    limitations: ["Truck-hours are a figure for billing review; adding them to the invoice is a separate step for now", "Off until the company chooses which hours count"],
+    limitations: ["Truck-hours go on the order only when billing selects Add to order", "Off until the company chooses which hours count"],
     status: "available",
     published: false,
     routes: ["/dispatch", "/orders", "/driver"],

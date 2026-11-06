@@ -145,7 +145,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         </Card>
 
         {extraOptions.length > 0 && <ExtraChargeForm orderId={id} options={extraOptions} />}
-        {truckHours?.job_type === "truck_day" && <TruckHoursCard data={truckHours} timeZone={timezone} />}
+        {truckHours?.job_type === "truck_day" && <TruckHoursCard data={truckHours} timeZone={timezone} orderId={id} canManage={canManage} locked={o.readiness === "handed_off"} />}
         {detentionRows.length > 0 && <DetentionCard orderId={id} rows={detentionRows} canManage={canManage} locked={o.readiness === "handed_off"} />}
 
         <Card>
