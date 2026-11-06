@@ -30,6 +30,8 @@ const ALLOWED = new Set([
   "src/server/people/invite.ts",
   "src/app/admin/actions.ts",
   "src/app/admin/demo/page.tsx",
+  // Company access desk (SA1): demo companies are listed apart from customers and need no grant.
+  "src/app/staff/page.tsx",
   "src/lib/ai/capabilities.ts",
   "src/server/ai/gates.ts",
   "src/server/routing/service.ts",

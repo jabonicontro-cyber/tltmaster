@@ -166,3 +166,12 @@ export async function saveWorkSchedule(employeeId: string, formData: FormData): 
     return ok(undefined, `Work schedule saved (${Number(week.toFixed(2))} h a week). Full-day time off now counts these hours.`);
   });
 }
+
+/** Withdraw an invitation a person has not accepted yet (security review 2026-11-06, M1). */
+export async function withdrawInvitation(formData: FormData) {
+  await assertPermission("users.manage");
+  const id = String(formData.get("invitation") ?? "");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return;
+  await (await createClient()).rpc("withdraw_membership_invitation", { p_invitation: id });
+  revalidatePath("/employees");
+}

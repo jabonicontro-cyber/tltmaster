@@ -1,11 +1,29 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 0000000000000000000000. 2026-11-06 — Taviron staff and support access (SA1), security audit (SEC2)
+
+Released to Production earlier today (verified): `00d30d3` trucks for the day; `5c53c30` truck-hours **Add to order**
+(008700) and subscription notices SUB1 (008800).
+
+SA1 (owner answers: invite from the console; Support and Admin levels; customer picks 1/3/7 days; banner + history):
+migration `20261120008900` (tested rollback). Console **Administration → Taviron team** (invite with your password and
+authenticator code), **/join-team**, **Company access** `/staff`, owner **Settings → Taviron support**, banners, history
+"Name (Taviron support)". Visits are not memberships. DEPLOYMENT §3a and CLAUDE.md updated.
+
+SEC2 (owner: "as secure as possible"): read-only audit, then fixes. H1 (visits could create lasting access) and M2
+(grant rule could lapse) fixed inside 008900 before release; M4 cookies httpOnly/Secure/30 days + CSP; L1, L3, M1 part,
+M3 part in `20261120009000` (tested rollback); M1 (owner: "They must accept") in `20261120009100` (tested rollback). Open: M3 dashboard settings
+(LAUNCH §7, owner), L2, L4 (master plan §12 SEC2).
+
+Local test notes: the full DB suite's timeouts (Command Center queue, 20 s) and the platform import "Sam Rivera" case
+come from the polluted local database, not these changes (same timing with and without the migrations).
 
 ## 000000000000000000000. 2026-11-05/06 — launch build: testing from Dec 1, live in January
 

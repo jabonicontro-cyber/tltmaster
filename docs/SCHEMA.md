@@ -406,7 +406,11 @@ direct access for app users); everything goes through the functions below.
 
 | Table | Holds |
 | --- | --- |
-| `private.platform_admins` | The Taviron team: user, note, granted / revoked. Not a company role. |
+| `private.platform_admins` | The Taviron team: user, note, granted / revoked, `level` (`admin` or `support`, SA1). Not a company role. |
+| `private.platform_staff_invites` | Team invitations (SA1): email, name, level, the link's SHA-256 hash only, expiry (7 days), accepted / withdrawn. |
+| `public.support_access_grants` | A company owner's permission for Taviron support (SA1): 1, 3 or 7 days, ended early or by itself. Read through `support_access_status()` only (RLS on, no policy). |
+| `public.membership_invitations` | A company's invitation to a person who already has a sign-in (security review M1, 2026-11-06): role, status (pending, accepted, declined, withdrawn). The person accepts through `answer_membership_invitation`; RLS on, no policy. |
+| `private.support_sessions` | Taviron support visits (SA1): staff member, company, grant, reason, start, end. While open, `private.current_company_id()`, `has_permission()`, `current_app_role()` and `my_access()` resolve the visited company with owner permissions; never a membership, so staff are not listed, counted or emailed as people. |
 | `private.platform_audit` | Append-only log of sensitive platform actions (grants, revocations, demo, company creation, import steps). |
 | `private.leads` | Website demo requests and contact messages: kind, status (`new`, `contacted`, `demo_scheduled`, `demo_completed`, `converted`, `not_proceeding` — since 20261028000100), contact details, `truck_count` and `base_count` (required for new demo requests), `disposition` (`spam` flag, only on Not Proceeding; hidden from the queue), `onboarding_stage` (`in_progress`/`live`, only on Converted), `legacy_status` (the status before the consolidation, kept for reversal), owner, follow-up date, submission count. Older rows keep `role_title` and `fleet_size`. |
 | `private.lead_emails` | Every confirmation/notification attempt for a lead: kind, recipient, mode (`preview`/`test`/`live`), status (`sent`/`failed`/`not_sent`), provider id, detail. Written only by `lead_record_email` (service role). |

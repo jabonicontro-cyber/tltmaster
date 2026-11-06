@@ -1,4 +1,5 @@
 import { createServerClient } from "@supabase/ssr";
+import { sessionCookieOptions } from "@/lib/session-cookie";
 import { cookiePersistence, SHARED_DEVICE_COOKIE } from "@/lib/shared-device";
 import { NextResponse, type NextRequest } from "next/server";
 import { signSiteAccess, verifySiteAccess } from "@/lib/site-access-token";
@@ -10,7 +11,7 @@ import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnable
 // authenticates with the company's feed key (B101), never a session.
 // The companion app's manifest, service worker and offline page hold no company data; browsers fetch the first two
 // without cookies (docs/COMPANION_APP.md). Customer portals and tracking links have their own sign-in and checks (B66).
-const PUBLIC_PATHS = ["/api/health", "/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe"];
+const PUBLIC_PATHS = ["/api/health", "/login", "/signup", "/forgot-password", "/auth/callback", "/auth/confirm", "/auth/error", "/early-access", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe", "/join-team"];
 
 const isHttps = (request: NextRequest) =>
   request.nextUrl.protocol === "https:" || request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim() === "https";
@@ -49,6 +50,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, key, {
+    cookieOptions: sessionCookieOptions(),
     cookies: {
       getAll() {
         return request.cookies.getAll();

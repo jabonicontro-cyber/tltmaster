@@ -365,7 +365,7 @@ test("the platform team member appears as themselves (name, Taviron Administrato
   await account.click();
   await page.getByRole("menuitem", { name: "My profile" }).click();
   await expect(page).toHaveURL(/\/admin\/profile$/);
-  await expect(page.getByText("Granted and revoked only by an operator")).toBeVisible();
+  await expect(page.getByText("Given and removed by a Taviron Admin")).toBeVisible();
   // A company owner sees their own name and company role, never the administrator title.
   const ctx = await browser.newContext();
   const owner = await ctx.newPage();

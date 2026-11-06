@@ -8,7 +8,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { signOut } from "@/app/(auth)/actions";
 
 /** The platform console's account menu: the signed-in team member as themselves (own photo, else initials). */
-export function AdminUserMenu({ name, email, photo, roleTitle }: { name: string; email: string; photo: string; roleTitle: string }) {
+export function AdminUserMenu({ name, email, photo, roleTitle, profileHref = "/admin/profile" }: { name: string; email: string; photo: string; roleTitle: string; profileHref?: string }) {
   const [signingOut, startSignOut] = useTransition();
   const shown = name || email;
   return (
@@ -31,7 +31,7 @@ export function AdminUserMenu({ name, email, photo, roleTitle }: { name: string;
           </div>
           <M.Separator className="my-1 h-px bg-line" />
           <M.Item asChild>
-            <Link href="/admin/profile" className="flex items-center gap-2 rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-surface">
+            <Link href={profileHref} className="flex items-center gap-2 rounded px-3 py-2 text-sm outline-none data-[highlighted]:bg-surface">
               <CircleUserRound className="size-4 text-muted" aria-hidden /> My profile
             </Link>
           </M.Item>

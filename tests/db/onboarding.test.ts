@@ -225,7 +225,7 @@ describe("creating a company", () => {
 });
 
 describe("invitations and roles", () => {
-  it("adds an existing account to the company once, keeps deactivations, and reports unknown emails", async () => {
+  it("invites an existing account (it joins on accepting), keeps deactivations, and reports unknown emails", async () => {
     await withSession(async (s) => {
       const owner = await s.createUser("owner");
       const B = await s.createCompany("Brookside Aggregates (test)");
@@ -235,9 +235,15 @@ describe("invitations and roles", () => {
       await s.as(owner);
       const add = (role: string, e = email) => s.query<{ r: Row }>("select public.add_existing_member($1, $2, 'Dana (test)') as r", [e, role]).then((x) => x.rows[0].r);
       expect(await add("dispatcher", "nobody-here@test.example")).toEqual({ found: false });
-      expect(await add("dispatcher", email.toUpperCase())).toMatchObject({ found: true, already: false, user_id: bUser });
-      expect(await add("office")).toMatchObject({ found: true, already: true, role: "dispatcher" });
-      expect((await s.query("select 1 from public.audit_events where action = 'member.added' and entity_id = $1", [bUser])).rowCount).toBe(1);
+      // An invitation, not a membership (security review 2026-11-06, M1): the person accepts.
+      expect(await add("dispatcher", email.toUpperCase())).toEqual({ found: true, already: false, invited: true });
+      expect((await s.query("select 1 from public.audit_events where action = 'member.invited' and company_id = $1", [TOP_LINE])).rowCount).toBeGreaterThan(0);
+      await s.as(bUser);
+      const inv = (await s.query<{ id: string }>("select id from public.my_membership_invitations()")).rows[0].id;
+      await s.query("select public.answer_membership_invitation($1, true)", [inv]);
+      await s.as(owner);
+      expect(await add("office")).toMatchObject({ found: true, already: true });
+      expect((await s.query("select 1 from public.audit_events where action = 'member.joined' and entity_id = $1", [bUser])).rowCount).toBe(1);
 
       // The person now has two companies; each shows only its own data.
       await s.as(bUser);

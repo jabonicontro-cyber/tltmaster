@@ -1,4 +1,5 @@
 import "server-only";
+import { renderEmailHtml } from "@/lib/email/html";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { can, type Access, type AppRole } from "@/lib/permissions";
 import { dbErrorMessage } from "@/server/errors";
@@ -41,26 +42,30 @@ async function ensurePersonRecord(access: Access, userId: string, input: InviteI
  */
 export async function inviteMember(access: Access, input: InviteInput): Promise<ActionResult<{ userId: string | null }>> {
   if (access.isDemo) return fail("Invitations are turned off in the demo company: it never sends email to anyone.");
+  // A Taviron support visit never adds people (security review 2026-11-06, H1; the database refuses it too).
+  if (access.support) return fail("Taviron support cannot add people to the company. Ask an owner of the company.");
   if (input.role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.");
   const supabase = await createClient();
 
-  // Someone who already has an account (for example in another company) is
-  // added to this company directly — no second account, no new password.
+  // Someone who already has a sign-in (for example in another company) is invited, never added directly: they join
+  // only when they accept (security review 2026-11-06, M1). The answer reads the same whether or not the email already
+  // has a sign-in, so nothing about the person is revealed.
   const existing = await supabase.rpc("add_existing_member", {
     p_email: input.email,
     p_role: input.role,
     p_full_name: input.full_name,
   });
   if (existing.error) return fail(dbErrorMessage(existing.error));
-  const found = existing.data as { found: boolean; already?: boolean; user_id?: string };
+  const found = existing.data as { found: boolean; already?: boolean; invited?: boolean; user_id?: string };
   if (found.found) {
-    if (found.user_id) await ensurePersonRecord(access, found.user_id, input);
-    return ok(
-      { userId: found.user_id ?? null },
-      found.already
-        ? `${input.email} is already a member of your company.`
-        : `${input.email} already has an account and was added to your company. They can switch to it from the account menu after signing in.`,
-    );
+    if (found.already) return ok({ userId: null }, `${input.email} is already a member of your company.`);
+    // Before 20261120009100 the database still added the person directly and returned their id.
+    if (found.user_id) {
+      await ensurePersonRecord(access, found.user_id, input);
+      return ok({ userId: found.user_id }, `Invitation sent to ${input.email}. They join your company when they accept it.`);
+    }
+    await notifyInvitation(access, input.email);
+    return ok({ userId: null }, `Invitation sent to ${input.email}. They join your company when they accept it.`);
   }
 
   // Invitations are emailed by Supabase Auth, not by Resend, so EMAIL_TEST_RECIPIENT cannot
@@ -90,6 +95,30 @@ export async function inviteMember(access: Access, input: InviteInput): Promise<
   if (roleErr) return fail(`Invitation sent, but the user could not be added to your company: ${dbErrorMessage(roleErr)}`);
   await ensurePersonRecord(access, data.user.id, input);
   console.info("User invited", { by: access.userId, user: data.user.id });
-  return ok({ userId: data.user.id }, `Invitation sent to ${input.email}.`);
+  return ok({ userId: data.user.id }, `Invitation sent to ${input.email}. They join your company when they accept it.`);
 }
 
+
+/**
+ * Tell a person with an existing sign-in that a company invited them (M1). Only through the configured email provider
+ * (test mode: the test inbox; not configured: nothing is sent, they see it at their next sign-in).
+ */
+async function notifyInvitation(access: Access, to: string): Promise<void> {
+  const mode = getEmailMode();
+  if (mode.mode === "preview") return;
+  const company = access.companyName ?? "A company";
+  const link = `${env().APP_BASE_URL}/invitations`;
+  const subject = `${company} invited you to Taviron`;
+  const paragraphs = [`${company} invited you to join them in Taviron.`, "Sign in and accept the invitation to join. Nothing changes until you accept."];
+  const testing = mode.mode === "test";
+  await mode.provider.send(
+    {
+      to: testing ? [mode.testRecipient] : [to], cc: [], replyTo: env().EMAIL_REPLY_TO,
+      subject: testing ? `[TEST] ${subject}` : subject,
+      text: `${testing ? `TEST MODE. Intended for: ${to}\n\n` : ""}${paragraphs.join("\n\n")}\n\n${link}`,
+      html: renderEmailHtml({ preheader: subject, heading: "You are invited", paragraphs, action: { label: "See the invitation", url: link }, footer: "If you did not expect this, you can ignore it." }),
+      attachments: [],
+    },
+    { idempotencyKey: `member-invite-${access.companyId}-${to.toLowerCase()}-${new Date().toISOString().slice(0, 13)}` },
+  ).catch(() => undefined);
+}

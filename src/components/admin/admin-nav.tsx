@@ -15,13 +15,18 @@ const NAV = [
   { href: "/admin/onboarding", label: "Onboarding" },
   { href: "/admin/demo", label: TERMS.demoManagement },
   { href: "/admin/testing-lab", label: "Testing Lab" },
+  { href: "/staff", label: "Company access" },
   { href: "/admin/support", label: "Support" },
   { href: "/admin/platform", label: "Administration" },
 ];
 
+/** Support staff (SA1) have the company access desk only. */
+const SUPPORT_NAV = [{ href: "/staff", label: "Company access" }];
+
 /** The platform area's tabs, with the current one marked (also for screen readers). */
-export function AdminNav() {
+export function AdminNav({ level = "admin" }: { level?: "admin" | "support" }) {
   const path = usePathname();
+  const items = level === "admin" ? NAV : SUPPORT_NAV;
   return (
     <nav
       aria-label="Platform"
@@ -29,7 +34,7 @@ export function AdminNav() {
       className={cn(APP_CONTAINER, "pb-3")}
     >
       <div className="flex w-fit max-w-full snap-x gap-1 overflow-x-auto rounded-full bg-white/[0.07] p-1 [mask-image:linear-gradient(to_right,black_calc(100%-2rem),transparent)] lg:[mask-image:none]">
-      {NAV.map((n) => {
+      {items.map((n) => {
         const current = n.href === "/admin" ? path === "/admin" : path === n.href || path.startsWith(`${n.href}/`);
         return (
           <Link

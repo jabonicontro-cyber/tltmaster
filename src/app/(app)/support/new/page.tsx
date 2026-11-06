@@ -4,7 +4,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { NewCaseForm } from "@/components/support/case-forms";
 import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
-import { getUserNames } from "@/server/data/quotes";
+import { getPeopleNames } from "@/server/data/quotes";
 import { supportLinkOptions } from "@/server/data/support";
 import { createClient } from "@/server/supabase/server";
 
@@ -16,7 +16,7 @@ export default async function NewSupportCase({ searchParams }: { searchParams: P
   const chosen = customer && uuid.safeParse(customer).success ? customer : "";
   const [{ data: customers }, names, links] = await Promise.all([
     (await createClient()).from("customers").select("id, name").order("name").limit(1000),
-    getUserNames(),
+    getPeopleNames(),
     chosen ? supportLinkOptions(chosen) : Promise.resolve({ orders: [], tickets: [], invoices: [] }),
   ]);
   return (

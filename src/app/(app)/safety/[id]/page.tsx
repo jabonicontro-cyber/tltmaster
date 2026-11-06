@@ -8,7 +8,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { INCIDENT_KINDS, INCIDENT_SEVERITIES, INCIDENT_STATUSES, STATUS_TONE } from "@/lib/safety";
 import { requirePagePermission } from "@/server/auth";
-import { getUserNames } from "@/server/data/quotes";
+import { getPeopleNames, getUserNames } from "@/server/data/quotes";
 import { getIncident } from "@/server/data/safety";
 import { businessToday } from "@/server/data/settings";
 
@@ -28,11 +28,11 @@ const EVENT_LABELS: Record<string, string> = {
 export default async function IncidentPage({ params }: { params: Promise<{ id: string }> }) {
   const access = await requirePagePermission("safety.view");
   const { id } = await params;
-  const [incident, names, { today, timezone }] = await Promise.all([getIncident(id), getUserNames(), businessToday()]);
+  const [incident, names, staffNames, { today, timezone }] = await Promise.all([getIncident(id), getUserNames(), getPeopleNames(), businessToday()]);
   if (!incident) notFound();
   const manage = can(access, "safety.manage");
   const closed = incident.status === "closed";
-  const people = Object.entries(names).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
+  const people = Object.entries(staffNames).map(([value, label]) => ({ value, label })).sort((a, b) => a.label.localeCompare(b.label));
   const who = (u: string | null) => (u ? names[u] ?? "Former user" : "–");
   const blocked = !incident.findings.trim() ? "Record the findings in the investigation before closing." : incident.open_actions ? "Every corrective action must be done before closing." : null;
 

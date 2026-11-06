@@ -48,6 +48,8 @@ export const getDemoPersonaName = async (isDemo: boolean, userId: string) => (aw
 
 /** The role title shown for the Taviron platform team everywhere (console, company workspaces, demos). */
 export const PLATFORM_ROLE_TITLE = "Taviron Administrator";
+/** The role shown for a Taviron team member by staff level (SA1). */
+export const staffRoleTitle = (level: "admin" | "support" | null | undefined) => (level === "support" ? "Taviron Support" : PLATFORM_ROLE_TITLE);
 
 /**
  * The name to greet and show the signed-in person by: demo persona, own display name, then profile name. A platform

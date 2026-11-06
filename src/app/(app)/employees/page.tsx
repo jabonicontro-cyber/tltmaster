@@ -7,7 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { signInStatus } from "@/lib/accounts";
 import { accountStates, type AccountState } from "@/server/accounts";
-import { Card } from "@/components/ui/card";
+import { Card, CardHeader } from "@/components/ui/card";
+import { SubmitButton } from "@/components/ui/submit-button";
+import { formatDateTime } from "@/lib/dates";
+import { createClient } from "@/server/supabase/server";
+import { withdrawInvitation } from "./actions";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
 import { Pagination } from "@/components/ui/pagination";
@@ -15,7 +19,7 @@ import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { DEPARTMENTS, EMPLOYEE_STATUSES, type EmployeeStatus } from "@/lib/employees";
 import { cn } from "@/lib/cn";
-import { can, ROLE_LABELS } from "@/lib/permissions";
+import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { avatarUrl, employeePhotoSrc } from "@/lib/people/avatars";
 import { requirePagePermission } from "@/server/auth";
 import { employeeCounts, listEmployees, photoVersions } from "@/server/data/employees";
@@ -59,11 +63,32 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
     </>
   );
   if (view === "access") {
-    const users = await listSignIns(access.companyId!);
+    const [users, waiting] = await Promise.all([
+      listSignIns(access.companyId!),
+      // Invitations not accepted yet (M1, 20261120009100; none before it is installed).
+      (await createClient()).rpc("company_membership_invitations").then((r) => (r.error ? [] : (r.data ?? []) as Array<{ id: string; email: string; full_name: string; role: string; created_at: string }>)),
+    ]);
     return (
       <>
         {header}
         <Card><UsersPanel users={users} currentUserId={access.userId} inviteAvailable={adminAvailable()} isOwner={access.role === "owner"} /></Card>
+        {waiting.length > 0 && (
+          <Card className="mt-5">
+            <CardHeader title="Waiting to accept" description="People who already have a Taviron sign-in join your company only when they accept your invitation." />
+            <ul className="divide-y divide-line px-5 pb-3 text-sm sm:px-6" aria-label="Invitations waiting to be accepted">
+              {waiting.map((w) => (
+                <li key={w.id} className="flex flex-wrap items-center gap-2 py-2">
+                  <span className="font-medium">{w.full_name || w.email}</span>
+                  <span className="text-muted">{w.email} · {ROLE_LABELS[w.role as AppRole] ?? w.role} · invited {formatDateTime(w.created_at)}</span>
+                  <form action={withdrawInvitation} className="ml-auto">
+                    <input type="hidden" name="invitation" value={w.id} />
+                    <SubmitButton variant="secondary" size="sm">Withdraw</SubmitButton>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        )}
       </>
     );
   }

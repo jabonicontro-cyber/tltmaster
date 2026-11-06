@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
 import { can, type Access, type AppRole, type Permission } from "@/lib/permissions";
 import { PREVIEW_COOKIE, applyPreview, parsePreviewRole } from "@/lib/platform/preview";
-import { isPlatformAdmin } from "@/server/platform";
+import { isPlatformAdmin, platformStaffLevel } from "@/server/platform";
 import { myPortals } from "@/server/portal";
 import { MfaRequiredError, mfaBlocks } from "@/server/mfa";
 import { setupRequired } from "@/server/setup";
@@ -29,6 +29,8 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     permissions: Permission[];
     company_id: string | null;
     company_name: string | null;
+    support?: { ends_at: string } | null;
+    support_inside?: boolean;
   };
   const access: Access = {
     userId: row.user_id,
@@ -41,6 +43,8 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     permissions: row.permissions ?? [],
     isDemo: false,
     preview: null,
+    support: row.support?.ends_at ? { endsAt: row.support.ends_at } : null,
+    supportInside: Boolean(row.support_inside),
   };
   if (!row.company_id) return access;
 
@@ -77,8 +81,14 @@ export async function requireAccess(): Promise<Access> {
     if (await setupRequired()) redirect("/welcome");
     // Below the second factor the database withholds the company for enrolled people (20261120001100): verify first.
     if (await mfaBlocks()) redirect("/mfa");
-    // A platform team member without a company of their own starts at the launchpad.
+    // A platform team member without a company of their own starts at the launchpad (Support staff: company access).
     if (await isPlatformAdmin()) redirect("/admin");
+    if (await platformStaffLevel()) redirect("/staff");
+    // An invitation waiting for this sign-in (security review 2026-11-06, M1): answer it first.
+    if (!access.companyId) {
+      const inv = await (await createClient()).rpc("my_membership_invitations");
+      if (!inv.error && (inv.data ?? []).length) redirect("/invitations");
+    }
     // A trucking company's customer (portal account, not a membership) goes to their portal (B66).
     if (!access.companyId && (await myPortals()).length) redirect("/portal");
     redirect("/no-access");

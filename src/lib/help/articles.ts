@@ -1927,6 +1927,31 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Read-only: the accountant cannot correct anything; send corrections to the office.", "Taxes are not calculated."],
   },
   {
+    id: "taviron-support-access",
+    title: "Let Taviron support into your account",
+    summary: "An owner lets the Taviron team in for 1, 3 or 7 days to help or fix something; it ends by itself and can be ended at any time.",
+    category: "getting-started",
+    routes: ["/settings"],
+    permissions: ["settings.manage"],
+    audience: "Owners give and end access. While your company is still being set up, Taviron can help without it.",
+    whatYouSee: [
+      "**Settings → Taviron support** (owners): whether Taviron can come in and until when, who from Taviron is in your account now, every visit with its reason, and every time access was given.",
+      "A banner at the top of every page while someone from Taviron is in your account.",
+    ],
+    tasks: [
+      { title: "Let Taviron in", steps: ["Open **Settings → Taviron support**.", "Choose **1 day**, **3 days** or **7 days**.", "Select **Give access**."] },
+      { title: "Change or end it", steps: ["Choose a new length and select **Save** (counted from now), or select **End access now**: anyone from Taviron in your account is signed out of it at once."] },
+    ],
+    prerequisites: ["Only an owner of the company can give, change or end Taviron support access."],
+    troubleshooting: [
+      { problem: "Taviron says they cannot get in.", fix: "Access is off or has ended. Give it again in Settings → Taviron support." },
+    ],
+    next: [],
+    related: ["accountant-view"],
+    reviewed: "2026-11-06",
+    limitations: ["Taviron support can see and change everything an owner can. Their changes show in history as \"Name (Taviron support)\"."],
+  },
+  {
     id: "offline",
     title: "Working without signal",
     summary: "When the phone has no signal, the driver still sees today's loads as last loaded and can save tickets, inspections and Arrived/Left taps; they send by themselves when signal returns.",

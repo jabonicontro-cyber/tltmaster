@@ -13,7 +13,7 @@ import { formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { SUPPORT_KINDS, SUPPORT_REOPEN_DAYS, SUPPORT_STATUS_STAFF } from "@/lib/support";
 import { requirePagePermission } from "@/server/auth";
-import { getUserNames } from "@/server/data/quotes";
+import { getPeopleNames, getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 import { getSupportCase, supportLinkOptions } from "@/server/data/support";
 import { updateSupportCase } from "../actions";
@@ -27,7 +27,7 @@ export default async function SupportCasePage({ params, searchParams }: { params
   const c = await getSupportCase(id);
   if (!c) notFound();
   const edit = can(access, "customers.edit");
-  const [names, { timezone }, links] = await Promise.all([getUserNames(), businessToday(), edit ? supportLinkOptions(c.customer_id) : Promise.resolve(null)]);
+  const [names, people, { timezone }, links] = await Promise.all([getUserNames(), getPeopleNames(), businessToday(), edit ? supportLinkOptions(c.customer_id) : Promise.resolve(null)]);
   const who = (m: { author_kind: string; author_id: string | null }) => (m.author_kind === "customer" ? c.customer_name : m.author_id ? names[m.author_id] ?? "Staff" : "Staff");
   return (
     <>
@@ -90,7 +90,7 @@ export default async function SupportCasePage({ params, searchParams }: { params
                 <Field label="Assigned to" htmlFor="case-assign">
                   <Select id="case-assign" name="assign" defaultValue={c.assigned_to ?? ""}>
                     <option value="">Nobody</option>
-                    {Object.entries(names).sort((a, b) => a[1].localeCompare(b[1])).map(([uid, n]) => <option key={uid} value={uid}>{n}</option>)}
+                    {Object.entries(people).sort((a, b) => a[1].localeCompare(b[1])).map(([uid, n]) => <option key={uid} value={uid}>{n}</option>)}
                   </Select>
                 </Field>
                 <LinkFields stacked links={links} value={{ order: c.order?.id, ticket: c.ticket?.id, invoice: c.invoice?.id }} />

@@ -7,6 +7,16 @@ import { env } from "@/server/env";
 import { getEmailMode } from "@/server/email/provider";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
+import { getAccess } from "@/server/auth";
+
+/**
+ * A Taviron support visit never creates, resets, blocks or unblocks sign-ins (security review 2026-11-06, H1): the
+ * Auth admin calls below happen outside the database, so they are refused here; the database refuses its part too.
+ */
+export const SUPPORT_VISIT_REFUSAL = "Taviron support cannot change who can sign in to the company. Ask an owner of the company.";
+export async function inSupportVisit(): Promise<boolean> {
+  return Boolean((await getAccess())?.support);
+}
 
 // Account provisioning (docs/ACCOUNT_PROVISIONING.md; migration 20261120001200). The Auth admin key is used only here,
 // on the server, and only after the database confirmed the caller may act (every step below calls a permission-checked
@@ -46,6 +56,7 @@ const BLOCK = "876000h";
  * with a fresh temporary password. Retrying with the same request key resumes and never creates a second account.
  */
 export async function reserveAndCreate(kind: AccountKind, requestKey: string, username: string, fullName: string): Promise<ActionResult<{ userId: string; username: string; temporaryPassword: string }>> {
+  if (await inSupportVisit()) return fail(SUPPORT_VISIT_REFUSAL);
   if (!adminAvailable()) return fail(NO_ADMIN);
   const supabase = await createClient();
   const begin = await supabase.rpc("account_provision_begin", { p_request_key: requestKey, p_kind: kind, p_username: username });
@@ -92,6 +103,7 @@ export async function suggestUsername(kind: AccountKind, name: string): Promise<
 
 /** Step 4: record that setup is required (fingerprint of the password just set, expiry, method). */
 export async function issueSetup(kind: AccountKind, userId: string, method: "print" | "copy" | "email" | "reset", hours = PRINT_HOURS): Promise<ActionResult<{ expiresAt: string }>> {
+  if (await inSupportVisit()) return fail(SUPPORT_VISIT_REFUSAL);
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("account_setup_issue", { p_user: userId, p_kind: kind, p_hours: hours, p_method: method });
   if (error) return dbFail(error);
@@ -103,6 +115,7 @@ export async function issueSetup(kind: AccountKind, userId: string, method: "pri
  * database checks first that this company may do it (its own username sign-in, no access elsewhere, owners for owners).
  */
 export async function reissue(kind: AccountKind, userId: string): Promise<ActionResult<IssuedCredential>> {
+  if (await inSupportVisit()) return fail(SUPPORT_VISIT_REFUSAL);
   if (!adminAvailable()) return fail(NO_ADMIN);
   const supabase = await createClient();
   const check = await supabase.rpc("account_setup_check", { p_user: userId, p_kind: kind });
@@ -145,6 +158,7 @@ export function emailAvailability(isDemo: boolean, to: string | null | undefined
  * provider confirmed: accepted for delivery (with its message id), or the failure.
  */
 export async function emailSetupLink(kind: AccountKind, userId: string, to: string, ctx: { isDemo: boolean; personName: string; companyName: string }): Promise<ActionResult<{ reference: string | null }>> {
+  if (await inSupportVisit()) return fail(SUPPORT_VISIT_REFUSAL);
   const avail = emailAvailability(ctx.isDemo, to);
   if (!avail.available) return fail(avail.reason);
   const supabase = await createClient();
@@ -198,6 +212,7 @@ export async function emailSetupLink(kind: AccountKind, userId: string, to: stri
 
 /** After access was removed here: block the sign-in in Auth when it has no access anywhere else (sessions stop). */
 export async function blockIfUnused(kind: AccountKind, userId: string): Promise<boolean> {
+  if (await inSupportVisit()) return false;
   if (!adminAvailable()) return false;
   const supabase = await createClient();
   const { data } = await supabase.rpc("account_block_allowed", { p_user: userId, p_kind: kind });
@@ -209,7 +224,12 @@ export async function blockIfUnused(kind: AccountKind, userId: string): Promise<
 }
 
 export async function unblock(kind: AccountKind, userId: string): Promise<void> {
+  if (await inSupportVisit()) return;
   if (!adminAvailable()) return;
+  // Only a block this company set (blockIfUnused), never one the operator set (security review 2026-11-06, L3).
+  const allowed = await (await createClient()).rpc("account_unblock_allowed", { p_user: userId, p_kind: kind });
+  // Before 20261120009000 is installed the check does not exist: unblock as before.
+  if (allowed.error ? allowed.error.code !== "PGRST202" : allowed.data !== true) return;
   const res = await createAdminClient().auth.admin.updateUserById(userId, { ban_duration: "none" });
   if (!res.error) await (await createClient()).rpc("account_access_record", { p_user: userId, p_kind: kind, p_action: "sessions_unblocked" });
 }

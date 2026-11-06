@@ -67,6 +67,21 @@ who sees it, retention, sub-processors such as Supabase, Vercel, Resend and, onc
 QuickBooks and Sentry), with where each lives in the code. The lawyer's final terms and privacy replace the drafts
 before outside customers in January.
 
+### 7. Sign-in protection in the Supabase dashboard (security review 2026-11-06, M3) · Waiting on owner
+
+The app now limits wrong passwords per sign-in (8 in 15 minutes) for sign-ins made through Taviron, but someone with a
+stolen password could try authenticator codes against Supabase directly. Only the dashboard settings below stop that.
+In the Supabase project (Authentication):
+
+1. **Rate limits:** lower "Token verifications" and "Sign-ups and sign-ins" to the smallest values that still fit
+   normal use (for example 30 per 5 minutes per address), and confirm "MFA verifications" (if shown) is limited.
+2. **Password security:** turn on **Leaked password protection** (Pro plan; checks new passwords against known
+   breaches) and set the minimum length to 10.
+3. **Sessions:** set **Time-box user sessions** to 30 days (matches the app's 30-day sign-in cookie) and
+   **Inactivity timeout** to 14 days.
+
+Tell Claude when done; nothing else needs changing in the code.
+
 ## What Claude builds before December (master plan §12)
 
 | Item | Status |

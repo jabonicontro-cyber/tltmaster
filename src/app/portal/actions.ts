@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { SIGNIN_LIMIT_MESSAGE, recordSignInFailure, signInAllowed } from "@/server/signin-limit";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { SHARED_DEVICE_COOKIE, wantsBrowserSession } from "@/lib/shared-device";
@@ -42,8 +43,10 @@ export async function signInToPortal(formData: FormData): Promise<ActionResult> 
   const jar = await cookies();
   if (wantsBrowserSession(formData)) jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   else jar.delete(SHARED_DEVICE_COOKIE);
+  if (!(await signInAllowed(address.email))) return fail(SIGNIN_LIMIT_MESSAGE);
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({ email: address.email, password: parsed.data.password });
+  if (error && (error.status === 400 || error.code === "invalid_credentials")) await recordSignInFailure(address.email);
   if (error) {
     if (error.status === 429) return fail("Too many attempts. Wait a minute and try again.");
     // Reported only after the password matched, so it reveals nothing to a stranger.

@@ -1,6 +1,7 @@
 "use server";
 
 import { cookies } from "next/headers";
+import { SIGNIN_LIMIT_MESSAGE, recordSignInFailure, signInAllowed } from "@/server/signin-limit";
 import { redirect } from "next/navigation";
 import { SHARED_DEVICE_COOKIE, wantsBrowserSession } from "@/lib/shared-device";
 import { z } from "zod";
@@ -31,11 +32,13 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   const jar = await cookies();
   if (wantsBrowserSession(formData)) jar.set(SHARED_DEVICE_COOKIE, "1", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
   else jar.delete(SHARED_DEVICE_COOKIE);
+  if (!(await signInAllowed(address.email))) return { ok: false, error: SIGNIN_LIMIT_MESSAGE };
   const supabase = await createClient();
   const { error } = await supabase.auth.signInWithPassword({
     email: address.email,
     password: parsed.data.password,
   });
+  if (error && (error.status === 400 || error.code === "invalid_credentials")) await recordSignInFailure(address.email);
   if (error) {
     // Codes only (never the email or password): lets the owner tell a wrong password, an
     // unconfirmed email and an unknown account apart in the hosting logs.

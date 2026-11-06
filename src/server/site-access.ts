@@ -65,9 +65,10 @@ export function publicSiteEnabled(): boolean {
  * scheduled jobs (each checks CRON_SECRET itself and refuses everything without it), and the companion app's manifest,
  * service worker and offline page (no company data; browsers fetch the manifest without cookies). Each company's customer
  * portal and tracking links (B66) are for that company's own customers, who never see Taviron's preview: every portal
- * page and function checks the company's portal switches and the customer's account itself.
+ * page and function checks the company's portal switches and the customer's account itself. The Taviron team invitation
+ * page (/join-team, SA1) opens only with a valid single-use invitation link.
  */
-const EXEMPT = ["/api/health", "/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe"];
+const EXEMPT = ["/api/health", "/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe", "/join-team"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }

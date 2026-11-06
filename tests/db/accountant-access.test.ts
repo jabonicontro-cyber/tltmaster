@@ -5,7 +5,7 @@ import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
 import { businessToday } from "./fixtures";
-import { pgError, pool, withSession } from "./helpers";
+import { pgError, pool, TOP_LINE, withSession } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -16,6 +16,8 @@ describe("accountant access", () => {
       const owner = await s.createUser("owner");
       const office = await s.createUser("office");
       const accountant = await s.createUser("driver", { membership: false });
+      // Made by this company (Settings, Accountant access), as the app does before granting (20261120009000).
+      await s.query("insert into private.account_provisions (request_key, company_id, kind, username, user_id) values (gen_random_uuid(), $1, 'employee', $2, $3)", [TOP_LINE, `acct-${accountant.slice(0, 8)}`, accountant]);
       const grant = (endsOn: string, payroll = false) => s.query("select public.accountant_grant($1, 'Avery Ledger (test)', $2, $3)", [accountant, endsOn, payroll]);
 
       // Only an owner; a sensible end date; not someone already working in the company.

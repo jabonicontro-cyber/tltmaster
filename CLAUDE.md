@@ -34,8 +34,11 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   - Never trust a company id or role from the client.
   - Permissions are checked on the server (`src/server/auth.ts`) and again in the database.
   - A `SECURITY DEFINER` function must pin `search_path = ''` and be added to the reviewed list in `tests/db/tenancy.test.ts`.
-- **Platform owner** (`private.platform_admins`):
-  - Granted only by `scripts/platform-admin.mjs`. Never add a page or route that grants it.
+- **Taviron team** (`private.platform_admins`, levels Admin and Support; owner decision 2026-11-06, SA1):
+  - Granted only through the console invite (an Admin with a fresh password and authenticator code; the invitee joins
+    with mandatory two-step verification) or `scripts/platform-admin.mjs`. Never add any other page or route that grants it.
+  - Support staff enter a live company only with its owner's grant (Settings → Taviron support, 1/3/7 days), as a
+    support visit, never as a membership; owners see a banner and the history names them "(Taviron support)".
   - Demo role previews only narrow permissions; they never grant them.
 - **Migrations:**
   - Never edit an applied migration; add a new versioned file in `supabase/migrations/`.

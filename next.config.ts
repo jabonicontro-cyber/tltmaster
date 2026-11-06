@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import { SITE_PAGES } from "./src/lib/site/paths";
+import { contentSecurityPolicy } from "./src/lib/security-headers";
 
 const securityHeaders = [
   // Private operational data: never index.
@@ -12,6 +13,8 @@ const securityHeaders = [
   // HTTPS only (launch checklist 2026-11-05): browsers that have visited never use plain HTTP for a year. Subdomains
   // and the preload list are left out until every subdomain is confirmed on HTTPS.
   { key: "Strict-Transport-Security", value: "max-age=31536000" },
+  // What the browser may load and where it may send data (security review 2026-11-06, M4; src/lib/security-headers.ts).
+  { key: "Content-Security-Policy", value: contentSecurityPolicy(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.NODE_ENV === "development") },
 ];
 
 // The public website may be indexed only when SITE_INDEXING=on (read at build

@@ -59,7 +59,21 @@ export async function quotePipeline(today: string, weekEnd: string) {
   };
 }
 
+/**
+ * Names for history ("who did this"): the company's people, plus Taviron team members who visited the company, shown
+ * as "Name (Taviron support)" (SA1; nothing extra before 20261120008900 is installed). For pickers of people, use
+ * getPeopleNames, which has the company's people only.
+ */
 export async function getUserNames(): Promise<Record<string, string>> {
+  const supabase = await createClient();
+  const [people, staff] = await Promise.all([getPeopleNames(), supabase.rpc("support_actor_names")]);
+  const out: Record<string, string> = { ...people };
+  for (const s of (staff.error ? [] : staff.data ?? []) as Array<{ user_id: string; name: string }>) out[s.user_id] ??= s.name;
+  return out;
+}
+
+/** The company's own people (never Taviron support), for choosing a person. */
+export async function getPeopleNames(): Promise<Record<string, string>> {
   const supabase = await createClient();
   const { data } = await supabase.rpc("user_directory");
   const out: Record<string, string> = {};

@@ -12,19 +12,20 @@ import { SIDEBAR_COOKIE } from "@/components/layout/sidebar-cookie";
 import { requireAccess } from "@/server/auth";
 import { myCompanies } from "@/server/data/companies";
 import { getSettings } from "@/server/data/settings";
-import { PLATFORM_ROLE_TITLE, getDemoPersona, getMyProfile } from "@/server/data/profile";
+import { getDemoPersona, getMyProfile, staffRoleTitle } from "@/server/data/profile";
 import { personPhoto } from "@/lib/people/avatars";
 import { effectivePresence } from "@/lib/communications";
 import { can } from "@/lib/permissions";
-import { isPlatformAdmin } from "@/server/platform";
+import { platformStaffLevel } from "@/server/platform";
+import { SupportBanner } from "@/components/layout/support-banner";
 import { createClient } from "@/server/supabase/server";
 import { autoRefreshDemo } from "@/server/demo/auto-refresh";
 
 export default async function AppLayout({ children }: { children: ReactNode }) {
   const access = await requireAccess();
-  const [companies, platformAdmin, profile, persona, branding, accessibility] = await Promise.all([
+  const [companies, staffLevel, profile, persona, branding, accessibility] = await Promise.all([
     myCompanies(),
-    isPlatformAdmin(),
+    platformStaffLevel(),
     getMyProfile(),
     getDemoPersona(Boolean(access.isDemo), access.userId),
     // The company's own branding (row-level security); the default look when it cannot be read.
@@ -34,12 +35,14 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     ),
     getMyAccessibility(),
   ]);
+  // The Taviron team (either staff level) is always shown as itself.
+  const platformAdmin = staffLevel !== null;
   // Own employee avatar (fallback when there is no profile photo) and whether this login drives.
   const supabase = await createClient();
   // Demos refresh their sample data themselves, after the page is sent (once per deployment and per day; the database
   // decides and only for the demo's owner). Never in a real company.
   if (access.isDemo) after(() => autoRefreshDemo(supabase).catch(() => undefined));
-  const [ownEmployee, ownDriver, ownPresence, commSettings, welcomed] = await Promise.all([
+  const [ownEmployee, ownDriver, ownPresence, commSettings, welcomed, invitations] = await Promise.all([
     supabase.from("employees").select("avatar_key").eq("user_id", access.userId).maybeSingle(),
     supabase.from("drivers").select("id").eq("user_id", access.userId).eq("active", true).maybeSingle(),
     // Own presence for the dot on the profile picture (Communications; absent until it is installed).
@@ -47,6 +50,8 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
     supabase.from("comm_settings").select("away_after_minutes").eq("company_id", access.companyId).maybeSingle(),
     // Demo welcome already seen in this demo company (own row only, row-level security).
     access.isDemo ? supabase.from("user_preferences").select("key").eq("key", "demo_welcome").maybeSingle() : Promise.resolve({ data: null }),
+    // Companies inviting this sign-in (M1, 20261120009100; none before it is installed).
+    access.support ? Promise.resolve({ data: [] }) : supabase.rpc("my_membership_invitations").then((r) => ({ data: r.error ? [] : r.data ?? [] })),
   ]);
   const presence = can(access, "comms.message") && !ownPresence.error
     ? effectivePresence(ownPresence.data as { manual_status: string | null; last_active_at: string | null } | null,
@@ -71,5 +76,5 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   const shownPersona = platformAdmin ? null : persona;
   const picture = platformAdmin ? personPhoto(access.userId, profile?.photoUpdatedAt, "") : personPhoto(access.userId, profile?.photoUpdatedAt, persona?.avatarKey || ownAvatarKey);
   const me = shownPersona || profile ? { name: shownPersona?.name || profile?.displayName || profile?.fullName || access.fullName || "", photo: picture.src, fallbackPhoto: picture.fallbackSrc, presence } : null;
-  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} roleTitle={platformAdmin ? PLATFORM_ROLE_TITLE : undefined} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}><AccessibilitySync settings={accessibility} />{children}</AppShell>;
+  return <AppShell access={access} companies={companies} platformAdmin={platformAdmin} roleTitle={platformAdmin ? staffRoleTitle(staffLevel) : undefined} presentation={presentation} welcome={welcome} sidebarPinned={sidebarPinned} me={me} branding={branding} hideMyDay={!persona && hideMyDay}><AccessibilitySync settings={accessibility} /><SupportBanner access={access} invitations={(invitations.data as Array<{ company_name: string }>).map((i) => i.company_name)} />{children}</AppShell>;
 }

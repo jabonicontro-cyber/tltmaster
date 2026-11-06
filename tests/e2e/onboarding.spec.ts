@@ -100,10 +100,10 @@ test("a new customer signs up with an access code, verifies the email, creates a
   const invitedAt = Date.now();
   await invite(officeEmail, `Owen Office ${id}`, "office");
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: `Invitation sent to ${officeEmail}.` })).toBeVisible();
+  // Someone who already has a sign-in is invited and joins only when they accept (security review 2026-11-06, M1); the
+  // message is the same as for a new sign-in, so it reveals nothing about the person.
   await invite(USERS.dispatcher.email, "Dana Dispatch", "dispatcher");
-  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "already has an account and was added to your company" })).toBeVisible();
-  await invite(USERS.dispatcher.email, "Dana Dispatch", "dispatcher"); // repeated: nothing duplicated
-  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "is already a member of your company" })).toBeVisible();
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: `Invitation sent to ${USERS.dispatcher.email}. They join your company when they accept it.` })).toBeVisible();
 
   // The new office user accepts the invitation and sets a password.
   await page.context().clearCookies();
@@ -121,8 +121,8 @@ test("a new customer signs up with an access code, verifies the email, creates a
   const tlOrder = (await sql<{ id: string }>("select id from public.orders where company_id = $1 limit 1", [TOP_LINE]))[0].id;
   try {
     await signIn(page, "dispatcher");
-    await page.getByRole("banner").getByRole("button").last().click();
-    await page.getByRole("menuitem", { name: `Switch to ${company}` }).click();
+    await page.getByRole("status", { name: "Invitations waiting" }).getByRole("link", { name: "See invitations" }).click();
+    await page.getByRole("list", { name: "Invitations waiting" }).getByRole("listitem").filter({ hasText: company }).getByRole("button", { name: "Accept" }).click();
     await expect(page).toHaveURL(/\/command-center/);
     await expect(page.getByRole("banner")).toContainText(`Dispatcher · ${company}`);
     await page.goto(`/orders/${tlOrder}`);
@@ -134,6 +134,7 @@ test("a new customer signs up with an access code, verifies the email, creates a
     await expect(page.getByText("Not found", { exact: true })).toHaveCount(0);
   } finally {
     // Leave the shared e2e dispatcher as it was (the person record created when they were added goes first).
+    await sql("delete from public.membership_invitations where company_id = $1", [companyId]).catch(() => undefined);
     await sql("delete from public.employees where company_id = $1 and user_id = (select id from public.profiles where email = $2)", [companyId, USERS.dispatcher.email]);
     await sql("delete from public.company_memberships where company_id = $1 and user_id = (select id from public.profiles where email = $2)", [companyId, USERS.dispatcher.email]);
     await sql("update public.profiles set active_company_id = null where email = $1", [USERS.dispatcher.email]);

@@ -87,6 +87,10 @@ export interface Access {
   isDemo?: boolean;
   /** A role preview shown in the demo company (presentation only; see src/lib/platform/preview.ts). */
   preview?: string | null;
+  /** This session is a Taviron support visit (owner permissions until endsAt; 20261120008900). */
+  support?: { endsAt: string } | null;
+  /** An owner of this company, while Taviron support is inside (the banner). */
+  supportInside?: boolean;
 }
 
 export function can(access: Pick<Access, "permissions"> | null | undefined, permission: Permission): boolean {

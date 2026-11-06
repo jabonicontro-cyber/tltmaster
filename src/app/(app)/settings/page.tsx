@@ -1,7 +1,7 @@
 import { AccountantAccess, type AccountantRow } from "@/components/settings/accountant-access";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Building2, BookOpenCheck, Calculator, CalendarDays, CalendarPlus, Navigation, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
+import { Building2, BookOpenCheck, LifeBuoy, Calculator, CalendarDays, CalendarPlus, Navigation, Receipt, Database, Hash, Lock, Mail, MapPin, Route, ScrollText, Upload, Users, type LucideIcon } from "lucide-react";
 import {
   BrandingForm,
   CompanySettingsForm,
@@ -21,6 +21,7 @@ import { can, type Access } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
+import { SupportAccess, type SupportStatus } from "@/components/settings/support-access";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
@@ -81,7 +82,7 @@ const IMPORT_STATUS: Record<string, { label: string; tone: "amber" | "green" | "
 
 const TAB_ICONS: Record<string, LucideIcon> = {
   company: Building2, numbering: Hash, costs: Calculator, invoicing: Receipt, email: Mail, dispatch: Route, bases: MapPin, "time-off": CalendarDays,
-  permissions: Users, accountants: BookOpenCheck, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, gps: Navigation, audit: ScrollText,
+  permissions: Users, accountants: BookOpenCheck, support: LifeBuoy, security: Lock, sample: Database, import: Upload, "shift-offers": CalendarPlus, gps: Navigation, audit: ScrollText,
 };
 
 type Group = "Company" | "Operations" | "Access" | "System";
@@ -100,6 +101,7 @@ const TABS: Array<{ key: string; label: string; group: Group; visible: (a: Acces
   { key: "invoicing", label: "Invoicing", group: "Company", visible: (a) => can(a, "billing.view") },
   { key: "permissions", label: "Roles and permissions", group: "Access", visible: (a) => can(a, "users.manage") },
   { key: "accountants", label: "Accountant access", group: "Access", visible: (a) => a.role === "owner" },
+  { key: "support", label: "Taviron support", group: "Access", visible: (a) => a.role === "owner" },
   { key: "security", label: "Security", group: "Access", visible: (a) => can(a, "settings.manage") },
   { key: "sample", label: "Sample data", group: "System", visible: (a) => can(a, "settings.manage") },
   { key: "import", label: "Import", group: "System", visible: (a) => can(a, "settings.manage") },
@@ -234,6 +236,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <CardBody>
           {list.error ? <Notice title="Not available yet">Accountant access needs a database update that has not been installed yet.</Notice> : (
             <AccountantAccess rows={(list.data ?? []) as AccountantRow[]} today={today} timezone={timezone} defaultEnd={defaultEnd} demo={Boolean(access.isDemo)} companyName={access.companyName ?? "Your company"} />
+          )}
+        </CardBody>
+      </>
+    );
+  } else if (tab === "support") {
+    // Taviron support access (SA1): owners only; "not available yet" before 20261120008900 is installed.
+    const st = await supabase.rpc("support_access_status");
+    content = (
+      <>
+        <CardHeader title="Taviron support" description="Let the Taviron team into your account to help or fix something for you: for 1, 3 or 7 days, ended by you at any time. Every visit and change is recorded." />
+        <CardBody>
+          {st.error ? <Notice title="Not available yet">Taviron support access needs a database update that has not been installed yet.</Notice> : (
+            <SupportAccess status={st.data as SupportStatus} timezone={timezone} canChange={!access.support} companyName={access.companyName ?? "Your company"} />
           )}
         </CardBody>
       </>

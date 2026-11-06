@@ -382,10 +382,26 @@ You also need an account and a company (the gate never creates them):
 
 ### 3a. Your platform (Taviron team) access
 
-The platform area (`/admin`: leads, live demo, company onboarding, audit log) is only for
-people you grant the **platform role**. It is separate from being an owner of a company, and
-it can only be granted from your computer with the service-role key — never from the
-website:
+The platform area (`/admin`) is only for the **Taviron team**, which is separate from being an owner of a company.
+Since SA1 (owner 2026-11-06, migration `20261120008900`) the team has two levels:
+
+- **Admin**: the whole console (leads, companies, plans, prices, subscriptions, demos, the team).
+- **Support**: the **Company access** desk (`/staff`) only: go into customer companies to help.
+
+**Inviting someone (the normal way):** an Admin opens **Administration → Taviron team → Invite someone**, enters the
+person's name, email and level, then their own password and the current authenticator code. The invitee gets a
+single-use link (emailed when email is configured; always shown once to copy), valid 7 days. They choose a password,
+set up an authenticator app and join; two-step verification is mandatory for both levels. Levels are changed and
+people removed on the same page (raising someone to Admin needs your password and code again; the team always keeps
+one Admin; removing someone ends any company visit at once). Every step is in the platform audit log.
+
+**Going into a customer's company:** **Company access** lists the companies. One still being set up (onboarding fee due
+or onboarding, or a new company with no owner yet) is open for up to 8 hours per visit. A **live** company needs its
+owner's permission first: the owner turns it on in **Settings → Taviron support** for 1, 3 or 7 days and can end it at
+any time. Inside, you work with the owner's permissions; the company's owners see a banner, every visit is listed for
+them, and your changes show in history as "Name (Taviron support)". Leave from the banner.
+
+**Operator fallback** (server access with the service-role key; grants the Admin level):
 
 ```bash
 # You need a normal Taviron login first (create-owner.mjs above, or an invitation).
