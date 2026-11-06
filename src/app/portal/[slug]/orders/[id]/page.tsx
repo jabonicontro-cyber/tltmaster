@@ -4,6 +4,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, scheduleText, type PortalOrder } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
+import { ReleasePortalTruck } from "@/components/portal/portal-forms";
+import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Order" };
 
@@ -15,6 +17,9 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
   if (!c.features.orders || !UUID.test(id)) notFound();
   const o = await portalCall<PortalOrder>("portal_order", { p_slug: slug, p_order: id });
   const loads = o.loads.filter((l) => !l.canceled);
+  // Trucks working for the day on this order today (UX11); empty for other orders or before 20261120008600.
+  const trucksRes = await (await createClient()).rpc("portal_order_trucks", { p_slug: slug, p_order: id });
+  const trucks = (trucksRes.error ? [] : trucksRes.data ?? []) as Array<{ load_id: string; truck: string; start: string; end: string; released_at: string | null; started: boolean; trips: number }>;
   return (
     <div className="space-y-5">
       <p className="text-sm"><Link href={`/portal/${slug}/orders`} className="text-muted hover:text-ink hover:underline">← Orders</Link></p>
@@ -48,6 +53,24 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
           {o.instructions ? <p className="mt-3 whitespace-pre-line text-sm text-muted">{o.instructions}</p> : null}
         </CardBody>
       </Card>
+
+      {trucks.length > 0 && (
+        <Card>
+          <CardHeader title="Trucks Today" description="Trucks working for the day on this job. Release a truck when you no longer need it; its time stops then." />
+          <CardBody>
+            <ul className="divide-y divide-line text-sm">
+              {trucks.map((t) => (
+                <li key={t.load_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                  <span className="text-ink">Truck {t.truck} · from {formatTime(t.start)} · <span className="tabular">{t.trips} {t.trips === 1 ? "trip" : "trips"}</span></span>
+                  {t.released_at ? <Badge tone="green">Released {formatMoment(t.released_at, c.timezone, false)}</Badge>
+                    : t.started ? <ReleasePortalTruck slug={slug} order={id} load={t.load_id} truck={t.truck} />
+                    : <span className="text-muted">Starts at {formatTime(t.start)}</span>}
+                </li>
+              ))}
+            </ul>
+          </CardBody>
+        </Card>
+      )}
 
       <Card>
         <CardHeader title="Planned Deliveries" />

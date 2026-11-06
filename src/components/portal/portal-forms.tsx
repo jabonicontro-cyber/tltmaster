@@ -10,7 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { checkSupportFiles, SUPPORT_ACCEPT, SUPPORT_KINDS, SUPPORT_MAX_FILES } from "@/lib/support";
-import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
+import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, releasePortalTruck, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
 export function PortalLoginForm({ slug, next, company }: { slug: string; next?: string; company: string }) {
   const { pending, onSubmit, formError } = useFormAction(signInToPortal);
@@ -260,5 +260,23 @@ export function ArticleVote({ slug, article }: { slug: string; article: string }
       {vote("yes", "Yes")}
       {vote("no", "No")}
     </div>
+  );
+}
+
+/** Release one truck working for the day on this order (UX11); the site contact confirms first. */
+export function ReleasePortalTruck({ slug, order, load, truck }: { slug: string; order: string; load: string; truck: string }) {
+  const router = useRouter();
+  const [confirming, setConfirming] = useState(false);
+  const { pending, onSubmit } = useFormAction(releasePortalTruck, { onSuccess: () => { setConfirming(false); router.refresh(); } });
+  if (!confirming) return <Button type="button" size="sm" variant="secondary" onClick={() => setConfirming(true)}>Release truck {truck}</Button>;
+  return (
+    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2">
+      <input type="hidden" name="slug" value={slug} />
+      <input type="hidden" name="order" value={order} />
+      <input type="hidden" name="load" value={load} />
+      <span className="text-sm">Done with truck {truck} for today?</span>
+      <Button type="submit" size="sm" loading={pending}>Yes, release it</Button>
+      <Button type="button" size="sm" variant="ghost" onClick={() => setConfirming(false)} disabled={pending}>Not yet</Button>
+    </form>
   );
 }

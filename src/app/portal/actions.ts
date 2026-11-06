@@ -227,3 +227,16 @@ export async function cancelBooking(formData: FormData): Promise<ActionResult> {
   revalidatePath(`/portal/${slug}/book`);
   return ok(undefined, "Request withdrawn.");
 }
+
+/** The customer's site contact releases a truck working for the day on their order (UX11). */
+export async function releasePortalTruck(formData: FormData): Promise<ActionResult> {
+  const slug = slugOf(formData);
+  const load = String(formData.get("load") ?? "");
+  const order = String(formData.get("order") ?? "");
+  if (!/^[0-9a-f-]{36}$/.test(load)) return fail("Truck not found.");
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("portal_truck_release", { p_slug: slug, p_load: load });
+  if (error) return fail(portalError(error));
+  if (/^[0-9a-f-]{36}$/.test(order)) revalidatePath(`/portal/${slug}/orders/${order}`);
+  return ok(undefined, "Truck released. Thank you.");
+}

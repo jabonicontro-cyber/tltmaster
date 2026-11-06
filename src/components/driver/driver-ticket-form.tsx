@@ -20,6 +20,8 @@ interface Props {
   lines: Array<{ id: string; description: string; unit_code: string }>;
   units: Array<{ code: string; label: string }>;
   existing: Array<{ number: string }>;
+  /** Truck-day job (UX11): one ticket per trip, so earlier tickets are trips, not possible duplicates. */
+  perTrip?: boolean;
   /** Offline driver app (B133): who is signed in and what the ticket is for, so it can wait on the phone without signal. */
   queue?: { userId: string; label: string };
   /** After the ticket is saved on the phone (the offline page returns to its list). */
@@ -30,7 +32,7 @@ type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message:
 
 const field = "min-h-12 w-full rounded-2xl border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
 
-export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing, queue, onQueued }: Props) {
+export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing, perTrip = false, queue, onQueued }: Props) {
   const router = useRouter();
   // One key for this form: retries and double taps can never create a second ticket.
   const [submissionKey] = useState(() => crypto.randomUUID());
@@ -108,7 +110,12 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   const sending = state.kind === "sending";
   return (
     <form onSubmit={(ev) => { ev.preventDefault(); if (!sending) void send(); }} className="space-y-5" noValidate>
-      {existing.length > 0 && (
+      {existing.length > 0 && perTrip && (
+        <p className="rounded-xl bg-surface px-4 py-3 text-sm text-ink">
+          Trip {existing.length + 1} today. Earlier trips: {existing.map((t) => t.number).join(", ")}.
+        </p>
+      )}
+      {existing.length > 0 && !perTrip && (
         <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-200">
           This load already has ticket {existing.map((t) => t.number).join(", ")}. Only add one if this is a separate delivery.
         </p>

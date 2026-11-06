@@ -28,6 +28,9 @@ export interface OrderLoadRow {
   cancel_reason: string;
   canceled_at: string | null;
   created_at: string;
+  /** Truck-day slots (UX11, 20261120008600): when and by whom the truck was released. */
+  released_at?: string | null;
+  release_source?: "dispatch" | "driver" | "site" | null;
 }
 
 export interface AssignmentRow {
@@ -137,6 +140,10 @@ export async function getDispatchDay(date: string, base: string | null = null) {
   }
   for (const [id, list] of byOrder) routes[id] = routeLine(list);
 
+  // Truck-day orders (UX11): read on their own so the board works on a database without 20261120008600.
+  const jobTypes = orderRows.length ? await supabase.from("orders").select("id, job_type").in("id", orderRows.map((o) => o.id)).eq("job_type", "truck_day") : { data: [], error: null };
+  const truckDayOrderIds = (jobTypes.error ? [] : (jobTypes.data ?? []) as Array<{ id: string }>).map((o) => o.id);
+
   const hired = await hiredIds();
   const activeRows = ((assignments.data ?? []) as AssignmentRow[]).filter((a) => a.status === "active");
   const usedTrucks = new Set(activeRows.map((a) => a.truck_id));
@@ -167,6 +174,8 @@ export async function getDispatchDay(date: string, base: string | null = null) {
     tickets,
     /** Route line per order id, for orders that list stops (MK2). */
     routes,
+    /** Orders that run as trucks for the day (UX11): their loads are truck slots. */
+    truckDayOrderIds,
   };
 }
 

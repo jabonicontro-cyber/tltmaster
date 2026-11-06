@@ -64,7 +64,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
 const NOT_YET = [
   "Security certifications or third-party audits: none are claimed.",
   "A published uptime commitment or support response times: these are agreed in the written service agreement.",
-  "Self-service data export: ask us and we will provide your records.",
+  "A full self-service export of all your company's data: several lists can be downloaded as CSV files today; for everything else, ask us and we will provide your records.",
   "The list of hosting providers, data locations and retention periods: it will be published in the privacy notice before general availability.",
 ];
 

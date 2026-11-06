@@ -59,10 +59,10 @@ Send the spreadsheets in this chat (Excel or CSV, any layout): customers (with j
 drivers (with CDL and medical card dates), employees and their roles, standing rates or price lists, and open orders.
 Claude maps them through the company import, shows a preview, and saves nothing until you approve it.
 
-### 6. Legal review before January (LR5) · To do (Claude drafts the packet)
+### 6. Legal review before January (LR5) · Packet ready for the lawyer (`docs/LEGAL_REVIEW_PACKET.md`, 2026-11-06)
 
 Top Line is the owner's own company and stays on its free beta arrangement, so December needs no new agreement. Claude
-prepares a review packet for the lawyer: every data practice and promise the product and site make (what is stored,
+prepared the review packet for the lawyer (`docs/LEGAL_REVIEW_PACKET.md`, 28 open questions at the end): every data practice and promise the product and site make (what is stored,
 who sees it, retention, sub-processors such as Supabase, Vercel, Resend and, once switched on, OpenAI, Twilio,
 QuickBooks and Sentry), with where each lives in the code. The lawyer's final terms and privacy replace the drafts
 before outside customers in January.
@@ -75,8 +75,8 @@ before outside customers in January.
 | Detention proposals from recorded waits, off until set per customer (DT1) | Built |
 | Freight loads, rest of MK2: accessorial charges on the invoice, rate confirmation file, proof of delivery per stop, brokers as customers | To do |
 | Import ready for Top Line's files (LR3) | Customers, job sites, trucks, trailers, drivers with CDL and medical dates: built. Rates and open orders: built to match the files once they arrive |
-| Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | To do |
-| Truck-day dispatching (UX11), by January | To do |
+| Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | Built (portal ticket photos for demos still open) |
+| Truck-day dispatching (UX11), by January | Built (slice 1): plan, assign, release, truck-hours for review; adding hours to the invoice is slice 2 |
 
 ## Restore drill (after step 1)
 

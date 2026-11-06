@@ -20,7 +20,8 @@ import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
 import { lineProgress } from "@/lib/tickets/context";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
-import { getOrderDetail, getOrderPickup, getOrderStops } from "@/server/data/orders";
+import { getOrderDetail, getOrderJobType, getOrderPickup, getOrderStops } from "@/server/data/orders";
+import { OrderJobType } from "@/components/orders/order-job-type";
 import { OrderStops } from "@/components/orders/order-stops";
 import { haulsAggregate, industryOf } from "@/lib/industry";
 import { stopsSummary } from "@/lib/orders/stops";
@@ -46,7 +47,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
   const { back, base_saved: baseSaved, base_error: baseError, pickup_saved: pickupSaved, pickup_error: pickupError } = await searchParams;
-  const [bases, orderBase, pickup, stops, companySettings] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id), getOrderStops(id), getSettings().catch(() => null)]);
+  const [bases, orderBase, pickup, stops, companySettings, jobType] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id), getOrderStops(id), getSettings().catch(() => null), getOrderJobType(id)]);
   // Stops (MK2): shown for companies that haul freight, and on any order that already lists stops.
   const showStops = stops.installed && (industryOf(companySettings?.industry) !== "aggregate" || stops.stops.length > 0);
   const detail = await getOrderDetail(id);
@@ -209,6 +210,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   { label: "Scheduled", value: scheduled || <span className="text-muted">Not scheduled yet</span> },
                   { label: "Time window", value: formatWindow(order.window_start, order.window_end) },
                   { label: "Scheduling notes", value: order.scheduling_notes, wide: true },
+                  ...(jobType.installed && (haulsAggregate(companySettings?.industry) || jobType.jobType === "truck_day")
+                    ? [{ label: "How it runs", value: <OrderJobType orderId={id} jobType={jobType.jobType} billing={jobType.billing} canEdit={can(access, "orders.edit") && !["completed", "canceled"].includes(order.status)} />, wide: true }]
+                    : []),
                   ...(bases.length > 1 ? [{ label: "Dispatch base", value: <OrderBase orderId={id} baseId={orderBase} bases={bases} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                 ]}
               />

@@ -30,6 +30,7 @@ import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type Drive
 import { listStopTimes, stopTimesForLoads } from "@/server/data/wait-times";
 import { median, minutesLabel, waitMinutes } from "@/lib/dispatch/wait-times";
 import { StopButtons, type StopState } from "@/components/driver/stop-buttons";
+import { ReleaseTruckButton, releasedText } from "@/components/dispatch/truck-day";
 import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
 import { Freshness } from "@/components/companion/freshness";
@@ -85,7 +86,9 @@ function RouteStops({ route }: { route: DriverStop[] }) {
   );
 }
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, words = vocabulary("aggregate") }: { a: DriverAssignment; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+type TruckDayState = { load_id: string; released_at: string | null; release_source: string | null; started: boolean };
+
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, truckDay, words = vocabulary("aggregate") }: { a: DriverAssignment; /** Truck-day job (UX11): the truck works until released; one ticket per trip. */ truckDay?: TruckDayState; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -101,7 +104,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
         <p className="text-2xl font-semibold tracking-[-0.03em] tabular">
           {formatTime(a.load.start_time)}<span className="text-base font-semibold text-muted"> – {formatTime(a.load.end_time)}</span>
         </p>
-        <p className="text-sm font-semibold text-muted">{a.load.date === today ? "Today" : formatDate(a.load.date)} · {a.order.number} · load {a.load.number}</p>
+        <p className="text-sm font-semibold text-muted">{a.load.date === today ? "Today" : formatDate(a.load.date)} · {a.order.number} · {truckDay ? "for the day" : `load ${a.load.number}`}</p>
       </div>
       <div className="space-y-2 px-4 py-3 text-[15px]">
         <p className="font-bold">{a.order.customer_name}{a.order.project_name ? <span className="font-normal text-muted"> · {a.order.project_name}</span> : null}</p>
@@ -113,6 +116,16 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
         )}
         <p className="flex gap-2"><Truck className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Truck <strong>{a.truck ?? "–"}</strong>{a.trailer ? <> · trailer <strong>{a.trailer}</strong></> : null}</span></p>
+        {truckDay && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl bg-surface px-3 py-2 text-sm">
+            <span><strong>Truck for the day:</strong> work until you are released. Enter a {words.one} for every trip. <span className="tabular">{a.tickets.length} {a.tickets.length === 1 ? "trip" : "trips"} so far.</span></span>
+            {truckDay.released_at ? (
+              <Badge tone="green">{releasedText(truckDay.released_at, truckDay.release_source, timeZone)}</Badge>
+            ) : truckDay.started && !past ? (
+              <ReleaseTruckButton loadId={a.load.id} label="I'm released" />
+            ) : null}
+          </div>
+        )}
         {a.load.planned_quantity !== null && <p>Planned: <strong className="tabular">{trimNumber(a.load.planned_quantity)} {(a.load.unit_code ?? "").replace(/_/g, " ")}</strong></p>}
         {a.order.customer_po && <p className="text-sm text-muted">Customer PO {a.order.customer_po}</p>}
         {(toPickup || toSite || call) && (
@@ -188,7 +201,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
       <div className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row">
         {a.can_submit_ticket ? (
           <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className={buttonClasses(hasTicket ? "secondary" : "primary", "md", big)}>
-            <FilePlus2 className="size-5" aria-hidden /> {hasTicket ? `Add another ${words.one}` : `Enter ${words.single.toLowerCase()}`}
+            <FilePlus2 className="size-5" aria-hidden /> {truckDay ? `Enter ${words.one} for a trip` : hasTicket ? `Add another ${words.one}` : `Enter ${words.single.toLowerCase()}`}
           </Link>
         ) : (
           <p className="text-sm text-muted">Ticket entry opens on the day of the load.</p>
@@ -236,7 +249,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const reminders = qualificationReminders(h.qualifications, h.today);
   // These three are independent: read them together. Each is empty before its update is installed.
   const sb = await createClient();
-  const [fuelTrucksRes, inspRes, payRes, pickupRes, routeRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups"), sb.rpc("driver_load_stops")]);
+  const [fuelTrucksRes, inspRes, payRes, pickupRes, routeRes, truckDayRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups"), sb.rpc("driver_load_stops"), sb.rpc("driver_truck_days")]);
+  // Truck-day jobs (UX11): the driver's own slots, keyed by load; empty before 20261120008600 is installed.
+  const truckDays = Object.fromEntries(((truckDayRes.error ? [] : truckDayRes.data ?? []) as TruckDayState[]).map((t) => [t.load_id, t]));
   // Where each load is picked up (UX7), keyed by load; empty before that update is installed.
   const pickups = (pickupRes.error ? {} : (pickupRes.data ?? {})) as Record<string, LoadPickup>;
   // Stops (MK2): absent before 20261120007800 is applied, so the card keeps the pickup and job site.
@@ -328,7 +343,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
@@ -406,7 +421,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label={`${capitalize(words.many)} still needed`}>
           <h2 className="mb-2 text-lg font-bold text-brand-fg">{capitalize(words.many)} still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
         </section>
       )}
 
@@ -434,7 +449,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
         </section>
       )}
 

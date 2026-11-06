@@ -121,6 +121,17 @@ export async function getOrderDetail(id: string) {
 }
 
 /** The order's pickup and the company's active locations to choose from. Empty and `installed: false` before migration 20261120006600. */
+/** How the order runs (UX11, 20261120008600); installed=false on a database without it. */
+export async function getOrderJobType(id: string): Promise<{ installed: boolean; jobType: "loads" | "truck_day"; billing: "tickets" | "hours" }> {
+  const none = { installed: false, jobType: "loads" as const, billing: "tickets" as const };
+  if (!uuid.safeParse(id).success) return none;
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("orders").select("job_type, truck_billing").eq("id", id).maybeSingle();
+  if (error || !data) return none;
+  const r = data as { job_type: "loads" | "truck_day"; truck_billing: "tickets" | "hours" };
+  return { installed: true, jobType: r.job_type, billing: r.truck_billing };
+}
+
 export async function getOrderPickup(id: string): Promise<{ installed: boolean; pickupId: string | null; locations: Array<{ id: string; name: string; kind: "yard" | "terminal" | "quarry" | "plant" | "pickup" | "other"; address: string }> }> {
   if (!uuid.safeParse(id).success) return { installed: false, pickupId: null, locations: [] };
   const supabase = await createClient();

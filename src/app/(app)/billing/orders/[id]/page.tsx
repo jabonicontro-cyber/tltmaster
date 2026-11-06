@@ -27,6 +27,7 @@ import { getSay } from "@/server/industry";
 import { DetentionCard, type DetentionRow } from "@/components/billing/detention-card";
 import { createClient } from "@/server/supabase/server";
 import { ExtraChargeForm } from "@/components/billing/extra-charge-form";
+import { TruckHoursCard, type TruckHours } from "@/components/billing/truck-hours-card";
 
 export const metadata = { title: "Order billing" };
 
@@ -57,6 +58,9 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   // Detention proposals (DT1, 20261120008200): none before the migration or when the customer has no detention set.
   const detention = await (await createClient()).rpc("detention_proposals", { p_order: id });
   const detentionRows = (detention.error ? [] : detention.data ?? []) as DetentionRow[];
+  // Truck-day orders (UX11): truck-hours from the company's setting; absent before 20261120008600.
+  const truckHoursRes = await (await createClient()).rpc("truck_day_hours", { p_order: id });
+  const truckHours = truckHoursRes.error ? null : (truckHoursRes.data as TruckHours);
   // Extra charges (MK2): the company's active charges billed per occurrence; none before 20261120008200.
   const extras = canManage && o.readiness !== "handed_off" && !["draft", "canceled"].includes(String(o.status ?? ""))
     ? await (await createClient()).from("charge_items").select("id, name, default_unit_code").eq("active", true).eq("ticket_required", false).eq("calc_method", "per_unit").order("name")
@@ -141,6 +145,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         </Card>
 
         {extraOptions.length > 0 && <ExtraChargeForm orderId={id} options={extraOptions} />}
+        {truckHours?.job_type === "truck_day" && <TruckHoursCard data={truckHours} timeZone={timezone} />}
         {detentionRows.length > 0 && <DetentionCard orderId={id} rows={detentionRows} canManage={canManage} locked={o.readiness === "handed_off"} />}
 
         <Card>

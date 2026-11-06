@@ -20,6 +20,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { bookingsFor, combinationCheck, driverState, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type Interval, type ResourceState } from "@/lib/dispatch/board";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { OrderRoutePanel } from "./order-route-panel";
+import { ReleaseTruckButton, TruckDayDialog, releasedText } from "./truck-day";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS, trimNumber } from "@/lib/fleet/labels";
 import { formatTime } from "@/lib/orders/schedule";
@@ -61,6 +62,9 @@ export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", sugge
     if (focusLoadId) document.getElementById(`load-${focusLoadId}`)?.scrollIntoView({ block: "center" });
   }, [focusLoadId]);
   const [loadDialog, setLoadDialog] = useState<{ order: OrderListRow; load: OrderLoadRow | null } | null>(null);
+  // Truck-day orders (UX11): "Add trucks" plans N trucks for the day instead of one load.
+  const [truckDialog, setTruckDialog] = useState<OrderListRow | null>(null);
+  const truckDay = useMemo(() => new Set(day.truckDayOrderIds ?? []), [day.truckDayOrderIds]);
   const [suggest, setSuggest] = useState<{ load: OrderLoadRow; s: CrewSuggestion } | null>(null);
   const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null; initial?: { truckId?: string; trailerId?: string; driverId?: string } } | null>(null);
   // Faster dispatching (B85): selected open loads, the batch dialogs and the shortcuts list.
@@ -238,7 +242,9 @@ export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", sugge
                 focusLoadId={focusLoadId}
                 lk={lk}
                 canEdit={canEdit}
-                onAddLoad={() => setLoadDialog({ order: o, load: null })}
+                truckDay={truckDay.has(o.id)}
+                timeZone={day.timezone}
+                onAddLoad={() => (truckDay.has(o.id) ? setTruckDialog(o) : setLoadDialog({ order: o, load: null }))}
                 onEditLoad={(load) => setLoadDialog({ order: o, load })}
                 onAssign={(load) => setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null })}
                 suggestions={suggestions}
@@ -266,6 +272,18 @@ export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", sugge
         )}
       </div>
 
+      {truckDialog && (
+        <TruckDayDialog
+          order={truckDialog}
+          date={day.date}
+          onClose={() => setTruckDialog(null)}
+          onSaved={(m) => {
+            setTruckDialog(null);
+            toast.success(m);
+            refresh();
+          }}
+        />
+      )}
       {loadDialog && (
         <LoadDialog
           order={loadDialog.order}
@@ -415,7 +433,12 @@ function OrderCard({
   onSuggest,
   onUnassign,
   onCancelLoad,
+  truckDay = false,
+  timeZone,
 }: {
+  /** The order runs as trucks for the day (UX11): each load is one truck, released when its day ends. */
+  truckDay?: boolean;
+  timeZone?: string;
   enterLabel: string;
   order: OrderListRow;
   urgent: boolean;
@@ -464,6 +487,7 @@ function OrderCard({
           <div className="flex flex-wrap items-center gap-2">
             <Link href={`/orders/${o.id}`} className="text-lg font-black tabular hover:text-brand-fg hover:underline">{o.order_number}</Link>
             <OrderStatusBadge status={o.status} />
+            {truckDay && <Badge tone="blue">Trucks for the day</Badge>}
             {urgent && <UrgentPill />}
             {creditHold && <span title={creditHold}><Badge tone="red">Credit hold</Badge></span>}
             <SampleBadge show={o.is_sample} />
@@ -490,7 +514,7 @@ function OrderCard({
           </Button>
           {canEdit && dispatchable && (
             <Button size="sm" variant="secondary" icon={<Plus className="size-4" />} onClick={onAddLoad}>
-              Add load
+              {truckDay ? "Add trucks" : "Add load"}
             </Button>
           )}
         </div>
@@ -507,7 +531,7 @@ function OrderCard({
       )}
 
       {loads.length === 0 ? (
-        <p className="px-5 py-4 text-sm text-muted sm:px-6">No loads planned for this day{canEdit && dispatchable ? ". Add one to assign a truck." : "."}</p>
+        <p className="px-5 py-4 text-sm text-muted sm:px-6">{truckDay ? `No trucks planned for this day${canEdit && dispatchable ? ". Add trucks to assign them." : "."}` : `No loads planned for this day${canEdit && dispatchable ? ". Add one to assign a truck." : "."}`}</p>
       ) : (
         <ol className="divide-y divide-line">
           {loads.map((l) => {
@@ -563,11 +587,13 @@ function OrderCard({
                   )}
                   <div>
                   {/* One line per load (UX8): number, time and planned quantity together keep long days scannable. */}
-                  <p className="leading-snug"><span className="font-bold">Load {l.load_number}</span>{" "}
+                  <p className="leading-snug"><span className="font-bold">{truckDay ? `Truck ${l.load_number}` : `Load ${l.load_number}`}</span>{" "}
                     <span className="text-sm tabular">{timeRange(l)}</span>
                     {l.planned_quantity !== null && <span className="text-sm text-muted"> · {trimNumber(l.planned_quantity)} {(l.unit_code ?? "").replace(/_/g, " ")}</span>}
+                    {truckDay && <span className="text-sm text-muted"> · for the day</span>}
                   </p>
                   {canceled && <Badge tone="gray">Canceled: {l.cancel_reason}</Badge>}
+                  {truckDay && l.released_at && <Badge tone="green">{releasedText(l.released_at, l.release_source, timeZone)}</Badge>}
                   </div>
                 </div>
                 <div className="sm:col-span-6">
@@ -611,6 +637,9 @@ function OrderCard({
                       <Button size="sm" variant={current || suggestions[l.id] ? "secondary" : "primary"} icon={current || !suggestions[l.id] ? <Truck className="size-4" /> : undefined} onClick={() => onAssign(l)} title={!current && suggestions[l.id] ? "Pick a different truck, trailer or driver" : undefined}>
                         {current ? "Reassign" : "Assign"}
                       </Button>
+                    )}
+                    {truckDay && current && !l.released_at && l.load_date <= today && (
+                      <ReleaseTruckButton loadId={l.id} orderId={o.id} label="Release" />
                     )}
                     {current && (
                       <Button size="sm" variant="ghost" aria-label={`Remove assignment from load ${l.load_number}`} onClick={() => onUnassign(current, l)}>

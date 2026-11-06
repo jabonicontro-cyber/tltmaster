@@ -51,7 +51,8 @@ import { WaitTimeForm } from "@/components/settings/wait-time-form";
 import { env } from "@/server/env";
 import { TelematicsSettingsForm } from "@/components/fleet/telematics";
 import { saveBillingTolerance, saveCreditHoldSettings, saveInvoicingSettings } from "../billing/invoices/actions";
-import { Field, Input, Textarea } from "@/components/ui/form";
+import { saveTruckHoursSettings } from "../dispatch/truck-day-actions";
+import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
 import { getSay } from "@/server/industry";
@@ -338,6 +339,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     // Credit holds (B128): null until that update is installed.
     const credit = await supabase.from("credit_hold_settings").select("overdue_days").maybeSingle();
     const tolerance = await supabase.from("billing_tolerance_settings").select("percent").maybeSingle();
+    // Truck-hours (UX11): an error means 20261120008600 is not installed; no row means off.
+    const truckHours = await supabase.from("truck_hours_settings").select("basis, minimum_hours, shortfall").maybeSingle();
+    const th = (truckHours.data ?? null) as { basis: string | null; minimum_hours: number | string | null; shortfall: string } | null;
     const edit = can(access, "billing.manage");
     content = (
       <>
@@ -379,6 +383,27 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <h3 className="text-base font-semibold text-ink">Billing tolerance</h3>
               <p className="text-sm text-muted">{say("Scale weights rarely match the plan exactly. A difference between the tickets and the planned or ordered quantity within this percentage is not a billing exception; a larger one still is, and different units, missing tickets and zero rates always are. Empty: tickets must match exactly.")}</p>
               <Field label="Allowed difference (%)" htmlFor="tolerance_percent" hint="Above 0 and up to 10, for example 1 or 2.5. Your company chooses the number."><Input id="tolerance_percent" name="tolerance_percent" inputMode="decimal" defaultValue={(tolerance.data as { percent: number | string | null } | null)?.percent?.toString() ?? ""} disabled={!edit} className="max-w-28" /></Field>
+              {edit && <SubmitButton>Save</SubmitButton>}
+            </form>
+          )}
+          {!truckHours.error && (
+            <form action={saveTruckHoursSettings} className="mt-8 max-w-xl space-y-3 border-t border-line pt-6" aria-label="Truck-hours">
+              <h3 className="text-base font-semibold text-ink">Trucks for the day: which hours count</h3>
+              <p className="text-sm text-muted">For orders billed by truck-hours. Off until you choose: Taviron never picks the rule. Hours end when the truck is released (by dispatch, its driver or the customer&apos;s site contact).</p>
+              <Field label="Hours count from" htmlFor="th_basis">
+                <Select id="th_basis" name="basis" defaultValue={th?.basis ?? ""} disabled={!edit} className="max-w-sm">
+                  <option value="">Off (no truck-hours)</option>
+                  <option value="scheduled">The scheduled start</option>
+                  <option value="arrived">The driver&apos;s recorded arrival</option>
+                </Select>
+              </Field>
+              <Field label="Minimum hours per truck" htmlFor="th_minimum" hint="Optional. Above 0 and up to 24, for example 4."><Input id="th_minimum" name="minimum" inputMode="decimal" defaultValue={th?.minimum_hours != null ? String(Number(th.minimum_hours)) : ""} disabled={!edit} className="max-w-28" /></Field>
+              <Field label="A truck released before the minimum" htmlFor="th_shortfall">
+                <Select id="th_shortfall" name="shortfall" defaultValue={th?.shortfall ?? "review"} disabled={!edit} className="max-w-sm">
+                  <option value="review">Flag it for review (bill the hours worked)</option>
+                  <option value="bill_minimum">Bill the minimum</option>
+                </Select>
+              </Field>
               {edit && <SubmitButton>Save</SubmitButton>}
             </form>
           )}

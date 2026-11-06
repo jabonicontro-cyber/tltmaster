@@ -598,6 +598,26 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Trucks for the day (20261120008600, UX11)
+
+- `orders.job_type` (`loads` default | `truck_day`) and `orders.truck_billing` (`tickets` | `hours`). Changing the job
+  type is refused once the order has live tickets (`set_order_job_type`, orders.edit, audited).
+- A truck for the day is an `order_loads` row without a planned quantity (a slot), planned in one step by
+  `truck_day_plan(order, date, trucks, start, end, note)` (dispatch.edit; through `save_order_load`) and assigned with
+  `assign_load` as any load. Tickets are trips: `private.prepare_ticket` skips the "already has a ticket" confirmation
+  on truck-day slots.
+- `order_loads.released_at / released_by / release_source (dispatch | driver | site) / release_note`. Release ends the
+  active assignment at that moment (frees the truck and driver for a later job; overlap rules unchanged). Callers:
+  `truck_day_release` (dispatch.edit, or the slot's own driver) and `portal_truck_release` (the customer's own order);
+  the shared core is `private.truck_day_release_core`. Not before the planned start; once only.
+- `truck_hours_settings` (company; `basis` null = off, `scheduled` | `arrived`; `minimum_hours`; `shortfall`
+  `bill_minimum` | `review`), saved by `save_truck_hours_settings` (billing.manage).
+- Read functions: `truck_day_hours(order)` (billing.view; per truck: start by the basis, release, trips, hours,
+  billable, short, missing reason; rate from the order's hourly line, else the customer's then standard price list
+  hourly hauling rate; nothing estimated), `driver_truck_days()` (the caller's own slots), `portal_order_trucks(slug,
+  order)` (today's trucks of the customer's own order; truck unit only, never the driver).
+- Rollback restores `private.prepare_ticket` (20261022000100) and removes the functions, table and columns.
+
 ## Portal: delivered and left per ordered line (20261120008500, UX5)
 
 `public.portal_order` returns, for each ordered line, `tracked` (billed from delivery tickets: per-unit, not a

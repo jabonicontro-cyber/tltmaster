@@ -154,6 +154,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
   note("second delivery for one truck", await secondDelivery(db, today));
+  // Truck-day job (UX11): one of today's orders runs as trucks for the day, billed by truck-hours; two trucks from
+  // 06:30, the first released. Aggregate demos only; once per demo (any truck-day order counts).
+  note("truck-day job", await truckDaySample(db, today));
   // Pickups (UX7): open orders load at one of the demo's quarries or plants, so drivers see "Load at" with Navigate.
   // Orders numbered …5 are left without one (the "Not set" case). An existing pickup is never changed.
   note("order pickups", await orderPickups(db));
@@ -1337,6 +1340,79 @@ async function secondDelivery(db: Db, today: string): Promise<number> {
     }
   }
   return n;
+}
+
+async function truckDaySample(db: Db, today: string): Promise<number> {
+  if ((await demoIndustry(db)) === "freight") return 0;
+  const existing = await db.from("orders").select("id").eq("job_type", "truck_day").limit(1);
+  if (existing.error || (existing.data ?? []).length) return 0; // not installed, or already there
+  // Company rule for the demo only (fictional): hours from the scheduled start, minimum 4 h, short days flagged.
+  const th = await db.from("truck_hours_settings").select("basis").maybeSingle();
+  if (!th.error && !th.data) await db.rpc("save_truck_hours_settings", { p_basis: "scheduled", p_minimum: 4, p_shortfall: "review" });
+  // Today when trucks and drivers are free all day; otherwise tomorrow (demo days are busy).
+  const tomorrow = addDays(today, 1);
+  // Dump trucks first; a tractor needs a free trailer of the same day.
+  const trucks = (((await db.from("trucks").select("id, truck_type").eq("active", true).eq("service_status", "in_service").is("hauler_id", null).order("unit_number")).data ?? []) as Array<{ id: string; truck_type: string }>)
+    .sort((a, b) => Number(a.truck_type === "tractor") - Number(b.truck_type === "tractor"));
+  const trailerRows = ((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  // Hired trucks and drivers are assigned only through an accepted offer, never here.
+  const drivers = ((await db.from("drivers").select("id").eq("active", true).is("hauler_id", null).order("name")).data ?? []) as Array<{ id: string }>;
+  const freeOn = async (day: string) => {
+    const busy = ((await db.from("dispatch_assignments").select("truck_id, trailer_id, driver_id, order_loads!inner(load_date)").eq("status", "active").eq("order_loads.load_date", day)).data ?? []) as Array<{ truck_id: string; trailer_id: string | null; driver_id: string }>;
+    return { t: trucks.filter((t) => !busy.some((b) => b.truck_id === t.id)), d: drivers.filter((d) => !busy.some((b) => b.driver_id === d.id)), tr: trailerRows.filter((x) => !busy.some((b) => b.trailer_id === x.id)) };
+  };
+  // Usable trucks: dump trucks, and tractors only as far as free trailers go.
+  const usable = (f: Awaited<ReturnType<typeof freeOn>>) =>
+    Math.min(f.d.length, f.t.filter((t) => t.truck_type !== "tractor").length + Math.min(f.t.filter((t) => t.truck_type === "tractor").length, f.tr.length));
+  let day = today;
+  let free = await freeOn(today);
+  if (!usable(free)) { day = tomorrow; free = await freeOn(tomorrow); }
+  if (!usable(free)) return 0; // no truck free today or tomorrow: nothing is created; a later Refresh tries again
+  // Its own order, through the real path (draft, confirmed, scheduled today), copying a per-unit line and its rate from
+  // the demo's own orders; marked by its project name.
+  type Line = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
+  type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; order_lines: Line[] };
+  const candidates = ((await db.from("orders")
+    .select("customer_id, site_label, site_line1, site_city, order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
+    .not("site_line1", "is", null).order("order_number", { ascending: false }).limit(20)).data ?? []) as unknown as Tmpl[];
+  const tmpl = candidates.find((o) => o.order_lines.some((l) => l.calc_method === "per_unit" && l.unit_code && l.kind !== "discount"));
+  if (!tmpl) return 0;
+  const src = tmpl.order_lines.find((l) => l.calc_method === "per_unit" && l.unit_code && l.kind !== "discount")!;
+  const draft = await db.rpc("save_order_draft", { p_payload: {
+    customer_id: tmpl.customer_id, order_date: today, project_name: `${tmpl.site_label ?? "Site"}: trucks for the day`,
+    job_instructions: "Demo: two trucks from 6:30. Work until the site releases you; a ticket for every trip.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+    lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "200", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
+  } });
+  if (draft.error) return 0;
+  const orderId = (draft.data as { order_id: string }).order_id;
+  for (const step of [
+    () => db.rpc("set_order_status", { p_order_id: orderId, p_status: "confirmed", p_note: "Demo: trucks for the day." }),
+    () => db.rpc("update_order_schedule", { p_order_id: orderId, p_expected_edit_seq: null, p_payload: { scheduled_start: today, scheduled_end: day === today ? null : day } }),
+    () => db.rpc("set_order_status", { p_order_id: orderId, p_status: "scheduled", p_note: "" }),
+  ]) { const r = await step(); if (r.error) return 1; }
+  const set = await db.rpc("set_order_job_type", { p_order: orderId, p_job_type: "truck_day", p_billing: "hours" });
+  if (set.error) return 0;
+  const count = Math.min(2, usable(free));
+  const plan = await db.rpc("truck_day_plan", { p_order: orderId, p_date: day, p_trucks: count, p_start: "06:30", p_end: "16:30", p_note: "Demo: trucks for the day. Enter a ticket for every trip." });
+  if (plan.error) return 1;
+  const slots = (plan.data as { load_ids: string[] }).load_ids;
+  let assigned = 0;
+  for (const slot of slots) {
+    let done = false;
+    for (const t of [...free.t].slice(0, 10)) {
+      const trailer = t.truck_type === "tractor" ? free.tr[0]?.id ?? null : null;
+      if (t.truck_type === "tractor" && !trailer) continue;
+      for (const d of [...free.d].slice(0, 6)) {
+        const r = await demoAssign(db, { p_load_id: slot, p_truck_id: t.id, p_trailer_id: trailer, p_driver_id: d.id, p_note: "Demo: truck for the day." });
+        if (!r.error) { free.t.splice(free.t.indexOf(t), 1); free.d.splice(free.d.indexOf(d), 1); if (trailer) free.tr.shift(); done = true; break; }
+      }
+      if (done) break;
+    }
+    if (done) assigned++;
+  }
+  // Today's first truck was released early (the database refuses before the day has started).
+  if (assigned && day === today) await db.rpc("truck_day_release", { p_load: slots[0], p_note: "Demo: site finished early." });
+  return 1;
 }
 
 /**

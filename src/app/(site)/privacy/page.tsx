@@ -40,6 +40,8 @@ export default function PrivacyPage() {
         <li><strong>Resend</strong> delivers the emails Taviron sends, such as sign-in links and replies to forms.</li>
         <li><strong>HERE</strong> calculates truck routes and finds addresses when a company uses route planning. It receives map coordinates or the address being looked up, never names.</li>
         <li><strong>OpenAI</strong> answers questions in the optional AI features, as described above.</li>
+        <li><strong>The U.S. National Weather Service</strong> (weather.gov) returns forecasts for job sites. It receives a site&apos;s map coordinates, never names.</li>
+        <li><strong>GitHub</strong> runs our database updates and keeps encrypted database backups for a short time.</li>
       </ul>
       <h2>Where it is stored</h2>
       <p>Data is held with the providers above on their infrastructure. The locations and retention periods will be listed here before general availability.</p>

@@ -8,6 +8,7 @@ import { vocabulary } from "@/lib/industry";
 import { getSettings } from "@/server/data/settings";
 import { requirePagePermission } from "@/server/auth";
 import { loadAssignmentForm } from "@/server/data/driver";
+import { createClient } from "@/server/supabase/server";
 
 export async function generateMetadata() {
   return { title: vocabulary((await getSettings().catch(() => null))?.industry).single };
@@ -32,6 +33,9 @@ export default async function DriverTicketPage({ params }: { params: Promise<{ i
   }
   const f = form.data;
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
+  // Truck-day job (UX11): tickets are trips. Empty before 20261120008600 is installed.
+  const td = await (await createClient()).rpc("driver_truck_days");
+  const perTrip = !td.error && ((td.data ?? []) as Array<{ load_id: string }>).some((t) => t.load_id === f.load.id);
   return (
     <div className="mx-auto max-w-xl px-0">
       <h1 className="text-2xl font-black">{words.single}</h1>
@@ -46,6 +50,7 @@ export default async function DriverTicketPage({ params }: { params: Promise<{ i
           lines={f.lines}
           units={f.units}
           existing={f.tickets}
+          perTrip={perTrip}
           queue={{ userId: access.userId, label: `Ticket for ${f.order.number} load ${f.load.number}` }}
         />
       )}
