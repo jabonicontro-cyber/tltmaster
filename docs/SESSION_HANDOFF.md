@@ -7,6 +7,28 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 000000000000000000000. 2026-11-05/06 — launch build: testing from Dec 1, live in January
+
+Owner decisions (master plan §11b): Top Line only; Monday 2026-12-01 side by side, Taviron only from 12-15; Vercel Pro +
+Supabase Pro from December (owner upgrades); Sentry + UptimeRobot free; draft terms for testing, lawyer before January;
+owner sends spreadsheets and Claude imports with a preview; detention off until set per customer; truck-day "nice to
+have by January". Owner steps and dates: `docs/LAUNCH.md`.
+
+Released to Production (CI, migrations workflow and Production deploy verified each time): `735fab3`/`a5949ba`
+health check + Sentry (off until `SENTRY_DSN`) and detention (DT1, 008200); `4fb50cc` extra charges (MK2, 008300
+import of sites/trailers/credentials, 008400); `9ced69e` portal delivered/left per line (008500), quarry pickup leg
+in routes, timeline chips, catalog honesty (six features `available`, unpublished).
+
+Pushed to Preview, auto-promote running: `00d30d3` trucks for the day (UX11 slice 1, 008600), legal review packet
+`docs/LEGAL_REVIEW_PACKET.md`, privacy lists NWS and GitHub, trust export wording. Committed, not pushed: `4a9d6c7`
+(008700 driver names on the truck-hours card), to ride with the next bundle.
+
+Open: rates and open-orders import (waits on Top Line's spreadsheets); truck-hours added to the invoice (slice 2,
+needs the owner's go-ahead on how); demo portal ticket photos; MK2 rest (rate confirmation file, POD per stop,
+brokers); public claims the packet flagged for the owner (sign-in mail sender until SMTP is set, pricing FAQ promises
+renewal reminders / overage emails / automatic tier changes that are not built, support hours on pricing vs trust,
+real names in one prospect demo); restore drill after the Supabase upgrade.
+
 ## 00000000000000000000. 2026-11-05 (day) — launch walkthrough round 1, freight stops (MK2 slice 1)
 
 - **LR1 round 1:** an automated sweep (scratchpad `walk.mjs`) opened every page of the driver, mechanic, dispatcher,
