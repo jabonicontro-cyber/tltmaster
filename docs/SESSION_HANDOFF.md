@@ -12,6 +12,8 @@ project credentials. Read it together with:
 Released to Production earlier today (verified): `00d30d3` trucks for the day; `5c53c30` truck-hours **Add to order**
 (008700) and subscription notices SUB1 (008800).
 
+**Released `8c30772` to Production 2026-11-06 (owner approved the approval-tier step):** CI, the migrations workflow (008900, 009000, 009100 applied) and the Production deployment record all succeeded; not checked in a browser from the session (its network blocks vercel.app).
+
 SA1 (owner answers: invite from the console; Support and Admin levels; customer picks 1/3/7 days; banner + history):
 migration `20261120008900` (tested rollback). Console **Administration → Taviron team** (invite with your password and
 authenticator code), **/join-team**, **Company access** `/staff`, owner **Settings → Taviron support**, banners, history
