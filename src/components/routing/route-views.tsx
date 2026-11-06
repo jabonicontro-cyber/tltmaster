@@ -10,7 +10,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { addDays, formatDateLong } from "@/lib/dates";
 import { can } from "@/lib/permissions";
-import { buildRoutes, formatMinutes, routeTotals, YARD } from "@/lib/routing/route";
+import { buildRoutes, formatMinutes, PICKUP_PREFIX, routeTotals, YARD } from "@/lib/routing/route";
 import type { Access } from "@/lib/permissions";
 import { listLocations, listSavedRoutes, listSiteOptions, listTruckOptions } from "@/server/data/route-planner";
 import { getRouteDay } from "@/server/data/routes";
@@ -185,7 +185,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
                           {l.road?.notices.map((n) => <Badge key={n} tone="amber" className="ml-2">{n}</Badge>)}
                           {!l.road && l.roadMissing && status.state === "ready" && l.straightMiles !== null && <span className="ml-2">({l.roadMissing})</span>}
                         </div>
-                        <StopRow label={l.to} sub={l.to === YARD ? "End of the day" : stop ? `${stop.customer} · ${stop.start}–${stop.end}${stop.locationSource === "here" ? " · location estimated from the address" : ""}` : undefined} located={Boolean(l.toPoint)} href={stop ? `/orders/${stop.orderId}` : undefined} />
+                        <StopRow label={l.to} sub={l.to === YARD ? "End of the day" : l.to.startsWith(PICKUP_PREFIX) ? "Pickup" : stop ? `${stop.customer} · ${stop.start}–${stop.end}${stop.locationSource === "here" ? " · location estimated from the address" : ""}` : undefined} located={Boolean(l.toPoint)} href={stop ? `/orders/${stop.orderId}` : undefined} />
                       </li>
                     );
                   })}

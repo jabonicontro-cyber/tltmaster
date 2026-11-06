@@ -56,6 +56,6 @@ test("an order's route opens beside the board and from the timeline", async ({ p
   await page.getByRole("navigation", { name: "Dispatch views" }).getByRole("link", { name: "Timeline" }).click();
   await expect(page).toHaveURL(/view=timeline/);
   const row = page.getByRole("table", { name: "Trucks by hour" }).getByRole("row").filter({ hasText: `Truck ${unit}` });
-  await row.getByRole("button", { name: new RegExp(`^${orderNumber} load`) }).click();
+  await row.getByRole("button", { name: new RegExp(`^${orderNumber} load`, "i") }).click();
   await expect(page.getByRole("complementary", { name: "Order route" }).getByRole("heading", { name: `Order ${orderNumber}` })).toBeVisible();
 });

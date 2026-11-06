@@ -4,7 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session } from "./helpers";
-import { businessToday, scheduledOrder } from "./fixtures";
+import { assign, businessToday, fleet, planLoad, scheduledOrder } from "./fixtures";
 
 const inDays = (d: string, n: number) => new Date(Date.parse(d + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
 
@@ -123,6 +123,36 @@ describe("customer portal", () => {
       await s.query("update public.portal_settings set enabled = false where company_id = $1", [TOP_LINE]);
       await s.as(bob);
       expect((await pgError(s.query("select public.portal_context($1)", [slug]))).code).toBe("42501");
+    });
+  });
+
+  it("each ordered line shows delivered and remaining from live tickets in its unit (UX5, 20261120008500)", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const owner = await s.createUser("owner");
+      const today = await businessToday(s);
+      const order = await scheduledOrder(s, owner, today);
+      const load = await planLoad(s, order.id, today, "08:00", "10:00", { planned_quantity: "20", unit_code: "ton" });
+      const f = await fleet(s, owner, today);
+      await s.as(owner);
+      const a = await assign(s, load.load_id, f.t1, null, f.d1);
+      await s.asAdmin();
+      const ticket = (status: string, qty: number, unit = "ton") => s.query(
+        `insert into public.delivery_tickets (company_id, ticket_number, status, order_id, load_id, assignment_id, order_line_id, truck_id, driver_id, delivered_at, quantity, unit_code, snapshot)
+         values ($1, 'T-' || substr(md5(random()::text), 1, 8), $2::public.ticket_status, $3, $4, $5, $6, $7, $8, now(), $9, $10, '{}'::jsonb)`,
+        [TOP_LINE, status, order.id, load.load_id, a, order.materialLine, f.t1, f.d1, qty, unit]);
+      await ticket("accepted", 12);
+      await ticket("submitted", 10);
+      await ticket("accepted", 3, "load"); // another unit is not added to tons
+      await openPortal(s, TOP_LINE);
+      const slug = await slugOf(s, TOP_LINE);
+      const alice = await enroll(s, owner, ids.customerId, `line-${randomUUID().slice(0, 6)}@cust.example`);
+      await s.as(alice);
+      const detail = (await s.query<{ r: { lines: Array<{ description: string; tracked: boolean; delivered: number | null; confirmed: number | null; remaining: number | null }> } }>(
+        "select public.portal_order($1, $2) r", [slug, order.id])).rows[0].r;
+      const [material, hauling] = detail.lines;
+      expect(material).toMatchObject({ tracked: true, delivered: 22, confirmed: 12, remaining: 18 });
+      expect(hauling).toMatchObject({ tracked: true, delivered: null, remaining: 40 });
     });
   });
 

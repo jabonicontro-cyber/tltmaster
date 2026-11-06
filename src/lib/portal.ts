@@ -49,7 +49,8 @@ export type PortalOrderSummary = {
 export type PortalOrder = PortalOrderSummary & {
   instructions: string;
   total_cents: number;
-  lines: Array<{ description: string; quantity: number | null; unit: string }>;
+  /** delivered = live tickets in the line's unit (confirmed or being checked); tracked = billed from delivery tickets. */
+  lines: Array<{ description: string; quantity: number | null; unit: string; tracked?: boolean; delivered?: number | null; confirmed?: number | null; remaining?: number | null }>;
   loads: Array<{ number: number; date: string; start: string | null; end: string | null; quantity: number | null; unit: string; canceled: boolean }>;
   tickets: Array<{ id: string; number: string; delivered_at: string; quantity: number; unit: string; confirmed: boolean }>;
   history: Array<{ label: string; at: string }>;

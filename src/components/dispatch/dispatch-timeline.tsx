@@ -60,7 +60,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
   const pos = (l: OrderLoadRow) => {
     const s = minutes(l.start_time);
     const e = Math.max(minutes(l.end_time), s + 15);
-    return { left: `${((s - from) / span) * 100}%`, width: `${((e - s) / span) * 100}%` };
+    return { left: `min(${((s - from) / span) * 100}%, calc(100% - 5.25rem))`, width: `${((e - s) / span) * 100}%` };
   };
   const now = nowMinutes !== null && nowMinutes >= from && nowMinutes <= to ? `${((nowMinutes - from) / span) * 100}%` : null;
   const dayHref = (d: string) => `/dispatch?view=timeline&date=${d}${day.base ? `&base=${day.base}` : ""}`;
@@ -78,7 +78,9 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
         title={label}
         style={pos(l)}
         className={cn(
-          "absolute inset-y-1.5 flex min-w-0 flex-col justify-center overflow-hidden rounded-xl border px-2 text-left text-xs transition-[filter,transform] hover:brightness-95 active:scale-[0.98]",
+          // A short load still shows its whole order number (UX15): chips never shrink below it, and a hovered or
+          // focused chip comes to the front when two overlap.
+          "absolute inset-y-1.5 flex min-w-[5.25rem] flex-col justify-center overflow-hidden rounded-xl border px-2 text-left text-xs transition-[filter,transform] hover:z-10 hover:brightness-95 focus-visible:z-10 active:scale-[0.98]",
           tone === "open" ? "border-dashed border-amber-400 bg-amber-50 text-amber-950" : "border-line bg-surface text-ink",
           urgent && "border-critical shadow-[0_0_0_2px_rgb(220_38_38/0.25)]",
           routeOrder === l.order_id && "ring-2 ring-strong",

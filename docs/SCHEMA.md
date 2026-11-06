@@ -598,6 +598,14 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Portal: delivered and left per ordered line (20261120008500, UX5)
+
+`public.portal_order` returns, for each ordered line, `tracked` (billed from delivery tickets: per-unit, not a
+discount, and its charge item is not ticketless), `delivered` (live tickets for the line in the line's unit:
+submitted, being checked or confirmed), `confirmed` (accepted only) and `remaining` (ordered minus delivered, never
+below zero). Counted exactly like `billing_line_status`; tickets in another unit are not added. Nothing else changes;
+the rollback restores the 20261120000700 definition.
+
 ## Extra charges after the work (20261120008400, MK2)
 
 - `public.order_add_charge(order, charge_item, quantity, unit_rate_cents, note)` (billing.manage): only active per-unit

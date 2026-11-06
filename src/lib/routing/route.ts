@@ -1,5 +1,6 @@
 // Route planner (B10, first slice; owner 2026-10-14). Pure functions: a day's assigned loads become one route per truck
-// — yard, then each delivery site in load order, then back to the yard — split into legs. Each leg carries the
+// — yard, then (for each load in order) its pickup when the order has one and its delivery site, then back to the yard —
+// split into legs. Each leg carries the
 // straight-line distance (always available, labelled as an estimate) and, when the truck-routing provider answered,
 // the road distance, driving time and the provider's restriction notices. Nothing here calls a provider or changes a
 // load: stop order is the dispatch board's own (start time), and routes are read-only.
@@ -24,6 +25,8 @@ export interface RouteStop {
   point: Point | null;
   /** 'manual' (typed), 'here' (geocoded: an estimate of the address) or '' (none). */
   locationSource: string;
+  /** The order's pickup (quarry, plant; UX7): when set, the truck loads there before this delivery. */
+  pickup?: { name: string; point: Point | null } | null;
 }
 
 export interface RoadEstimate {
@@ -75,6 +78,8 @@ export function straightLineMiles(a: Point, b: Point): number {
 }
 
 export const YARD = "Yard";
+/** Label prefix of a pickup stop ("Load at North Quarry"). */
+export const PICKUP_PREFIX = "Load at ";
 
 /** One route per truck, stops in start-time order, with yard legs when the yard location is known. */
 export function buildRoutes(assignments: RouteAssignment[], yard: Point | null): TruckRoute[] {
@@ -86,7 +91,12 @@ export function buildRoutes(assignments: RouteAssignment[], yard: Point | null):
     const first = list[0];
     const ends: Array<{ label: string; point: Point | null }> = [
       ...(yard ? [{ label: YARD, point: yard }] : []),
-      ...stops.map((s) => ({ label: `${s.orderNumber} · ${s.site}`, point: s.point })),
+      // Each load with a pickup goes there first (load at the quarry, then deliver), so a day of round trips reads
+      // yard → quarry → site → quarry → site → yard (UX7).
+      ...stops.flatMap((s) => [
+        ...(s.pickup ? [{ label: `${PICKUP_PREFIX}${s.pickup.name}`, point: s.pickup.point }] : []),
+        { label: `${s.orderNumber} · ${s.site}`, point: s.point },
+      ]),
       ...(yard ? [{ label: YARD, point: yard }] : []),
     ];
     const legs: Leg[] = [];

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildRoutes, formatMinutes, parsePoint, routeTotals, straightLineMiles, YARD, type RouteAssignment } from "@/lib/routing/route";
+import { buildRoutes, formatMinutes, parsePoint, PICKUP_PREFIX, routeTotals, straightLineMiles, YARD, type RouteAssignment } from "@/lib/routing/route";
 import { HereProvider, parseHereCandidates, parseHereGeocode, parseHerePlan, parseHereRoute, RoutingError, type RoutingProvider } from "@/server/routing/here";
 import { decodeFlexPolyline } from "@/lib/routing/flexpolyline";
 import { addRoadEstimates, clearRoutingCacheForTests, MAX_CALLS, parseRoutingConfig, routingStatus, setRoutingProviderForTests } from "@/server/routing/service";
@@ -38,6 +38,19 @@ describe("route building", () => {
     expect(r.legs.map((l) => [l.from === YARD ? "Y" : l.from.slice(4, 5), l.to === YARD ? "Y" : l.to.slice(4, 5)])).toEqual([["Y", "1"], ["2", "3"], ["3", "Y"]]);
     expect(routeTotals(r).straightMiles).toBeGreaterThan(70);
     expect(routeTotals(r).roadMiles).toBeNull(); // never mixed with straight lines
+  });
+
+  it("a load whose order has a pickup goes yard → pickup → site, each round trip back through the pickup (UX7)", () => {
+    const QUARRY = { lat: 40.6, lng: -87.0 };
+    const withPickup = (n: number, start: string) => ({ ...stop(n, start), pickup: { name: "North Quarry", point: QUARRY } });
+    const [r] = buildRoutes([asg("201", withPickup(1, "07:00")), asg("201", withPickup(2, "09:00"))], RENSSELAER);
+    const name = (x: string) => (x === YARD ? "Y" : x.startsWith(PICKUP_PREFIX) ? "Q" : "S");
+    expect(r.legs.map((l) => `${name(l.from)}${name(l.to)}`)).toEqual(["YQ", "QS", "SQ", "QS", "SY"]);
+    expect(r.legs[0].to).toBe("Load at North Quarry");
+    expect(r.legs.every((l) => l.straightMiles !== null)).toBe(true);
+    // A pickup without a location leaves its legs without a distance (never guessed).
+    const [u] = buildRoutes([{ ...asg("201", stop(1, "07:00")), stop: { ...stop(1, "07:00"), pickup: { name: "Pit 4", point: null } } }], RENSSELAER);
+    expect(u.legs.map((l) => l.straightMiles === null)).toEqual([true, true, false]);
   });
 
   it("a missing location means no distance for its legs and no total", () => {

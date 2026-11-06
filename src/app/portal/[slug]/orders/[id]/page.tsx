@@ -38,7 +38,10 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
         <CardBody>
           <ul className="divide-y divide-line text-sm">
             {o.lines.map((l, i) => (
-              <li key={i} className="flex justify-between gap-3 py-2"><span className="text-ink">{l.description}</span><span className="tabular text-muted">{formatQuantity(l.quantity, l.unit)}</span></li>
+              <li key={i} className="py-2">
+                <div className="flex justify-between gap-3"><span className="text-ink">{l.description}</span><span className="tabular text-muted">{formatQuantity(l.quantity, l.unit)}</span></div>
+                {l.tracked && l.quantity !== null && o.status !== "canceled" ? <LineProgress line={l} /> : null}
+              </li>
             ))}
           </ul>
           {o.total_cents ? <p className="mt-3 text-right text-sm font-semibold text-ink">Order total {formatMoney(o.total_cents)}</p> : null}
@@ -113,6 +116,29 @@ function Info({ label, value }: { label: string; value: string }) {
     <div className="rounded-panel border border-line/70 bg-card shadow-card p-4">
       <p className="text-sm text-muted">{label}</p>
       <p className="mt-1 font-semibold text-ink">{value}</p>
+    </div>
+  );
+}
+
+/** Delivered and left for one ordered line, from its delivery tickets in the line's own unit. */
+function LineProgress({ line }: { line: PortalOrder["lines"][number] }) {
+  const delivered = Number(line.delivered ?? 0);
+  const confirmed = Number(line.confirmed ?? 0);
+  const ordered = Number(line.quantity ?? 0);
+  const checking = delivered - confirmed;
+  const pct = ordered > 0 ? Math.min(100, Math.round((delivered / ordered) * 100)) : 0;
+  const over = delivered > ordered;
+  return (
+    <div className="mt-1.5 space-y-1">
+      <div className="h-1.5 overflow-hidden rounded-full bg-surface" aria-hidden>
+        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-muted tabular">
+        {delivered > 0 ? `${formatQuantity(delivered, line.unit)} delivered` : "Nothing delivered yet"}
+        {checking > 0 ? ` (${formatQuantity(checking, line.unit)} being checked)` : ""}
+        {" · "}
+        {over ? `${formatQuantity(delivered - ordered, line.unit)} over the order` : `${formatQuantity(line.remaining ?? ordered - delivered, line.unit)} left`}
+      </p>
     </div>
   );
 }

@@ -28,9 +28,12 @@ export async function getRouteDay(date: string): Promise<RouteDay> {
   const yard = s.yard_latitude != null && s.yard_longitude != null ? { lat: Number(s.yard_latitude), lng: Number(s.yard_longitude) } : null;
   if (!loadRows.length) return { assignments: [], yard, installed, unlocated: [] };
 
-  const [assignments, orders] = await Promise.all([
+  const orderIds = [...new Set(loadRows.map((l) => l.order_id))];
+  const [assignments, orders, pickupRefs] = await Promise.all([
     supabase.from("dispatch_assignments").select("load_id, truck_id, trailer_id, driver_id").in("load_id", loadRows.map((l) => l.id)).eq("status", "active"),
-    supabase.from("orders").select("id, order_number, customer_id, site_id, site_label, site_line1, site_city, site_state").in("id", [...new Set(loadRows.map((l) => l.order_id))]),
+    supabase.from("orders").select("id, order_number, customer_id, site_id, site_label, site_line1, site_city, site_state").in("id", orderIds),
+    // The order's pickup (20261120006600). Read on its own so routes still work if that update is not installed.
+    supabase.from("orders").select("id, pickup_location_id").in("id", orderIds).not("pickup_location_id", "is", null),
   ]);
   if (assignments.error) throw new Error(`Could not load assignments: ${assignments.error.message}`);
   if (orders.error) throw new Error(`Could not load orders: ${orders.error.message}`);
@@ -54,6 +57,7 @@ export async function getRouteDay(date: string): Promise<RouteDay> {
   const trailer = new Map(((trailers.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => [t.id, t.unit_number]));
   const driver = new Map(((drivers.data ?? []) as Array<{ id: string; display_name: string }>).map((d) => [d.id, d.display_name]));
   const loadById = new Map(loadRows.map((l) => [l.id, l]));
+  const pickupOf = await orderPickups(supabase, pickupRefs.error ? [] : ((pickupRefs.data ?? []) as Array<{ id: string; pickup_location_id: string }>));
 
   const unlocated = new Map<string, RouteDay["unlocated"][number]>();
   const out: RouteAssignment[] = [];
@@ -74,10 +78,25 @@ export async function getRouteDay(date: string): Promise<RouteDay> {
         loadId: l.id, orderId: o.id, orderNumber: o.order_number, loadNumber: l.load_number, customer: customer.get(o.customer_id) ?? "",
         site: o.site_label || address || "Site", address, siteId: o.site_id, start: hhmm(l.start_time), end: hhmm(l.end_time), point,
         locationSource: point ? s2?.location_source || "manual" : "",
+        pickup: pickupOf.get(o.id) ?? null,
       },
     });
   }
   return { assignments: out, yard, installed, unlocated: [...unlocated.values()] };
+}
+
+/** Order id → its pickup's name and location (company_locations, read through RLS). */
+async function orderPickups(supabase: Awaited<ReturnType<typeof createClient>>, refs: Array<{ id: string; pickup_location_id: string }>) {
+  const out = new Map<string, { name: string; point: Point | null }>();
+  if (!refs.length) return out;
+  const { data, error } = await supabase.from("company_locations").select("id, name, latitude, longitude").in("id", [...new Set(refs.map((r) => r.pickup_location_id))]);
+  if (error) return out;
+  const loc = new Map(((data ?? []) as Array<{ id: string; name: string; latitude: number | string | null; longitude: number | string | null }>).map((x) => [x.id, x]));
+  for (const r of refs) {
+    const l = loc.get(r.pickup_location_id);
+    if (l) out.set(r.id, { name: l.name, point: l.latitude != null && l.longitude != null ? { lat: Number(l.latitude), lng: Number(l.longitude) } : null });
+  }
+  return out;
 }
 
 /**

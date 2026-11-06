@@ -95,6 +95,16 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
       expect(r?.status()).toBe(404);
     }
 
+    // One of this customer's orders: each ordered line shows how much is delivered and left (UX5).
+    const mine = (await sql<{ id: string }>(
+      "select o.id from public.orders o join public.customers c on c.id = o.customer_id where o.company_id = $1 and c.name = $2 and o.status not in ('draft', 'canceled') and exists (select 1 from public.order_lines l where l.order_id = o.id and l.calc_method = 'per_unit' and l.kind <> 'discount') limit 1",
+      [TOP_LINE, CUSTOMER],
+    ))[0];
+    if (mine) {
+      await cust.goto(`/portal/${TOP_LINE_SLUG}/orders/${mine.id}`);
+      await expect(cust.getByText(/ left$| over the order$/).first()).toBeVisible();
+    }
+
     // Request a quote; the same request again is not duplicated.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/quotes`);
     const form = cust.getByRole("form", { name: "Request a quote" });
