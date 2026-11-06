@@ -39,6 +39,8 @@ create table private.subscription_grace (
   bases        integer not null,
   limit_trucks integer,
   limit_bases  integer,
+  -- Set when the company is back within the plan or a plan change applied; the row is reused for a later grace.
+  resolved_on  date,
   updated_at   timestamptz not null default now()
 );
 alter table private.subscription_grace enable row level security;
@@ -127,7 +129,7 @@ begin
       update private.company_lifecycle set plan_version_id = tc.to_plan_version_id, agreed_monthly_cents = tc.agreed_monthly_cents, updated_at = now()
        where company_id = l.company_id;
       update private.tier_changes set status = 'applied', applied_at = now() where id = tc.id;
-      delete from private.subscription_grace where company_id = l.company_id;
+      update private.subscription_grace set resolved_on = v_today, updated_at = now() where company_id = l.company_id and resolved_on is null;
       insert into private.subscription_events (company_id, kind, period_key, detail)
       values (l.company_id, 'tier_change_applied', tc.id::text, jsonb_build_object('to_plan_version_id', tc.to_plan_version_id, 'effective_on', tc.effective_on, 'agreed_monthly_cents', tc.agreed_monthly_cents))
       on conflict do nothing;
@@ -152,11 +154,13 @@ begin
     if l.plan_version_id is null or l.plan_key = 'custom' then continue; end if;
     select * into u from private.subscription_usage(l.company_id);
     v_over := (l.limit_trucks is not null and u.trucks > l.limit_trucks) or (l.limit_bases is not null and u.bases > l.limit_bases);
-    select * into g from private.subscription_grace where company_id = l.company_id;
+    select * into g from private.subscription_grace where company_id = l.company_id and resolved_on is null;
 
     if v_over and g.company_id is null then
       insert into private.subscription_grace (company_id, started_on, ends_on, trucks, bases, limit_trucks, limit_bases)
-      values (l.company_id, v_today, v_today + 30, u.trucks, u.bases, l.limit_trucks, l.limit_bases);
+      values (l.company_id, v_today, v_today + 30, u.trucks, u.bases, l.limit_trucks, l.limit_bases)
+      on conflict (company_id) do update set started_on = excluded.started_on, ends_on = excluded.ends_on, trucks = excluded.trucks,
+        bases = excluded.bases, limit_trucks = excluded.limit_trucks, limit_bases = excluded.limit_bases, resolved_on = null, updated_at = now();
       insert into private.subscription_events (company_id, kind, period_key, detail)
       values (l.company_id, 'over_limit', v_today::text, jsonb_build_object('trucks', u.trucks, 'bases', u.bases, 'limit_trucks', l.limit_trucks, 'limit_bases', l.limit_bases, 'plan', l.plan_name, 'grace_ends_on', v_today + 30))
       on conflict do nothing;
@@ -181,7 +185,7 @@ begin
         get diagnostics v_n = row_count; v_events := v_events + v_n;
       end if;
     elsif g.company_id is not null then
-      delete from private.subscription_grace where company_id = l.company_id;
+      update private.subscription_grace set resolved_on = v_today, updated_at = now() where company_id = l.company_id;
       update private.tier_changes set status = 'canceled', cancel_reason = 'Back within the plan''s limits.', decided_at = now()
        where company_id = l.company_id and status = 'due';
       insert into private.subscription_events (company_id, kind, period_key, detail)
@@ -248,7 +252,7 @@ begin
   return jsonb_build_object(
     'trucks', u.trucks, 'bases', u.bases, 'limit_trucks', l.limit_trucks, 'limit_bases', l.limit_bases, 'plan', l.plan_name,
     'renewal_off', l.renewal_off, 'renews_on', v_renew,
-    'grace', (select jsonb_build_object('started_on', g.started_on, 'ends_on', g.ends_on) from private.subscription_grace g where g.company_id = p_company),
+    'grace', (select jsonb_build_object('started_on', g.started_on, 'ends_on', g.ends_on) from private.subscription_grace g where g.company_id = p_company and g.resolved_on is null),
     'tier_change', (select jsonb_build_object('id', t.id, 'status', t.status, 'reason', t.reason, 'effective_on', t.effective_on, 'agreed_monthly_cents', t.agreed_monthly_cents,
                                               'to_plan_version_id', t.to_plan_version_id,
                                               'to_plan', (select jsonb_build_object('name', v.name, 'version', v.version, 'monthly_cents', v.monthly_cents) from private.platform_plan_versions v where v.id = t.to_plan_version_id))
