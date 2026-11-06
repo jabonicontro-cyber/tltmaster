@@ -84,3 +84,59 @@ describe("company self-import", () => {
     });
   });
 });
+
+describe("company import: job sites, trailers and driver credentials (LR3, 20261120008300)", () => {
+  it("matches sites to customers, imports trailers, records CDL and medical dates unverified, and undoes", async () => {
+    await withSession(async (s) => {
+      const company = await s.createCompany("Top Line Import Check (test)");
+      const owner = await s.createUser("owner", { companyId: company });
+      await s.as(owner);
+      await s.query("insert into public.customers (name) values ('Kessler Builders'), ('Twin Name'), ('twin name')");
+      type R = { r: { rows: Array<{ row: number; status: string; messages: string[] }> } };
+      const stage = async (entity: string, rows: unknown[]) => {
+        const id = (await s.query<{ r: string }>("select public.company_import_stage($1, 'f.csv', '{}', $2::jsonb) r", [entity, JSON.stringify(rows)])).rows[0].r;
+        return { id, rows: (await s.query<R>("select public.company_import_batch($1) r", [id])).rows[0].r.rows };
+      };
+
+      const sites = await stage("sites", [
+        { row: 2, data: { customer_name: "kessler builders", label: "North yard", line1: "12 Mill Rd", city: "Valparaiso", state: "IN" } },
+        { row: 3, data: { customer_name: "Nobody Inc", line1: "1 Main" } },
+        { row: 4, data: { customer_name: "Twin Name", line1: "2 Main" } },
+        { row: 5, data: { customer_name: "Kessler Builders", line1: "12 MILL RD" } },
+      ]);
+      expect(sites.rows.map((r) => [r.row, r.status])).toEqual([[2, "valid"], [3, "error"], [4, "error"], [5, "duplicate"]]);
+      expect(sites.rows[1].messages.join(" ")).toMatch(/No customer with this name/);
+      expect(sites.rows[2].messages.join(" ")).toMatch(/More than one customer/);
+
+      const trailers = await stage("trailers", [
+        { row: 2, data: { unit_number: "T-1", trailer_type: "end_dump", make: "Mac" } },
+        { row: 3, data: { unit_number: "T-2", trailer_type: "spaceship" } },
+      ]);
+      expect(trailers.rows.map((r) => r.status)).toEqual(["valid", "error"]);
+
+      const drivers = await stage("drivers", [
+        { row: 2, data: { name: "Ray Imported", cdl_class: "A", cdl_state: "IN", cdl_expires_on: "2027-03-31", medical_expires_on: "2026-12-15" } },
+        { row: 3, data: { name: "No Class", cdl_expires_on: "2027-01-01" } },
+        { row: 4, data: { name: "Bad Date", medical_expires_on: "soon" } },
+      ]);
+      expect(drivers.rows.map((r) => r.status)).toEqual(["valid", "error", "error"]);
+
+      for (const b of [sites.id, trailers.id, drivers.id]) await s.query("select public.company_import_approve($1)", [b]);
+      const site = (await s.query<{ label: string; customer: string; state: string }>("select s.label, c.name customer, s.state from public.customer_sites s join public.customers c on c.id = s.customer_id where s.line1 = '12 Mill Rd'")).rows;
+      expect(site).toEqual([{ label: "North yard", customer: "Kessler Builders", state: "IN" }]);
+      expect((await s.query("select 1 from public.trailers where unit_number = 'T-1' and trailer_type = 'end_dump'")).rowCount).toBe(1);
+      const quals = (await s.query<{ kind: string; cdl_class: string | null; issuing_state: string; expires_on: string; verified_at: string | null }>(
+        "select q.kind::text, q.cdl_class::text, q.issuing_state, q.expires_on::text, q.verified_at from public.driver_qualifications q join public.drivers d on d.id = q.driver_id where d.name = 'Ray Imported' order by q.kind")).rows;
+      expect(quals).toEqual([
+        { kind: "cdl", cdl_class: "A", issuing_state: "IN", expires_on: "2027-03-31", verified_at: null },
+        { kind: "medical_card", cdl_class: null, issuing_state: "", expires_on: "2026-12-15", verified_at: null },
+      ]);
+
+      // Undo makes them inactive (never deleted).
+      await s.query("select public.company_import_undo($1, 'test undo')", [sites.id]);
+      await s.query("select public.company_import_undo($1, 'test undo')", [trailers.id]);
+      expect((await s.query<{ active: boolean }>("select active from public.customer_sites where line1 = '12 Mill Rd'")).rows[0].active).toBe(false);
+      expect((await s.query<{ active: boolean }>("select active from public.trailers where unit_number = 'T-1'")).rows[0].active).toBe(false);
+    });
+  });
+});

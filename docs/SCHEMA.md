@@ -598,6 +598,14 @@ the nine optional areas, so safety areas can't be hidden. Menu only.
 - `driver_load_stops()`: the signed-in driver's own loads (two days back to tomorrow) keyed by load, each with its order's stops in order and a one-line address.
 - Aggregate orders without stops keep the order's pickup (`pickup_location_id`) and job site; the order page shows the Stops section for companies hauling freight (`company_settings.industry`) or when stops exist.
 
+## Import: job sites, trailers, driver credentials (20261120008300, LR3)
+
+- `private.import_batches.entity` also accepts `sites` and `trailers`; `private.import_fields`, `import_stage_core`,
+  `import_approve_core` and `company_import_undo` handle them. Sites match exactly one existing customer by name
+  (case-insensitive); drivers may carry `cdl_class` / `cdl_state` / `cdl_expires_on` / `medical_expires_on`, created as
+  unverified `driver_qualifications`. The platform revert (deletes) is refused for the new kinds in the app; the company
+  undo (made inactive) covers them.
+
 ## Detention and charges billed without a ticket (20261120008200, DT1)
 
 - `charge_items.ticket_required` (default true): false for per-occurrence charges; `billing_line_status` leaves their

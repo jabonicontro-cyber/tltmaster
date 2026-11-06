@@ -3,7 +3,7 @@
 // and on the server (the authoritative check before staging); the database
 // checks required fields, allowed values and duplicates once more.
 
-export const IMPORT_ENTITIES = ["customers", "materials", "trucks", "drivers"] as const;
+export const IMPORT_ENTITIES = ["customers", "sites", "materials", "trucks", "trailers", "drivers"] as const;
 export type ImportEntity = (typeof IMPORT_ENTITIES)[number];
 
 type FieldType = "text" | "email" | "bool" | "int" | "date" | "choice";
@@ -25,8 +25,15 @@ const TRUCK_TYPES: Record<string, string> = {
   tandem: "tandem_axle_dump", tandemaxle: "tandem_axle_dump", tandemaxledump: "tandem_axle_dump", tandemdump: "tandem_axle_dump",
   triaxle: "tri_axle_dump", triaxledump: "tri_axle_dump", tri: "tri_axle_dump", tridump: "tri_axle_dump",
   quadaxle: "quad_axle_dump", quadaxledump: "quad_axle_dump", quad: "quad_axle_dump",
-  tractor: "tractor", semi: "tractor", other: "other",
+  tractor: "tractor", semi: "tractor", semitractor: "tractor", trucktractor: "tractor", straighttruck: "straight_truck", boxtruck: "straight_truck", box: "straight_truck", straight: "straight_truck", other: "other",
 };
+const TRAILER_TYPES: Record<string, string> = {
+  enddump: "end_dump", end: "end_dump", bellydump: "belly_dump", belly: "belly_dump", bottomdump: "belly_dump", sidedump: "side_dump", side: "side_dump",
+  livefloor: "live_floor", walkingfloor: "live_floor", pup: "pup", puptrailer: "pup",
+  dryvan: "dry_van", van: "dry_van", "53van": "dry_van", "53dryvan": "dry_van", "53ftdryvan": "dry_van", "53ftvan": "dry_van", reefer: "reefer", refrigerated: "reefer", flatbed: "flatbed", flat: "flatbed",
+  stepdeck: "step_deck", dropdeck: "step_deck", lowboy: "lowboy", rgn: "lowboy", other: "other",
+};
+const CDL_CLASSES: Record<string, string> = { a: "A", classa: "A", cdla: "A", b: "B", classb: "B", cdlb: "B", c: "C", classc: "C", cdlc: "C" };
 const UNITS: Record<string, string> = {
   ton: "ton", tons: "ton", t: "ton", tn: "ton",
   load: "load", loads: "load", ld: "load",
@@ -81,10 +88,35 @@ export const IMPORT_FIELDS: Record<ImportEntity, ImportField[]> = {
     { key: "phone", label: "Phone", type: "text", max: 40, aliases: ["phone", "phonenumber", "cell", "mobile", "cellphone"] },
     { key: "hire_date", label: "Hire date", type: "date", aliases: ["hiredate", "hired", "startdate", "datehired"] },
     { key: "notes", label: "Notes", type: "text", max: 2000, aliases: ["notes", "note", "comments"] },
+    { key: "cdl_class", label: "CDL class", type: "choice", choices: CDL_CLASSES, aliases: ["cdlclass", "cdl", "class", "licenseclass"] },
+    { key: "cdl_state", label: "CDL state", type: "text", max: 2, aliases: ["cdlstate", "licensestate", "issuingstate"] },
+    { key: "cdl_expires_on", label: "CDL expires", type: "date", aliases: ["cdlexpires", "cdlexpiration", "cdlexp", "cdlexpiry", "licenseexpires", "licenseexpiration"] },
+    { key: "medical_expires_on", label: "Medical card expires", type: "date", aliases: ["medicalexpires", "medicalcardexpires", "medexp", "medicalexpiration", "dotmedical", "medicalcard", "medcard", "medcardexp", "medcardexpires", "medcardexpiration", "medicalexp"] },
+  ],
+  sites: [
+    { key: "customer_name", label: "Customer", required: true, type: "text", max: 200, aliases: ["customer", "customername", "company", "account", "billto"] },
+    { key: "label", label: "Site name", type: "text", max: 120, aliases: ["site", "sitename", "jobsite", "job", "jobname", "project", "location", "locationname", "name"] },
+    { key: "line1", label: "Street address", required: true, type: "text", max: 200, aliases: ["address", "address1", "street", "siteaddress", "jobaddress", "deliveryaddress"] },
+    { key: "line2", label: "Address line 2", type: "text", max: 200, aliases: ["address2", "suite", "unit"] },
+    { key: "city", label: "City", type: "text", max: 100, aliases: ["city", "town"] },
+    { key: "state", label: "State", type: "text", max: 40, aliases: ["state", "st", "province"] },
+    { key: "postal_code", label: "ZIP / postal code", type: "text", max: 20, aliases: ["zip", "zipcode", "postalcode", "postcode"] },
+    { key: "directions", label: "Directions / access notes", type: "text", max: 2000, aliases: ["directions", "access", "notes", "gatecode", "instructions"] },
+  ],
+  trailers: [
+    { key: "unit_number", label: "Unit number", required: true, type: "text", max: 40, aliases: ["unit", "unitnumber", "unitno", "trailer", "trailernumber", "trailerno", "number"] },
+    { key: "trailer_type", label: "Trailer type", required: true, type: "choice", choices: TRAILER_TYPES, aliases: ["type", "trailertype", "body", "bodytype"] },
+    { key: "make", label: "Make", type: "text", max: 60, aliases: ["make", "manufacturer"] },
+    { key: "model", label: "Model", type: "text", max: 60, aliases: ["model"] },
+    { key: "model_year", label: "Year", type: "int", aliases: ["year", "modelyear", "yr"] },
+    { key: "vin", label: "VIN", type: "text", max: 17, aliases: ["vin", "vinnumber", "serial"] },
+    { key: "license_plate", label: "License plate", type: "text", max: 20, aliases: ["plate", "licenseplate", "license", "tag", "platenumber"] },
+    { key: "plate_state", label: "Plate state", type: "text", max: 20, aliases: ["platestate", "licensestate", "tagstate"] },
+    { key: "notes", label: "Notes", type: "text", max: 2000, aliases: ["notes", "note", "comments"] },
   ],
 };
 
-export const ENTITY_LABELS: Record<ImportEntity, string> = { customers: "Customers", materials: "Materials", trucks: "Trucks", drivers: "Drivers" };
+export const ENTITY_LABELS: Record<ImportEntity, string> = { customers: "Customers", sites: "Job sites", materials: "Materials", trucks: "Trucks", trailers: "Trailers", drivers: "Drivers" };
 
 export const MAX_IMPORT_ROWS = 2000;
 // Server actions accept bodies up to 1 MB by default; stay under it.

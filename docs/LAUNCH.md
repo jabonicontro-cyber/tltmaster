@@ -74,7 +74,7 @@ before outside customers in January.
 | Health check `/api/health` and Sentry reporting (LR4) | Built (off until `SENTRY_DSN`) |
 | Detention proposals from recorded waits, off until set per customer (DT1) | Built |
 | Freight loads, rest of MK2: accessorial charges on the invoice, rate confirmation file, proof of delivery per stop, brokers as customers | To do |
-| Import ready for Top Line's files (LR3) | To do |
+| Import ready for Top Line's files (LR3) | Customers, job sites, trucks, trailers, drivers with CDL and medical dates: built. Rates and open orders: built to match the files once they arrive |
 | Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | To do |
 | Truck-day dispatching (UX11), by January | To do |
 

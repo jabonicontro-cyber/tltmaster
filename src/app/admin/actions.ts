@@ -141,6 +141,10 @@ export async function revertImport(formData: FormData) {
   const path = `/admin/onboarding/batch/${batch}`;
   if (!reason) back(path, "Give a reason for reverting.");
   const supabase = await db();
+  // The platform revert predates job-site and trailer imports (20261120008300) and only knows the first four kinds; those
+  // batches are undone from the company's own Import page (records made inactive), never half-reverted here.
+  const kind = (await supabase.rpc("platform_import_batch", { p_batch: batch })).data as { entity?: string } | null;
+  if (kind?.entity === "sites" || kind?.entity === "trailers") back(path, "Undo job-site and trailer imports from the company's Settings, Import page (records are made inactive).");
   const { error } = await supabase.rpc("platform_import_revert", { p_batch: batch, p_reason: reason });
   if (error) back(path, dbErrorMessage(error));
   revalidatePath(path);

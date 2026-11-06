@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { GO_LIVE_ITEMS, goLiveBlockers, forbiddenKeys, QUESTIONNAIRE, questionnaireMissing, renderWelcome, DEFAULT_WELCOME_BODY, DISPATCH_RULES } from "@/lib/onboarding/kit";
 import { kitFormProblem } from "@/lib/onboarding/kit-validate";
-import { guessMapping, IMPORT_ENTITIES, IMPORT_FIELDS, parseCsv, templateCsv, templateHeaders } from "@/lib/platform/imports";
+import { guessMapping, IMPORT_ENTITIES, IMPORT_FIELDS, parseCsv, prepareRows, templateCsv, templateHeaders } from "@/lib/platform/imports";
 
 const allPassed = Object.fromEntries(GO_LIVE_ITEMS.map((i) => [i.key, { status: "passed" as const, note: "ok" }]));
 
@@ -46,5 +46,20 @@ describe("onboarding kit", () => {
 
   it("the worksheet never calls hours of service product-enforced (no ELD integration)", () => {
     expect(DISPATCH_RULES.find((r) => r.key === "hos")!.product).toBe("manual");
+  });
+});
+
+describe("imports for real company data (LR3): job sites, trailers, driver credentials", () => {
+  it("guesses columns from common spreadsheet headers", () => {
+    expect(guessMapping(["Customer", "Job Name", "Address", "City", "ST", "Zip", "Gate code"], "sites")).toEqual(["customer_name", "label", "line1", "city", "state", "postal_code", "directions"]);
+    expect(guessMapping(["Trailer #", "Type", "Year", "VIN", "Plate"], "trailers")).toEqual(["unit_number", "trailer_type", "model_year", "vin", "license_plate"]);
+    expect(guessMapping(["Driver Name", "CDL Class", "CDL Exp", "Med Card Exp"], "drivers")).toEqual(["name", "cdl_class", "cdl_expires_on", "medical_expires_on"]);
+  });
+  it("reads trailer types and CDL classes as people write them", () => {
+    const trailers = prepareRows([["Unit", "Type"], ["T1", "End Dump"], ["T2", "53' Dry Van"], ["T3", "Reefer"], ["T4", "boat"]], ["unit_number", "trailer_type"], "trailers");
+    expect(trailers.map((r) => r.data.trailer_type ?? null)).toEqual(["end_dump", "dry_van", "reefer", null]);
+    expect(trailers[3].errors.length).toBeGreaterThan(0);
+    const drivers = prepareRows([["Name", "CDL", "Exp"], ["Ray", "Class A", "3/31/2027"]], ["name", "cdl_class", "cdl_expires_on"], "drivers");
+    expect(drivers[0].data).toMatchObject({ name: "Ray", cdl_class: "A", cdl_expires_on: "2027-03-31" });
   });
 });
