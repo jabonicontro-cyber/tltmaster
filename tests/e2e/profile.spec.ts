@@ -88,8 +88,11 @@ test("instead of a photo, a person can choose an illustrated avatar", async ({ p
 test("a wrong file type is refused with a reason", async ({ page }) => {
   await signIn(page, "office");
   await page.goto("/profile");
-  await page.locator("#photo").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
-  await expect(page.getByText("Choose a photo (JPEG, PNG, WebP or a phone camera picture).")).toBeVisible();
+  // A file chosen before the page has hydrated is not seen by the uploader: choose it again until it answers.
+  await expect(async () => {
+    await page.locator("#photo").setInputFiles({ name: "notes.txt", mimeType: "text/plain", buffer: Buffer.from("hello") });
+    await expect(page.getByText("Choose a photo (JPEG, PNG, WebP or a phone camera picture).")).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 20_000 });
 });
 
 test("photos stay inside the company: colleagues see them, other companies and signed-out visitors do not", async ({ page, browser }) => {
