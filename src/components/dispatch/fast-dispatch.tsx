@@ -83,7 +83,10 @@ function Results({ results, items, lk }: { results: BatchResult[]; items: BatchI
 }
 
 /** Assign one crew to every selected load. */
-export function BulkAssignDialog({ loads, initial, active, lk, onClose, onDone }: { loads: OrderLoadRow[]; /** A crew filled in (same crew for the order's other loads, B136); the dispatcher still confirms. */ initial?: { truckId: string; trailerId: string | null; driverId: string }; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
+export function BulkAssignDialog({ loads: loadsNow, initial, active, lk, onClose, onDone }: { loads: OrderLoadRow[]; /** A crew filled in (same crew for the order's other loads, B136); the dispatcher still confirms. */ initial?: { truckId: string; trailerId: string | null; driverId: string }; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
+  // The loads as they were when the dialog opened: each save refreshes the board, where assigned loads stop being open,
+  // and the dialog must keep its title, list and results for the whole batch.
+  const [loads] = useState(loadsNow);
   const [truckId, setTruckId] = useState(initial?.truckId ?? "");
   const [trailerId, setTrailerId] = useState(initial?.trailerId ?? "");
   const [driverId, setDriverId] = useState(initial?.driverId ?? "");
@@ -154,7 +157,9 @@ export function BulkAssignDialog({ loads, initial, active, lk, onClose, onDone }
 }
 
 /** "Copy the previous crew": review the proposals, untick any, then assign. */
-export function CopyCrewsDialog({ proposals, loads, active, lk, onClose, onDone }: { proposals: CrewProposal[]; loads: Map<string, OrderLoadRow>; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
+export function CopyCrewsDialog({ proposals: proposalsNow, loads: loadsNow, active, lk, onClose, onDone }: { proposals: CrewProposal[]; loads: Map<string, OrderLoadRow>; active: ActiveAssignment[]; lk: FastLookup; onClose: () => void; onDone: () => void }) {
+  // Kept as they were when the dialog opened (the board refreshes after each save; see BulkAssignDialog).
+  const [{ proposals, loads }] = useState({ proposals: proposalsNow, loads: loadsNow });
   const items: BatchItem[] = proposals.filter((p) => loads.has(p.load_id)).map((p) => ({ load: loads.get(p.load_id)!, truck_id: p.truck_id, trailer_id: p.trailer_id, driver_id: p.driver_id }));
   const checks = precheckBatch(items, active, lk);
   const [chosen, setChosen] = useState<Set<string>>(() => new Set(items.filter((_, i) => !checks[i].length).map((i) => i.load.id)));
