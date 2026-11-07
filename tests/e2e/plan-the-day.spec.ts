@@ -25,6 +25,9 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
 
   // Plans and their measured results; nothing claims to be verified while hours of service are unknown.
   const plans = page.getByRole("tablist", { name: "Plans" });
+  // Planning can take a while on a busy machine; if no plan appears, say what the page shows instead.
+  const shown = await plans.getByRole("tab").first().waitFor({ timeout: 60_000 }).then(() => true, () => false);
+  if (!shown) throw new Error(`No plans. The page says: ${(await page.locator("main").innerText()).slice(0, 1500)}`);
   await expect(plans.getByRole("tab").first()).toContainText("Balanced (your priorities)");
   await expect(page.getByText("Loads covered")).toBeVisible();
   await expect(page.getByText("not evaluated (no cost data)")).toBeVisible();
