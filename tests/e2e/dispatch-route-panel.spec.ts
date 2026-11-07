@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { signIn, unique } from "./helpers";
-import { asUser } from "./db";
+import { asUser, realMaterial } from "./db";
 import { USERS } from "./users";
 
 // Dispatch and the Route Planner on one page (owner 2026-10-26): clicking an order opens its route beside the board,
@@ -13,7 +13,7 @@ test("an order's route opens beside the board and from the timeline", async ({ p
     const date = (await q("select to_char((now() at time zone 'America/Chicago')::date + 11, 'YYYY-MM-DD') as d")).rows[0].d as string;
     const customer = (await q("select id from public.customers where active order by created_at limit 1")).rows[0].id as string;
     await q("insert into public.customer_sites (customer_id, label, line1, city, latitude, longitude) values ($1, $2, '2 Panel Rd', 'Testville', 40.95, -87.2)", [customer, project]);
-    const material = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
+    const material = await realMaterial(q);
     const r = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       customer_id: customer, order_date: date, project_name: project, site_label: project, site_line1: "2 Panel Rd",
       lines: [{ kind: "material", calc_method: "per_unit", material_id: material.id, description: "Base", unit_code: material.unit, quantity: "1", unit_rate_cents: 1000 }],

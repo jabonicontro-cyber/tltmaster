@@ -101,7 +101,9 @@ jobs:
       - name: Local backend
         run: |
           bash scripts/dev-stack/stack.sh db-reset
-          bash scripts/dev-stack/stack.sh up
+          # With the storage server (schema, buckets and policies): photo, attachment and document uploads, and the
+          # company record counts the Taviron console shows, need it.
+          DEV_STORAGE=1 bash scripts/dev-stack/stack.sh up
           bash scripts/dev-stack/stack.sh env > .env.local
           # Throwaway values for this run only; masked so they never appear in the log.
           pw=$(openssl rand -hex 12); secret=$(openssl rand -hex 32)

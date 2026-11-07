@@ -53,9 +53,11 @@ test("office works a prospect from first call to won, and the pipeline follows",
 
   // Won: the prospect becomes a customer (the same record).
   await page.goto(customerUrl);
-  await page.getByText("Update", { exact: true }).first().click();
-  await page.getByLabel("Stage").first().selectOption("won");
-  await page.getByRole("button", { name: "Save", exact: true }).first().click();
+  // Scoped to the opportunity: other cards on the page (detention, credit) have their own Save buttons.
+  const opportunity = page.getByRole("listitem").filter({ hasText: "Spring gravel" }).filter({ has: page.getByText("Update", { exact: true }) });
+  await opportunity.getByText("Update", { exact: true }).click();
+  await opportunity.getByLabel("Stage").selectOption("won");
+  await opportunity.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByText("Opportunity saved.")).toBeVisible();
   await expect(account.locator(".pill-text", { hasText: /^Customer$/ })).toBeVisible();
 

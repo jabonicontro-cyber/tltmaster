@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { expectToast, signIn, unique } from "./helpers";
-import { asUser } from "./db";
+import { asUser, realMaterial } from "./db";
 import { USERS } from "./users";
 
 // Route Planner (B10 first slice): each truck's day as a route from the assigned loads; straight-line distances
@@ -13,7 +13,7 @@ test("an assigned load shows on its truck's route; giving its site a location gi
     const date = (await q("select to_char((now() at time zone 'America/Chicago')::date + 9, 'YYYY-MM-DD') as d")).rows[0].d as string;
     const customer = (await q("select id from public.customers where active order by created_at limit 1")).rows[0].id as string;
     const site = (await q("insert into public.customer_sites (customer_id, label, line1, city) values ($1, $2, '1 Route Test Rd', 'Testville') returning id", [customer, project])).rows[0].id as string;
-    const material = (await q("select id, default_unit_code as unit from public.materials where active and not is_sample order by code limit 1")).rows[0];
+    const material = await realMaterial(q);
     const order = (await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({
       customer_id: customer, order_date: date, project_name: project, site_id: site, site_label: project, site_line1: "1 Route Test Rd",
       lines: [{ kind: "material", calc_method: "per_unit", material_id: material.id, description: "Base", unit_code: material.unit, quantity: "1", unit_rate_cents: 1000 }],
