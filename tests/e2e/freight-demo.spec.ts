@@ -91,7 +91,7 @@ test("the platform team creates the freight demo and its owner sees a freight ca
   const ctx = owner.context();
   try {
     for (const role of PREVIEW_ROLES) {
-      await ctx.addCookies([{ name: PREVIEW_COOKIE, value: role, url: owner.url() }]);
+      await ctx.addCookies([{ name: PREVIEW_COOKIE, value: role, url: new URL("/", owner.url()).href }]);
       await visit(owner, "/command-center");
       // Read once the page has settled (a redirect or refresh can replace it mid-read).
       let hrefs: string[] = [];

@@ -135,13 +135,13 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   await expect(page.getByText("Plans cover today through 14 days ahead")).toHaveCount(0);
 
   // Demo modes: the dispatcher view plans and approves; the driver and mechanic views have no dispatch access.
-  await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: page.url() }]);
+  await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: new URL("/", page.url()).href }]);
   await page.goto("/dispatch/plan");
   await expect(page.getByRole("heading", { name: "Plan the day", level: 1 })).toBeVisible();
-  await context.addCookies([{ name: PREVIEW_COOKIE, value: "driver", url: page.url() }]);
+  await context.addCookies([{ name: PREVIEW_COOKIE, value: "driver", url: new URL("/", page.url()).href }]);
   await page.goto("/dispatch/plan");
   await expect(page).toHaveURL(/no-access|\/driver/);
-  await context.addCookies([{ name: PREVIEW_COOKIE, value: "mechanic", url: page.url() }]);
+  await context.addCookies([{ name: PREVIEW_COOKIE, value: "mechanic", url: new URL("/", page.url()).href }]);
   await page.goto("/dispatch/plan");
   await expect(page).toHaveURL(/no-access/);
   await context.clearCookies({ name: PREVIEW_COOKIE });
@@ -161,7 +161,7 @@ test("Company setup: owners see what is done, incomplete or missing; others cann
   await expect(ai.getByRole("heading", { name: "Explain this plan", level: 3 })).toBeVisible();
   await expect(ai).toContainText("Blocked");
   await expect(ai).toContainText("No AI provider is configured.");
-  await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: page.url() }]);
+  await context.addCookies([{ name: PREVIEW_COOKIE, value: "dispatcher", url: new URL("/", page.url()).href }]);
   await page.goto("/setup");
   await expect(page).toHaveURL(/no-access/);
   await context.clearCookies({ name: PREVIEW_COOKIE });

@@ -148,7 +148,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
   };
   try {
     for (const role of PREVIEW_ROLES) {
-      await context.addCookies([{ name: PREVIEW_COOKIE, value: role, url: page.url() }]);
+      await context.addCookies([{ name: PREVIEW_COOKIE, value: role, url: new URL("/", page.url()).href }]);
       await visit(page, "/command-center");
       const nav = await sidebarHrefs(page);
       expect(nav.length, role).toBeGreaterThan(2);
@@ -302,7 +302,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   const ownerContext = owner.context();
   try {
     for (const role of PREVIEW_ROLES) {
-      await ownerContext.addCookies([{ name: PREVIEW_COOKIE, value: role, url: owner.url() }]);
+      await ownerContext.addCookies([{ name: PREVIEW_COOKIE, value: role, url: new URL("/", owner.url()).href }]);
       await visit(owner, "/command-center");
       const nav = await sidebarHrefs(owner);
       for (const href of nav) {
