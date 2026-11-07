@@ -75,6 +75,7 @@ async function fixture(day2Loads: Array<[string, string]>): Promise<Fixture> {
 }
 
 test("copy the previous crew: yesterday's truck and driver are proposed for today's open loads and assigned on approval", async ({ page }) => {
+  test.setTimeout(120_000); // the fixture builds orders and loads through the real functions
   const f = await fixture([["07:00", "09:00"], ["10:00", "12:00"]]);
   await signIn(page, "dispatcher");
   await page.goto(`/dispatch?date=${f.day2}`);
@@ -88,7 +89,11 @@ test("copy the previous crew: yesterday's truck and driver are proposed for toda
   const results = dialog.getByRole("list", { name: "Results" });
   await expect(results.getByText("Assigned").first()).toBeVisible();
   await expect(results).not.toContainText("Could not");
-  await dialog.getByRole("button", { name: "Done" }).click();
+  // The board refreshes behind the dialog after assigning, which can re-render it: close it until it is gone.
+  await expect(async () => {
+    await dialog.getByRole("button", { name: "Done" }).click({ timeout: 5_000 });
+    await expect(dialog).toHaveCount(0, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   const card = page.locator("section").filter({ has: page.getByRole("link", { name: f.orderNumber, exact: true }) });
   await expect(card.getByText("Needs a truck and driver")).toHaveCount(0);
 });
@@ -113,7 +118,11 @@ test("assign several loads at once: one crew for the selected loads, overlapping
   const results = dialog.getByRole("list", { name: "Results" });
   await expect(results.getByText("Assigned")).toHaveCount(2);
   await expect(results).toContainText("Left open");
-  await dialog.getByRole("button", { name: "Done" }).click();
+  // The board refreshes behind the dialog after assigning, which can re-render it: close it until it is gone.
+  await expect(async () => {
+    await dialog.getByRole("button", { name: "Done" }).click({ timeout: 5_000 });
+    await expect(dialog).toHaveCount(0, { timeout: 2_000 });
+  }).toPass({ timeout: 30_000 });
   await expect(card.getByText("Needs a truck and driver")).toHaveCount(1);
 });
 
