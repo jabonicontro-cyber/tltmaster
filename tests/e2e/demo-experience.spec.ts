@@ -111,7 +111,10 @@ test("the demo welcome shows once, is remembered across pages, reloads and sign-
   await expect(dialog.getByRole("button", { name: "Explore the demo" })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(dialog.getByRole("button", { name: "Close" })).toBeFocused();
-  await page.keyboard.press("Escape"); // dismissing by Escape counts as seen
+  // Dismissing by Escape counts as seen; it is saved in the background, so wait for that before leaving the page.
+  const saved = page.waitForResponse((r) => r.request().method() === "POST");
+  await page.keyboard.press("Escape");
+  await saved;
   await expect(dialog).toHaveCount(0);
   await expect(page.getByRole("banner").getByText("Demo", { exact: true })).toBeVisible();
 
