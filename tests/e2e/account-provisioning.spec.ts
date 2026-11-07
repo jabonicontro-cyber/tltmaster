@@ -45,7 +45,7 @@ test("an owner creates a driver sign-in; the driver sets a password on a phone a
   await expect(page.getByLabel("Username")).toHaveValue(/^e2e\.[a-z0-9]+$/);
   await expect(page.locator("#username-status").getByText(/e2e\.[a-z0-9]+ is available/)).toBeVisible({ timeout: 30_000 });
   await page.getByLabel("Username").fill(username);
-  await expect(page.getByText(`${username} is available`)).toBeVisible();
+  await expect(page.getByText(`${username} is available`)).toBeVisible({ timeout: 30_000 }); // checked after typing stops, on the server
   await page.getByRole("button", { name: "Review" }).click();
   await expect(page.getByRole("heading", { name: "Role: Driver" })).toBeVisible();
   await page.getByRole("button", { name: "Create Sign-in" }).click();
