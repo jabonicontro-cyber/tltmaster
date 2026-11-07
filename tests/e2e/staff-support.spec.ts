@@ -164,7 +164,10 @@ test("a request whose description does not match what it would change is refused
     await page.goto("/settings?tab=support");
     const item = page.getByRole("list", { name: "Waiting for approval" }).getByRole("listitem", { name: summary });
     await item.getByRole("button", { name: "Approve and make the change" }).click();
-    await expect(item.getByText(/no longer matches what it would change/)).toBeVisible();
+    // The refusal is said at once and the request moves to the earlier requests with its reason.
+    await expectToast(page, /no longer matches what it would change/);
+    await expect(page.getByRole("list", { name: "Earlier support requests" }).getByRole("listitem").filter({ hasText: summary }))
+      .toContainText(/no longer matches what it would change/);
     const after = (await client.query("select 1 from public.role_permissions where company_id = $1 and role = 'office' and permission = 'users.manage'", [company])).rowCount === 1;
     expect(after).toBe(granted);
     await page.reload();

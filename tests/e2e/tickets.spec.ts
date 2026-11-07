@@ -104,6 +104,9 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await signIn(page, "office");
   await page.goto(`/tickets?view=submitted&q=${number}`);
   await page.getByRole("link", { name: number }).click();
+  // Wait for the ticket itself: the list has its own "Accept clean tickets" button.
+  await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/);
+  await expect(page.getByRole("heading", { name: `Ticket ${number}` })).toBeVisible();
   const ticketUrl = page.url().split("?")[0];
   // Opened from the list, the ticket is in the review queue: accepting moves on (next ticket or back to the list).
   await page.getByRole("button", { name: /^Accept/ }).click();

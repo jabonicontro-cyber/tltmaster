@@ -15,6 +15,17 @@ owner) or declines in Settings → Taviron support; banner counts for owners and
 stay owner-only. Tests: `tests/db/support-requests.test.ts`, `tests/unit/support-requests.test.ts`, the SA2 steps in
 `tests/e2e/staff-support.spec.ts`. CLAUDE.md, DEPLOYMENT §3a, SCHEMA, master plan §12 updated.
 
+**Full browser suite on a fresh database (CI, `full_browser_suite`), first run since 2026-10-26:** 11 failures at
+`4ae3007`, none in SA2 code. Causes and fixes: the CI e2e job never started the storage server (uploads and the console's
+record counts read `storage.objects`): it now does (`DEV_STORAGE=1`); tests written against older pages (CRM Save now
+scoped to the opportunity; ticket review waits for the ticket page before "Accept"; route specs create their own
+material); demo-mode cookies were scoped to the current folder by `addCookies({ url })` (now `/`, as the app sets them);
+offline driver test waits for the office to receive the items; Reports period pills 2 px too wide on phones with CI
+fonts (smaller padding below `sm`). The SA2 approval now also shows a refused approval as a toast (the request moves to
+"Earlier requests" with its reason). The local test database (54400) was rebuilt from migrations; backup
+`/var/lib/tlt-backups/pgci-pre-reset-202611070557.dump`. Command Center's "late load" test fails around midnight in
+Chicago (known, date boundary).
+
 ## 0000000000000000000000. 2026-11-06 — Taviron staff and support access (SA1), security audit (SEC2)
 
 Released to Production earlier today (verified): `00d30d3` trucks for the day; `5c53c30` truck-hours **Add to order**

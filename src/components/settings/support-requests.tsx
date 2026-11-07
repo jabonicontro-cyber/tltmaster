@@ -118,7 +118,11 @@ function WaitingRequest({ r, canDecide, timezone, onApproved }: {
   r: SupportRequestRow; canDecide: boolean; timezone: string; onApproved: (summary: string, fields: Field[]) => void;
 }) {
   const router = useRouter();
-  const approve = useFormAction(approveSupportRequest, { onSuccess: (res) => { toast.success(res.message ?? "Done."); onApproved(r.summary, res.data.fields); } });
+  // A refused approval is recorded and the request moves to "Earlier requests" (with the reason), so say it here too.
+  const approve = useFormAction(approveSupportRequest, {
+    onSuccess: (res) => { toast.success(res.message ?? "Done."); onApproved(r.summary, res.data.fields); },
+    onError: (error) => { toast.error(error); router.refresh(); },
+  });
   const decline = useFormAction(declineSupportRequest, { onSuccess: (res) => { toast.success(res.message ?? "Declined."); router.refresh(); } });
   const withdraw = useFormAction(withdrawSupportRequest, { onSuccess: (res) => { toast.success(res.message ?? "Withdrawn."); router.refresh(); } });
   const busy = approve.pending || decline.pending || withdraw.pending;

@@ -179,7 +179,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         <nav aria-label="Periods" className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
           {PERIODS.map((p) => (
             <Link key={p} href={`/reports?days=${p}`} aria-current={!custom && days === p ? "page" : undefined}
-              className={cn("flex h-8 items-center rounded-full px-4 text-sm font-semibold whitespace-nowrap", !custom && days === p ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
+              className={cn("flex h-8 items-center rounded-full px-3 text-sm font-semibold whitespace-nowrap sm:px-4", !custom && days === p ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
               <span className="pill-text">Last {p} days</span>
             </Link>
           ))}

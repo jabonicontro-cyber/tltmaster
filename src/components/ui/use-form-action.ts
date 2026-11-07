@@ -10,7 +10,11 @@ import type { ActionResult } from "@/lib/action-result";
  */
 export function useFormAction<T>(
   action: (formData: FormData) => Promise<ActionResult<T>>,
-  opts: { onSuccess?: (result: { ok: true; data: T; message?: string }) => void } = {},
+  opts: {
+    onSuccess?: (result: { ok: true; data: T; message?: string }) => void;
+    /** Called with the error when the action refuses (for a form that leaves the page, so the inline error would not be seen). */
+    onError?: (error: string) => void;
+  } = {},
 ) {
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<ActionResult<T> | null>(null);
@@ -24,6 +28,7 @@ export function useFormAction<T>(
         const res = await action(formData);
         setResult(res);
         if (res.ok) opts.onSuccess?.(res);
+        else opts.onError?.(res.error);
       } catch (e) {
         // Redirects thrown by the action are handled by Next.js.
         if (e && typeof e === "object" && "digest" in e) throw e;

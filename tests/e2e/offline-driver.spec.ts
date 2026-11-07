@@ -42,11 +42,15 @@ test("without signal, taps and tickets wait on the phone and reach the office on
   await context.setOffline(false);
   // Back on My Day with signal: both are sent by themselves and the list empties.
   await page.goto("/driver");
-  await expect(page.getByRole("region", { name: "Waiting to send" })).toHaveCount(0, { timeout: 30_000 });
-  const rows = await office(async (q) => ({
+  // The list lives on the phone, so the page first renders without it: wait until the office has both, then for the
+  // list to empty.
+  const reached = () => office(async (q) => ({
     stop: (await q("select arrived_at from public.load_stop_times t join public.order_loads l on l.id = t.load_id join public.orders o on o.id = l.order_id where o.order_number = $1 and l.load_number = 2 and t.stop = 'pickup'", [f.orderNumber])).rows[0],
     tickets: (await q("select count(*)::int n from public.delivery_tickets where external_reference = $1", [f.ref])).rows[0].n,
   }));
+  await expect.poll(async () => { const r = await reached(); return r.tickets === 1 && Boolean(r.stop?.arrived_at); }, { timeout: 30_000 }).toBe(true);
+  await expect(page.getByRole("region", { name: "Waiting to send" })).toHaveCount(0, { timeout: 30_000 });
+  const rows = await reached();
   expect(rows.tickets).toBe(1);
   // The tapped time is kept (not the time it was sent).
   expect(Math.abs(new Date(rows.stop.arrived_at as string).getTime() - tappedAt)).toBeLessThan(60_000);
