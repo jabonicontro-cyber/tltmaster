@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
+import { toastActionError } from "@/lib/toast-result";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardBody, CardHeader } from "@/components/ui/card";
@@ -466,7 +467,7 @@ export function PermissionsMatrix({ permissions, granted }: { permissions: Array
                             if (res.ok) {
                               toast.success(res.message ?? "Saved");
                               router.refresh();
-                            } else toast.error(res.error);
+                            } else toastActionError(res.error);
                           })
                         }
                       />

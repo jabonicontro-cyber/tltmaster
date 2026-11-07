@@ -31,6 +31,7 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     company_name: string | null;
     support?: { ends_at: string } | null;
     support_inside?: boolean;
+    support_requests?: number;
   };
   const access: Access = {
     userId: row.user_id,
@@ -45,6 +46,7 @@ export const getAccess = cache(async (): Promise<Access | null> => {
     preview: null,
     support: row.support?.ends_at ? { endsAt: row.support.ends_at } : null,
     supportInside: Boolean(row.support_inside),
+    supportRequests: Number(row.support_requests ?? 0),
   };
   if (!row.company_id) return access;
 

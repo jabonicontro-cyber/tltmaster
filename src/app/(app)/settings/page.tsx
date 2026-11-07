@@ -22,6 +22,7 @@ import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
 import { SupportAccess, type SupportStatus } from "@/components/settings/support-access";
+import { SupportRequests, type SupportRequestRow } from "@/components/settings/support-requests";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import { documentRules } from "@/server/data/fleet";
@@ -242,13 +243,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     );
   } else if (tab === "support") {
     // Taviron support access (SA1): owners only; "not available yet" before 20261120008900 is installed.
-    const st = await supabase.rpc("support_access_status");
+    const [st, reqs] = await Promise.all([supabase.rpc("support_access_status"), supabase.rpc("support_change_requests")]);
     content = (
       <>
         <CardHeader title="Taviron support" description="Let the Taviron team into your account to help or fix something for you: for 1, 3 or 7 days, ended by you at any time. Every visit and change is recorded." />
         <CardBody>
           {st.error ? <Notice title="Not available yet">Taviron support access needs a database update that has not been installed yet.</Notice> : (
-            <SupportAccess status={st.data as SupportStatus} timezone={timezone} canChange={!access.support} companyName={access.companyName ?? "Your company"} />
+            <div className="space-y-8">
+              {/* Changes Taviron support asked for (SA2); hidden until 20261120009200 is installed. */}
+              {!reqs.error && <SupportRequests requests={(reqs.data ?? []) as SupportRequestRow[]} canDecide={!access.support} timezone={timezone} />}
+              <SupportAccess status={st.data as SupportStatus} timezone={timezone} canChange={!access.support} companyName={access.companyName ?? "Your company"} />
+            </div>
           )}
         </CardBody>
       </>

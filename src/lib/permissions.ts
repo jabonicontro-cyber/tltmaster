@@ -91,6 +91,8 @@ export interface Access {
   support?: { endsAt: string } | null;
   /** An owner of this company, while Taviron support is inside (the banner). */
   supportInside?: boolean;
+  /** Changes Taviron support asked for that wait for an owner (owners and visiting staff; 20261120009200). */
+  supportRequests?: number;
 }
 
 export function can(access: Pick<Access, "permissions"> | null | undefined, permission: Permission): boolean {

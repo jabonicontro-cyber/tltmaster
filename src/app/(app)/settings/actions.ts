@@ -13,6 +13,7 @@ import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { inviteMember } from "@/server/people/invite";
+import { asSupportRequest } from "@/server/support/request";
 
 export async function saveCompanySettings(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
@@ -48,6 +49,8 @@ export async function updateUserAccess(userId: string, formData: FormData): Prom
     if (!uuid.safeParse(userId).success) return fail("Invalid user.");
     const parsed = userAccessSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
+    const req = await asSupportRequest("people.access", [userId, formData]);
+    if (req) return req;
     const supabase = await createClient();
     const { error } = await supabase.rpc("set_user_access", {
       p_user_id: userId,
@@ -78,6 +81,8 @@ export async function setRolePermission(role: string, permission: string, grante
     await assertPermission("users.manage");
     if (!(ROLES as readonly string[]).includes(role) || !(PERMISSIONS as readonly string[]).includes(permission)) return fail("Invalid permission.");
     if ((role as AppRole) === "owner") return fail("Owner permissions cannot be changed.");
+    const req = await asSupportRequest("people.permission", [role, permission, granted]);
+    if (req) return req;
     const supabase = await createClient();
     const { error } = await supabase.rpc("set_role_permission", { p_role: role, p_permission: permission, p_granted: granted });
     if (error) return fail(dbErrorMessage(error));

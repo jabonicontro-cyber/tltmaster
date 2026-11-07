@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { assertPermission } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
+import { asSupportRequest } from "@/server/support/request";
 
 // Staff side of the customer portal (B66). Permissions are checked here and again inside each database function.
 
@@ -31,6 +32,8 @@ export async function savePortalSettings(formData: FormData): Promise<ActionResu
 /** Returns the one-time invitation link (shown once to the staff member; never emailed from here). */
 export async function invitePortalCustomer(formData: FormData): Promise<ActionResult<{ link: string; expires: string }>> {
   await assertPermission("customers.edit");
+  const req = await asSupportRequest("portal.invite", [formData]);
+  if (req) return req;
   const supabase = await createClient();
   const contact = String(formData.get("contact") ?? "") || null;
   const { data, error } = await supabase.rpc("portal_invite", { p_customer: String(formData.get("customer") ?? ""), p_contact: contact, p_email: String(formData.get("email") ?? "") });
@@ -42,6 +45,8 @@ export async function invitePortalCustomer(formData: FormData): Promise<ActionRe
 
 export async function revokePortalAccount(formData: FormData): Promise<ActionResult> {
   await assertPermission("customers.edit");
+  const req = await asSupportRequest("portal.revoke", [formData]);
+  if (req) return req;
   const supabase = await createClient();
   const { error } = await supabase.rpc("portal_revoke", { p_account: String(formData.get("account") ?? "") });
   if (error) return fail(message(error));

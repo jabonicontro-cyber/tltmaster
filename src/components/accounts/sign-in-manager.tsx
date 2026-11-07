@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import { toastActionError } from "@/lib/toast-result";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/dates";
@@ -86,7 +87,7 @@ export function SignInManager({ s, personName, companyName, email, kind = "emplo
     startBusy(async () => {
       const r = await fn();
       if (r.ok) toast.success(r.message ?? "Saved.");
-      else toast.error(r.error ?? "Not saved.");
+      else toastActionError(r.error ?? "Not saved.");
       router.refresh();
     });
 
@@ -117,7 +118,7 @@ export function SignInManager({ s, personName, companyName, email, kind = "emplo
         {s.active ? (
           <Button size="sm" variant="secondary" loading={busy} onClick={() => startBusy(async () => {
             const r = await act.reissue(s.userId);
-            if (!r.ok) { toast.error(r.error); return; }
+            if (!r.ok) { toastActionError(r.error); return; }
             toast.success(r.message ?? "New temporary password issued.");
             show(r.data);
           })}>
@@ -140,7 +141,7 @@ export function SignInManager({ s, personName, companyName, email, kind = "emplo
         ) : (
           <Button size="sm" variant="secondary" loading={busy} onClick={() => startBusy(async () => {
             const r = await act.on(s.userId);
-            if (!r.ok) { toast.error(r.error); return; }
+            if (!r.ok) { toastActionError(r.error); return; }
             toast.success(r.message ?? "Sign-in turned on.");
             if (r.data) show(r.data);
             else router.refresh();

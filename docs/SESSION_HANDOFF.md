@@ -7,6 +7,14 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000000000000000000000. 2026-11-07 — Support change requests (SA2)
+
+Owner said yes to letting Taviron support handle people and sign-in changes through a per-request approval. Migration
+`20261120009200` (tested rollback): during a visit those screens record a request; an owner approves (it runs as the
+owner) or declines in Settings → Taviron support; banner counts for owners and staff. Two-step rule and GPS feed key
+stay owner-only. Tests: `tests/db/support-requests.test.ts`, `tests/unit/support-requests.test.ts`, the SA2 steps in
+`tests/e2e/staff-support.spec.ts`. CLAUDE.md, DEPLOYMENT §3a, SCHEMA, master plan §12 updated.
+
 ## 0000000000000000000000. 2026-11-06 — Taviron staff and support access (SA1), security audit (SEC2)
 
 Released to Production earlier today (verified): `00d30d3` trucks for the day; `5c53c30` truck-hours **Add to order**

@@ -39,6 +39,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
     with mandatory two-step verification) or `scripts/platform-admin.mjs`. Never add any other page or route that grants it.
   - Support staff enter a live company only with its owner's grant (Settings → Taviron support, 1/3/7 days), as a
     support visit, never as a membership; owners see a banner and the history names them "(Taviron support)".
+  - A visit never changes who can sign in or what they may do (database triggers). Those changes become requests
+    (`asSupportRequest`, `src/server/support/`) that a real owner approves in Settings; the approval replays the same
+    action as the owner. A new action that changes people, roles, permissions or sign-ins needs a request kind too.
   - Demo role previews only narrow permissions; they never grant them.
 - **Migrations:**
   - Never edit an applied migration; add a new versioned file in `supabase/migrations/`.

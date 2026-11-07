@@ -11,24 +11,32 @@ import { leaveCompany } from "@/app/staff/actions";
  * from other companies waiting for this sign-in (M1).
  */
 export function SupportBanner({ access, timeZone, invitations = [] }: { access: Access; timeZone?: string; invitations?: string[] }) {
+  // Owners (not visiting staff, not a narrowed demo preview) are asked to review; staff see what still waits.
+  const waiting = access.support || (access.role === "owner" && !access.preview) ? access.supportRequests ?? 0 : 0;
   if (access.support) {
     return (
       <div role="status" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 text-sm shadow-xs" aria-label="Taviron support visit">
         <LifeBuoy className="size-5 shrink-0 text-brand-fg" aria-hidden />
         <p className="min-w-0 flex-1 text-ink">
           <span className="font-semibold">You are in {access.companyName ?? "this company"} as Taviron support</span>
-          <span className="text-muted"> until {formatDateTime(access.support.endsAt, timeZone)}. You have the owner&apos;s permissions; your changes show as yours with &quot;(Taviron support)&quot;.</span>
+          <span className="text-muted"> until {formatDateTime(access.support.endsAt, timeZone)}. You have the owner&apos;s permissions; your changes show as yours with &quot;(Taviron support)&quot;. Changes to people and sign-ins go to an owner for approval.</span>
         </p>
+        {waiting > 0 && <Link href="/settings?tab=support" className="font-semibold text-brand-fg hover:underline">{waiting === 1 ? "1 change waiting for an owner" : `${waiting} changes waiting for an owner`}</Link>}
         <form action={leaveCompany}><SubmitButton variant="secondary" size="sm">Leave</SubmitButton></form>
       </div>
     );
   }
-  if (access.supportInside) {
+  if (access.supportInside || waiting > 0) {
     return (
-      <div role="status" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 text-sm shadow-xs" aria-label="Taviron support is in your account">
+      <div role="status" className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 text-sm shadow-xs" aria-label={access.supportInside ? "Taviron support is in your account" : "Taviron support asked for your approval"}>
         <LifeBuoy className="size-5 shrink-0 text-brand-fg" aria-hidden />
-        <p className="min-w-0 flex-1 text-ink"><span className="font-semibold">Taviron support is in your account.</span> <span className="text-muted">Their changes show in history with &quot;(Taviron support)&quot;.</span></p>
-        <Link href="/settings?tab=support" className="font-semibold text-brand-fg hover:underline">Manage access</Link>
+        <p className="min-w-0 flex-1 text-ink">
+          {access.supportInside
+            ? <><span className="font-semibold">Taviron support is in your account.</span> <span className="text-muted">Their changes show in history with &quot;(Taviron support)&quot;.</span></>
+            : <span className="font-semibold">Taviron support asked you to approve {waiting === 1 ? "a change" : `${waiting} changes`}.</span>}
+          {access.supportInside && waiting > 0 && <span className="text-ink"> {waiting === 1 ? "1 change waits" : `${waiting} changes wait`} for your approval.</span>}
+        </p>
+        <Link href="/settings?tab=support" className="font-semibold text-brand-fg hover:underline">{waiting > 0 ? "Review" : "Manage access"}</Link>
       </div>
     );
   }

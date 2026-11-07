@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { isApprovalSent } from "@/lib/support-requests";
 
 const control =
   "block w-full rounded-control border border-line bg-card px-3.5 text-[15px] text-ink shadow-xs transition-[border-color,box-shadow] " +
@@ -65,6 +66,15 @@ export function Checkbox({ label, className, ...props }: ComponentProps<"input">
 
 export function FormError({ message }: { message?: string | null }) {
   if (!message) return null;
+  // A Taviron support visit's change was recorded for an owner's approval (SA2): not an error, nothing changed yet.
+  if (isApprovalSent(message)) {
+    return (
+      <div role="status" className="flex items-start gap-2 rounded-control border border-line bg-surface px-3.5 py-2.5 text-sm text-ink">
+        <Send className="mt-0.5 size-4 shrink-0 text-brand-fg" aria-hidden />
+        <span>{message}</span>
+      </div>
+    );
+  }
   return (
     <div role="alert" className="flex items-start gap-2 rounded-control border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-800">
       <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden />

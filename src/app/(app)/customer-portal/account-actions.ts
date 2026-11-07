@@ -10,6 +10,7 @@ import {
   blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, suggestUsername, unblock, type IssuedCredential,
 } from "@/server/accounts";
 import { createClient } from "@/server/supabase/server";
+import { asSupportRequest } from "@/server/support/request";
 
 // Customer-portal sign-ins with a username (docs/ACCOUNT_PROVISIONING.md §4). customers.edit creates and manages them;
 // every step is checked again by the database, which also keeps each login to one customer of this company. A portal
@@ -82,6 +83,8 @@ export async function createPortalSignIn(formData: FormData): Promise<ActionResu
   // The portal must be open and the contact must not have a sign-in already: checked before an Auth user is made.
   const { data: state } = await supabase.rpc("portal_admin_state");
   if (!(state as { open?: boolean } | null)?.open) return fail("Turn the customer portal on (Settings tab) before creating customer sign-ins.");
+  const req = await asSupportRequest("portal.signin_create", [formData]);
+  if (req) return req;
 
   const created = await reserveAndCreate("portal", p.request_key, p.username, personName);
   if (!created.ok) return created.error.includes("taken") ? fail(created.error, { username: created.error }) : created;
@@ -110,6 +113,8 @@ export async function reissuePortalSignIn(userId: string): Promise<ActionResult<
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
   const account = await portalAccount(userId);
   if (!account || account.status !== "active") return fail("Turn this sign-in on before issuing a new password.");
+  const req = await asSupportRequest("portal.signin_reissue", [userId]);
+  if (req) return req;
   const r = await reissue("portal", userId);
   if (!r.ok) return r;
   revalidatePath(PATH);
@@ -127,6 +132,8 @@ async function contactOf(userId: string): Promise<{ name: string; email: string 
 export async function emailPortalSetup(userId: string): Promise<ActionResult<{ reference: string | null }>> {
   const access = await staff();
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
+  const req = await asSupportRequest("portal.signin_email", [userId]);
+  if (req) return req;
   const contact = await contactOf(userId);
   const r = await emailSetupLink("portal", userId, contact.email, { isDemo: Boolean(access.isDemo), personName: contact.name, companyName: access.companyName ?? "Your supplier" });
   revalidatePath(PATH);
@@ -148,6 +155,8 @@ export async function turnOffPortalSignIn(userId: string): Promise<ActionResult>
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
   const account = await portalAccount(userId);
   if (!account) return fail("Sign-in not found.");
+  const req = await asSupportRequest("portal.signin_off", [userId]);
+  if (req) return req;
   const supabase = await createClient();
   if (account.status !== "revoked") {
     const off = await supabase.rpc("portal_revoke", { p_account: account.id });
@@ -165,6 +174,8 @@ export async function turnOnPortalSignIn(userId: string): Promise<ActionResult<I
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
   const account = await portalAccount(userId);
   if (!account) return fail("Sign-in not found.");
+  const req = await asSupportRequest("portal.signin_on", [userId]);
+  if (req) return req;
   const supabase = await createClient();
   if (account.status === "revoked") {
     const on = await supabase.rpc("portal_reactivate", { p_account: account.id });

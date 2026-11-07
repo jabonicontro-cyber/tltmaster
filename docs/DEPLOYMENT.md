@@ -401,6 +401,14 @@ owner's permission first: the owner turns it on in **Settings → Taviron suppor
 any time. Inside, you work with the owner's permissions; the company's owners see a banner, every visit is listed for
 them, and your changes show in history as "Name (Taviron support)". Leave from the banner.
 
+**People and sign-in changes during a visit (SA2, owner 2026-11-07, migration `20261120009200`):** adding people,
+changing roles or permissions, creating, resetting, emailing or turning off sign-ins (employee and customer portal),
+and accountant access are never made from a visit. Use the normal screens: the change is recorded as a request ("Sent
+to an owner for approval") and nothing changes. An owner of the company approves or declines it in **Settings →
+Taviron support** (their banner says how many wait); approving makes exactly that change as the owner, with their
+permissions checked again, and any one-time password or link is shown to the owner only. Requests expire after 3
+days; you can withdraw your own. The company's two-step rule and the GPS feed key stay with the owner.
+
 **Operator fallback** (server access with the service-role key; grants the Admin level):
 
 ```bash

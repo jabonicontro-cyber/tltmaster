@@ -9,6 +9,7 @@ import { requireAccess } from "@/server/auth";
 import { emailSetupLink, issueSetup, loginUrl, reserveAndCreate } from "@/server/accounts";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { asSupportRequest } from "@/server/support/request";
 
 // Accountant access (B134). Only an owner gives, changes or ends it; the database checks that again
 // (private.require_owner) and records every change. The sign-in is made by the same provisioning as employees';
@@ -42,6 +43,8 @@ export async function inviteAccountant(formData: FormData): Promise<ActionResult
     }
     const v = p.data;
     if (v.email && isUsernameEmail(v.email)) return fail("Enter the accountant's own email, or leave it empty.", { email: "Enter their own email." });
+    const req = await asSupportRequest("accountant.invite", [formData]);
+    if (req) return req;
     const created = await reserveAndCreate("employee", v.request_key, v.username, v.full_name);
     if (!created.ok) return created.error.includes("taken") ? fail(created.error, { username: created.error }) : created;
     const { userId, username, temporaryPassword } = created.data;
@@ -78,6 +81,8 @@ export async function changeAccountantAccess(formData: FormData): Promise<Action
     const v = p.data;
     const endNow = v.end_now === "1";
     if (!endNow && !isOperationalDate(v.ends_on)) return fail("Choose the last day of access.", { ends_on: "Choose the last day of access." });
+    const req = await asSupportRequest("accountant.change", [formData]);
+    if (req) return req;
     const { error } = await (await createClient()).rpc("accountant_set_access", { p_user: v.user_id, p_ends_on: endNow ? null : v.ends_on, p_payroll: v.payroll === "on", p_end_now: endNow });
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/settings");

@@ -94,10 +94,35 @@ test("invite a Support team member, the owner lets Taviron in, staff go in and t
   await sp.goto("/settings?tab=permissions");
   await expect(sp.getByRole("heading", { name: /Roles and permissions/i }).first()).toBeVisible();
 
+  // 4b. A permission change is not made from the visit: it goes to the owner for approval (SA2).
+  const box = sp.getByRole("checkbox", { name: /^Office staff: / }).first();
+  const boxLabel = (await box.getAttribute("aria-label"))!;
+  const before = await box.isChecked();
+  await box.click();
+  await expectToast(sp, /Sent to an owner for approval/);
+  await sp.reload();
+  await expect(sp.getByRole("checkbox", { name: boxLabel, exact: true })).toBeChecked({ checked: before });
+  await expect(sp.getByRole("status", { name: "Taviron support visit" })).toContainText("1 change waiting for an owner");
+
   // 5. The owner sees the banner and the visit, then ends access: staff are out at once.
   await op.goto("/settings?tab=support");
   await expect(op.getByRole("status", { name: "Taviron support is in your account" })).toBeVisible();
   await expect(op.getByRole("list", { name: "Taviron support visits" })).toContainText(`${name}: Check a rate`);
+  // The owner approves the waiting change: it is made as the owner. Then the owner puts it back.
+  await expect(op.getByRole("status", { name: "Taviron support is in your account" })).toContainText("1 change waits for your approval");
+  const waiting = op.getByRole("list", { name: "Waiting for approval" }).getByRole("listitem");
+  await expect(waiting).toHaveCount(1);
+  await expect(waiting).toContainText(`Asked by ${name} (Taviron support)`);
+  await waiting.getByRole("button", { name: "Approve and make the change" }).click();
+  await expectToast(op, /Approved and done/);
+  await expect(op.getByRole("list", { name: "Earlier support requests" })).toContainText("Approved and done");
+  await op.goto("/settings?tab=permissions");
+  const ownerBox = op.getByRole("checkbox", { name: boxLabel, exact: true });
+  await expect(ownerBox).toBeChecked({ checked: !before });
+  await ownerBox.click();
+  await expectToast(op, /Permission (granted|removed)/);
+  await expect(ownerBox).toBeChecked({ checked: before });
+  await op.goto("/settings?tab=support");
   op.once("dialog", (d) => d.accept());
   await op.getByRole("button", { name: "End access now" }).click();
   await expectToast(op, /access ended/);
@@ -118,4 +143,34 @@ test("an invitation link works once and a made-up one shows nothing", async ({ p
   await expect(page.getByText(/This invitation link is not valid/)).toBeVisible();
   await page.goto("/join-team");
   await expect(page.getByText(/This invitation link is not valid/)).toBeVisible();
+});
+
+test("a request whose description does not match what it would change is refused on approval (SA2)", async ({ page }) => {
+  // Written straight into the database (as a tampered request would be): it claims to be harmless but would give
+  // Office staff a permission. The owner's approval describes it again from the stored change and refuses it.
+  const pg = (await import("pg")).default;
+  const client = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await client.connect();
+  const summary = `Fix a typo in the company name ${unique()}`;
+  try {
+    const { rows } = await client.query<{ company_id: string }>(
+      "select m.company_id from public.company_memberships m join public.profiles p on p.id = m.user_id where p.email = 'e2e-owner@toplinetest.example' and m.active limit 1");
+    const company = rows[0].company_id;
+    const granted = (await client.query("select 1 from public.role_permissions where company_id = $1 and role = 'office' and permission = 'users.manage'", [company])).rowCount === 1;
+    await client.query("insert into private.support_change_requests (company_id, kind, payload, summary, details) values ($1, 'people.permission', $2, $3, '[]')",
+      [company, JSON.stringify(["office", "users.manage", !granted]), summary]);
+
+    await signIn(page, "owner");
+    await page.goto("/settings?tab=support");
+    const item = page.getByRole("list", { name: "Waiting for approval" }).getByRole("listitem", { name: summary });
+    await item.getByRole("button", { name: "Approve and make the change" }).click();
+    await expect(item.getByText(/no longer matches what it would change/)).toBeVisible();
+    const after = (await client.query("select 1 from public.role_permissions where company_id = $1 and role = 'office' and permission = 'users.manage'", [company])).rowCount === 1;
+    expect(after).toBe(granted);
+    await page.reload();
+    await expect(page.getByRole("list", { name: "Earlier support requests" })).toContainText(summary);
+    await expect(page.getByRole("list", { name: "Earlier support requests" }).getByRole("listitem").filter({ hasText: summary })).toContainText("Approved, not done");
+  } finally {
+    await client.end();
+  }
 });

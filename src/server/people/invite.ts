@@ -7,6 +7,7 @@ import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
 import { getEmailMode } from "@/server/email/provider";
+import { asSupportRequest } from "@/server/support/request";
 
 export interface InviteInput { email: string; full_name: string; role: AppRole; /** The person's record to link, when known. */ employeeId?: string }
 
@@ -42,8 +43,14 @@ async function ensurePersonRecord(access: Access, userId: string, input: InviteI
  */
 export async function inviteMember(access: Access, input: InviteInput): Promise<ActionResult<{ userId: string | null }>> {
   if (access.isDemo) return fail("Invitations are turned off in the demo company: it never sends email to anyone.");
-  // A Taviron support visit never adds people (security review 2026-11-06, H1; the database refuses it too).
-  if (access.support) return fail("Taviron support cannot add people to the company. Ask an owner of the company.");
+  // A Taviron support visit never adds people (security review 2026-11-06, H1; the database refuses it too): it asks an
+  // owner to approve the invitation instead (SA2), which then runs as the owner.
+  if (access.support) {
+    const asked = input.employeeId
+      ? await asSupportRequest("people.invite_person", [input.employeeId, input.role])
+      : await asSupportRequest("people.invite", [inviteForm(input)]);
+    return asked ?? fail("Taviron support cannot add people to the company. Ask an owner of the company.");
+  }
   if (input.role === "owner" && access.role !== "owner") return fail("Only an owner can add another owner.");
   const supabase = await createClient();
 
@@ -98,6 +105,14 @@ export async function inviteMember(access: Access, input: InviteInput): Promise<
   return ok({ userId: data.user.id }, `Invitation sent to ${input.email}. They join your company when they accept it.`);
 }
 
+
+function inviteForm(input: InviteInput): FormData {
+  const fd = new FormData();
+  fd.set("email", input.email);
+  fd.set("full_name", input.full_name);
+  fd.set("role", input.role);
+  return fd;
+}
 
 /**
  * Tell a person with an existing sign-in that a company invited them (M1). Only through the configured email provider

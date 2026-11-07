@@ -11,6 +11,7 @@ import {
   blockIfUnused, emailSetupLink, issueSetup, loginUrl, NOT_INSTALLED, reissue, reserveAndCreate, suggestUsername, unblock, type IssuedCredential,
 } from "@/server/accounts";
 import { createClient } from "@/server/supabase/server";
+import { asSupportRequest } from "@/server/support/request";
 
 // Employee sign-ins with a username (docs/ACCOUNT_PROVISIONING.md). users.manage creates and manages sign-ins;
 // employees.edit is needed too because a person record is created or linked. Every step is checked again by the
@@ -71,6 +72,8 @@ export async function createEmployeeSignIn(formData: FormData): Promise<ActionRe
   if (p.email && isUsernameEmail(p.email)) return fail("Enter the person's own email, or leave it empty.", { email: "Enter the person's own email." });
   const bases = p.bases.split(",").map((b) => b.trim()).filter(Boolean);
   if (bases.some((b) => !uuid.safeParse(b).success)) return fail("Choose bases from the list.");
+  const req = await asSupportRequest("signin.create", [formData]);
+  if (req) return req;
 
   const created = await reserveAndCreate("employee", p.request_key, p.username, p.full_name);
   if (!created.ok) return created.error.includes("taken") ? fail(created.error, { username: created.error }) : created;
@@ -115,6 +118,8 @@ export async function createEmployeeSignIn(formData: FormData): Promise<ActionRe
 export async function reissueEmployeeSignIn(userId: string): Promise<ActionResult<IssuedCredential & { loginUrl: string }>> {
   await staff();
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
+  const req = await asSupportRequest("signin.reissue", [userId]);
+  if (req) return req;
   const r = await reissue("employee", userId);
   if (!r.ok) return r;
   revalidatePath("/employees", "layout");
@@ -124,6 +129,8 @@ export async function reissueEmployeeSignIn(userId: string): Promise<ActionResul
 export async function emailEmployeeSetup(userId: string): Promise<ActionResult<{ reference: string | null }>> {
   const access = await staff();
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
+  const req = await asSupportRequest("signin.email", [userId]);
+  if (req) return req;
   const supabase = await createClient();
   const { data: person } = await supabase.from("employees").select("full_name, work_email").eq("user_id", userId).maybeSingle();
   const to = (person as { work_email?: string } | null)?.work_email ?? "";
@@ -155,6 +162,8 @@ async function membership(companyId: string, userId: string) {
 export async function deactivateEmployeeSignIn(userId: string): Promise<ActionResult> {
   const access = await staff();
   if (!uuid.safeParse(userId).success || userId === access.userId) return fail("You cannot turn off your own sign-in.");
+  const req = await asSupportRequest("signin.off", [userId]);
+  if (req) return req;
   const m = await membership(access.companyId!, userId);
   if (!m) return fail("Sign-in not found.");
   const supabase = await createClient();
@@ -169,6 +178,8 @@ export async function deactivateEmployeeSignIn(userId: string): Promise<ActionRe
 export async function reactivateEmployeeSignIn(userId: string): Promise<ActionResult> {
   const access = await staff();
   if (!uuid.safeParse(userId).success) return fail("Sign-in not found.");
+  const req = await asSupportRequest("signin.on", [userId]);
+  if (req) return req;
   const m = await membership(access.companyId!, userId);
   if (!m) return fail("Sign-in not found.");
   const supabase = await createClient();
