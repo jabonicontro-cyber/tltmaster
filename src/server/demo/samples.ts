@@ -72,6 +72,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("vehicle documents", await documents(db, today, trucks));
   note("VINs", await demoVins(db));
   note("driver day for the demo owner", await ownerDriverDay(db, today));
+  // One earlier load of the owner's still waiting for its ticket, so My Day shows "Tickets to enter" (owner 2026-11-09).
+  note("ticket to enter for the demo owner", await ownerTicketToEnter(db, today));
   // Schedules first: full-day requests then count scheduled hours (20261114000300).
   note("work schedules", await workSchedules(db));
   note("shift schedules", await shiftSchedules(db, today));
@@ -1053,6 +1055,41 @@ async function closeHistoryOrders(db: Db): Promise<number> {
  * the presenter is linked to a relief driver; a prospect owner (a linked employee without a driver record) gets the
  * same: a relief-driver record with valid qualifications and, when the rules allow, one of today's open loads.
  */
+/**
+ * The owner's relief day also has one load from yesterday that was delivered but whose ticket is not entered yet
+ * (owner 2026-11-09: My Day should not read "Tickets to enter 0"). Added only while the owner has no earlier load
+ * without a ticket, so a daily Refresh never piles them up. Fictional; nothing is sent.
+ */
+async function ownerTicketToEnter(db: Db, today: string): Promise<number> {
+  const drivers = ((await db.from("drivers").select("id").not("user_id", "is", null).eq("active", true)).data ?? []) as Array<{ id: string }>;
+  if (drivers.length === 0) return 0;
+  const ids = drivers.map((d) => d.id);
+  const earlier = ((await db.from("dispatch_assignments").select("load_id, order_loads!inner(load_date)").eq("status", "active").in("driver_id", ids).lt("order_loads.load_date", today)).data ?? []) as Array<{ load_id: string }>;
+  if (earlier.length) {
+    const ticketed = new Set((((await db.from("delivery_tickets").select("load_id").in("load_id", earlier.map((e) => e.load_id))).data ?? []) as Array<{ load_id: string }>).map((t) => t.load_id));
+    if (earlier.some((e) => !ticketed.has(e.load_id))) return 0;
+  }
+  const yesterday = addDays(today, -1);
+  const source = ((await db.from("order_loads").select("order_id").eq("load_date", yesterday).limit(1)).data ?? []) as Array<{ order_id: string }>;
+  if (source.length === 0) return 0;
+  const made = await db.rpc("save_order_load", { p_payload: { order_id: source[0].order_id, load_date: yesterday, start_time: "13:00", end_time: "14:30", planned_quantity: "", unit_code: "", notes: "Demo: delivered; the driver has not entered the ticket yet." } });
+  if (missing(made.error)) return 0;
+  if (made.error) throw new Error(`Demo samples (ticket to enter): ${made.error.message}`);
+  const loadId = (made.data as { load_id: string }).load_id;
+  const busy = new Set((((await db.from("dispatch_assignments").select("truck_id, order_loads!inner(load_date)").eq("status", "active").eq("order_loads.load_date", yesterday)).data ?? []) as Array<{ truck_id: string | null }>).map((a) => a.truck_id));
+  const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
+  for (const t of [...trucks.filter((x) => !busy.has(x.id)), ...trucks.filter((x) => busy.has(x.id))]) {
+    for (const tr of trailers) {
+      const a = await demoAssign(db, { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: ids[0], p_note: "" });
+      if (!a.error) return 1;
+    }
+  }
+  // No crew fits: leave no unassigned stray load behind.
+  await db.rpc("cancel_order_load", { p_load_id: loadId, p_reason: "Demo sample could not be assigned." });
+  return 0;
+}
+
 async function ownerDriverDay(db: Db, today: string): Promise<number> {
   const owners = ((await db.from("employees").select("id, full_name, user_id").not("user_id", "is", null).is("driver_id", null).eq("department", "management")).data ?? []) as Array<{ id: string; full_name: string; user_id: string }>;
   let n = 0;

@@ -398,6 +398,10 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(driver).toHaveLength(1);
     const linked = (await q("select 1 from public.employees where company_id = $1 and user_id = $2 and driver_id = $3", [w.company, w.owner, driver[0].id])).rowCount;
     expect(linked).toBe(1);
+    // The owner's relief day has one earlier load still waiting for its ticket (owner 2026-11-09), never more.
+    const toEnter = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id join public.drivers d on d.id = a.driver_id where a.company_id = $1 and a.status = 'active' and d.user_id is not null and l.load_date < (now() at time zone $2)::date and not exists (select 1 from public.delivery_tickets t where t.load_id = l.id)", [w.company, TZ]);
+    expect(Number(toEnter.rows[0].n)).toBe(1);
+    expect(first.features).toContain("ticket to enter for the demo owner");
     // The Command Center names the viewer by their demo employee record, never their account name (20261111000200).
     const persona = (await q<{ full_name: string }>("select full_name from public.employees where company_id = $1 and user_id = $2", [w.company, w.owner])).rows[0].full_name;
     const open = (await as(w.owner).rpc("command_center_exceptions", { p_kind: null, p_mine: false, p_limit: 1, p_offset: 0, p_hidden: false })).data as { items: Array<{ exception_key: string }> };
@@ -430,6 +434,7 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Refresh never removes or changes demo users, and never re-adds the shared samples.
     expect(after.memberships).toEqual(before.memberships);
     expect(after.drivers).toBe(before.drivers);
+    expect(Number((await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id join public.drivers d on d.id = a.driver_id where a.company_id = $1 and a.status = 'active' and d.user_id is not null and l.load_date < (now() at time zone $2)::date and not exists (select 1 from public.delivery_tickets t where t.load_id = l.id)", [w.company, TZ])).rows[0].n)).toBe(1);
     expect({ ...after, loads: 0 }).toMatchObject({ workOrders: before.workOrders, quotes: before.quotes, workspaces: before.workspaces, timeOff: before.timeOff });
     expect(r1.added).toBeGreaterThanOrEqual(0);
   }, 240_000);
