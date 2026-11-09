@@ -41,7 +41,7 @@
       "feature": "command-center",
       "path": "/command-center",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:52.098Z",
+      "capturedAt": "2026-11-09T04:18:04.531Z",
       "source": "localhost:3000",
       "checks": "passed"
     },
@@ -59,7 +59,7 @@
       "feature": "driver-portal",
       "path": "/driver",
       "viewport": "phone",
-      "capturedAt": "2026-11-09T03:02:04.923Z",
+      "capturedAt": "2026-11-09T04:18:06.542Z",
       "source": "localhost:3000",
       "checks": "passed"
     },
@@ -77,7 +77,7 @@
       "feature": "billing",
       "path": "/billing",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:12.185Z",
+      "capturedAt": "2026-11-09T04:18:09.353Z",
       "source": "localhost:3000",
       "checks": "passed"
     },

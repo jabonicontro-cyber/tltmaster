@@ -164,6 +164,12 @@ for (const s of selected) {
     continue;
   }
   await siteStyle();
+  // Controls of features not yet published on the website (catalog, published: false) are left out of the image.
+  if (s.hide?.length) {
+    await page.evaluate((labels) => {
+      for (const el of document.querySelectorAll("main a, main button")) if (labels.includes((el.textContent ?? "").trim())) el.remove();
+    }, s.hide);
+  }
   await page.waitForTimeout(500); // colour transitions (tabs, buttons) finish before the capture
   await page.screenshot({ path: join(outDir, s.file) });
   manifest.shots[s.id] = { file: s.file, feature: s.feature, path: s.path, viewport: s.viewport, capturedAt: new Date().toISOString(), source: new URL(base).host, checks: "passed" };

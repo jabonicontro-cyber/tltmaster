@@ -199,6 +199,9 @@ describe.skipIf(!available)("demo feature samples", () => {
     if (combined.length === 0) expect(twoReady.rows.length).toBe(0);
     else expect(combined).toEqual([["draft", 2]]);
     expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
+    // Support (owner 2026-11-09): the sample late-delivery case already has the office's first reply; nothing is overdue.
+    const unanswered = await q<{ n: string }>("select count(*) n from public.portal_support_requests where company_id = $1 and first_reply_at is null and status = 'open'", [w.company]);
+    expect(Number(unanswered.rows[0].n)).toBe(0);
     // Payments by ticket (TP1): one check on a partly paid invoice's tickets, one ticket paid in part, $25 kept as credit;
     // the invoice it paid follows (an invoice payment linked to it).
     const tp = await q<{ amount: string; apps: string; applied: string; linked: string }>("select p.amount_cents amount, (select count(*) from public.ticket_payment_applications a where a.payment_id = p.id) apps, (select coalesce(sum(a.amount_cents), 0) from public.ticket_payment_applications a where a.payment_id = p.id) applied, (select count(*) from public.invoice_payments ip where ip.customer_payment_id = p.id and ip.voided_at is null) linked from public.customer_payments p where p.company_id = $1", [w.company]);

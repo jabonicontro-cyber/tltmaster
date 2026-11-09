@@ -173,6 +173,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
   // internal note, one closed recently). Once per demo.
   note("support cases", await rpcCount(db, "demo_support_samples"));
+  // The sample late-delivery case already has the office's reply (owner 2026-11-09: no "waiting past the reply target"
+  // banner on every demo screen). Through the database function only: it records the reply and sends nothing.
+  note("support reply", await supportSampleReply(db));
   // Freight (MK4): the samples the database writes (support cases, portal booking, shift offer, safety findings) are
   // reworded for a freight demo, so a freight carrier never sees quarries, stone or pours. Exact sample text only.
   note("freight wording", await freightSampleWording(db));
@@ -1875,6 +1878,19 @@ async function freightStopSamples(db: Db, today: string): Promise<number> {
     n++;
   }
   return n;
+}
+
+async function supportSampleReply(db: Db): Promise<number> {
+  const open = await db.from("portal_support_requests").select("id").is("first_reply_at", null).like("subject", "Load arrived after%(demo)").limit(1);
+  if (missing(open.error) || !open.data?.length) return 0;
+  const { error } = await db.rpc("support_reply", {
+    p_request: (open.data[0] as { id: string }).id,
+    p_body: "Sorry about that. We moved tomorrow's loads earlier so they arrive while your crew is on site. (demo)",
+    p_internal: false, p_close: false,
+  });
+  if (missing(error)) return 0;
+  if (error) throw new Error(`Demo samples (support reply): ${error.message}`);
+  return 1;
 }
 
 async function rpcCount(db: Db, fn: string): Promise<number> {

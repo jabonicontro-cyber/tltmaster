@@ -91,7 +91,10 @@
       "viewport": "desktop",
       "ready": "Billing",
       "alt": "Billing readiness in a demo company: orders by readiness, with what still blocks each one (missing or unverified tickets, review exceptions) and the orders ready for an invoice draft",
-      "caption": "Billing readiness. Demo company, fictional data. Drafts are prepared for review; nothing is sent."
+      "caption": "Billing readiness. Demo company, fictional data. Drafts are prepared for review; nothing is sent.",
+      "hide": [
+        "Payments by ticket"
+      ]
     },
     {
       "id": "communications",
