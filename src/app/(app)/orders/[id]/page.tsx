@@ -20,7 +20,9 @@ import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
 import { lineProgress } from "@/lib/tickets/context";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { trimNumber } from "@/lib/fleet/labels";
-import { getOrderDetail, getOrderJobType, getOrderPickup, getOrderStops } from "@/server/data/orders";
+import { getOrderDetail, getOrderDocuments, getOrderJobType, getOrderPickup, getOrderStops } from "@/server/data/orders";
+import { OrderDocuments } from "@/components/orders/order-documents";
+import { getUserNames } from "@/server/data/quotes";
 import { OrderJobType } from "@/components/orders/order-job-type";
 import { OrderStops } from "@/components/orders/order-stops";
 import { haulsAggregate, industryOf } from "@/lib/industry";
@@ -47,7 +49,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const access = await requirePagePermission("orders.view");
   const { id } = await params;
   const { back, base_saved: baseSaved, base_error: baseError, pickup_saved: pickupSaved, pickup_error: pickupError } = await searchParams;
-  const [bases, orderBase, pickup, stops, companySettings, jobType] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id), getOrderStops(id), getSettings().catch(() => null), getOrderJobType(id)]);
+  const [bases, orderBase, pickup, stops, companySettings, jobType, docs] = await Promise.all([baseOptions(), recordBase("orders", id), getOrderPickup(id), getOrderStops(id), getSettings().catch(() => null), getOrderJobType(id), getOrderDocuments(id)]);
+  // Documents (MK2): shown where stops are (freight), or whenever an order already has some.
+  const docNames = docs.documents.length ? await getUserNames() : {};
   // Stops (MK2): shown for companies that haul freight, and on any order that already lists stops.
   const showStops = stops.installed && (industryOf(companySettings?.industry) !== "aggregate" || stops.stops.length > 0);
   const detail = await getOrderDetail(id);
@@ -225,6 +229,19 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             <Card>
               <CardHeader title="Stops" description={stops.stops.length ? `${stopsSummary(stops.stops)}, in the order the truck makes them.` : "Pickups and deliveries, with appointment times and reference numbers."} />
               <OrderStops orderId={id} stops={stops.stops} canEdit={can(access, "orders.edit") && !["completed", "canceled"].includes(order.status)} />
+            </Card>
+          )}
+
+          {docs.installed && (showStops || docs.documents.length > 0) && (
+            <Card>
+              <CardHeader title="Documents" description="Rate confirmation, bills of lading and proof of delivery, for the order or one of its stops." />
+              <OrderDocuments
+                orderId={id}
+                documents={docs.documents}
+                stops={stops.stops.map((st) => ({ id: st.id, label: `${st.kind === "pickup" ? "Pickup" : "Delivery"} ${st.seq}: ${st.name}` }))}
+                names={docNames}
+                canEdit={can(access, "orders.edit") && order.status !== "canceled"}
+              />
             </Card>
           )}
 

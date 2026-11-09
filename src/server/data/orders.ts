@@ -177,3 +177,15 @@ export async function getOrderStops(id: string): Promise<{ installed: boolean; s
     })),
   };
 }
+
+export type OrderDocumentKind = "rate_confirmation" | "bill_of_lading" | "proof_of_delivery" | "other";
+export interface OrderDocument { id: string; kind: OrderDocumentKind; stop_id: string | null; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string | null }
+
+/** An order's documents (MK2, 20261120009500), newest first; installed false before the migration. */
+export async function getOrderDocuments(id: string): Promise<{ installed: boolean; documents: OrderDocument[] }> {
+  if (!uuid.safeParse(id).success) return { installed: false, documents: [] };
+  const { data, error } = await (await createClient()).from("order_documents")
+    .select("id, kind, stop_id, file_name, mime_type, size_bytes, created_at, uploaded_by").eq("order_id", id).is("removed_at", null).order("created_at", { ascending: false });
+  if (error) return { installed: false, documents: [] };
+  return { installed: true, documents: (data ?? []) as OrderDocument[] };
+}
