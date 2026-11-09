@@ -4,7 +4,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { handedOff } from "./fixtures";
-import { pgError, pool, TOP_LINE, withSession, type Session } from "./helpers";
+import { pgError, pool, TOP_LINE, withDeliveryProof, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -14,8 +14,14 @@ const saveEntity = async (s: Session, p: Row, id: string | null = null) =>
   (await s.query<{ id: string }>("select public.billing_entity_save($1, $2::jsonb) as id", [id, JSON.stringify(p)])).rows[0].id;
 const begin = async (s: Session, handoffOrder: string, entity: string | null, simulated: boolean) =>
   (await s.query<{ r: Row }>("select public.accounting_begin_send($1, $2, $3) as r", [handoffOrder, entity, simulated])).rows[0].r;
-const finish = (s: Session, send: string, ok: boolean, number = "", error = "") =>
-  s.query("select public.accounting_finish_send($1, $2, $3, $4, 1000, 1000, $5)", [send, ok, ok ? "QBO-1" : null, number, error]);
+// A successful real send carries the server's proof that QuickBooks answered (security audit L2).
+const finish = async (s: Session, send: string, ok: boolean, number = "", error = "") => {
+  if (ok) {
+    const row = (await s.query<{ company_id: string; simulated: boolean }>("select company_id, simulated from public.accounting_invoice_sends where id = $1", [send])).rows[0];
+    if (row && !row.simulated) await withDeliveryProof(s, row.company_id, "accounting.sent", send);
+  }
+  return s.query("select public.accounting_finish_send($1, $2, $3, $4, 1000, 1000, $5)", [send, ok, ok ? "QBO-1" : null, number, error]);
+};
 
 describe("billing businesses", () => {
   it("splits a handoff snapshot between businesses by charge type; only billing managers change them", async () => {

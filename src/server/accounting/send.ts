@@ -2,6 +2,8 @@ import "server-only";
 import { buildQboInvoice, entitiesOf, qboDisplayName, qboDocNumber, snapshotTotals, totalDifference } from "@/lib/accounting/qbo";
 import type { HandoffSnapshot } from "@/lib/billing/rules";
 import { createInvoice, findInvoice, findOrCreateCustomer, QboReconnectError, type QboContext } from "@/server/accounting/qbo";
+import { getAccess } from "@/server/auth";
+import { deliveryProof, withProof } from "@/server/deliveries";
 import { createClient } from "@/server/supabase/server";
 
 // Send one billing-handoff order to QuickBooks (master plan B82, B89). Called only from a person pressing Send
@@ -36,11 +38,16 @@ async function sendOne(handoffOrderId: string, row: Row, entity: { id: string | 
   if (!c.go) return c.status === "sent" ? { ok: true, message: `Already in QuickBooks as invoice ${c.number}.` } : { ok: false, message: "Being sent right now. Try again in a few minutes." };
 
   const totals = snapshotTotals(row.snapshot, entity.id);
-  const finish = (ok: boolean, extra: { id?: string; number?: string; qboTotal?: number | null; error?: string }) =>
-    supabase.rpc("accounting_finish_send", {
+  // A real send is recorded as done only with the server's proof that QuickBooks answered (security audit L2); the
+  // demo's simulated sends and failures need none.
+  const finish = async (ok: boolean, extra: { id?: string; number?: string; qboTotal?: number | null; error?: string }) => {
+    const companyId = ok && !opts.isDemo ? (await getAccess())?.companyId ?? null : null;
+    const proof = companyId ? await deliveryProof(companyId, "accounting.sent", c.id) : null;
+    return withProof(supabase.rpc("accounting_finish_send", {
       p_send: c.id, p_ok: ok, p_external_id: extra.id ?? null, p_external_number: extra.number ?? "",
       p_taviron_total: totals.total, p_qbo_total: extra.qboTotal ?? null, p_error: extra.error ?? "",
-    });
+    }), proof);
+  };
   const docNumber = qboDocNumber(row.snapshot.order.order_number);
 
   if (opts.isDemo) {

@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, sampleIds, saveQuote, withSession, type LineInput, type Session } from "./helpers";
+import { pgError, pool, sampleIds, saveQuote, withDeliveryProof, withSession, type LineInput, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -193,6 +193,8 @@ describe("quote versions, sending and status", () => {
   async function sendSuccessfully(s: Session, quoteId: string, editSeq: number | null) {
     const issued = await s.query<{ r: { version_id: string } }>("select public.issue_quote_version($1, $2) as r", [quoteId, editSeq]);
     const versionId = issued.rows[0].r.version_id;
+    const company = (await s.query<{ company_id: string }>("select company_id from public.quotes where id = $1", [quoteId])).rows[0].company_id;
+    await withDeliveryProof(s, company, "quote.sent", quoteId);
     await s.query(
       "select public.record_quote_delivery($1, $2, 'sent', array['sam@prairieview-landscape.example'], '{}', 'Quote', 'Body', 'test', 'msg-1', null, $3::jsonb)",
       [quoteId, versionId, JSON.stringify({ filename: "Q.pdf", sha256: "a".repeat(64), byte_size: 1234 })],

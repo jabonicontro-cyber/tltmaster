@@ -7,6 +7,17 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 000000000000000000000000. 2026-11-09 — SA2 released; verified deliveries (SEC2 L2)
+
+**Released `289e3f4` to Production (owner approved 2026-11-09):** CI, the migrations workflow (009200 applied) and the
+Production deployment record all succeeded. The full browser suite now runs in CI with storage and passed on a fresh
+database; it found a real Dispatch bug (assign-several and copy-crew dialogs lost their loads mid-batch), fixed.
+
+SEC2 L2 (migration `20261120009300`, tested rollback, local only): sends are recorded as emailed or exported only with
+a server-issued proof (`src/server/deliveries.ts`). Monitoring (health check, Sentry) and Supabase sign-in protection
+wait on the owner's account steps (LAUNCH §4 and §7). New request (owner 2026-11-09): some customers pay later against
+specific delivery tickets; payments applied to tickets, invoice balance follows (master plan §12 TP1).
+
 ## 00000000000000000000000. 2026-11-07 — Support change requests (SA2)
 
 Owner said yes to letting Taviron support handle people and sign-in changes through a per-request approval. Migration

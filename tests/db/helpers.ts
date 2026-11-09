@@ -145,3 +145,14 @@ export async function saveQuote(s: Session, payload: Record<string, unknown>) {
   );
   return res.rows[0].r;
 }
+
+/**
+ * What the server does after the email or accounting service confirmed a delivery (security audit L2, 20261120009300):
+ * the server's account issues a one-time proof and the person's request carries it. The proof is issued on its own
+ * connection (the server's role); the header is set for the rest of this test's transaction.
+ */
+export async function withDeliveryProof(s: Session, companyId: string, kind: "invoice.sent" | "quote.sent" | "accounting.sent", targetId: string): Promise<string> {
+  const { rows } = await pool.query<{ id: string }>("select public.delivery_proof_issue($1, $2, $3) as id", [companyId, kind, targetId]);
+  await s.query("select set_config('request.headers', $1, true)", [JSON.stringify({ "x-taviron-delivery-proof": rows[0].id })]);
+  return rows[0].id;
+}

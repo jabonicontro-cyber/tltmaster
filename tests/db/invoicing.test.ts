@@ -4,7 +4,7 @@
 // other companies and roles see or change nothing.
 import { afterAll, describe, expect, it } from "vitest";
 import { handedOff } from "./fixtures";
-import { pgError, pool, withSession } from "./helpers";
+import { pgError, pool, withDeliveryProof, withSession } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -62,8 +62,19 @@ describe("invoicing", () => {
       // Sending is recorded only when real; a preview is logged, not marked sent.
       await s.query("select public.invoice_record_sent($1, array['ap@example.test'], true)", [inv]);
       expect((await s.query<{ sent_at: string | null }>("select sent_at from public.invoices where id = $1", [inv])).rows[0].sent_at).toBeNull();
+      // A real send is recorded only with the server's proof that the email service took it (security audit L2).
+      const sentRefused = "This send was not confirmed by the email or accounting service";
+      expect((await pgError(s.query("select public.invoice_record_sent($1, array['ap@example.test'], false)", [inv]))).message).toContain(sentRefused);
+      const invCompany = (await s.query<{ company_id: string }>("select company_id from public.invoices where id = $1", [inv])).rows[0].company_id;
+      await withDeliveryProof(s, invCompany, "quote.sent", inv); // the wrong kind of proof
+      expect((await pgError(s.query("select public.invoice_record_sent($1, array['ap@example.test'], false)", [inv]))).message).toContain(sentRefused);
+      const proof = await withDeliveryProof(s, invCompany, "invoice.sent", inv);
       await s.query("select public.invoice_record_sent($1, array['ap@example.test'], false)", [inv]);
       expect((await s.query<{ sent_at: string | null }>("select sent_at from public.invoices where id = $1", [inv])).rows[0].sent_at).not.toBeNull();
+      // A proof works once.
+      await s.query("select set_config('request.headers', $1, true)", [JSON.stringify({ "x-taviron-delivery-proof": proof })]);
+      expect((await pgError(s.query("select public.invoice_record_sent($1, array['ap@example.test'], false)", [inv]))).message).toContain(sentRefused);
+      await s.query("select set_config('request.headers', '', true)");
 
       // Void: kept with its number and reason; a new invoice can then be made for the same handoff.
       await s.query("select public.invoice_void($1, 'Re-invoiced with the right PO')", [inv]);

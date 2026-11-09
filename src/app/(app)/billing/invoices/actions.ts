@@ -14,6 +14,7 @@ import { dbErrorMessage } from "@/server/errors";
 import { buildInvoiceDocument } from "@/server/invoices/document";
 import { renderInvoicePdf } from "@/server/pdf/invoice-pdf";
 import { createClient } from "@/server/supabase/server";
+import { deliveryProof, withProof } from "@/server/deliveries";
 
 // Invoices (B99, migration 20261120004800). Every change calls one database function that checks billing.manage, the
 // company and the invoice's state again. Results come back as ?saved= / ?error= so the forms work without JavaScript.
@@ -160,7 +161,9 @@ export async function sendInvoice(formData: FormData) {
     { idempotencyKey: `invoice-${id}-${randomUUID()}` },
   );
   if (!result.ok) go(page(id), "error", `The email was not sent: ${result.error}`);
-  const { error } = await supabase.rpc("invoice_record_sent", { p_invoice: id, p_to: testing ? [live.testRecipient] : to, p_simulated: testing });
+  // A real send is recorded only with the server's proof that the email service took it (security audit L2).
+  const proof = testing ? null : await deliveryProof(access.companyId!, "invoice.sent", id);
+  const { error } = await withProof(supabase.rpc("invoice_record_sent", { p_invoice: id, p_to: testing ? [live.testRecipient] : to, p_simulated: testing }), proof);
   refresh(id);
   if (error) go(page(id), "error", `The email WAS sent, but it could not be recorded. Do not send it again. (${dbErrorMessage(error)})`);
   go(page(id), "saved", testing ? "test_sent" : "sent");

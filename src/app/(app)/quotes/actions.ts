@@ -18,6 +18,7 @@ import { env } from "@/server/env";
 import { loadQuoteDocument } from "@/server/quotes/document-loader";
 import { renderQuotePdf } from "@/server/pdf/quote-pdf";
 import type { EffectivePrice } from "@/server/data/types";
+import { deliveryProof, withProof } from "@/server/deliveries";
 
 function revalidateQuote(id: string) {
   revalidatePath("/quotes");
@@ -113,8 +114,9 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
     if (issueErr) return fail(dbErrorMessage(issueErr));
     const versionId = (issued as { version_id: string }).version_id;
 
-    const record = (status: "sent" | "failed" | "test_sent", extra: { providerMessageId?: string | null; error?: string | null; document?: object | null; to?: string[]; cc?: string[] }) =>
-      supabase.rpc("record_quote_delivery", {
+    // A send is recorded as sent only with the server's proof that the email service took it (security audit L2).
+    const record = async (status: "sent" | "failed" | "test_sent", extra: { providerMessageId?: string | null; error?: string | null; document?: object | null; to?: string[]; cc?: string[] }) =>
+      withProof(supabase.rpc("record_quote_delivery", {
         p_quote_id: quoteId,
         p_version_id: versionId,
         p_status: status,
@@ -126,7 +128,7 @@ export async function sendQuoteEmail(input: z.input<typeof emailInput>): Promise
         p_provider_message_id: extra.providerMessageId ?? null,
         p_error: extra.error ?? null,
         p_document: extra.document ?? null,
-      });
+      }), status === "failed" ? null : await deliveryProof(access.companyId!, "quote.sent", quoteId));
 
     // 2. Render the PDF of exactly that version.
     let pdf: Awaited<ReturnType<typeof renderQuotePdf>>;
