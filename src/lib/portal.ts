@@ -227,3 +227,53 @@ export type PortalInvoice = {
   payments: Array<{ received_on: string; amount_cents: number; method: string }>; paid_cents: number; balance_cents: number;
 };
 
+
+/** A planned load's window, "1:00 PM–2:30 PM" (or just the start), from its recorded times; "" when it has none. */
+export function formatWindow(start: string | null | undefined, end: string | null | undefined): string {
+  const from = formatTime(start);
+  if (!from) return "";
+  const to = formatTime(end);
+  return to ? `${from}–${to}` : from;
+}
+
+/**
+ * Quantities added up per unit, "22.1 Tons" or "22.1 Tons + 2 Loads" (never one sum across different units).
+ * "" when there is nothing to add up.
+ */
+export function quantitiesByUnit(items: Array<{ quantity: number | string | null | undefined; unit: string | null | undefined }>): string {
+  const sums = new Map<string, number>();
+  for (const i of items) {
+    if (i.quantity === null || i.quantity === undefined || i.quantity === "") continue;
+    const n = Number(i.quantity);
+    if (Number.isNaN(n)) continue;
+    const unit = (i.unit ?? "").replace(/_/g, " ").trim();
+    sums.set(unit, (sums.get(unit) ?? 0) + n);
+  }
+  return [...sums].map(([unit, n]) => formatQuantity(Math.round(n * 100) / 100, unit || undefined)).join(" + ");
+}
+
+/** The ticket picker's label, "TKT-1025 · Nov 8 · 14.1 Tons", from what is known about the ticket. */
+export function ticketOptionLabel(t: { number: string; delivered_at?: string | null; quantity?: number | null; unit?: string | null }, timeZone: string): string {
+  const day = t.delivered_at ? formatMoment(t.delivered_at, timeZone).split(",")[0] : "";
+  return [t.number, day, formatQuantity(t.quantity, t.unit ?? undefined)].filter(Boolean).join(" · ");
+}
+
+/**
+ * What a new support case starts with when it is opened from a ticket, an invoice or an order: the closest topic and a
+ * plain subject the customer can change. Labels are the record numbers the customer sees.
+ */
+export function supportDefaults(from: { ticket?: string | null; invoice?: string | null; order?: string | null }): { kind: "" | "material" | "billing"; subject: string } {
+  if (from.ticket) return { kind: "material", subject: `Question about ticket ${from.ticket}` };
+  if (from.invoice) return { kind: "billing", subject: `Question about invoice ${from.invoice}` };
+  if (from.order) return { kind: "", subject: `Question about order ${from.order}` };
+  return { kind: "", subject: "" };
+}
+
+/** The new-support-case checks, shown next to each field (the database checks the same). Empty when all is well. */
+export function supportFormErrors(v: { kind: string; subject: string; message: string }): Record<string, string> {
+  const errors: Record<string, string> = {};
+  if (!v.kind.trim()) errors.kind = "Choose what it is about.";
+  if (!v.subject.trim()) errors.subject = "Enter a subject, a few words are enough.";
+  if (v.message.trim().length < 5) errors.message = v.message.trim() ? "Write a little more (at least 5 characters)." : "Enter your message.";
+  return errors;
+}

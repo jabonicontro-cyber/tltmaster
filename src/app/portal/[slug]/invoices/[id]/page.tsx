@@ -29,10 +29,11 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
             <h1 className="text-2xl font-bold text-ink">Invoice {i.number}</h1>
             <p className="text-sm text-muted">{str(from.name) || c.name}</p>
           </div>
-          <dl className="grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm">
-            <dt className="text-muted">Issued</dt><dd className="text-right tabular">{formatDay(i.issue_date)}</dd>
-            <dt className="text-muted">Due</dt><dd className="text-right tabular">{formatDay(i.due_date)}</dd>
-            {i.terms_days !== null && <><dt className="text-muted">Terms</dt><dd className="text-right">{i.terms_days === 0 ? "Due on receipt" : `Net ${i.terms_days}`}</dd></>}
+          {/* Labels and values each in their own left-aligned column, so the dates and terms line up (UX day-1). */}
+          <dl className="grid grid-cols-[max-content_max-content] gap-x-4 gap-y-1 text-sm">
+            <dt className="text-muted">Issued</dt><dd className="tabular text-ink">{formatDay(i.issue_date)}</dd>
+            <dt className="text-muted">Due</dt><dd className="tabular text-ink">{formatDay(i.due_date)}</dd>
+            {i.terms_days !== null && <><dt className="text-muted">Terms</dt><dd className="text-ink">{i.terms_days === 0 ? "Due on receipt" : `Net ${i.terms_days}`}</dd></>}
           </dl>
         </header>
         <div className="mt-5 grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
@@ -47,17 +48,26 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
             {i.service_start && <p>Service {formatDay(i.service_start)}{i.service_end && i.service_end !== i.service_start ? ` – ${formatDay(i.service_end)}` : ""}</p>}
           </div>
         </div>
+        {/* On a phone, quantity and rate sit under the description ("24 ton × $14.50") instead of in narrow columns
+            that ran together; wider screens and the printed copy keep the four columns. */}
         <table className="mt-5 w-full text-sm">
-          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-2 font-medium">Description</th><th className="py-2 text-right font-medium">Quantity</th><th className="py-2 text-right font-medium">Rate</th><th className="py-2 text-right font-medium">Amount</th></tr></thead>
+          <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-2 font-medium">Description</th><th className="hidden py-2 pl-4 text-right font-medium sm:table-cell print:table-cell">Quantity</th><th className="hidden py-2 pl-4 text-right font-medium sm:table-cell print:table-cell">Rate</th><th className="py-2 pl-4 text-right font-medium">Amount</th></tr></thead>
           <tbody>
-            {i.lines.map((l, n) => (
-              <tr key={n} className="border-b border-line/60">
-                <td className="py-2 pr-3 text-ink">{l.description}</td>
-                <td className="py-2 text-right tabular">{l.quantity != null ? `${trimNumber(String(l.quantity))} ${(l.unit_code ?? "").replace(/_/g, " ")}` : ""}</td>
-                <td className="py-2 text-right tabular">{l.unit_rate_cents != null ? formatCents(l.unit_rate_cents) : ""}</td>
-                <td className="py-2 text-right font-medium tabular">{formatCents(l.amount_cents)}</td>
-              </tr>
-            ))}
+            {i.lines.map((l, n) => {
+              const qty = l.quantity != null ? `${trimNumber(String(l.quantity))} ${(l.unit_code ?? "").replace(/_/g, " ")}`.trim() : "";
+              const rate = l.unit_rate_cents != null ? formatCents(l.unit_rate_cents) : "";
+              return (
+                <tr key={n} className="border-b border-line/60 align-top">
+                  <td className="py-2 text-ink">
+                    {l.description}
+                    {qty || rate ? <span className="block text-xs text-muted tabular sm:hidden print:hidden">{[qty, rate].filter(Boolean).join(" × ")}</span> : null}
+                  </td>
+                  <td className="hidden py-2 pl-4 text-right whitespace-nowrap tabular sm:table-cell print:table-cell">{qty}</td>
+                  <td className="hidden py-2 pl-4 text-right whitespace-nowrap tabular sm:table-cell print:table-cell">{rate}</td>
+                  <td className="py-2 pl-4 text-right font-medium whitespace-nowrap tabular">{formatCents(l.amount_cents)}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
         <dl className="mt-4 ml-auto grid max-w-xs grid-cols-2 gap-y-1 text-sm">
@@ -66,11 +76,16 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
           {i.tax_cents ? <><dt className="text-muted">Tax</dt><dd className="text-right tabular">{formatCents(i.tax_cents)}</dd></> : null}
           <dt className="font-semibold text-ink">Total</dt><dd className="text-right font-semibold tabular">{formatCents(i.total_cents)}</dd>
           {i.payments.flatMap((p, n) => [<dt key={`l${n}`} className="text-muted">Paid {formatDay(p.received_on)}</dt>, <dd key={`v${n}`} className="text-right tabular">−{formatCents(p.amount_cents)}</dd>])}
-          <dt className="font-semibold text-ink">Balance</dt><dd className="text-right font-semibold tabular">{formatCents(i.balance_cents)}</dd>
+          <dt className="font-semibold text-ink">Left to pay</dt><dd className="text-right font-semibold tabular">{formatCents(i.balance_cents)}</dd>
         </dl>
         {i.footer && <p className="mt-5 text-sm whitespace-pre-line text-muted">{i.footer}</p>}
       </article>
-      <div className="print:hidden"><PrintButton /></div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 print:hidden">
+        <PrintButton />
+        {c.features.support ? (
+          <Link href={`/portal/${slug}/support/new?invoice=${i.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Question about this invoice?</Link>
+        ) : null}
+      </div>
     </div>
   );
 }

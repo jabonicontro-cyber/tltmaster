@@ -26,10 +26,11 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
   const proof = t.confirmed ? await portalCall<Proof>("portal_ticket_proof", { p_slug: slug, p_ticket: ticketId }).catch(() => null) : null;
   return (
     <div className="space-y-4">
-      <div className="no-print flex items-center justify-between gap-3 text-sm">
+      {/* On a phone the back link and the actions stack, and each action stays on one line (UX day-1). */}
+      <div className="no-print flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         <Link href={`/portal/${slug}/orders/${id}`} className="text-muted hover:text-ink hover:underline">← Order {t.order.number}</Link>
-        <span className="flex items-center gap-3">
-          {c.features.support ? <Link href={`/portal/${slug}/support/new?order=${id}&ticket=${ticketId}`} className="font-semibold text-brand-fg hover:underline">Question about this ticket?</Link> : null}
+        <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          {c.features.support ? <Link href={`/portal/${slug}/support/new?order=${id}&ticket=${ticketId}`} className="font-semibold whitespace-nowrap text-brand-fg hover:underline">Question about this ticket?</Link> : null}
           <PrintButton />
         </span>
       </div>

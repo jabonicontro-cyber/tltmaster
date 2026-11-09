@@ -29,7 +29,7 @@ export default async function PortalInvoicesPage({ params }: { params: Promise<{
           <p className="text-sm text-muted">As of {formatDay(data.as_of)}</p>
         </div>
         <p className="mt-2 text-3xl font-semibold tracking-[-0.02em] tabular text-ink">{formatCents(s.balance_cents)}</p>
-        <p className="text-sm text-muted">Balance on {s.open_count} open invoice{s.open_count === 1 ? "" : "s"}{s.overdue_cents > 0 ? ` · ${formatCents(s.overdue_cents)} past due` : ""}</p>
+        <p className="text-sm text-muted">Left to pay on {s.open_count} open invoice{s.open_count === 1 ? "" : "s"}{s.overdue_cents > 0 ? ` · ${formatCents(s.overdue_cents)} past due` : ""}</p>
         <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
           {aging.map(([label, cents]) => (
             <div key={label} className="rounded-xl bg-surface px-3 py-2">
@@ -54,7 +54,7 @@ export default async function PortalInvoicesPage({ params }: { params: Promise<{
                 <span className="flex items-center gap-3">
                   <span className="text-right tabular">
                     <span className="block font-semibold text-ink">{formatCents(i.balance_cents)}</span>
-                    <span className="block text-xs text-muted">of {formatCents(i.total_cents)}</span>
+                    <span className="block text-xs text-muted">left to pay of {formatCents(i.total_cents)}</span>
                   </span>
                   <Badge tone={STATE[i.state].tone}>{STATE[i.state].label}</Badge>
                 </span>

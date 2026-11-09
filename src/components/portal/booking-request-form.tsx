@@ -52,7 +52,8 @@ export function BookingRequestForm({ slug, days, sites }: { slug: string; days: 
       </Field>
       {sites.length > 0 && (
         <Field label="Job site" htmlFor="bk-site">
-          <Select id="bk-site" name="site_id" defaultValue="">
+          {/* One job site on file: it is the one (UX day-1); "Tell us in the notes" stays available for a new site. */}
+          <Select id="bk-site" name="site_id" defaultValue={sites.length === 1 ? sites[0].id : ""}>
             <option value="">Tell us in the notes</option>
             {sites.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
           </Select>

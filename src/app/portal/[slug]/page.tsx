@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ChevronRight } from "lucide-react";
 import { ContactCard } from "@/components/portal/contact-card";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
-import { formatDay, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
+import { formatDay, formatWindow, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
 import { trimNumber } from "@/lib/fleet/labels";
 import { portalCall, portalGate } from "@/server/portal";
 import { previewPortalAs } from "@/app/admin/testing-lab/actions";
@@ -48,7 +48,10 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
       const delivered = d.tickets.filter((t) => dayIn(new Date(t.delivered_at)) === today);
       const units = [...new Set(delivered.map((t) => t.unit))];
       const qty = units.length === 1 ? `${trimNumber(String(delivered.reduce((n, t) => n + Number(t.quantity), 0)))} ${units[0].replace(/_/g, " ")}` : "";
-      return { id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty };
+      // The next planned load (portal_orders: the earliest load still planned), when it is today and has a time.
+      const next = todays.find((o) => o.id === d.id)?.next_load;
+      const nextWindow = next && next.date === today ? formatWindow(next.start, next.end) : "";
+      return { id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty, nextWindow };
     })
     .filter((d) => d.planned > 0 || d.delivered > 0);
   const awaiting = quotes.quotes.filter((q) => q.status === "sent" && !q.response);
@@ -74,9 +77,19 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
             <ul className="divide-y divide-line" aria-label="Today">
               {todayDetail.map((d) => (
                 <li key={d.id}>
-                  <Link href={`/portal/${slug}/orders/${d.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface">
-                    <span className="font-semibold text-ink">Order {d.number}{d.site ? <span className="font-normal text-muted"> · {d.site}</span> : null}</span>
-                    <span className="text-sm tabular text-ink">{d.delivered} of {d.planned || d.delivered} load{(d.planned || d.delivered) === 1 ? "" : "s"} delivered{d.qty ? ` · ${d.qty}` : ""}</span>
+                  {/* The whole row opens the order; the chevron and "Open order" say so (UX day-1). */}
+                  <Link href={`/portal/${slug}/orders/${d.id}`} className="group flex items-center gap-3 rounded-xl py-3 hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
+                    <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                      <span className="min-w-0">
+                        <span className="block font-semibold text-ink group-hover:underline">Order {d.number}{d.site ? <span className="font-normal text-muted"> · {d.site}</span> : null}</span>
+                        {d.nextWindow ? <span className="block text-sm text-muted">Next load today {d.nextWindow}</span> : null}
+                      </span>
+                      <span className="text-sm tabular text-ink">{d.delivered} of {d.planned || d.delivered} load{(d.planned || d.delivered) === 1 ? "" : "s"} delivered{d.qty ? ` · ${d.qty}` : ""}</span>
+                    </span>
+                    <span className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-brand-fg">
+                      <span className="hidden sm:inline">Open order</span>
+                      <ChevronRight className="size-4" aria-hidden />
+                    </span>
                   </Link>
                 </li>
               ))}

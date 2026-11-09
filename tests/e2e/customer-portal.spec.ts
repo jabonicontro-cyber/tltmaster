@@ -93,7 +93,15 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
       // Not even by typing its address.
       const r = await cust.goto(`/portal/${TOP_LINE_SLUG}/orders/${otherOrder.id}`);
       expect(r?.status()).toBe(404);
+      // In the portal's own shell with a way back, never the Taviron website's 404 (UX day-1).
+      await expect(cust.getByRole("heading", { name: "This page is not available" })).toBeVisible();
+      await expect(cust.getByRole("link", { name: "Back to the portal home" })).toHaveAttribute("href", `/portal/${TOP_LINE_SLUG}`);
+      await expect(cust.getByRole("link", { name: "Pricing" })).toHaveCount(0);
     }
+    // A mistyped address inside the portal gets the same page.
+    const typo = await cust.goto(`/portal/${TOP_LINE_SLUG}/ordrs`);
+    expect(typo?.status()).toBe(404);
+    await expect(cust.getByRole("link", { name: "Back to the portal home" })).toBeVisible();
 
     // One of this customer's orders: each ordered line shows how much is delivered and left (UX5).
     const mine = (await sql<{ id: string }>(
@@ -121,6 +129,10 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
 
     // Support: a question, answered by the office.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/support/new`);
+    // Missing answers are named next to their fields, not only in the browser's pop-up (UX day-1).
+    await cust.getByRole("button", { name: "Send" }).click();
+    await expect(cust.getByText("Choose what it is about.")).toBeVisible();
+    await expect(cust.getByText("Enter your message.")).toBeVisible();
     const subject = `Gate code ${unique()}`;
     await cust.getByLabel("What is it about?").selectOption({ label: "Other" });
     await cust.getByLabel("Subject").fill(subject);
@@ -161,6 +173,16 @@ test("owner opens the portal and invites a contact; the customer signs up, follo
       await cust.goto(`/portal/${TOP_LINE_SLUG}/invoices`);
       await expect(cust.getByRole("heading", { name: "Invoices" })).toBeVisible();
       await expect(cust.getByRole("region", { name: "Statement" })).toBeVisible();
+      // An issued invoice (when this customer has one) offers a question about it, with the invoice chosen (UX day-1).
+      const first = cust.getByRole("list", { name: "Invoices" }).getByRole("link").first();
+      if (await first.count()) {
+        await expect(first.getByText(/left to pay of \$/)).toBeVisible();
+        await first.click();
+        await cust.getByRole("link", { name: "Question about this invoice?" }).click();
+        await expect(cust.getByLabel("What is it about?")).toHaveValue("billing");
+        await expect(cust.getByLabel("Subject")).toHaveValue(/^Question about invoice /);
+        await expect(cust.getByLabel("Invoice (optional)")).not.toHaveValue("");
+      }
     } finally {
       if (issuer) await sql("update public.invoicing_settings set issuer = $2 where company_id = $1", [TOP_LINE, issuer]);
       else await sql("delete from public.invoicing_settings where company_id = $1", [TOP_LINE]);

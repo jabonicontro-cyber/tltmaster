@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, portalIsPast, portalStatusLabel, scheduleText, type PortalOrder } from "@/lib/portal";
+import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, formatWindow, portalIsPast, portalStatusLabel, quantitiesByUnit, scheduleText, type PortalOrder } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { ReleasePortalTruck } from "@/components/portal/portal-forms";
 import { createClient } from "@/server/supabase/server";
@@ -18,6 +18,9 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
   const o = await portalCall<PortalOrder>("portal_order", { p_slug: slug, p_order: id });
   const loads = o.loads.filter((l) => !l.canceled);
   const today = new Date().toISOString().slice(0, 10);
+  // Confirmed quantity in the tickets' own units ("22.1 Tons"), as the rest of the page shows it; never one sum across
+  // different units.
+  const confirmedQty = quantitiesByUnit(o.tickets.filter((t) => t.confirmed)) || formatQuantity(o.quantity_confirmed);
   // Trucks working for the day on this order today (UX11); empty for other orders or before 20261120008600.
   const trucksRes = await (await createClient()).rpc("portal_order_trucks", { p_slug: slug, p_order: id });
   const trucks = (trucksRes.error ? [] : trucksRes.data ?? []) as Array<{ load_id: string; truck: string; start: string; end: string; released_at: string | null; started: boolean; trips: number }>;
@@ -36,7 +39,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Info label="Schedule" value={scheduleText(o) ?? (o.requested_date ? `Requested for ${formatDay(o.requested_date)}` : "Not scheduled yet")} />
         <Info label="Next delivery" value={o.next_load ? `${formatDay(o.next_load.date)}${o.next_load.start ? `, ${formatTime(o.next_load.start)}` : ""}` : "None planned"} />
-        <Info label="Delivered" value={o.tickets_confirmed ? `${o.tickets_confirmed} confirmed (${formatQuantity(o.quantity_confirmed)})` : o.tickets_reported ? `${o.tickets_reported} being checked` : "Nothing yet"} />
+        <Info label="Delivered" value={o.tickets_confirmed ? `${o.tickets_confirmed} confirmed (${confirmedQty})` : o.tickets_reported ? `${o.tickets_reported} being checked` : "Nothing yet"} />
       </div>
       <p className="text-xs text-muted">Times are planned delivery windows, not live arrival estimates. A delivery shows as confirmed once its ticket has been checked.</p>
 
@@ -46,7 +49,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
           <ul className="divide-y divide-line text-sm">
             {o.lines.map((l, i) => (
               <li key={i} className="py-2">
-                <div className="flex justify-between gap-3"><span className="text-ink">{l.description}</span><span className="tabular text-muted">{formatQuantity(l.quantity, l.unit)}</span></div>
+                <div className="flex justify-between gap-3"><span className="text-ink">{l.description}</span><span className="tabular text-muted">{formatQuantity(l.quantity, l.unit) || "–"}</span></div>
                 {l.tracked && l.quantity !== null && o.status !== "canceled" ? <LineProgress line={l} /> : null}
               </li>
             ))}
@@ -81,8 +84,9 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
             <ul className="divide-y divide-line text-sm">
               {loads.map((l) => (
                 <li key={l.number} className="flex flex-wrap justify-between gap-2 py-2">
-                  <span className="text-ink">Load {l.number} · {formatDay(l.date)}{l.start ? `, ${formatTime(l.start)}${l.end ? `–${formatTime(l.end)}` : ""}` : ""}</span>
-                  <span className="tabular text-muted">{formatQuantity(l.quantity, l.unit)}</span>
+                  <span className="text-ink">Load {l.number} · {formatDay(l.date)}{l.start ? `, ${formatWindow(l.start, l.end)}` : ""}</span>
+                  {/* A load without a set quantity shows a dash, not an empty space (UX day-1). */}
+                  <span className="tabular text-muted">{formatQuantity(l.quantity, l.unit) || <span title="No quantity set for this load">–</span>}</span>
                 </li>
               ))}
             </ul>

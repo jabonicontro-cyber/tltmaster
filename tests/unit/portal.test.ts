@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDay, formatQuantity, formatTime, isPortalSlug, isPortalToken, responseLabel, scheduleText } from "@/lib/portal";
+import { formatDay, formatQuantity, formatTime, formatWindow, isPortalSlug, isPortalToken, quantitiesByUnit, responseLabel, scheduleText, supportDefaults, supportFormErrors, ticketOptionLabel } from "@/lib/portal";
 import { PORTAL_GENERAL_HELP } from "@/lib/portal-help";
 import { LAB_VIEWS, latestCheck } from "@/lib/platform/testing-lab";
 import { PREVIEW_ROLES } from "@/lib/platform/preview";
@@ -17,6 +17,38 @@ describe("customer portal formatting", () => {
     expect(scheduleText({ scheduled_start: null, scheduled_end: null, window_start: null, window_end: null, requested_date: "2026-10-30" })).toBeNull();
     expect(scheduleText({ scheduled_start: "2026-10-21", scheduled_end: "2026-10-21", window_start: "07:00:00", window_end: "10:00:00", requested_date: null })).toBe("Oct 21, 2026, 7:00 AM–10:00 AM");
     expect(scheduleText({ scheduled_start: "2026-10-21", scheduled_end: "2026-10-23", window_start: null, window_end: null, requested_date: null })).toBe("Oct 21, 2026 – Oct 23, 2026");
+  });
+
+  it("shows a load's window from its recorded times only (UX day-1)", () => {
+    expect(formatWindow("13:00:00", "14:30:00")).toBe("1:00 PM–2:30 PM");
+    expect(formatWindow("13:00:00", null)).toBe("1:00 PM");
+    expect(formatWindow(null, "14:30:00")).toBe("");
+  });
+
+  it("adds quantities up per unit, never across units (UX day-1)", () => {
+    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }])).toBe("22.1 Tons");
+    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }, { quantity: 21.8, unit: "Tons" }])).toBe("43.9 Tons");
+    expect(quantitiesByUnit([{ quantity: 10, unit: "Tons" }, { quantity: 2, unit: "cubic_yards" }])).toBe("10 Tons + 2 cubic yards");
+    expect(quantitiesByUnit([{ quantity: null, unit: "Tons" }])).toBe("");
+    expect(quantitiesByUnit([])).toBe("");
+  });
+
+  it("labels a ticket in the support picker with what is known (UX day-1)", () => {
+    expect(ticketOptionLabel({ number: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" }, "America/Chicago")).toBe("TKT-1025 · Nov 8 · 14.1 Tons");
+    expect(ticketOptionLabel({ number: "TKT-1025" }, "America/Chicago")).toBe("TKT-1025");
+  });
+
+  it("starts a support case from the record it was opened from (UX day-1)", () => {
+    expect(supportDefaults({ ticket: "TKT-1025", order: "ORD-1008" })).toEqual({ kind: "material", subject: "Question about ticket TKT-1025" });
+    expect(supportDefaults({ invoice: "INV-1001" })).toEqual({ kind: "billing", subject: "Question about invoice INV-1001" });
+    expect(supportDefaults({ order: "ORD-1008" })).toEqual({ kind: "", subject: "Question about order ORD-1008" });
+    expect(supportDefaults({})).toEqual({ kind: "", subject: "" });
+  });
+
+  it("names each missing support answer next to its field (UX day-1)", () => {
+    expect(supportFormErrors({ kind: "", subject: " ", message: "" })).toEqual({ kind: "Choose what it is about.", subject: "Enter a subject, a few words are enough.", message: "Enter your message." });
+    expect(supportFormErrors({ kind: "other", subject: "Gate", message: "Hi" }).message).toBe("Write a little more (at least 5 characters).");
+    expect(supportFormErrors({ kind: "other", subject: "Gate", message: "What is the code?" })).toEqual({});
   });
 
   it("labels the customer's quote answer from its state", () => {

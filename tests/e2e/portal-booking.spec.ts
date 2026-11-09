@@ -83,6 +83,9 @@ test("the owner turns booking on, dispatch opens a day, a customer requests load
     await cust.getByRole("button", { name: "Save My Password" }).click();
     await cust.waitForURL(new RegExp(`/portal/${TOP_LINE_SLUG}$`));
 
+    // Every portal section is reachable on a 390px phone without knowing to scroll the tabs (UX day-1).
+    const tabs = cust.getByRole("navigation", { name: "Portal" }).getByRole("link");
+    for (let n = 0; n < (await tabs.count()); n++) await expect(tabs.nth(n)).toBeInViewport();
     await cust.getByRole("link", { name: "Book loads" }).click();
     await expect(cust.getByRole("heading", { name: "Book loads" })).toBeVisible();
     const form = cust.getByRole("form", { name: "Book loads" });

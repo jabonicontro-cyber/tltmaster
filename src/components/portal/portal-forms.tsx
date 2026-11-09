@@ -10,6 +10,7 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { checkSupportFiles, SUPPORT_ACCEPT, SUPPORT_KINDS, SUPPORT_MAX_FILES } from "@/lib/support";
+import { supportFormErrors } from "@/lib/portal";
 import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, releasePortalTruck, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
 export function PortalLoginForm({ slug, next, company }: { slug: string; next?: string; company: string }) {
@@ -157,12 +158,19 @@ export function QuoteResponseForm({ slug, quote }: { slug: string; quote: string
 
 type LinkOption = { id: string; label: string };
 
-/** A new support case (B138): what it is about, an optional order, ticket or invoice, and photos or PDFs. */
-export function SupportForm({ slug, orders, defaultOrder, defaultTicket, tickets = [], invoices = [] }: { slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string; defaultTicket?: string; tickets?: LinkOption[]; invoices?: LinkOption[] }) {
+/**
+ * A new support case (B138): what it is about, an optional order, ticket or invoice, and photos or PDFs. Opened from a
+ * ticket, an invoice or an order, it starts with that record, the closest topic and a subject the customer can change.
+ * Missing answers are shown next to their field (not only the browser's own pop-up).
+ */
+export function SupportForm({ slug, orders, defaultOrder, defaultTicket, defaultInvoice, defaultKind = "", defaultSubject = "", tickets = [], invoices = [] }: {
+  slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string; defaultTicket?: string; defaultInvoice?: string; defaultKind?: string; defaultSubject?: string; tickets?: LinkOption[]; invoices?: LinkOption[];
+}) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { pending, onSubmit, formError } = useFormAction(createSupportRequest, {
+  const [missing, setMissing] = useState<Record<string, string>>({});
+  const { pending, onSubmit, formError, fieldError } = useFormAction(createSupportRequest, {
     onSuccess: async (r) => {
       const data = r.data;
       const failed = data.messageId && files.length ? await uploadPhotos(`/portal/${slug}/support/files`, { message: data.messageId }, files) : 0;
@@ -170,18 +178,36 @@ export function SupportForm({ slug, orders, defaultOrder, defaultTicket, tickets
       router.push(`/portal/${slug}/support/${data.id}?sent=1`);
     },
   });
+  const err = (name: string) => missing[name] ?? fieldError(name);
+  const clear = (name: string) => () => setMissing((m) => { if (!m[name]) return m; const next = { ...m }; delete next[name]; return next; });
+  const invalid = (name: string) => (err(name) ? { "aria-invalid": true, "aria-describedby": `${name}-error` } : {});
+  function submit(e: React.FormEvent<HTMLFormElement>) {
+    const fd = new FormData(e.currentTarget);
+    const errors = supportFormErrors({ kind: String(fd.get("kind") ?? ""), subject: String(fd.get("subject") ?? ""), message: String(fd.get("message") ?? "") });
+    setMissing(errors);
+    const first = Object.keys(errors)[0];
+    if (first) {
+      e.preventDefault();
+      (e.currentTarget.elements.namedItem(first) as HTMLElement | null)?.focus();
+      return;
+    }
+    const bad = checkSupportFiles(files);
+    if (bad) { e.preventDefault(); setError(bad); return; }
+    setError(null);
+    onSubmit(e);
+  }
   return (
-    <form onSubmit={(e) => { const bad = checkSupportFiles(files); if (bad) { e.preventDefault(); setError(bad); return; } setError(null); onSubmit(e); }} className="space-y-4" aria-label="New support request">
+    <form onSubmit={submit} noValidate className="space-y-4" aria-label="New support request">
       <FormError message={error ?? formError} />
       <input type="hidden" name="slug" value={slug} />
-      <Field label="What is it about?" htmlFor="kind" required>
-        <Select id="kind" name="kind" defaultValue="" required>
+      <Field label="What is it about?" htmlFor="kind" required error={err("kind")}>
+        <Select id="kind" name="kind" defaultValue={defaultKind in SUPPORT_KINDS ? defaultKind : ""} required onChange={clear("kind")} {...invalid("kind")}>
           <option value="" disabled>Choose…</option>
           {Object.entries(SUPPORT_KINDS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
         </Select>
       </Field>
-      <Field label="Subject" htmlFor="subject" required>
-        <Input id="subject" name="subject" required maxLength={160} />
+      <Field label="Subject" htmlFor="subject" required error={err("subject")}>
+        <Input id="subject" name="subject" required maxLength={160} defaultValue={defaultSubject} onChange={clear("subject")} {...invalid("subject")} />
       </Field>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {orders.length ? (
@@ -199,12 +225,12 @@ export function SupportForm({ slug, orders, defaultOrder, defaultTicket, tickets
         ) : null}
         {invoices.length ? (
           <Field label="Invoice (optional)" htmlFor="invoice">
-            <Select id="invoice" name="invoice" defaultValue=""><option value="">None</option>{invoices.map((i) => <option key={i.id} value={i.id}>{i.label}</option>)}</Select>
+            <Select id="invoice" name="invoice" defaultValue={invoices.some((i) => i.id === defaultInvoice) ? defaultInvoice : ""}><option value="">None</option>{invoices.map((i) => <option key={i.id} value={i.id}>{i.label}</option>)}</Select>
           </Field>
         ) : null}
       </div>
-      <Field label="Message" htmlFor="message" required>
-        <Textarea id="message" name="message" rows={5} required minLength={5} maxLength={4000} />
+      <Field label="Message" htmlFor="message" required error={err("message")}>
+        <Textarea id="message" name="message" rows={5} required minLength={5} maxLength={4000} onChange={clear("message")} {...invalid("message")} />
       </Field>
       <PhotoPicker id="support-files" label="Photos or PDFs (optional)" empty="Add up to 5, 10 MB each" accept={SUPPORT_ACCEPT} camera={false} files={files} onChange={setFiles} max={SUPPORT_MAX_FILES} />
       <Button type="submit" loading={pending}>Send</Button>

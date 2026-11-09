@@ -10,7 +10,7 @@ import { createClient } from "@/server/supabase/server";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { safeNextPath } from "@/lib/safe-redirect";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { isPortalSlug, isPortalToken } from "@/lib/portal";
+import { isPortalSlug, isPortalToken, supportFormErrors } from "@/lib/portal";
 import { signInAddress } from "@/lib/usernames";
 import { portalError } from "@/server/portal";
 import { getEmailMode } from "@/server/email/provider";
@@ -150,6 +150,9 @@ export async function respondToQuote(formData: FormData): Promise<ActionResult> 
 export async function createSupportRequest(formData: FormData): Promise<ActionResult<{ id: string; messageId: string | null }>> {
   const slug = slugOf(formData);
   const val = (k: string) => String(formData.get(k) ?? "") || null;
+  // The same checks the form shows next to each field; the database checks them again.
+  const missing = supportFormErrors({ kind: String(formData.get("kind") ?? ""), subject: String(formData.get("subject") ?? ""), message: String(formData.get("message") ?? "") });
+  if (Object.keys(missing).length) return fail("Some answers are missing. See the marked fields.", missing);
   const supabase = await createClient();
   // The support center (B138): case type and optional order, ticket or invoice; the original function before that
   // update is installed.
