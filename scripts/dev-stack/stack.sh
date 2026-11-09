@@ -180,6 +180,17 @@ start_storage() {
     psql_admin -c "select private.$fn();" >/dev/null 2>&1 || \
       echo "storage running; apply the migrations, then run: select private.$fn();"
   done
+  # Later migrations create their private bucket inline, only when storage already exists (as on hosted Supabase);
+  # the same buckets, with the same limits, for a database migrated before storage started (CI, a fresh db-reset).
+  psql_admin >/dev/null <<'SQL' || echo "storage running; apply the migrations first, then run stack.sh up again"
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types) values
+  ('site-photos', 'site-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
+  ('safety-photos', 'safety-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
+  ('maintenance-photos', 'maintenance-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
+  ('support-files', 'support-files', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']),
+  ('order-documents', 'order-documents', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+on conflict (id) do nothing;
+SQL
 }
 
 cmd_up() {

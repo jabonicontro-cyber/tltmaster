@@ -131,7 +131,7 @@ test("drag a driver onto a load: the assign dialog opens with the driver and the
   await signIn(page, "dispatcher");
   await page.goto(`/dispatch?date=${f.day2}`);
   const card = page.locator("section").filter({ has: page.getByRole("link", { name: f.orderNumber, exact: true }) });
-  const driver = page.getByRole("list", { name: "Drivers today" }).getByRole("listitem").filter({ hasText: f.driverA });
+  const driver = page.getByRole("list", { name: /^Drivers (today|on )/ }).getByRole("listitem").filter({ hasText: f.driverA });
   // Drag events on the exact rows with one shared DataTransfer (a mouse drag across this long test board scrolls the
   // page mid-drag and can pick up a different row).
   const target = card.getByRole("listitem", { name: "Load 2", exact: true });
