@@ -7,6 +7,23 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 0000000000000000000000000. 2026-11-09 (later) — released `2f235c4`: walkthrough fixes, payments by ticket, order documents, brokers
+
+- **Production = `2f235c4`** (fast-forward from `fb30929`): CI green, full browser suite green (run 42636175323),
+  Preview deploy success, Production deploy success, migration workflow applied `20261120009500` (order documents),
+  `009600` (freight brokers), `009700` (sample removal with payments by ticket) after its backup; dry run clean.
+  Live `/api/health` ok. Signed-in pages sit behind the early-access gate (401 from outside): **not verified live**
+  beyond the health check.
+- **Demo-employee walkthroughs (WK1, master plan §12):** office, dispatcher, driver, owner, mechanic and customer
+  portal, each by an agent in a local demo company; fixes shipped in this release; open findings and proposals in WK1.
+  Portal agent found no cross-customer or cross-company data.
+- **Bugs found by CI on the way:** a late username suggestion could replace a typed username (fixed, tested);
+  report period pills overflowed a phone with CI fonts (shorter labels under 640px); CI never had five storage
+  buckets created inline by migrations (stack.sh now creates them); GitHub release downloads 504'd on runners (binaries
+  cached, retries).
+- **Owner:** nothing new required. Payments by ticket stays unpublished on the website. Refresh demo data is not needed
+  for this release (no new samples), except the brokers sample for freight demos, which Refresh adds.
+
 ## 000000000000000000000000. 2026-11-09 — SA2 released; verified deliveries (SEC2 L2)
 
 **Released `289e3f4` to Production (owner approved 2026-11-09):** CI, the migrations workflow (009200 applied) and the
