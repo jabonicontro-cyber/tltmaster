@@ -79,7 +79,7 @@ describe("optimization core", () => {
     const revenue = optimize(base, { service: 0, revenue: 5, utilization: 0, efficiency: 0, balance: 0, crews: 0 });
     expect(service.assignments.map((a) => a.loadId)).toEqual(["U"]);
     expect(revenue.assignments.map((a) => a.loadId)).toEqual(["R"]);
-    expect(tradeoffs(service, revenue)).toEqual(expect.arrayContaining(["1 fewer urgent load(s) covered", "+$1,700 estimated revenue covered"]));
+    expect(tradeoffs(service, revenue)).toEqual(expect.arrayContaining(["1 fewer urgent load covered", "+$1,700 estimated revenue covered"]));
   });
 
   it("explains each assignment and never calls it verified while hours of service are unknown", () => {
@@ -92,11 +92,9 @@ describe("optimization core", () => {
     expect(verified.assignments[0].status).toBe("verified");
   });
 
-  it("a driver whose employee record says On leave is a review note, never a silent pass or an invented block", () => {
+  it("a driver whose employee record says On leave is not planned (the assign window's check), never a silent pass", () => {
     const plan = optimize(input({ loads: [load("A")], hoursOfServiceVerified: true, driversOnLeave: ["d-Avery"] }), PRESETS.balanced.priorities);
-    expect(plan.assignments).toHaveLength(1);
-    expect(plan.assignments[0].status).toBe("needs_review");
-    expect(plan.assignments[0].review).toContain("The driver's employee record says On leave. Confirm they are working that day.");
+    expect(plan.assignments.map((a) => a.driverLabel)).not.toContain("Avery");
   });
 
   it("keeps a truck on one site when efficiency matters, and spreads work when balance matters", () => {
@@ -119,7 +117,7 @@ describe("optimization core", () => {
     expect(out.plans[0].label).toBe("Service first");
     expect(out.dataNotes.join(" ")).toMatch(/Hours of service are not checked/);
     expect(out.dataNotes.join(" ")).toMatch(/margin is not evaluated/);
-    expect(out.dataNotes.join(" ")).toMatch(/1 load\(s\) have no rate/);
+    expect(out.dataNotes.join(" ")).toMatch(/1 load has no rate/);
     expect(out.dataNotes.join(" ")).toMatch(/Maintenance shop dates were not checked/);
     expect(out.plans.length).toBeGreaterThanOrEqual(2); // a revenue-first alternative takes R instead of U
     expect(out.tradeoffs[0].differences.join(" ")).toMatch(/urgent/);

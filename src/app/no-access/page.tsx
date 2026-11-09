@@ -5,6 +5,8 @@ import { getAccess } from "@/server/auth";
 import { signOut } from "@/app/(auth)/actions";
 import { redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
+import { missingPermissionText } from "@/lib/permission-words";
+import { rolesWith } from "@/server/permission-holders";
 
 export default async function NoAccessPage({ searchParams }: { searchParams: Promise<{ missing?: string }> }) {
   const access = await getAccess();
@@ -38,9 +40,7 @@ export default async function NoAccessPage({ searchParams }: { searchParams: Pro
         ) : (
           <>
             <h1 className="text-lg font-bold">You do not have access to that page</h1>
-            <p className="mt-2 text-sm text-muted">
-              Your role does not include the permission needed{missing ? ` (${missing})` : ""}. Ask an owner if you need it.
-            </p>
+            <p className="mt-2 text-sm text-muted">{missingPermissionText(missing, missing ? await rolesWith(missing) : null)}</p>
           </>
         )}
         <div className="mt-5 flex justify-center gap-2">

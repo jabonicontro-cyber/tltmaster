@@ -35,11 +35,21 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   await expect(missing).toContainText("Hours of service are not checked");
   await expect(missing).toContainText("Travel distance and drive time are not calculated");
   await expect(page.getByText("Verified feasible")).toHaveCount(0);
+  // Loads the plan leaves to the dispatcher (credit hold, offered to a hired truck) are listed with their reason, and
+  // the covered figure no longer says "Every open load" while any are left (first-day finding 2026-11-09).
+  const held = page.getByRole("region", { name: /Left for you to decide/ });
+  if (await held.count()) {
+    await expect(held.getByRole("listitem").first()).toContainText(/credit hold|hired truck/);
+    await expect(held.getByRole("link", { name: "Open on the board" }).first()).toHaveAttribute("href", /\/dispatch\?date=.*&load=/);
+    await expect(page.getByText(/left for you \(listed below\)/)).toBeVisible();
+    await expect(page.getByText("Every open load")).toHaveCount(0);
+  }
   // AI explanation (docs/AI.md): without the owner's AI configuration it is Blocked, says why, and offers no button;
   // the deterministic plan is complete without it.
   const explain = page.getByRole("region", { name: "Explain this plan" });
   await expect(explain).toContainText("AI explanations are not available for this company yet.");
-  await expect(explain).toContainText("AI: Blocked");
+  await expect(explain).toContainText("AI explanations are off");
+  await expect(explain).not.toContainText("AI: Blocked");
   await expect(explain.getByRole("link", { name: "Company setup" })).toHaveAttribute("href", "/setup"); // reasons live there
   await expect(explain.getByRole("button")).toHaveCount(0);
   const assignments = page.getByRole("region", { name: /Proposed assignments/ }).getByRole("listitem").filter({ has: page.getByRole("checkbox") });
@@ -90,7 +100,8 @@ test("Plan the day: compare plans, see what needs review, approve a selection th
   for (let i = 1; i < now; i++) await assignments.nth(i).getByRole("checkbox").uncheck();
   await page.getByRole("button", { name: "Approve 1 selected" }).click();
   await page.getByRole("dialog", { name: "Confirm hours of service" }).getByRole("button", { name: "I checked, approve" }).click();
-  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "1 assignment(s) approved." })).toBeVisible();
+  // Plain words, and how the driver hears about it (My Day with a sign-in, otherwise a phone call).
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: /^1 load assigned\. .+ (will see it in My Day|has no Taviron sign-in: call them)\./ })).toBeVisible();
   await page.reload();
   await expect(page.getByText(label, { exact: false })).toHaveCount(0); // no longer unassigned
   // The assignment exists, made through assign_load with the plan noted, and nothing else was assigned.

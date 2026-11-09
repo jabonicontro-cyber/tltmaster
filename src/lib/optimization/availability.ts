@@ -1,5 +1,5 @@
 import { resourceExclusions } from "@/lib/dispatch/smart";
-import { trailerShopBlockers, type OptimizationInput, type OptTrailer } from "./plan";
+import { trailerDocumentHolds, trailerShopBlockers, type OptimizationInput, type OptTrailer } from "./plan";
 
 // Why loads cannot be covered and which trucks, trailers and drivers cannot work (docs/OPTIMIZATION.md). Explains the
 // hard rules the optimizer already applies (Smart Dispatch's per-resource checks and the trailer rules); it never adds
@@ -34,6 +34,7 @@ function trailerOwn(input: OptimizationInput, load: { id: string; load_date: str
   if ((input.trailerReports ?? []).some((r) => r.trailer_id === t.id && (r.kind === "breakdown" || r.kind === "inspection_issue"))) out.push("A driver reported a breakdown or inspection problem that is not resolved.");
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === t.id && b.load_id !== load.id && overlaps(b, load))) out.push("Already booked at an overlapping time.");
   out.push(...trailerShopBlockers(input, load.load_date, t).map((m) => m.replace(`Trailer ${t.unit_number} `, "").replace(/^./, (c) => c.toUpperCase())));
+  out.push(...trailerDocumentHolds(input, load.load_date, t, "Its"));
   return out;
 }
 

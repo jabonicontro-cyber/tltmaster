@@ -16,9 +16,10 @@
 // recorded (site continuity is used as the efficiency proxy, and said so); hours of service are not verified
 // because no ELD data is connected — so no assignment is ever "Verified feasible" yet, only "Needs review".
 
-import { checkPair, documentLabel, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { checkPair, documentHolds, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { shopHolds } from "@/lib/fleet/readiness";
+import { formatDate } from "@/lib/dates";
 
 export type FeasibilityStatus = "verified" | "needs_review" | "blocked";
 
@@ -79,11 +80,17 @@ export interface OptimizationInput extends SmartInput {
   hoursOfServiceVerified?: boolean;
   /**
    * Latest registration, insurance, inspection or permit on record per vehicle and kind, where it expired before the
-   * day (Fleet documents). Shown for review only: no assignment rule uses vehicle documents today.
+   * day (Fleet documents). Review notes only when the company's document rules are not installed (documentIssues undefined);
+   * with them, equipment with an expired document is not proposed at all (documentHolds).
    */
   expiredDocuments?: Array<{ truck_id: string | null; trailer_id: string | null; kind: string; expires_on: string }>;
   /** False when vehicle documents could not be read (for example without fleet access). */
   documentsChecked?: boolean;
+  /**
+   * Open loads the plan leaves to the dispatcher (credit hold, offered to a hired truck: SmartLoad.hold), so the page
+   * lists them with the reason instead of counting them as covered. Never planned.
+   */
+  held?: SmartLoad[];
 }
 
 export interface PlannedAssignment {
@@ -186,10 +193,16 @@ function trailerEquipmentBlockers(input: OptimizationInput, load: SmartLoad, tru
   if ((input.trailerBookings ?? []).some((b) => b.trailer_id === trailer.id && b.load_id !== load.id && overlaps(b, load))) out.push(`Trailer ${trailer.unit_number} is already booked at an overlapping time.`);
   const cap = capacity(truck, load.unit_code, trailer);
   if (load.planned_quantity !== null && cap !== null && load.planned_quantity > cap) out.push(`Planned ${load.planned_quantity} ${load.unit_code ?? ""} exceeds the recorded capacity of ${equipmentLabel(truck, trailer)}.`);
-  for (const d of (input.documentIssues ?? []).filter((x) => x.trailer_id === trailer.id && x.blocks && x.expires_on < load.load_date)) {
-    out.push(`Trailer ${trailer.unit_number}'s ${documentLabel(d)} (verified). The company rule blocks it until the renewed document is recorded in Fleet.`);
-  }
+  out.push(...trailerDocumentHolds(input, load.load_date, trailer));
   return out;
+}
+
+/**
+ * A trailer's expired documents on record before `day`: never proposed (the shared rule of Smart Dispatch, documentHolds).
+ * A verified one on a kind the company blocks is refused by assign_load as well.
+ */
+export function trailerDocumentHolds(input: Pick<OptimizationInput, "documentIssues">, day: string, trailer: { id: string; unit_number: string }, who = `Trailer ${trailer.unit_number}'s`): string[] {
+  return documentHolds((input.documentIssues ?? []).filter((x) => x.trailer_id === trailer.id), day, who);
 }
 
 /**
@@ -278,12 +291,11 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
-  if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave. Confirm they are working that day.");
   for (const d of input.expiredDocuments ?? []) {
-    if (d.expires_on >= load.load_date || (d as { blocks?: boolean }).blocks) continue; // blocking ones never reach a plan
+    if (d.expires_on >= load.load_date || input.documentIssues) continue; // with the document rules they never reach a plan
     const kind = d.kind.replace(/_/g, " ");
-    if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${d.expires_on}. Confirm it was renewed.`);
-    if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${d.expires_on}. Confirm it was renewed.`);
+    if (d.truck_id === truck.id) r.push(`Truck ${truck.unit_number}'s ${kind} on record expired ${formatDate(d.expires_on)}. Confirm it was renewed.`);
+    if (trailer && d.trailer_id === trailer.id) r.push(`Trailer ${trailer.unit_number}'s ${kind} on record expired ${formatDate(d.expires_on)}. Confirm it was renewed.`);
   }
   if (input.maintenanceChecked === false) r.push("Maintenance shop dates could not be checked.");
   if (input.timeOffChecked === false) r.push("Driver time off could not be checked.");
@@ -295,7 +307,7 @@ function loadValue(load: SmartLoad, input: OptimizationInput, p: Priorities, max
   let value = 100; // covering a load always matters
   if (load.urgent) { value += 12 * p.service; reasons.push("urgent order"); }
   else if (load.priority_customer) { value += 10 * p.service; reasons.push("priority customer"); }
-  if (load.requested_date && load.requested_date < load.load_date) { value += 8 * p.service; reasons.push(`customer asked for ${load.requested_date}`); }
+  if (load.requested_date && load.requested_date < load.load_date) { value += 8 * p.service; reasons.push(`customer asked for ${formatDate(load.requested_date)}`); }
   else if (load.requested_date && load.requested_date <= load.load_date) { value += 4 * p.service; reasons.push("due on this date"); }
   const rev = input.revenueCents[load.id];
   if (rev !== null && rev !== undefined && maxRevenue > 0) value += (10 * p.revenue * rev) / maxRevenue;
@@ -716,19 +728,21 @@ export function tradeoffs(base: Plan, alt: Plan): string[] {
   const d: string[] = [];
   const m = base.metrics;
   const n = alt.metrics;
+  // "{n}" takes the count; "load|loads" picks singular or plural (no "load(s)" in plain words).
+  const say = (n: number, text: string) => `${n} ${text.replace(/(\S+)\|(\S+)/g, (_, one: string, many: string) => (n === 1 ? one : many))}`;
   const diff = (a: number, b: number, more: string, fewer: string) => {
-    if (b > a) d.push(`${b - a} ${more}`);
-    if (b < a) d.push(`${a - b} ${fewer}`);
+    if (b > a) d.push(say(b - a, more));
+    if (b < a) d.push(say(a - b, fewer));
   };
-  diff(m.covered, n.covered, "more load(s) covered", "fewer load(s) covered");
-  diff(m.urgentCovered, n.urgentCovered, "more urgent load(s) covered", "fewer urgent load(s) covered");
-  diff(m.overdueCovered, n.overdueCovered, "more overdue load(s) covered", "fewer overdue load(s) covered");
+  diff(m.covered, n.covered, "more load|loads covered", "fewer load|loads covered");
+  diff(m.urgentCovered, n.urgentCovered, "more urgent load|loads covered", "fewer urgent load|loads covered");
+  diff(m.overdueCovered, n.overdueCovered, "more overdue load|loads covered", "fewer overdue load|loads covered");
   if (n.revenueCoveredCents !== m.revenueCoveredCents) d.push(`${n.revenueCoveredCents > m.revenueCoveredCents ? "+" : "−"}${money(Math.abs(n.revenueCoveredCents - m.revenueCoveredCents))} estimated revenue covered`);
-  diff(m.trucksUsed, n.trucksUsed, "more truck(s) in use", "fewer truck(s) in use");
-  diff(m.siteChanges, n.siteChanges, "more site change(s)", "fewer site change(s)");
+  diff(m.trucksUsed, n.trucksUsed, "more truck|trucks in use", "fewer truck|trucks in use");
+  diff(m.siteChanges, n.siteChanges, "more site change|changes", "fewer site change|changes");
   diff(m.workloadSpread, n.workloadSpread, "more uneven driver workload", "more even driver workload");
   const changed = alt.assignments.filter((a) => !base.assignments.some((b) => b.loadId === a.loadId && b.truckId === a.truckId && b.trailerId === a.trailerId && b.driverId === a.driverId)).length;
-  if (changed) d.push(`${changed} assignment(s) differ`);
+  if (changed) d.push(say(changed, "assignment differs|assignments differ"));
   return d.length ? d : ["Same assignments and results."];
 }
 
@@ -748,7 +762,7 @@ export function optimizeWithAlternatives(input: OptimizationInput, priorities: P
     input.hoursOfServiceVerified ? null : HOS_NOTE,
     "Travel distance and drive time are not calculated: no truck locations or routing provider are connected. “Fewer empty trips” counts site changes instead.",
     "Operating costs (fuel, wages, maintenance) are not recorded, so margin is not evaluated. Revenue is an estimate from each order's rate × planned quantity.",
-    Object.values(input.revenueCents).some((v) => v === null) ? `${Object.values(input.revenueCents).filter((v) => v === null).length} load(s) have no rate to estimate revenue from.` : null,
+    Object.values(input.revenueCents).some((v) => v === null) ? (() => { const n = Object.values(input.revenueCents).filter((v) => v === null).length; return `${n} ${n === 1 ? "load has" : "loads have"} no rate to estimate revenue from.`; })() : null,
     input.maintenanceChecked === false ? "Maintenance shop dates were not checked (database update not installed)." : null,
     input.timeOffChecked === false ? "Driver time off was not checked (database update not installed)." : null,
     input.documentsChecked === false ? "Vehicle registrations, insurance and inspections could not be checked." : null,

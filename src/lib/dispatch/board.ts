@@ -1,8 +1,8 @@
 // Pure dispatch-board logic. The database is authoritative (assign_load,
 // exclusion constraints); these helpers explain the state before a request.
 import { driverChecks, evaluateAssignment, type EligibilityQualification, type EligibilityResult, type EligibilityTrailer, type EligibilityTruck } from "@/lib/fleet/eligibility";
-import { shiftProblem, type SmartShift } from "@/lib/dispatch/smart";
-import { shopHolds, type ShopHold } from "@/lib/fleet/readiness";
+import { ON_LEAVE_TEXT, shiftProblem, type SmartShift } from "@/lib/dispatch/smart";
+import { notReadyText, shopHolds, vehicleReadyOn, type NotReadyReason, type ShopHold } from "@/lib/fleet/readiness";
 
 export interface Interval {
   starts_at: string;
@@ -49,6 +49,11 @@ export interface DayRestrictions {
   documents: Array<{ truck_id: string | null; trailer_id: string | null; blocks: boolean }>;
   timeOff: Array<{ driver_id: string; status: "approved" | "pending"; full_day: boolean; start_date: string; end_date: string }>;
   shifts: SmartShift[];
+  /**
+   * Drivers whose employee record says On leave (an HR status; readable with employees.view, empty without it). Not a
+   * database rule: the board shows it as a check, and Smart Dispatch and Plan the day do not propose them (ON_LEAVE_TEXT).
+   */
+  onLeave?: string[];
 }
 
 /** The load being assigned, for capacity and shift checks. */
@@ -104,6 +109,85 @@ export function inShop(kind: "truck" | "trailer", id: string, on: string, r: Day
   return shopWorkOn(kind, id, on, r) !== null;
 }
 
+/** A truck or trailer on an assignment that cannot run on the load's date (the shared readiness rule). */
+export interface EquipmentProblem {
+  kind: "truck" | "trailer";
+  /** Unit number, or null when the unit is no longer active (missing from the board). */
+  unit: string | null;
+  reason: NotReadyReason;
+  /** The short notice on the load: "Truck out of service, reassign" or "Truck in the shop, reassign". */
+  label: string;
+  /** The full sentence, with the work order when there is one. */
+  detail: string;
+}
+
+type ReadinessUnit = { id: string; unit_number: string; active?: boolean; service_status: string; expected_return_date?: string | null };
+
+/**
+ * Whether the truck and trailer of an active assignment can run on `on` (src/lib/fleet/readiness.ts, the rule the
+ * Command Center's Assignment problems and assign_load use): out of service, an open safety-critical work order, a shop
+ * visit that day, or work in progress or waiting for parts. A unit missing from the board's active list counts as
+ * deactivated. The truck is checked first; null when both can run. Only explains: the dispatcher reassigns.
+ */
+export function assignmentProblem(
+  a: { truck_id: string; trailer_id: string | null },
+  units: { trucks: ReadonlyMap<string, ReadinessUnit>; trailers: ReadonlyMap<string, ReadinessUnit> },
+  on: string,
+  today: string,
+  r: DayRestrictions | null | undefined,
+): EquipmentProblem | null {
+  const check = (kind: "truck" | "trailer", id: string): EquipmentProblem | null => {
+    const unit = (kind === "truck" ? units.trucks : units.trailers).get(id) ?? null;
+    const shop = r ? r.shop.filter((w) => (kind === "truck" ? w.truck_id : w.trailer_id) === id) : [];
+    const ready = unit
+      ? vehicleReadyOn({ active: unit.active, service_status: unit.service_status, expected_return_date: unit.expected_return_date ?? null }, shop, on, today)
+      : { ready: false, reason: "inactive" as const, workOrder: null, expectedBack: null };
+    if (ready.ready || !ready.reason) return null;
+    const Unit = kind === "truck" ? "Truck" : "Trailer";
+    const where = ready.reason === "shop_scheduled" || ready.reason === "in_shop" ? "in the shop" : ready.reason === "inactive" ? "deactivated" : "out of service";
+    const sentence = notReadyText(kind, ready) ?? `${Unit} cannot run on this date.`;
+    return {
+      kind,
+      unit: unit?.unit_number ?? null,
+      reason: ready.reason,
+      label: `${Unit} ${where}, reassign`,
+      detail: `${unit ? `${Unit} ${unit.unit_number}` : Unit}${sentence.slice(Unit.length)} Reassign this load to a truck that can run.`,
+    };
+  };
+  return check("truck", a.truck_id) ?? (a.trailer_id ? check("trailer", a.trailer_id) : null);
+}
+
+/**
+ * Default start and end of a new load (HH:MM). On today's date a start already in the past (the order's window, or
+ * 7:00 AM) moves to the next whole hour, as late as 11:00 PM, with the end one hour later (at most 11:59 PM).
+ * `nowMinutes` is the company's current time of day; null when not known.
+ */
+export function defaultLoadTimes(input: { date: string; today: string; nowMinutes: number | null; windowStart?: string | null; windowEnd?: string | null }): { start: string; end: string } {
+  const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+  const start = input.windowStart ? input.windowStart.slice(0, 5) : "07:00";
+  const end = input.windowEnd ? input.windowEnd.slice(0, 5) : "08:00";
+  if (input.date !== input.today || input.nowMinutes === null || minutes(start) > input.nowMinutes) return { start, end };
+  const next = Math.min((Math.floor(input.nowMinutes / 60) + 1) * 60, 23 * 60);
+  return { start: hhmm(next), end: hhmm(Math.min(next + 60, 23 * 60 + 59)) };
+}
+
+/**
+ * Warnings that mean "confirm before this one works the load" (owner 2026-11-09: never listed as plain Available): an
+ * expired document on record, an unresolved equipment report, time off pending or for part of the day, On leave.
+ * Unknown or unverified capacity and qualification details stay notes beside Available.
+ */
+const CHECK_FIRST = new Set(["truck_document_review", "trailer_document_review", "truck_equipment_report_open", "trailer_equipment_report_open", "driver_time_off_pending", "driver_partial_time_off", ON_LEAVE_TEXT]);
+
+/** The first warning that needs a check before assigning, or null (see CHECK_FIRST). */
+export function checkFirst(warnings: readonly string[]): string | null {
+  return warnings.find((w) => CHECK_FIRST.has(w)) ?? null;
+}
+
+/** "Harlow Homes is on credit hold (…): Two invoices late (demo)." with exactly one closing period. */
+export function creditHoldSentence(text: string): string {
+  return `${text.trim().replace(/[.\s]+$/, "")}.`;
+}
+
 /** Approved and pending time off of one driver on a date (mirrors private.assignment_eligibility). */
 export function driverDayChecks(driverId: string, on: string, r: DayRestrictions | null | undefined): Codes {
   const out: Codes = { blockers: [], warnings: [] };
@@ -112,6 +196,7 @@ export function driverDayChecks(driverId: string, on: string, r: DayRestrictions
   if (mine.some((t) => t.status === "approved" && t.full_day)) out.blockers.push("driver_time_off");
   else if (mine.some((t) => t.status === "approved" && !t.full_day && t.start_date === on)) out.warnings.push("driver_partial_time_off");
   if (mine.some((t) => t.status === "pending")) out.warnings.push("driver_time_off_pending");
+  if (r.onLeave?.includes(driverId)) out.warnings.push(ON_LEAVE_TEXT);
   return out;
 }
 

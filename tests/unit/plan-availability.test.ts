@@ -101,7 +101,7 @@ describe("Plan the day: why loads are blocked and what is unavailable", () => {
     expect(unavailableResources(input({ loads: [] }))).toEqual([]);
   });
 
-  it("an expired registration or inspection on record is a review note, never a silent pass or an invented block", () => {
+  it("without the company's document rules, an expired registration on record is a review note, never a silent pass", () => {
     const ctx = input({
       loads: [load("A")],
       trucks: [tractor("201")],
@@ -112,7 +112,11 @@ describe("Plan the day: why loads are blocked and what is unavailable", () => {
     const a = result.plans[0].assignments[0];
     expect(a.trailerLabel).toBe("T-53");
     expect(a.status).toBe("needs_review");
-    expect(a.review).toContain("Trailer T-53's registration on record expired 2026-10-09. Confirm it was renewed.");
+    expect(a.review).toContain("Trailer T-53's registration on record expired Oct 9, 2026. Confirm it was renewed.");
+    // With the company's document rules the trailer is not planned at all, and Unavailable resources says why.
+    const ruled = { ...ctx, documentIssues: [{ truck_id: null, trailer_id: "tr-T-53", kind: "registration", expires_on: "2026-10-09", verified: false, action: "block" as const, blocks: false }] };
+    expect(optimizeWithAlternatives(ruled, PRESETS.balanced.priorities, "balanced").plans[0].assignments).toHaveLength(0);
+    expect(unavailableResources(ruled).find((u) => u.label === "Trailer T-53")?.reasons.join(" ")).toMatch(/^Its registration expired Oct 9, 2026 on record \(not verified\): confirm the renewal in Fleet/);
     const unchecked = optimizeWithAlternatives({ ...ctx, expiredDocuments: [], documentsChecked: false }, PRESETS.balanced.priorities, "balanced");
     expect(unchecked.dataNotes).toContain("Vehicle registrations, insurance and inspections could not be checked.");
   });

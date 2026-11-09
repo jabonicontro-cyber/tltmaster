@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
 import { can, type Access, type AppRole, type Permission } from "@/lib/permissions";
+import { missingPermissionText } from "@/lib/permission-words";
 import { PREVIEW_COOKIE, applyPreview, parsePreviewRole } from "@/lib/platform/preview";
 import { isPlatformAdmin, platformStaffLevel } from "@/server/platform";
 import { myPortals } from "@/server/portal";
@@ -109,7 +110,8 @@ export async function requirePagePermission(permission: Permission): Promise<Acc
 
 export class PermissionError extends Error {
   constructor(permission: Permission) {
-    super(`You do not have permission to perform this action (${permission}).`);
+    // Plain words, never the permission code (first-day finding 2026-11-09).
+    super(missingPermissionText(permission, null));
     this.name = "PermissionError";
   }
 }

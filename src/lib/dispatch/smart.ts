@@ -13,6 +13,8 @@
 //   trailer — choose one on the board) · the driver's CDL or medical card is
 //   missing, expired, unverified or of too low a class on the load date · the
 //   truck or driver is already booked at an overlapping time.
+// Not proposed, though still assignable on the board after a check (owner 2026-11-09): an expired vehicle document on
+//   record (documentHolds) and a driver whose employee record says On leave (the assign window's checks).
 // Soft preferences (scored; never override a hard constraint):
 //   keeping a truck/driver on the same job or site that day (fewer empty
 //   trips — travel distance itself is NOT calculated: no locations are
@@ -128,7 +130,7 @@ export interface SmartInput {
   timeOff?: SmartTimeOff[];
   /** False when time off could not be read (database update not installed). */
   timeOffChecked?: boolean;
-  /** Drivers whose employee record says On leave (an HR status, separate from dated time off): a warning, never a block. */
+  /** Drivers whose employee record says On leave (an HR status, separate from dated time off): never proposed (not a database rule). */
   driversOnLeave?: string[];
   /**
    * Scheduled shifts of drivers who have a schedule (20261120003300), one row per driver and date. A driver scheduled
@@ -185,8 +187,25 @@ export interface SmartDocumentIssue {
   blocks: boolean;
 }
 
-/** Plain words for a document issue: "insurance expired 2026-09-30". */
-export const documentLabel = (d: Pick<SmartDocumentIssue, "kind" | "expires_on">) => `${d.kind.replace(/_/g, " ")} expired ${d.expires_on}`;
+/** Plain words for a document issue: "insurance expired Sep 30, 2026". */
+export const documentLabel = (d: Pick<SmartDocumentIssue, "kind" | "expires_on">) => `${d.kind.replace(/_/g, " ")} expired ${formatDate(d.expires_on)}`;
+
+/**
+ * Expired documents that keep a truck or trailer out of proposals on `loadDate` (owner 2026-11-09: suggestions never
+ * offer equipment the assign window flags). A verified one on a kind the company blocks is refused by assign_load too;
+ * any other expired document on record is the assign window's "confirm it was renewed" check: not proposed, and still
+ * assignable on the board once the dispatcher has checked. `who` starts the sentence ("Its", "Trailer T-53's").
+ */
+export function documentHolds(issues: readonly SmartDocumentIssue[], loadDate: string, who = "Its"): string[] {
+  return issues
+    .filter((d) => d.expires_on < loadDate)
+    .map((d) => (d.blocks
+      ? `${who} ${documentLabel(d)} (verified): the company rule blocks it until the renewed document is recorded in Fleet.`
+      : `${who} ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"}: confirm the renewal in Fleet. Not proposed until then; you can still assign it on the board.`));
+}
+
+/** A driver whose employee record says On leave (HR status): not proposed; the assign window shows it as a check. */
+export const ON_LEAVE_TEXT = "Their employee record says On leave. Confirm they are working that day.";
 
 export interface SmartShift {
   driver_id: string;
@@ -297,7 +316,7 @@ function priorityOf(l: SmartLoad, today: string): { rank: number; reasons: strin
   }
   if (l.requested_date && l.requested_date < l.load_date) {
     rank = Math.min(rank, 1);
-    reasons.push(`Planned after the customer's requested date (${l.requested_date})`);
+    reasons.push(`Planned after the customer's requested date (${formatDate(l.requested_date)})`);
   }
   if (l.load_date <= today) {
     rank = Math.min(rank, 1);
@@ -420,9 +439,7 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   const tractor = t.truck_type === "tractor";
   if (tractor && !input.pickTrailer) out.push("A tractor needs a trailer; Smart Dispatch does not choose trailers. Assign it on the board.");
   else if (tractor && !input.pickTrailer!(t, l, null, taken.busy)) out.push("No usable trailer is free at this time (compatible, in service, not booked, enough combined capacity).");
-  for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => x.blocks && x.expires_on < l.load_date)) {
-    out.push(`Its ${documentLabel(d)} (verified): the company rule blocks it until the renewed document is recorded in Fleet.`);
-  }
+  out.push(...documentHolds(ix.docsByTruck.get(t.id) ?? NONE, l.load_date));
   // A tractor's capacity is checked together with its trailer (pickTrailer).
   if (!(tractor && input.pickTrailer) && l.planned_quantity !== null && comparableUnit(l.unit_code)) {
     const cap = capacityIn(t, l.unit_code);
@@ -452,7 +469,8 @@ function driverExclusions(d: SmartDriver, l: SmartLoad, taken: Overlaps, input: 
   const warnings = checks.warnings.map(eligibilityMessage);
   if (base.warn) warnings.push(base.warn);
   if (pendingLeave) warnings.push("Has a pending time-off request for this time. Confirm before relying on them.");
-  if (ix.onLeave.has(d.id)) warnings.push("Their employee record says On leave. Confirm they are working that day.");
+  // On leave (HR record): the assign window asks the dispatcher to confirm; a proposal would skip that check.
+  if (ix.onLeave.has(d.id)) blockers.push(`${ON_LEAVE_TEXT} Not proposed; you can still assign them on the board.`);
   return { blockers, warnings };
 }
 
@@ -513,9 +531,6 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
     warnings.push(eligibilityMessage("truck_capacity_unverified"));
   }
   const ix = indexOf(input);
-  for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => !x.blocks && x.expires_on < l.load_date)) {
-    warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"}: confirm it was renewed.`);
-  }
   if ((ix.reportsByTruck.get(t.id) ?? NONE).some((r) => r.kind === "equipment_issue")) {
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));
@@ -676,7 +691,7 @@ export function recommend(input: SmartInput): LoadPlan[] {
         const anyDriver = input.drivers.some((d) => driverExclusions(d, moved, NO_OVERLAPS, input).blockers.length === 0);
         if (anyTruck && anyDriver) {
           const late = load.requested_date !== null && day > load.requested_date;
-          options.push(`A truck and a driver are available on ${day} at the same time${late ? `, later than the customer's requested date (${load.requested_date}); confirm with the customer first` : ""}.`);
+          options.push(`A truck and a driver are available on ${formatDate(day)} at the same time${late ? `, later than the customer's requested date (${formatDate(load.requested_date)}); confirm with the customer first` : ""}.`);
           break;
         }
       }
@@ -773,7 +788,7 @@ export function reasonKey(reason: string): string {
   return reason
     .replace(/\s*\((?:expected back|WO-)[^)]*\)/g, "")
     .replace(/ (?:work order )?WO-\d{4}-\d+/g, (m) => (m.startsWith(" work order") ? " work order" : ""))
-    .replace(/ expired \d{4}-\d{2}-\d{2}/g, " has expired")
+    .replace(/ expired (?:\d{4}-\d{2}-\d{2}|[A-Z][a-z]{2} \d{1,2}, \d{4})/g, " has expired")
     .replace(/^Proposed for \S+ load \d+, which is more urgent or earlier\.$/, "Proposed for a more urgent or earlier load.")
     .replace(/\s{2,}/g, " ")
     .trim();

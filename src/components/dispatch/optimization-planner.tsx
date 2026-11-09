@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { HOS_CONFIRMATION } from "@/lib/hos";
 import { PlanExplanation, type PlanAiState } from "@/components/dispatch/plan-explanation";
+import { HoursLink } from "@/components/dispatch/hours-link";
 import type { SmartLoad } from "@/lib/dispatch/smart";
 import type { LoadExplanation, Unavailable } from "@/lib/optimization/availability";
 import type { Optimization, Plan } from "@/lib/optimization/plan";
@@ -32,7 +33,33 @@ function Stat({ label, value, note }: { label: string; value: string; note?: str
   );
 }
 
-function Summary({ plan }: { plan: Plan }) {
+/** Open loads the plan leaves to the dispatcher (credit hold, offered to a hired truck), each with its reason. */
+function HeldLoads({ held, date, timezone }: { held: SmartLoad[]; date: string; timezone: string }) {
+  if (!held.length) return null;
+  return (
+    <section aria-labelledby="held-title" className="rounded-panel border border-line/70 bg-card shadow-card">
+      <div className="border-b border-line px-4 py-3">
+        <h2 id="held-title" className="text-base font-bold text-ink">Left for you to decide · {held.length}</h2>
+        <p className="mt-0.5 text-xs text-muted">Taviron does not plan these loads. Each one needs a person&apos;s decision first; assign them on the board.</p>
+      </div>
+      <ul className="divide-y divide-line">
+        {held.map((l) => (
+          <li key={l.id} className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-ink">
+                {l.order_number} load {l.load_number} · <span className="tabular">{time(l.starts_at, timezone)}–{time(l.ends_at, timezone)}</span>
+              </p>
+              <p className="mt-0.5 text-sm text-ink">{l.hold}</p>
+            </div>
+            <Link href={`/dispatch?date=${date}&load=${l.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Open on the board</Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function Summary({ plan, held }: { plan: Plan; held: number }) {
   const m = plan.metrics;
   const review = plan.assignments.filter((a) => a.status === "needs_review").length;
   const details: Array<[string, string]> = [
@@ -45,7 +72,8 @@ function Summary({ plan }: { plan: Plan }) {
   return (
     <>
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Loads covered" value={`${m.covered} of ${m.loads}`} note={plan.uncovered.length ? `${plan.uncovered.length} blocked` : "Every open load"} />
+        <Stat label="Loads covered" value={`${m.covered} of ${m.loads}`}
+          note={[plan.uncovered.length ? `${plan.uncovered.length} blocked` : null, held ? `${held} left for you (listed below)` : null].filter(Boolean).join(" · ") || "Every open load"} />
         <Stat label="Estimated revenue" value={money(m.revenueCoveredCents)}
           note={`${m.revenueUnknownLoads ? `+ ${m.revenueUnknownLoads} without a rate · ` : ""}Margin: not evaluated (no cost data)`} />
         <Stat label="Trucks / drivers used" value={`${m.trucksUsed} / ${m.driversUsed}`} />
@@ -92,8 +120,14 @@ const STATUS = {
   needs_review: { label: "Needs review", tone: "amber" },
 } as const;
 
-export function OptimizationPlanner({ date, timezone, loads, revenueCents, result, canEdit, ai, preset, priorities, explanations = [], unavailable = [], upcoming = [] }: {
+export function OptimizationPlanner({ date, timezone, loads, held = [], revenueCents, result, canEdit, ai, preset, priorities, explanations = [], unavailable = [], upcoming = [], hoursLink = false, approvers = "the Dispatcher role" }: {
   date: string; timezone: string; loads: SmartLoad[]; revenueCents: Record<string, number | null>; result: Optimization; canEdit: boolean;
+  /** Open loads left to the dispatcher (credit hold, offered to a hired truck), listed with their reason. */
+  held?: SmartLoad[];
+  /** The viewer may open Fleet → Locations and hours (recorded hours): the hours confirmation links to it. */
+  hoursLink?: boolean;
+  /** Who may approve, for viewers who cannot ("the Owner / Administrator and Dispatcher roles"). */
+  approvers?: string;
   ai: PlanAiState; preset: string | null; priorities: Record<string, number>;
   /** Why loads with no feasible truck, trailer and driver are blocked (src/lib/optimization/availability.ts). */
   explanations?: LoadExplanation[];
@@ -114,8 +148,13 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
 
   if (!loads.length) {
     return (
+      <div className="space-y-5">
       <div className="rounded-panel border border-line/70 bg-card shadow-card p-6 text-sm" role="status">
-        <p className="font-semibold text-ink">Nothing to plan on {formatDateLong(date)}: every load that day already has a truck and driver, or no loads are planned yet.</p>
+        <p className="font-semibold text-ink">
+          {held.length
+            ? `Nothing for Taviron to plan on ${formatDateLong(date)}: ${held.length === 1 ? "the 1 open load needs" : `the ${held.length} open loads need`} your decision first (listed below).`
+            : `Nothing to plan on ${formatDateLong(date)}: every load that day already has a truck and driver, or no loads are planned yet.`}
+        </p>
         {upcoming === null ? (
           <p className="mt-2 text-muted">Other days could not be checked right now.</p>
         ) : upcoming.length ? (
@@ -137,6 +176,8 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
         <p className="mt-3 text-muted">
           To plan more work, add loads to scheduled orders on the <Link href={`/dispatch?date=${date}`} className="font-semibold text-brand-fg hover:underline">Dispatch board</Link>, or give orders waiting for a delivery date a schedule (listed there under &ldquo;Needs scheduling&rdquo;).
         </p>
+      </div>
+      <HeldLoads held={held} date={date} timezone={timezone} />
       </div>
     );
   }
@@ -163,8 +204,8 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
       return;
     }
     setOutcomes(r.data.outcomes);
-    if (r.data.outcomes.every((o) => o.assigned)) toast.success(r.message ?? "Approved.");
-    else toast.warning(r.message ?? "Some assignments were not made.");
+    if (r.data.outcomes.every((o) => o.assigned)) toast.success(r.message ?? "Assigned.");
+    else toast.warning(r.message ?? "Some loads were not assigned.");
     router.refresh();
   }
 
@@ -193,7 +234,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
           </div>
         </div>
         <div className="mt-4" role="tabpanel" aria-label={plan.label}>
-          <Summary plan={plan} />
+          <Summary plan={plan} held={held.length} />
           {active > 0 && (
             <p className="mt-3 text-sm text-ink">
               <span className="font-semibold">Compared with your priorities:</span> {result.tradeoffs[active - 1]?.differences.join(" · ")}
@@ -322,14 +363,18 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
                 Approve {chosen.length} selected
               </Button>
               <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
-                description={`Assign ${chosen.length} selected load(s) from ${plan.label}. ${HOS_CONFIRMATION}`}
-                confirmLabel="I checked, approve" onConfirm={approve} />
+                description={`Assign ${chosen.length} selected ${chosen.length === 1 ? "load" : "loads"} from ${plan.label}. ${HOS_CONFIRMATION}`}
+                confirmLabel="I checked, approve" onConfirm={approve}>
+                <HoursLink show={hoursLink} />
+              </ConfirmDialog>
             </>
           ) : (
-            <span className="text-sm text-muted">Viewing only: approving needs dispatch edit access.</span>
+            <span className="text-sm text-muted">Viewing only: approving a plan is part of {approvers}.</span>
           )}
         </div>
       </section>
+
+      <HeldLoads held={held} date={date} timezone={timezone} />
 
       <PlanExplanation ai={ai} date={date} preset={preset} priorities={priorities} planKey={plan.key} planLabel={plan.label} />
 

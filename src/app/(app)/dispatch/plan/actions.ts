@@ -19,6 +19,8 @@ import { businessToday } from "@/server/data/settings";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { creditHolds, holdSummary } from "@/server/credit";
+import { creditHoldSentence } from "@/lib/dispatch/board";
+import { driverNotice } from "../driver-notice";
 
 const approveInput = z.object({
   date: z.string().refine(isIsoDate),
@@ -58,7 +60,7 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     for (const item of items) {
       const hold = holds.get(loadCustomers.get(item.loadId) ?? "");
       if (hold) {
-        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned: ${hold.name} is ${holdSummary(hold)}. Assign it from the board to give a reason.`, warnings: [] });
+        outcomes.push({ loadId: item.loadId, assigned: false, message: `Not assigned: ${creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`)} Billing decides on the hold; to go ahead now, assign it from the board and give a reason.`, warnings: [] });
         continue;
       }
       const check = checkAssignment(await getOptimizationInput(date), item.loadId, item.truckId, item.trailerId, item.driverId);
@@ -78,7 +80,10 @@ export async function approvePlanAssignments(input: z.input<typeof approveInput>
     revalidatePath("/dispatch/plan");
     revalidatePath("/command-center");
     const done = outcomes.filter((o) => o.assigned).length;
-    return ok({ outcomes }, done === outcomes.length ? `${done} assignment(s) approved.` : `${done} of ${outcomes.length} approved; see the reasons for the rest.`);
+    const notice = await driverNotice(items.filter((i) => outcomes.find((o) => o.loadId === i.loadId)?.assigned).map((i) => i.driverId));
+    const loads = (n: number) => `${n} ${n === 1 ? "load" : "loads"}`;
+    const head = done === outcomes.length ? `${loads(done)} assigned.` : `${done} of ${loads(outcomes.length)} assigned; the reasons for the rest are shown on each one.`;
+    return ok({ outcomes }, `${head}${notice ? ` ${notice}` : ""}`);
   });
 }
 

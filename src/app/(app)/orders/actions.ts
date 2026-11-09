@@ -26,6 +26,7 @@ import { getCustomerQuoteContext } from "@/server/data/customers";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { creditGate, creditHolds, holdSummary, recordCreditOverride } from "@/server/credit";
+import { creditHoldSentence } from "@/lib/dispatch/board";
 import type { EffectivePrice, OrderStatus } from "@/server/data/types";
 
 function revalidateOrder(id: string) {
@@ -101,7 +102,7 @@ export async function loadOrderCustomerContext(customerId: string, onDate: strin
     const { data, error } = await supabase.rpc("effective_prices", { p_customer_id: customerId, p_on: onDate });
     if (error) return fail(dbErrorMessage(error));
     const hold = (await creditHolds([customerId])).get(customerId);
-    return ok({ ...context, prices: (data ?? []) as EffectivePrice[], creditHold: hold ? `${hold.name} is ${holdSummary(hold)}.` : null });
+    return ok({ ...context, prices: (data ?? []) as EffectivePrice[], creditHold: hold ? creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`) : null });
   });
 }
 

@@ -17,6 +17,7 @@ import type { BoardPlan, Candidate, ExclusionGroup } from "@/lib/dispatch/smart"
 import { HOS_NOTE } from "@/lib/dispatch/smart";
 import { formatDate } from "@/lib/dates";
 import { withReturn } from "@/lib/safe-redirect";
+import { HoursLink } from "./hours-link";
 
 const time = (iso: string, tz: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(new Date(iso));
 
@@ -34,7 +35,7 @@ function ExclusionList({ groups, className }: { groups: ExclusionGroup[]; classN
   );
 }
 
-function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string; faces: Record<string, Face> }) {
+function PlanCard({ plan, canEdit, timezone, back, faces, hoursLink, approvers }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string; faces: Record<string, Face>; hoursLink: boolean; approvers: string }) {
   const router = useRouter();
   // Options the dispatcher just rejected leave at once (B6), before the board's recompute arrives; put back on error.
   const [rejected, setRejected] = useState<Set<string>>(() => new Set());
@@ -63,7 +64,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
       router.refresh();
       return;
     }
-    toast.success(`${l.order_number} load ${l.load_number}: assigned to truck ${chosen.truckLabel} and ${chosen.driverLabel}.`);
+    toast.success(`${l.order_number} load ${l.load_number}: assigned to truck ${chosen.truckLabel} and ${chosen.driverLabel}.${r.data.notice ? ` ${r.data.notice}` : ""}`);
     setAssigned(true);
     router.refresh();
   }
@@ -149,11 +150,13 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
                 {chosen && (
                   <ConfirmDialog open={confirming} onOpenChange={setConfirming} title="Confirm hours of service"
                     description={`Assign ${l.order_number} load ${l.load_number} to ${chosen.driverLabel} with truck ${chosen.truckLabel}. ${HOS_CONFIRMATION}`}
-                    confirmLabel="I checked, assign" onConfirm={approve} />
+                    confirmLabel="I checked, assign" onConfirm={approve}>
+                    <HoursLink show={hoursLink} />
+                  </ConfirmDialog>
                 )}
               </div>
             ) : (
-              <span className="text-xs text-muted">Approving needs dispatch edit access</span>
+              <span className="text-xs text-muted">Viewing only: approving is part of {approvers}</span>
             )}
           </div>
           {chosen && chosen.warnings.length > 0 && (
@@ -182,7 +185,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
       ) : (
         <details className="group mt-2 rounded-2xl border border-line p-3 text-sm">
           <summary className="flex cursor-pointer list-none flex-wrap items-center gap-2">
-            <Badge tone="amber">No option</Badge>
+            <Badge tone="amber">{l.hold ? "Your decision" : "No option"}</Badge>
             <span className="text-ink">{plan.blocked?.why[0] ?? "No feasible truck and driver."}</span>
             {plan.blocked && plan.blocked.options.length > 0 && <span className="text-xs text-muted">· {plan.blocked.options.length} idea{plan.blocked.options.length === 1 ? "" : "s"}</span>}
             <span className="ml-auto text-xs font-medium text-muted group-open:hidden">Details</span>
@@ -231,8 +234,10 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
  */
 const FOLD_KEY = "taviron.smart-dispatch";
 
-export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {} }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face> }) {
+export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {}, hoursLink = false, approvers = "the Dispatcher role" }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face>; /** The viewer may open Fleet → Locations and hours: the hours confirmation links to it. */ hoursLink?: boolean; /** Who may approve, for viewers who cannot ("the Owner / Administrator and Dispatcher roles"). */ approvers?: string }) {
   const feasible = plans.filter((p) => p.proposal).length;
+  // Loads left to the dispatcher (credit hold, offered to a hired truck): listed with their reason, never proposed.
+  const held = plans.filter((p) => p.load.hold).length;
   // The most urgent few first; the rest one click away, so the board below stays reachable.
   const [all, setAll] = useState(false);
   const FIRST = 6;
@@ -249,7 +254,7 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
         <Lightbulb className="size-5 text-brand-fg" aria-hidden />
         <span className="font-bold">Smart Dispatch</span>
         <span className="text-sm text-muted">
-          {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal · ${plans.length - feasible} need attention`} · {formatDate(from)}–{formatDate(to)}
+          {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal${held ? ` · ${held} need your decision (credit hold or offered)` : ""}${plans.length - feasible - held ? ` · ${plans.length - feasible - held} without an option` : ""}`} · {formatDate(from)}–{formatDate(to)}
         </span>
       </summary>
       {/* Outside the summary: links inside it would also toggle the section (nested interactive controls). */}
@@ -271,7 +276,7 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
           {plans.length === 0 && <li>{HOS_NOTE}</li>}
         </ul>
       </details>
-      {plans.length > 0 ? <ul className="divide-y divide-line">{shown.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} faces={faces} />)}</ul> : null}
+      {plans.length > 0 ? <ul className="divide-y divide-line">{shown.map((p) => <PlanCard key={p.load.id} plan={p} canEdit={canEdit} timezone={timezone} back={back} faces={faces} hoursLink={hoursLink} approvers={approvers} />)}</ul> : null}
       {plans.length > FIRST && (
         <div className="border-t border-line px-5 py-2.5 text-center sm:px-6">
           <button type="button" onClick={() => setAll((v) => !v)} className="text-sm font-medium text-brand-fg hover:underline">

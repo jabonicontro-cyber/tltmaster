@@ -19,7 +19,7 @@ import type { UnscheduledOrder } from "@/server/data/dispatch";
  * board. Scheduling one here sets its dates and marks it Scheduled; nothing
  * is assigned automatically.
  */
-export function NeedsScheduling({ items, canSchedule, today, back }: { items: UnscheduledOrder[]; canSchedule: boolean; today: string; back: string }) {
+export function NeedsScheduling({ items, canSchedule, today, back, schedulers = "the owner's role" }: { items: UnscheduledOrder[]; canSchedule: boolean; today: string; back: string; /** Who may schedule orders, for viewers who cannot ("the Owner / Administrator and Office staff roles"). */ schedulers?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -86,7 +86,7 @@ export function NeedsScheduling({ items, canSchedule, today, back }: { items: Un
                   {errors[o.id] ? <p role="alert" className="w-full text-sm text-red-700">{errors[o.id]}</p> : null}
                 </form>
               ) : (
-                <p className="text-sm text-muted">Scheduling needs the orders.schedule permission.</p>
+                <p className="text-sm text-muted">Scheduling orders is part of {schedulers}.</p>
               )}
             </li>
           );

@@ -11,6 +11,8 @@ import { GATE_LABELS } from "@/lib/ai/capabilities";
 import { capabilityGate } from "@/server/ai/gates";
 import { getOptimizationPlan, getUpcomingOpenLoadDays } from "@/server/data/optimization";
 import { businessToday } from "@/server/data/settings";
+import { rolesPhrase } from "@/lib/permission-words";
+import { rolesWith } from "@/server/permission-holders";
 
 export const metadata = { title: "Plan the day" };
 
@@ -44,7 +46,7 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
       <ReturnLink back={params.back ?? "/dispatch"} />
       <PageHeader
         title="Plan the day"
-        description={`${formatDateLong(date)}. Taviron proposes an assignment for every open load, checking hard rules first. Nothing is assigned until you approve it.`}
+        description={`${formatDateLong(date)}. Taviron proposes an assignment for each open load it can plan, checking hard rules first, and lists the loads that need your decision. Nothing is assigned until you approve it.`}
       />
       <form method="get" className="mb-5 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3" aria-label="Plan settings">
         <div className="flex flex-wrap items-end gap-x-4 gap-y-3">
@@ -98,6 +100,9 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           date={date}
           timezone={timezone}
           loads={plan.input.loads}
+          held={plan.input.held ?? []}
+          hoursLink={can(access, "fleet.view")}
+          approvers={can(access, "dispatch.edit") ? undefined : rolesPhrase(await rolesWith("dispatch.edit"))}
           revenueCents={plan.input.revenueCents}
           result={plan.result}
           canEdit={can(access, "dispatch.edit")}

@@ -50,7 +50,7 @@ export function PlanExplanation({ ai, date, preset, priorities, planKey, planLab
         {ai.canRun ? (
           <Button variant="secondary" onClick={explain} loading={busy} disabled={busy}>{shown ? "Explain again" : `Explain ${planLabel}`}</Button>
         ) : (
-          <span className="text-xs font-semibold text-muted">AI: {ai.label}</span>
+          <span className="text-xs font-semibold text-muted">{ai.state === "blocked" ? "AI explanations are off" : "AI explanations are not ready"}</span>
         )}
       </div>
       {!ai.canRun && (

@@ -163,7 +163,7 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const offered = new Set(offers.map((o) => o.load_id));
   for (const l of smartLoads) {
     if (offered.has(l.id)) l.hold = "This load is offered to a hired truck. Withdraw the offer before giving it to your own crew.";
-    else if (l.customer_id && holds.has(l.customer_id)) l.hold = `${holds.get(l.customer_id)!.name} is on credit hold.`;
+    else if (l.customer_id && holds.has(l.customer_id)) l.hold = `${holds.get(l.customer_id)!.name} is on credit hold. Billing decides on the hold.`;
   }
 
   const bookings: SmartBooking[] = (assignments.data ?? []).map((a) => {

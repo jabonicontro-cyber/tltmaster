@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { recommend, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
+import { checkPair, documentHolds, recommend, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { pickTrailer, type OptimizationInput, type OptTrailer } from "@/lib/optimization/plan";
 
 // Smart Dispatch scenarios (engine level). The approval path and its database
@@ -114,7 +114,7 @@ describe("Smart Dispatch recommendations", () => {
     const [p] = recommend(input({ loads: [load("A", { requested_date: TODAY })], bookings }));
     expect(p.proposal).toBeNull();
     expect(p.blocked?.why).toEqual(["None of the 1 trucks can take this load (see the reasons below).", "None of the 1 drivers can take this load (see the reasons below)."]);
-    expect(p.blocked?.options.join(" ")).toMatch(/available on 2026-10-13 at the same time, later than the customer's requested date \(2026-10-12\); confirm with the customer first/);
+    expect(p.blocked?.options.join(" ")).toMatch(/available on Oct 13, 2026 at the same time, later than the customer's requested date \(Oct 12, 2026\); confirm with the customer first/);
   });
 
   it("10/14. rejected pairs are not proposed again; reconsidering brings them back (approval itself is re-checked in the database)", () => {
@@ -195,26 +195,30 @@ describe("Smart Dispatch and time off", () => {
     expect(p.proposal!.warnings.join(" ")).toMatch(/pending time-off request/);
     expect(recommend(input({ loads: [load("A")], timeOffChecked: false }))[0].notes.join(" ")).toMatch(/Driver time off was not checked/);
   });
-  it("a driver whose employee record says On leave is still proposed, with a warning (no invented block)", () => {
+  it("a driver whose employee record says On leave is not proposed (the assign window's check), with the reason", () => {
     const [p] = recommend(input({ loads: [load("A")], driversOnLeave: ["d-avery"] }));
-    expect(p.proposal?.driverLabel).toBe("Avery");
-    expect(p.proposal!.warnings.join(" ")).toMatch(/employee record says On leave/);
+    expect(p.proposal).toBeNull();
+    expect(p.excludedDrivers.find((d) => d.label === "Avery")?.reasons.join(" ")).toMatch(/employee record says On leave\. Confirm they are working that day\. Not proposed; you can still assign them on the board\./);
+    // Not a database rule: checkPair (the approval re-check) refuses it too, but assign_load from the board does not.
+    expect(checkPair(input({ loads: [load("A")], driversOnLeave: ["d-avery"] }), "A", "t-101", "d-avery").ok).toBe(false);
   });
 
-  // Expired vehicle documents (20261112000200, owner 2026-10-13): a verified expired document on a "block" kind
-  // excludes the truck, as the database refuses it; an unverified one, or a "warn" kind, is a warning only.
-  it("a verified expired insurance blocks the truck; an unverified one or an expired inspection only warns", () => {
+  // Expired vehicle documents (20261112000200, owner 2026-10-13; 2026-11-09): a verified expired document on a "block"
+  // kind excludes the truck, as the database refuses it; an unverified one, or a "warn" kind, is the assign window's
+  // "confirm it was renewed" check: never proposed, still assignable on the board.
+  it("an expired document keeps the truck out of proposals: verified on a block kind (refused) or any other (a check)", () => {
     const issue = (over: Record<string, unknown>) => ({ truck_id: "t-101", trailer_id: null, kind: "insurance", expires_on: "2026-09-30", verified: true, action: "block" as const, blocks: true, ...over });
     const blocked = recommend(input({ loads: [load("A")], trucks: [truck("101"), truck("102")], documentIssues: [issue({})] }))[0];
     expect(blocked.proposal?.truckLabel).toBe("102");
-    expect(blocked.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired 2026-09-30 \(verified\): the company rule blocks it/);
+    expect(blocked.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired Sep 30, 2026 \(verified\): the company rule blocks it/);
 
-    const unverified = recommend(input({ loads: [load("A")], documentIssues: [issue({ verified: false, blocks: false })] }))[0];
-    expect(unverified.proposal?.truckLabel).toBe("101");
-    expect(unverified.proposal!.warnings.join(" ")).toMatch(/insurance expired 2026-09-30 on record \(not verified\): confirm it was renewed/);
+    const unverified = recommend(input({ loads: [load("A")], trucks: [truck("101"), truck("102")], documentIssues: [issue({ verified: false, blocks: false })] }))[0];
+    expect(unverified.proposal?.truckLabel).toBe("102");
+    expect(unverified.excludedTrucks.find((t) => t.label === "101")?.reasons.join(" ")).toMatch(/insurance expired Sep 30, 2026 on record \(not verified\): confirm the renewal in Fleet\. Not proposed until then; you can still assign it on the board\./);
 
     const inspection = recommend(input({ loads: [load("A")], documentIssues: [issue({ kind: "inspection", action: "warn", blocks: false })] }))[0];
-    expect(inspection.proposal?.truckLabel).toBe("101");
+    expect(inspection.proposal).toBeNull();
+    expect(inspection.excludedTrucks[0].reasons.join(" ")).toMatch(/inspection expired Sep 30, 2026 on record: confirm the renewal/);
     // A document that expires after the load date changes nothing.
     const later = recommend(input({ loads: [load("A")], documentIssues: [issue({ expires_on: "2026-12-31" })] }))[0];
     expect(later.proposal?.truckLabel).toBe("101");
@@ -240,6 +244,27 @@ describe("Smart Dispatch and time off", () => {
     const none = recommend({ ...base, loads: [load("Z")], pickTrailer: () => null });
     expect(none[0].proposal).toBeNull();
     expect(none[0].excludedTrucks[0].reasons.join(" ")).toMatch(/No usable trailer is free/);
+  });
+
+  it("never proposes a trailer with an expired registration on record (owner 2026-11-09), even unverified", () => {
+    const trailer = (unit: string): OptTrailer => ({
+      id: "tr-" + unit, unit_number: unit, active: true, service_status: "in_service", weight_capacity: 22, weight_unit: "ton", volume_capacity: null, capacity_verified_at: null, compatible_truck_types: ["tractor"],
+    });
+    const reg = (trailerId: string) => ({ truck_id: null, trailer_id: trailerId, kind: "registration", expires_on: "2026-10-01", verified: false, action: "block" as const, blocks: false });
+    const base = input({ trucks: [truck("201", { truck_type: "tractor" })], drivers: [qualified({ id: "d-a", name: "A" })], loads: [load("X")] });
+    const both = { ...base, documentIssues: [reg("tr-T-53")] };
+    const full: OptimizationInput = { ...both, revenueCents: {}, trailers: [trailer("T-53"), trailer("T-54")] };
+    const [p] = recommend({ ...both, pickTrailer: (t, l, d, busy) => pickTrailer(full, l, t, d, busy) });
+    expect(p.proposal?.trailerLabel).toBe("T-54");
+    const all = { ...base, documentIssues: [reg("tr-T-53"), reg("tr-T-54")] };
+    const fullAll: OptimizationInput = { ...all, revenueCents: {}, trailers: [trailer("T-53"), trailer("T-54")] };
+    expect(recommend({ ...all, pickTrailer: (t, l, d, busy) => pickTrailer(fullAll, l, t, d, busy) })[0].proposal).toBeNull();
+  });
+
+  it("documentHolds: only documents expired before the load date, in plain words with the app's date format", () => {
+    const d = { truck_id: "t", trailer_id: null, kind: "registration", expires_on: "2026-11-05", verified: true, action: "block" as const, blocks: true };
+    expect(documentHolds([d], "2026-11-05")).toEqual([]);
+    expect(documentHolds([d], "2026-11-06", "Trailer T-1's")).toEqual(["Trailer T-1's registration expired Nov 5, 2026 (verified): the company rule blocks it until the renewed document is recorded in Fleet."]);
   });
 });
 

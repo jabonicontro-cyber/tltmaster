@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingsFor, capacityProblem, combinationCheck, conflictsFor, driverState, inShop, minutes, shopWorkOn, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
+import { assignmentProblem, bookingsFor, capacityProblem, combinationCheck, conflictsFor, creditHoldSentence, defaultLoadTimes, driverDayChecks, driverState, inShop, minutes, shopWorkOn, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
 
 const ON = "2026-10-20";
 const at = (h: string) => `${ON}T${h}:00-05:00`;
@@ -130,5 +130,51 @@ describe("helpers", () => {
     expect(minutes("07:30:00")).toBe(450);
     expect(shiftDate("2026-12-31", 1)).toBe("2027-01-01");
     expect(shiftDate("2026-03-01", -1)).toBe("2026-02-28");
+  });
+});
+
+describe("loads on equipment that cannot run (first-day finding 2026-11-09)", () => {
+  const units = (truckOver: Record<string, unknown> = {}, trailerOver: Record<string, unknown> = {}) => ({
+    trucks: new Map([["T1", { id: "T1", unit_number: "103", active: true, service_status: "in_service", ...truckOver }]]),
+    trailers: new Map([["R1", { id: "R1", unit_number: "E-21", active: true, service_status: "in_service", ...trailerOver }]]),
+  });
+  const r = (shop: DayRestrictions["shop"]): DayRestrictions => ({ shop, reports: [], documents: [], timeOff: [], shifts: [] });
+  const a = { truck_id: "T1", trailer_id: "R1" };
+
+  it("is null when the truck and trailer can run", () => {
+    expect(assignmentProblem(a, units(), ON, ON, r([]))).toBeNull();
+  });
+  it("marks an out-of-service truck, a safety-critical work order and a shop day with the shared readiness rule", () => {
+    expect(assignmentProblem(a, units({ service_status: "out_of_service" }), ON, ON, r([]))).toMatchObject({ kind: "truck", unit: "103", reason: "out_of_service", label: "Truck out of service, reassign" });
+    const safety = assignmentProblem(a, units(), ON, ON, r([{ truck_id: "T1", trailer_id: null, number: "MWO-1023", status: "reported", scheduled_for: null, safety_critical: true }]));
+    expect(safety).toMatchObject({ reason: "safety_restricted", label: "Truck out of service, reassign" });
+    expect(safety!.detail).toMatch(/^Truck 103 has an open safety-critical work order \(MWO-1023\)\..* Reassign this load to a truck that can run\.$/);
+    expect(assignmentProblem(a, units(), ON, ON, r([{ truck_id: "T1", trailer_id: null, number: "W1", status: "scheduled", scheduled_for: ON, safety_critical: false }]))).toMatchObject({ reason: "shop_scheduled", label: "Truck in the shop, reassign" });
+    // A shop visit on another day does not block this one.
+    expect(assignmentProblem(a, units(), ON, ON, r([{ truck_id: "T1", trailer_id: null, number: "W1", status: "scheduled", scheduled_for: "2026-10-21", safety_critical: false }]))).toBeNull();
+  });
+  it("checks the trailer after the truck, and treats a unit missing from the board as deactivated", () => {
+    expect(assignmentProblem(a, units({}, { service_status: "out_of_service" }), ON, ON, r([]))).toMatchObject({ kind: "trailer", label: "Trailer out of service, reassign" });
+    expect(assignmentProblem({ truck_id: "T9", trailer_id: null }, units(), ON, ON, null)).toMatchObject({ kind: "truck", unit: null, reason: "inactive", label: "Truck deactivated, reassign" });
+  });
+});
+
+describe("new load times, credit hold wording and On leave", () => {
+  it("defaults a new load on today to the next whole hour when 7:00 AM or the window has passed", () => {
+    expect(defaultLoadTimes({ date: ON, today: ON, nowMinutes: 10 * 60 + 20 })).toEqual({ start: "11:00", end: "12:00" });
+    expect(defaultLoadTimes({ date: ON, today: ON, nowMinutes: 6 * 60 })).toEqual({ start: "07:00", end: "08:00" });
+    expect(defaultLoadTimes({ date: "2026-10-21", today: ON, nowMinutes: 15 * 60 })).toEqual({ start: "07:00", end: "08:00" });
+    expect(defaultLoadTimes({ date: ON, today: ON, nowMinutes: 9 * 60, windowStart: "13:00:00", windowEnd: "15:00:00" })).toEqual({ start: "13:00", end: "15:00" });
+    expect(defaultLoadTimes({ date: ON, today: ON, nowMinutes: 23 * 60 + 30 })).toEqual({ start: "23:00", end: "23:59" });
+    expect(defaultLoadTimes({ date: ON, today: ON, nowMinutes: null })).toEqual({ start: "07:00", end: "08:00" });
+  });
+  it("ends a credit hold sentence with exactly one period", () => {
+    expect(creditHoldSentence("Harlow Homes is on credit hold (put on hold by billing): Two invoices late (demo).")).toBe("Harlow Homes is on credit hold (put on hold by billing): Two invoices late (demo).");
+    expect(creditHoldSentence("Harlow Homes is on credit hold (invoices past due)")).toBe("Harlow Homes is on credit hold (invoices past due).");
+  });
+  it("shows On leave as a check (a warning), never as plain Available", () => {
+    const restrictions: DayRestrictions = { shop: [], reports: [], documents: [], timeOff: [], shifts: [], onLeave: ["D1"] };
+    expect(driverDayChecks("D1", ON, restrictions)).toEqual({ blockers: [], warnings: ["Their employee record says On leave. Confirm they are working that day."] });
+    expect(driverDayChecks("D2", ON, restrictions)).toEqual({ blockers: [], warnings: [] });
   });
 });

@@ -17,7 +17,7 @@ import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form"
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { bookingsFor, combinationCheck, driverDayChecks, driverState, proposePreviousCrews, shopWorkOn, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { assignmentProblem, bookingsFor, checkFirst, combinationCheck, defaultLoadTimes, driverDayChecks, driverState, proposePreviousCrews, shopWorkOn, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type EquipmentProblem, type Interval, type ResourceState } from "@/lib/dispatch/board";
 import { shiftProblem } from "@/lib/dispatch/smart";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { OrderRoutePanel } from "./order-route-panel";
@@ -30,6 +30,7 @@ import type { OrderListRow } from "@/server/data/types";
 import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { approveRecommendation, assignLoad, cancelAssignment, cancelLoad, saveLoad } from "@/app/(app)/dispatch/actions";
 import { HOS_CONFIRMATION } from "@/lib/hos";
+import { HoursLink } from "./hours-link";
 
 const DISPATCHABLE = ["scheduled", "dispatched", "in_progress", "partially_completed"];
 /** Drag payload type for drivers and trucks dragged onto a load (B85). */
@@ -58,7 +59,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter delivery ticket", suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** The shown date's restrictions (B1): shop, reports, documents, time off, shifts. */ restrictions?: DayRestrictions | null; /** "Enter delivery ticket" in the company's words ("Enter BOL" for freight). */ enterLabel?: string; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter delivery ticket", suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {}, hoursLink = false }: { /** The viewer may open Fleet → Locations and hours: the hours confirmation links to it. */ hoursLink?: boolean; day: DispatchDay; /** The shown date's restrictions (B1): shop, reports, documents, time off, shifts. */ restrictions?: DayRestrictions | null; /** "Enter delivery ticket" in the company's words ("Enter BOL" for freight). */ enterLabel?: string; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -69,7 +70,10 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
   const [truckDialog, setTruckDialog] = useState<OrderListRow | null>(null);
   const truckDay = useMemo(() => new Set(day.truckDayOrderIds ?? []), [day.truckDayOrderIds]);
   const [suggest, setSuggest] = useState<{ load: OrderLoadRow; s: CrewSuggestion } | null>(null);
-  const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null; initial?: { truckId?: string; trailerId?: string; driverId?: string } } | null>(null);
+  const [assignDialog, setAssignDialog] = useState<{ load: OrderLoadRow; current: AssignmentRow | null; initial?: { truckId?: string; trailerId?: string; driverId?: string }; step?: string } | null>(null);
+  // "Move this truck's loads": the loads of a truck that cannot run that day, reassigned one at a time in the assign
+  // window (the dispatcher picks and confirms each; nothing moves on its own).
+  const [moveQueue, setMoveQueue] = useState<{ truck: string; loadIds: string[]; total: number } | null>(null);
   // Faster dispatching (B85): selected open loads, the batch dialogs and the shortcuts list.
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkOpen, setBulkOpen] = useState(false);
@@ -99,6 +103,27 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
   const activeByLoad = new Map(active.map((a) => [a.load_id, a]));
   const plannedLoads = day.loads.filter((l) => l.status === "planned");
   const unassigned = plannedLoads.filter((l) => !activeByLoad.has(l.id)).length;
+  // Loads still to run whose truck or trailer cannot run that day (the shared readiness rule, as the Command Center's
+  // Assignment problems): marked on the load in critical red instead of a green "Assigned".
+  const problems = new Map<string, EquipmentProblem>();
+  for (const l of plannedLoads) {
+    const a = activeByLoad.get(l.id);
+    if (!a || l.load_date < day.today) continue;
+    const p = assignmentProblem(a, lk, l.load_date, day.today, lk.restrictions);
+    if (p) problems.set(l.id, p);
+  }
+  /** Open the assign window for the next load of a "Move this truck's loads" queue (the driver and trailer stay). */
+  const openMove = (queue: { truck: string; loadIds: string[]; total: number }) => {
+    const id = queue.loadIds[0];
+    const load = id ? lk.loads.get(id) : undefined;
+    const cur = id ? activeByLoad.get(id) : undefined;
+    if (!load || !cur) return void setMoveQueue(null);
+    setMoveQueue(queue);
+    setAssignDialog({
+      load, current: cur, initial: { truckId: "", trailerId: cur.trailer_id ?? undefined, driverId: cur.driver_id },
+      step: `Moving truck ${queue.truck}'s loads: ${queue.total - queue.loadIds.length + 1} of ${queue.total}. Choose a truck that can run; the driver stays unless you change it.`,
+    });
+  };
   const refresh = () => router.refresh();
   // Day links keep the chosen base.
   const dayHref = (date: string) => `/dispatch?date=${date}${day.base ? `&base=${day.base}` : ""}`;
@@ -153,14 +178,14 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
       {/* Date navigation and summary */}
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/70 bg-card shadow-card px-4 py-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
-          <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")}>
-            <ChevronLeft className="size-4" aria-hidden /> Prev<span className="sr-only">ious day</span>
+          <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")} aria-label="Previous day">
+            <ChevronLeft className="size-4" aria-hidden /> Prev
           </Link>
           <Link href={dayHref(day.today)} className={buttonClasses(day.date === day.today ? "dark" : "secondary", "sm")}>
             Today
           </Link>
-          <Link href={dayHref(shiftDate(day.date, 1))} className={buttonClasses("secondary", "sm")}>
-            Next<span className="sr-only"> day</span> <ChevronRight className="size-4" aria-hidden />
+          <Link href={dayHref(shiftDate(day.date, 1))} className={buttonClasses("secondary", "sm")} aria-label="Next day">
+            Next <ChevronRight className="size-4" aria-hidden />
           </Link>
           <form action="/dispatch" method="get" className="flex items-center gap-2">
             <label htmlFor="board-date" className="sr-only">Go to date</label>
@@ -203,6 +228,9 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
                 <div className="h-full rounded-full bg-brand" style={{ width: `${Math.round(((plannedLoads.length - unassigned) / plannedLoads.length) * 100)}%` }} />
               </div>
             )}
+            {f.label === "Assigned" && problems.size > 0 && (
+              <dd className="mt-1.5 text-xs font-semibold text-critical">{problems.size} on a truck or trailer that cannot run</dd>
+            )}
           </div>
         ))}
       </dl>
@@ -231,6 +259,7 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
                 order={o}
                 urgent={urgentOrderIds.includes(o.id)}
                 creditHold={creditHolds[o.id] ?? null}
+                problems={problems}
                 stopsRoute={day.routes?.[o.id] ?? null}
                 routeOpen={routeOrder === o.id}
                 onRoute={() => setRouteOrder((cur) => (cur === o.id ? null : o.id))}
@@ -272,7 +301,8 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
             <OrderRoutePanel orderId={routeOrder} date={day.date} onClose={closeRoute} inline />
           </div>
         ) : (
-          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} health={health} />
+          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} health={health} problems={problems}
+            onMove={(truck, loadIds) => openMove({ truck, loadIds, total: loadIds.length })} />
         )}
       </div>
 
@@ -293,6 +323,8 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
           order={loadDialog.order}
           load={loadDialog.load}
           date={day.date}
+          today={day.today}
+          timeZone={day.timezone}
           units={day.units}
           onClose={() => setLoadDialog(null)}
           onSaved={(m) => {
@@ -304,19 +336,29 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
       )}
       {assignDialog && (
         <AssignDialog
+          key={assignDialog.load.id}
           load={assignDialog.load}
           current={assignDialog.current}
           initial={assignDialog.initial}
+          step={assignDialog.step}
+          creditHold={creditHolds[assignDialog.load.order_id] ?? null}
           day={day}
           active={active}
           lk={lk}
-          onClose={() => setAssignDialog(null)}
+          onClose={() => { setAssignDialog(null); setMoveQueue(null); }}
           onSaved={(m, warnings, crew) => {
             const load = assignDialog.load;
             setAssignDialog(null);
-            if (crew) assignedToast(m, load, crew);
+            if (moveQueue) toast.success(m);
+            else if (crew) assignedToast(m, load, crew);
             else toast.success(m);
             if (warnings.length) toast.warning(warnings.map(eligibilityMessage).join(" "));
+            // Moving a truck's loads: the next one opens, until every load has a truck that can run.
+            if (moveQueue) {
+              const rest = moveQueue.loadIds.filter((id) => id !== load.id);
+              if (rest.length) openMove({ ...moveQueue, loadIds: rest });
+              else setMoveQueue(null);
+            }
             refresh();
           }}
         />
@@ -329,6 +371,13 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
         confirmLabel="I checked, assign"
         onConfirm={async () => {
           if (!suggest) return;
+          // On credit hold (known from the page): the assign window asks for the reason instead of a one-click assign.
+          if (creditHolds[suggest.load.order_id]) {
+            const { load, s: sug } = suggest;
+            setSuggest(null);
+            setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: sug.truckId, trailerId: sug.trailerId ?? undefined, driverId: sug.driverId } });
+            return;
+          }
           const { load, s: sug } = suggest;
           const r = await approveRecommendation({ loadId: load.id, truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId, loadDate: load.load_date, hosConfirmed: true });
           if (!r.ok) {
@@ -338,11 +387,13 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
             setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: sug.truckId, trailerId: sug.trailerId ?? undefined, driverId: sug.driverId } });
             return;
           }
-          assignedToast(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.`, load, { truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId });
+          assignedToast(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.${r.data.notice ? ` ${r.data.notice}` : ""}`, load, { truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId });
           if (r.data.warnings.length) toast.warning(r.data.warnings.map(eligibilityMessage).join(" "));
           refresh();
         }}
-      />
+      >
+        <HoursLink show={hoursLink} />
+      </ConfirmDialog>
       <ConfirmDialog
         open={Boolean(cancelTarget)}
         onOpenChange={(o) => !o && setCancelTarget(null)}
@@ -414,6 +465,7 @@ function OrderCard({
   order: o,
   urgent,
   creditHold,
+  problems,
   stopsRoute,
   routeOpen,
   onRoute,
@@ -447,6 +499,8 @@ function OrderCard({
   order: OrderListRow;
   urgent: boolean;
   creditHold: string | null;
+  /** Loads whose truck or trailer cannot run that day, by load id. */
+  problems: ReadonlyMap<string, EquipmentProblem>;
   /** The order's stops as one line (MK2), shown instead of the job site. */
   stopsRoute: string | null;
   routeOpen: boolean;
@@ -602,7 +656,7 @@ function OrderCard({
                 </div>
                 <div className="sm:col-span-6">
                   {current ? (
-                    <AssignmentSummary a={current} lk={lk} />
+                    <AssignmentSummary a={current} lk={lk} problem={problems.get(l.id) ?? null} />
                   ) : canceled ? null : (
                     <p className="flex items-center gap-1.5 font-semibold text-amber-800">
                       <AlertTriangle className="size-4" aria-hidden /> Needs a truck and driver
@@ -638,7 +692,7 @@ function OrderCard({
                       </Button>
                     )}
                     {dispatchable && (
-                      <Button size="sm" variant={current || suggestions[l.id] ? "secondary" : "primary"} icon={current || !suggestions[l.id] ? <Truck className="size-4" /> : undefined} onClick={() => onAssign(l)} title={!current && suggestions[l.id] ? "Pick a different truck, trailer or driver" : undefined}>
+                      <Button size="sm" variant={(current && !problems.has(l.id)) || (!current && suggestions[l.id]) ? "secondary" : "primary"} icon={current || !suggestions[l.id] ? <Truck className="size-4" /> : undefined} onClick={() => onAssign(l)} title={!current && suggestions[l.id] ? "Pick a different truck, trailer or driver" : undefined}>
                         {current ? "Reassign" : "Assign"}
                       </Button>
                     )}
@@ -676,7 +730,7 @@ function assignmentText(a: Pick<AssignmentRow, "truck_id" | "trailer_id" | "driv
   return [`Truck ${truck}`, trailer && `trailer ${trailer}`, driver].filter(Boolean).join(" · ");
 }
 
-function AssignmentSummary({ a, lk }: { a: AssignmentRow; lk: Lookup }) {
+function AssignmentSummary({ a, lk, problem }: { a: AssignmentRow; lk: Lookup; /** The truck or trailer cannot run that day. */ problem: EquipmentProblem | null }) {
   const truck = lk.trucks.get(a.truck_id);
   const trailer = a.trailer_id ? lk.trailers.get(a.trailer_id) : null;
   const driver = lk.drivers.get(a.driver_id);
@@ -686,8 +740,9 @@ function AssignmentSummary({ a, lk }: { a: AssignmentRow; lk: Lookup }) {
         <span className="inline-flex items-center gap-1 font-semibold"><Truck className="size-4" aria-hidden /> {truck?.unit_number ?? "Inactive truck"}</span>
         {a.trailer_id && <span className="font-semibold">+ {trailer?.unit_number ?? "inactive trailer"}</span>}
         <span className="inline-flex items-center gap-1.5"><Avatar name={driver?.display_name ?? "Driver"} size={22} {...lk.faces[a.driver_id]} /> {driver?.display_name ?? "Inactive driver"}</span>
-        <Badge tone="green">Assigned</Badge>
+        {problem ? <Badge tone="critical">{problem.label}</Badge> : <Badge tone="green">Assigned</Badge>}
       </p>
+      {problem && <p role="alert" className="text-sm font-semibold text-critical">{problem.detail}</p>}
       {a.warnings.length > 0 && <p className="text-xs text-amber-900">{a.warnings.map(eligibilityMessage).join(" ")}</p>}
       {a.note && <p className="text-xs text-muted">Note: {a.note}</p>}
     </div>
@@ -698,10 +753,13 @@ function stateLabel(s: ResourceState, lk: Lookup) {
   if (s.state === "unavailable") return `Unavailable · ${eligibilityMessage(s.reasons[0])}`;
   if (s.state === "busy") return `Already assigned ${describeBooking(s.with[0], lk)}`;
   if (s.needsReason) return `${s.needsReason} (needs a reason)`;
+  // An expired document on record, On leave, an open equipment report or pending time off is a check, never "Available".
+  const check = checkFirst(s.warnings);
+  if (check) return `Check first · ${eligibilityMessage(check)}`;
   return s.warnings.length ? `Available · ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
-function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }> }) {
+function ResourcePanel({ day, active, lk, canEdit, health, problems, onMove }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; /** Loads whose truck or trailer cannot run that day. */ problems: ReadonlyMap<string, EquipmentProblem>; /** Reassign these loads of the truck, one at a time. */ onMove: (truck: string, loadIds: string[]) => void }) {
   // Drivers and trucks can be dragged onto a load to assign them (B85); the Assign button stays the keyboard way.
   const drag = (kind: "driver" | "truck", id: string) =>
     canEdit
@@ -728,6 +786,8 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
               // In the shop on this date (a safety-critical work order, a visit that day, or work in progress or waiting for
               // parts: the shared readiness rule), from the same data as the assign window.
               const shop = shopWorkOn("truck", t.id, day.date, lk.restrictions);
+              // Its loads still to run while it cannot run that day: moved one at a time in the assign window.
+              const stuck = bookings.filter((b) => problems.get(b.load_id)?.kind === "truck").map((b) => b.load_id);
               return (
                 <li key={t.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && t.service_status !== "out_of_service" && "cursor-grab active:cursor-grabbing")} {...(t.service_status !== "out_of_service" ? drag("truck", t.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
@@ -752,6 +812,12 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
                   {bookings.map((b) => (
                     <p key={b.id} className="text-xs tabular">{describeBooking(b, lk)}</p>
                   ))}
+                  {canEdit && stuck.length > 0 && (
+                    <Button size="sm" variant="secondary" className="mt-1.5" icon={<Truck className="size-4" />} onClick={() => onMove(t.unit_number, stuck)}
+                      aria-label={`Move truck ${t.unit_number}'s ${stuck.length === 1 ? "load" : `${stuck.length} loads`} to another truck`}>
+                      Move this truck&apos;s {stuck.length === 1 ? "load" : `${stuck.length} loads`}
+                    </Button>
+                  )}
                 </li>
               );
             })}
@@ -803,12 +869,19 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
   );
 }
 
-function LoadDialog({ order, load, date, units, onClose, onSaved }: { order: OrderListRow; load: OrderLoadRow | null; date: string; units: DispatchDay["units"]; onClose: () => void; onSaved: (m: string) => void }) {
+function LoadDialog({ order, load, date, today, timeZone, units, onClose, onSaved }: { order: OrderListRow; load: OrderLoadRow | null; date: string; today: string; timeZone: string; units: DispatchDay["units"]; onClose: () => void; onSaved: (m: string) => void }) {
   const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
+  // A new load on today's date starts at the next whole hour when the order's window (or 7:00 AM) has already passed.
+  const [defaults] = useState(() => {
+    if (load) return { start: hhmm(load.start_time), end: hhmm(load.end_time) };
+    const parts = new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", hourCycle: "h23", timeZone }).formatToParts(new Date());
+    const now = Number(parts.find((p) => p.type === "hour")?.value) * 60 + Number(parts.find((p) => p.type === "minute")?.value);
+    return defaultLoadTimes({ date, today, nowMinutes: Number.isFinite(now) ? now : null, windowStart: order.window_start, windowEnd: order.window_end });
+  });
   const [values, setValues] = useState({
     loadDate: load?.load_date ?? date,
-    startTime: hhmm(load?.start_time) || hhmm(order.window_start) || "07:00",
-    endTime: hhmm(load?.end_time) || hhmm(order.window_end) || "08:00",
+    startTime: defaults.start,
+    endTime: defaults.end,
     plannedQuantity: load?.planned_quantity != null ? trimNumber(load.planned_quantity) : "",
     unitCode: load?.unit_code ?? "",
     notes: load?.notes ?? "",
@@ -881,6 +954,8 @@ function AssignDialog({
   load,
   current,
   initial,
+  step,
+  creditHold: knownHold = null,
   day,
   active,
   lk,
@@ -891,6 +966,10 @@ function AssignDialog({
   current: AssignmentRow | null;
   /** Prefill from a drag and drop (B85); the dispatcher still confirms. */
   initial?: { truckId?: string; trailerId?: string; driverId?: string };
+  /** Shown above the fields while moving a truck's loads one by one. */
+  step?: string;
+  /** The customer's credit hold as the board knows it (B128): shown as soon as the window opens. */
+  creditHold?: string | null;
   day: DispatchDay;
   active: AssignmentRow[];
   lk: Lookup;
@@ -905,8 +984,9 @@ function AssignDialog({
   // Set when the shift check refused the driver: the problem shown and the reason typed (20261120003300).
   const [offShift, setOffShift] = useState<string | null>(null);
   const [offShiftReason, setOffShiftReason] = useState("");
-  // Set when the customer is on credit hold (B128): the hold shown and the reason typed to go ahead.
-  const [creditHold, setCreditHold] = useState<string | null>(null);
+  // The customer's credit hold (B128): known from the board when the window opens, or from the server's answer; the
+  // reason typed to go ahead is sent with the next Assign.
+  const [creditHold, setCreditHold] = useState<string | null>(knownHold);
   const [creditReason, setCreditReason] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -925,15 +1005,15 @@ function AssignDialog({
 
   // Group options: available, already assigned at this time, unavailable.
   function grouped<T extends { id: string }>(items: T[], state: (item: T) => ResourceState, label: (item: T) => string) {
-    const groups: Record<ResourceState["state"] | "offShift", Array<{ item: T; s: ResourceState }>> = { available: [], offShift: [], busy: [], unavailable: [] };
+    const groups: Record<ResourceState["state"] | "offShift" | "check", Array<{ item: T; s: ResourceState }>> = { available: [], check: [], offShift: [], busy: [], unavailable: [] };
     for (const item of items) {
       const s = state(item);
-      groups[s.state === "available" && s.needsReason ? "offShift" : s.state].push({ item, s });
+      groups[s.state === "available" && s.needsReason ? "offShift" : s.state === "available" && checkFirst(s.warnings) ? "check" : s.state].push({ item, s });
     }
-    const titles = { available: "Available", offShift: "Off shift: assigning asks for a reason", busy: "Already assigned at this time", unavailable: "Unavailable" };
+    const titles = { available: "Available", check: "Check first: assignable after you confirm", offShift: "Off shift: assigning asks for a reason", busy: "Already assigned at this time", unavailable: "Unavailable" };
     return (
       <>
-        {(["available", "offShift", "busy", "unavailable"] as const).map((g) =>
+        {(["available", "check", "offShift", "busy", "unavailable"] as const).map((g) =>
           groups[g].length ? (
             <optgroup key={g} label={titles[g]}>
               {groups[g].map(({ item, s }) => (
@@ -956,7 +1036,7 @@ function AssignDialog({
     if (!r.ok) {
       // The customer is on credit hold: show it and ask for a reason; the next Assign sends it.
       if (r.fieldErrors?.creditHold) {
-        setCreditHold(r.fieldErrors.creditHold);
+        setCreditHold(r.fieldErrors.creditHold.replace(/\.{2,}(?=\s|$)/g, "."));
         return;
       }
       // Outside the driver's shift: show why and ask for a reason; the next Assign sends it.
@@ -987,10 +1067,12 @@ function AssignDialog({
       }
     >
       <div className="space-y-4">
+        {step && <p role="status" className="rounded-xl border border-line bg-surface px-3 py-2 text-sm font-semibold text-ink">{step}</p>}
         <FormError message={error} />
         {creditHold && (
           <div role="alert" className="space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
             <p className="text-sm font-semibold text-critical">{creditHold}</p>
+            <p className="text-sm text-ink">Billing decides on credit holds and can release this one on the customer&apos;s page. To assign now anyway, give a reason; it is recorded with the assignment.</p>
             <Field label="Reason for going ahead" htmlFor="assign-credit-reason" required>
               <Input id="assign-credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
             </Field>
@@ -1031,13 +1113,18 @@ function AssignDialog({
 
         {/* The board's pre-check; hidden once the server answered with an error or a shift question: its answer counts. */}
         {check && !error && !offShift && (
-          <div role="status" className={cn("rounded-xl border p-3 text-sm", !check.eligible ? "border-red-200 bg-red-50" : check.needsReason && !unchanged ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50")}>
+          <div role="status" className={cn("rounded-xl border p-3 text-sm", !check.eligible ? "border-red-200 bg-red-50" : (check.needsReason || creditHold || checkFirst(check.warnings)) && !unchanged ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50")}>
             {!check.eligible ? (
               <p className="font-semibold text-red-900">This combination cannot be assigned:</p>
             ) : unchanged ? (
               <p className="font-semibold text-green-900">This is the current assignment.</p>
             ) : check.needsReason ? (
               <p className="font-semibold text-amber-950">{driver?.display_name ?? "The driver"}: {check.needsReason}. Assigning asks for a reason, which is recorded with the assignment.</p>
+            ) : creditHold ? (
+              // Never a green "can be assigned" next to a hold: the truck, trailer and driver pass, the hold still needs a reason.
+              <p className="font-semibold text-amber-950">The truck, trailer and driver pass the checks. The credit hold above still needs a reason before assigning.</p>
+            ) : checkFirst(check.warnings) ? (
+              <p className="font-semibold text-amber-950">This combination can be assigned once you have confirmed the check below.</p>
             ) : (
               <p className="font-semibold text-green-900">This combination can be assigned.</p>
             )}

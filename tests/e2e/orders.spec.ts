@@ -91,11 +91,27 @@ test("create a direct order, confirm it, schedule it and take it through deliver
   await page.goto(orderUrl);
 });
 
-test("dispatchers cannot create orders", async ({ page }) => {
+// Owner decision 2026-11-09 (migration 20261120009900): dispatchers take phoned-in orders, from Orders and from the
+// dispatch board for the day shown there.
+test("dispatchers create orders from Orders and from the board; others are told who can, in plain words", async ({ page }) => {
   await signIn(page, "dispatcher");
   await page.goto("/orders");
   await expect(page.getByRole("heading", { name: "Orders", level: 1 })).toBeVisible();
-  await expect(page.getByRole("link", { name: "New order" })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "New order" }).first()).toBeVisible();
+
+  const day = plusDays(new Date().toISOString().slice(0, 10), 2);
+  await page.goto(`/dispatch?date=${day}`);
+  const fromBoard = page.getByRole("link", { name: "New order" });
+  await expect(fromBoard).toHaveAttribute("href", `/orders/new?date=${day}`);
+  await fromBoard.click();
+  await expect(page.getByRole("heading", { name: "New order", level: 1 })).toBeVisible();
+  await expect(page.getByLabel("Requested delivery")).toHaveValue(day);
+  await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
+
+  // A role without it: the page names the activity and the roles that have it, never the permission code.
+  await signIn(page, "mechanic");
   await page.goto("/orders/new");
-  await expect(page.getByRole("button", { name: "Save draft" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "You do not have access to that page" })).toBeVisible();
+  await expect(page.getByText(/Creating and changing orders is not part of your role\. Here it is part of the .*Dispatcher.* roles?: ask one of them/)).toBeVisible();
+  await expect(page.getByText("orders.edit")).toHaveCount(0);
 });

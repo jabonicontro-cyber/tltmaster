@@ -54,10 +54,14 @@ test("billing holds a customer; dispatch sees it and gives a reason to assign; b
   await expect(orderCard.getByText("Credit hold", { exact: true }).first()).toBeVisible();
   await orderCard.getByRole("button", { name: "Assign", exact: true }).first().click();
   const dialog = page.getByRole("dialog");
+  // The hold shows as soon as the window opens (first-day finding 2026-11-09), says who decides, and the pre-check is
+  // never a green "can be assigned" next to it.
+  await expect(dialog.getByText(/is on credit hold \(put on hold by billing\): Two invoices 60 days late \(test\)\.$/)).toBeVisible();
+  await expect(dialog.getByText(/Billing decides on credit holds/)).toBeVisible();
   await choose(dialog.getByLabel("Truck"), truck);
   await choose(dialog.getByLabel("Driver"), driver);
-  await dialog.getByRole("button", { name: "Assign", exact: true }).click();
-  await expect(dialog.getByText(/is on credit hold \(put on hold by billing\): Two invoices 60 days late \(test\)/)).toBeVisible();
+  await expect(dialog.getByText("This combination can be assigned.")).toHaveCount(0);
+  await expect(dialog.getByText(/The credit hold above still needs a reason/)).toBeVisible();
   const anyway = dialog.getByRole("button", { name: "Assign anyway" });
   await expect(anyway).toBeDisabled();
   await dialog.getByLabel("Reason for going ahead").fill("Owner approved by phone (test)");

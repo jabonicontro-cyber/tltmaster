@@ -66,7 +66,7 @@ export async function runBatch(items: BatchItem[], onProgress?: (done: number) =
       !r
         ? { loadId: it.load.id, ok: false, message: "Could not be saved. Check the connection and try again." }
         : r.ok
-          ? { loadId: it.load.id, ok: true, message: "Assigned" }
+          ? { loadId: it.load.id, ok: true, message: r.data.notice ? `Assigned. ${r.data.notice}` : "Assigned" }
           : { loadId: it.load.id, ok: false, message: r.fieldErrors?.offShift ? `${r.error} Assign this load on its own to record a reason.` : r.error },
     );
     onProgress?.(results.length);

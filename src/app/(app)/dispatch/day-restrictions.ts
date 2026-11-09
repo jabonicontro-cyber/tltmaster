@@ -14,7 +14,7 @@ export async function loadDayRestrictions(date: string): Promise<DayRestrictions
   const supabase = await createClient();
   const settle = <T,>(p: PromiseLike<{ data: unknown; error: unknown }>, map: (data: unknown) => T, empty: T): Promise<T> =>
     Promise.resolve(p).then((r) => (r.error ? empty : map(r.data)), () => empty);
-  const [shop, reports, documents, timeOff, shifts] = await Promise.all([
+  const [shop, reports, documents, timeOff, shifts, onLeave] = await Promise.all([
     settle(supabase.rpc("dispatch_shop_schedule", { p_from: date, p_to: date }), (d) => (d ?? []) as DayRestrictions["shop"], []),
     settle(
       supabase.from("field_reports").select("equipment, truck_id, trailer_id, kind").in("status", ["open", "acknowledged"]),
@@ -32,6 +32,12 @@ export async function loadDayRestrictions(date: string): Promise<DayRestrictions
           .map<SmartShift>((r) => ({ driver_id: r.driver_id!, date: r.work_date, status: r.status, start_at: r.start_at, end_at: r.end_at, label: r.start_time && r.end_time ? `${formatTime(r.start_time)}–${formatTime(r.end_time)}` : "" })),
       [],
     ),
+    // Employee status "On leave" (HR record), as Smart Dispatch reads it: visible with employees.view, empty without it.
+    settle(
+      supabase.from("employees").select("driver_id").eq("status", "on_leave").not("driver_id", "is", null),
+      (d) => ((d ?? []) as Array<{ driver_id: string }>).map((e) => e.driver_id),
+      [] as string[],
+    ),
   ]);
-  return { shop, reports, documents, timeOff, shifts };
+  return { shop, reports, documents, timeOff, shifts, onLeave };
 }

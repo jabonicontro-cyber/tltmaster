@@ -11,6 +11,8 @@ import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { creditGate, creditHolds, holdSummary, orderCustomer, recordCreditOverride } from "@/server/credit";
 import { checkPair } from "@/lib/dispatch/smart";
+import { creditHoldSentence } from "@/lib/dispatch/board";
+import { driverNotice } from "./driver-notice";
 import { checkAssignment } from "@/lib/optimization/plan";
 import { getOptimizationInput } from "@/server/data/optimization";
 import { getSmartDispatchInput } from "@/server/data/smart-dispatch";
@@ -100,7 +102,7 @@ const assignInput = z.object({
   creditReason: z.string().trim().max(500).optional(),
 });
 
-export async function assignLoad(input: z.input<typeof assignInput>): Promise<ActionResult<{ assignmentId: string; warnings: string[] }>> {
+export async function assignLoad(input: z.input<typeof assignInput>): Promise<ActionResult<{ assignmentId: string; warnings: string[]; notice: string }>> {
   return guard(async () => {
     await assertPermission("dispatch.edit");
     const parsed = assignInput.safeParse(input);
@@ -129,7 +131,8 @@ export async function assignLoad(input: z.input<typeof assignInput>): Promise<Ac
     const recorded = customerId && a.creditReason ? await recordCreditOverride(customerId, "assignment", r.assignment_id, a.creditReason) : true;
     revalidateBoard(a.orderId);
     const warnings = recorded ? r.warnings : [...(r.warnings ?? []), "The reason for going ahead despite the credit hold could not be recorded."];
-    return ok({ assignmentId: r.assignment_id, warnings }, a.replaceAssignmentId ? "Load reassigned." : "Load assigned.");
+    const notice = await driverNotice([a.driverId]);
+    return ok({ assignmentId: r.assignment_id, warnings, notice }, `${a.replaceAssignmentId ? "Load reassigned." : "Load assigned."}${notice ? ` ${notice}` : ""}`);
   });
 }
 
@@ -194,7 +197,7 @@ const pairInput = z.object({ loadId: z.uuid(), truckId: z.uuid(), driverId: z.uu
  * and a refusal if someone else assigned the load meanwhile). Recorded in the
  * order's history as an approved proposal.
  */
-export async function approveRecommendation(input: z.input<typeof pairInput>): Promise<ActionResult<{ warnings: string[] }>> {
+export async function approveRecommendation(input: z.input<typeof pairInput>): Promise<ActionResult<{ warnings: string[]; notice: string }>> {
   return guard(async () => {
     await assertPermission("dispatch.edit");
     const parsed = pairInput.safeParse(input);
@@ -214,13 +217,14 @@ export async function approveRecommendation(input: z.input<typeof pairInput>): P
     const supabase = await createClient();
     // Credit hold (B128): a proposal is not approved in one click; the load is assigned from the board with a reason.
     const held = await loadCreditHold(loadId);
-    if (held) return fail(`${held.name} is ${holdSummary(held)}. Assign this load from the board to give a reason for going ahead.`);
+    if (held) return fail(`${creditHoldSentence(`${held.name} is ${holdSummary(held)}`)} Assign this load from the board to give a reason for going ahead.`);
     const { data, error } = await supabase.rpc("assign_load", {
       p_load_id: loadId, p_truck_id: truckId, p_trailer_id: trailerId, p_driver_id: driverId, p_note: approvalNote("Approved Smart Dispatch proposal", hosConfirmed), p_replace_assignment_id: null,
     });
     revalidateBoard();
     if (error) return fail(`Not assigned: ${dbErrorMessage(error)} Review the refreshed proposals.`);
-    return ok({ warnings: ((data as { warnings: string[] }).warnings ?? []) }, "Assigned.");
+    const notice = await driverNotice([driverId]);
+    return ok({ warnings: ((data as { warnings: string[] }).warnings ?? []), notice }, `Assigned.${notice ? ` ${notice}` : ""}`);
   });
 }
 

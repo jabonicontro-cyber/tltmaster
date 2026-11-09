@@ -106,9 +106,9 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
     <>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <nav aria-label="Change day" className="flex flex-wrap items-center gap-2">
-          <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")}><ChevronLeft className="size-4" aria-hidden /> Prev<span className="sr-only">ious day</span></Link>
+          <Link href={dayHref(shiftDate(day.date, -1))} className={buttonClasses("secondary", "sm")} aria-label="Previous day"><ChevronLeft className="size-4" aria-hidden /> Prev</Link>
           <Link href={dayHref(day.today)} className={buttonClasses(day.date === day.today ? "dark" : "secondary", "sm")}>Today</Link>
-          <Link href={dayHref(shiftDate(day.date, 1))} className={buttonClasses("secondary", "sm")}>Next<span className="sr-only"> day</span> <ChevronRight className="size-4" aria-hidden /></Link>
+          <Link href={dayHref(shiftDate(day.date, 1))} className={buttonClasses("secondary", "sm")} aria-label="Next day">Next <ChevronRight className="size-4" aria-hidden /></Link>
         </nav>
         <p className="text-sm text-muted">Select a load to see its order&apos;s route. Assign on the <Link href={`/dispatch?date=${day.date}`} className="font-semibold text-ink hover:underline">Board</Link>.</p>
       </div>

@@ -43,6 +43,7 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     ...smart,
     // Loads on credit hold or offered to a hired truck (UX3) are left to the board, where the reason is recorded.
     loads: smart.loads.filter((l) => !l.hold),
+    held: smart.loads.filter((l) => l.hold),
     revenueCents,
     hoursOfServiceVerified: false,
     // The company's document rules (20261112000200) when installed: every expired document, with whether it blocks.

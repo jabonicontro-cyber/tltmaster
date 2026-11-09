@@ -85,8 +85,11 @@ test("a dispatcher approves a proposal: it is assigned with an audit note, and n
   // Hours of service are not in Taviron: the dispatcher confirms them before anything is assigned.
   const confirm = page.getByRole("dialog", { name: "Confirm hours of service" });
   await expect(confirm).toContainText("Taviron did not verify them");
+  // Where recorded hours are kept (first-day finding 2026-11-09).
+  await expect(confirm.getByRole("link", { name: "Fleet → Locations and hours" })).toHaveAttribute("href", "/fleet/locations");
   await confirm.getByRole("button", { name: "I checked, assign" }).click();
-  await expectToast(page, new RegExp(`${f.orderNumber} load 1: assigned to truck`));
+  // The toast says how the driver hears about it: My Day with a sign-in, otherwise a phone call.
+  await expectToast(page, new RegExp(`${f.orderNumber} load 1: assigned to truck .+\\. .+ (will see it in My Day|has no Taviron sign-in: call them)\\.`));
   await expect(c).toHaveCount(0);
   const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
   expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
@@ -112,7 +115,7 @@ test("suggested crew on the board (B136): one click and the hours confirmation a
   const before = await asUser(USERS.office.email, (q) => q("select count(*)::int as n from public.dispatch_assignments where load_id = $1", [f.loadId]));
   expect(before.rows[0].n).toBe(0);
   await confirm.getByRole("button", { name: "I checked, assign" }).click();
-  await expectToast(page, /Load 1 assigned to truck/);
+  await expectToast(page, /Load 1 assigned to truck .+\. .+ (will see it in My Day|has no Taviron sign-in: call them)\./);
   const after = await asUser(USERS.office.email, (q) => q("select note from public.dispatch_assignments where load_id = $1 and status = 'active'", [f.loadId]));
   expect(after.rows).toEqual([{ note: "Approved Smart Dispatch proposal; hours of service confirmed by the dispatcher (not verified by Taviron)" }]);
   await expect(row.getByRole("button", { name: "Reassign" })).toBeVisible({ timeout: 30_000 });

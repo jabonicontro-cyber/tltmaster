@@ -156,6 +156,43 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await expect(history.getByText(/load 1 unassigned/)).toBeVisible();
 });
 
+test("a load on a truck that went out of service is marked in red and moved through the assign window", async ({ page }) => {
+  test.slow();
+  const f = await fixture();
+  // Load 1 on the dump truck with driver A (through the app's own functions), then the truck goes out of service.
+  const unit = await asUser(USERS.dispatcher.email, async (q) => {
+    const load = await q("select public.save_order_load($1::jsonb) as r", [JSON.stringify({ load_id: null, order_id: f.orderId, load_date: f.date, start_time: "07:00", end_time: "08:00", planned_quantity: null, unit_code: null, notes: "" })]);
+    const ids = await q("select (select id from public.trucks where unit_number = $1) as truck, (select id from public.drivers where name = $2) as driver", [f.dump, f.driverA]);
+    await q("select public.assign_load(p_load_id => $1, p_truck_id => $2, p_trailer_id => null, p_driver_id => $3, p_note => '', p_replace_assignment_id => null)", [load.rows[0].r.load_id, ids.rows[0].truck, ids.rows[0].driver]);
+    return ids.rows[0].truck as string;
+  });
+  await asUser(USERS.office.email, (q) => q("select public.set_equipment_service_status('truck', $1, 'out_of_service', 'Hydraulic leak (e2e)')", [unit]));
+
+  await signIn(page, "dispatcher");
+  await page.goto(`/dispatch?date=${f.date}`);
+  const orderCard = page.locator("section").filter({ has: page.getByRole("link", { name: f.orderNumber, exact: true }) });
+  const load1 = orderCard.getByRole("listitem", { name: "Load 1", exact: true });
+  // Never a green "Assigned" on a truck that cannot run: the critical notice, consistent with Assignment problems.
+  await expect(load1.getByText("Truck out of service, reassign")).toBeVisible();
+  await expect(load1.getByText("Assigned", { exact: true })).toHaveCount(0);
+  await expect(load1.getByRole("alert")).toContainText(`Truck ${f.dump} is out of service. Reassign this load to a truck that can run.`);
+
+  // The truck's row offers to move its loads; each one opens the assign window, the driver kept, the dispatcher confirms.
+  const truckRow = page.getByRole("list", { name: /^Trucks (today|on )/ }).getByRole("listitem").filter({ hasText: f.dump });
+  await truckRow.getByRole("button", { name: `Move truck ${f.dump}'s load to another truck` }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByText(`Moving truck ${f.dump}'s loads: 1 of 1.`, { exact: false })).toBeVisible();
+  await expect(dialog.getByLabel("Truck")).toHaveValue("");
+  await expect(dialog.getByLabel("Driver").locator("option:checked")).toHaveText(new RegExp(f.driverA));
+  await choose(dialog.getByLabel("Truck"), f.tractor);
+  await choose(dialog.getByLabel("Trailer"), f.trailer);
+  await dialog.getByRole("button", { name: "Reassign", exact: true }).click();
+  // How the driver hears about it: the e2e drivers have no sign-in, so the dispatcher calls them.
+  await expectToast(page, `Load reassigned. ${f.driverA} has no Taviron sign-in: call them.`);
+  await expect(load1.getByText(f.tractor)).toBeVisible();
+  await expect(load1.getByText("Truck out of service, reassign")).toHaveCount(0);
+});
+
 test("people without dispatch permission cannot open the board", async ({ page }) => {
   await signIn(page, "mechanic");
   await page.goto("/dispatch");

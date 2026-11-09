@@ -9,7 +9,7 @@ import { SmartDispatch } from "@/components/dispatch/smart-dispatch";
 import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { ButtonLink } from "@/components/ui/button";
-import { CalendarRange, GanttChart, MapPinned, Route, Sparkles, Truck, Users } from "lucide-react";
+import { CalendarRange, GanttChart, MapPinned, Plus, Route, Sparkles, Truck, Users } from "lucide-react";
 import { creditHolds, holdSummary } from "@/server/credit";
 import { createClient } from "@/server/supabase/server";
 import { cn } from "@/lib/cn";
@@ -26,6 +26,9 @@ import { loadTruckHealth } from "@/server/data/truck-health";
 import { loadSiteWeather } from "@/server/weather";
 import { getWords } from "@/server/industry";
 import { loadDayRestrictions } from "./day-restrictions";
+import { creditHoldSentence } from "@/lib/dispatch/board";
+import { rolesPhrase } from "@/lib/permission-words";
+import { rolesWith } from "@/server/permission-holders";
 
 export const metadata = { title: "Dispatch" };
 
@@ -75,6 +78,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
         actions={
           <div className="flex flex-wrap gap-2">
             <ButtonLink href={`/dispatch/plan?back=${encodeURIComponent(`/dispatch?date=${date}`)}`} icon={<Sparkles className="size-4" />}>Plan the day</ButtonLink>
+            {/* Dispatchers take phoned-in orders too (owner 2026-11-09): the new order asks for delivery on the shown day. */}
+            {can(access, "orders.edit") && <ButtonLink href={`/orders/new?date=${date}`} variant="secondary" icon={<Plus className="size-4" />}>New order</ButtonLink>}
             <ButtonLink href={`/dispatch/resources?date=${date}`} variant="secondary" icon={<Users className="size-4" />}>Driver &amp; truck availability</ButtonLink>
             {hired && <ButtonLink href="/hired-trucks" variant="secondary" icon={<Truck className="size-4" />}>Hired trucks</ButtonLink>}
           </div>
@@ -131,7 +136,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   // Credit holds (B128) for this day's customers: a badge on their orders (assigning asks for a reason).
   const dayOrders = day.orders as Array<{ id: string; customer_id?: string | null }>;
   const holds = await creditHolds([...new Set(dayOrders.map((o) => o.customer_id).filter((c): c is string => Boolean(c)))]);
-  const creditHoldByOrder = Object.fromEntries(dayOrders.flatMap((o) => { const h = o.customer_id ? holds.get(o.customer_id) : undefined; return h ? [[o.id, `${h.name} is ${holdSummary(h)}`]] : []; }));
+  const creditHoldByOrder = Object.fromEntries(dayOrders.flatMap((o) => { const h = o.customer_id ? holds.get(o.customer_id) : undefined; return h ? [[o.id, creditHoldSentence(`${h.name} is ${holdSummary(h)}`)]] : []; }));
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const description = `${weekday}, ${formatDateLong(date)}${date === today ? ", today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`;
 
@@ -158,12 +163,13 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       {unscheduled === null ? (
         <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
       ) : (
-        <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} />
+        <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} schedulers={can(access, "orders.schedule") ? undefined : rolesPhrase(await rolesWith("orders.schedule"))} />
       )}
       {"error" in smart ? (
         <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
       ) : (
-        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces} />
+        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces}
+          hoursLink={can(access, "fleet.view")} approvers={can(access, "dispatch.edit") ? undefined : rolesPhrase(await rolesWith("dispatch.edit"))} />
       )}
       <div data-guide="dispatch-board">
         {(() => {
@@ -182,7 +188,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>
           </p>
         )}
-        <DispatchBoard enterLabel={(await getWords()).enter} day={day} restrictions={restrictions} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard enterLabel={(await getWords()).enter} day={day} restrictions={restrictions} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} hoursLink={can(access, "fleet.view")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );
