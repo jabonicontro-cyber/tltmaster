@@ -216,8 +216,9 @@ begin
 end;
 $function$;
 
--- One-time repair: units still out of service, held by an order that is no longer open, with open safety-critical
--- orders left. The hold moves to the open orders and the reason names them.
+-- One-time repair: units still out of service because of a safety-critical hold (the stored reason is the automatic one),
+-- held by an order that is no longer open, with open safety-critical orders left. The hold moves to the open orders and
+-- the reason names them. A unit a person took out of service by hand (any other reason) is left alone.
 do $$
 declare
   r record;
@@ -230,13 +231,15 @@ begin
                   where o.company_id = w.company_id and o.safety_critical and o.status not in ('completed', 'closed', 'canceled')
                     and ((w.truck_id is not null and o.truck_id = w.truck_id) or (w.trailer_id is not null and o.trailer_id = w.trailer_id)))
   loop
-    if r.truck_id is not null and exists (select 1 from public.trucks t where t.id = r.truck_id and t.service_status = 'out_of_service') then
+    if r.truck_id is not null and exists (select 1 from public.trucks t where t.id = r.truck_id and t.service_status = 'out_of_service'
+                                                and t.out_of_service_reason like 'Safety-critical defect%') then
       update public.work_orders set restricted_truck = (status not in ('completed', 'closed', 'canceled') and safety_critical)
       where company_id = r.company_id and truck_id = r.truck_id
         and (restricted_truck or (safety_critical and status not in ('completed', 'closed', 'canceled')));
       update public.trucks set out_of_service_reason = private.wo_hold_reason(r.company_id, r.truck_id, null)
       where id = r.truck_id;
-    elsif r.trailer_id is not null and exists (select 1 from public.trailers t where t.id = r.trailer_id and t.service_status = 'out_of_service') then
+    elsif r.trailer_id is not null and exists (select 1 from public.trailers t where t.id = r.trailer_id and t.service_status = 'out_of_service'
+                                                     and t.out_of_service_reason like 'Safety-critical defect%') then
       update public.work_orders set restricted_truck = (status not in ('completed', 'closed', 'canceled') and safety_critical)
       where company_id = r.company_id and trailer_id = r.trailer_id
         and (restricted_truck or (safety_critical and status not in ('completed', 'closed', 'canceled')));
@@ -244,5 +247,9 @@ begin
       where id = r.trailer_id;
     end if;
   end loop;
+  -- No stale marks left behind: an order that is no longer open never holds a unit, so a unit a person took out of
+  -- service by hand later is never returned by completing an old order again (security review 2026-11-09).
+  update public.work_orders set restricted_truck = false
+  where restricted_truck and status in ('completed', 'closed', 'canceled');
 end;
 $$;
