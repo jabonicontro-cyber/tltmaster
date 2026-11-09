@@ -26,6 +26,12 @@ payments to QuickBooks. Demo sample `demo_ticket_payment_samples` (seed and Refr
 `tests/db/ticket-payments.test.ts`, `tests/unit/ticket-payments.test.ts`, `tests/e2e/ticket-payments.spec.ts`,
 `tests/db/demo-samples.test.ts`. Catalog entry `ticket-payments` is unpublished (owner decides).
 
+**Agents and autonomous fixes (owner 2026-11-09):** project agents in `.claude/agents/` (release-checker,
+security-reviewer, demo-parity-checker, demo-employee). Daily scheduled check at 6:47 Central (fresh session, environment
+`tltmaster`, push notification). Owner authorized autonomous fixes to Production for live security risks and breaking
+bugs, under the conditions in CLAUDE.md (Workflow, Autonomous fixes). The scheduled check has no GitHub connector yet,
+so it cannot see CI and therefore will not promote; adding the GitHub connector to it (claude.ai scheduled tasks) lets it.
+
 **Website images re-shot (owner 2026-11-09, "clean names in site images"):** all 41 catalog screenshots captured
 2026-11-09 from a local production build of a fresh presenter demo (fictional data). The capture script now removes the
 "(demo)/(sample)/(fictional)" tags from the screen and drops the company colour so Taviron blue shows; the demo keeps its

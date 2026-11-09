@@ -185,6 +185,16 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
     pushed Preview commit's CI and Preview deployment pass, fast-forward the Production branch to it without asking,
     then verify CI, the migration workflow and the Production deployment record and report them. This does not cover
     destructive migrations, secrets, environment variables, domains, paid services or anything else listed below.
+  - **Autonomous fixes (owner, 2026-11-09):** when any session, agent or scheduled check finds a security risk or a bug
+    that stops something working on the live site, it may fix it and push it to Production without asking, then send
+    the owner a notification (what broke, the fix, how it was verified). Conditions, all required: the smallest fix,
+    on a branch from the Production branch (`claude/hotfix-<date>-<slug>`); lint, typecheck and unit tests pass; CI is
+    green on that commit (with the full browser suite when app code changed) and its Preview deployment succeeded;
+    Production is fast-forwarded to it (never forced); the fix is merged into the development branch with a merge
+    commit; the live site is checked afterwards (health check and the path that was broken). Not covered (still the
+    owner's call): any migration, environment variables or secrets, DNS and domains, paid services, changes to data,
+    deleting anything, people, roles or permissions, and weakening or skipping a test or check. If a condition fails,
+    do not promote: notify the owner with what was found and the proposed fix.
   - Code that depends on an unapplied migration ships only if it works safely without it; document the limitation
     and never call the feature operational until the migration is applied and verified.
   - Promoting a commit with new migrations applies them automatically (DEPLOYMENT §2c), so a migration ships only when
