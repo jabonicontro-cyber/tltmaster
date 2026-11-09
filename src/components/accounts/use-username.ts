@@ -69,6 +69,9 @@ export function useUsername({ name, initial = "", initialTouched = false, check,
     suggesting: !touched && pendingFor === name,
     /** Staff typed a username: keep it as typed (lowercase, no spaces). */
     type(value: string) {
+      // A suggestion still on its way must not replace what was typed (seen on a slow server, 2026-11-09).
+      suggestSeq.current++;
+      setPendingFor(null);
       setUsername(value.toLowerCase().replace(/\s/g, ""));
       setTouched(true);
     },

@@ -10,6 +10,8 @@ test("a person turns on larger text and high contrast, and they follow them to a
   await a11y.getByRole("radio", { name: /Larger/ }).check();
   await expectToast(page, "Accessibility settings saved.");
   await expect(page.locator("html")).toHaveAttribute("data-text-size", "115");
+  // Wait for the first save's message to go, so the next check waits for the second save (not a leftover toast).
+  await expect(page.locator("[data-sonner-toast]").filter({ hasText: "Accessibility settings saved." })).toHaveCount(0, { timeout: 15_000 });
   await a11y.getByRole("checkbox", { name: /High contrast/ }).check();
   await expectToast(page, "Accessibility settings saved.");
   await expect(page.locator("html")).toHaveAttribute("data-contrast", "high");

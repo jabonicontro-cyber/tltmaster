@@ -135,3 +135,22 @@ test("a username that is taken is refused, and people without users.manage canno
   await expect(d).toHaveURL(/no-access/);
   await ctx.close();
 });
+
+// A username typed while a suggestion is still on its way stays as typed (CI 2026-11-09: a slow server's late
+// suggestion replaced it). Server calls are slowed so the suggestion is still pending when the username is typed.
+test("a typed username is not replaced by a suggestion that arrives late", async ({ page }) => {
+  await signIn(page, "owner");
+  await page.goto("/employees/new-sign-in");
+  await page.route("**/employees/new-sign-in", async (route) => {
+    if (route.request().method() === "POST") await new Promise((r) => setTimeout(r, 2_500));
+    await route.continue();
+  });
+  await page.getByLabel("Driver").check();
+  await page.getByRole("textbox", { name: /^Name/ }).fill(`E2E Prov Late ${unique()}`);
+  await page.waitForTimeout(700); // the suggestion request has left (400 ms debounce) and is held back
+  const username = `e2e-prov-${unique()}`;
+  await page.getByLabel("Username").fill(username);
+  await expect(page.locator("#username-status").getByText(`${username} is available`)).toBeVisible({ timeout: 30_000 });
+  await page.waitForTimeout(3_000); // the held suggestion has now answered
+  await expect(page.getByLabel("Username")).toHaveValue(username);
+});

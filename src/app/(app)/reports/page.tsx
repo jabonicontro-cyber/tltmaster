@@ -178,9 +178,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <form className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-4" aria-label="Period">
         <nav aria-label="Periods" className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
           {PERIODS.map((p) => (
-            <Link key={p} href={`/reports?days=${p}`} aria-current={!custom && days === p ? "page" : undefined}
+            <Link key={p} href={`/reports?days=${p}`} aria-current={!custom && days === p ? "page" : undefined} aria-label={`Last ${p} days`}
               className={cn("flex h-8 items-center rounded-full px-3 text-sm font-semibold whitespace-nowrap sm:px-4", !custom && days === p ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
-              <span className="pill-text">Last {p} days</span>
+              {/* "Last" only from 640px: the three full labels barely fit a 390px phone and overflow with wider fonts. */}
+              <span className="pill-text"><span className="hidden sm:inline">Last </span>{p} days</span>
             </Link>
           ))}
         </nav>
