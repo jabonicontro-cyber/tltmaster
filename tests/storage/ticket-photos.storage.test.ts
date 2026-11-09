@@ -119,6 +119,7 @@ async function teardown() {
     await c.query("select set_config('tlt.sample_purge', 'on', true)");
     if (w.orderId) await c.query("delete from public.orders where id = $1", [w.orderId]);
     await c.query("delete from public.driver_qualifications where driver_id = any($1)", [w.drivers]);
+    await c.query("delete from public.employees where driver_id = any($1)", [w.drivers]); // People records (20261120010000)
     await c.query("delete from public.drivers where id = any($1)", [w.drivers]);
     await c.query("delete from public.trucks where id = any($1)", [w.trucks]);
     await c.query("commit");

@@ -80,3 +80,15 @@ export function qualificationReminders(quals: DriverQualification[], today: stri
 export function siteAddress(site: { label: string; line1: string; line2: string; city: string; state: string; postal_code: string }): string {
   return [site.line1, site.line2, [site.city, site.state].filter(Boolean).join(", "), site.postal_code].filter(Boolean).join(" · ");
 }
+
+/** Photos a driver can add to one report (the database allows 4). */
+export const MAX_REPORT_PHOTOS = 4;
+
+/** What My Day says after sending: the report, and any photo that did not reach the office. */
+export function reportSentMessage(photos: number, failed: number, unavailable: boolean): string {
+  const base = "Report sent to the office. Call dispatch if anyone is in danger.";
+  if (!photos) return base;
+  if (unavailable) return `${base} Photos cannot be added to reports yet, so none were sent.`;
+  if (failed) return `${base} ${failed} of ${photos} photo${photos === 1 ? "" : "s"} did not upload.`;
+  return `Report and ${photos} photo${photos === 1 ? "" : "s"} sent to the office. Call dispatch if anyone is in danger.`;
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  EXCEPTION_KINDS, ageLabel, exceptionAction, exceptionReasons, exceptionTitle, knowsReason, metricCards, reasonText,
+  EXCEPTION_KINDS, ageLabel, exceptionAction, exceptionOwner, exceptionReasons, exceptionTitle, knowsReason, metricCards, reasonText,
   type CommandSummary, type ExceptionItem,
 } from "@/lib/command-center/rules";
 
@@ -43,6 +43,17 @@ describe("links into the existing workflows", () => {
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "truck", equipment_id: "e2" }, all).href).toBe("/fleet/trucks/e2");
     expect(exceptionAction({ ...base, kind: "delay_report", details: { report_id: "r1" } }, all)).toEqual({ label: "Open the report", href: "/field-reports/r1" });
     expect(exceptionTitle({ ...base, kind: "equipment_report", equipment_kind: "trailer", unit_number: "T7", details: { driver_name: "Drew" } })).toBe("Drew reported a problem with trailer T7 (O-2026-0007 · load 2)");
+  });
+
+  it("a past load no truck ran is Dispatch's to assign or cancel, not a ticket to enter (20261120011600)", () => {
+    const past: ExceptionItem = { ...base, kind: "unassigned_load", assignment_id: null, reasons: ["not_assigned"], details: { past: true } };
+    expect(exceptionTitle(past)).toBe("O-2026-0007 · load 2 was never assigned a truck");
+    expect(exceptionTitle({ ...past, reasons: ["assignment_removed"] })).toBe("O-2026-0007 · load 2 ended without a truck");
+    expect(exceptionTitle({ ...past, details: {} })).toBe("O-2026-0007 · load 2 today has no truck");
+    expect(exceptionAction(past, all)).toEqual({ label: "Assign or cancel the load", href: "/dispatch?date=2026-10-09&load=l1" });
+    expect(exceptionAction(past, { ticketsEdit: true, dispatch: false })).toEqual({ label: "Open the order", href: "/orders/o1" });
+    expect(exceptionOwner(past)).toBe("Dispatch");
+    expect(exceptionReasons(past)).toEqual(["The load was never assigned a truck.", "Its time has passed (Oct 9, 2026): assign the truck that ran it, or cancel the load if it did not run."]);
   });
 
   it("names the affected record and explains every reason", () => {

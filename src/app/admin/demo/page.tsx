@@ -10,6 +10,7 @@ import { PREVIEW_LABELS, PREVIEW_ROLES } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { PRAIRIE_LANTERN } from "@/server/demo/prairie-lantern";
 import { FREIGHT_DEMO } from "@/server/demo/freight-demo";
+import { PORTAL_NOT_OPENED } from "@/server/demo/samples";
 import { createFreightDemo, createProspectDemo, enterDemo, refreshPresenterDemo, refreshProspectDemo, retireProspectDemo, setDemoPlan, startDemo } from "../actions";
 
 export const metadata = { title: TERMS.demoManagement };
@@ -18,7 +19,7 @@ const PLAN_LABELS: Record<string, string> = { essential: "Essential", growth: "G
 // Starting a demo seeds a few hundred records through the normal app functions.
 export const maxDuration = 60;
 
-export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; loads?: string; added?: string; plan?: string }> }) {
+export default async function DemoAdminPage({ searchParams }: { searchParams: Promise<{ error?: string; saved?: string; loads?: string; added?: string; plan?: string; portal?: string }> }) {
   const sp = await searchParams;
   const supabase = await createClient();
   const { data } = await supabase.rpc("platform_overview");
@@ -35,7 +36,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
       <PageHeader title={TERMS.demoManagement} description="Show Taviron with a separate demo company full of fictional data." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: TERMS.demoManagement }]} />
       <AdminFlash error={sp.error} saved={sp.saved} savedText={sp.saved === "retired" ? "Demo retired. You can create it again below."
         : sp.saved === "plan" ? `Demo now shows the ${PLAN_LABELS[sp.plan ?? ""] ?? "chosen"} plan: its dispatch bases and sample records follow the plan.`
-        : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.` : "Saved."} />
+        : sp.saved === "refreshed" ? `Demo refreshed: ${Number(sp.loads) || 0} loads and ${Number(sp.added) || 0} missing records added${Number(sp.loads) || Number(sp.added) ? "" : " (it was already up to date)"}.${sp.portal === "closed" ? ` ${PORTAL_NOT_OPENED}` : ""}` : "Saved."} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title={demo ? demo.name : "No demo company yet"} description={demo ? `Started ${formatDateTime(demo.created_at)}` : "Start one to begin."} />
@@ -47,7 +48,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                 </form>
                 <form action={refreshPresenterDemo} className="flex flex-wrap items-center gap-3">
                   <SubmitButton variant="secondary" size="sm" pendingLabel="Refreshing…">Refresh demo data</SubmitButton>
-                  <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty, and any missing sample records. Changes and deletes nothing.</span>
+                  <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty and any missing sample records, and keeps sample dates and names consistent. Deletes nothing and never changes records added in the demo.</span>
                 </form>
               </div>
             ) : null}
@@ -78,7 +79,7 @@ export default async function DemoAdminPage({ searchParams }: { searchParams: Pr
                           <form action={refreshProspectDemo} className="flex flex-wrap items-center gap-3">
                             <input type="hidden" name="id" value={p.id} />
                             <SubmitButton size="sm" pendingLabel="Refreshing…">Refresh demo data</SubmitButton>
-                            <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty, and any missing sample records. Changes and deletes nothing.</span>
+                            <span className="text-xs text-muted">Adds loads for recent and upcoming days that are empty and any missing sample records, and keeps sample dates and names consistent. Deletes nothing and never changes records added in the demo.</span>
                           </form>
                         )}
                         <form action={retireProspectDemo} className="flex flex-wrap items-center gap-3">

@@ -35,13 +35,13 @@ const TENANT_TABLES = [
   "trucks", "trailers", "equipment_status_events", "drivers", "driver_qualifications",
   "order_loads", "dispatch_assignments", "delivery_tickets", "delivery_ticket_events",
   "billing_reviews", "billing_handoffs", "billing_handoff_orders", "exception_assignments",
-  "field_reports", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
+  "field_reports", "field_report_photos", "ticket_attachments", "ticket_locations", "site_info_submissions", "site_photos", "daily_summary_log",
   "safety_incidents", "safety_incident_witnesses", "safety_incident_actions", "safety_incident_photos", "safety_incident_events", "company_cost_rates", "parts", "part_movements", "shift_offer_settings", "shift_offers", "shift_offer_targets", "shift_offer_responses", "invoicing_settings", "invoices", "invoice_payments", "customer_payments", "ticket_payment_applications", "order_documents", "telematics_settings", "vehicle_positions", "driver_hours", "revenue_leak_reviews", "wait_time_settings", "load_stop_times", "booking_settings", "booking_capacity", "booking_requests", "credit_hold_settings", "credit_hold_overrides", "billing_tolerance_settings", "truck_hours_settings", "support_access_grants", "membership_invitations", "hauler_settlements", "hauler_settlement_jobs", "hauler_settlement_deductions", "fuel_purchases", "trip_sheets", "vehicle_inspections", "work_order_photos", "support_settings", "portal_support_files", "invoice_orders",
   "order_urgencies", "order_urgency_events", "user_preferences", "exception_dismissals",
   "dispatch_recommendation_rejections",
   "onboarding_tasks", "onboarding_forms", "onboarding_form_versions", "onboarding_signoffs", "onboarding_events", "onboarding_documents",
   "company_locations", "saved_routes", "saved_route_stops",
-  "work_order_mechanics", "work_order_time_entries", "work_order_tasks",
+  "work_order_mechanics", "work_order_time_entries", "work_order_tasks", "work_order_part_waits",
   "maintenance_shop_settings", "mechanic_skills", "work_order_triage",
   "shift_patterns", "shift_pattern_days", "shift_changes", "schedule_events", "assignment_shift_overrides",
   "billing_entities", "billing_entity_rules",
@@ -124,10 +124,12 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "private.daily_summary", "public.my_daily_summary", "public.daily_summary_due", "public.daily_summary_record",
   // Hired trucks (20261120003700): add-on switch, haulers, documents, offers; a hired truck is assigned only via an offer.
   "private.guard_hired_assignment", "private.hauler_document_problems", "private.hired_trucks_on", "private.my_driver_id",
+  "private.driver_person_insert", "private.driver_person_update", // every driver in People (20261120010000): acts on new.company_id only
   "private.require_hired_trucks", "public.hauler_add_driver", "public.hauler_add_truck", "public.hauler_offer_confirm",
   "public.hauler_offer_respond", "public.hauler_offer_send", "public.hauler_offer_withdraw", "public.hauler_record_document",
   "public.hauler_save", "public.hired_trucks_enabled", "public.my_hauler_offers", "public.platform_hired_trucks_entitlement", "public.platform_hired_trucks_set",
   "public.demo_speed_history", "private.demo_timing_allowed",
+  "public.demo_sample_timeline", // demo sample times (20261120013000): demo_owner_company() only, times of demo rows only
   // Communications hardening (20261108000100): legal-hold lookup is internal; housekeeping_all and the expired-file
   // functions are service role only (no company argument; they act on every company by design, from the scheduler);
   // seed_demo_samples needs require_company(), comms.admin and a demo company.
@@ -316,6 +318,18 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // N15: capacity check in assign_load, quote acceptance creates its order, Smart Dispatch rejections.
   "private.load_capacity_problem", "private.create_order_from_quote", "private.quote_accepted_create_order",
   "public.reject_dispatch_recommendation", "public.reconsider_dispatch_recommendations",
+  // 20261120011000-011200: a driver's undo of their own stop tap (stop_time_writer: own load in the current company), a
+  // driver's report photo (portal_driver: own report), an invoice marked sent by hand (invoice_for_change: billing.manage).
+  "public.load_stop_undo", "public.field_report_photo_begin", "public.invoice_mark_sent",
+  // 20261120012200-012600 (shop): readings fed from inspections, trip sheets, fuel entries and work orders (trigger
+  // only; the company is the source row's own, never the caller's); parts on order (private.wo_for_crew /
+  // part_wait_for_change: maintenance.manage, the caller's company); the annual inspection certificate
+  // (maintenance.manage, the caller's company); vendor warranties (maintenance.view); returning a part to stock
+  // (private.part_for_change: maintenance.manage, the caller's company). Demo samples: demo owner only.
+  "private.feed_truck_reading", "private.reading_from_record", "private.part_wait_for_change", "public.part_wait_add",
+  "public.part_wait_update", "public.part_wait_receive", "public.part_wait_cancel", "public.part_waits",
+  "public.demo_part_wait_samples", "public.maintenance_record_inspection", "public.vendor_warranties", "public.part_return",
+  "public.demo_outside_repair_samples",
 ];
 
 /**

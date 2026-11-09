@@ -47,7 +47,7 @@ function source(over: Partial<AssistantSource> = {}): AssistantSource & { calls:
         : null; // ORD-9999 belongs to another company or base: not visible
     },
     maintenance: async () => (calls.push("maintenance"), { workOrders: [{ id: ID(701), number: "MWO-0007", unit: { kind: "truck", id: ID(301), number: "12" }, status: "scheduled", urgency: "high", safetyCritical: true, dueOn: "2030-04-03" }], pm: [] }),
-    outlook: async () => (calls.push("outlook"), [{ date: "2030-04-02", loads: 6, assigned: 4, unassigned: 2, trucksReady: 5, trucksDown: 1, driversAvailable: 5, driversOff: 1, conflicts: 0 }] as never),
+    outlook: async () => (calls.push("outlook"), [{ date: "2030-04-02", loads: 6, assigned: 4, unassigned: 2, trucksReady: 5, trucksDown: 1, driversAvailable: 5, driversTotal: 7, driversUnqualified: 1, driversOff: 1, hiredDrivers: 0, hiredDriversReady: 0, conflicts: 0 }] as never),
     report: async (from, to) => (calls.push(`report:${from}..${to}`), {
       from, to,
       deliveries: { tickets: 42, accepted: 38, pending: 3, voided: 1, corrected: 4, medianHoursToAccept: 6 },

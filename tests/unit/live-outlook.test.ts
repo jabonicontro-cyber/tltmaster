@@ -3,6 +3,12 @@ import { buildOutlook, nextSteps, outlookTotals, truckDownReason, type OutlookIn
 import { estimateLoadRevenueCents } from "@/lib/orders/load-revenue";
 
 const days = ["2026-10-18", "2026-10-19", "2026-10-20"];
+const verified = "2026-01-01T00:00:00Z";
+const qualified = [
+  { kind: "cdl" as const, cdl_class: "A" as const, expires_on: "2027-12-31", verified_at: verified },
+  { kind: "medical_card" as const, cdl_class: null, expires_on: "2027-06-30", verified_at: verified },
+];
+const driver = (id: string, over: { hired?: boolean; qualifications?: typeof qualified } = {}) => ({ id, active: true, qualifications: qualified, ...over });
 const base = (over: Partial<OutlookInput> = {}): OutlookInput => ({
   days,
   loads: [],
@@ -12,7 +18,7 @@ const base = (over: Partial<OutlookInput> = {}): OutlookInput => ({
     { id: "t3", service_status: "out_of_service", expected_return_date: "2026-10-20" },
   ],
   shop: [],
-  drivers: 4,
+  drivers: ["d1", "d2", "d3", "d4"].map((id) => driver(id)),
   timeOff: [],
   ...over,
 });
@@ -89,6 +95,22 @@ describe("Taviron Live outlook", () => {
       ],
     }));
     expect(o.map((d) => [d.driversAvailable, d.driversOff, d.driversPartial, d.driversPending])).toEqual([[3, 1, 1, 0], [3, 1, 0, 0], [4, 0, 0, 1]]);
+  });
+
+  it("counts drivers ready by the shared rule: qualifications on each day, hired-truck drivers apart", () => {
+    const o = buildOutlook(base({
+      drivers: [
+        driver("d1"),
+        // The medical card expires on the 19th: ready that day, not qualified on the 20th.
+        driver("d2", { qualifications: [qualified[0], { ...qualified[1], expires_on: "2026-10-19" }] }),
+        driver("d3", { qualifications: [qualified[0]] }), // no medical card
+        driver("h1", { hired: true }),
+        driver("h2", { hired: true, qualifications: [] }),
+      ],
+      timeOff: [{ driver_id: "d1", status: "approved", first_day: "2026-10-18", last_day: "2026-10-18", full_day: true }],
+    }));
+    expect(o.map((d) => [d.driversAvailable, d.driversTotal, d.driversUnqualified, d.driversOff])).toEqual([[1, 3, 1, 1], [2, 3, 1, 0], [1, 3, 2, 0]]);
+    expect(o.map((d) => [d.hiredDriversReady, d.hiredDrivers])).toEqual([[1, 2], [1, 2], [1, 2]]);
   });
 
   it("totals the window and names the first day with a gap; nothing to do when everything is covered", () => {

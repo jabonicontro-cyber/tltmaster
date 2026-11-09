@@ -99,7 +99,7 @@ const reportInput = z.object({
   submissionKey: z.uuid(),
 });
 
-export async function submitFieldReport(input: z.input<typeof reportInput>): Promise<ActionResult<{ created: boolean }>> {
+export async function submitFieldReport(input: z.input<typeof reportInput>): Promise<ActionResult<{ created: boolean; reportId: string }>> {
   return guard(async () => {
     await assertPermission("driver.portal");
     const parsed = reportInput.safeParse(input);
@@ -112,6 +112,7 @@ export async function submitFieldReport(input: z.input<typeof reportInput>): Pro
     if (error) return fail(dbErrorMessage(error));
     revalidatePath("/driver");
     revalidatePath("/field-reports");
-    return ok({ created: (data as { created: boolean }).created }, "Report sent to the office.");
-  }) as Promise<ActionResult<{ created: boolean }>>;
+    const d = data as { created: boolean; report_id: string };
+    return ok({ created: d.created, reportId: d.report_id }, "Report sent to the office.");
+  }) as Promise<ActionResult<{ created: boolean; reportId: string }>>;
 }

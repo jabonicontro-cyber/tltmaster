@@ -13,7 +13,8 @@ async function person(s: Session, company: string, name: string, driver: boolean
   const user = await s.createUser(driver ? "driver" : "office", { companyId: company });
   await s.asAdmin();
   const d = driver ? (await s.query<{ id: string }>("insert into public.drivers (company_id, name, user_id) values ($1, $2, $3) returning id", [company, name, user])).rows[0].id : null;
-  const e = (await s.query<{ id: string }>("insert into public.employees (company_id, full_name, department, user_id, driver_id) values ($1, $2, 'operations', $3, $4) returning id", [company, name, user, d])).rows[0].id;
+  // A driver's People record comes with the driver (20261120010000): fill it in rather than add a second one.
+  const e = (await s.query<{ id: string }>("insert into public.employees (company_id, full_name, department, user_id, driver_id) values ($1, $2, 'operations', $3, $4) on conflict (company_id, driver_id) where driver_id is not null do update set full_name = excluded.full_name, user_id = excluded.user_id returning id", [company, name, user, d])).rows[0].id;
   return { user, employee: e };
 }
 

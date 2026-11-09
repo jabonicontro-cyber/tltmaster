@@ -7,6 +7,7 @@ import { seedCommunicationSamples } from "./prairie-lantern";
 import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { demoAssign } from "./assign";
+import { savePeople } from "./people";
 
 /**
  * Fills a freshly started demo company with fictional data, through the same
@@ -268,7 +269,8 @@ async function seedPeople(db: Db, p: { userId: string; today: string; drivers: A
   // Avatars need migration 20261031000300; without it the people are added without one.
   const withAvatars = !(await db.from("employees").select("avatar_key").limit(1)).error;
   const all = [...rows, ...staff].map((r) => (withAvatars ? { ...r, avatar_key: AVATARS[r.full_name] ?? "" } : r));
-  const people = (await must("employees", db.from("employees").insert(all).select("id, full_name"))) as Array<{ id: string; full_name: string }>;
+  // Drivers already have their People record (the database adds it); savePeople fills it in and adds the staff.
+  const people = await savePeople(db, all);
   for (const [driverId, unit] of Object.entries(p.primary)) {
     await must("primary truck", db.rpc("set_driver_primary_truck", { p_driver_id: driverId, p_truck_id: p.truck[unit] }));
   }

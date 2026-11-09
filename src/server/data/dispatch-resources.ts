@@ -1,6 +1,8 @@
 import "server-only";
 import { driverChecks, type EligibilityQualification } from "@/lib/fleet/eligibility";
 import { vehicleAvailability, type Availability, type OpenWorkOrder } from "@/lib/fleet/availability";
+import { driverReadyOn, type DriverDayReadiness } from "@/lib/fleet/readiness";
+import { hiredIds } from "./hired-trucks";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "./settings";
 
@@ -31,6 +33,10 @@ export interface DriverResource {
   timeOff: Array<{ status: "approved" | "pending"; full_day: boolean; start_time: string | null; end_time: string | null; start_date: string; end_date: string; starts_at: string; ends_at: string }>;
   /** Active bookings that overlap approved time off — need a dispatcher's review. */
   leaveConflicts: ResourceBooking[];
+  /** Ready on this date by the shared driver rule (src/lib/fleet/readiness.ts): qualified and not on full-day time off. */
+  ready: DriverDayReadiness;
+  /** A hired-truck (hauler) driver: counted apart from the company's own drivers. */
+  hired: boolean;
 }
 
 export async function getDispatchResources(date: string) {
@@ -44,6 +50,7 @@ export async function getDispatchResources(date: string) {
     supabase.from("order_loads").select("id, order_id, load_number, starts_at, ends_at, orders(order_number)").eq("load_date", date).eq("status", "planned"),
     supabase.rpc("dispatch_shop_schedule", { p_from: date, p_to: date }),
   ]);
+  const hired = await hiredIds();
   const leave = await supabase.rpc("dispatch_time_off", { p_from: date, p_to: date });
   const leaveMissing = Boolean(leave.error && (leave.error.code === "PGRST202" || leave.error.code === "42883"));
   if (leave.error && !leaveMissing) throw new Error(`Could not read driver time off: ${leave.error.message}`);
@@ -91,7 +98,8 @@ export async function getDispatchResources(date: string) {
     };
   });
   const driverResources: DriverResource[] = ((drivers.data ?? []) as Array<{ id: string; display_name: string; active: boolean }>).map((d) => {
-    const q = driverChecks({ active: d.active, qualifications: qualsBy.get(d.id) ?? [] }, false, date);
+    const qualifications = qualsBy.get(d.id) ?? [];
+    const q = driverChecks({ active: d.active, qualifications }, false, date);
     const truckId = primary.get(d.id);
     const timeOff = leaveRows.filter((t) => t.driver_id === d.id);
     const mine = bookings.filter((b) => b.driver_id === d.id);
@@ -105,6 +113,8 @@ export async function getDispatchResources(date: string) {
       primaryTruck: truckId ? { id: truckId, unit: truckUnit.get(truckId) ?? "" } : null,
       timeOff,
       leaveConflicts: mine.filter((b) => timeOff.some((t) => t.status === "approved" && overlaps(t, b))),
+      ready: driverReadyOn({ id: d.id, active: d.active, qualifications, hired: hired.drivers.has(d.id) }, timeOff.map((t) => ({ ...t, driver_id: d.id })), date),
+      hired: hired.drivers.has(d.id),
     };
   });
   const unassignedLoads = loadRows.filter((l) => !bookings.some((b) => b.load_id === l.id)).length;

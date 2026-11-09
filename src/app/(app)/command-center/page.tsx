@@ -42,6 +42,7 @@ import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
 import { loadSpeed } from "@/server/data/speed";
 import { outlookTotals } from "@/lib/live/outlook";
+import { driverReadyCaption } from "@/lib/fleet/readiness";
 import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Command Center" };
@@ -330,13 +331,15 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 
     const cards: MetricCard[] = s ? metricCards(s).map((c) => ({ ...c, label: say(c.label), sub: say(c.sub) })) : [];
     if (fleet) {
+      // The shared driver rule (src/lib/fleet/readiness.ts): own drivers only; hired-truck drivers are a figure apart.
+      const d = fleet.drivers.today;
       cards.push({
         key: "drivers_ready",
         label: "Drivers ready today",
-        value: fleet.drivers.ready,
-        sub: `${fleet.drivers.notReady.length} not eligible (qualifications)`,
+        value: d.ready,
+        sub: `of ${d.total} · ${driverReadyCaption(d, fleet.drivers.timeOffChecked)}${d.hired.total ? ` · hired trucks: ${d.hired.ready} of ${d.hired.total} ready` : ""}`,
         href: "/fleet/drivers",
-        tone: fleet.drivers.notReady.length > 0 ? "warn" : "default",
+        tone: d.ready < d.total ? "warn" : "default",
       });
     }
     if (leaks) {

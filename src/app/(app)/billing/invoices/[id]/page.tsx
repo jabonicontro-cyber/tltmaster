@@ -17,10 +17,10 @@ import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getInvoice, invoiceOrders, invoiceSender } from "@/server/data/invoices";
+import { SENT_HOW_LABELS, getInvoice, invoiceOrders, invoiceSender, invoiceSentHow } from "@/server/data/invoices";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
-import { addPayment, issueInvoice, sendInvoice, voidInvoice, voidPayment } from "../actions";
+import { addPayment, issueInvoice, markInvoiceSent, sendInvoice, voidInvoice, voidPayment } from "../actions";
 import { IssueInvoiceForm } from "@/components/billing/issue-invoice-form";
 
 export const metadata = { title: "Invoice" };
@@ -29,6 +29,8 @@ const SAVED: Record<string, string> = {
   created: "Draft invoice created from the handed-off order. Check it, then issue it.",
   issued: "Issued. The invoice is numbered and locked; send it or download the PDF.",
   sent: "Emailed to the customer with the PDF attached.",
+  marked_sent: "Marked as sent by you. Taviron did not email it.",
+  already_sent: "This invoice was already recorded as sent; nothing changed.",
   test_sent: "Test mode: the email went to the test inbox only and the invoice is not marked sent.",
   payment: "Payment recorded.",
   payment_voided: "Payment voided. It stays on record with your reason.",
@@ -43,7 +45,13 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const [inv, { today, timezone }, names, orders] = await Promise.all([getInvoice(id), businessToday(), getUserNames(), invoiceOrders(id)]);
   if (!inv) notFound();
-  const sender = await invoiceSender(inv);
+  const [sender, sentHow] = await Promise.all([invoiceSender(inv), invoiceSentHow(inv.id)]);
+  // Sent by hand (20261120011200): no addresses, and never described as emailed.
+  const sentLabel = inv.sent_at
+    ? sentHow.via === "manual"
+      ? `${formatDateTime(inv.sent_at, timezone)}, sent by you${sentHow.how ? ` ${SENT_HOW_LABELS[sentHow.how]}` : ""} (not emailed by Taviron)`
+      : `${formatDateTime(inv.sent_at, timezone)} to ${inv.sent_to.join(", ")}`
+    : null;
   const manage = can(access, "billing.manage");
   const state = invoiceState(inv, today);
   const owed = balanceCents(inv);
@@ -71,7 +79,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           <Notice title="Not sent: this was a preview only">
             {sp.saved === "previewed_demo" ? "Demo companies never send email." : "Email is not set up on this server, so nothing was emailed."} The invoice is still not marked as sent.
             {" "}To get it to the customer, download the PDF and mail or email it yourself.{sp.saved === "previewed_demo" ? " In a live company with email set up, Send invoice emails the PDF and marks it sent." : " Once email is set up, Send invoice emails the PDF and marks it sent."}
-            {" "}Recording an invoice you sent yourself as sent is not available yet.
+            {sentHow.available ? " Once you have sent it yourself, record it with Mark as sent below." : " Recording an invoice you sent yourself as sent is not available yet."}
           </Notice>
         </div>
       ) : (
@@ -174,7 +182,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <dt className="text-muted">Due</dt><dd className={state === "overdue" ? "font-semibold text-critical tabular" : "tabular"}>{inv.due_date ? formatDate(inv.due_date) : `${inv.terms_days} days after issue`}</dd>
                 <dt className="text-muted">Terms</dt><dd>{inv.terms_days === 0 ? "Due on receipt" : `Net ${inv.terms_days}`}</dd>
                 {inv.customer_po && <><dt className="text-muted">{inv.po_label}</dt><dd>{inv.customer_po}</dd></>}
-                <dt className="text-muted">Sent</dt><dd>{inv.sent_at ? `${formatDateTime(inv.sent_at, timezone)} to ${inv.sent_to.join(", ")}` : inv.status === "issued" ? <span className="font-semibold">Not sent yet</span> : "Not sent"}</dd>
+                <dt className="text-muted">Sent</dt><dd>{sentLabel ? sentLabel : inv.status === "issued" ? <span className="font-semibold">Not sent yet</span> : "Not sent"}</dd>
               </dl>
               <p className="text-xs text-muted">From {sender.name}, with your company&apos;s logo and colour on the PDF.</p>
             </CardBody>
@@ -199,6 +207,25 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                   <Field label="Subject" htmlFor="subject"><Input id="subject" name="subject" defaultValue={email.subject} maxLength={200} required /></Field>
                   <Field label="Message" htmlFor="message"><Textarea id="message" name="message" rows={6} defaultValue={email.message} maxLength={5000} required /></Field>
                   <SubmitButton pendingLabel="Sending…">{inv.sent_at ? "Send again" : "Send invoice"}</SubmitButton>
+                </form>
+              </CardBody>
+            </Card>
+          )}
+
+          {manage && inv.status === "issued" && !inv.sent_at && sentHow.available && (
+            <Card>
+              <CardHeader title="Sent it yourself?" description="If you mailed the PDF, emailed it from your own inbox or handed it over, record it here. Taviron sends nothing and does not call it emailed." />
+              <CardBody>
+                <form action={markInvoiceSent} className="space-y-3" aria-label="Mark as sent">
+                  <input type="hidden" name="invoice" value={inv.id} />
+                  <Field label="How did you send it?" htmlFor="sent_how">
+                    <Select id="sent_how" name="how" defaultValue="mail">
+                      <option value="mail">By mail</option>
+                      <option value="own_email">From my own email</option>
+                      <option value="handed_over">Handed over</option>
+                    </Select>
+                  </Field>
+                  <SubmitButton variant="secondary" pendingLabel="Recording…">Mark as sent (I sent it myself)</SubmitButton>
                 </form>
               </CardBody>
             </Card>

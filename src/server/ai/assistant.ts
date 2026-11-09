@@ -199,7 +199,7 @@ export const ASSISTANT_TOOLS: Tool<AssistantToolData>[] = [
   },
   {
     name: "week_outlook",
-    description: "The next 7 days from today: per day planned loads, assigned and unassigned loads, trucks ready and down, drivers available and off, and assigned loads whose truck cannot run.",
+    description: "The next 7 days from today: per day planned loads, assigned and unassigned loads, trucks ready and down, the company's own drivers ready (active, valid verified CDL and medical card, not on approved full-day time off), not qualified and off, hired-truck drivers ready (counted apart), and assigned loads whose truck cannot run.",
     kind: "read",
     permission: "dispatch.view",
     parameters: { type: "object", properties: {}, additionalProperties: false },
@@ -208,7 +208,7 @@ export const ASSISTANT_TOOLS: Tool<AssistantToolData>[] = [
       const days = await ctx.data.source.outlook();
       if (!days) return record(ctx.data, { error: "The outlook could not be loaded." });
       return record(ctx.data, {
-        days: days.map((d) => ({ date: d.date, loads: d.loads, assigned: d.assigned, unassigned: d.unassigned, trucksReady: d.trucksReady, trucksDown: d.trucksDown, driversAvailable: d.driversAvailable, driversOff: d.driversOff, conflicts: d.conflicts })),
+        days: days.map((d) => ({ date: d.date, loads: d.loads, assigned: d.assigned, unassigned: d.unassigned, trucksReady: d.trucksReady, trucksDown: d.trucksDown, driversReady: d.driversAvailable, drivers: d.driversTotal, driversNotQualified: d.driversUnqualified, driversOff: d.driversOff, hiredDriversReady: d.hiredDriversReady, hiredDrivers: d.hiredDrivers, conflicts: d.conflicts })),
       });
     },
   },

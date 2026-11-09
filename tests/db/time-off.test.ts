@@ -9,7 +9,8 @@ afterAll(() => pool.end());
 /** An employee record linked to a login (and, for drivers, to a driver record). */
 async function employee(s: Session, userId: string, driverId: string | null = null, companyId = TOP_LINE) {
   await s.asAdmin();
-  return (await s.query<{ id: string }>("insert into public.employees (company_id, user_id, driver_id, full_name) values ($1, $2, $3, 'Test Person') returning id", [companyId, userId, driverId])).rows[0].id;
+  // A driver's People record comes with the driver (20261120010000): fill it in rather than add a second one.
+  return (await s.query<{ id: string }>("insert into public.employees (company_id, user_id, driver_id, full_name) values ($1, $2, $3, 'Test Person') on conflict (company_id, driver_id) where driver_id is not null do update set full_name = excluded.full_name, user_id = excluded.user_id returning id", [companyId, userId, driverId])).rows[0].id;
 }
 
 const save = (s: Session, p: Record<string, unknown>) =>

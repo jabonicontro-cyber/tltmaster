@@ -183,7 +183,8 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 | `trucks` | Unit number (unique per company, case-insensitive), `truck_type`, make, model, year, VIN, plate. `weight_capacity` + `weight_unit` (`ton` / `lb`) and `volume_capacity` + `volume_unit` (`cu_yd`), each pair both-or-neither, `NULL` = unknown; `capacity_source`, `capacity_verified_at/by`. `active`; `service_status` (`in_service` / `out_of_service`) with `out_of_service_reason` (required when out), `out_of_service_since`, `expected_return_date`. |
 | `trailers` | Same as trucks with `trailer_type`, `compatible_truck_types truck_type[]` (empty = not recorded), `compatibility_notes`, `default_truck_id` (same company). Own service status. |
 | `equipment_status_events` | Append-only service-status history (truck or trailer, from, to, reason, expected return, who, when). |
-| `drivers` | Optional `user_id` → `company_memberships (company_id, user_id)` (one driver per account), or a `name`; employee number (unique per company), phone, hire date, active, notes. |
+| `drivers` | Optional `user_id` → `company_memberships (company_id, user_id)` (one driver per account), or a `name`; employee number (unique per company), phone, hire date, active, notes. `hauler_id` set = a hired-truck driver (another company's, 20261120003700). |
+| `employees.driver_id` (People link) | Every driver of the company's own has exactly one People record (`employees`, unique per company and driver; owner decision 2026-11-09, migration `20261120010000`). A one-time backfill created the missing ones, and the triggers `driver_person_insert` / `driver_person_update` on `drivers` (security definer `private.driver_person_insert` / `driver_person_update`, helper `private.driver_person_add`, `search_path = ''`, acting on the driver's own company only) keep it so however a driver is created (Fleet, import, demo seed): a driver with a login joins that login's record when it has no driver, else a new record (name as Fleet shows it, phone, hire date, `operations`, active or inactive from the driver). A Fleet rename follows while the People name still equals the old driver name; deactivating or reactivating a driver without a login sets the record inactive or active (on leave and terminated stay); a new driver record for a login whose record sits on a driver no longer that login's takes the record, and the earlier driver gets its own. Hired-truck drivers get no People record. Rollback (`supabase/rollbacks/20261120010000_driver_people.down.sql`) removes the triggers and functions and keeps the records. Because a People record references its driver (`on delete restrict`), an import revert keeps such drivers deactivated instead of deleting them. |
 | `driver_qualifications` | `kind` (`cdl`, `medical_card`, `hazmat`, `twic`, `other`), `cdl_class` (required for CDLs), endorsements, description (required for other), issuing state, issued / expires (`NULL` = unknown), `verified_at/by`, notes. No license numbers. |
 | `vehicle_document_rules` | Per company and document kind (registration, insurance, inspection, permit): `block` or `warn` for an expired document; no row = default (insurance and registration block, inspection and permit warn). Read by the company; set only through `set_document_rule` (settings.manage). `vehicle_documents.verified_at/verified_by`: a person confirmed the record (`verify_vehicle_document`, fleet.edit); only a verified expired document on a blocking kind blocks assignment (`assignment_eligibility`, `check_assignment`). |
 | `pto_banks` | A company's time-off banks: name, the request categories that draw from it (one active bank per category; several categories = a combined bank), eligible employment types, waiting period in days from the hire date, active. Readable by the company; changed only through `pto_bank_save` (time_off.balances). |
@@ -698,6 +699,36 @@ the rollback restores the 20261120000700 definition.
   `site` without a stop, or the key matching `order_stop_id`). `private.order_stop_for(order, key)` accepts only a
   current stop of the load's order. `load_stop_mark`, `load_stop_mark_at` and `load_stop_set` take the key; pickup and
   job site work as before. `driver_load_stops()` returns each stop's `id`.
+
+## Driver, invoice, portal and Command Center fixes (20261120011000–20261120011600, owner 2026-11-09)
+
+- `load_stop_undo(load, stop, event)` (`20261120011000`, definer): the load's own driver takes back their last Arrived
+  or Left tap (their own, source `driver`, today, at most 10 minutes old; Left before Arrived; not once the office
+  decided detention). The row stays: the time is cleared and the next tap records again. Audited
+  (`wait_time.undone`). The office corrects with `load_stop_set` as before.
+- `field_report_photos` (`20261120011100`): photos on a driver's report (JPEG, PNG, WebP, 5 MB, at most 4, within an
+  hour of sending), in the private `field-report-photos` bucket (service role only). `field_report_photo_begin`
+  (definer; the reporting driver; reserves the path), `field_report_photo_path` (invoker: visible exactly when the
+  report is, base scope included; for a one-minute signed link). A failed upload is kept with `failed_at` and never
+  shown. Read: the report's own policies.
+- `invoices.sent_via` (`email` / `manual`), `sent_how` (`mail` / `own_email` / `handed_over` for manual), `sent_by`
+  (`20261120011200`). `invoice_mark_sent(invoice, how)` (billing.manage, issued only; returns false when already sent)
+  records a send the person made themselves, never as emailed (history `invoice.marked_sent`). The delivery-proof
+  guard lets `sent_at` through without a proof only for that path (manual, no addresses, a transaction mark only the
+  function sets); `invoice_record_sent` now sets `sent_via = 'email'`.
+- `private.prepare_ticket` (`20261120011300`): the ticket snapshot's driver name follows `driver_list` (a demo
+  company's driver record name first, else the login's profile name, else the record's name).
+- Truck-only swap (`20261120011400`): a reassignment with the same driver, load and times raises one
+  `dispatch.assignment_truck` notice ("Truck changed: …", new and old equipment) instead of a cancel and a new load
+  (`private.is_truck_only_swap`). The cancel notice trigger `alerts_assignments` is a deferred constraint trigger (runs
+  at commit, after the replacement exists).
+- Portal (`20261120011500`): `portal_support_link_options` tickets carry `delivered_at`, `quantity`, `unit`;
+  `portal_sites` lists each site's `pending_notes` (gate code, drop spot, contact, phone, notes, photo count,
+  `created_at`). The signed-in customer's own records only, as before.
+- Command Center (`20261120011600`): a past load no truck ran (no assignment and no voided ticket) is an
+  `unassigned_load` item (priority 2, `details.past = true`, reason `not_assigned` or `assignment_removed`, key
+  `unassigned_load:<load>`) for Dispatch instead of a `missing_ticket`; the summary's `unassigned_loads` counts today's
+  loads only.
 
 ## Communications read speed (20261120007900)
 

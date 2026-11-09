@@ -6,6 +6,7 @@ import { NORTHFIELD_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { AVATARS, CAPACITY, CHARGE_ITEMS, CUSTOMERS, DRIVER_TITLES, DRIVERS, MATERIALS, STAFF, TRAILERS, TRUCKS } from "./seed";
 import { demoAssign } from "./assign";
+import { savePeople } from "./people";
 
 /**
  * Keeps the presenter demo (Northfield Aggregates) current, the same way Refresh keeps Prairie Lantern Freight
@@ -45,7 +46,7 @@ const CREWS: Array<[string, string | null, string]> = [
 ];
 const SLOTS: Array<[string, string]> = [["07:00", "08:30"], ["09:30", "11:00"], ["13:00", "14:30"]];
 
-export interface RefreshResult { added: number; loads: number }
+export interface RefreshResult { added: number; loads: number; notes?: string[] }
 
 export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
   const settings = (await must("settings", db.from("company_settings").select("timezone").limit(1).maybeSingle())) as { timezone: string } | null;
@@ -113,17 +114,21 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
     added += rows.length;
   }
 
-  const employees = await db.from("employees").select("full_name");
+  const employees = await db.from("employees").select("full_name, driver_id, job_title");
   if (!employees.error) {
-    const have = new Set(((employees.data ?? []) as Array<{ full_name: string }>).map((e) => e.full_name));
+    const rows = (employees.data ?? []) as Array<{ full_name: string; driver_id: string | null; job_title: string }>;
+    const have = new Set(rows.map((e) => e.full_name));
+    const byDriver = new Map(rows.filter((e) => e.driver_id).map((e) => [e.driver_id!, e]));
+    // A driver's People record comes with the driver (migration 20261120010000): fill in its title once; add it when missing.
+    const needs = (n: string) => driver.has(n) && (byDriver.has(driver.get(n)!) ? !byDriver.get(driver.get(n)!)!.job_title : !have.has(n));
     const withAvatars = !(await db.from("employees").select("avatar_key").limit(1)).error;
     const missing = [
       ...STAFF.filter((s) => !have.has(s.full_name)).map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: s.type ?? "full_time", status: "active", hire_date: addDays(today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" })),
-      ...DRIVERS.filter((n) => !have.has(n) && driver.has(n)).map((n) => ({ full_name: n, job_title: DRIVER_TITLES[n] ?? "Driver", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
+      ...DRIVERS.filter(needs).map((n) => ({ full_name: n, job_title: DRIVER_TITLES[n] ?? "Driver", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
     ].map((r) => (withAvatars ? { ...r, avatar_key: AVATARS[r.full_name] ?? "" } : r));
     if (missing.length) {
-      await must("employees", db.from("employees").insert(missing));
-      added += missing.length;
+      await savePeople(db, missing);
+      added += missing.filter((r) => !r.driver_id || !byDriver.has(r.driver_id)).length;
     }
   }
 
@@ -182,6 +187,7 @@ export async function refreshNorthfield(db: Db): Promise<RefreshResult> {
   }
   added += await seedCommunicationSamples(db);
   added += await ensureDemoLocations(db, NORTHFIELD_LOCATIONS);
-  added += (await ensureFeatureSamples(db, today)).added;
-  return { added, loads };
+  const samples = await ensureFeatureSamples(db, today);
+  added += samples.added;
+  return { added, loads, notes: samples.notes };
 }

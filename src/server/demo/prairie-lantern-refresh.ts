@@ -6,6 +6,7 @@ import { PRAIRIE_LANTERN_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
 import { demoAssign } from "./assign";
+import { savePeople } from "./people";
 
 /**
  * Keeps the Prairie Lantern Freight prospect demo current. Additive only, through
@@ -44,7 +45,7 @@ const CREWS: Array<[string, string, string]> = [
 ];
 const SLOTS: Array<[string, string]> = [["06:30", "09:30"], ["10:00", "13:00"], ["13:30", "16:30"]];
 
-export interface RefreshResult { added: number; loads: number }
+export interface RefreshResult { added: number; loads: number; notes?: string[] }
 
 export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.timeZone): Promise<RefreshResult> {
   const today = todayIn(timeZone);
@@ -104,16 +105,20 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
     added += rows.length;
   }
 
-  const employees = await db.from("employees").select("full_name, driver_id");
+  const employees = await db.from("employees").select("full_name, driver_id, job_title");
   if (!employees.error) {
-    const have = new Set(((employees.data ?? []) as Array<{ full_name: string }>).map((e) => e.full_name));
+    const rows = (employees.data ?? []) as Array<{ full_name: string; driver_id: string | null; job_title: string }>;
+    const have = new Set(rows.map((e) => e.full_name));
+    const byDriver = new Map(rows.filter((e) => e.driver_id).map((e) => [e.driver_id!, e]));
+    // A driver's People record comes with the driver (migration 20261120010000): fill in its title once; add it when missing.
+    const needs = (n: string) => driver.has(n) && (byDriver.has(driver.get(n)!) ? !byDriver.get(driver.get(n)!)!.job_title : !have.has(n));
     const missing = [
       ...STAFF.filter((s) => !have.has(s.full_name)).map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: "full_time", status: "active", hire_date: addDays(today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" })),
-      ...DRIVERS.filter((n) => !have.has(n) && driver.has(n)).map((n) => ({ full_name: n, job_title: "Driver", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
+      ...DRIVERS.filter(needs).map((n) => ({ full_name: n, job_title: "Driver", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
     ];
     if (missing.length) {
-      await must("employees", db.from("employees").insert(missing));
-      added += missing.length;
+      await savePeople(db, missing);
+      added += missing.filter((r) => !r.driver_id || !byDriver.has(r.driver_id)).length;
     }
   }
 
@@ -173,6 +178,7 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
   added += await ensureDemoLocations(db, PRAIRIE_LANTERN_LOCATIONS);
   added += await seedCommunicationSamples(db);
   // Existing demos receive every released feature's samples (only those the demo has none of yet).
-  added += (await ensureFeatureSamples(db, today)).added;
-  return { added, loads };
+  const samples = await ensureFeatureSamples(db, today);
+  added += samples.added;
+  return { added, loads, notes: samples.notes };
 }

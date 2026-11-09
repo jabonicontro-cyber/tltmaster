@@ -1143,7 +1143,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     permissions: ["fleet.view"],
     audience: "Owners, dispatchers, shop and office staff.",
     whatYouSee: [
-      "Counts for trucks and trailers in service, drivers eligible today, out of service, safety restricted, preventive overdue, shop visits in the next 7 days and documents expiring.",
+      "Counts for trucks and trailers in service, drivers ready today (active, valid verified CDL and medical card, not on approved full-day time off; hired-truck drivers counted apart), out of service, safety restricted, preventive overdue, shop visits in the next 7 days and documents expiring.",
       "**Out of service**: active equipment that cannot be assigned until it is returned to service.",
       "**Drivers needing attention**: qualifications expired or expiring within 30 days.",
       "**Vehicle documents needing renewal**: expired or due within 30 days.",

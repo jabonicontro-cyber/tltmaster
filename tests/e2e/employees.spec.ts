@@ -116,8 +116,9 @@ test("a dispatcher assigns a driver's primary truck; a truck can be one driver's
     await q("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump')", [`PT-${tag}`]);
     const d1 = (await q("insert into public.drivers (name) values ($1) returning id", [`Primary One ${tag}`])).rows[0].id as string;
     const d2 = (await q("insert into public.drivers (name) values ($1) returning id", [`Primary Two ${tag}`])).rows[0].id as string;
-    const e1 = (await q("insert into public.employees (full_name, driver_id) values ($1, $2) returning id", [`Primary One ${tag}`, d1])).rows[0].id as string;
-    const e2 = (await q("insert into public.employees (full_name, driver_id) values ($1, $2) returning id", [`Primary Two ${tag}`, d2])).rows[0].id as string;
+    // Each driver's People record comes with the driver (20261120010000).
+    const e1 = (await q("select id from public.employees where driver_id = $1", [d1])).rows[0].id as string;
+    const e2 = (await q("select id from public.employees where driver_id = $1", [d2])).rows[0].id as string;
     return { e1, e2 };
   });
   await signIn(page, "dispatcher");

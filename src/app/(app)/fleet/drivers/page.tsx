@@ -29,7 +29,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
   const sp = await searchParams;
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
-  const { rows, today } = await listDrivers({ ...sp, base: bases.length > 1 ? sp.base : undefined });
+  const { rows, today, timeOffChecked } = await listDrivers({ ...sp, base: bases.length > 1 ? sp.base : undefined });
   const faces = await facesForDrivers(rows.map((d) => d.id));
   const canEdit = can(access, "fleet.edit");
   const filtered = Boolean(sp.q || sp.status || sp.base);
@@ -50,14 +50,16 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
             value={sp.status}
             options={[
               { value: "", label: "Active" },
-              { value: "ready", label: "Eligible today" },
-              { value: "not_ready", label: "Not eligible today" },
+              { value: "ready", label: "Ready today" },
+              { value: "not_ready", label: "Not ready today" },
+              { value: "hired", label: "Hired-truck drivers" },
               { value: "inactive", label: "Inactive" },
               { value: "all", label: "All" },
             ]}
           />
           <BaseFilter bases={bases} value={sp.base} />
         </FilterBar>
+        {!timeOffChecked && <p role="note" className="px-5 pb-3 text-sm text-muted sm:px-6">Time off is not shown: it needs access to dispatch.</p>}
         {rows.length === 0 ? (
           <EmptyState
             icon={<UserRound className="size-6" />}
@@ -72,7 +74,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                 <tr>
                   <Th>Driver</Th>
                   <Th className="hidden md:table-cell">Qualifications</Th>
-                  <Th>Eligible today ({formatDate(today)})</Th>
+                  <Th>Ready today ({formatDate(today)})</Th>
                 </tr>
               </thead>
               <tbody>
@@ -88,6 +90,7 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                         {d.phone && <span>{d.phone}</span>}
                         {d.user_id && <Badge tone="blue">Has login</Badge>}
                         {!d.active && <Badge tone="gray">Inactive</Badge>}
+                        {d.hired && <Badge tone="gray">Hired truck</Badge>}
                       </div>
                       </div>
                       </div>
@@ -101,9 +104,11 @@ export default async function DriversPage({ searchParams }: { searchParams: Prom
                     </Td>
                     <Td>
                       <ReadinessBadge readiness={d.readiness} />
+                      {d.active && d.today.reason === "time_off" && <Badge tone="amber" className="ml-1.5">Time off today</Badge>}
                       {[...d.readiness.blockers, ...d.readiness.warnings].slice(0, 2).map((c) => (
                         <div key={c} className="mt-1 text-xs text-muted">{eligibilityMessage(c)}</div>
                       ))}
+                      {d.active && d.today.partialTimeOff && <div className="mt-1 text-xs text-muted">Approved time off for part of today. Check the load times.</div>}
                     </Td>
                   </Tr>
                 ))}

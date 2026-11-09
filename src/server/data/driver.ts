@@ -91,7 +91,8 @@ export async function loadMaintenanceNotices(): Promise<MaintenanceNotice[]> {
 
 export interface DispatchUpdate { id: string; title: string; created_at: string }
 
-const DISPATCH_EVENTS = ["dispatch.assignment_new", "dispatch.assignment_changed"];
+// dispatch.assignment_truck: the truck or trailer changed, same load and times (20261120011400).
+const DISPATCH_EVENTS = ["dispatch.assignment_new", "dispatch.assignment_changed", "dispatch.assignment_truck"];
 
 /**
  * Unread notices from dispatch about the driver's own loads (new load, date or time changed; 20261114000500): the

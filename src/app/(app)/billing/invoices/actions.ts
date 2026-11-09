@@ -170,6 +170,23 @@ export async function sendInvoice(formData: FormData) {
   go(page(id), "saved", testing ? "test_sent" : "sent");
 }
 
+const SENT_HOW = z.enum(["mail", "own_email", "handed_over"]);
+
+/**
+ * "I sent it myself" (migration 20261120011200): records an issued invoice as sent by mail, from the company's own email
+ * or handed over. Nothing is emailed and it is never recorded as emailed; an invoice already sent stays as it is.
+ */
+export async function markInvoiceSent(formData: FormData) {
+  const id = uuid.parse(formData.get("invoice"));
+  await manage(page(id));
+  const how = SENT_HOW.safeParse(formData.get("how"));
+  if (!how.success) go(page(id), "error", "Choose how you sent the invoice.");
+  const { data, error } = await (await createClient()).rpc("invoice_mark_sent", { p_invoice: id, p_how: how.data ?? "" });
+  if (error) go(page(id), "error", error.code === "42883" || error.code === "PGRST202" ? "Marking an invoice as sent by hand is not available yet." : dbErrorMessage(error));
+  refresh(id);
+  go(page(id), "saved", data === false ? "already_sent" : "marked_sent");
+}
+
 export async function saveInvoicingSettings(formData: FormData) {
   const back = "/settings?tab=invoicing";
   await manage(back);

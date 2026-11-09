@@ -1,12 +1,13 @@
 import { formatDate } from "@/lib/dates";
-import { vehicleReadyOn } from "@/lib/fleet/readiness";
+import { summarizeDriversReady, vehicleReadyOn, type ReadinessDriver } from "@/lib/fleet/readiness";
 
 /**
  * Taviron Live — the operation's next days, computed from recorded data only (no prediction, no guessed values).
  *
  * For each day: planned loads and how many have a truck and driver, trucks that can run (the shared readiness rule,
  * src/lib/fleet/readiness.ts: no open safety-critical work order, not in the shop that day or with work in progress or
- * waiting for parts, in service), drivers not on approved time off, booked work whose truck or trailer cannot run that
+ * waiting for parts, in service), drivers ready by the shared driver rule (active, valid verified CDL and medical card,
+ * not on approved full-day time off; hired-truck drivers counted apart), booked work whose truck or trailer cannot run that
  * day (a conflict to fix before it happens), and — for people who may see figures — the estimated revenue of loads
  * still without a truck (from the orders' own rates; loads without a rate are counted, not guessed). Loads that have
  * already ended are not counted as needing a truck or as conflicts (the same rule as Assignment problems).
@@ -55,7 +56,8 @@ export interface OutlookInput {
   /** Active trailers, so loads booked with a trailer that cannot run count as conflicts too. */
   trailers?: OutlookTruck[];
   shop: OutlookShopVisit[];
-  drivers: number;
+  /** Active drivers with their qualifications; hired-truck drivers flagged `hired` (counted apart). */
+  drivers: ReadinessDriver[];
   timeOff: OutlookTimeOff[];
   /** The company's business date (defaults to the first day shown). */
   today?: string;
@@ -73,11 +75,20 @@ export interface OutlookDay {
   trucksReady: number;
   trucksDown: number;
   downReasons: Record<TruckDownReason, number>;
+  /** The company's own drivers ready that day (src/lib/fleet/readiness.ts driverReadyOn). */
   driversAvailable: number;
+  /** The company's own active drivers. */
+  driversTotal: number;
+  /** Own drivers without a valid verified CDL or medical card that day. */
+  driversUnqualified: number;
+  /** Own qualified drivers on approved full-day time off. */
   driversOff: number;
   /** Approved time off for part of the day. */
   driversPartial: number;
   driversPending: number;
+  /** Hired-truck drivers: active, and ready by the same rule (never in driversAvailable). */
+  hiredDrivers: number;
+  hiredDriversReady: number;
   /** Assigned loads, not yet ended, whose truck or trailer cannot run that day. */
   conflicts: number;
   uncoveredValueCents: number;
@@ -101,6 +112,7 @@ export function buildOutlook(input: OutlookInput): OutlookDay[] {
   const today = input.today ?? input.days[0];
   const now = (input.now ?? new Date()).getTime();
   const open = (l: OutlookLoad) => !l.ends_at || Date.parse(l.ends_at) > now;
+  const timeOff = input.timeOff.map((x) => ({ driver_id: x.driver_id, status: x.status, start_date: x.first_day, end_date: x.last_day, full_day: x.full_day }));
   return input.days.map((date) => {
     const loads = input.loads.filter((l) => l.load_date === date);
     const down = new Map<string, TruckDownReason>();
@@ -111,10 +123,7 @@ export function buildOutlook(input: OutlookInput): OutlookDay[] {
     const trailersDown = new Set((input.trailers ?? []).filter((t) => !vehicleReadyOn(t, shopByTrailer.get(t.id) ?? [], date, today).ready).map((t) => t.id));
     const downReasons: Record<TruckDownReason, number> = { out_of_service: 0, shop: 0, safety_restricted: 0 };
     for (const r of down.values()) downReasons[r]++;
-    const covers = (x: OutlookTimeOff) => x.first_day <= date && x.last_day >= date;
-    const off = new Set(input.timeOff.filter((x) => x.status === "approved" && x.full_day && covers(x)).map((x) => x.driver_id));
-    const partial = new Set(input.timeOff.filter((x) => x.status === "approved" && !x.full_day && covers(x) && !off.has(x.driver_id)).map((x) => x.driver_id));
-    const pending = new Set(input.timeOff.filter((x) => x.status === "pending" && covers(x) && !off.has(x.driver_id)).map((x) => x.driver_id));
+    const drivers = summarizeDriversReady(input.drivers, timeOff, date);
     const unassigned = loads.filter((l) => !l.truck_id && open(l));
     return {
       date,
@@ -124,10 +133,14 @@ export function buildOutlook(input: OutlookInput): OutlookDay[] {
       trucksReady: input.trucks.length - down.size,
       trucksDown: down.size,
       downReasons,
-      driversAvailable: Math.max(input.drivers - off.size, 0),
-      driversOff: off.size,
-      driversPartial: partial.size,
-      driversPending: pending.size,
+      driversAvailable: drivers.ready,
+      driversTotal: drivers.total,
+      driversUnqualified: drivers.notQualified,
+      driversOff: drivers.off,
+      driversPartial: drivers.partial,
+      driversPending: drivers.pending,
+      hiredDrivers: drivers.hired.total,
+      hiredDriversReady: drivers.hired.ready,
       conflicts: loads.filter((l) => l.truck_id && open(l) && (down.has(l.truck_id) || (l.trailer_id && trailersDown.has(l.trailer_id)))).length,
       uncoveredValueCents: unassigned.reduce((sum, l) => sum + (l.revenue_cents ?? 0), 0),
       uncoveredWithoutRate: unassigned.filter((l) => l.revenue_cents === null).length,

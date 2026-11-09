@@ -7,6 +7,7 @@ import { ensureColbySamples } from "./prairie-lantern-colby";
 import { PRAIRIE_LANTERN_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { demoAssign } from "./assign";
+import { savePeople } from "./people";
 
 /**
  * Fills the "Prairie Lantern Freight" prospect demo tenant (Rensselaer,
@@ -203,11 +204,11 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
   // People: drivers, office and shop staff, and the owner (no contact details invented).
   if (await installed(db, "employees")) {
     const titles = ["Driver: regional", "Driver: regional", "Driver: flatbed", "Driver: dry van", "Driver: flatbed", "Driver: regional", "Driver: local", "Driver: flatbed", "Driver: local", "Driver: relief"];
-    const people = (await must("employees", db.from("employees").insert([
+    const people = await savePeople(db, [
       { full_name: "Colby Chapman", job_title: "Owner", department: "management", employment_type: "full_time", status: "active", hire_date: null, driver_id: null, user_id: null, work_email: "", work_phone: "" },
       ...STAFF.map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: "full_time", status: "active", hire_date: addDays(today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" })),
       ...drivers.map((d, i) => ({ full_name: d.name, job_title: titles[i], department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -300 - i * 110), driver_id: d.id, user_id: null, work_email: "", work_phone: `(555) 010-02${10 + i}` })),
-    ]).select("id, full_name"))) as Array<{ id: string; full_name: string }>;
+    ]);
     const emp = Object.fromEntries(people.map((p) => [p.full_name, p.id]));
     // Illustrated avatars (public/avatars) for staff and drivers; Colby's record shows his own photo once he adds one.
     if (!(await db.from("employees").select("avatar_key").limit(1)).error) {
@@ -241,12 +242,14 @@ export async function seedPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.time
     await must("schedule", db.rpc("maintenance_save_schedule", { p: { truck_id: truck["204"], name: "Annual inspection", interval_days: 365, warn_days: 30, last_done_on: addDays(today, -350) } }));
   }
 
-  // Vehicle documents (titles and references are placeholders, not real registrations).
+  // Vehicle documents (titles and references are placeholders, not real registrations). All current, with the annual
+  // inspection due soon; the shared samples then let one registration lapse on idle equipment (documentEdgeCases), so
+  // the crews' tractors and trailers are still proposed.
   if (await installed(db, "vehicle_documents")) {
     await must("documents", db.from("vehicle_documents").insert([
-      ...TRUCKS.map((t, i) => ({ truck_id: truck[t.unit], kind: "registration", title: "Registration", reference_number: `PLF-REG-${t.unit}`, issuing_authority: "", expires_on: addDays(today, i === 5 ? 21 : 120 + i * 20), submission_key: randomUUID() })),
+      ...TRUCKS.map((t, i) => ({ truck_id: truck[t.unit], kind: "registration", title: "Registration", reference_number: `PLF-REG-${t.unit}`, issuing_authority: "", expires_on: addDays(today, 120 + i * 20), submission_key: randomUUID() })),
       { truck_id: truck["204"], kind: "inspection", title: "Annual inspection", reference_number: "PLF-INSP-204", issuing_authority: "", expires_on: addDays(today, 15), submission_key: randomUUID() },
-      { trailer_id: trailer["T-53"], kind: "registration", title: "Trailer registration", reference_number: "PLF-REG-T53", issuing_authority: "", expires_on: addDays(today, -4), submission_key: randomUUID() },
+      ...TRAILERS.map((t, i) => ({ trailer_id: trailer[t.unit], kind: "registration", title: "Trailer registration", reference_number: `PLF-REG-${t.unit.replace("-", "")}`, issuing_authority: "", expires_on: addDays(today, 160 + i * 30), submission_key: randomUUID() })),
     ]));
   }
 

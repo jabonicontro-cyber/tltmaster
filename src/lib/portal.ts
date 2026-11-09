@@ -258,6 +258,28 @@ export function ticketOptionLabel(t: { number: string; delivered_at?: string | n
   return [t.number, day, formatQuantity(t.quantity, t.unit ?? undefined)].filter(Boolean).join(" · ");
 }
 
+/** A ticket in the support picker as portal_support_link_options returns it; date, quantity and unit since 20261120011500. */
+export type PortalTicketOption = { id: string; label: string; delivered_at?: string | null; quantity?: number | null; unit?: string | null };
+
+/** The picker's options, "TKT-1025 · Nov 8 · 14.1 Tons" for each ticket; the number alone where the details are missing. */
+export function ticketOptions(tickets: PortalTicketOption[], timeZone: string): Array<{ id: string; label: string }> {
+  return tickets.map((t) => ({ id: t.id, label: ticketOptionLabel({ number: t.label, delivered_at: t.delivered_at, quantity: t.quantity, unit: t.unit }, timeZone) }));
+}
+
+/** A site note still waiting for the office, as portal_sites returns it (20261120011500). */
+export type PortalSiteNote = { id: string; gate_code: string; drop_spot: string; contact_name: string; contact_phone: string; notes: string; photos: number; created_at: string };
+type SiteNoteText = Pick<PortalSiteNote, "gate_code" | "drop_spot" | "contact_name" | "contact_phone" | "notes">;
+
+const SITE_NOTE_FIELDS: Array<[keyof SiteNoteText, string]> = [["gate_code", "Gate code"], ["contact_name", "Contact on site"], ["contact_phone", "Contact phone"], ["drop_spot", "Where to drop"], ["notes", "Notes"]];
+
+/** The filled-in answers of one site note, "Gate code: 4412", in the form's order. */
+export function siteNoteLines(n: Partial<SiteNoteText>): string[] {
+  return SITE_NOTE_FIELDS.flatMap(([key, label]) => {
+    const v = String(n[key] ?? "").trim();
+    return v ? [`${label}: ${v}`] : [];
+  });
+}
+
 /**
  * What a new support case starts with when it is opened from a ticket, an invoice or an order: the closest topic and a
  * plain subject the customer can change. Labels are the record numbers the customer sees.

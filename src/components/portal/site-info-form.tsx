@@ -7,15 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Field, FormError, Input, Textarea } from "@/components/ui/form";
 import { toJpeg } from "@/lib/files/to-jpeg";
 import { submitSiteInfo } from "@/app/portal/actions";
+import { formatMoment, siteNoteLines, type PortalSiteNote } from "@/lib/portal";
 
-/** Tell the hauler about one job site (B94): text first, then up to three photos; the office reviews it all. */
-export function SiteInfoForm({ slug, siteId, siteLabel }: { slug: string; siteId: string; siteLabel: string }) {
+/**
+ * Tell the hauler about one job site (B94): text first, then up to three photos; the office reviews it all. Notes still
+ * waiting for the office are listed from portal_sites (`waiting`, since 20261120011500), so they stay after a reload;
+ * before that update only what this browser just sent is shown.
+ */
+export function SiteInfoForm({ slug, siteId, siteLabel, waiting, timeZone }: { slug: string; siteId: string; siteLabel: string; waiting?: PortalSiteNote[]; timeZone: string }) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // What this browser just sent, shown as waiting for the office until the page is left (the page's data only has a
-  // count of waiting notes, not their content).
+  // What this browser just sent, shown as waiting for the office until the page is left, when the page's data has only a
+  // count of waiting notes (before 20261120011500).
   const [sent, setSent] = useState<{ lines: string[]; photos: number; failed: number } | null>(null);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -53,7 +58,26 @@ export function SiteInfoForm({ slug, siteId, siteLabel }: { slug: string; siteId
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-2" aria-label={`Site details for ${siteLabel}`}>
       <div className="sm:col-span-2"><FormError message={error} /></div>
-      {sent ? (
+      {waiting && waiting.length > 0 ? (
+        <div role="status" className="space-y-2 sm:col-span-2" aria-label="Waiting for the office">
+          {waiting.map((n) => {
+            const lines = siteNoteLines(n);
+            return (
+              <div key={n.id} className="rounded-xl border border-line bg-surface p-3 text-sm text-ink">
+                <p className="font-semibold">Sent {formatMoment(n.created_at, timeZone)}. Waiting for the office to check it</p>
+                {lines.length ? (
+                  <ul className="mt-1 space-y-0.5 text-muted">
+                    {lines.map((l) => <li key={l} className="break-words">{l}</li>)}
+                  </ul>
+                ) : null}
+                <p className="mt-1 text-muted">{n.photos ? `${n.photos} photo${n.photos === 1 ? "" : "s"}` : "No photos"}</p>
+              </div>
+            );
+          })}
+          <p className="text-xs text-muted">Drivers see a note once the office approves it. You can send another note below.</p>
+        </div>
+      ) : null}
+      {sent && !waiting ? (
         <div role="status" className="rounded-xl border border-line bg-surface p-3 text-sm text-ink sm:col-span-2">
           <p className="font-semibold">Sent. Waiting for the office to check it</p>
           {sent.lines.length ? (
@@ -94,12 +118,9 @@ export function SiteInfoForm({ slug, siteId, siteLabel }: { slug: string; siteId
   );
 }
 
-const SENT_FIELDS: Array<[string, string]> = [["gate", "Gate code"], ["contact", "Contact on site"], ["phone", "Contact phone"], ["drop", "Where to drop"], ["notes", "Notes"]];
 
 /** The filled-in answers of one note, "Gate code: 4412", in the form's order. */
 function sentLines(fd: FormData): string[] {
-  return SENT_FIELDS.flatMap(([name, label]) => {
-    const v = String(fd.get(name) ?? "").trim();
-    return v ? [`${label}: ${v}`] : [];
-  });
+  const v = (name: string) => String(fd.get(name) ?? "");
+  return siteNoteLines({ gate_code: v("gate"), contact_name: v("contact"), contact_phone: v("phone"), drop_spot: v("drop"), notes: v("notes") });
 }

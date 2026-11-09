@@ -188,7 +188,8 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
   ('safety-photos', 'safety-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
   ('maintenance-photos', 'maintenance-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp']),
   ('support-files', 'support-files', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']),
-  ('order-documents', 'order-documents', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+  ('order-documents', 'order-documents', false, 10485760, array['image/jpeg', 'image/png', 'image/webp', 'application/pdf']),
+  ('field-report-photos', 'field-report-photos', false, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
 on conflict (id) do nothing;
 SQL
 }

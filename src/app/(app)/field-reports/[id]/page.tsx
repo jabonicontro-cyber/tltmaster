@@ -11,7 +11,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { REPORT_KIND_LABELS } from "@/lib/driver/rules";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getFieldReport } from "@/server/data/field-reports";
+import { fieldReportPhotos, getFieldReport } from "@/server/data/field-reports";
 import { trailerWorkOrdersAvailable, workOrdersForReport } from "@/server/data/maintenance";
 import { WO_STATUSES } from "@/lib/maintenance";
 import { getUserNames } from "@/server/data/quotes";
@@ -29,7 +29,7 @@ export default async function FieldReportPage({ params, searchParams }: { params
   // A trailer report becomes a trailer work order once trailer work orders are installed (20261115000100).
   const trailerWorkOrders = Boolean(r?.trailer_id && r.equipment !== "truck" && can(access, "maintenance.manage") && (await trailerWorkOrdersAvailable()));
   if (!r) notFound();
-  const [people, { timezone }, linked] = await Promise.all([getUserNames(), businessToday(),
+  const [people, { timezone }, photos, linked] = await Promise.all([getUserNames(), businessToday(), fieldReportPhotos(r.id),
     // The work order made from this report (work_orders.field_report_id), for people who see maintenance.
     can(access, "maintenance.view") ? workOrdersForReport(r.id) : Promise.resolve([])]);
   // Once a work order exists for the report, the report links to it instead of offering a second one.
@@ -51,6 +51,19 @@ export default async function FieldReportPage({ params, searchParams }: { params
           <CardHeader title="What the driver reported" description={`Sent ${formatDateTime(r.created_at, timezone)}`} />
           <CardBody>
             <p className="text-lg whitespace-pre-line">{r.description}</p>
+            {/* Photos the driver added (20261120011100); none shown before that update is installed. */}
+            {photos && photos.length > 0 && (
+              <ul className="mt-4 flex flex-wrap gap-2" aria-label="Photos from the driver">
+                {photos.map((p, i) => (
+                  <li key={p.id}>
+                    <a href={`/field-reports/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block size-28 overflow-hidden rounded-lg ring-1 ring-line">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed link */}
+                      <img src={`/field-reports/photos/${p.id}`} alt={`Photo ${i + 1} from the driver`} loading="lazy" className="size-full object-cover" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </CardBody>
           <CardBody className="border-t border-line">
             <DescriptionList items={[

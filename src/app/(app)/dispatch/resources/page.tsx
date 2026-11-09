@@ -52,7 +52,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
     .filter((t) => show === "" || (show === "available" ? t.availability.ready && !t.shopToday : !(t.availability.ready && !t.shopToday)));
   const drivers = r.drivers
     .filter((d) => !q || d.name.toLowerCase().includes(q) || (d.primaryTruck?.unit ?? "").toLowerCase().includes(q))
-    .filter((d) => show === "" || (show === "available" ? d.qualification.eligible && !onLeave(d) : !d.qualification.eligible || onLeave(d)));
+    .filter((d) => show === "" || (show === "available" ? d.ready.ready : !d.ready.ready));
   const readyTrucks = r.trucks.filter((t) => t.availability.ready && !t.shopToday).length;
   // A driver keeps their primary truck through a repair; on a day it cannot run, say so next to it so dispatch
   // pairs them with another truck (the truck's own row has the details).
@@ -63,8 +63,10 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
     if (t.shopToday) return "In the shop this day. Pair with another truck.";
     return null;
   };
-  const onLeave = (d: (typeof r.drivers)[number]) => d.timeOff.some((t) => t.status === "approved" && t.full_day);
-  const qualifiedDrivers = r.drivers.filter((d) => d.qualification.eligible && !onLeave(d)).length;
+  // The shared driver rule (src/lib/fleet/readiness.ts): own drivers ready; hired-truck drivers counted apart.
+  const own = r.drivers.filter((d) => !d.hired);
+  const hiredDrivers = r.drivers.filter((d) => d.hired);
+  const readyDrivers = own.filter((d) => d.ready.ready).length;
   const leaveConflicts = r.drivers.flatMap((d) => d.leaveConflicts.map((b) => ({ driver: d, booking: b })));
   const href = (d: string) => `/dispatch/resources?date=${d}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}${show ? `&show=${show}` : ""}`;
 
@@ -86,7 +88,11 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
 
       <section aria-label="Summary" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card><CardBody><p className="text-sm text-muted">Trucks mechanically ready</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{readyTrucks} / {r.trucks.length}</p></CardBody></Card>
-        <Card><CardBody><p className="text-sm text-muted">Drivers qualified and not on leave</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{qualifiedDrivers} / {r.drivers.length}</p></CardBody></Card>
+        <Card><CardBody>
+          <p className="text-sm text-muted">Drivers ready (qualified, not on time off)</p>
+          <p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{readyDrivers} / {own.length}</p>
+          {hiredDrivers.length > 0 && <p className="mt-1 text-xs text-muted">Hired trucks: <span className="tabular">{hiredDrivers.filter((d) => d.ready.ready).length} of {hiredDrivers.length}</span> drivers ready, counted apart.</p>}
+        </CardBody></Card>
         <Card><CardBody><p className="text-sm text-muted">Loads without a truck</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular"><Link href={`/dispatch?date=${date}`} className="hover:underline">{r.unassignedLoads}</Link></p></CardBody></Card>
       </section>
 
@@ -147,7 +153,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
             <tbody>
               {drivers.map((d) => (
                 <Tr key={d.id}>
-                  <Td><Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:underline">{d.name}</Link></Td>
+                  <Td><Link href={`/fleet/drivers/${d.id}`} className="font-semibold hover:underline">{d.name}</Link>{d.hired && <Badge tone="gray" className="ml-1.5">Hired truck</Badge>}</Td>
                   <Td>
                     <Badge tone={d.qualification.eligible ? "green" : "red"}>{d.qualification.eligible ? "Qualified" : "Not qualified"}</Badge>
                     {(d.qualification.blockers.length > 0 || d.qualification.warnings.length > 0) && (

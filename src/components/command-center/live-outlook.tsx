@@ -68,7 +68,7 @@ export function LiveOutlook({ outlook, today, compact = false, moreHref }: { out
             )}
           </div>
           <InfoTip label="Next 7 days">
-            Planned loads, trucks that can run and drivers available, day by day, read from dispatch, the shop schedule and time off. Nothing is predicted.
+            Planned loads, trucks that can run and drivers ready, day by day, read from dispatch, the shop schedule, qualifications and time off. A driver is ready when active, with a valid verified CDL and medical card, and not on approved full-day time off; hired-truck drivers are counted apart. Nothing is predicted.
             {outlook.valueShown && " The value is an estimate: each open load's planned quantity × its order's rates; surcharges are not included."}
           </InfoTip>
         </div>
@@ -95,8 +95,11 @@ export function LiveOutlook({ outlook, today, compact = false, moreHref }: { out
           <div className="mt-4 grid grid-cols-3 gap-2">
             <Ring size={84} part={t.assigned} whole={t.loads} label="Covered" caption={t.loads ? `${t.unassigned} open` : "no loads"} tone={t.unassigned ? "critical" : "green"} />
             <Ring size={84} part={t.trucksReady} whole={t.trucksReady + t.trucksDown} label="Trucks that can run" caption={t.trucksDown ? `${t.trucksDown} can't run (shop, restriction or out of service)` : "all can run"} tone={t.trucksDown ? "amber" : "brand"} />
-            <Ring size={84} part={t.driversAvailable} whole={t.driversAvailable + t.driversOff} label="Drivers" caption={t.driversOff ? `${t.driversOff} off` : "none off"} />
+            <Ring size={84} part={t.driversAvailable} whole={t.driversTotal} label="Drivers ready" caption={driverCaption(t)} tone={t.driversAvailable < t.driversTotal ? "amber" : "brand"} />
           </div>
+          {t.hiredDrivers > 0 && (
+            <p className="mt-3 text-xs text-muted">Hired trucks: <span className="font-semibold text-ink tabular">{t.hiredDriversReady}</span> of {t.hiredDrivers} drivers ready (not counted above).</p>
+          )}
         </section>
 
         <section aria-label="What to do next" className="rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60">
@@ -130,6 +133,12 @@ export function LiveOutlook({ outlook, today, compact = false, moreHref }: { out
   );
 }
 
+/** Why the company's own drivers are not all ready today (the shared driver rule). */
+function driverCaption(d: OutlookDay): string {
+  const parts = [d.driversOff ? `${d.driversOff} off` : "", d.driversUnqualified ? `${d.driversUnqualified} not qualified` : ""].filter(Boolean);
+  return parts.length ? parts.join(", ") : d.driversTotal ? "all ready" : "no drivers";
+}
+
 function Figure({ value, label, tone, small }: { value: string | number; label: string; tone?: "amber" | "critical"; small?: boolean }) {
   return (
     <p className="min-w-0">
@@ -147,7 +156,7 @@ function Figure({ value, label, tone, small }: { value: string | number; label: 
 function DayBar({ day: d, today, busiest, short = false }: { day: OutlookDay; today: string; busiest: number; short?: boolean }) {
   const isToday = d.date === today;
   const height = d.loads ? Math.max(8, Math.round((d.loads / busiest) * 100)) : 0;
-  const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers available${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
+  const detail = `${formatDate(d.date)}: ${d.unassigned} without a truck, ${d.trucksReady} trucks ready, ${d.driversAvailable} drivers ready${d.conflicts ? `, ${d.conflicts} booked on equipment that cannot run` : ""}`;
   return (
     <li className="min-w-0">
       <Link href={`/dispatch?date=${d.date}`} className={cn("group flex flex-col items-center rounded-2xl px-1 pt-2 pb-2.5 transition-colors hover:bg-ink/[0.035] focus-visible:outline-2 focus-visible:outline-brand-fg", isToday && "bg-brand-light/60 hover:bg-brand-light")}>

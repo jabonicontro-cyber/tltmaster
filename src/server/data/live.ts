@@ -1,8 +1,10 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import { buildOutlook, type OutlookDay, type OutlookLoad, type OutlookShopVisit, type OutlookTimeOff, type OutlookTruck } from "@/lib/live/outlook";
+import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { estimateLoadRevenueCents, type RateLine } from "@/lib/orders/load-revenue";
 import { createClient } from "@/server/supabase/server";
+import { hiredIds } from "./hired-trucks";
 import { DISPATCHABLE } from "./smart-dispatch";
 
 export const OUTLOOK_DAYS = 7;
@@ -18,13 +20,14 @@ export interface Outlook {
 
 /**
  * Taviron Live: the next `OUTLOOK_DAYS` days for the caller's company (RLS), from the same records dispatch uses.
- * Bounded reads: planned loads in the window with their active assignment, active trucks and trailers, active driver count, the
+ * Bounded reads: planned loads in the window with their active assignment, active trucks and trailers, active drivers with
+ * their qualifications (the shared driver rule, src/lib/fleet/readiness.ts; hired-truck drivers counted apart), the
  * shop schedule and time off for the window, and — with `withValue` — the rates of orders whose loads have no truck.
  */
 export async function loadOutlook(today: string, withValue: boolean, dayCount: number = OUTLOOK_DAYS): Promise<Outlook> {
   const supabase = await createClient();
   const to = addDays(today, dayCount - 1);
-  const [loads, trucks, trailers, drivers, shop, leave] = await Promise.all([
+  const [loads, trucks, trailers, drivers, quals, hired, shop, leave] = await Promise.all([
     supabase
       .from("order_loads")
       .select("id, order_id, load_date, ends_at, planned_quantity, unit_code, orders!inner(status), dispatch_assignments(truck_id, trailer_id, status)")
@@ -35,11 +38,13 @@ export async function loadOutlook(today: string, withValue: boolean, dayCount: n
       .limit(5000),
     supabase.from("trucks").select("id, service_status, expected_return_date").eq("active", true),
     supabase.from("trailers").select("id, service_status, expected_return_date").eq("active", true),
-    supabase.from("driver_list").select("id", { count: "exact", head: true }).eq("active", true),
+    supabase.from("driver_list").select("id, active").eq("active", true),
+    supabase.from("driver_qualifications").select("driver_id, kind, cdl_class, expires_on, verified_at"),
+    hiredIds(),
     supabase.rpc("dispatch_shop_schedule", { p_from: today, p_to: to }),
     supabase.rpc("dispatch_time_off", { p_from: today, p_to: to }),
   ]);
-  if (loads.error || trucks.error || trailers.error || drivers.error) throw new Error("The outlook could not be read.");
+  if (loads.error || trucks.error || trailers.error || drivers.error || quals.error) throw new Error("The outlook could not be read.");
   const missing = (e: { code?: string } | null) => Boolean(e && (e.code === "PGRST202" || e.code === "42883"));
   if (shop.error && !missing(shop.error)) throw new Error("The shop schedule could not be read.");
   if (leave.error && !missing(leave.error)) throw new Error("Time off could not be read.");
@@ -67,6 +72,9 @@ export async function loadOutlook(today: string, withValue: boolean, dayCount: n
     : ((leave.data ?? []) as Array<{ driver_id: string; status: "approved" | "pending"; start_date: string; end_date: string; full_day: boolean }>).map((t) => ({
         driver_id: t.driver_id, status: t.status, first_day: t.start_date, last_day: t.end_date, full_day: t.full_day,
       }));
+  const qualsBy = new Map<string, EligibilityQualification[]>();
+  for (const q of (quals.data ?? []) as Array<EligibilityQualification & { driver_id: string }>) qualsBy.set(q.driver_id, [...(qualsBy.get(q.driver_id) ?? []), q]);
+  const driverRows = ((drivers.data ?? []) as Array<{ id: string; active: boolean }>).map((d) => ({ id: d.id, active: d.active, qualifications: qualsBy.get(d.id) ?? [], hired: hired.drivers.has(d.id) }));
   const days = Array.from({ length: dayCount }, (_, i) => addDays(today, i));
   return {
     days: buildOutlook({
@@ -75,7 +83,7 @@ export async function loadOutlook(today: string, withValue: boolean, dayCount: n
       trucks: (trucks.data ?? []) as OutlookTruck[],
       trailers: (trailers.data ?? []) as OutlookTruck[],
       shop: missing(shop.error) ? [] : ((shop.data ?? []) as OutlookShopVisit[]),
-      drivers: drivers.count ?? 0,
+      drivers: driverRows,
       timeOff,
       today,
     }),

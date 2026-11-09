@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DRIVER_TICKET_STATUS, REPORT_KINDS, REPORT_KIND_HELP, REPORT_KIND_LABELS, qualificationReminders, reportNeedsEquipment, siteAddress } from "@/lib/driver/rules";
+import { DRIVER_TICKET_STATUS, REPORT_KINDS, REPORT_KIND_HELP, REPORT_KIND_LABELS, qualificationReminders, reportNeedsEquipment, reportSentMessage, siteAddress } from "@/lib/driver/rules";
 import { TICKET_STATUSES } from "@/lib/tickets/rules";
 
 describe("driver portal rules", () => {
@@ -32,5 +32,12 @@ describe("driver portal rules", () => {
 
   it("formats a job-site address without empty parts", () => {
     expect(siteAddress({ label: "North pad", line1: "100 Main St", line2: "", city: "Valparaiso", state: "IN", postal_code: "46383" })).toBe("100 Main St · Valparaiso, IN · 46383");
+  });
+
+  it("says what reached the office after a report with photos", () => {
+    expect(reportSentMessage(0, 0, false)).toBe("Report sent to the office. Call dispatch if anyone is in danger.");
+    expect(reportSentMessage(2, 0, false)).toBe("Report and 2 photos sent to the office. Call dispatch if anyone is in danger.");
+    expect(reportSentMessage(3, 1, false)).toMatch(/^Report sent to the office\..* 1 of 3 photos did not upload\.$/);
+    expect(reportSentMessage(1, 0, true)).toMatch(/Photos cannot be added to reports yet, so none were sent\.$/);
   });
 });

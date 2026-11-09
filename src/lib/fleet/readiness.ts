@@ -1,5 +1,6 @@
 /**
- * Can this truck or trailer run on a day? One rule for every page (owner decision 2026-11-09, master plan WK1).
+ * Can this truck or trailer run on a day, and is this driver ready? One rule each for every page (owner decisions
+ * 2026-11-09, master plan WK1). The driver rule is at the end of this file (driverReadyOn).
  *
  * A truck (and likewise a trailer) is NOT READY on a day when it has:
  *   - an open safety-critical work order (any date; it returns only through clearance in Maintenance);
@@ -12,6 +13,8 @@
  * Inactive equipment is never ready. The database applies the same shop rules in private.assignment_eligibility
  * (codes *_safety_restricted, *_shop_scheduled, *_shop_work_open: all blockers since 20261120009800).
  */
+
+import { driverChecks, type EligibilityQualification } from "@/lib/fleet/eligibility";
 
 /** Work-order statuses that keep the unit in the shop on the day the order is scheduled for. */
 export const SHOP_DAY_STATUSES: readonly string[] = ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts"];
@@ -99,4 +102,125 @@ export function notReadyText(kind: "truck" | "trailer", r: Pick<DayReadiness, "r
     case "in_shop": return `${unit} is in the shop${wo}: work is in progress or waiting for parts. It cannot be assigned until the work is done.`;
     default: return null;
   }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Drivers (owner decision 2026-11-09, master plan WK1)
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * Is this driver READY on a day? One rule for every page that reports drivers ready (Command Center, Taviron Live,
+ * Fleet, Driver & truck availability and the assistant's outlook):
+ *   - active;
+ *   - a valid, verified CDL (class B or higher) and a valid, verified medical card on that day (the same qualification
+ *     check as dispatch, src/lib/fleet/eligibility.ts: unknown is never treated as valid);
+ *   - and not on approved full-day time off that day. Approved partial-day time off and pending requests do not make a
+ *     driver not ready; they are reported apart so a dispatcher checks the load times.
+ * Hired-truck drivers (drivers of a hauler, `drivers.hauler_id`) are another company's drivers: they are counted
+ * separately and never in the company's own ready count.
+ */
+
+export interface ReadinessDriver {
+  id: string;
+  active: boolean;
+  qualifications: EligibilityQualification[];
+  /** A hired-truck (hauler) driver. */
+  hired?: boolean;
+}
+
+/** One time-off request touching the driver (dates are the company's business dates, first and last day). */
+export interface ReadinessTimeOff {
+  driver_id: string;
+  status: string;
+  start_date: string;
+  end_date: string;
+  full_day: boolean;
+}
+
+export type DriverNotReadyReason = "inactive" | "not_qualified" | "time_off";
+export type DriverDocument = "cdl" | "medical_card";
+
+export interface DriverDayReadiness {
+  ready: boolean;
+  reason: DriverNotReadyReason | null;
+  /** The qualification blockers behind not_qualified (eligibility codes such as cdl_expired, medical_card_unverified). */
+  blockers: string[];
+  /** Which documents fail, for the words ("CDL", "medical card"). */
+  documents: DriverDocument[];
+  /** Approved time off for part of the day: still counted ready; check the load times. */
+  partialTimeOff: boolean;
+  /** A pending request on that day: still counted ready until it is approved. */
+  pendingTimeOff: boolean;
+  hired: boolean;
+}
+
+const coversDay = (t: ReadinessTimeOff, day: string) => t.start_date <= day && t.end_date >= day;
+
+/** The shared rule: is this driver ready on `day`? `timeOff` may hold every driver's requests; only this driver's count. */
+export function driverReadyOn(driver: ReadinessDriver, timeOff: readonly ReadinessTimeOff[], day: string): DriverDayReadiness {
+  const mine = timeOff.filter((t) => t.driver_id === driver.id && coversDay(t, day));
+  const off = mine.some((t) => t.status === "approved" && t.full_day);
+  const partialTimeOff = !off && mine.some((t) => t.status === "approved" && !t.full_day);
+  const pendingTimeOff = !off && mine.some((t) => t.status === "pending");
+  const checks = driverChecks({ active: driver.active, qualifications: driver.qualifications }, false, day);
+  const blockers = checks.blockers.filter((b) => b !== "driver_inactive");
+  const documents: DriverDocument[] = [];
+  if (blockers.some((b) => b.startsWith("cdl_"))) documents.push("cdl");
+  if (blockers.some((b) => b.startsWith("medical_card_"))) documents.push("medical_card");
+  const reason: DriverNotReadyReason | null = !driver.active ? "inactive" : blockers.length ? "not_qualified" : off ? "time_off" : null;
+  return { ready: reason === null, reason, blockers, documents, partialTimeOff, pendingTimeOff, hired: Boolean(driver.hired) };
+}
+
+/** Plain words for why a driver is not ready ("Not qualified: CDL and medical card."), or null when ready. */
+export function driverNotReadyText(r: Pick<DriverDayReadiness, "reason" | "documents">): string | null {
+  switch (r.reason) {
+    case "inactive": return "Driver is inactive.";
+    case "not_qualified": {
+      const docs = r.documents.map((d) => (d === "cdl" ? "CDL" : "medical card"));
+      return `Not qualified: ${docs.length ? docs.join(" and ") : "qualifications"} not valid and verified on this date.`;
+    }
+    case "time_off": return "On approved full-day time off.";
+    default: return null;
+  }
+}
+
+export interface DriverReadySummary {
+  /** The company's own active drivers (hired drivers left out). */
+  total: number;
+  ready: number;
+  notQualified: number;
+  /** Qualified, on approved full-day time off. */
+  off: number;
+  partial: number;
+  pending: number;
+  /** Hired-truck drivers, counted apart: how many are active, and how many are ready by the same rule. */
+  hired: { total: number; ready: number };
+}
+
+/** Count drivers ready on `day` by the shared rule. Pass active drivers; inactive ones are left out of every figure. */
+export function summarizeDriversReady(drivers: readonly ReadinessDriver[], timeOff: readonly ReadinessTimeOff[], day: string): DriverReadySummary {
+  const out: DriverReadySummary = { total: 0, ready: 0, notQualified: 0, off: 0, partial: 0, pending: 0, hired: { total: 0, ready: 0 } };
+  for (const d of drivers) {
+    if (!d.active) continue;
+    const r = driverReadyOn(d, timeOff, day);
+    if (r.hired) {
+      out.hired.total++;
+      if (r.ready) out.hired.ready++;
+      continue;
+    }
+    out.total++;
+    if (r.ready) out.ready++;
+    else if (r.reason === "not_qualified") out.notQualified++;
+    else if (r.reason === "time_off") out.off++;
+    if (r.partialTimeOff) out.partial++;
+    if (r.pendingTimeOff) out.pending++;
+  }
+  return out;
+}
+
+/** The short line under a drivers-ready figure: why the rest are not ready ("1 not qualified, 2 off"). */
+export function driverReadyCaption(s: DriverReadySummary, timeOffChecked = true): string {
+  const parts = [s.notQualified ? `${s.notQualified} not qualified` : "", s.off ? `${s.off} on time off` : ""].filter(Boolean);
+  const why = parts.length ? parts.join(", ") : s.total ? "Verified CDL and medical card, not off" : "No drivers yet";
+  return timeOffChecked ? why : `${why}; time off not checked`;
 }

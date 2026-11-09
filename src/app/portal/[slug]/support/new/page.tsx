@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Card, CardBody } from "@/components/ui/card";
 import { SupportForm } from "@/components/portal/portal-forms";
-import { supportDefaults, ticketOptionLabel, type PortalOrder, type PortalOrderSummary } from "@/lib/portal";
+import { supportDefaults, ticketOptionLabel, ticketOptions, type PortalOrder, type PortalOrderSummary, type PortalTicketOption } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { createClient } from "@/server/supabase/server";
 
@@ -18,13 +18,13 @@ export default async function NewSupportRequest({ params, searchParams }: { para
   const orders = c.features.orders ? await portalCall<PortalOrderSummary[]>("portal_orders", { p_slug: slug }) : [];
   // Tickets and invoices to link (B138); none before that update is installed.
   const { data: linkData } = await (await createClient()).rpc("portal_support_link_options", { p_slug: slug });
-  const links = (linkData ?? { tickets: [], invoices: [] }) as { tickets: Array<{ id: string; label: string }>; invoices: Array<{ id: string; label: string }> };
-  // Opened from an order or a ticket: that order's tickets carry their delivery day and quantity in the picker
-  // ("TKT-1025 · Nov 8 · 14.1 Tons"), from portal_order. Other tickets keep their number only (the picker's data has
-  // no date or quantity yet). A refused order simply leaves the labels as they are.
+  const links = (linkData ?? { tickets: [], invoices: [] }) as { tickets: PortalTicketOption[]; invoices: Array<{ id: string; label: string }> };
+  // Every ticket shows its delivery day and quantity in the picker ("TKT-1025 · Nov 8 · 14.1 Tons"): from the picker's
+  // own data since 20261120011500. Before that update only the tickets of the order it was opened from had them (from
+  // portal_order), so those are still used where the picker's data has none. A refused order leaves the labels as they are.
   const fromOrder = order && UUID.test(order) && c.features.orders ? await (await createClient()).rpc("portal_order", { p_slug: slug, p_order: order }) : null;
   const detail = new Map(((fromOrder && !fromOrder.error ? (fromOrder.data as PortalOrder | null)?.tickets : null) ?? []).map((t) => [t.id, ticketOptionLabel(t, c.timezone)]));
-  const tickets = links.tickets.map((t) => ({ id: t.id, label: detail.get(t.id) ?? t.label }));
+  const tickets = ticketOptions(links.tickets, c.timezone).map((t, i) => ({ id: t.id, label: links.tickets[i].delivered_at ? t.label : detail.get(t.id) ?? t.label }));
   // The topic and subject a case opened from a ticket, an invoice or an order starts with; the customer can change both.
   const defaultOrder = orders.some((o) => o.id === order) ? order : undefined;
   const defaultTicket = c.features.orders && links.tickets.some((t) => t.id === ticket) ? ticket : undefined;

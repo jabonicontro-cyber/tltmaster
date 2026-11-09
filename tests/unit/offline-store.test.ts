@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { SNAPSHOT_MAX_AGE_MS, clearOffline, enqueue, flushOutbox, outboxTime, readDay, readOutbox, removeItem, saveDay, updateItem, type DaySnapshot } from "@/lib/offline/store";
+import { SNAPSHOT_MAX_AGE_MS, clearOffline, enqueue, flushOutbox, outboxTime, readDay, readOutbox, removeItem, saveDay, takeBackQueued, updateItem, type DaySnapshot } from "@/lib/offline/store";
 
 // Offline driver app (B133): what is kept on the phone, for whom, for how long, and that sign-out removes it.
 function fakeStorage() {
@@ -30,6 +30,18 @@ describe("offline store", () => {
     updateItem("b", { status: "failed", error: "Tap Arrived first." }, s);
     expect(readOutbox("u1", s)[1]).toMatchObject({ status: "failed", error: "Tap Arrived first." });
     removeItem("a", s);
+    expect(readOutbox("u1", s).map((i) => i.id)).toEqual(["b"]);
+  });
+
+  it("an undo takes back a tap still waiting on the phone, and only that", () => {
+    const s = fakeStorage();
+    enqueue({ id: "a", userId: "u1", kind: "stop", label: "Arrived", payload: {} }, s);
+    enqueue({ id: "b", userId: "u1", kind: "stop", label: "Left", payload: {} }, s);
+    expect(takeBackQueued("a", s)).toBe(true);
+    expect(readOutbox("u1", s).map((i) => i.id)).toEqual(["b"]);
+    expect(takeBackQueued("a", s)).toBe(false); // already gone (sent): Taviron is asked instead
+    updateItem("b", { status: "failed", error: "Refused" }, s);
+    expect(takeBackQueued("b", s)).toBe(false); // a refused item stays for the driver to see
     expect(readOutbox("u1", s).map((i) => i.id)).toEqual(["b"]);
   });
 

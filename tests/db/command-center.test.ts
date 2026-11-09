@@ -65,21 +65,25 @@ describe("exception classification and deduplication", () => {
 
       let items = mineOnly(await queue(s), ids);
       expect(items.map((i) => [i.kind, i.load_id])).toEqual(
-        expect.arrayContaining([["missing_ticket", past.load_id], ["missing_ticket", pastUnassigned.load_id], ["unassigned_load", later.load_id]]),
+        expect.arrayContaining([["missing_ticket", past.load_id], ["unassigned_load", pastUnassigned.load_id], ["unassigned_load", later.load_id]]),
       );
-      expect(items).toHaveLength(3); // the past unassigned load is a missing ticket, not also an unassigned load
-      expect(items.find((i) => i.load_id === pastUnassigned.load_id)?.reasons).toEqual(["no_ticket", "not_assigned"]);
+      // A past load never assigned a truck is Dispatch's (20261120011600): an unassigned load, not a ticket to enter.
+      expect(items).toHaveLength(3);
+      expect(items.find((i) => i.load_id === pastUnassigned.load_id)).toMatchObject({ kind: "unassigned_load", priority: 2, reasons: ["not_assigned"], details: expect.objectContaining({ past: true }) });
       const unassigned = items.find((i) => i.kind === "unassigned_load")!;
       expect(unassigned).toMatchObject({ priority: 1, reasons: ["no_assignment"] });
       expect(items.find((i) => i.load_id === past.load_id)).toMatchObject({ priority: 2 });
       expect(new Set(items.map((i) => i.exception_key)).size).toBe(items.length);
       // Urgent first, then oldest first.
       expect(items[0].kind).toBe("unassigned_load");
+      // "Loads today without a truck" counts today's loads only, never a past one.
+      const everything = (await queue(s)).items;
+      expect((await summary(s)).unassigned_loads).toBe(everything.filter((i) => i.kind === "unassigned_load" && !i.details.past).length);
 
       // Assigning the load resolves the item; nothing else is needed.
       await assign(s, later.load_id, w.f.t2, null, w.f.d2);
       items = mineOnly(await queue(s), ids);
-      expect(items.some((i) => i.kind === "unassigned_load")).toBe(false);
+      expect(items.some((i) => i.kind === "unassigned_load" && i.load_id === later.load_id)).toBe(false);
 
       // A ticket replaces "missing" by "to review"; accepting it clears that too.
       const t = await submit(s, { load_id: past.load_id, order_line_id: w.order.materialLine, delivered_date: w.yesterday, delivered_time: "08:30", quantity: "21.47", unit_code: "ton", external_reference: `SC-${randomUUID().slice(0, 6)}` });
@@ -87,9 +91,9 @@ describe("exception classification and deduplication", () => {
       expect(items.find((i) => i.load_id === past.load_id)).toMatchObject({ kind: "ticket_review", priority: 3, reasons: ["awaiting_acceptance"], ticket_id: t.ticket_id });
       await s.query("select public.review_delivery_ticket($1, 'accept', '')", [t.ticket_id]);
 
-      // The order still has a missing ticket, so it is not also listed as a billing block.
+      // The order still has a load without a ticket, so it is not also listed as a billing block.
       items = mineOnly(await queue(s), [...ids, t.ticket_number]);
-      expect(items.map((i) => i.kind).sort()).toEqual(["missing_ticket"]);
+      expect(items.map((i) => i.kind).sort()).toEqual(["unassigned_load"]);
       await s.query("select public.cancel_order_load($1, 'Did not run (test)')", [pastUnassigned.load_id]);
       items = mineOnly(await queue(s), ids);
       expect(items).toEqual([expect.objectContaining({ kind: "billing_blocked", order_id: w.order.id, priority: 3, since: null, reasons: ["exceptions_unacknowledged"] })]);
@@ -182,7 +186,7 @@ describe("visibility by role and company", () => {
       const w = await world(s);
       await s.as(w.office);
       const past = await planLoad(s, w.order.id, w.yesterday, "07:00", "09:00");
-      const key = `missing_ticket:${past.load_id}`;
+      const key = `unassigned_load:${past.load_id}`; // never assigned a truck: Dispatch's item (20261120011600)
       expect((await queue(s)).items.some((i) => i.exception_key === key)).toBe(true);
 
       const B = await s.createCompany("Brookside Aggregates (test)");

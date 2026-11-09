@@ -11,7 +11,7 @@ import { planningSpeed, reviewPace, billingReadySpeed } from "@/lib/command-cent
 import { todayIn } from "@/lib/dates";
 import { seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
-import { ensureFeatureSamples } from "@/server/demo/samples";
+import { ensureFeatureSamples, PORTAL_NOT_OPENED } from "@/server/demo/samples";
 
 const env: Record<string, string> = { ...(process.env as Record<string, string>) };
 if (existsSync(".dev-stack/keys.env")) {
@@ -61,6 +61,7 @@ async function counts(company: string) {
     workspaces: await one("select count(*) n from public.operation_workspaces where company_id = $1"),
     loads: await one("select count(*) n from public.order_loads where company_id = $1"),
     drivers: await one("select count(*) n from public.drivers where company_id = $1"),
+    employees: await one("select count(*) n from public.employees where company_id = $1"),
     handoffs: await one("select count(*) n from public.billing_handoffs where company_id = $1"),
     memberships: (await q<{ user_id: string; role: string; active: boolean }>("select user_id, role, active from public.company_memberships where company_id = $1 order by user_id", [company])).rows,
   };
@@ -94,6 +95,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(c.timeOff).toBe(5); // two earlier samples and three on the Schedule (approved, pending, denied)
     expect(c.quotes).toBeGreaterThanOrEqual(1);
     expect(c.workspaces).toBe(1);
+    // Fleet and People are one list (owner 2026-11-09, migration 20261120010000): each of the demo's own drivers has
+    // exactly one People record with its job title; hired-truck drivers (the hauler's) have none.
+    const people = await q<{ own: string; listed: string; untitled: string; hired: string }>(
+      `select count(*) filter (where d.hauler_id is null) own,
+              count(*) filter (where d.hauler_id is null and (select count(*) from public.employees e where e.driver_id = d.id) = 1) listed,
+              count(*) filter (where d.hauler_id is null and exists (select 1 from public.employees e where e.driver_id = d.id and e.job_title = '')) untitled,
+              count(*) filter (where d.hauler_id is not null and exists (select 1 from public.employees e where e.driver_id = d.id)) hired
+         from public.drivers d where d.company_id = $1`, [w.company]);
+    expect(Number(people.rows[0].own)).toBeGreaterThan(0);
+    expect(people.rows[0]).toMatchObject({ listed: people.rows[0].own, untitled: "0", hired: "0" });
     // Plan the day has open loads to plan tomorrow (docs/OPTIMIZATION.md §4).
     const open = await q<{ n: string }>(
       "select count(*) n from public.order_loads l where l.company_id = $1 and l.load_date = ($2::date + 1) and l.status = 'planned' and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')",
@@ -199,6 +210,49 @@ describe.skipIf(!available)("demo feature samples", () => {
     if (combined.length === 0) expect(twoReady.rows.length).toBe(0);
     else expect(combined).toEqual([["draft", 2]]);
     expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
+    // Honest dates (owner 2026-11-09): every invoice is issued on or after its orders' last delivery (the past-due one
+    // bills an order delivered about six weeks ago), payments fall on or after their invoice, and the invoice is from
+    // the demo company's own business.
+    const dated = await q<{ number: string; issued: string; delivered: string | null; first_paid: string | null; from_name: string; company: string }>(
+      `select i.number, i.issue_date::text issued,
+              (select max((t.delivered_at at time zone $2)::date) from public.delivery_tickets t join public.invoice_orders io on io.order_id = t.order_id
+                where io.invoice_id = i.id and t.status = 'accepted')::text delivered,
+              (select min(p.received_on) from public.invoice_payments p where p.invoice_id = i.id and p.voided_at is null)::text first_paid,
+              i.issued_by_entity ->> 'name' from_name, c.name company
+         from public.invoices i join public.companies c on c.id = i.company_id
+        where i.company_id = $1 and i.status = 'issued' order by i.number`, [w.company, TZ]);
+    expect(dated.rows.length).toBeGreaterThanOrEqual(1);
+    for (const r of dated.rows) {
+      expect(r.delivered, `${r.number} bills delivered work`).not.toBeNull();
+      expect(r.issued >= (r.delivered as string), `${r.number} issued ${r.issued}, delivered ${r.delivered}`).toBe(true);
+      if (r.first_paid) expect(r.first_paid >= r.issued, `${r.number} paid before it was issued`).toBe(true);
+      expect(r.from_name).toBe(`${r.company} (demo)`);
+    }
+    // Quotes are never sent after they expired; the decided history was sent on its quote date.
+    const quoteDates = await q<{ late: string; off: string }>(
+      `select count(*) filter (where (v.sent_at at time zone $2)::date > v.valid_until) late,
+              count(*) filter (where v.project_name ~ '^(Quote|Pricing) history \\(demo\\)' and (v.sent_at at time zone $2)::date <> v.quote_date) off
+         from public.quotes q join public.quote_versions v on v.id = q.current_version_id where q.company_id = $1 and v.sent_at is not null`, [w.company, TZ]);
+    expect(quoteDates.rows[0]).toEqual({ late: "0", off: "0" });
+    // Order history: no order was created, confirmed or scheduled after it had already delivered.
+    const lateHistory = await q<{ n: string }>(
+      `select count(*) n from public.order_status_events e
+        where e.company_id = $1 and e.to_status in ('draft', 'confirmed', 'scheduled')
+          and e.occurred_at > (select min(t.delivered_at) from public.delivery_tickets t where t.order_id = e.order_id and t.status = 'accepted')`, [w.company]);
+    expect(Number(lateHistory.rows[0].n)).toBe(0);
+    // Vehicle documents mostly valid with one lapsed registration, on equipment with no work booked (so the crews'
+    // tractors and trailers are still proposed), and the annual inspection due soon.
+    const docs = await q<{ expired: string; valid: string; soon: string; lapsed_idle: string }>(
+      `select count(*) filter (where d.expires_on < (now() at time zone $2)::date) expired,
+              count(*) filter (where d.expires_on >= (now() at time zone $2)::date + 30) valid,
+              count(*) filter (where d.expires_on between (now() at time zone $2)::date and (now() at time zone $2)::date + 29) soon,
+              count(*) filter (where d.expires_on < (now() at time zone $2)::date and d.kind = 'registration' and not exists (
+                select 1 from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id
+                 where a.status = 'active' and l.load_date >= (now() at time zone $2)::date and (a.truck_id = d.truck_id or a.trailer_id = d.trailer_id))) lapsed_idle
+         from public.vehicle_documents d where d.company_id = $1 and d.archived_at is null`, [w.company, TZ]);
+    expect(docs.rows[0]).toMatchObject({ expired: "1", lapsed_idle: "1" });
+    expect(Number(docs.rows[0].valid)).toBeGreaterThanOrEqual(10);
+    expect(Number(docs.rows[0].soon)).toBeGreaterThanOrEqual(1);
     // Support (owner 2026-11-09): the sample late-delivery case already has the office's first reply; nothing is overdue.
     const unanswered = await q<{ n: string }>("select count(*) n from public.portal_support_requests where company_id = $1 and first_reply_at is null and status = 'open'", [w.company]);
     expect(Number(unanswered.rows[0].n)).toBe(0);
@@ -431,12 +485,15 @@ describe.skipIf(!available)("demo feature samples", () => {
     const r1 = await refreshPrairieLantern(as(w.owner), TZ);
     const afterFirstRefresh = await counts(w.company);
     const r2 = await refreshPrairieLantern(as(w.owner), TZ);
-    expect(r2).toEqual({ added: 0, loads: 0 }); // a second Refresh adds nothing
+    expect({ added: r2.added, loads: r2.loads }).toEqual({ added: 0, loads: 0 }); // a second Refresh adds nothing
+    // The portal step the demo owner may not take is reported, never skipped silently.
+    expect(r2.notes).toContain(PORTAL_NOT_OPENED);
     const after = await counts(w.company);
     expect(after).toEqual(afterFirstRefresh);
     // Refresh never removes or changes demo users, and never re-adds the shared samples.
     expect(after.memberships).toEqual(before.memberships);
     expect(after.drivers).toBe(before.drivers);
+    expect(after.employees).toBe(before.employees); // no second People record for any driver
     expect(Number((await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id join public.drivers d on d.id = a.driver_id where a.company_id = $1 and a.status = 'active' and d.user_id is not null and l.load_date < (now() at time zone $2)::date and not exists (select 1 from public.delivery_tickets t where t.load_id = l.id)", [w.company, TZ])).rows[0].n)).toBe(1);
     expect({ ...after, loads: 0 }).toMatchObject({ workOrders: before.workOrders, quotes: before.quotes, workspaces: before.workspaces, timeOff: before.timeOff });
     expect(r1.added).toBeGreaterThanOrEqual(0);

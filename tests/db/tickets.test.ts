@@ -405,6 +405,8 @@ describe("ticket numbers under concurrency", () => {
       await c.query("select set_config('tlt.sample_purge', 'on', true)");
       await c.query("delete from public.orders where id = any($1)", [ids.orders]);
       await c.query("delete from public.driver_qualifications where driver_id in (select id from public.drivers where created_by = $1)", [ids.office]);
+      // Each driver has a People record (20261120010000); remove it with the driver.
+      await c.query("delete from public.employees where driver_id in (select id from public.drivers where created_by = $1)", [ids.office]);
       await c.query("delete from public.drivers where created_by = $1", [ids.office]);
       await c.query("delete from public.trucks where id = any($1)", [ids.trucks]);
       await c.query("commit");

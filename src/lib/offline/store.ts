@@ -137,6 +137,16 @@ export function removeItem(id: string, s?: Store): void {
   write(OUTBOX_KEY, all.filter((i) => i.id !== id), s);
 }
 
+/**
+ * Undo of a tap that has not left the phone yet: the waiting item is removed and true is returned. False when it is no
+ * longer waiting here (already sent, or refused and kept as failed), so the caller asks Taviron to undo it instead.
+ */
+export function takeBackQueued(id: string, s?: Store): boolean {
+  const all = read<OutboxItem[]>(OUTBOX_KEY, s) ?? [];
+  if (!all.some((i) => i.id === id && i.status === "waiting")) return false;
+  return write(OUTBOX_KEY, all.filter((i) => i.id !== id), s);
+}
+
 /** Sign-out: the saved day and everything queued on this phone are removed. */
 export function clearOffline(s?: Store): void {
   try {

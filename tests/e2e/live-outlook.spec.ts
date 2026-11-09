@@ -14,7 +14,7 @@ test("dispatch sees the next 7 days day by day, and a day opens that day's board
   await expect(page.getByText("of work not yet covered")).toHaveCount(0);
   const first = days.getByRole("link").first();
   // The name starts with the visible words (WCAG 2.5.3), then the spoken details.
-  await expect(first).toHaveAccessibleName(/^Today\b.*\d+\s*loads.*\d+ without a truck, \d+ trucks ready, \d+ drivers available/);
+  await expect(first).toHaveAccessibleName(/^Today\b.*\d+\s*loads.*\d+ without a truck, \d+ trucks ready, \d+ drivers ready/);
   await first.click();
   await expect(page).toHaveURL(/\/dispatch\?date=\d{4}-\d{2}-\d{2}/);
 });

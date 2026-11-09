@@ -6,6 +6,7 @@ import { demoAssign } from "./assign";
 import { ensureDemoLocations } from "./locations";
 import { seedCommunicationSamples } from "./prairie-lantern";
 import { ensureFeatureSamples } from "./samples";
+import { savePeople } from "./people";
 
 /**
  * "Cobalt Plains Freight" (MK3, owner 2026-11-05: a separate freight demo company beside the aggregate demos): a
@@ -167,7 +168,9 @@ export async function seedFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZone):
       await must("schedule", db.rpc("maintenance_save_schedule", { p: { truck_id: trucks.get(t.unit), name: "Oil and filter", interval_days: 90, interval_miles: 25000, warn_days: 14, warn_miles: 2000, last_done_on: addDays(today, -15 - i * 10) } }));
     }
   }
-  if (await installed(db, "vehicle_documents")) {
+  // The shared samples (run by the refresh above) already gave every truck and trailer a registration; adding these
+  // as well listed two registrations per truck. Only when they did not.
+  if (await installed(db, "vehicle_documents") && !((await db.from("vehicle_documents").select("id").limit(1)).data ?? []).length) {
     await must("documents", db.from("vehicle_documents").insert([
       ...FREIGHT_TRUCKS.map((t, i) => ({ truck_id: trucks.get(t.unit), kind: "registration", title: "Registration (IRP)", reference_number: `CPF-REG-${t.unit}`, issuing_authority: "", expires_on: addDays(today, i === 2 ? 19 : 150 + i * 15), submission_key: randomUUID() })),
       { truck_id: trucks.get("C01"), kind: "inspection", title: "Annual inspection", reference_number: "CPF-INSP-C01", issuing_authority: "", expires_on: addDays(today, 12), submission_key: randomUUID() },
@@ -176,7 +179,7 @@ export async function seedFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZone):
   return result;
 }
 
-export interface RefreshResult { added: number; loads: number }
+export interface RefreshResult { added: number; loads: number; notes?: string[] }
 
 /**
  * Keep the freight demo current: re-add missing sample records (by name or unit number), then give each of the last
@@ -244,16 +247,20 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
     added += rows.length;
   }
 
-  const employees = await db.from("employees").select("full_name");
+  const employees = await db.from("employees").select("full_name, driver_id, job_title");
   if (!employees.error) {
-    const have = new Set(((employees.data ?? []) as Array<{ full_name: string }>).map((e) => e.full_name));
+    const rows = (employees.data ?? []) as Array<{ full_name: string; driver_id: string | null; job_title: string }>;
+    const have = new Set(rows.map((e) => e.full_name));
+    const byDriver = new Map(rows.filter((e) => e.driver_id).map((e) => [e.driver_id!, e]));
+    // A driver's People record comes with the driver (migration 20261120010000): fill in its title once; add it when missing.
+    const needs = (n: string) => driver.has(n) && (byDriver.has(driver.get(n)!) ? !byDriver.get(driver.get(n)!)!.job_title : !have.has(n));
     const missing = [
       ...FREIGHT_STAFF.filter((s) => !have.has(s.full_name)).map((s) => ({ full_name: s.full_name, job_title: s.job_title, department: s.department, employment_type: "full_time", status: "active", hire_date: addDays(today, s.hire), driver_id: null, user_id: null, work_email: "", work_phone: "" })),
-      ...FREIGHT_DRIVERS.filter((n) => !have.has(n) && driver.has(n)).map((n, i) => ({ full_name: n, job_title: i % 3 === 1 ? "Driver: flatbed" : "Driver: regional van", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
+      ...FREIGHT_DRIVERS.filter(needs).map((n) => ({ full_name: n, job_title: FREIGHT_DRIVERS.indexOf(n) % 3 === 1 ? "Driver: flatbed" : "Driver: regional van", department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -365), driver_id: driver.get(n)!, user_id: null, work_email: "", work_phone: "" })),
     ];
     if (missing.length) {
-      await must("employees", db.from("employees").insert(missing));
-      added += missing.length;
+      await savePeople(db, missing);
+      added += missing.filter((r) => !r.driver_id || !byDriver.has(r.driver_id)).length;
     }
   }
 
@@ -345,6 +352,7 @@ export async function refreshFreightDemo(db: Db, timeZone = FREIGHT_DEMO.timeZon
   added += await ensureDemoLocations(db, FREIGHT_LOCATIONS);
   added += await seedCommunicationSamples(db);
   // Every released feature's samples the demo does not have yet (shared with every demo).
-  added += (await ensureFeatureSamples(db, today)).added;
-  return { added, loads };
+  const samples = await ensureFeatureSamples(db, today);
+  added += samples.added;
+  return { added, loads, notes: samples.notes };
 }

@@ -150,7 +150,8 @@ describe("dispatch shift check", () => {
       };
       const scheduled = await driver("Scheduled Driver");
       const free = await driver("No Schedule Driver");
-      const emp = await insert(s, "employees", { full_name: "Scheduled Driver", department: "operations", driver_id: scheduled });
+      // The driver's People record comes with the driver (20261120010000).
+      const emp = (await s.query<{ id: string }>("select id from public.employees where driver_id = $1", [scheduled])).rows[0].id;
       await s.query("select public.schedule_set_pattern($1, 'weekly', 7, null, $2, $3::jsonb, '')", [emp, on, JSON.stringify([{ day: 0, start: "06:00", end: "16:30" }])]);
       const [t1, t2, t3] = [await truck(), await truck(), await truck()];
 

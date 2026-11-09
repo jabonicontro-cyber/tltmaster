@@ -47,6 +47,26 @@ export async function markStopAt(input: z.input<typeof markAt>): Promise<ActionR
   });
 }
 
+const UNDO_MISSING = new Set(["42883", "PGRST202"]);
+
+/**
+ * The driver takes back their own last Arrived / Left tap (migration 20261120011000): the database allows it only for
+ * the load's driver, their own tap, today, within 10 minutes, Left before Arrived. Before the migration is installed it
+ * says so and nothing changes.
+ */
+export async function undoStop(input: z.input<typeof mark>): Promise<ActionResult> {
+  return guard(async () => {
+    await requireAccess();
+    const p = mark.safeParse(input);
+    if (!p.success) return fail("Invalid stop.");
+    const { error } = await (await createClient()).rpc("load_stop_undo", { p_load: p.data.load, p_stop: p.data.stop, p_event: p.data.event });
+    if (error) return fail(UNDO_MISSING.has(error.code ?? "") ? "Undo is not available yet. Ask the office to correct the time." : dbErrorMessage(error));
+    revalidatePath("/driver");
+    revalidatePath("/reports/wait-times");
+    return ok(undefined, `${p.data.event === "arrive" ? "Arrived" : "Left"} taken back.`);
+  });
+}
+
 export async function saveWaitSettings(formData: FormData): Promise<ActionResult> {
   return guard(async () => {
     await assertPermission("settings.manage");

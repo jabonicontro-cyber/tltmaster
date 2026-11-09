@@ -83,6 +83,20 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
   return { ...inv, po_label: (broker.data as { is_broker?: boolean } | null)?.is_broker ? "Load #" : "PO" };
 }
 
+export type SentHow = "mail" | "own_email" | "handed_over";
+export const SENT_HOW_LABELS: Record<SentHow, string> = { mail: "by mail", own_email: "from your own email", handed_over: "handed over" };
+
+/**
+ * How an invoice was sent (migration 20261120011200): by Taviron's email, or by hand ("I sent it myself"). available is
+ * false before that update is installed, so the page offers no "Mark as sent".
+ */
+export async function invoiceSentHow(id: string): Promise<{ available: boolean; via: "email" | "manual" | null; how: SentHow | null }> {
+  const { data, error } = await (await createClient()).from("invoices").select("sent_via, sent_how").eq("id", id).maybeSingle();
+  if (error) return { available: false, via: null, how: null };
+  const d = data as { sent_via: "email" | "manual" | null; sent_how: SentHow | "" } | null;
+  return { available: true, via: d?.sent_via ?? null, how: d?.sent_how || null };
+}
+
 /** Active invoices by handed-off order, for the Billing board's Handed off view. */
 export async function invoicesByHandoff(handoffOrderIds: string[]): Promise<Record<string, { id: string; number: string | null; status: InvoiceStatus }>> {
   if (!handoffOrderIds.length) return {};

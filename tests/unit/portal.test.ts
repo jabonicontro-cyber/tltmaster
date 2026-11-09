@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatDay, formatQuantity, formatTime, formatWindow, isPortalSlug, isPortalToken, quantitiesByUnit, responseLabel, scheduleText, supportDefaults, supportFormErrors, ticketOptionLabel } from "@/lib/portal";
+import { formatDay, formatQuantity, formatTime, formatWindow, isPortalSlug, isPortalToken, quantitiesByUnit, responseLabel, scheduleText, siteNoteLines, supportDefaults, supportFormErrors, ticketOptionLabel, ticketOptions } from "@/lib/portal";
 import { PORTAL_GENERAL_HELP } from "@/lib/portal-help";
 import { LAB_VIEWS, latestCheck } from "@/lib/platform/testing-lab";
 import { PREVIEW_ROLES } from "@/lib/platform/preview";
@@ -36,6 +36,19 @@ describe("customer portal formatting", () => {
   it("labels a ticket in the support picker with what is known (UX day-1)", () => {
     expect(ticketOptionLabel({ number: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" }, "America/Chicago")).toBe("TKT-1025 · Nov 8 · 14.1 Tons");
     expect(ticketOptionLabel({ number: "TKT-1025" }, "America/Chicago")).toBe("TKT-1025");
+  });
+
+  it("labels every ticket in the picker from the picker's own data, the number alone when details are missing", () => {
+    expect(ticketOptions([
+      { id: "a", label: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" },
+      { id: "b", label: "TKT-1026" },
+    ], "America/Chicago")).toEqual([{ id: "a", label: "TKT-1025 · Nov 8 · 14.1 Tons" }, { id: "b", label: "TKT-1026" }]);
+  });
+
+  it("lists a waiting site note's answers in the form's order, skipping empty ones", () => {
+    expect(siteNoteLines({ gate_code: "4412", drop_spot: "Back lot", contact_name: "", contact_phone: " ", notes: "Gate closes at 4" }))
+      .toEqual(["Gate code: 4412", "Where to drop: Back lot", "Notes: Gate closes at 4"]);
+    expect(siteNoteLines({})).toEqual([]);
   });
 
   it("starts a support case from the record it was opened from (UX day-1)", () => {

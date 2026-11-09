@@ -25,6 +25,17 @@ type Db = SupabaseClient;
 export interface SampleResult {
   added: number;
   features: string[];
+  /** Steps that could not run for this person, in plain words for the refresh report (never silently skipped). */
+  notes: string[];
+}
+
+/** The refresh report's line when the person refreshing may not open the demo's customer portal. */
+export const PORTAL_NOT_OPENED = "Customer portal not opened: only the Taviron platform owner can turn it on.";
+
+/** The one-line refresh report: what was added, then anything that could not be done. */
+export function refreshSummary(r: { added: number; loads?: number; notes?: string[] }): string {
+  const head = r.loads === undefined ? `${r.added} missing records added` : `${r.loads} loads and ${r.added} missing records added`;
+  return [head, ...(r.notes ?? [])].join(". ");
 }
 
 const MISSING = new Set(["42P01", "PGRST202", "PGRST205", "42883", "PGRST200"]);
@@ -57,7 +68,7 @@ async function demoCompany(db: Db): Promise<{ userId: string; companyId: string 
 /** Add every feature's samples that the demo does not have yet. Safe to run on every Refresh. */
 export async function ensureFeatureSamples(db: Db, today: string): Promise<SampleResult> {
   const { userId, companyId } = await demoCompany(db);
-  const result: SampleResult = { added: 0, features: [] };
+  const result: SampleResult = { added: 0, features: [], notes: [] };
   const note = (feature: string, n: number) => { if (n > 0) { result.added += n; result.features.push(feature); } };
   const trucks = ((await db.from("trucks").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   note("maintenance", await maintenance(db, today, trucks));
@@ -96,6 +107,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Businesses before the billing samples, so a new demo's handoff is already split between them.
   note("billing businesses", await billingEntities(db, companyId));
   note("billing: ready and handed off", await billing(db, today));
+  // An order delivered about six weeks ago and handed off, so the invoice sample has an honestly past-due invoice.
+  note("past-due order to invoice", await pastDueOrder(db, today));
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
@@ -103,7 +116,7 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // drivers and the office see real-looking statements in the demo. Never in a real company (demoCompany above).
   note("sample pay statements", await samplePayStatements(db, today));
   note("CRM pipeline", await crm(db, today, userId));
-  note("customer portal", await customerPortal(db));
+  note("customer portal", await customerPortal(db, result.notes));
   // Customer self-booking (B115): switched on with open loads on the next weekdays, one pending and one approved request.
   note("customer booking", await rpcCount(db, "demo_booking_samples"));
   note("guided onboarding", await guidedOnboarding(db));
@@ -136,6 +149,10 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Parts used per job (UX20): the sample part used from stock gets the part cost line that using it in the app adds,
   // so job cards show the parts cost.
   note("parts cost on jobs", await partCostLines(db));
+  // Parts on order (2026-11-09): the demo's job waiting for parts lists its part, vendor, PO and expected date; and an
+  // outside repair with a fictional vendor invoice and a running warranty (after the maintenance board and history).
+  note("parts on order", await rpcCount(db, "demo_part_wait_samples"));
+  note("outside repair", await rpcCount(db, "demo_outside_repair_samples"));
   // Compliance calendar (CC1): a driver training credential and a truck permit coming due, kept in the future.
   note("compliance calendar", await complianceSamples(db, today));
   // Spreadsheet import (B106): a customer file waiting for review. Shift offers (B102): an open driver shift with a request.
@@ -184,6 +201,11 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Detention (DT1): the customer whose recorded waits run longest gets free time and an hourly rate, so billing sees
   // proposals; extra charges (detention, lumper, truck ordered not used) are billed without a ticket. Once per demo.
   note("detention", await detentionSample(db));
+  // Sample dates that read right (owner 2026-11-09): quote history sent on its quote date and decided within its
+  // validity; back-dated orders confirmed and scheduled before their deliveries. Times only, sample records only.
+  note("sample history times", await rpcCount(db, "demo_sample_timeline"));
+  // Last, after every sample assignment: documents mostly valid, one lapsed registration on idle equipment (UX, 2026-11-09).
+  note("vehicle document edge cases", await documentEdgeCases(db, today));
   return result;
 }
 
@@ -222,17 +244,32 @@ async function freightSampleWording(db: Db): Promise<number> {
 }
 
 /**
- * Billing businesses (B89, 20261120003400): the demo bills materials from a fictional sand and gravel business and
- * everything else (hauling, surcharges) from its trucking business, as a company with two businesses would. Only while
- * the demo has no business. Handoffs made before this (in older demos) keep their single-business snapshot; new ones split.
+ * The demo's own billing business name, so an invoice's "From" is clearly the demo company (owner 2026-11-09): the
+ * company name with one demo marker ("Northfield Aggregates (Demo)", "Cobalt Plains Freight (demo)").
+ */
+export function demoBillingName(company: string): string {
+  const name = company.replace(/\s+/g, " ").trim() || "Demo company";
+  return /\(demo\)/i.test(name) ? name : `${name} (demo)`;
+}
+
+/**
+ * Billing businesses (B89, 20261120003400): the demo bills everything by default (hauling, surcharges) from a business
+ * named as the demo company itself, and materials from a sister sand and gravel business with the same first name, as a
+ * company with two businesses would. Added only while the demo has no business. Handoffs made before this (in older
+ * demos) keep their single-business snapshot; new ones split. Existing demos: the earlier sample default business
+ * ("<name> Trucking (demo)", untouched since) is renamed to the company's own name; nothing else is changed, and issued
+ * invoices keep the name they were issued with.
  */
 async function billingEntities(db: Db, companyId: string): Promise<number> {
   const n = await count(db, "billing_entities");
-  if (n === null || n > 0) return 0;
+  if (n === null) return 0;
   const { data: c } = await db.from("companies").select("name").eq("id", companyId).maybeSingle();
-  const base = ((c as { name?: string } | null)?.name ?? "Demo").replace(/\(demo\)/gi, "").replace(/\b(freight|trucking|hauling|aggregates?|logistics|transport|inc\.?|llc)\b/gi, "").replace(/\s+/g, " ").trim() || "Demo";
+  const company = (c as { name?: string } | null)?.name ?? "Demo";
+  const own = demoBillingName(company);
+  if (n > 0) return renameSampleBusiness(db, own);
+  const base = company.replace(/\(demo\)/gi, "").replace(/\b(freight|trucking|hauling|aggregates?|logistics|transport|inc\.?|llc)\b/gi, "").replace(/\s+/g, " ").trim() || "Demo";
   const save = (p: Record<string, unknown>) => db.rpc("billing_entity_save", { p_id: null, p });
-  const hauling = await save({ name: `${base} Trucking (demo)`, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" });
+  const hauling = await save({ name: own, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" });
   if (hauling.error) return 0;
   // A freight carrier's second business is a brokerage (MK4); it has no rule, so everything bills from the carrier.
   if ((await demoIndustry(db)) === "freight") {
@@ -243,6 +280,18 @@ async function billingEntities(db: Db, companyId: string): Promise<number> {
   if (materials.error) return 1;
   const rules = await db.rpc("billing_entity_rules_save", { p: { material: materials.data as string, hauling: hauling.data as string } });
   return rules.error ? 2 : 3;
+}
+
+/** Renames the earlier sample default business ("… Trucking (demo)", every other field as the sample left it). */
+async function renameSampleBusiness(db: Db, name: string): Promise<number> {
+  type Entity = { id: string; name: string; legal_name: string; address_line1: string; address_line2: string; city: string; region: string; postal_code: string; phone: string; email: string; invoice_prefix: string };
+  const r = await db.from("billing_entities").select("id, name, legal_name, address_line1, address_line2, city, region, postal_code, phone, email, invoice_prefix").eq("is_default", true).eq("active", true).limit(1);
+  const e = ((r.data ?? []) as Entity[])[0];
+  const untouched = e && e.name !== name && / Trucking \(demo\)$/i.test(e.name) && e.invoice_prefix === "TR" && e.city === "Fictional City" && e.region === "ZZ"
+    && !e.legal_name && !e.address_line1 && !e.address_line2 && !e.postal_code && !e.phone && !e.email;
+  if (!untouched) return 0;
+  const saved = await db.rpc("billing_entity_save", { p_id: e.id, p: { name, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" } });
+  return saved.error ? 0 : 1;
 }
 
 /**
@@ -464,58 +513,105 @@ async function billing(db: Db, today: string): Promise<number> {
   }
   const needed = [!(ready.data ?? []).length, !(handed.data ?? []).length]; // [a ready order, a handed-off order]
   if (!needed.some(Boolean)) return 0;
-  type Line = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
-  type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null; order_lines: Line[] };
-  const candidates = ((await must("billing template", db.from("orders")
-    .select("customer_id, site_label, site_line1, site_city, customers(po_required), order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
-    .not("site_line1", "is", null).order("order_number").limit(40))) as unknown as Tmpl[]);
-  const tmpl = candidates.find((o) => o.customers && !o.customers.po_required && o.order_lines.some((l) => l.calc_method === "per_unit" && l.unit_code && Number(l.unit_rate_cents) > 0));
+  const tmpl = await billingTemplate(db);
   if (!tmpl) return 0;
-  const src = tmpl.order_lines.find((l) => l.calc_method === "per_unit" && l.unit_code && Number(l.unit_rate_cents) > 0)!;
-  const qty = 12;
-  const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
-  const drivers = ((await db.from("drivers").select("id").eq("active", true).order("name")).data ?? []) as Array<{ id: string }>;
-  const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((t) => t.id)];
   let n = 0;
   for (const [i, back] of [4, 6].entries()) {
     if (!needed[i]) continue;
-    let day = addDays(today, -back);
-    while ([0, 6].includes(new Date(`${day}T12:00:00Z`).getUTCDay())) day = addDays(day, -1); // a weekday
-    const o = (await must("billing order", db.rpc("save_order_draft", { p_payload: {
-      customer_id: tmpl.customer_id, order_date: day, project_name: `${tmpl.site_label ?? "Site"} · ${src.description}`,
-      job_instructions: "Demo: delivered exactly as ordered.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
-      lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: String(qty * 2), unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
-    } }))) as { order_id: string; order_number: string };
-    await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
-    await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
-    await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
-    const lineId = (((await must("line", db.from("order_lines").select("id").eq("order_id", o.order_id).limit(1))) as Array<{ id: string }>)[0]).id;
-    let delivered = 0;
-    for (const [k, [start, end]] of [["16:00", "16:45"], ["17:00", "17:45"]].entries()) {
-      const loadId = ((await must("billing load", db.rpc("save_order_load", { p_payload: { order_id: o.order_id, load_date: day, start_time: start, end_time: end, planned_quantity: String(qty), unit_code: src.unit_code } }))) as { load_id: string }).load_id;
-      // Any truck (with a trailer when it needs one) and driver the dispatch rules accept at that time.
-      let ok = false;
-      for (const t of trucks) {
-        for (const d of drivers) {
-          for (const tr of trailers) {
-            if (!(await demoAssign(db, { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: tr, p_driver_id: d.id, p_note: "" })).error) { ok = true; break; }
-          }
-          if (ok) break;
-        }
-        if (ok) break;
-      }
-      if (!ok) break;
-      const ticket = ((await must("billing ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: String(qty), unit_code: src.unit_code, external_reference: `DEMO-${o.order_number}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
-      await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
-      delivered++;
-    }
-    n += delivered;
-    if (delivered === 2 && i === 1) {
-      await must("hand off", db.rpc("hand_off_orders", { p_order_ids: [o.order_id], p_reference: "Demo batch", p_notes: "Demo: handed to billing; nothing is sent or exported.", p_submission_key: randomUUID() }));
+    const o = await deliveredOrder(db, tmpl, weekdayOnOrBefore(addDays(today, -back)), "Demo: delivered exactly as ordered.");
+    n += o.delivered;
+    if (o.delivered === 2 && i === 1) {
+      await must("hand off", db.rpc("hand_off_orders", { p_order_ids: [o.orderId], p_reference: "Demo batch", p_notes: "Demo: handed to billing; nothing is sent or exported.", p_submission_key: randomUUID() }));
       n++;
     }
   }
   return n;
+}
+
+/** The job note that marks the past-due sample order (pastDueOrder). */
+const PAST_DUE_NOTE = "Demo: delivered about six weeks ago; invoiced and not paid yet.";
+
+/**
+ * An honest past-due invoice (owner 2026-11-09): the demo's other deliveries are only days old, so an invoice past its
+ * 30-day terms needs an order delivered earlier. One small order delivered about six weeks ago, through the same real
+ * paths as the billing sample (tickets entered and accepted), handed off to billing; the invoice sample then dates its
+ * invoice the day after that delivery, so it is genuinely past due. Only while the demo has no invoices (existing demos
+ * keep theirs) and once (marked by its job note).
+ */
+async function pastDueOrder(db: Db, today: string): Promise<number> {
+  const invoices = await count(db, "invoices");
+  if (invoices === null || invoices > 0) return 0;
+  const done = await db.from("orders").select("id").eq("job_instructions", PAST_DUE_NOTE).limit(1);
+  if (done.error || (done.data ?? []).length) return 0;
+  const tmpl = await billingTemplate(db);
+  if (!tmpl) return 0;
+  const o = await deliveredOrder(db, tmpl, weekdayOnOrBefore(addDays(today, -46)), PAST_DUE_NOTE);
+  if (o.delivered !== 2) return o.delivered;
+  await must("hand off", db.rpc("hand_off_orders", { p_order_ids: [o.orderId], p_reference: "Demo batch", p_notes: "Demo: handed to billing; nothing is sent or exported.", p_submission_key: randomUUID() }));
+  return o.delivered + 1;
+}
+
+/** The weekday on or before a date. */
+function weekdayOnOrBefore(day: string): string {
+  let d = day;
+  while ([0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay())) d = addDays(d, -1);
+  return d;
+}
+
+type BillingLine = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
+type BillingTemplate = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; src: BillingLine };
+
+/** A per-unit line (rate included) of the demo's own orders, for a customer that needs no PO and a site with an address. */
+async function billingTemplate(db: Db): Promise<BillingTemplate | null> {
+  type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null; order_lines: BillingLine[] };
+  const candidates = ((await must("billing template", db.from("orders")
+    .select("customer_id, site_label, site_line1, site_city, customers(po_required), order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
+    .not("site_line1", "is", null).order("order_number").limit(40))) as unknown as Tmpl[]);
+  const usable = (l: BillingLine) => l.calc_method === "per_unit" && Boolean(l.unit_code) && Number(l.unit_rate_cents) > 0;
+  const tmpl = candidates.find((o) => o.customers && !o.customers.po_required && o.order_lines.some(usable));
+  if (!tmpl) return null;
+  return { customer_id: tmpl.customer_id, site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city, src: tmpl.order_lines.find(usable)! };
+}
+
+/**
+ * One order delivered exactly as ordered on `day`: confirmed, scheduled, two loads assigned (any truck, with a trailer
+ * when it needs one, and driver the dispatch rules accept at that time) and their tickets entered and accepted.
+ * Returns how many loads were delivered (stops at the first load nobody can take).
+ */
+async function deliveredOrder(db: Db, t: BillingTemplate, day: string, note: string): Promise<{ orderId: string; delivered: number }> {
+  const qty = 12;
+  const { src } = t;
+  const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
+  const drivers = ((await db.from("drivers").select("id").eq("active", true).order("name")).data ?? []) as Array<{ id: string }>;
+  const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((x) => x.id)];
+  const o = (await must("billing order", db.rpc("save_order_draft", { p_payload: {
+    customer_id: t.customer_id, order_date: day, project_name: `${t.site_label ?? "Site"} · ${src.description}`,
+    job_instructions: note, site_label: t.site_label, site_line1: t.site_line1, site_city: t.site_city,
+    lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: String(qty * 2), unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
+  } }))) as { order_id: string; order_number: string };
+  await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
+  await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
+  await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
+  const lineId = (((await must("line", db.from("order_lines").select("id").eq("order_id", o.order_id).limit(1))) as Array<{ id: string }>)[0]).id;
+  let delivered = 0;
+  for (const [k, [start, end]] of [["16:00", "16:45"], ["17:00", "17:45"]].entries()) {
+    const loadId = ((await must("billing load", db.rpc("save_order_load", { p_payload: { order_id: o.order_id, load_date: day, start_time: start, end_time: end, planned_quantity: String(qty), unit_code: src.unit_code } }))) as { load_id: string }).load_id;
+    let ok = false;
+    for (const tr of trucks) {
+      for (const d of drivers) {
+        for (const trailer of trailers) {
+          if (!(await demoAssign(db, { p_load_id: loadId, p_truck_id: tr.id, p_trailer_id: trailer, p_driver_id: d.id, p_note: "" })).error) { ok = true; break; }
+        }
+        if (ok) break;
+      }
+      if (ok) break;
+    }
+    if (!ok) break;
+    const ticket = ((await must("billing ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: String(qty), unit_code: src.unit_code, external_reference: `DEMO-${o.order_number}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
+    await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
+    delivered++;
+  }
+  return { orderId: o.order_id, delivered };
 }
 
 /**
@@ -780,17 +876,83 @@ async function trailerMaintenance(db: Db, today: string): Promise<number> {
   return 1;
 }
 
-/** Registrations (one expiring soon), an inspection due soon and an expired trailer registration. References are placeholders. */
+/**
+ * Registrations for every truck and trailer and an annual inspection due soon (it matches the sample "Annual inspection"
+ * schedule). All current: the one lapsed registration is added last, on equipment with no work booked
+ * (documentEdgeCases), so dispatch still proposes the working crews. References are placeholders.
+ */
 async function documents(db: Db, today: string, trucks: Array<{ id: string; unit_number: string }>): Promise<number> {
   if ((await count(db, "vehicle_documents")) !== 0 || !trucks.length) return 0;
-  const trailers = ((await db.from("trailers").select("id, unit_number").eq("active", true).order("unit_number").limit(1)).data ?? []) as Array<{ id: string; unit_number: string }>;
+  const trailers = ((await db.from("trailers").select("id, unit_number").eq("active", true).order("unit_number")).data ?? []) as Array<{ id: string; unit_number: string }>;
   const rows = [
-    ...trucks.map((t, i) => ({ truck_id: t.id, kind: "registration", title: "Registration", reference_number: `DEMO-REG-${t.unit_number}`, issuing_authority: "", expires_on: addDays(today, i === 1 ? 21 : 120 + (i % 8) * 20), submission_key: randomUUID() })),
+    ...trucks.map((t, i) => ({ truck_id: t.id, kind: "registration", title: "Registration", reference_number: `DEMO-REG-${t.unit_number}`, issuing_authority: "", expires_on: addDays(today, 120 + (i % 8) * 20), submission_key: randomUUID() })),
     { truck_id: trucks[0].id, kind: "inspection", title: "Annual inspection", reference_number: `DEMO-INSP-${trucks[0].unit_number}`, issuing_authority: "", expires_on: addDays(today, 15), submission_key: randomUUID() },
-    ...trailers.map((t) => ({ trailer_id: t.id, kind: "registration", title: "Trailer registration", reference_number: `DEMO-REG-${t.unit_number}`, issuing_authority: "", expires_on: addDays(today, -4), submission_key: randomUUID() })),
+    ...trailers.map((t, i) => ({ trailer_id: t.id, kind: "registration", title: "Trailer registration", reference_number: `DEMO-REG-${t.unit_number}`, issuing_authority: "", expires_on: addDays(today, 150 + (i % 6) * 25), submission_key: randomUUID() })),
   ];
   await must("documents", db.from("vehicle_documents").insert(rows));
   return rows.length;
+}
+
+/** Marks the one lapsed sample registration, so it is added once per demo (kept once renewed or archived in the demo). */
+const LAPSED_SAMPLE_NOTE = "Demo sample: lapsed on purpose, so the expired-document check shows.";
+/** Sample registrations and inspections written by the demo seeds (placeholders, never verified, no issuer). */
+const SAMPLE_DOCUMENT = /^(DEMO|PLF|CPF)-(REG|INSP)-/;
+
+/**
+ * Vehicle documents mostly valid with one realistic lapse (owner 2026-11-09). Expired documents keep a truck or trailer
+ * out of Smart Dispatch and Plan the day, so a lapse on equipment the crews use hid every tractor-and-trailer crew from
+ * proposals. Each refresh, on sample registrations and inspections only (seed references, unverified, no issuer or notes):
+ * 1. a lapsed one is renewed (earlier seeds lapsed a trailer the crews use; "due soon" samples lapse as a demo ages);
+ * 2. once per demo (marked by LAPSED_SAMPLE_NOTE), the equipment with the least work booked (a trailer before a truck)
+ *    gets one lapsed registration, so the expired-document rule is still shown: an untouched sample registration is set
+ *    lapsed, or one is added when it has none. Skipped while the demo already shows an expired document.
+ * Documents someone added or changed in the demo are never touched.
+ */
+async function documentEdgeCases(db: Db, today: string): Promise<number> {
+  type Doc = { id: string; truck_id: string | null; trailer_id: string | null; kind: string; reference_number: string; expires_on: string | null; verified_at: string | null; issuing_authority: string; notes: string; created_at: string; updated_at: string };
+  const read = await db.from("vehicle_documents").select("id, truck_id, trailer_id, kind, reference_number, expires_on, verified_at, issuing_authority, notes, created_at, updated_at").is("archived_at", null);
+  if (missing(read.error) || read.error) return 0;
+  const docs = (read.data ?? []) as Doc[];
+  const sample = (d: Doc) => ["registration", "inspection"].includes(d.kind) && SAMPLE_DOCUMENT.test(d.reference_number) && !d.verified_at && d.issuing_authority === "" && d.notes === "";
+  const booked = new Map<string, number>();
+  const work = await db.from("dispatch_assignments").select("truck_id, trailer_id, order_loads!inner(load_date)").eq("status", "active").gte("order_loads.load_date", today).limit(2000);
+  for (const a of (work.data ?? []) as Array<{ truck_id: string | null; trailer_id: string | null }>) {
+    for (const id of [a.truck_id, a.trailer_id]) if (id) booked.set(id, (booked.get(id) ?? 0) + 1);
+  }
+  const vehicle = (d: { truck_id: string | null; trailer_id: string | null }) => (d.truck_id ?? d.trailer_id) as string;
+  let n = 0;
+  for (const d of docs.filter((x) => sample(x) && x.expires_on !== null && x.expires_on < today)) {
+    const renewed = addDays(today, d.kind === "inspection" ? 365 : 200);
+    await must("renew sample document", db.from("vehicle_documents").update({ expires_on: renewed }).eq("id", d.id));
+    d.expires_on = renewed;
+    d.updated_at = ""; // changed now: no longer an untouched sample
+    n++;
+  }
+  const marked = await db.from("vehicle_documents").select("id").eq("notes", LAPSED_SAMPLE_NOTE).limit(1);
+  if (marked.error || (marked.data ?? []).length) return n;
+  if (docs.some((d) => d.expires_on !== null && d.expires_on < today)) return n;
+  const [trailers, trucks] = await Promise.all([
+    db.from("trailers").select("id, unit_number").eq("active", true).eq("service_status", "in_service"),
+    db.from("trucks").select("id, unit_number").eq("active", true).eq("service_status", "in_service").is("hauler_id", null),
+  ]);
+  const candidates = [
+    ...((trailers.data ?? []) as Array<{ id: string; unit_number: string }>).map((v) => ({ ...v, trailer: true })),
+    ...((trucks.data ?? []) as Array<{ id: string; unit_number: string }>).map((v) => ({ ...v, trailer: false })),
+  ].sort((a, b) => (booked.get(a.id) ?? 0) - (booked.get(b.id) ?? 0) || Number(b.trailer) - Number(a.trailer) || b.unit_number.localeCompare(a.unit_number));
+  const lapsed = addDays(today, -4);
+  for (const v of candidates) {
+    const own = docs.filter((d) => vehicle(d) === v.id && d.kind === "registration");
+    if (!own.length) {
+      await must("lapsed sample registration", db.from("vehicle_documents").insert({ ...(v.trailer ? { trailer_id: v.id } : { truck_id: v.id }), kind: "registration", title: v.trailer ? "Trailer registration" : "Registration", reference_number: `DEMO-REG-${v.unit_number}`, issuing_authority: "", expires_on: lapsed, notes: LAPSED_SAMPLE_NOTE, submission_key: randomUUID() }));
+      return n + 1;
+    }
+    const untouched = own.length === 1 && sample(own[0]) && own[0].created_at === own[0].updated_at ? own[0] : null;
+    if (untouched) {
+      await must("lapsed sample registration", db.from("vehicle_documents").update({ expires_on: lapsed, notes: LAPSED_SAMPLE_NOTE }).eq("id", untouched.id));
+      return n + 1;
+    }
+  }
+  return n;
 }
 
 /**
@@ -1178,10 +1340,11 @@ async function workspace(db: Db, today: string, me: string): Promise<number> {
 
 /**
  * Customer portal (20261120000700): entitle and open the demo's portal with a public page, plus a few published help
- * articles. Entitlement is the platform owner's call (platform_portal_set_entitlement) and the person refreshing a demo
- * is the platform owner; for anyone else it is skipped. The company's own portal choices are never overwritten.
+ * articles. Entitlement is the platform owner's call (platform_portal_set_entitlement): when the person refreshing may
+ * not set it, the portal stays closed and the refresh report says so (PORTAL_NOT_OPENED). The company's own portal
+ * choices are never overwritten.
  */
-async function customerPortal(db: Db): Promise<number> {
+async function customerPortal(db: Db, notes: string[]): Promise<number> {
   const state = await db.rpc("portal_admin_state");
   if (missing(state.error)) return 0;
   let added = 0;
@@ -1196,6 +1359,7 @@ async function customerPortal(db: Db): Promise<number> {
       entitled = true;
     }
   }
+  if (!entitled) notes.push(PORTAL_NOT_OPENED);
   // Settings only once the demo is entitled (a company cannot turn on a portal it is not entitled to).
   if (entitled && !s.settings) {
     const r = await db.rpc("portal_save_settings", {

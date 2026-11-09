@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { SiteInfoForm } from "@/components/portal/site-info-form";
+import type { PortalSiteNote } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Job Sites" };
 
-type Site = { id: string; label: string; address: string; pending: number };
+/** pending_notes: the notes still waiting for the office (20261120011500); absent before that update. */
+type Site = { id: string; label: string; address: string; pending: number; pending_notes?: PortalSiteNote[] };
 
 /** The customer's job sites (B94): tell the hauler the gate code, drop spot and contact once, with photos. */
 export default async function PortalSites({ params }: { params: Promise<{ slug: string }> }) {
@@ -25,7 +27,7 @@ export default async function PortalSites({ params }: { params: Promise<{ slug: 
         sites.map((s) => (
           <Card key={s.id}>
             <CardHeader title={s.label} description={[s.address, s.pending ? `${s.pending} note${s.pending === 1 ? "" : "s"} waiting for the office` : ""].filter(Boolean).join(" · ")} />
-            <CardBody><SiteInfoForm slug={slug} siteId={s.id} siteLabel={s.label} /></CardBody>
+            <CardBody><SiteInfoForm slug={slug} siteId={s.id} siteLabel={s.label} waiting={s.pending_notes} timeZone={c.timezone} /></CardBody>
           </Card>
         ))
       )}

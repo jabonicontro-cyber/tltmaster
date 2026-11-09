@@ -54,7 +54,7 @@ export const PRIORITY_LABELS: Record<number, string> = { 1: "Urgent", 2: "High",
 /** How priority is decided (shown on the page; mirrors the SQL). */
 export const PRIORITY_RULES = [
   "Urgent: an order flagged urgent that dispatch has not acknowledged yet (or past its needed-by time), a confirmed order without a delivery date that the customer wants by tomorrow, a load today with no truck, an upcoming load (today or tomorrow) whose assignment the dispatch rules would now refuse, or a new driver report of a breakdown or a load that cannot be completed.",
-  "High: an urgent order being worked on (acknowledged, evaluating, waiting or blocked), an unscheduled order requested within a week or confirmed more than two days ago, a delivered load without a ticket, a ticket flagged for review, a later assignment problem, equipment out of service with loads booked on it, or another new driver report.",
+  "High: an urgent order being worked on (acknowledged, evaluating, waiting or blocked), an unscheduled order requested within a week or confirmed more than two days ago, a past load that no truck ran (Dispatch assigns or cancels it), a delivered load without a ticket, a ticket flagged for review, a later assignment problem, equipment out of service with loads booked on it, or another new driver report.",
   "Normal: an urgent order with a truck assigned and not resolved yet, any other confirmed order without a delivery date, a ticket waiting for acceptance, an order blocked from billing by unacknowledged differences, equipment out of service with nothing booked, or a driver report already acknowledged.",
 ];
 
@@ -135,6 +135,8 @@ export function exceptionTitle(e: ExceptionItem): string {
     case "missing_ticket":
       return `${loadRef(e)} has no delivery ticket`;
     case "unassigned_load":
+      // A past load no truck ran (20261120011600) is Dispatch's to assign or cancel, not a ticket to enter.
+      if (e.details.past) return e.reasons.includes("assignment_removed") ? `${loadRef(e)} ended without a truck` : `${loadRef(e)} was never assigned a truck`;
       return `${loadRef(e)} today has no truck`;
     case "ticket_review":
       return `Ticket ${e.ticket_number} (${loadRef(e)}) ${e.details.status === "needs_review" ? "needs review" : "awaits acceptance"}`;
@@ -164,6 +166,9 @@ export function exceptionReasons(e: ExceptionItem): string[] {
     if (e.details.requested_date) out.push(`Requested for ${formatDate(String(e.details.requested_date))}.`);
     if (e.details.project_name) out.push(`Job: ${String(e.details.project_name)}`);
   }
+  if (e.kind === "unassigned_load" && e.details.past) {
+    out.push(`Its time has passed${e.load_date ? ` (${formatDate(e.load_date)})` : ""}: assign the truck that ran it, or cancel the load if it did not run.`);
+  }
   if (e.kind === "billing_blocked" && typeof e.details.exceptions_count === "number") {
     out.push(`${e.details.exceptions_count} difference${e.details.exceptions_count === 1 ? "" : "s"} to acknowledge.`);
   }
@@ -190,6 +195,7 @@ export function exceptionAction(e: ExceptionItem, can: { ticketsEdit: boolean; d
       if (can.dispatch) return { label: e.assignment_id ? "Open the load" : "Assign or cancel the load", href: board(e.load_date, e.load_id) };
       return { label: "Open the billing order", href: `/billing/orders/${e.order_id}` };
     case "unassigned_load":
+      if (e.details.past) return can.dispatch ? { label: "Assign or cancel the load", href: board(e.load_date, e.load_id) } : { label: "Open the order", href: `/orders/${e.order_id}` };
       return { label: "Assign a truck", href: board(e.load_date, e.load_id) };
     case "order_unscheduled":
       return can.dispatch ? { label: "Schedule it", href: "/dispatch#needs-scheduling" } : { label: "Open the order", href: `/orders/${e.order_id}` };

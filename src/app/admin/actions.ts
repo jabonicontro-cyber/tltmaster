@@ -11,6 +11,7 @@ import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { FREIGHT_DEMO, refreshFreightDemo, seedFreightDemo } from "@/server/demo/freight-demo";
 import { seedDemoCompany } from "@/server/demo/seed";
 import { refreshNorthfield } from "@/server/demo/northfield-refresh";
+import { PORTAL_NOT_OPENED, refreshSummary } from "@/server/demo/samples";
 import { withDemoRefreshLock } from "@/server/demo/auto-refresh";
 import { dbErrorMessage } from "@/server/errors";
 import { readImportForm } from "@/server/imports";
@@ -223,7 +224,7 @@ export async function refreshProspectDemo(formData: FormData) {
   if (name !== PRAIRIE_LANTERN.name && name !== FREIGHT_DEMO.name) back("/admin/demo", `Refresh is available for the ${PRAIRIE_LANTERN.name} and ${FREIGHT_DEMO.name} demos.`);
   const sw = await supabase.rpc("switch_company", { p_company_id: id.data });
   if (sw.error) back("/admin/demo", "You are no longer a member of this demo, so it cannot be refreshed from here.");
-  let r: { added: number; loads: number } = { added: 0, loads: 0 };
+  let r: { added: number; loads: number; notes?: string[] } = { added: 0, loads: 0 };
   try {
     r = await withDemoRefreshLock(supabase, () => (name === FREIGHT_DEMO.name ? refreshFreightDemo(supabase) : refreshPrairieLantern(supabase)));
   } catch (e) {
@@ -231,9 +232,9 @@ export async function refreshProspectDemo(formData: FormData) {
     await recordRefresh(supabase, id.data ?? null, false, message);
     back("/admin/demo", message);
   }
-  await recordRefresh(supabase, id.data ?? null, true, `${r.loads} loads and ${r.added} missing records added`);
+  await recordRefresh(supabase, id.data ?? null, true, refreshSummary(r));
   revalidatePath("/", "layout");
-  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
+  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}${r.notes?.includes(PORTAL_NOT_OPENED) ? "&portal=closed" : ""}`);
 }
 
 /**
@@ -247,7 +248,7 @@ export async function refreshPresenterDemo() {
   // The presenter demo the platform admin is now in (platform_demo_enter switched to it).
   const { data: me } = await supabase.rpc("my_access");
   const company = (me as { company_id?: string | null } | null)?.company_id ?? null;
-  let r: { added: number; loads: number } = { added: 0, loads: 0 };
+  let r: { added: number; loads: number; notes?: string[] } = { added: 0, loads: 0 };
   try {
     r = await withDemoRefreshLock(supabase, () => refreshNorthfield(supabase));
   } catch (e) {
@@ -255,9 +256,9 @@ export async function refreshPresenterDemo() {
     await recordRefresh(supabase, company, false, message);
     back("/admin/demo", message);
   }
-  await recordRefresh(supabase, company, true, `${r.loads} loads and ${r.added} missing records added`);
+  await recordRefresh(supabase, company, true, refreshSummary(r));
   revalidatePath("/", "layout");
-  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}`);
+  redirect(`/admin/demo?saved=refreshed&loads=${r.loads}&added=${r.added}${r.notes?.includes(PORTAL_NOT_OPENED) ? "&portal=closed" : ""}`);
 }
 
 /** Retire a prospect demo (kept, inactive) so a fresh one can be created. */

@@ -5,7 +5,7 @@ import { refreshNorthfield } from "./northfield-refresh";
 import { PRAIRIE_LANTERN } from "./prairie-lantern";
 import { refreshPrairieLantern } from "./prairie-lantern-refresh";
 import { FREIGHT_DEMO, refreshFreightDemo } from "./freight-demo";
-import { ensureFeatureSamples } from "./samples";
+import { ensureFeatureSamples, refreshSummary } from "./samples";
 
 // Demos refresh themselves (owner 2026-10-25; migration 20261120002800). When a demo owner opens a demo company, the
 // same additive refresh as Admin → Demo → "Refresh demo data" runs after the page is sent, once per deployed version,
@@ -45,16 +45,16 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
   try {
     if (c.demo_kind === "presenter") {
       const r = await refreshNorthfield(db);
-      summary = `${r.loads} loads and ${r.added} missing records added`;
+      summary = refreshSummary(r);
     } else if (c.name === PRAIRIE_LANTERN.name) {
       const r = await refreshPrairieLantern(db, timeZone);
-      summary = `${r.loads} loads and ${r.added} missing records added`;
+      summary = refreshSummary(r);
     } else if (c.name === FREIGHT_DEMO.name) {
       const r = await refreshFreightDemo(db, timeZone);
-      summary = `${r.loads} loads and ${r.added} missing records added`;
+      summary = refreshSummary(r);
     } else {
       const r = await ensureFeatureSamples(db, day);
-      summary = `${r.added} missing records added`;
+      summary = refreshSummary({ added: r.added, notes: r.notes });
     }
   } catch (e) {
     ok = false;

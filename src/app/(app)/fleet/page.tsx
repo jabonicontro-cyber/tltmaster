@@ -15,6 +15,7 @@ import { qualificationName, TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS } from "@/lib
 import { requirePagePermission } from "@/server/auth";
 import { driverOptions, fleetContext, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
 import { documentAttention } from "@/lib/fleet/availability";
+import { driverReadyCaption } from "@/lib/fleet/readiness";
 import { CappedList } from "@/components/ui/capped-list";
 import { Badge } from "@/components/ui/badge";
 import { can } from "@/lib/permissions";
@@ -99,8 +100,13 @@ export default async function FleetPage() {
           <ul className="mt-4 grid grid-cols-3 gap-2">
             <li><Link href="/fleet/trucks?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><ReadyRing kind="truck" s={o.trucks} /></Link></li>
             <li><Link href="/fleet/trailers?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><ReadyRing kind="trailer" s={o.trailers} /></Link></li>
-            <li><Link href="/fleet/drivers?status=ready" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.drivers.ready} whole={o.drivers.active} label="Drivers eligible today" caption="Verified CDL and medical card" tone={o.drivers.notReady.length > 0 ? "amber" : "green"} /></Link></li>
+            <li><Link href="/fleet/drivers?status=ready" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.drivers.today.ready} whole={o.drivers.today.total} label="Drivers ready today" caption={driverReadyCaption(o.drivers.today, o.drivers.timeOffChecked)} tone={o.drivers.today.ready < o.drivers.today.total ? "amber" : "green"} /></Link></li>
           </ul>
+          {o.drivers.today.hired.total > 0 && (
+            <p className="mt-3 text-sm text-muted">
+              <Link href="/fleet/drivers?status=hired" className="underline-offset-2 hover:underline">Hired trucks: <span className="font-semibold text-ink tabular">{o.drivers.today.hired.ready}</span> of {plural(o.drivers.today.hired.total, "driver")} ready</Link> (counted apart, not in your drivers).
+            </p>
+          )}
         </section>
         <Stat icon={<Wrench className="size-5" />} label="Out of service" value={down.length} sub={`${plural(o.trucks.outOfService.length, "truck")} · ${plural(o.trailers.outOfService.length, "trailer")}`} href={o.trucks.outOfService.length === 0 && o.trailers.outOfService.length > 0 ? "/fleet/trailers?status=out_of_service" : "/fleet/trucks?status=out_of_service"} warn={down.length > 0} />
       </div>

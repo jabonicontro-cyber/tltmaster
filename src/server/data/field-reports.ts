@@ -49,3 +49,15 @@ export async function getFieldReport(id: string) {
   if (error) throw new Error(`Could not load the report: ${error.message}`);
   return (data ?? null) as FieldReportRow | null;
 }
+
+/**
+ * The photos the driver added to a report (migration 20261120011100), oldest first, read with the viewer's own session
+ * (visible exactly when the report is). Null before the migration is installed.
+ */
+export async function fieldReportPhotos(reportId: string): Promise<Array<{ id: string; created_at: string }> | null> {
+  if (!uuid.safeParse(reportId).success) return [];
+  const { data, error } = await (await createClient()).from("field_report_photos").select("id, created_at")
+    .eq("report_id", reportId).is("failed_at", null).order("created_at").limit(20);
+  if (error) return null;
+  return (data ?? []) as Array<{ id: string; created_at: string }>;
+}

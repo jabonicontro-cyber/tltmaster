@@ -1,13 +1,14 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import { documentAttention, vehicleAvailability, type DocumentKind, type OpenWorkOrder } from "@/lib/fleet/availability";
-import { vehicleReadyOn, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
+import { driverReadyOn, summarizeDriversReady, vehicleReadyOn, type DriverDayReadiness, type ReadinessTimeOff, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
 import type { EquipmentRowExtra } from "@/components/fleet/equipment-views";
 import { driverReadiness, EXPIRY_WARNING_DAYS } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { uuid } from "@/lib/schemas/common";
 import { createClient } from "@/server/supabase/server";
 import { parseBaseFilter } from "@/server/data/bases";
+import { hiredIds } from "./hired-trucks";
 import { getUserNames } from "./quotes";
 import { ilikePattern } from "./search";
 import { businessToday } from "./settings";
@@ -113,17 +114,33 @@ export async function getTrailer(id: string) {
 
 export interface DriverWithReadiness extends DriverListRow {
   qualifications: QualificationRow[];
+  /** Qualifications only (dispatch eligibility without a truck). */
   readiness: ReturnType<typeof driverReadiness>;
+  /** Ready today by the shared driver rule (src/lib/fleet/readiness.ts): qualified and not on full-day time off. */
+  today: DriverDayReadiness;
+  /** A hired-truck (hauler) driver: counted apart, never in the company's own ready count. */
+  hired: boolean;
 }
 
 export interface DriverFilters {
   q?: string;
-  /** "", "ready", "not_ready", "inactive", "all" — default lists active drivers */
+  /** "", "ready", "not_ready", "hired", "inactive", "all" — default lists active drivers. Ready / not ready: own drivers today. */
   status?: string;
   base?: string;
 }
 
-export async function listDrivers(filters: DriverFilters): Promise<{ rows: DriverWithReadiness[]; today: string }> {
+/**
+ * Today's approved and pending time off of every driver, for the shared driver rule. Needs dispatch.view
+ * (dispatch_time_off); without it, or before the time-off update, `checked` is false and nobody counts as off.
+ */
+async function driverTimeOffToday(today: string): Promise<{ rows: ReadinessTimeOff[]; checked: boolean }> {
+  const supabase = await createClient();
+  const r = await supabase.rpc("dispatch_time_off", { p_from: today, p_to: today });
+  if (r.error) return { rows: [], checked: false };
+  return { rows: (r.data ?? []) as ReadinessTimeOff[], checked: true };
+}
+
+export async function listDrivers(filters: DriverFilters): Promise<{ rows: DriverWithReadiness[]; today: string; timeOffChecked: boolean; timeOff: ReadinessTimeOff[] }> {
   const supabase = await createClient();
   let query = supabase.from("driver_list").select("*").order("display_name");
   const pattern = ilikePattern(filters.q);
@@ -132,10 +149,12 @@ export async function listDrivers(filters: DriverFilters): Promise<{ rows: Drive
   else if (filters.status !== "all") query = query.eq("active", true);
   const base = parseBaseFilter(filters.base);
   if (base) query = query.eq("base_id", base);
-  const [{ data, error }, quals, { today }] = await Promise.all([
+  const { today } = await businessToday();
+  const [{ data, error }, quals, hired, leave] = await Promise.all([
     query.limit(500),
     supabase.from("driver_qualifications").select("*").order("expires_on", { ascending: true, nullsFirst: true }),
-    businessToday(),
+    hiredIds(),
+    driverTimeOffToday(today),
   ]);
   if (error) throw new Error(`Could not load drivers: ${error.message}`);
   if (quals.error) throw new Error(`Could not load qualifications: ${quals.error.message}`);
@@ -143,11 +162,19 @@ export async function listDrivers(filters: DriverFilters): Promise<{ rows: Drive
   for (const q of (quals.data ?? []) as QualificationRow[]) byDriver.set(q.driver_id, [...(byDriver.get(q.driver_id) ?? []), q]);
   let rows = ((data ?? []) as DriverListRow[]).map((d) => {
     const qualifications = byDriver.get(d.id) ?? [];
-    return { ...d, qualifications, readiness: driverReadiness({ active: d.active, qualifications }, today) };
+    const isHired = hired.drivers.has(d.id);
+    return {
+      ...d,
+      qualifications,
+      readiness: driverReadiness({ active: d.active, qualifications }, today),
+      today: driverReadyOn({ id: d.id, active: d.active, qualifications, hired: isHired }, leave.rows, today),
+      hired: isHired,
+    };
   });
-  if (filters.status === "ready") rows = rows.filter((d) => d.readiness.eligible);
-  if (filters.status === "not_ready") rows = rows.filter((d) => !d.readiness.eligible);
-  return { rows, today };
+  if (filters.status === "ready") rows = rows.filter((d) => !d.hired && d.today.ready);
+  if (filters.status === "not_ready") rows = rows.filter((d) => !d.hired && !d.today.ready);
+  if (filters.status === "hired") rows = rows.filter((d) => d.hired);
+  return { rows, today, timeOffChecked: leave.checked, timeOff: leave.rows };
 }
 
 export async function driverOptions() {
@@ -250,8 +277,13 @@ export async function fleetOverview(opts: { shop?: "maintenance" | "dispatch" | 
     trucks: summarize((trucks.data ?? []) as Eq[], "truck"),
     trailers: summarize((trailers.data ?? []) as Eq[], "trailer"),
     drivers: {
+      /** Every active driver, hired ones included. */
       active: drivers.rows.length,
-      ready: drivers.rows.filter((d) => d.readiness.eligible).length,
+      /** Today by the shared driver rule: own drivers (total, ready, not qualified, off) and hired drivers apart. */
+      today: summarizeDriversReady(drivers.rows.map((d) => ({ id: d.id, active: d.active, qualifications: d.qualifications, hired: d.hired })), drivers.timeOff, today),
+      /** Whether time off was read (dispatch.view); without it nobody counts as off. */
+      timeOffChecked: drivers.timeOffChecked,
+      /** Not qualified today (qualifications), for the attention list. */
       notReady: drivers.rows.filter((d) => !d.readiness.eligible),
     },
     expiring,
@@ -358,7 +390,8 @@ export interface VehicleRecords {
   assignments: Optional<{ id: string; driver_id: string; action: "assigned" | "unassigned"; actor_id: string | null; created_at: string }>;
   workOrders: Optional<{ id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; clearance_status: string | null; created_at: string; completed_at: string | null; cleared_at: string | null }>;
   schedules: Optional<{ schedule_id: string; truck_id: string; name: string; state: string; next_due_on: string | null; next_due_miles: number | null; next_due_hours: number | null; readings_stale: boolean }>;
-  readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null }>;
+  /** `source` (20261120012200): where the reading was entered; absent before that update. */
+  readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null; source?: string }>;
   costs: Optional<{ work_order_id: string; quantity: number; unit_cost_cents: number }>;
   driverNames: Map<string, string>;
 }
@@ -375,7 +408,7 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
     // Trailer work orders need 20261115000100; before it the query fails and the card says history is unavailable.
     opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => supabase.from("work_orders").select("id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at").eq(column, id).order("created_at", { ascending: false }).limit(100)) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["schedules"]["rows"][number]>(() => supabase.rpc("maintenance_pm_status")) : none,
-    isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("id, odometer_miles, engine_hours, read_at, recorded_by").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
+    isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("*").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
   ]);
   const woIds = workOrders.rows.map((w) => w.id);
   const costs = opts.costs && woIds.length

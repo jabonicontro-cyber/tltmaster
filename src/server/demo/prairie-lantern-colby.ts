@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
 import { demoAssign } from "./assign";
+import { savePeople } from "./people";
 
 /**
  * Personal touches for Colby Chapman's own demo, Prairie Lantern Freight (owner request 2026-10-14). Colby is not a
@@ -72,12 +73,14 @@ export async function ensureColbySamples(db: Db, today: string): Promise<number>
     ]));
     added++;
   }
-  const emp = await db.from("employees").select("id").eq("full_name", CAM_WEBSTER.name).maybeSingle();
-  if (!emp.error && !emp.data) {
-    const row: Record<string, unknown> = { full_name: CAM_WEBSTER.name, job_title: CAM_WEBSTER.title, department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -240), driver_id: cam, user_id: null, work_email: "", work_phone: "" };
+  // His People record: the database adds one with the driver (migration 20261120010000); fill in the title once.
+  const emp = await db.from("employees").select("id, job_title").eq("driver_id", cam).maybeSingle();
+  const named = emp.data ? null : await db.from("employees").select("id").eq("full_name", CAM_WEBSTER.name).maybeSingle();
+  if (!emp.error && !named?.data && !(emp.data as { job_title: string } | null)?.job_title) {
+    const row = { full_name: CAM_WEBSTER.name, job_title: CAM_WEBSTER.title, department: "operations", employment_type: "full_time", status: "active", hire_date: addDays(today, -240), driver_id: cam, user_id: null, work_email: "", work_phone: "" };
     const withAvatar = !(await db.from("employees").select("avatar_key").limit(1)).error;
-    await must("employee", db.from("employees").insert(withAvatar ? { ...row, avatar_key: CAM_WEBSTER.avatar } : row));
-    added++;
+    await savePeople(db, [withAvatar ? { ...row, avatar_key: CAM_WEBSTER.avatar } : row]);
+    if (!emp.data) added++;
   }
 
   // One order per lane, only when that customer has none yet.
