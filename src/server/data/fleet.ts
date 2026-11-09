@@ -1,6 +1,7 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import { documentAttention, vehicleAvailability, type DocumentKind, type OpenWorkOrder } from "@/lib/fleet/availability";
+import { vehicleReadyOn, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
 import type { EquipmentRowExtra } from "@/components/fleet/equipment-views";
 import { driverReadiness, EXPIRY_WARNING_DAYS } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
@@ -193,21 +194,47 @@ export async function linkableUsers(currentUserId: string | null = null) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function fleetOverview() {
+/**
+ * Fleet at a glance. `shop` says how this person may read today's shop work for the shared readiness rule
+ * (src/lib/fleet/readiness.ts): "maintenance" reads open work orders (RLS: maintenance.view), "dispatch" the dispatch
+ * shop schedule (dispatch.view). Without either, readiness is not computed (`readyToday` is null) rather than guessed.
+ */
+export async function fleetOverview(opts: { shop?: "maintenance" | "dispatch" | null } = {}) {
   const supabase = await createClient();
   const { today } = await businessToday();
-  const [trucks, trailers, drivers] = await Promise.all([
+  type ShopRow = ReadinessWorkOrder & { truck_id: string | null; trailer_id: string | null };
+  const shopRead = async (): Promise<ShopRow[] | null> => {
+    if (opts.shop === "maintenance") {
+      const r = await supabase.from("work_orders").select("truck_id, trailer_id, number, status, scheduled_for, safety_critical")
+        .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(2000);
+      return r.error ? null : ((r.data ?? []) as ShopRow[]);
+    }
+    if (opts.shop === "dispatch") {
+      const r = await supabase.rpc("dispatch_shop_schedule", { p_from: today, p_to: today });
+      return r.error ? null : ((r.data ?? []) as ShopRow[]);
+    }
+    return null;
+  };
+  const [trucks, trailers, drivers, shop] = await Promise.all([
     supabase.from("trucks").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date, weight_capacity, volume_capacity, capacity_verified_at"),
     supabase.from("trailers").select("id, unit_number, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date, weight_capacity, volume_capacity, capacity_verified_at"),
     listDrivers({}),
+    shopRead(),
   ]);
   if (trucks.error || trailers.error) throw new Error("Could not load the fleet.");
   type Eq = Pick<TruckRow, "id" | "unit_number" | "active" | "service_status" | "out_of_service_reason" | "out_of_service_since" | "expected_return_date" | "weight_capacity" | "volume_capacity" | "capacity_verified_at">;
-  const summarize = (rows: Eq[]) => {
+  const summarize = (rows: Eq[], kind: "truck" | "trailer") => {
     const active = rows.filter((r) => r.active);
+    const byUnit = new Map<string, ShopRow[]>();
+    for (const w of shop ?? []) {
+      const id = kind === "truck" ? w.truck_id : w.trailer_id;
+      if (id) byUnit.set(id, [...(byUnit.get(id) ?? []), w]);
+    }
     return {
       active: active.length,
       inService: active.filter((r) => r.service_status === "in_service").length,
+      /** Can run today by the shared readiness rule; null when shop work could not be read. */
+      readyToday: shop === null ? null : active.filter((r) => vehicleReadyOn(r, byUnit.get(r.id) ?? [], today, today).ready).length,
       outOfService: active.filter((r) => r.service_status === "out_of_service"),
       capacityUnknown: active.filter((r) => r.weight_capacity === null && r.volume_capacity === null).length,
       capacityUnverified: active.filter((r) => (r.weight_capacity !== null || r.volume_capacity !== null) && !r.capacity_verified_at).length,
@@ -220,8 +247,8 @@ export async function fleetOverview() {
   expiring.sort((a, b) => (a.qualification.expires_on! < b.qualification.expires_on! ? -1 : 1));
   return {
     today,
-    trucks: summarize((trucks.data ?? []) as Eq[]),
-    trailers: summarize((trailers.data ?? []) as Eq[]),
+    trucks: summarize((trucks.data ?? []) as Eq[], "truck"),
+    trailers: summarize((trailers.data ?? []) as Eq[], "trailer"),
     drivers: {
       active: drivers.rows.length,
       ready: drivers.rows.filter((d) => d.readiness.eligible).length,

@@ -57,6 +57,29 @@ describe("Taviron Live outlook", () => {
     expect(steps[1].text).toContain("today");
   });
 
+  it("counts shop work in progress as down every day, loads on a trailer that cannot run as conflicts, and leaves out loads that ended", () => {
+    const o = buildOutlook(base({
+      today: "2026-10-18",
+      now: new Date("2026-10-18T15:00:00Z"),
+      trailers: [{ id: "r1", service_status: "in_service", expected_return_date: null }],
+      shop: [
+        { truck_id: "t1", status: "in_progress", scheduled_for: null, safety_critical: false },
+        { truck_id: null, trailer_id: "r1", status: "awaiting_parts", scheduled_for: null, safety_critical: false },
+      ],
+      loads: [
+        { id: "a", load_date: "2026-10-18", truck_id: "t1", ends_at: "2026-10-18T20:00:00Z", revenue_cents: null },
+        { id: "b", load_date: "2026-10-18", truck_id: "t1", ends_at: "2026-10-18T10:00:00Z", revenue_cents: null }, // already ended
+        { id: "c", load_date: "2026-10-18", truck_id: null, ends_at: "2026-10-18T09:00:00Z", revenue_cents: null }, // ended, never covered
+        { id: "d", load_date: "2026-10-19", truck_id: "t2", trailer_id: "r1", revenue_cents: null },
+      ],
+    }));
+    expect(o.map((d) => d.downReasons.shop)).toEqual([1, 1, 1]);
+    expect(o.map((d) => [d.loads, d.unassigned, d.conflicts])).toEqual([[3, 0, 1], [1, 0, 1], [0, 0, 0]]);
+    // Out of service today regardless of the expected return date; from it on later days.
+    const t3 = { id: "t3", service_status: "out_of_service", expected_return_date: "2026-10-18" };
+    expect([truckDownReason(t3, "2026-10-18", new Map(), "2026-10-18"), truckDownReason(t3, "2026-10-19", new Map(), "2026-10-18")]).toEqual(["out_of_service", null]);
+  });
+
   it("counts drivers off only for approved full days; partial days and pending requests are shown apart", () => {
     const o = buildOutlook(base({
       timeOff: [

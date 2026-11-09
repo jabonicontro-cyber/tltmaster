@@ -84,7 +84,7 @@ export async function getDispatchResources(date: string) {
       id: t.id,
       unit_number: t.unit_number,
       truck_type: t.truck_type,
-      availability: vehicleAvailability(t, wos, date),
+      availability: vehicleAvailability(t, wos, date, today),
       shopToday: wos.find((w) => w.scheduled_for === date && w.status !== "awaiting_inspection") ?? null,
       bookings: bookings.filter((b) => b.truck_id === t.id),
       driver: holderId ? { id: holderId, name: names.get(holderId) ?? "Driver" } : null,

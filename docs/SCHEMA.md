@@ -207,7 +207,14 @@ sample quotes, and direct orders of sample customers, are removed with the sampl
 - **Eligibility**: `check_assignment_eligibility(truck, trailer, driver, on)`
   (`fleet.view`) returns `{eligible, blockers[], warnings[]}` — rules in
   docs/IMPLEMENTATION_PLAN.md §5b; helpers `private.qualification_check`,
-  `private.cdl_class_rank`.
+  `private.cdl_class_rank`. Shop work (owner decision 2026-11-09, migration
+  `20261120009800`): an open safety-critical work order (`*_safety_restricted`),
+  a work order scheduled for the load date that is not finished
+  (`*_shop_scheduled`), and shop work in progress or waiting for parts on any
+  date (`*_shop_work_open`) are all blockers for the truck or trailer. The app
+  applies the same rule everywhere through `src/lib/fleet/readiness.ts`
+  (out of service: not ready today; on a later day ready from the expected
+  return date, a planning projection only).
 - **History**: audit triggers on every fleet table; fleet audit entries are
   readable with `fleet.view` (policy `audit_read_fleet`).
 

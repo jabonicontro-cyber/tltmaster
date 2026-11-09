@@ -149,8 +149,8 @@ describe("Smart Dispatch recommendations", () => {
 });
 
 describe("Smart Dispatch and maintenance / hours of service", () => {
-  it("excludes a truck in the shop on the load date or under a safety restriction, and warns about open shop work", () => {
-    const trucks = [truck("101"), truck("102"), truck("103")];
+  it("excludes a truck in the shop on the load date, under a safety restriction, or with shop work in progress (WK1)", () => {
+    const trucks = [truck("101"), truck("102"), truck("103"), truck("104")];
     const shopVisits = [
       { truck_id: "t-101", number: "WO-1", status: "scheduled", scheduled_for: TODAY, safety_critical: false },
       { truck_id: "t-102", number: "WO-2", status: "in_progress", scheduled_for: null, safety_critical: true },
@@ -160,8 +160,9 @@ describe("Smart Dispatch and maintenance / hours of service", () => {
     const why = Object.fromEntries(p.excludedTrucks.map((x) => [x.label, x.reasons.join(" ")]));
     expect(why["101"]).toMatch(/In the shop on this date \(WO-1\)/);
     expect(why["102"]).toMatch(/Safety-critical work order WO-2/);
-    expect(p.proposal?.truckLabel).toBe("103");
-    expect(p.proposal!.warnings.join(" ")).toMatch(/Shop work WO-3 is awaiting parts/);
+    expect(why["103"]).toMatch(/In the shop: WO-3 is waiting for parts. It cannot be assigned until the work is done./);
+    expect(p.proposal?.truckLabel).toBe("104");
+    expect(p.proposal!.warnings.join(" ")).not.toMatch(/WO-3/);
   });
 
   it("a shop visit on another day does not block, and when nothing is safe it says so", () => {

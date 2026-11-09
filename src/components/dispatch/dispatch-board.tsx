@@ -17,7 +17,7 @@ import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form"
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { bookingsFor, combinationCheck, driverDayChecks, driverState, inShop, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { bookingsFor, combinationCheck, driverDayChecks, driverState, proposePreviousCrews, shopWorkOn, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type Interval, type ResourceState } from "@/lib/dispatch/board";
 import { shiftProblem } from "@/lib/dispatch/smart";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { OrderRoutePanel } from "./order-route-panel";
@@ -725,8 +725,9 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
           <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label={`Trucks ${when}`}>
             {day.trucks.map((t) => {
               const bookings = bookingsFor(active, "truck", t.id);
-              // In the shop on this date (a scheduled visit or a safety-critical work order), from the same data as the assign window.
-              const shop = inShop("truck", t.id, day.date, lk.restrictions) ? lk.restrictions?.shop.find((w) => w.truck_id === t.id && (w.safety_critical || w.scheduled_for === day.date)) : undefined;
+              // In the shop on this date (a safety-critical work order, a visit that day, or work in progress or waiting for
+              // parts: the shared readiness rule), from the same data as the assign window.
+              const shop = shopWorkOn("truck", t.id, day.date, lk.restrictions);
               return (
                 <li key={t.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && t.service_status !== "out_of_service" && "cursor-grab active:cursor-grabbing")} {...(t.service_status !== "out_of_service" ? drag("truck", t.id) : {})}>
                   <div className="flex items-center justify-between gap-2">

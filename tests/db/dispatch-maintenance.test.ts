@@ -53,7 +53,8 @@ describe("maintenance-aware dispatch", () => {
     });
   });
 
-  it("open shop work is a warning, not a blocker; canceling the shop visit lifts the block", async () => {
+  // Owner decision 2026-11-09 (WK1): shop work in progress or waiting for parts makes the truck not ready on any day.
+  it("shop work in progress or waiting for parts blocks the truck on any day; canceling the shop visit lifts the block", async () => {
     await withSession(async (s) => {
       const w = await setup(s);
       await s.as(w.owner);
@@ -61,11 +62,44 @@ describe("maintenance-aware dispatch", () => {
       await s.query("select public.maintenance_set_status($1, 'in_progress')", [a.id]);
       const b = await wo(s, { truck_id: w.f.t2, title: "Tarp motor", scheduled_for: w.day });
       const elig = await s.query<{ r: { blockers: string[]; warnings: string[] } }>("select public.check_assignment_eligibility($1, null, null, $2) as r", [w.f.t1, w.day]);
-      expect(elig.rows[0].r.blockers).toEqual([]);
-      expect(elig.rows[0].r.warnings).toContain("truck_shop_work_open");
+      expect(elig.rows[0].r.blockers).toEqual(["truck_shop_work_open"]);
+      expect(elig.rows[0].r.warnings).not.toContain("truck_shop_work_open");
+      await s.as(w.dispatcher);
+      const err = await pgError(assign(s, w.load.load_id, w.f.t1, null, w.f.d1));
+      expect(err.message).toContain(ELIGIBILITY_MESSAGES.truck_shop_work_open);
+      await s.as(w.owner);
+      await s.query("select public.maintenance_set_status($1, 'awaiting_parts')", [a.id]);
+      expect((await s.query<{ r: { blockers: string[] } }>("select public.check_assignment_eligibility($1, null, null, $2) as r", [w.f.t1, addDays(w.day, 20)])).rows[0].r.blockers).toEqual(["truck_shop_work_open"]);
       await s.query("select public.maintenance_set_status($1, 'canceled', 'Done at the dealer')", [b.id]);
       await s.as(w.dispatcher);
       expect(await assign(s, w.load.load_id, w.f.t2, null, w.f.d1)).toBeTruthy();
+    });
+  });
+
+  it("a load already booked on a truck that goes into the shop shows in Assignment problems until it is moved", async () => {
+    await withSession(async (s) => {
+      const w = await setup(s);
+      await s.as(w.dispatcher);
+      const assignment = await assign(s, w.load.load_id, w.f.t1, null, w.f.d1);
+      await s.as(w.owner);
+      const a = await wo(s, { truck_id: w.f.t1, title: "Hydraulic hose" });
+      await s.query("select public.maintenance_set_status($1, 'in_progress')", [a.id]);
+      await s.as(w.dispatcher);
+      type Page = { total: number; items: Array<{ kind: string; exception_key: string; reasons: string[] }> };
+      const problems = async () => {
+        const items: Page["items"] = [];
+        for (let total = Infinity; items.length < total; ) {
+          const page = (await s.query<{ r: Page }>("select public.command_center_exceptions('assignment_problem', false, 100, $1) as r", [items.length])).rows[0].r;
+          total = page.total;
+          if (!page.items.length) break;
+          items.push(...page.items);
+        }
+        return items.filter((i) => i.exception_key.includes(assignment));
+      };
+      expect(await problems()).toEqual([expect.objectContaining({ kind: "assignment_problem", reasons: ["truck_shop_work_open"] })]);
+      // Moved to a truck that can run: the problem is gone.
+      await assign(s, w.load.load_id, w.f.t2, null, w.f.d1, assignment);
+      expect(await problems()).toEqual([]);
     });
   });
 

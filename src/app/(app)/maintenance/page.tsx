@@ -25,6 +25,7 @@ import { PM_STATES, WO_URGENCIES, type WoStatus } from "@/lib/maintenance";
 import type { PmRow } from "@/server/data/maintenance";
 import { ChevronRight, ShieldAlert } from "lucide-react";
 import { TruckHealthCard } from "@/components/maintenance/truck-health";
+import { vehicleReadyOn } from "@/lib/fleet/readiness";
 import { loadTruckHealth } from "@/server/data/truck-health";
 
 export const metadata = { title: "Maintenance" };
@@ -94,13 +95,15 @@ export default async function MaintenancePage() {
   );
   const rankOf = new Map(ranked.map((r, i) => [r.item.id, i]));
   const top = ranked.slice(0, 8);
-  // Fleet availability (trucks): out of service, in the shop (open work in progress, waiting for parts or inspection),
-  // or available. Each active truck counts once.
+  // Fleet availability today (trucks), by the shared readiness rule (src/lib/fleet/readiness.ts, owner 2026-11-09):
+  // out of service; in the shop (work in progress or waiting for parts, a visit today, or an open safety-critical
+  // work order); or available. Each active truck counts once.
   const activeTrucks = trucks.filter((t) => t.active);
-  const shopWork = new Set(open.filter((w) => w.truck_id && ["in_progress", "awaiting_parts", "awaiting_inspection"].includes(w.status)).map((w) => w.truck_id));
+  const openByTruck = new Map<string, typeof open>();
+  for (const w of open) if (w.truck_id) openByTruck.set(w.truck_id, [...(openByTruck.get(w.truck_id) ?? []), w]);
   const oosTrucks = activeTrucks.filter((t) => t.service_status === "out_of_service").length;
-  const inShopTrucks = activeTrucks.filter((t) => t.service_status !== "out_of_service" && shopWork.has(t.id)).length;
-  const availableTrucks = activeTrucks.length - oosTrucks - inShopTrucks;
+  const availableTrucks = activeTrucks.filter((t) => vehicleReadyOn(t, openByTruck.get(t.id) ?? [], today, today).ready).length;
+  const inShopTrucks = activeTrucks.length - oosTrucks - availableTrucks;
   const pmHealth = pm
     .map((p) => ({ p, used: intervalUsed(p, today) }))
     .sort((a, b) => (b.used ?? -1) - (a.used ?? -1))

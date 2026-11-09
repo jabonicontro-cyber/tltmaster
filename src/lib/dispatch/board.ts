@@ -2,6 +2,7 @@
 // exclusion constraints); these helpers explain the state before a request.
 import { driverChecks, evaluateAssignment, type EligibilityQualification, type EligibilityResult, type EligibilityTrailer, type EligibilityTruck } from "@/lib/fleet/eligibility";
 import { shiftProblem, type SmartShift } from "@/lib/dispatch/smart";
+import { shopHolds, type ShopHold } from "@/lib/fleet/readiness";
 
 export interface Interval {
   starts_at: string;
@@ -65,8 +66,14 @@ export interface DayContext {
 }
 
 type Codes = { blockers: string[]; warnings: string[] };
-const SHOP_BLOCKING = ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts"];
-const SHOP_WORKING = ["in_progress", "awaiting_parts"];
+type ShopRow = DayRestrictions["shop"][number];
+const SHOP_CODE = { safety_restricted: "safety_restricted", shop_scheduled: "shop_scheduled", in_shop: "shop_work_open" } as const;
+
+/** The shop holds of one truck or trailer on a date (the shared readiness rule, src/lib/fleet/readiness.ts). */
+function holdsOf(kind: "truck" | "trailer", id: string, on: string, r: DayRestrictions | null | undefined): ShopHold<ShopRow>[] {
+  if (!r) return [];
+  return shopHolds(r.shop.filter((w) => (kind === "truck" ? w.truck_id : w.trailer_id) === id), on);
+}
 
 /** Maintenance, driver reports and documents of one truck or trailer on a date (mirrors private.assignment_eligibility). */
 export function vehicleDayChecks(kind: "truck" | "trailer", id: string, on: string, r: DayRestrictions | null | undefined): Codes {
@@ -76,19 +83,25 @@ export function vehicleDayChecks(kind: "truck" | "trailer", id: string, on: stri
   const reports = r.reports.filter((x) => x.equipment === kind && mine(x));
   if (reports.some((x) => x.kind === "breakdown" || x.kind === "inspection_issue")) out.blockers.push(`${kind}_safety_report_open`);
   else if (reports.some((x) => x.kind === "equipment_issue")) out.warnings.push(`${kind}_equipment_report_open`);
-  const shop = r.shop.filter(mine);
-  if (shop.some((w) => w.safety_critical)) out.blockers.push(`${kind}_safety_restricted`);
-  if (shop.some((w) => w.scheduled_for === on && SHOP_BLOCKING.includes(w.status))) out.blockers.push(`${kind}_shop_scheduled`);
-  else if (shop.some((w) => SHOP_WORKING.includes(w.status))) out.warnings.push(`${kind}_shop_work_open`);
+  // Shop work: a safety-critical order, a visit that day, or work in progress / waiting for parts all block (WK1).
+  for (const h of holdsOf(kind, id, on, r)) out.blockers.push(`${kind}_${SHOP_CODE[h.reason]}`);
   const docs = r.documents.filter(mine);
   if (docs.some((d) => d.blocks)) out.blockers.push(`${kind}_document_expired`);
   else if (docs.length) out.warnings.push(`${kind}_document_review`);
   return out;
 }
 
-/** True when the truck or trailer is in the shop on the date (a visit that day, or a safety-critical work order). */
+/**
+ * The work order that keeps the truck or trailer in the shop on the date, or null: a safety-critical order, a visit
+ * that day, or work in progress or waiting for parts (the shared readiness rule). The board shows "In the shop" with it.
+ */
+export function shopWorkOn(kind: "truck" | "trailer", id: string, on: string, r: DayRestrictions | null | undefined): ShopRow | null {
+  return holdsOf(kind, id, on, r)[0]?.workOrder ?? null;
+}
+
+/** True when the truck or trailer is in the shop on the date. */
 export function inShop(kind: "truck" | "trailer", id: string, on: string, r: DayRestrictions | null | undefined): boolean {
-  return vehicleDayChecks(kind, id, on, r).blockers.some((c) => c.endsWith("_shop_scheduled") || c.endsWith("_safety_restricted"));
+  return shopWorkOn(kind, id, on, r) !== null;
 }
 
 /** Approved and pending time off of one driver on a date (mirrors private.assignment_eligibility). */

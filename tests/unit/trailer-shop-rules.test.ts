@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { trailerShopBlockers } from "@/lib/optimization/plan";
 import { workOrderSchema, workOrderUnit } from "@/lib/maintenance";
 
-// The planner's trailer maintenance rule mirrors the database codes trailer_safety_restricted and
-// trailer_shop_scheduled (20261115000100); open shop work alone is a warning, not a blocker.
+// The planner's trailer maintenance rule mirrors the database codes trailer_safety_restricted, trailer_shop_scheduled
+// (20261115000100) and trailer_shop_work_open (a blocker since 20261120009800, owner 2026-11-09 WK1).
 const trailer = { id: "t1", unit_number: "T-4" };
 const visit = (p: Partial<{ trailer_id: string; number: string; scheduled_for: string | null; status: string; safety_critical: boolean }>) =>
   ({ trailer_id: "t1", number: "WO-2026-0001", scheduled_for: null, status: "reported", safety_critical: false, ...p });
@@ -14,6 +14,12 @@ describe("trailer shop rules", () => {
     const scheduled = { trailerShopVisits: [visit({ scheduled_for: "2026-10-20", status: "scheduled" })] };
     expect(trailerShopBlockers(scheduled, "2026-10-20", trailer)).toEqual(["Trailer T-4 is in the shop on this date (WO-2026-0001)."]);
     expect(trailerShopBlockers(scheduled, "2026-10-21", trailer)).toEqual([]);
+  });
+
+  it("blocks a trailer with shop work in progress or waiting for parts on any day", () => {
+    for (const status of ["in_progress", "awaiting_parts"]) {
+      expect(trailerShopBlockers({ trailerShopVisits: [visit({ status })] }, "2026-12-01", trailer)).toEqual(["Trailer T-4 is in the shop (WO-2026-0001): work is in progress or waiting for parts."]);
+    }
   });
 
   it("ignores other trailers, work waiting for inspection, and missing data", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bookingsFor, capacityProblem, combinationCheck, conflictsFor, driverState, inShop, minutes, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
+import { bookingsFor, capacityProblem, combinationCheck, conflictsFor, driverState, inShop, minutes, shopWorkOn, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
 
 const ON = "2026-10-20";
 const at = (h: string) => `${ON}T${h}:00-05:00`;
@@ -94,13 +94,19 @@ describe("the shown date's restrictions (B1: agree with the server before it ref
     expect(truckState({ ...tractor, weight_capacity: 0 }, iv("13:00", "14:30"), [], ON, null, ctx()).state).toBe("available");
   });
 
-  it("marks trucks with a shop visit that day or a safety-critical work order, and warns on shop work in progress", () => {
+  it("marks trucks with a shop visit that day, a safety-critical work order, or shop work in progress (WK1) as unavailable", () => {
     const visit = { truck_id: "T1", trailer_id: null, number: "WO-7", status: "scheduled", scheduled_for: ON, safety_critical: false };
     expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [visit] }))).toEqual({ state: "unavailable", reasons: ["truck_shop_scheduled"] });
     expect(inShop("truck", "T1", ON, { ...none, shop: [visit] })).toBe(true);
     expect(inShop("truck", "T1", shiftDate(ON, 1), { ...none, shop: [visit] })).toBe(false);
     expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...visit, scheduled_for: null, safety_critical: true }] }))).toEqual({ state: "unavailable", reasons: ["truck_safety_restricted"] });
-    expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...visit, scheduled_for: null, status: "in_progress" }] }))).toEqual({ state: "available", warnings: ["truck_shop_work_open"] });
+    // Shop work in progress or waiting for parts blocks on any day, and the board names its work order.
+    const working = { ...visit, scheduled_for: null, status: "in_progress" };
+    expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [working] }))).toEqual({ state: "unavailable", reasons: ["truck_shop_work_open"] });
+    expect(truckState(truck, iv("13:00", "14:30"), [], shiftDate(ON, 9), null, ctx({ shop: [{ ...working, status: "awaiting_parts" }] }))).toEqual({ state: "unavailable", reasons: ["truck_shop_work_open"] });
+    expect(shopWorkOn("truck", "T1", ON, { ...none, shop: [working] })?.number).toBe("WO-7");
+    expect(inShop("truck", "T1", ON, { ...none, shop: [{ ...working, status: "awaiting_inspection" }] })).toBe(false);
+    expect(trailerState(trailer, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...working, truck_id: null, trailer_id: "R1" }] }))).toEqual({ state: "unavailable", reasons: ["trailer_shop_work_open"] });
     // Reports and documents follow the database's rules too.
     expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ reports: [{ equipment: "truck", truck_id: "T1", trailer_id: null, kind: "breakdown" }] })).state).toBe("unavailable");
     expect(trailerState(trailer, iv("13:00", "14:30"), [], ON, null, ctx({ documents: [{ truck_id: null, trailer_id: "R1", blocks: false }] }))).toEqual({ state: "available", warnings: ["trailer_document_review"] });

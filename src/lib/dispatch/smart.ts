@@ -6,7 +6,8 @@
 //
 // Hard constraints (a truck or driver is excluded, with the reason):
 //   truck/driver deactivated · truck out of service · an open safety-critical
-//   work order · a shop visit scheduled on the load date · an unresolved driver
+//   work order · a shop visit scheduled on the load date · shop work in progress
+//   or waiting for parts (src/lib/fleet/readiness.ts) · an unresolved driver
 //   report of a breakdown or inspection problem on the truck · the load's
 //   planned quantity exceeds the truck's recorded capacity · a tractor (needs a
 //   trailer — choose one on the board) · the driver's CDL or medical card is
@@ -27,6 +28,7 @@
 import { addDays, formatDate } from "@/lib/dates";
 import { straightLineMiles, type Point } from "@/lib/routing/route";
 import { driverChecks, eligibilityMessage, type EligibilityQualification } from "@/lib/fleet/eligibility";
+import { shopHolds } from "@/lib/fleet/readiness";
 
 export interface SmartLoad {
   id: string;
@@ -404,11 +406,13 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   const out: string[] = [];
   if (!t.active) out.push(eligibilityMessage("truck_inactive"));
   if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${formatDate(t.expected_return_date)})` : ""}.`);
-  const shop = ix.shopByTruck.get(t.id) ?? NONE;
-  const restricted = shop.find((v) => v.safety_critical);
-  if (restricted) out.push(`Safety-critical work order ${restricted.number} is open. The truck returns only through clearance in Maintenance.`);
-  const visit = shop.find((v) => v.scheduled_for === l.load_date && v.status !== "awaiting_inspection");
-  if (visit) out.push(`In the shop on this date (${visit.number}).`);
+  // Shop work, by the shared readiness rule (src/lib/fleet/readiness.ts, owner 2026-11-09): a safety-critical order,
+  // a visit that day, or work in progress or waiting for parts keeps the truck out of proposals.
+  for (const h of shopHolds(ix.shopByTruck.get(t.id) ?? NONE, l.load_date)) {
+    if (h.reason === "safety_restricted") out.push(`Safety-critical work order ${h.workOrder.number} is open. The truck returns only through clearance in Maintenance.`);
+    else if (h.reason === "shop_scheduled") out.push(`In the shop on this date (${h.workOrder.number}).`);
+    else out.push(`In the shop: ${h.workOrder.number} is ${h.workOrder.status === "awaiting_parts" ? "waiting for parts" : "in progress"}. It cannot be assigned until the work is done.`);
+  }
   const safety = (ix.reportsByTruck.get(t.id) ?? NONE).filter((r) => r.kind === "breakdown" || r.kind === "inspection_issue");
   if (safety.length) out.push("A driver reported a breakdown or inspection problem that is not resolved. Resolve the report before assigning it.");
   const base = baseCheck(t.base_id, l, input).block;
@@ -511,11 +515,6 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
   const ix = indexOf(input);
   for (const d of (ix.docsByTruck.get(t.id) ?? NONE).filter((x) => !x.blocks && x.expires_on < l.load_date)) {
     warnings.push(`Its ${documentLabel(d)} on record${d.verified ? "" : " (not verified)"}: confirm it was renewed.`);
-  }
-  const inShop = (ix.shopByTruck.get(t.id) ?? NONE).find((v) => v.status === "in_progress" || v.status === "awaiting_parts");
-  if (inShop) {
-    score -= 10;
-    warnings.push(`Shop work ${inShop.number} is ${inShop.status.replace("_", " ")}: check with the shop.`);
   }
   if ((ix.reportsByTruck.get(t.id) ?? NONE).some((r) => r.kind === "equipment_issue")) {
     score -= 10;

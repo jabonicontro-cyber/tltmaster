@@ -18,6 +18,7 @@
 
 import { checkPair, documentLabel, driverBlockers, HOS_NOTE, orderLoads, truckBlockers, type SmartDriver, type SmartInput, type SmartLoad, type SmartTruck } from "@/lib/dispatch/smart";
 import { driverChecks, eligibilityMessage } from "@/lib/fleet/eligibility";
+import { shopHolds } from "@/lib/fleet/readiness";
 
 export type FeasibilityStatus = "verified" | "needs_review" | "blocked";
 
@@ -275,7 +276,6 @@ function reviewReasons(input: OptimizationInput, load: SmartLoad, truck: SmartTr
   else if (load.planned_quantity !== null && (trailer ? !trailer.capacity_verified_at : !truck.capacity_verified_at)) r.push(`${trailer ? `Trailer ${trailer.unit_number}` : `Truck ${truck.unit_number}`}'s capacity is not verified.`);
   if (trailer && !trailer.compatible_truck_types.length) r.push(`Trailer ${trailer.unit_number}'s compatible truck types are not recorded.`);
   if (trailer && (input.trailerReports ?? []).some((x) => x.trailer_id === trailer.id)) r.push(`Trailer ${trailer.unit_number} has an open equipment report.`);
-  if (trailer && (input.trailerShopVisits ?? []).some((v) => v.trailer_id === trailer.id && (v.status === "in_progress" || v.status === "awaiting_parts"))) r.push(`Trailer ${trailer.unit_number} has shop work in progress or waiting for parts. Check with the shop.`);
   if (input.truckReports.some((x) => x.truck_id === truck.id)) r.push(`Truck ${truck.unit_number} has an open equipment report.`);
   if ((input.timeOff ?? []).some((t) => t.driver_id === driverId && t.status === "pending" && overlaps(t, load))) r.push("The driver has a pending time-off request that day.");
   if ((input.driversOnLeave ?? []).includes(driverId)) r.push("The driver's employee record says On leave. Confirm they are working that day.");
@@ -770,15 +770,15 @@ export function parsePriorities(values: Partial<Record<keyof Priorities, string 
 export interface TrailerShopVisit { trailer_id: string; number: string; scheduled_for: string | null; status: string; safety_critical: boolean }
 
 /**
- * Maintenance blockers for a trailer on a day, the same rules as the database (trailer_safety_restricted,
- * trailer_shop_scheduled): an open safety-critical work order, or a shop visit scheduled that day.
+ * Maintenance blockers for a trailer on a day, the shared readiness rule (src/lib/fleet/readiness.ts) and the same
+ * codes as the database (trailer_safety_restricted, trailer_shop_scheduled, trailer_shop_work_open): an open
+ * safety-critical work order, a shop visit scheduled that day, or shop work in progress or waiting for parts.
  */
 export function trailerShopBlockers(input: Pick<OptimizationInput, "trailerShopVisits">, day: string, trailer: { id: string; unit_number: string }): string[] {
-  const out: string[] = [];
-  const visits = (input.trailerShopVisits ?? []).filter((v) => v.trailer_id === trailer.id);
-  const restricted = visits.find((v) => v.safety_critical);
-  if (restricted) out.push(`Trailer ${trailer.unit_number} has an open safety-critical work order (${restricted.number}); it returns only through clearance in Maintenance.`);
-  const visit = visits.find((v) => v.scheduled_for === day && v.status !== "awaiting_inspection");
-  if (visit) out.push(`Trailer ${trailer.unit_number} is in the shop on this date (${visit.number}).`);
-  return out;
+  return shopHolds((input.trailerShopVisits ?? []).filter((v) => v.trailer_id === trailer.id), day).map((h) =>
+    h.reason === "safety_restricted"
+      ? `Trailer ${trailer.unit_number} has an open safety-critical work order (${h.workOrder.number}); it returns only through clearance in Maintenance.`
+      : h.reason === "shop_scheduled"
+        ? `Trailer ${trailer.unit_number} is in the shop on this date (${h.workOrder.number}).`
+        : `Trailer ${trailer.unit_number} is in the shop (${h.workOrder.number}): work is in progress or waiting for parts.`);
 }

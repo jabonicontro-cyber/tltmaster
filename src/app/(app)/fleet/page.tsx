@@ -38,9 +38,23 @@ function Stat({ icon, label, value, sub, href, warn }: { icon: ReactNode; label:
   );
 }
 
+/**
+ * Trucks or trailers that can run today, by the shared readiness rule (owner 2026-11-09, WK1): not in the shop, no
+ * visit today, no safety-critical work order, in service. Without access to shop work, the in-service count is shown
+ * under its own name instead.
+ */
+function ReadyRing({ kind, s }: { kind: "truck" | "trailer"; s: { active: number; inService: number; readyToday: number | null; capacityUnknown: number } }) {
+  const units = kind === "truck" ? "Trucks" : "Trailers";
+  const part = s.readyToday ?? s.inService;
+  const caption = s.readyToday !== null && s.inService > s.readyToday
+    ? `${s.inService - s.readyToday} in service but in the shop`
+    : s.capacityUnknown ? `${s.capacityUnknown} with unknown capacity` : `Active ${units.toLowerCase()}`;
+  return <Ring part={part} whole={s.active} label={s.readyToday === null ? `${units} in service` : `${units} ready today`} caption={caption} tone={part < s.active ? "amber" : "brand"} />;
+}
+
 export default async function FleetPage() {
   const access = await requirePagePermission("fleet.view");
-  const [o, trucks, trailers, drivers, ctx, { timezone }] = await Promise.all([fleetOverview(), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") }), businessToday()]);
+  const [o, trucks, trailers, drivers, ctx, { timezone }] = await Promise.all([fleetOverview({ shop: can(access, "maintenance.view") ? "maintenance" : can(access, "dispatch.view") ? "dispatch" : null }), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") }), businessToday()]);
   const activeTrucks = trucks.filter((t) => t.active);
   const restricted = activeTrucks.filter((t) => (ctx.maintenance.openByTruck.get(t.id) ?? []).some((w) => w.safety_critical));
   const pmOverdue = activeTrucks.filter((t) => (ctx.maintenance.pmByTruck.get(t.id)?.overdue ?? 0) > 0);
@@ -83,8 +97,8 @@ export default async function FleetPage() {
         <section aria-label="Ready for work" className="rounded-panel bg-card p-5 shadow-card ring-1 ring-line/60 sm:p-6">
           <h2 className="text-base font-semibold tracking-[-0.01em] text-ink">Ready for work</h2>
           <ul className="mt-4 grid grid-cols-3 gap-2">
-            <li><Link href="/fleet/trucks?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.trucks.inService} whole={o.trucks.active} label="Trucks in service" caption={o.trucks.capacityUnknown ? `${o.trucks.capacityUnknown} with unknown capacity` : "Active trucks"} tone={o.trucks.inService < o.trucks.active ? "amber" : "brand"} /></Link></li>
-            <li><Link href="/fleet/trailers?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.trailers.inService} whole={o.trailers.active} label="Trailers in service" caption={o.trailers.capacityUnknown ? `${o.trailers.capacityUnknown} with unknown capacity` : "Active trailers"} tone={o.trailers.inService < o.trailers.active ? "amber" : "brand"} /></Link></li>
+            <li><Link href="/fleet/trucks?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><ReadyRing kind="truck" s={o.trucks} /></Link></li>
+            <li><Link href="/fleet/trailers?status=in_service" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><ReadyRing kind="trailer" s={o.trailers} /></Link></li>
             <li><Link href="/fleet/drivers?status=ready" className="block rounded-2xl py-2 transition-colors hover:bg-ink/[0.035]"><Ring part={o.drivers.ready} whole={o.drivers.active} label="Drivers eligible today" caption="Verified CDL and medical card" tone={o.drivers.notReady.length > 0 ? "amber" : "green"} /></Link></li>
           </ul>
         </section>

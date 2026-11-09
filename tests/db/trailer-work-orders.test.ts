@@ -72,7 +72,7 @@ describe("trailer work orders", () => {
     });
   });
 
-  it("a shop visit on the load date blocks the trailer; open shop work warns; trucks are unaffected", async () => {
+  it("a shop visit on the load date blocks the trailer; shop work in progress blocks it on any day (WK1); trucks are unaffected", async () => {
     await withSession(async (s) => {
       const today = await businessToday(s);
       const day = addDays(today, 2);
@@ -89,7 +89,8 @@ describe("trailer work orders", () => {
       expect((await eligibility(s, a, day)).blockers).toContain("trailer_shop_scheduled");
       expect((await eligibility(s, a, addDays(day, 1))).blockers).toEqual([]);
       const eb = await eligibility(s, b, day);
-      expect([eb.blockers, eb.warnings.includes("trailer_shop_work_open")]).toEqual([[], true]);
+      expect([eb.blockers, eb.warnings.includes("trailer_shop_work_open")]).toEqual([["trailer_shop_work_open"], false]);
+      expect((await eligibility(s, b, addDays(day, 10))).blockers).toEqual(["trailer_shop_work_open"]);
       const et = (await s.query<{ r: { blockers: string[]; warnings: string[] } }>("select public.check_assignment_eligibility($1, null, null, $2) as r", [truck, day])).rows[0].r;
       expect(et.blockers.concat(et.warnings).some((c) => c.startsWith("truck_shop") || c.startsWith("truck_safety"))).toBe(false);
 

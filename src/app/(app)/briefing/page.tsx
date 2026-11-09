@@ -22,6 +22,7 @@ import { shownName } from "@/server/data/profile";
 import { businessToday } from "@/server/data/settings";
 import { listStopTimes, waitTimeSettings } from "@/server/data/wait-times";
 import { createClient } from "@/server/supabase/server";
+import { loadOutlook } from "@/server/data/live";
 import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Morning briefing" };
@@ -40,7 +41,7 @@ export default async function BriefingPage() {
   const yesterday = addDays(today, -1);
   const billing = can(access, "billing.view");
   const supabase = await createClient();
-  const [name, summary, daily, ops, invoices, leaks, waits, waitCfg] = await Promise.all([
+  const [name, summary, daily, ops, invoices, leaks, waits, waitCfg, outlook] = await Promise.all([
     shownName(access),
     loadSummary(),
     supabase.rpc("my_daily_summary").then((r) => (r.error ? null : (r.data as { tomorrow_without_truck?: number; tomorrow_loads?: number } | null))),
@@ -49,8 +50,16 @@ export default async function BriefingPage() {
     billing ? listLeaks().catch(() => null) : Promise.resolve(null),
     listStopTimes(yesterday, yesterday, timezone).catch(() => null),
     waitTimeSettings().catch(() => ({ installed: false, freeMinutes: null })),
+    // Today's loads against the shared readiness rule (owner 2026-11-09, WK1), the same figures as the Command Center.
+    can(access, "dispatch.view") ? loadOutlook(today, false, 1).catch(() => null) : Promise.resolve(null),
   ]);
   const s = summary.ok ? summary.data : null;
+  // Loads today not yet ended: without a truck, and on a truck or trailer that cannot run today. "All covered" only
+  // when both are zero; without today's outlook, open assignment problems keep it from being claimed.
+  const day = outlook?.days[0] ?? null;
+  const needTruck = day ? day.unassigned : s?.unassigned_loads ?? 0;
+  const cannotRun = day ? day.conflicts : null;
+  const covered = needTruck === 0 && (cannotRun === null ? !s?.assignment_problems : cannotRun === 0);
   const overdue = invoices ? invoices.filter((i) => invoiceState(i, today) === "overdue") : null;
   const actions = briefingActions({
     urgentOrders: s?.urgent_orders ?? null,
@@ -85,8 +94,16 @@ export default async function BriefingPage() {
             {say("Verified value of accepted tickets")}
           </StatTile>
         )}
-        <StatTile icon={<Truck />} tone={s?.unassigned_loads ? "amber" : "green"} label="Loads today" value={s?.loads_today ?? "–"}>
-          {s?.loads_today == null ? "Not available" : s.unassigned_loads ? `${s.unassigned_loads} without a truck` : "All covered"}
+        <StatTile icon={<Truck />} tone={cannotRun ? "critical" : covered ? "green" : "amber"} label="Loads today" value={s?.loads_today ?? "–"}>
+          {s?.loads_today == null ? "Not available" : covered ? "All covered" : (
+            <Link href={`/dispatch?date=${today}`} className="font-semibold underline-offset-2 hover:underline" data-testid="briefing-not-covered">
+              {[
+                needTruck ? `${needTruck} without a truck` : null,
+                cannotRun ? `${cannotRun} on ${cannotRun === 1 ? "a truck that cannot" : "trucks that cannot"} run` : null,
+                cannotRun === null && s.assignment_problems ? `${s.assignment_problems} assignment problem${s.assignment_problems === 1 ? "" : "s"}` : null,
+              ].filter(Boolean).join(" · ")}
+            </Link>
+          )}
         </StatTile>
         <StatTile icon={<Wrench />} tone={s?.trucks_out_of_service ? "amber" : "neutral"} label="Trucks down" value={s?.trucks_out_of_service ?? "–"} muted={!s?.trucks_out_of_service}>
           Out of service today

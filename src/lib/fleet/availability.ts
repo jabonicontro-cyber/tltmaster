@@ -1,4 +1,5 @@
 import { addDays, formatDate } from "@/lib/dates";
+import { IN_SHOP_STATUSES, vehicleReadyOn } from "@/lib/fleet/readiness";
 
 // One view of a vehicle's mechanical availability, derived from the records
 // that already decide it: the service status (set only through
@@ -55,15 +56,22 @@ export interface Availability {
   upcoming: Array<{ date: string; number: string; title: string }>;
 }
 
-const IN_SHOP = new Set(["in_progress", "awaiting_parts"]);
+const WORK_WORDS: Record<string, string> = { in_progress: "in progress", awaiting_parts: "waiting for parts" };
 
+/**
+ * Availability of one vehicle on `day` (the company's `today` by default), from the shared readiness rule
+ * (src/lib/fleet/readiness.ts, owner 2026-11-09): shop work in progress or waiting for parts, or a shop visit that
+ * day, makes it not ready; out of service is not ready today, and on a later day counts as back from its expected
+ * return date.
+ */
 export function vehicleAvailability(
   v: { active: boolean; service_status: "in_service" | "out_of_service"; out_of_service_reason: string; expected_return_date: string | null },
   openWorkOrders: OpenWorkOrder[],
-  today: string,
+  day: string,
+  today: string = day,
 ): Availability {
   const upcoming = openWorkOrders
-    .filter((w) => w.scheduled_for && w.scheduled_for >= today && !IN_SHOP.has(w.status) && w.status !== "awaiting_inspection")
+    .filter((w) => w.scheduled_for && w.scheduled_for > day && !IN_SHOP_STATUSES.includes(w.status) && w.status !== "awaiting_inspection")
     .map((w) => ({ date: w.scheduled_for!, number: w.number, title: w.title }))
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!v.active) return { state: "inactive", label: "Inactive", detail: "Deactivated: not part of the working fleet.", ready: false, upcoming };
@@ -76,13 +84,19 @@ export function vehicleAvailability(
   if (safety.length) {
     return { state: "restricted", label: "Safety restricted", detail: `Safety-critical defect on ${safety.map((w) => w.number).join(", ")}. Cleared only through Maintenance.`, ready: false, upcoming };
   }
-  if (v.service_status === "out_of_service") {
+  const r = vehicleReadyOn(v, openWorkOrders, day, today);
+  if (r.reason === "out_of_service") {
     const back = v.expected_return_date ? ` Expected back ${formatDate(v.expected_return_date)}.` : "";
     return { state: "out_of_service", label: "Out of service", detail: `${v.out_of_service_reason || "No reason recorded."}${back}`, ready: false, upcoming };
   }
-  const shop = openWorkOrders.find((w) => IN_SHOP.has(w.status));
-  if (shop) {
-    return { state: "in_shop", label: "In service · shop work open", detail: `${shop.number} is ${shop.status.replace("_", " ")}. The truck is still marked in service; check with the shop before dispatching.`, ready: true, upcoming };
+  if (r.reason === "shop_scheduled" && r.workOrder) {
+    return { state: "in_shop", label: "In the shop", detail: `In the shop on this date (${r.workOrder.number}). It cannot be assigned that day.`, ready: false, upcoming };
+  }
+  if (r.reason === "in_shop" && r.workOrder) {
+    return { state: "in_shop", label: "In the shop", detail: `${r.workOrder.number} is ${WORK_WORDS[r.workOrder.status] ?? r.workOrder.status.replace("_", " ")}. It cannot be assigned until the work is done.`, ready: false, upcoming };
+  }
+  if (r.expectedBack) {
+    return { state: "available", label: "Expected back", detail: `Out of service now, expected back ${formatDate(r.expectedBack)}. Return it to service in Fleet before assigning.`, ready: true, upcoming };
   }
   return { state: "available", label: "Available", detail: upcoming.length ? `Shop visit scheduled ${upcoming[0].date} (${upcoming[0].number}).` : "In service, no open restriction.", ready: true, upcoming };
 }

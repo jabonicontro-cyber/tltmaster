@@ -494,9 +494,16 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                 {s.exceptions.mine > 0 ? <Link href={href({ mine: true })} className="font-semibold text-brand-fg underline-offset-2 hover:underline">{s.exceptions.mine} assigned to you</Link> : <span className="text-muted">Nothing assigned to you</span>}
               </StatTile>
               {todayDay && (
-                <StatTile icon={<Truck />} tone={todayDay.unassigned ? "amber" : "green"} label="Loads today" value={todayDay.loads} muted={todayDay.loads === 0}>
+                // Covered = every load not yet ended has a truck that can run today (owner 2026-11-09, WK1): a load on a
+                // truck or trailer in the shop or out of service is not covered until it is moved.
+                <StatTile icon={<Truck />} tone={todayDay.conflicts ? "critical" : todayDay.unassigned ? "amber" : "green"} label="Loads today" value={todayDay.loads} muted={todayDay.loads === 0}>
                   {todayDay.loads === 0 ? <span className="text-muted">Nothing planned today</span>
-                    : todayDay.unassigned ? <Link href={`/dispatch?date=${today}`} className="font-semibold text-amber-700 underline-offset-2 hover:underline">{todayDay.unassigned} still need{todayDay.unassigned === 1 ? "s" : ""} a truck</Link>
+                    : todayDay.unassigned || todayDay.conflicts ? (
+                      <Link href={`/dispatch?date=${today}`} className="flex flex-col font-semibold underline-offset-2 hover:underline" data-testid="loads-today-not-covered">
+                        {todayDay.unassigned > 0 && <span className="text-amber-700">{todayDay.unassigned} still need{todayDay.unassigned === 1 ? "s" : ""} a truck</span>}
+                        {todayDay.conflicts > 0 && <span className="text-critical">{todayDay.conflicts} on {todayDay.conflicts === 1 ? "a truck that cannot" : "trucks that cannot"} run</span>}
+                      </Link>
+                    )
                     : <span className="font-semibold text-green-700">All covered</span>}
                 </StatTile>
               )}

@@ -23,7 +23,14 @@ describe("vehicle availability", () => {
   it("separates ordinary out of service, open shop work and inactive", () => {
     expect(vehicleAvailability({ ...truck, service_status: "out_of_service", out_of_service_reason: "Tires", expected_return_date: "2026-10-20" }, [], today))
       .toMatchObject({ state: "out_of_service", ready: false, detail: "Tires Expected back Oct 20, 2026." });
-    expect(vehicleAvailability(truck, [wo({ status: "awaiting_parts" })], today)).toMatchObject({ state: "in_shop", ready: true });
+    // Shop work in progress or waiting for parts: in the shop, not ready (owner 2026-11-09, WK1).
+    expect(vehicleAvailability(truck, [wo({ status: "awaiting_parts" })], today)).toMatchObject({ state: "in_shop", label: "In the shop", ready: false });
+    expect(vehicleAvailability(truck, [wo({ status: "scheduled", scheduled_for: today })], today)).toMatchObject({ state: "in_shop", ready: false });
+    // Out of service on a later day counts as back from its expected return date; never today.
+    const down = { ...truck, service_status: "out_of_service" as const, out_of_service_reason: "Tires", expected_return_date: "2026-10-13" };
+    expect(vehicleAvailability(down, [], today, today)).toMatchObject({ state: "out_of_service", ready: false });
+    expect(vehicleAvailability(down, [], "2026-10-12", today)).toMatchObject({ state: "out_of_service", ready: false });
+    expect(vehicleAvailability(down, [], "2026-10-13", today)).toMatchObject({ state: "available", label: "Expected back", ready: true });
     expect(vehicleAvailability({ ...truck, active: false }, [], today)).toMatchObject({ state: "inactive", ready: false });
   });
 });
