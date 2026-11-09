@@ -14,7 +14,7 @@ type Q = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<strin
 const office = <T,>(fn: (q: Q) => Promise<T>) => asUser(USERS.office.email, fn as never) as Promise<T>;
 
 /** A scheduled order (gravel 44 t + hauling 2 loads) with yesterday's load (22 t planned) assigned; no ticket yet. */
-async function fixture() {
+async function fixture(assigned = true) {
   const id = unique();
   return office(async (q) => {
     const ins = async (table: string, row: Record<string, unknown>) => {
@@ -48,7 +48,7 @@ async function fixture() {
     await q("select public.set_order_status($1, 'scheduled', '')", [res.order_id]);
     const load = await q("select public.save_order_load($1::jsonb) as r", [JSON.stringify({ order_id: res.order_id, load_date: yesterday, start_time: "07:00", end_time: "09:00", planned_quantity: "22", unit_code: "ton" })]);
     const loadId = (load.rows[0].r as { load_id: string }).load_id;
-    await q("select public.assign_load($1, $2, null, $3, '', null)", [loadId, truckId, driverId]);
+    if (assigned) await q("select public.assign_load($1, $2, null, $3, '', null)", [loadId, truckId, driverId]);
     const line = (await q("select id from public.order_lines where order_id = $1 and line_no = 1", [res.order_id])).rows[0].id as string;
     return { orderId: res.order_id, orderNumber: res.order_number, loadId, line, yesterday, paper: `SC-${id}` };
   });
@@ -130,6 +130,24 @@ test("office follows an order from a missing ticket to a billing handoff and bac
   await expect(history.getByText(/Handed off too early \(e2e\)/)).toBeVisible();
   await expect(history.getByText(/Customer confirmed partial delivery \(e2e\)/)).toBeVisible();
   await expect(page.getByRole("link", { name: ticket.ticket_number })).toBeVisible();
+
+  // 7. Ready again: handed off from its own billing page (office walkthrough 2026-11-09).
+  await page.getByRole("button", { name: "Hand off for billing" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Create batch" }).click();
+  await expectToast(page, /Batch BIL-\d{4,} created with 1 order\./);
+  await expect(page).toHaveURL(/view=handed_off/);
+});
+
+// An unassigned past load counts as a missing ticket in Billing; Tickets lists it too, marked Not assigned, with the way
+// to act on it (office walkthrough 2026-11-09).
+test("an unassigned past load waits for a ticket and links to Dispatch", async ({ page }) => {
+  const f = await fixture(false);
+  await signIn(page, "office");
+  await page.goto("/tickets?view=awaiting");
+  const row = page.getByRole("row").filter({ hasText: f.orderNumber });
+  await expect(row.getByText("Not assigned")).toBeVisible();
+  await expect(row.getByRole("link", { name: "Assign in Dispatch" })).toHaveAttribute("href", `/dispatch?date=${f.yesterday}`);
+  await expect(row.getByRole("link", { name: /Enter/ })).toHaveCount(0);
 });
 
 test("dispatchers do not see billing", async ({ page }) => {
