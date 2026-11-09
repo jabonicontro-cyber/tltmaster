@@ -64,13 +64,6 @@ export async function POST(request: Request): Promise<Response> {
   if (!body) return Response.json({ ok: false, error: "The form could not be read." }, { status: 400 });
   const back = body.data.kind === "demo" ? "/demo" : "/contact";
 
-  // The page measures how long the form took to fill (JSON posts must say);
-  // a plain form post without JavaScript is checked by the hidden field only.
-  const elapsed = body.json ? Number(body.data.elapsed_ms ?? 0) : undefined;
-  if (looksAutomated({ website: body.data.website, elapsed_ms: elapsed, message: body.data.message })) {
-    return respond(body.json, { ok: true, message: SAVED }, 200, back);
-  }
-
   const parsed = leadSchema.safeParse({
     kind: body.data.kind,
     name: body.data.name ?? "",
@@ -85,6 +78,14 @@ export async function POST(request: Request): Promise<Response> {
   if (!parsed.success) {
     const errors = fieldErrors(parsed.error);
     return respond(body.json, { ok: false, code: "invalid", error: Object.values(errors)[0] ?? "Check the form.", fieldErrors: errors }, 422, back);
+  }
+
+  // Validated first (2026-11-09 hotfix): an empty or invalid form gets its field errors, never a thank-you. Only a
+  // complete form is then checked for automation; the page measures from when the form appeared (JSON posts must
+  // say); a plain form post without JavaScript is checked by the hidden field only.
+  const elapsed = body.json ? Number(body.data.elapsed_ms ?? 0) : undefined;
+  if (looksAutomated({ website: body.data.website, elapsed_ms: elapsed, message: body.data.message })) {
+    return respond(body.json, { ok: true, message: SAVED }, 200, back);
   }
 
   if (!adminAvailable()) {

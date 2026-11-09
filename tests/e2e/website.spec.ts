@@ -65,6 +65,15 @@ test("a demo request from a platform page keeps the visitor's interest", async (
   await expect(page.locator('textarea[name="message"]')).toHaveValue("");
 });
 
+// Hotfix 2026-11-09: an empty demo request sent at once (no field ever focused) showed "Thank you" and was dropped
+// as automated. It must show what is missing instead, and never claim it reached the team.
+test("an empty demo request says what is missing and never claims it was sent", async ({ page }) => {
+  await page.goto("/demo");
+  await page.locator("form").getByRole("button", { name: "Request a demo" }).click();
+  await expect(page.getByText("Enter your full name.").first()).toBeVisible();
+  await expect(page.getByText(/reached the Taviron team/)).toHaveCount(0);
+});
+
 test("pricing on solutions pages matches the pricing page", async ({ page }) => {
   await page.goto("/solutions/small-fleets");
   await expect(page.getByRole("heading", { name: "Essential" })).toBeVisible();
