@@ -48,6 +48,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # PostgREST and Auth binaries (downloaded from GitHub releases): cached, so a release-download outage (504s on
+      # 2026-11-09) does not fail the run before any test. The key follows the versions in scripts/dev-stack/stack.sh.
+      - uses: actions/cache@v5
+        with:
+          path: .dev-stack/bin
+          key: dev-stack-bin-${{ runner.os }}-${{ hashFiles('scripts/dev-stack/stack.sh') }}
       - name: Migrate and seed (Supabase Auth schema + app migrations)
         run: bash scripts/dev-stack/stack.sh db-reset
       # Hosted Supabase always has the storage schema; functions that read storage.objects (company delete preview,
@@ -98,6 +104,12 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # PostgREST and Auth binaries (downloaded from GitHub releases): cached, so a release-download outage (504s on
+      # 2026-11-09) does not fail the run before any test. The key follows the versions in scripts/dev-stack/stack.sh.
+      - uses: actions/cache@v5
+        with:
+          path: .dev-stack/bin
+          key: dev-stack-bin-${{ runner.os }}-${{ hashFiles('scripts/dev-stack/stack.sh') }}
       - name: Local backend
         run: |
           bash scripts/dev-stack/stack.sh db-reset
