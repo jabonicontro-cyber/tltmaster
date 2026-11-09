@@ -26,7 +26,8 @@ export async function MaintenanceTabs({ active }: { active: (typeof TABS)[number
           href={t.href}
           aria-current={t.key === active ? "page" : undefined}
           className={cn(
-            "flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150",
+            // At least 44 px on a phone for gloved hands (B5); the compact size from a tablet up.
+            "flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150 sm:h-8",
             t.key === active ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink",
           )}
         >

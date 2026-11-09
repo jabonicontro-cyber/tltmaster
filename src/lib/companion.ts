@@ -23,6 +23,15 @@ export function isMechanicOnly(permissions: readonly string[]): boolean {
   return permissions.includes("maintenance.view") && !NOT_SHOP.some((p) => permissions.includes(p));
 }
 
+/**
+ * Where a person lands after signing in without a page to return to (B2): a mechanic-only login starts on My jobs, the
+ * list of fresh driver defects and their own work. Everyone else keeps the usual landing (null: the Command Center,
+ * which itself sends drivers to My Day and accountants to their view).
+ */
+export function signInHome(permissions: readonly string[]): string | null {
+  return isMechanicOnly(permissions) ? "/maintenance/my-jobs" : null;
+}
+
 export interface DriverTab { href: string; label: string; match: (path: string) => boolean }
 
 /**

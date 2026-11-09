@@ -10,7 +10,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
-import { WO_CATEGORIES, WO_STATUSES, WO_URGENCIES, workOrderUnit } from "@/lib/maintenance";
+import { COMPLETED_VS_CLOSED, WO_CATEGORIES, WO_STATUSES, WO_URGENCIES, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listAssignees, listTrailers, listTrucks, listWorkOrders } from "@/server/data/maintenance";
@@ -60,6 +60,7 @@ export default async function WorkOrdersPage({ searchParams }: { searchParams: P
       <PageHeader
         crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Work orders" }]}
         title="Work orders"
+        description={sp.view === "closed" || sp.status === "completed" || sp.status === "closed" ? COMPLETED_VS_CLOSED : undefined}
         actions={can(access, "maintenance.manage") && <ButtonLink href="/maintenance/work-orders/new" icon={<Plus className="size-4" />}>New work order</ButtonLink>}
       />
       <MaintenanceTabs active="work-orders" />

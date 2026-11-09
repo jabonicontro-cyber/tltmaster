@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isIsoDate, zonedTimeToUtc } from "@/lib/dates";
-import { appendFindings, finishesJob, finishTarget } from "@/lib/maintenance";
+import { appendFindings, finishesJob, finishTarget, startJobMessage, WO_URGENCIES, type WoCategory, type WoUrgency } from "@/lib/maintenance";
+import { acceptTriage, type TriageSuggestion } from "@/lib/maintenance-triage";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
 import { getPeopleNames } from "@/server/data/quotes";
@@ -80,15 +81,21 @@ export async function startJob(input: { workOrderId: string; editSeq: number }):
   return guard(async () => {
     const p = woId.extend({ editSeq: z.number().int() }).safeParse(input);
     if (!p.success) return fail("Invalid work order.");
-    await assertPermission("maintenance.manage");
+    const access = await assertPermission("maintenance.manage");
     const supabase = await createClient();
-    const { error } = await supabase.rpc("maintenance_set_status", { p_id: p.data.workOrderId, p_status: "in_progress", p_note: "", p_expected_seq: p.data.editSeq });
+    const id = p.data.workOrderId;
+    const { data: before } = await supabase.from("work_orders").select("assigned_to").eq("id", id).maybeSingle();
+    const { error } = await supabase.rpc("maintenance_set_status", { p_id: id, p_status: "in_progress", p_note: "", p_expected_seq: p.data.editSeq });
     if (error) return fail(dbErrorMessage(error));
-    const timer = await supabase.rpc("maintenance_start_timer", { p_wo: p.data.workOrderId, p_note: "" });
-    refresh(p.data.workOrderId);
-    return timer.error
-      ? ok(undefined, `Job started. Your timer did not start: ${dbErrorMessage(timer.error)}`)
-      : ok(undefined, "Job started. Your timer is running.");
+    // One start rule (I1): whoever starts a job nobody leads becomes its lead, the same on My jobs and the work order.
+    let lead: "set" | "failed" | "kept" = "kept";
+    if (before && !(before as { assigned_to: string | null }).assigned_to) {
+      const r = await supabase.rpc("maintenance_add_mechanic", { p_wo: id, p_user: access.userId, p_lead: true });
+      lead = r.error ? "failed" : "set";
+    }
+    const timer = await supabase.rpc("maintenance_start_timer", { p_wo: id, p_note: "" });
+    refresh(id);
+    return ok(undefined, startJobMessage({ lead, timerError: timer.error ? dbErrorMessage(timer.error) : null }));
   });
 }
 
@@ -115,7 +122,26 @@ export async function waitForPart(input: { workOrderId: string; part: string; ed
   });
 }
 
-const finishInput = woId.extend({ findings: z.string().trim().max(2000, "Use at most 2000 characters.").default("") });
+/** An optional reading typed on a phone ("123,456"): empty → null, otherwise a number from 0 to max. */
+const reading = (max: number, label: string) => z.string().trim().max(20).default("").transform((v, ctx) => {
+  const clean = v.replace(/[,\s]/g, "");
+  if (!clean) return null;
+  const n = Number(clean);
+  if (!Number.isFinite(n) || n < 0 || n > max) {
+    ctx.addIssue({ code: "custom", message: `Enter ${label} between 0 and ${max.toLocaleString("en-US")}, or leave it empty.` });
+    return z.NEVER;
+  }
+  return n;
+});
+
+const finishInput = woId.extend({
+  findings: z.string().trim().max(2000, "Use at most 2000 characters.").default(""),
+  /** The note typed beside the running timer: kept with the time entry when the timer stops here. */
+  timerNote: z.string().trim().max(500).default(""),
+  /** Odometer and engine hours now (trucks only), saved in the work order's "at service" fields. */
+  odometer: reading(9999999, "the odometer"),
+  engineHours: reading(999999, "the engine hours"),
+});
 
 /**
  * Done with a job (first-day review 2026-11-09). The lead, or the only mechanic, says what they fixed: it is added to
@@ -132,13 +158,13 @@ export async function finishJob(input: z.input<typeof finishInput>): Promise<Act
     const supabase = await createClient();
     const id = p.data.workOrderId;
     const [{ data: wo, error }, crew, running, people] = await Promise.all([
-      supabase.from("work_orders").select("id, status, safety_critical, findings, edit_seq, trailer_id").eq("id", id).maybeSingle(),
+      supabase.from("work_orders").select("id, status, safety_critical, findings, edit_seq, truck_id, trailer_id").eq("id", id).maybeSingle(),
       supabase.from("work_order_mechanics").select("user_id, role").eq("work_order_id", id),
       supabase.from("work_order_time_entries").select("id").eq("work_order_id", id).eq("user_id", access.userId).is("ended_at", null).is("voided_at", null).maybeSingle(),
       getPeopleNames().catch(() => ({} as Record<string, string>)),
     ]);
     if (error || !wo) return fail("Work order not found.");
-    const w = wo as { id: string; status: string; safety_critical: boolean; findings: string | null; edit_seq: number; trailer_id?: string | null };
+    const w = wo as { id: string; status: string; safety_critical: boolean; findings: string | null; edit_seq: number; truck_id: string | null; trailer_id?: string | null };
     const rows = (crew.data ?? []) as Array<{ user_id: string; role: "lead" | "assist" }>;
     const me = rows.find((r) => r.user_id === access.userId);
     if (!me) return fail("You are not on this job's crew.");
@@ -149,7 +175,7 @@ export async function finishJob(input: z.input<typeof finishInput>): Promise<Act
     if (finisher && p.data.findings.length < 3) return fail("Say what you fixed, in a few words.");
     // A running timer here is stopped first (the database refuses to finish a job with a running timer).
     if (running.data) {
-      const stop = await supabase.rpc("maintenance_stop_timer", { p_note: "" });
+      const stop = await supabase.rpc("maintenance_stop_timer", { p_note: p.data.timerNote });
       if (stop.error) return fail(dbErrorMessage(stop.error));
     }
 
@@ -164,8 +190,13 @@ export async function finishJob(input: z.input<typeof finishInput>): Promise<Act
 
     let seq = w.edit_seq;
     const merged = appendFindings(w.findings, p.data.findings);
-    if (merged !== null) {
-      const { data: next, error: e } = await supabase.rpc("maintenance_update_work_order", { p_id: id, p_expected_seq: seq, p: { findings: merged } });
+    // What was fixed, and the truck's readings when given, in one update (the work order's own fields).
+    const patch: Record<string, unknown> = {};
+    if (merged !== null) patch.findings = merged;
+    if (w.truck_id && p.data.odometer !== null) patch.odometer_at_service = p.data.odometer;
+    if (w.truck_id && p.data.engineHours !== null) patch.engine_hours_at_service = p.data.engineHours;
+    if (Object.keys(patch).length) {
+      const { data: next, error: e } = await supabase.rpc("maintenance_update_work_order", { p_id: id, p_expected_seq: seq, p: patch });
       if (e) return fail(dbErrorMessage(e));
       seq = Number(next ?? seq + 1);
     }
@@ -283,13 +314,17 @@ export async function suggestTriage(input: { workOrderId: string }): Promise<Act
     if (!p.success) return fail("Invalid work order.");
     await assertPermission("maintenance.manage");
     const supabase = await createClient();
-    const { data: wo, error } = await supabase.from("work_orders").select("id, title, description, truck_id, trailer_id").eq("id", p.data.workOrderId).maybeSingle();
+    const { data: wo, error } = await supabase.from("work_orders").select("id, title, description, truck_id, trailer_id, urgency, safety_critical").eq("id", p.data.workOrderId).maybeSingle();
     if (error || !wo) return fail("Work order not found.");
-    const w = wo as { id: string; title: string; description: string; truck_id: string | null; trailer_id: string | null };
+    const w = wo as { id: string; title: string; description: string; truck_id: string | null; trailer_id: string | null; urgency: WoUrgency; safety_critical: boolean };
     let others = supabase.from("work_orders").select("id, number, title, category").neq("id", w.id).not("status", "in", "(completed,closed,canceled)").limit(20);
     others = w.trailer_id ? others.eq("trailer_id", w.trailer_id) : others.eq("truck_id", w.truck_id ?? "");
     const { triageRules } = await import("@/lib/maintenance-triage");
-    const suggestion = triageRules({ title: w.title, description: w.description, openOnUnit: ((await others).data ?? []) as Array<{ id: string; number: string; title: string; category: string }> });
+    // Starts from what the work order already says: a suggestion never lowers the urgency or drops the safety flag (B3).
+    const suggestion = triageRules({
+      title: w.title, description: w.description, openOnUnit: ((await others).data ?? []) as Array<{ id: string; number: string; title: string; category: string }>,
+      current: { urgency: w.urgency, safetyCritical: w.safety_critical },
+    });
     return call("maintenance_save_triage", { p_wo: w.id, p_source: "rules", p_model: "", p_suggestion: suggestion }, w.id, "Suggestion ready. Check it before accepting.");
   });
 }
@@ -304,11 +339,35 @@ const decideInput = z.object({
   note: z.string().trim().max(1000).default(""),
 });
 
+/**
+ * Accept, edit or reject a suggestion. Accepting never lowers the work order's urgency and never removes the safety flag
+ * (B3, safety): the work order and the suggestion are read again here, and when the work order is already more urgent
+ * than the suggestion, the higher urgency is kept (recorded as accepted with that one change). The database function
+ * itself only ever adds the safety flag.
+ */
 export async function decideTriage(input: z.input<typeof decideInput>): Promise<ActionResult> {
   return guard(async () => {
     const p = decideInput.safeParse(input);
     if (!p.success) return fail("Invalid decision.");
     const d = p.data;
+    if (d.decision === "accepted") {
+      await assertPermission("maintenance.manage");
+      const supabase = await createClient();
+      const [wo, tri] = await Promise.all([
+        supabase.from("work_orders").select("id, category, urgency, safety_critical").eq("id", d.workOrderId).maybeSingle(),
+        supabase.from("work_order_triage").select("id, work_order_id, suggestion").eq("id", d.triageId).maybeSingle(),
+      ]);
+      const w = wo.data as { id: string; category: WoCategory; urgency: WoUrgency; safety_critical: boolean } | null;
+      const t = tri.data as { id: string; work_order_id: string; suggestion: TriageSuggestion } | null;
+      if (!w || !t || t.work_order_id !== w.id) return fail("Suggestion not found.");
+      const out = acceptTriage({ category: w.category, urgency: w.urgency, safetyCritical: w.safety_critical }, t.suggestion);
+      if (out.next.urgency !== t.suggestion.urgency) {
+        return call("maintenance_decide_triage", {
+          p_triage: d.triageId, p_decision: "edited", p_category: out.next.category, p_urgency: out.next.urgency, p_safety: out.next.safetyCritical,
+          p_note: `Accepted; kept the higher urgency (${WO_URGENCIES[out.next.urgency]}).`,
+        }, d.workOrderId, `Suggestion accepted. The urgency stays ${WO_URGENCIES[out.next.urgency]}: a suggestion never lowers it.`);
+      }
+    }
     return call("maintenance_decide_triage", {
       p_triage: d.triageId, p_decision: d.decision, p_category: d.category ?? null, p_urgency: d.urgency ?? null, p_safety: d.safety ?? null, p_note: d.note,
     }, d.workOrderId, d.decision === "rejected" ? "Suggestion rejected." : d.decision === "edited" ? "Your changes were applied." : "Suggestion accepted.");

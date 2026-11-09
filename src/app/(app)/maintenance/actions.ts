@@ -71,15 +71,29 @@ const statusInput = z.object({
 /** Move along the lifecycle (maintenance.manage). The database refuses invalid transitions. */
 export async function setWorkOrderStatus(input: z.input<typeof statusInput>): Promise<ActionResult> {
   return guard(async () => {
-    await assertPermission("maintenance.manage");
+    const access = await assertPermission("maintenance.manage");
     const parsed = statusInput.safeParse(input);
     if (!parsed.success) return fail("Invalid request.");
     const { id, status, note, editSeq } = parsed.data;
     const supabase = await createClient();
+    // Leaving "In progress" stops the person's own timer on this job first (Start work starts it, I1); anyone else's
+    // running timer is still refused by the database, with their name.
+    let stopped = false;
+    if (status !== "in_progress") {
+      const running = await supabase.from("work_order_time_entries").select("id").eq("work_order_id", id).eq("user_id", access.userId).is("ended_at", null).is("voided_at", null).maybeSingle();
+      if (running.data) {
+        const stop = await supabase.rpc("maintenance_stop_timer", { p_note: "" });
+        if (stop.error) return fail(dbErrorMessage(stop.error));
+        stopped = true;
+      }
+    }
     const { error } = await supabase.rpc("maintenance_set_status", { p_id: id, p_status: status, p_note: note, p_expected_seq: editSeq });
-    if (error) return fail(dbErrorMessage(error));
+    if (error) {
+      if (stopped) refresh(id);
+      return fail(stopped ? `Your timer is stopped. ${dbErrorMessage(error)}` : dbErrorMessage(error));
+    }
     refresh(id);
-    return ok(undefined, `Status: ${WO_STATUSES[status]}.`);
+    return ok(undefined, `Status: ${WO_STATUSES[status]}.${stopped ? " Your timer is stopped." : ""}`);
   });
 }
 

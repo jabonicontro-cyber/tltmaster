@@ -48,6 +48,20 @@ function triggers(p: PmRow, timezone: string) {
   return out;
 }
 
+/** What is due next for one schedule, and a stale reading, the same on the phone cards and the table. */
+function TriggerLines({ p, timezone }: { p: PmRow; timezone: string }) {
+  return (
+    <>
+      <ul className="space-y-0.5 text-sm">
+        {triggers(p, timezone).map((t) => (
+          <li key={t.label} className={t.state === "overdue" ? "font-medium text-critical" : t.state === "unknown" ? "text-muted italic" : undefined}>{t.label}</li>
+        ))}
+      </ul>
+      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700">Reading older than 30 days. Record a new one.</div>}
+    </>
+  );
+}
+
 export default async function PreventivePage({ searchParams }: { searchParams: Promise<Search> }) {
   const access = await requirePagePermission("maintenance.view");
   const sp = await searchParams;
@@ -82,33 +96,48 @@ export default async function PreventivePage({ searchParams }: { searchParams: P
             description={all.length ? "Try a different filter." : "Add a schedule per truck and service below."}
           />
         ) : (
-          <TableWrap>
-            <Table>
-              <thead><tr><Th>Truck</Th><Th>Service</Th><Th>Next due</Th><Th>State</Th><Th className="hidden md:table-cell">Work order</Th></tr></thead>
-              <tbody>
-                {rows.map((p) => (
-                  <Tr key={p.schedule_id}>
-                    <Td className="font-semibold whitespace-nowrap tabular">{p.unit_number}</Td>
-                    <Td>{p.name}</Td>
-                    <Td className="text-sm">
-                      <ul className="space-y-0.5">
-                        {triggers(p, timezone).map((t) => (
-                          <li key={t.label} className={t.state === "overdue" ? "font-medium text-critical" : t.state === "unknown" ? "text-muted italic" : undefined}>{t.label}</li>
-                        ))}
-                      </ul>
-                      {p.readings_stale && <div className="mt-1 text-xs font-medium text-amber-700">Reading older than 30 days. Record a new one.</div>}
-                    </Td>
-                    <Td><PmStateBadge state={p.state} /></Td>
-                    <Td className="hidden md:table-cell">
-                      {p.open_work_order_id
-                        ? <Link href={`/maintenance/work-orders/${p.open_work_order_id}`} className="font-medium whitespace-nowrap underline">{p.open_work_order_number}</Link>
-                        : <span className="text-muted">–</span>}
-                    </Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrap>
+          <>
+            {/* Phones: one card per schedule, the work order included (the table hid it and squeezed the columns). */}
+            <ul className="divide-y divide-line/70 border-t border-line/70 md:hidden" aria-label="Preventive schedules">
+              {rows.map((p) => (
+                <li key={p.schedule_id} className="space-y-1.5 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="min-w-0 text-sm"><span className="font-semibold text-ink tabular">Truck {p.unit_number}</span><span className="text-muted"> · </span><span className="text-ink">{p.name}</span></p>
+                    <PmStateBadge state={p.state} />
+                  </div>
+                  <TriggerLines p={p} timezone={timezone} />
+                  <p className="text-sm">
+                    <span className="text-muted">Work order: </span>
+                    {p.open_work_order_id
+                      ? <Link href={`/maintenance/work-orders/${p.open_work_order_id}`} className="inline-flex min-h-11 items-center font-medium underline">Work order {p.open_work_order_number}</Link>
+                      : <span className="text-muted">None open</span>}
+                  </p>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block">
+              <TableWrap>
+                <Table>
+                  <thead><tr><Th>Truck</Th><Th>Service</Th><Th>Next due</Th><Th>State</Th><Th>Work order</Th></tr></thead>
+                  <tbody>
+                    {rows.map((p) => (
+                      <Tr key={p.schedule_id}>
+                        <Td className="font-semibold whitespace-nowrap tabular">{p.unit_number}</Td>
+                        <Td>{p.name}</Td>
+                        <Td className="text-sm"><TriggerLines p={p} timezone={timezone} /></Td>
+                        <Td><PmStateBadge state={p.state} /></Td>
+                        <Td>
+                          {p.open_work_order_id
+                            ? <Link href={`/maintenance/work-orders/${p.open_work_order_id}`} className="font-medium whitespace-nowrap underline">{p.open_work_order_number}</Link>
+                            : <span className="text-muted">–</span>}
+                        </Td>
+                      </Tr>
+                    ))}
+                  </tbody>
+                </Table>
+              </TableWrap>
+            </div>
+          </>
         )}
       </Card>
 

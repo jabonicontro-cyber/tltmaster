@@ -8,8 +8,10 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
-import { COST_KINDS, nextStatuses, STATUS_ACTION_LABELS, type WoStatus } from "@/lib/maintenance";
+import { COMPLETED_VS_CLOSED, COST_KINDS, nextStatuses, STATUS_ACTION_LABELS, type WoStatus } from "@/lib/maintenance";
 import { addCost, generateDueWorkOrders, recordClearance, removeCost, setWorkOrderStatus, startInspection } from "@/app/(app)/maintenance/actions";
+import { startJob } from "@/app/(app)/maintenance/crew-actions";
+import { cn } from "@/lib/cn";
 
 /** Lifecycle buttons: only the moves the database allows from here. Cancel asks for a reason. */
 export function StatusActions({ id, status, safetyCritical, editSeq, canClear, unit = "truck" }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean; unit?: "truck" | "trailer" }) {
@@ -19,8 +21,11 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
   const [note, setNote] = useState("");
   const options = nextStatuses(status, safetyCritical).filter((s) => !(s === "canceled" && safetyCritical && !canClear));
 
+  // Buttons are big enough for gloved hands on a phone (B5) and the usual size from a tablet up.
+  // One start rule (I1): "Start work" here is "Start this job" on My jobs: whoever starts a job nobody leads becomes
+  // its lead, and their timer starts. Reopening a completed job stays a plain status change.
   const go = (to: WoStatus, n = "") =>
-    setWorkOrderStatus({ id, status: to, note: n, editSeq }).then((r) => {
+    (to === "in_progress" && status !== "completed" ? startJob({ workOrderId: id, editSeq }) : setWorkOrderStatus({ id, status: to, note: n, editSeq })).then((r) => {
       if (!r.ok) return r.error;
       toast.success(r.message ?? "Saved.");
       router.refresh();
@@ -36,7 +41,7 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
     <Button
       key={to}
       variant={to === "canceled" ? "ghost" : to === "awaiting_inspection" || to === "completed" || to === "in_progress" ? "primary" : "secondary"}
-      className={to === "canceled" ? "text-muted" : undefined}
+      className={cn("min-h-12 sm:min-h-0", to === "canceled" && "text-muted")}
       disabled={pending}
       onClick={() => {
         // Cancel asks why, reopening asks for an optional note, and "Waiting for parts" asks which part.
@@ -60,6 +65,7 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       {safetyCritical && status === "in_progress" && (
         <p className="basis-full text-sm text-muted">Safety-critical: completing goes through an inspection by someone authorized to clear the {unit}.</p>
       )}
+      {status === "completed" && <p className="basis-full text-sm text-muted">{COMPLETED_VS_CLOSED} Reopen it if more work is needed.</p>}
       {options.includes("canceled") && <div className="mt-1 basis-full border-t border-line/70 pt-3">{button("canceled")}</div>}
       <ConfirmDialog
         open={Boolean(confirm)}
@@ -95,14 +101,14 @@ export function ClearanceActions({ id, clearance, unit = "truck" }: { id: string
   return (
     <div className="flex flex-wrap gap-2">
       {clearance === "awaiting" && (
-        <Button variant="secondary" disabled={pending} icon={<ClipboardCheck className="size-4" />} onClick={() => start(async () => {
+        <Button variant="secondary" className="min-h-12 sm:min-h-0" disabled={pending} icon={<ClipboardCheck className="size-4" />} onClick={() => start(async () => {
           const r = await startInspection(id);
           if (!r.ok) toast.error(r.error);
           else { toast.success(r.message ?? "Started."); router.refresh(); }
         })}>Start inspection</Button>
       )}
-      <Button icon={<ShieldCheck className="size-4" />} onClick={() => { setNotes(""); setOutcome("passed"); }}>Passed, clear for service</Button>
-      <Button variant="secondary" icon={<ShieldX className="size-4" />} onClick={() => { setNotes(""); setOutcome("failed"); }}>Failed</Button>
+      <Button className="min-h-12 sm:min-h-0" icon={<ShieldCheck className="size-4" />} onClick={() => { setNotes(""); setOutcome("passed"); }}>Passed, clear for service</Button>
+      <Button variant="secondary" className="min-h-12 sm:min-h-0" icon={<ShieldX className="size-4" />} onClick={() => { setNotes(""); setOutcome("failed"); }}>Failed</Button>
       <ConfirmDialog
         open={Boolean(outcome)}
         onOpenChange={(o) => !o && setOutcome(null)}

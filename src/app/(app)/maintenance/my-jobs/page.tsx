@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MaintenanceTabs } from "@/components/maintenance/tabs";
 import { MyJobCard, OpenJobCard, RunningTimer } from "@/components/maintenance/my-jobs";
 import { PageHeader } from "@/components/ui/page-header";
@@ -51,10 +52,17 @@ export default async function MyJobsPage() {
           )}
           {manage && jobs.unled.length > 0 && (
             <>
-              <h2 className="mt-6 mb-2 text-sm font-semibold text-ink">Needs a mechanic</h2>
-              <ul className="space-y-3">
+              <h2 className="mt-6 mb-1 text-sm font-semibold text-ink">Needs a mechanic</h2>
+              <p className="mb-2 text-xs text-muted">Nobody leads these yet, new driver reports included. Safety-critical first, then the most urgent, then the oldest.</p>
+              <ul className="space-y-3" aria-label="Needs a mechanic">
                 {jobs.unled.map((j) => <OpenJobCard key={j.id} job={j} me={access.userId} />)}
               </ul>
+              {jobs.unledMore > 0 && (
+                <p className="mt-3 text-sm text-muted">
+                  {jobs.unledMore} more {jobs.unledMore === 1 ? "job needs" : "jobs need"} a mechanic.{" "}
+                  <Link href="/maintenance/work-orders" className="inline-flex min-h-11 items-center font-semibold text-brand-fg underline">See all jobs</Link>
+                </p>
+              )}
             </>
           )}
         </div>

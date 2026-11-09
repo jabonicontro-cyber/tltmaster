@@ -8,7 +8,7 @@ import { Check, Clock, Play, Plus, Square, X } from "lucide-react";
 import { toast } from "sonner";
 import { addMechanic, addTask, addTime, removeMechanic, setTask, startTimer, stopTimer, voidTime } from "@/app/(app)/maintenance/crew-actions";
 import { FinishJob } from "@/components/maintenance/my-jobs";
-import { finishesJob } from "@/lib/maintenance";
+import { finishesJob, fixedFromNotes } from "@/lib/maintenance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
@@ -48,10 +48,11 @@ function Elapsed({ since }: { since: string }) {
 }
 
 /** Crew and labor time on one work order. */
-export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {}, safetyCritical = false, unit = "truck" }: {
+export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {}, safetyCritical = false, unit = "truck", hasTruck = false }: {
   workOrderId: string; status: string; data: WorkOrderCrew; me: string; canManage: boolean; today: string; timeZone: string;
   /** Mechanic pictures by user id. */ faces?: Record<string, Face>;
   /** A safety-critical job finishes through an authorized inspection. */ safetyCritical?: boolean; unit?: "truck" | "trailer";
+  /** A truck job: finishing offers the odometer and engine hours. */ hasTruck?: boolean;
 }) {
   const { pending, run } = useRun();
   const [adding, setAdding] = useState("");
@@ -65,6 +66,10 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
   const finisher = Boolean(mine && finishesJob(mine.role, data.crew.length, Boolean(lead)));
   const myTimerHere = data.myTimer?.workOrderId === workOrderId;
   const candidates = data.options.filter((o) => !data.crew.some((c) => c.userId === o.userId));
+  // My notes kept with my time here start "What did you fix?" (I8), oldest first.
+  const myNotes = fixedFromNotes([...data.time].filter((t) => t.userId === me && !t.voided).sort((a, b) => a.startedAt.localeCompare(b.startedAt)).map((t) => t.note));
+  // Big enough for gloved hands on a phone (B5); the usual size from a tablet up.
+  const tap = "min-h-11 sm:min-h-0";
   const fmt = (iso: string) => new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
 
   return (
@@ -74,18 +79,18 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
           {myTimerHere ? (
             <>
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-ink"><Clock className="size-4" aria-hidden /> Working · <Elapsed since={data.myTimer!.startedAt} /></span>
-              <Button size="sm" disabled={pending} onClick={() => run(() => stopTimer())} icon={<Square className="size-4" aria-hidden />}>Stop</Button>
+              <Button size="sm" className={tap} disabled={pending} onClick={() => run(() => stopTimer())} icon={<Square className="size-4" aria-hidden />}>Stop</Button>
             </>
           ) : data.myTimer ? (
             <span className="text-sm text-muted">Your timer is running on work order {data.myTimer.number}. Stop it there before starting here.</span>
           ) : status === "in_progress" ? (
-            <Button size="sm" disabled={pending} onClick={() => run(() => startTimer({ workOrderId }))} icon={<Play className="size-4" aria-hidden />}>Start work</Button>
+            <Button size="sm" className={tap} disabled={pending} onClick={() => run(() => startTimer({ workOrderId }))} icon={<Play className="size-4" aria-hidden />}>Start timer</Button>
           ) : (
             <span className="text-sm text-muted">Timers start once the work order is In progress.</span>
           )}
           {/* The lead (or the only mechanic) finishes the job in one step; a helper marks their own part done. */}
           {mine && status === "in_progress" && (finisher || (!myTimerHere && mine.status !== "done")) && (
-            <FinishJob workOrderId={workOrderId} finisher={finisher} safetyCritical={safetyCritical} unit={unit} leadName={lead?.name ?? null} size="sm" />
+            <FinishJob workOrderId={workOrderId} finisher={finisher} safetyCritical={safetyCritical} unit={unit} leadName={lead?.name ?? null} size="sm" suggested={myNotes} hasTruck={hasTruck} />
           )}
         </div>
       )}
@@ -103,8 +108,8 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
               </span>
               {canManage && open && (
                 <span className="flex gap-1">
-                  {c.role !== "lead" && <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => addMechanic({ workOrderId, userId: c.userId, lead: true }))}>Make lead</Button>}
-                  <Button size="sm" variant="ghost" disabled={pending} aria-label={`Remove ${c.name}`} onClick={() => run(() => removeMechanic({ workOrderId, userId: c.userId }))}><X className="size-4" aria-hidden /></Button>
+                  {c.role !== "lead" && <Button size="sm" variant="ghost" className={tap} disabled={pending} onClick={() => run(() => addMechanic({ workOrderId, userId: c.userId, lead: true }))}>Make lead</Button>}
+                  <Button size="sm" variant="ghost" className={tap} disabled={pending} aria-label={`Remove ${c.name}`} onClick={() => run(() => removeMechanic({ workOrderId, userId: c.userId }))}><X className="size-4" aria-hidden /></Button>
                 </span>
               )}
             </li>
@@ -112,11 +117,11 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
         </ul>
         {canManage && open && candidates.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-2">
-            <Select aria-label="Add a mechanic" value={adding} onChange={(e) => setAdding(e.target.value)} className="h-9 w-56">
+            <Select aria-label="Add a mechanic" value={adding} onChange={(e) => setAdding(e.target.value)} className="h-11 w-56 sm:h-9">
               <option value="">Add a mechanic…</option>
               {candidates.map((o) => <option key={o.userId} value={o.userId}>{o.name}</option>)}
             </Select>
-            <Button size="sm" variant="secondary" disabled={!adding || pending} onClick={() => run(() => addMechanic({ workOrderId, userId: adding, lead: data.crew.length === 0 }), () => setAdding(""))}>
+            <Button size="sm" variant="secondary" className={tap} disabled={!adding || pending} onClick={() => run(() => addMechanic({ workOrderId, userId: adding, lead: data.crew.length === 0 }), () => setAdding(""))}>
               {data.crew.length === 0 ? "Assign as lead" : "Add to crew"}
             </Button>
           </div>
@@ -127,7 +132,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="text-sm font-semibold text-ink">Labor · {hoursText(data.totalMinutes)}</h3>
           {canManage && open && data.crew.length > 0 && !log && (
-            <Button size="sm" variant="ghost" icon={<Plus className="size-4" aria-hidden />} onClick={() => setLog({ userId: data.crew.find((c) => c.userId === me)?.userId ?? data.crew[0].userId, date: today, start: "", end: "", note: "" })}>Log time</Button>
+            <Button size="sm" variant="ghost" className={tap} icon={<Plus className="size-4" aria-hidden />} onClick={() => setLog({ userId: data.crew.find((c) => c.userId === me)?.userId ?? data.crew[0].userId, date: today, start: "", end: "", note: "" })}>Log time</Button>
           )}
         </div>
         {log && (
@@ -203,32 +208,35 @@ export function TaskChecklist({ workOrderId, status, tasks, canManage }: { workO
   return (
     <div className="space-y-3">
       {tasks.length > 0 && <p className="text-sm text-muted">{done} of {tasks.length} done</p>}
-      <ul className="space-y-1.5" aria-label="Checklist">
+      {/* The whole row is the tap target, at least 48 px high on a phone, for gloved hands (B5). */}
+      <ul className="space-y-1" aria-label="Checklist">
         {tasks.map((t) => (
-          <li key={t.id} className="flex items-start gap-2">
+          <li key={t.id}>
             <button
               type="button"
               disabled={!canManage || !open || pending}
               aria-label={t.status === "open" ? `Mark "${t.title}" done` : `Reopen "${t.title}"`}
               aria-pressed={t.status === "done"}
               onClick={() => run(() => setTask({ workOrderId, taskId: t.id, status: t.status === "open" ? "done" : "open" }))}
-              className={`mt-0.5 grid size-5 shrink-0 place-items-center rounded border ${t.status === "done" ? "border-strong bg-strong text-white" : "border-line bg-card"} disabled:opacity-60`}
+              className="flex min-h-12 w-full items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong disabled:cursor-default disabled:hover:bg-transparent sm:min-h-10"
             >
-              {t.status === "done" && <Check className="size-3.5" aria-hidden />}
+              <span aria-hidden className={`grid size-6 shrink-0 place-items-center rounded-md border-2 ${t.status === "done" ? "border-strong bg-strong text-white" : "border-line bg-card"}`}>
+                {t.status === "done" && <Check className="size-4" />}
+              </span>
+              <span className="min-w-0 text-sm">
+                <span className={t.status === "open" ? "text-ink" : "text-muted line-through"}>{t.title}</span>
+                {t.status === "skipped" && <span className="text-muted"> (skipped)</span>}
+                {t.doneBy && <span className="ml-1 text-xs text-muted">· {t.doneBy}</span>}
+              </span>
             </button>
-            <span className="text-sm">
-              <span className={t.status === "open" ? "text-ink" : "text-muted line-through"}>{t.title}</span>
-              {t.status === "skipped" && <span className="text-muted"> (skipped)</span>}
-              {t.doneBy && <span className="ml-1 text-xs text-muted">· {t.doneBy}</span>}
-            </span>
           </li>
         ))}
       </ul>
       {tasks.length === 0 && <p className="text-sm text-muted">No checklist yet.</p>}
       {canManage && open && (
         <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); run(() => addTask({ workOrderId, title }), () => setTitle("")); }}>
-          <Input aria-label="New task" placeholder="Add a step, e.g. Torque wheel nuts" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} className="h-9 min-w-0 flex-1" />
-          <Button type="submit" size="sm" variant="secondary" disabled={pending || title.trim().length < 2}>Add</Button>
+          <Input aria-label="New task" placeholder="Add a step, e.g. Torque wheel nuts" value={title} maxLength={200} onChange={(e) => setTitle(e.target.value)} className="h-11 min-w-0 flex-1 sm:h-9" />
+          <Button type="submit" size="sm" variant="secondary" className="min-h-11 sm:min-h-0" disabled={pending || title.trim().length < 2}>Add</Button>
         </form>
       )}
     </div>

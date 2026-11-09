@@ -63,3 +63,22 @@ export function freeDays(busyDates: string[], today: string, days = 7): string[]
   const busy = new Set(busyDates);
   return Array.from({ length: days }, (_, i) => addDays(today, i + 1)).filter((d) => !busy.has(d));
 }
+
+export interface FreeDayGroup { days: string[]; units: string[] }
+
+/**
+ * The free days said once (mechanic walkthrough 2026-11-09): when several open jobs' trucks have the same days without
+ * loads (typically every truck, on a quiet week), one line names the days and the trucks instead of repeating the same
+ * sentence under every job. Groups keep the order the jobs came in; each truck is named once.
+ */
+export function freeDayGroups(jobs: ReadonlyArray<{ unitLabel: string; freeDays: string[] | null }>): FreeDayGroup[] {
+  const groups = new Map<string, FreeDayGroup>();
+  for (const j of jobs) {
+    if (!j.freeDays?.length) continue;
+    const key = j.freeDays.join(",");
+    const g = groups.get(key) ?? { days: j.freeDays, units: [] };
+    if (!g.units.includes(j.unitLabel)) g.units.push(j.unitLabel);
+    groups.set(key, g);
+  }
+  return [...groups.values()];
+}

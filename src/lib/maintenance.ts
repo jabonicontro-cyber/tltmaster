@@ -348,3 +348,67 @@ export function shortStock(message: string | null | undefined): { onHand: number
   const m = /^Only ([\d.]+) (.*?) on hand\.?$/.exec((message ?? "").trim());
   return m ? { onHand: Number(m[1]), unit: m[2] } : null;
 }
+
+/**
+ * What "Start this job" / "Start work" says afterwards (one start rule, I1): the job is in progress, whether the person
+ * became the lead (a job nobody led), and whether their timer runs. The job is started even when the timer cannot be.
+ */
+export function startJobMessage({ lead, timerError }: { lead: "set" | "failed" | "kept"; timerError: string | null }): string {
+  const parts = ["Job started."];
+  if (lead === "set") parts.push("You are the lead mechanic.");
+  if (lead === "failed") parts.push("Nobody leads it yet: assign a lead on the Labor tab.");
+  parts.push(timerError ? `Your timer did not start: ${timerError}` : "Your timer is running.");
+  return parts.join(" ");
+}
+
+const URGENCY_ORDER: Record<string, number> = { immediate: 0, high: 1, normal: 2, low: 3 };
+
+/**
+ * The order a mechanic sees jobs in (B2): safety-critical first, then urgency (Immediate, High, Normal, Low), then the
+ * oldest first so nothing reported waits forever; the work order number breaks ties.
+ */
+export function compareMechanicJobs(
+  a: { safetyCritical: boolean; urgency: string; createdAt: string; number: string },
+  b: { safetyCritical: boolean; urgency: string; createdAt: string; number: string },
+): number {
+  return (Number(b.safetyCritical) - Number(a.safetyCritical))
+    || ((URGENCY_ORDER[a.urgency] ?? 4) - (URGENCY_ORDER[b.urgency] ?? 4))
+    || a.createdAt.localeCompare(b.createdAt)
+    || a.number.localeCompare(b.number);
+}
+
+/**
+ * "What did you fix?" starts from what the person already wrote beside their timer on this job (I8, no double entry):
+ * each note once, oldest first, one per line. They still read it and change it before finishing.
+ */
+export function fixedFromNotes(notes: ReadonlyArray<string | null | undefined>, max = 2000): string {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const n of notes) {
+    const t = (n ?? "").trim();
+    if (t && !seen.has(t.toLowerCase())) {
+      seen.add(t.toLowerCase());
+      out.push(t);
+    }
+  }
+  return out.join("\n").slice(0, max);
+}
+
+/** Completed and Closed side by side, in plain words (I8). */
+export const COMPLETED_VS_CLOSED = "Completed means the repair is done. Closed means the office has checked the time, parts and costs: a closed work order can no longer be changed.";
+
+/**
+ * The reason a truck or trailer is out of service, as it stands now (I3). The stored reason names the work order that
+ * took the unit out of service and is not rewritten when that one is cleared while another safety-critical work order
+ * still holds the unit. When the stored reason names a work order that is no longer open, the open safety-critical
+ * work orders on the unit are named instead. A reason typed by a person (no work order in it) is shown as it is.
+ */
+export function currentRestrictionReason(stored: string, openSafety: ReadonlyArray<{ number: string; title: string }>): string {
+  const named = [...stored.matchAll(/work orders? ([A-Z]{1,5}-\d+)/gi)].map((m) => m[1]);
+  if (!named.length || !openSafety.length) return stored;
+  const open = new Set(openSafety.map((w) => w.number));
+  if (named.every((n) => open.has(n)) && named.length === openSafety.length) return stored;
+  return openSafety.length === 1
+    ? `Safety-critical defect, work order ${openSafety[0].number}: ${openSafety[0].title}`
+    : `Safety-critical defects, work orders ${openSafety.map((w) => w.number).join(", ")}`;
+}

@@ -197,7 +197,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
           <nav aria-label="Work order sections" className="flex flex-wrap gap-x-1 border-b border-line/70 px-2 pt-2 sm:flex-nowrap sm:overflow-x-auto sm:px-4 sm:pt-3">
             {tabs.map((t) => (
               <Link key={t.key} href={`/maintenance/work-orders/${wo.id}?tab=${t.key}${fromMyJobs ? "&from=my-jobs" : ""}`} aria-current={tab === t.key ? "page" : undefined} scroll={false}
-                className={cn("-mb-px flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold sm:px-3", tab === t.key ? "border-strong text-ink" : "border-transparent text-muted hover:text-ink")}>
+                className={cn("-mb-px flex h-12 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm font-semibold sm:h-10", tab === t.key ? "border-strong text-ink" : "border-transparent text-muted hover:text-ink")}>
                 <span className="pill-text">{t.label}</span>
                 {t.count !== undefined && <Badge tone="gray">{t.count}</Badge>}
               </Link>
@@ -211,7 +211,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 {"estimated_hours" in wo && (manage && editable
                   ? <EstimateForm workOrderId={wo.id} hours={estimate} />
                   : <p className="text-sm text-muted">Estimate: {estimate ?? "not set"}{estimate ? " h" : ""}</p>)}
-                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} safetyCritical={wo.safety_critical} unit={trailer ? "trailer" : "truck"} />
+                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} safetyCritical={wo.safety_critical} unit={trailer ? "trailer" : "truck"} hasTruck={Boolean(truck) && !trailer} />
               </div>
             ) : <p className="text-sm text-muted">Labor hours: {fmtNum(wo.labor_hours, " h")}</p>)}
             {tab === "costs" && canCosts && costs && (
@@ -242,7 +242,8 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             {tab === "triage" && showTriage && (
               <div className="space-y-3">
                 <p className="text-sm text-muted">What was reported, what is still unknown, and a suggested category and urgency. Nothing changes until someone accepts it.</p>
-                <TriageCard workOrderId={wo.id} triage={triage.triage} canManage={manage} open={editable} decidedByName={triage.triage?.decidedBy ? who(triage.triage.decidedBy) : null} />
+                <TriageCard workOrderId={wo.id} triage={triage.triage} canManage={manage} open={editable} decidedByName={triage.triage?.decidedBy ? who(triage.triage.decidedBy) : null}
+                  current={{ category: wo.category, urgency: wo.urgency, safetyCritical: wo.safety_critical }} />
               </div>
             )}
             {tab === "parts" && stock.installed && (

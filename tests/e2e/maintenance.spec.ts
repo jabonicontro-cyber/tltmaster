@@ -36,11 +36,13 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
   expect(await serviceStatus(truckId)).toBe("out_of_service");
   const woUrl = page.url();
 
+  // One start rule (I1): starting work makes the mechanic the lead and starts their timer; sending it for inspection
+  // stops that timer first.
   await page.getByRole("button", { name: "Start work" }).click();
-  await expectToast(page, "Status: In progress.");
+  await expectToast(page, "Job started. You are the lead mechanic. Your timer is running.");
   await expect(page.getByRole("button", { name: "Mark completed" })).toHaveCount(0); // never directly for safety work
   await page.getByRole("button", { name: "Send for inspection" }).click();
-  await expectToast(page, "Status: Awaiting inspection.");
+  await expectToast(page, "Status: Awaiting inspection. Your timer is stopped.");
   await expect(page.getByText("Only people allowed to clear vehicles")).toBeVisible();
   await expect(page.getByRole("button", { name: /Passed/ })).toHaveCount(0);
 

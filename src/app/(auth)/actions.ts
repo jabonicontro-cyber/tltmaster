@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createClient } from "@/server/supabase/server";
 import { env } from "@/server/env";
 import { safeNextPath } from "@/lib/safe-redirect";
+import { signInHome } from "@/lib/companion";
 import { isUsernameEmail, signInAddress } from "@/lib/usernames";
 import type { ActionResult } from "@/lib/action-result";
 import { takePendingPortalInvite } from "@/server/portal-invite";
@@ -57,6 +58,13 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
     }
     console.error("Sign-in failed", { status: error.status, code: error.code });
     return { ok: false, error: "Sign-in is temporarily unavailable. Please try again in a minute." };
+  }
+  // No page to return to: a mechanic-only login starts on My jobs (B2); everyone else on the usual landing. Read with
+  // the session just created; any failure keeps the usual landing (each page checks access again).
+  if (!parsed.data.next) {
+    const { data } = await supabase.rpc("my_access");
+    const home = signInHome(((data as { permissions?: string[] } | null)?.permissions) ?? []);
+    if (home) redirect(home);
   }
   redirect(safeNextPath(parsed.data.next));
 }

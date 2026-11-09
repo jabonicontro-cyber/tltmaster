@@ -14,6 +14,11 @@ export interface TriageInput {
   description: string;
   /** Other open work orders on the same truck or trailer. */
   openOnUnit: Array<{ id: string; number: string; title: string; category: string }>;
+  /**
+   * What the work order already says. A suggestion never lowers the urgency and never drops the safety flag
+   * (mechanic walkthrough 2026-11-09, B3): it starts from the higher of the two.
+   */
+  current?: { urgency: WoUrgency; safetyCritical: boolean };
 }
 
 export interface TriageSuggestion {
@@ -44,7 +49,9 @@ const CATEGORY_RULES: Array<[WoCategory, RegExp]> = [
 ];
 
 // Words that mean the vehicle may not be safe to drive until someone qualified looks at it.
-const SAFETY = /\bbrak|steer|air (leak|loss)|low air|tire (blow|separation)|blow ?out|wheel (off|loose|came)|lug ?nuts? (loose|missing)|smoke|fire|fuel leak|no (head|brake|tail) ?lights?|headlights? out|coupl|fifth wheel|kingpin|frame crack|crack(ed)? (frame|spring)|suspension|spring broke|hitch/i;
+// Tire damage counts too (B3): a cut or bulging sidewall, a low or flat tire, a blowout or tread separation can fail on
+// the road. "Cut" only counts next to a tire word, so "engine cuts out" is not read as tire damage.
+const SAFETY = /\bbrak|steer|air (leak|loss)|low air|tire (blow|separation)|blow ?out|tread separat|sidewall|bulg(e|es|ing)\b|low tire|tires? (is |are |looks? |running |seems? )?(low|flat)\b|\bflat\b(?! ?bed)|(tire|tyre|sidewall|tread)[^.\n]{0,40}\bcuts?\b|\bcuts?\b[^.\n]{0,40}\b(tire|tyre|sidewall|tread)|wheel (off|loose|came)|lug ?nuts? (loose|missing)|smoke|fire|fuel leak|no (head|brake|tail) ?lights?|headlights? out|coupl|fifth wheel|kingpin|frame crack|crack(ed)? (frame|spring)|suspension|spring broke|hitch/i;
 const URGENT = /won'?t start|can'?t (drive|move)|stuck|stranded|tow|on the (shoulder|side of the road)|immediately|right away|now\b/i;
 const WORSENING = /(getting|got|growing) (worse|louder|bigger)|worse(ning)?\b|more often|increasing|keeps (getting|happening)/i;
 const NOT_WORSENING = /(same as|no worse|not (getting )?worse|stable|hasn'?t changed)/i;
@@ -77,8 +84,20 @@ export function triageRules(input: TriageInput): TriageSuggestion {
   if (safetyMatch) reasons.push(`"${wholeWords(text, safetyMatch.index ?? 0, safetyMatch[0].length)}" can affect safe operation: a qualified person should check it before the vehicle runs.`);
 
   const urgentMatch = text.match(URGENT);
-  const urgency: WoUrgency = urgentMatch || (safetyReview && /won'?t|can'?t|fail|out\b|broke/i.test(text)) ? "immediate" : safetyReview ? "high" : "normal";
+  let urgency: WoUrgency = urgentMatch || (safetyReview && /won'?t|can'?t|fail|out\b|broke/i.test(text)) ? "immediate" : safetyReview ? "high" : "normal";
   if (urgentMatch) reasons.push(`"${urgentMatch[0]}" suggests the vehicle cannot run.`);
+  // Never below what the work order already says (B3).
+  let safety = safetyReview;
+  if (input.current) {
+    if (URGENCY_RANK[input.current.urgency] > URGENCY_RANK[urgency]) {
+      urgency = input.current.urgency;
+      reasons.push(`The work order is already ${WO_URGENCIES[input.current.urgency].toLowerCase()} urgency: a suggestion never lowers it.`);
+    }
+    if (input.current.safetyCritical && !safety) {
+      safety = true;
+      reasons.push("The work order is already safety-critical: it stays that way until an authorized inspection clears it.");
+    }
+  }
 
   const onset = text.match(ONSET)?.[0] ?? null;
   const worsening = NOT_WORSENING.test(text) ? "no" : WORSENING.test(text) ? "yes" : "unknown";
@@ -107,10 +126,58 @@ export function triageRules(input: TriageInput): TriageSuggestion {
     questions: questions.slice(0, 5),
     category,
     urgency,
-    safetyReview,
+    safetyReview: safety,
     reasons,
     related,
   };
+}
+
+/** Urgency from lowest to highest. */
+export const URGENCY_RANK: Record<WoUrgency, number> = { low: 0, normal: 1, high: 2, immediate: 3 };
+
+/** The higher of two urgencies. */
+export function higherUrgency(a: WoUrgency, b: WoUrgency): WoUrgency {
+  return URGENCY_RANK[a] >= URGENCY_RANK[b] ? a : b;
+}
+
+/** What a work order says now: the starting point for accepting or editing a suggestion. */
+export interface TriageCurrent { category: WoCategory; urgency: WoUrgency; safetyCritical: boolean }
+export interface TriageValues { category: WoCategory; urgency: WoUrgency; safetyCritical: boolean }
+
+export interface TriageChanges {
+  /** What the work order ends up with. */
+  next: TriageValues;
+  /** Each change in plain words ("Urgency: Normal → High"). Empty when nothing changes. */
+  changes: string[];
+  /** What stays as it is although the suggestion said otherwise, in plain words. */
+  kept: string[];
+  /** The urgency goes down (only a person's own edit can do this, never a suggestion). */
+  lowersUrgency: boolean;
+}
+
+/** The changes from the work order as it is to `next`, in plain words. The safety flag is never removed here. */
+export function triageChanges(current: TriageCurrent, next: TriageValues): TriageChanges {
+  const safety = current.safetyCritical || next.safetyCritical;
+  const changes: string[] = [];
+  const kept: string[] = [];
+  if (next.category !== current.category) changes.push(`Category: ${WO_CATEGORIES[current.category]} → ${WO_CATEGORIES[next.category]}`);
+  const lowersUrgency = URGENCY_RANK[next.urgency] < URGENCY_RANK[current.urgency];
+  if (next.urgency !== current.urgency) changes.push(`Urgency: ${WO_URGENCIES[current.urgency]} → ${WO_URGENCIES[next.urgency]}${lowersUrgency ? " (lower)" : ""}`);
+  if (safety && !current.safetyCritical) changes.push("Marks it safety-critical: the vehicle stays out of service until an authorized inspection clears it.");
+  if (current.safetyCritical && !next.safetyCritical) kept.push("It stays safety-critical: only an authorized inspection clears it.");
+  return { next: { ...next, safetyCritical: safety }, changes, kept, lowersUrgency };
+}
+
+/**
+ * Accepting a suggestion (B3, safety): the suggested category, the higher of the current and the suggested urgency, and
+ * safety-critical when either says so. A suggestion can raise the urgency or add the safety flag, never lower or remove.
+ */
+export function acceptTriage(current: TriageCurrent, suggestion: Pick<TriageSuggestion, "category" | "urgency" | "safetyReview">): TriageChanges {
+  const urgency = higherUrgency(current.urgency, suggestion.urgency);
+  const out = triageChanges(current, { category: suggestion.category, urgency, safetyCritical: current.safetyCritical || suggestion.safetyReview });
+  if (urgency !== suggestion.urgency) out.kept.unshift(`Urgency stays ${WO_URGENCIES[current.urgency]} (the suggestion said ${WO_URGENCIES[suggestion.urgency]}; the higher one is kept).`);
+  if (current.safetyCritical && !suggestion.safetyReview) out.kept.push("It stays safety-critical: only an authorized inspection clears it.");
+  return out;
 }
 
 /** A driver report's own kind (src/lib/driver/rules.ts REPORT_KIND_LABELS). */
@@ -126,8 +193,7 @@ export interface ReportDraft {
   reasons: string[];
 }
 
-const URGENCY_ORDER: WoUrgency[] = ["low", "normal", "high", "immediate"];
-const atLeast = (u: WoUrgency, min: WoUrgency) => (URGENCY_ORDER.indexOf(u) >= URGENCY_ORDER.indexOf(min) ? u : min);
+const atLeast = (u: WoUrgency, min: WoUrgency) => higherUrgency(u, min);
 
 /** The first sentence of the report as a short title (at most 80 characters, cut on a word). */
 export function reportTitle(text: string, fallback: string): string {

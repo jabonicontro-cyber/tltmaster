@@ -10,10 +10,11 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { addDays, formatDate } from "@/lib/dates";
-import { rankWorkOrders, workOrderUnit } from "@/lib/maintenance";
+import { currentRestrictionReason, rankWorkOrders, workOrderUnit } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { loadShopInsights } from "@/server/data/shop-insights";
+import { freeDayGroups } from "@/lib/maintenance/insights";
 import { listAssignees, listDriverOptions, listOpenWorkOrders, listPmStatus, listTrailers, listTrucks } from "@/server/data/maintenance";
 import { businessToday } from "@/server/data/settings";
 import { listShopWorkload } from "@/server/data/maintenance-crew";
@@ -267,7 +268,7 @@ export default async function MaintenancePage() {
                     {outOfService.map((t) => (
                       <Tr key={t.id}>
                         <Td><Link href={t.href} className="font-semibold text-ink hover:underline">{t.label}</Link></Td>
-                        <Td className="text-sm">{t.out_of_service_reason || "–"}</Td>
+                        <Td className="text-sm">{currentRestrictionReason(t.out_of_service_reason, open.filter((w) => w.safety_critical && (w.truck_id === t.id || w.trailer_id === t.id))) || "–"}</Td>
                         <Td className="tabular">{t.out_of_service_since ? `${daysBetween(t.out_of_service_since, today)} d` : "–"}</Td>
                         <Td className="hidden sm:table-cell">{t.expected_return_date ? formatDate(t.expected_return_date) : "Not set"}</Td>
                       </Tr>
@@ -381,7 +382,11 @@ export default async function MaintenancePage() {
 
         </div>
       </div>
-      {insights && (insights.repeats.length > 0 || insights.jobs.length > 0) && (
+      {insights && (insights.repeats.length > 0 || insights.jobs.length > 0) && (() => {
+        // Parts per job; the free days once, for all the trucks that share them (not repeated under every job).
+        const partJobs = insights.jobs.filter((j) => j.parts.length > 0);
+        const freeGroups = freeDayGroups(insights.jobs);
+        return (
         <Card className="mt-5">
           <CardHeader title="Shop insights" description="Learned from your completed work orders and the parts used on them. Suggestions only." />
           {insights.repeats.length > 0 && (
@@ -395,27 +400,34 @@ export default async function MaintenancePage() {
               ))}
             </ul>
           )}
-          {insights.jobs.length > 0 && (
-            <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Open jobs: parts and free days">
-              {insights.jobs.slice(0, 8).map((j) => (
+          {freeGroups.length > 0 && (
+            <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Free days for the shop">
+              {freeGroups.map((g) => (
+                <li key={g.days.join(",")} className="px-5 py-3 text-sm text-muted sm:px-6">
+                  No loads planned on <span className="font-medium text-ink">{g.days.map((d) => formatDate(d)).join(", ")}</span> for {g.units.join(", ")}: {g.days.length === 1 ? "a good day" : "good days"} for the shop.
+                </li>
+              ))}
+            </ul>
+          )}
+          {partJobs.length > 0 && (
+            <ul className="divide-y divide-line/70 border-t border-line/70" aria-label="Open jobs: parts they usually need">
+              {partJobs.slice(0, 8).map((j) => (
                 <li key={j.workOrderId} className="px-5 py-3 text-sm sm:px-6">
                   <Link href={`/maintenance/work-orders/${j.workOrderId}`} className="font-semibold text-ink hover:underline">{j.number}</Link>
                   <span className="text-muted"> · {j.unitLabel}</span>
-                  {j.parts.length > 0 && (
-                    <p className="mt-0.5 text-muted">
-                      Usually needs:{" "}
-                      {j.parts.map((p, i) => (
-                        <span key={p.partId} className={cn(p.short && "font-medium text-amber-800")}>{i ? ", " : ""}{p.name} ({p.typical} {p.unit}, {p.onHand} on hand{p.short ? ". Order more" : ""})</span>
-                      ))}
-                    </p>
-                  )}
-                  {j.freeDays && j.freeDays.length > 0 && <p className="mt-0.5 text-muted">No loads planned on {j.freeDays.map((d) => formatDate(d)).join(", ")}: a good day for the shop.</p>}
+                  <p className="mt-0.5 text-muted">
+                    Usually needs:{" "}
+                    {j.parts.map((p, i) => (
+                      <span key={p.partId} className={cn(p.short && "font-medium text-amber-800")}>{i ? ", " : ""}{p.name} ({p.typical} {p.unit}, {p.onHand} on hand{p.short ? ". Order more" : ""})</span>
+                    ))}
+                  </p>
                 </li>
               ))}
             </ul>
           )}
         </Card>
-      )}
+        );
+      })()}
     </>
   );
 }

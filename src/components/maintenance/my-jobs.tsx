@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import type { ActionResult } from "@/lib/action-result";
 import { formatDate } from "@/lib/dates";
-import { STATUS_TONE, WO_STATUSES, WO_URGENCIES, mechanicNextStep, type WoStatus } from "@/lib/maintenance";
+import { STATUS_TONE, WO_STATUSES, WO_URGENCIES, fixedFromNotes, mechanicNextStep, type WoStatus } from "@/lib/maintenance";
 import type { MyJob, OpenJob } from "@/server/data/maintenance-crew";
 
 // The mechanic's phone workspace (docs/COMPANION_APP.md): large targets, one primary action per job. Every action is
@@ -88,19 +88,33 @@ function CardLink({ href, label }: { href: string; label: string }) {
  * same step the job goes for inspection (safety-critical: the truck stays out of service until someone authorized
  * records a passed inspection) or is completed. A helper marks their own part done and is told who finishes the job.
  */
-export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck", leadName, size = "lg", onOpenChange }: {
+export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck", leadName, size = "lg", onOpenChange, suggested = "", timerNote = "", hasTruck = false }: {
   workOrderId: string; finisher: boolean; safetyCritical: boolean; unit?: "truck" | "trailer"; leadName: string | null;
   size?: "sm" | "lg"; onOpenChange?: (open: boolean) => void;
+  /** What the person already wrote beside their timer on this job: it starts "What did you fix?" (I8). */
+  suggested?: string;
+  /** The note typed beside a timer that is still running: kept with that time entry when the timer stops. */
+  timerNote?: string;
+  /** A truck job: the odometer and engine hours can be recorded in the same step. */
+  hasTruck?: boolean;
 }) {
   const { pending, run } = useRun();
   const [open, setOpen] = useState(false);
   const [fixed, setFixed] = useState("");
-  const show = (o: boolean) => { setOpen(o); onOpenChange?.(o); };
-  const big = size === "lg" ? "min-h-12" : undefined;
+  const [odometer, setOdometer] = useState("");
+  const [hours, setHours] = useState("");
+  const show = (o: boolean) => {
+    // No double entry (I8): the notes kept with the timer start the answer; the person reads and changes them.
+    if (o && !fixed.trim() && suggested.trim()) setFixed(suggested.trim());
+    setOpen(o);
+    onOpenChange?.(o);
+  };
+  // Big enough for gloved hands on a phone (B5); the usual size from a tablet up.
+  const big = size === "lg" ? "min-h-12" : "min-h-12 sm:min-h-0";
   if (!finisher) {
     return (
       <div className="flex flex-col gap-1">
-        <Button size={size} variant="secondary" className={big} disabled={pending} onClick={() => run(() => finishJob({ workOrderId }))} icon={<Check className="size-4" aria-hidden />}>My part is done</Button>
+        <Button size={size} variant="secondary" className={big} disabled={pending} onClick={() => run(() => finishJob({ workOrderId, timerNote }))} icon={<Check className="size-4" aria-hidden />}>My part is done</Button>
         <p className="text-xs text-muted">{leadName ? `${leadName} (lead) finishes the job.` : "The lead mechanic finishes the job."}</p>
       </div>
     );
@@ -112,16 +126,26 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
   return (
     <form
       aria-label="Finish the job"
-      className="basis-full space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line/60"
-      onSubmit={(e) => { e.preventDefault(); run(() => finishJob({ workOrderId, findings: fixed }), () => show(false)); }}
+      className="basis-full space-y-3 rounded-xl bg-surface p-3 ring-1 ring-line/60"
+      onSubmit={(e) => { e.preventDefault(); run(() => finishJob({ workOrderId, findings: fixed, timerNote, odometer, engineHours: hours }), () => show(false)); }}
     >
-      <Field label="What did you fix?" htmlFor={id} required hint="Saved in the work order's Findings.">
+      <Field label="What did you fix?" htmlFor={id} required hint={suggested.trim() && fixed.trim() === suggested.trim() ? "Filled in from your timer notes. Change it if needed. Saved in the work order's Findings." : "Saved in the work order's Findings."}>
         <Textarea id={id} rows={3} maxLength={2000} value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder="e.g. Replaced the leaking rear brake chamber, checked for air leaks" autoFocus />
       </Field>
+      {hasTruck && (
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Odometer now (optional)" htmlFor={`odo-${workOrderId}`} hint="Miles">
+            <Input id={`odo-${workOrderId}`} inputMode="numeric" value={odometer} maxLength={12} onChange={(e) => setOdometer(e.target.value)} placeholder="e.g. 184,250" />
+          </Field>
+          <Field label="Engine hours (optional)" htmlFor={`hrs-${workOrderId}`} hint="Hours">
+            <Input id={`hrs-${workOrderId}`} inputMode="decimal" value={hours} maxLength={12} onChange={(e) => setHours(e.target.value)} placeholder="e.g. 6,120" />
+          </Field>
+        </div>
+      )}
       <p className="text-sm text-muted">
         {safetyCritical
           ? `Safety-critical: the job then waits for an authorized inspection, and the ${unit} stays out of service until someone authorized records a passed inspection.`
-          : "The job is then marked completed."}
+          : "The job is then marked completed: the repair is done. The office closes it after checking the time, parts and costs."}
       </p>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" size={size} className={big} loading={pending} disabled={fixed.trim().length < 3}>{safetyCritical ? "Send for inspection" : "Mark completed"}</Button>
@@ -199,7 +223,8 @@ export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: 
         )}
         {timerHere && !asking && <Button size="lg" variant="dark" className="min-h-12" disabled={pending} onClick={() => run(() => stopTimer({ note }))} icon={<Square className="size-4" aria-hidden />}>Stop timer</Button>}
         {working && job.finisher && asking !== "parts" && (
-          <FinishJob workOrderId={job.id} finisher safetyCritical={job.safetyCritical} unit={job.unit.startsWith("Trailer") ? "trailer" : "truck"} leadName={job.leadName} onOpenChange={(o) => setAsking(o ? "finish" : null)} />
+          <FinishJob workOrderId={job.id} finisher safetyCritical={job.safetyCritical} unit={job.unit.startsWith("Trailer") ? "trailer" : "truck"} leadName={job.leadName} onOpenChange={(o) => setAsking(o ? "finish" : null)}
+            suggested={fixedFromNotes([...(job.myNotes ?? []), timerHere ? note : ""])} timerNote={timerHere ? note : ""} hasTruck={job.hasTruck} />
         )}
         {showHelperDone && !timerHere && !asking && <FinishJob workOrderId={job.id} finisher={false} safetyCritical={job.safetyCritical} leadName={job.leadName} />}
       </div>
