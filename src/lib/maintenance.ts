@@ -275,6 +275,7 @@ export function mechanicNextStep(job: { status: string; tasksDone: number; tasks
   const left = Math.max(job.tasksTotal - job.tasksDone, 0);
   const checklist = left > 0 ? ` Work through the checklist (${left} left).` : "";
   if (job.status === "awaiting_parts") return "Waiting for parts. Start the job again when they are in.";
+  if (job.status === "awaiting_inspection") return "Waiting for an authorized inspection before the job can be completed.";
   if (job.status !== "in_progress") return "Next: tap Start this job when you begin work.";
   if (timer === "here") return `Your timer is running.${checklist} Stop the timer when you take a break or finish.`;
   if (timer === "elsewhere") return "Your timer is running on another job. Stop it there before you work on this one.";

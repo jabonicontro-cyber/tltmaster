@@ -41,6 +41,8 @@ export async function decideTimeOff(input: z.input<typeof decision>): Promise<Ac
     await requireAccess();
     const parsed = decision.safeParse(input);
     if (!parsed.success) return fail("Invalid request.");
+    // A denial is final and the employee sees it: it needs a reason (owner walkthrough 2026-11-09).
+    if (parsed.data.decision === "denied" && !parsed.data.note?.trim()) return fail("Give the reason for denying it. The employee sees it.");
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("time_off_decide", { p_id: parsed.data.id, p_decision: parsed.data.decision, p_note: parsed.data.note });
     if (error) return fail(dbErrorMessage(error));

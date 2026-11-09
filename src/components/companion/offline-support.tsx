@@ -6,7 +6,7 @@ import { CloudOff, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { loadOfflineDay } from "@/app/(app)/driver/offline-actions";
 import { sendQueued } from "@/lib/offline/send";
-import { OUTBOX_EVENT, announceOutbox, rawStored, readOutbox, removeItem, saveDay, updateItem, type OutboxItem } from "@/lib/offline/store";
+import { OUTBOX_EVENT, announceOutbox, flushOutbox, outboxTime, rawStored, readOutbox, removeItem, saveDay, type OutboxItem } from "@/lib/offline/store";
 
 const RETRY_MS = 20_000;
 
@@ -23,10 +23,29 @@ export function useOutbox(userId: string | null) {
   return useMemo(() => (raw ? readOutbox(userId) : []), [raw, userId]);
 }
 
-const when = (iso: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(new Date(iso));
+/**
+ * Sends what is waiting for this person (one run at a time, never while the phone says it is offline). Shared by My Day
+ * and the offline page so both use the same sync.
+ */
+export function useOutboxFlush(userId: string | null) {
+  const [sending, setSending] = useState(false);
+  const busy = useRef(false);
+  const flush = useCallback(async () => {
+    if (!userId || busy.current || (typeof navigator !== "undefined" && navigator.onLine === false)) return { sent: 0, failed: 0, network: false, skipped: true };
+    busy.current = true;
+    setSending(true);
+    try {
+      return { ...(await flushOutbox(userId, sendQueued)), skipped: false };
+    } finally {
+      busy.current = false;
+      setSending(false);
+    }
+  }, [userId]);
+  return { flush, sending };
+}
 
-/** What is waiting on this phone: each item, when it was saved, and why Taviron refused it if it did. */
-export function OutboxList({ items, onSend, sending }: { items: OutboxItem[]; onSend?: () => void; sending?: boolean }) {
+/** What is waiting on this phone: each item, when it was saved (company time zone), and why Taviron refused it if it did. */
+export function OutboxList({ items, onSend, sending, timeZone }: { items: OutboxItem[]; onSend?: () => void; sending?: boolean; timeZone?: string | null }) {
   if (!items.length) return null;
   const failed = items.filter((i) => i.status === "failed");
   return (
@@ -42,7 +61,7 @@ export function OutboxList({ items, onSend, sending }: { items: OutboxItem[]; on
           <li key={i.id} className="rounded-xl bg-card px-3 py-2 text-sm text-ink ring-1 ring-line">
             <div className="flex items-center gap-2">
               <span className="min-w-0 flex-1 font-semibold">{i.label}</span>
-              <span className="text-muted tabular">{when(i.createdAt)}</span>
+              <span className="text-muted tabular">{outboxTime(i.createdAt, timeZone)}</span>
             </div>
             {i.status === "failed" && (
               <div className="mt-1 flex flex-wrap items-center gap-2">
@@ -68,30 +87,15 @@ export function OutboxList({ items, onSend, sending }: { items: OutboxItem[]; on
  * On My Day (B133): keeps today's loads on the phone for when signal drops, and sends what is waiting as soon as there
  * is signal, oldest first. An answer from Taviron that refuses an item is kept and shown, never silently dropped.
  */
-export function OfflineSupport({ userId }: { userId: string }) {
+export function OfflineSupport({ userId, timeZone }: { userId: string; /** The company's time zone, for the saved times. */ timeZone?: string }) {
   const router = useRouter();
   const items = useOutbox(userId);
-  const [sending, setSending] = useState(false);
-  const busy = useRef(false);
+  const { flush: send, sending } = useOutboxFlush(userId);
 
   const flush = useCallback(async () => {
-    if (busy.current || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
-    const waiting = readOutbox(userId).filter((i) => i.status === "waiting");
-    if (!waiting.length) return;
-    busy.current = true;
-    setSending(true);
-    let sentAny = false;
-    for (const item of waiting) {
-      const r = await sendQueued(item);
-      if (r.sent) { removeItem(item.id); sentAny = true; }
-      else if (r.network) break;
-      else updateItem(item.id, { status: "failed", error: r.error });
-      announceOutbox();
-    }
-    busy.current = false;
-    setSending(false);
-    if (sentAny) router.refresh();
-  }, [userId, router]);
+    const r = await send();
+    if (r.sent > 0) router.refresh();
+  }, [send, router]);
 
   // Keep today's loads on the phone (after the page has loaded; never in its way).
   useEffect(() => {
@@ -107,5 +111,5 @@ export function OfflineSupport({ userId }: { userId: string }) {
     return () => { window.clearTimeout(first); window.removeEventListener("online", online); window.clearInterval(t); };
   }, [flush]);
 
-  return <OutboxList items={items} onSend={() => void flush()} sending={sending} />;
+  return <OutboxList items={items} onSend={() => void flush()} sending={sending} timeZone={timeZone} />;
 }

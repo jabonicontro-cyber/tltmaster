@@ -3,9 +3,9 @@
 import { submitDriverTicket } from "@/app/(app)/driver/actions";
 import { submitInspection } from "@/app/(app)/fleet/inspections/actions";
 import { markStopAt } from "@/app/(app)/reports/wait-times/actions";
-import { isNetworkError, type OutboxItem } from "./store";
+import { isNetworkError, type OutboxItem, type SendOutcome } from "./store";
 
-export type SendOutcome = { sent: true } | { sent: false; network: true } | { sent: false; network: false; error: string };
+export type { SendOutcome };
 
 /**
  * Send one queued item through the same server action as a live one (B133). The server re-checks everything: who is

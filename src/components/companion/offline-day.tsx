@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type SyntheticEvent } from "react";
 import { DriverTicketForm } from "@/components/driver/driver-ticket-form";
 import { StopButtons } from "@/components/driver/stop-buttons";
 import { InspectionForm } from "@/components/fleet/inspection-form";
 import { rawStored, readDay } from "@/lib/offline/store";
-import { OutboxList, useOutbox } from "./offline-support";
+import { OutboxList, useOutbox, useOutboxFlush } from "./offline-support";
+
+/** How long to wait before trying again when the signal is back but Taviron still cannot be reached. */
+const RECONNECT_RETRY_MS = 5_000;
 
 const fmtTime = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
@@ -24,9 +27,50 @@ export function OfflineDay() {
   const day = useMemo(() => (raw === undefined ? undefined : raw ? readDay(Date.now()) : null), [raw]);
   const [ticketFor, setTicketFor] = useState<string | null>(null);
   const items = useOutbox(day?.userId ?? null);
+  const { flush, sending } = useOutboxFlush(day?.userId ?? null);
+  const [back, setBack] = useState<null | "connecting" | "ready">(null);
+  // Something half filled in on this page (an open ticket, a started inspection): never thrown away by leaving.
+  const busyWithForm = useRef(false);
+  const editingRef = useRef(false);
+  useEffect(() => { editingRef.current = ticketFor !== null; }, [ticketFor]);
+  const markBusy = (e: SyntheticEvent) => {
+    if (e.type === "input" || (e.target as HTMLElement).closest?.("button[aria-pressed]")) busyWithForm.current = true;
+  };
+
+  // Signal back (B133): send what is waiting through the same sync as My Day, then open My Day (or, when something is
+  // being filled in here, offer to). If Taviron still cannot be reached the page stays and tries again shortly; it never
+  // reports anything as sent that was not.
+  useEffect(() => {
+    let retry: number | undefined;
+    let stopped = false;
+    const attempt = async () => {
+      if (stopped || navigator.onLine === false) return;
+      setBack("connecting");
+      const r = await flush();
+      if (stopped) return;
+      if (r.network) { retry = window.setTimeout(() => void attempt(), RECONNECT_RETRY_MS); return; }
+      if (busyWithForm.current || editingRef.current) { setBack("ready"); return; }
+      // A full load on purpose: the service worker serves this page under whatever address failed (often /driver
+      // itself), so a client-side navigation could treat it as the same page and never fetch My Day.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign("/driver");
+    };
+    const online = () => { window.clearTimeout(retry); void attempt(); };
+    window.addEventListener("online", online);
+    return () => { stopped = true; window.clearTimeout(retry); window.removeEventListener("online", online); };
+  }, [flush]);
+
   if (day === undefined) return null;
+  const backNote = back === "ready" ? (
+    <div role="status" className="flex flex-wrap items-center gap-3 rounded-xl bg-card px-4 py-3 text-left ring-1 ring-line">
+      <p className="min-w-0 flex-1 text-[15px] font-semibold text-ink">Signal is back. Finish what you are filling in, then open My Day.</p>
+      <a href="/driver" className="inline-flex min-h-12 items-center rounded-xl bg-action px-5 text-base font-semibold text-white">Open My Day</a>
+    </div>
+  ) : back === "connecting" ? (
+    <p role="status" className="text-[15px] font-semibold text-ink">{sending ? "Signal is back. Sending what was waiting…" : "Signal is back. Reaching Taviron…"}</p>
+  ) : null;
   if (!day) {
-    return (
+    return backNote ?? (
       <p className="max-w-sm text-[15px] text-muted">
         Taviron could not be reached and this phone has no saved day, so nothing is shown here. Your loads appear again once
         you are back online. If you need something now, call dispatch.
@@ -40,7 +84,8 @@ export function OfflineDay() {
       <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-[15px] font-semibold text-amber-950 ring-1 ring-amber-200">
         Your day as of {saved}. No connection: this may be out of date. Check with dispatch before acting on it.
       </p>
-      <OutboxList items={items} />
+      {backNote}
+      <OutboxList items={items} timeZone={day.timezone} sending={sending} />
       {editing ? (
         <section aria-label="Delivery ticket" className="rounded-panel bg-card p-4 ring-1 ring-line">
           <h2 className="mb-1 text-xl font-black">Delivery ticket</h2>
@@ -56,7 +101,7 @@ export function OfflineDay() {
       ) : (
         <>
           {day.inspectionTrucks.length > 0 && (
-            <section aria-label="Inspection" className="rounded-panel bg-card p-4 ring-1 ring-line">
+            <section aria-label="Inspection" className="rounded-panel bg-card p-4 ring-1 ring-line" onInputCapture={markBusy} onClickCapture={markBusy}>
               <h2 className="mb-3 text-lg font-bold">Inspection</h2>
               <InspectionForm trucks={day.inspectionTrucks} queue={{ userId: day.userId, day: day.today }} />
             </section>

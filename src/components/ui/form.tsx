@@ -3,8 +3,11 @@ import { AlertCircle, Send } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { isApprovalSent } from "@/lib/support-requests";
 
+// 16px on phones: iPhone Safari zooms the page into any field under 16px when it is tapped. 15px from 640px up, as
+// before. Arbitrary sizes are emitted after the named ones, so text-[16px] still wins over a text-sm or text-lg passed
+// in, exactly as text-[15px] did, and sm:text-[15px] keeps wider screens unchanged.
 const control =
-  "block w-full rounded-control border border-line bg-card px-3.5 text-[15px] text-ink shadow-xs transition-[border-color,box-shadow] " +
+  "block w-full rounded-control border border-line bg-card px-3.5 text-[16px] sm:text-[15px] text-ink shadow-xs transition-[border-color,box-shadow] " +
   "placeholder:text-muted/70 focus:border-brand focus:outline-none focus:ring-4 focus:ring-brand/12 " +
   "disabled:bg-surface disabled:text-muted aria-[invalid=true]:border-red-500 aria-[invalid=true]:ring-red-500/15";
 

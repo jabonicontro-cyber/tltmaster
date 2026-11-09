@@ -315,6 +315,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
         <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
       </div>
+      {/* What just happened (a ticket or report sent, an offer answered): at the top, where My Day opens after the
+          redirect, so the driver sees it without scrolling. */}
+      {sp.sent && (
+        <p role="status" data-testid="sent-confirmation" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
+      )}
+      {sp.saved === "offer_accepted" && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">Offer accepted. Dispatch confirms it before the load is yours.</p>}
+      {sp.saved === "offer_declined" && <p role="status" className="rounded-xl bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-line">Offer declined.</p>}
+      {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
       {/* The day in two figures (owner's references 2026-10-27: numbers first). */}
       <div className="grid grid-cols-2 gap-3" aria-label="My day at a glance">
         <StatTile icon={<Truck />} tone="brand" label="Loads today" value={today.length} muted={today.length === 0}>
@@ -347,13 +355,6 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
-      {sp.sent && (
-        <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">{sp.sent}</p>
-      )}
-
-      {sp.saved === "offer_accepted" && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">Offer accepted. Dispatch confirms it before the load is yours.</p>}
-      {sp.saved === "offer_declined" && <p role="status" className="rounded-xl bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-line">Offer declined.</p>}
-      {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
 
       {/* Hired trucks (B83): loads offered to this hauler's driver. Answering never assigns by itself: dispatch confirms. */}
       {offers.length > 0 && (
@@ -426,7 +427,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       )}
 
       {/* Offline driver app (B133): keeps today on the phone and sends what is waiting once there is signal. */}
-      <OfflineSupport userId={access.userId} />
+      <OfflineSupport userId={access.userId} timeZone={h.timezone} />
 
 
 

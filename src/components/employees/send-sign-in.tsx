@@ -12,12 +12,14 @@ import { inviteEmployee } from "@/app/(app)/employees/actions";
 /** Give an existing person a Taviron sign-in, sent to their work email. */
 export function SendSignIn({ employeeId, email, isOwner }: { employeeId: string; email: string; isOwner: boolean }) {
   const router = useRouter();
-  const [role, setRole] = useState("driver");
+  // No default role (owner walkthrough 2026-11-09): a silent "Driver" could give the wrong access in one click.
+  const [role, setRole] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   return (
     <form className="space-y-2" onSubmit={async (e) => {
       e.preventDefault();
+      if (!role) return setError("Choose the role this sign-in gives.");
       setPending(true); setError(null);
       const r = await inviteEmployee(employeeId, role);
       setPending(false);
@@ -26,7 +28,8 @@ export function SendSignIn({ employeeId, email, isOwner }: { employeeId: string;
       router.refresh();
     }}>
       <Field label="Role" htmlFor="sign-in-role" hint={`The invitation goes to ${email}.`}>
-        <Select id="sign-in-role" value={role} onChange={(e) => setRole(e.target.value)}>
+        <Select id="sign-in-role" value={role} onChange={(e) => { setRole(e.target.value); setError(null); }}>
+          <option value="" disabled>Choose a role</option>
           {ROLES.filter((r) => r !== "owner" || isOwner).map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
         </Select>
       </Field>

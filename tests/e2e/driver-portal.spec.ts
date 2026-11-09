@@ -30,10 +30,13 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await expect(page).toHaveURL(new RegExp(`/driver/assignments/${f.past}/ticket`));
   await expect(page.getByLabel("Gravel #53 limestone")).toBeChecked(); // the only line
   await page.getByLabel("Quantity on the ticket").fill("21.47");
+  await expect(page.getByLabel(/^Tons/)).toBeChecked(); // the order line's unit, chosen for the driver (UX6)
   await page.getByRole("button", { name: "Send ticket" }).click();
-  await expect(page.getByText("Tap the unit on the paper ticket.")).toBeVisible();
-  await page.getByLabel(/^Tons/).check();
+  // A failed send goes to the first error; changing that field clears its message.
+  await expect(page.getByText("Enter the delivery time.")).toBeInViewport();
+  await expect(page.getByText("Tap the unit on the paper ticket.")).toHaveCount(0);
   await page.getByLabel("Delivery time").fill("08:30");
+  await expect(page.getByText("Enter the delivery time.")).toHaveCount(0);
   await page.getByLabel("Paper / scale ticket number").fill(f.ref);
   await noHorizontalScroll(page);
 
@@ -59,6 +62,7 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await page.getByLabel("What happened?").fill("Air leak on the tag axle (e2e)");
   await page.getByRole("button", { name: "Send report" }).click();
   await expect(page.getByRole("status")).toContainText("Report sent to the office.");
+  await expect(page.getByTestId("sent-confirmation")).toBeInViewport(); // at the top of My Day, where it opens
   await expect(page.getByRole("list", { name: "My reports" })).toContainText("Sent: not seen yet");
 
   // Direct access to someone else's load or to office pages is refused.

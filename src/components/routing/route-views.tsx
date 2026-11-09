@@ -11,6 +11,7 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { addDays, formatDateLong } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { buildRoutes, formatMinutes, PICKUP_PREFIX, routeTotals, YARD } from "@/lib/routing/route";
+import { legArrivals, stopTimes } from "@/components/routing/route-stops";
 import type { Access } from "@/lib/permissions";
 import { listLocations, listSavedRoutes, listSiteOptions, listTruckOptions } from "@/server/data/route-planner";
 import { getRouteDay } from "@/server/data/routes";
@@ -168,12 +169,15 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
                   </div>
                 )}
                 <ol className="px-5 py-3 sm:px-6" aria-label="Stops and legs">
-                  {r.legs.length === 0 && r.stops.map((s) => <li key={s.loadId}><StopRow label={`${s.orderNumber} · ${s.site}`} sub={`${s.customer} · ${s.start}–${s.end}`} located={Boolean(s.point)} /></li>)}
-                  {r.legs.map((l, i) => {
-                    const stop = r.stops.find((s) => `${s.orderNumber} · ${s.site}` === l.to);
+                  {r.legs.length === 0 && r.stops.map((s) => <li key={s.loadId}><StopRow label={`${s.orderNumber} · ${s.site}`} sub={stopTimes([s])} located={Boolean(s.point)} /></li>)}
+                  {(() => {
+                    const arrivals = legArrivals(r, Boolean(day.yard));
+                    return r.legs.map((l, i) => {
+                    const here = arrivals.to[i] ?? [];
+                    const stop = here[0];
                     return (
                       <li key={i} className="relative">
-                        {i === 0 && <StopRow label={l.from} sub={l.from === YARD ? "Start of the day" : undefined} located={Boolean(l.fromPoint)} />}
+                        {i === 0 && <StopRow label={l.from} sub={l.from === YARD ? "Start of the day" : stopTimes(arrivals.from)} located={Boolean(l.fromPoint)} href={arrivals.from[0] ? `/orders/${arrivals.from[0].orderId}` : undefined} />}
                         <div className="my-1 ml-[15px] border-l-2 border-dashed border-line py-1.5 pl-5 text-xs text-muted">
                           {l.road ? (
                             <span className="tabular">{l.road.miles} mi · {formatMinutes(l.road.minutes)}</span>
@@ -185,10 +189,11 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
                           {l.road?.notices.map((n) => <Badge key={n} tone="amber" className="ml-2">{n}</Badge>)}
                           {!l.road && l.roadMissing && status.state === "ready" && l.straightMiles !== null && <span className="ml-2">({l.roadMissing})</span>}
                         </div>
-                        <StopRow label={l.to} sub={l.to === YARD ? "End of the day" : l.to.startsWith(PICKUP_PREFIX) ? "Pickup" : stop ? `${stop.customer} · ${stop.start}–${stop.end}${stop.locationSource === "here" ? " · location estimated from the address" : ""}` : undefined} located={Boolean(l.toPoint)} href={stop ? `/orders/${stop.orderId}` : undefined} />
+                        <StopRow label={l.to} sub={l.to === YARD ? "End of the day" : l.to.startsWith(PICKUP_PREFIX) ? "Pickup" : stopTimes(here)} located={Boolean(l.toPoint)} href={stop ? `/orders/${stop.orderId}` : undefined} />
                       </li>
                     );
-                  })}
+                    });
+                  })()}
                 </ol>
               </Card>
               </section>

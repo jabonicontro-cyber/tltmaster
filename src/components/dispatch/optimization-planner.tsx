@@ -13,6 +13,7 @@ import type { SmartLoad } from "@/lib/dispatch/smart";
 import type { LoadExplanation, Unavailable } from "@/lib/optimization/availability";
 import type { Optimization, Plan } from "@/lib/optimization/plan";
 import { formatDateLong } from "@/lib/dates";
+import { eligibilityMessage } from "@/lib/fleet/eligibility";
 import Link from "next/link";
 
 const time = (iso: string, tz: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: tz }).format(new Date(iso));
@@ -280,7 +281,7 @@ export function OptimizationPlanner({ date, timezone, loads, revenueCents, resul
                     </details>
                   )}
                   {outcome && !outcome.assigned && <p role="alert" className="mt-1 text-sm text-critical">{outcome.message}</p>}
-                  {outcome?.warnings.map((w) => <p key={w} className="mt-1 text-xs text-muted">{w}</p>)}
+                  {outcome?.warnings.map((w) => <p key={w} className="mt-1 text-xs text-muted">{eligibilityMessage(w)}</p>)}
                 </div>
               </li>
             );

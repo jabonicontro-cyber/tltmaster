@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
-import { REPORT_KINDS, REPORT_KIND_HELP, REPORT_KIND_LABELS, reportNeedsEquipment, type ReportKind } from "@/lib/driver/rules";
+import { REPORT_KINDS, REPORT_KIND_HELP, REPORT_KIND_LABELS, defaultReportEquipment, reportNeedsEquipment, type ReportKind } from "@/lib/driver/rules";
 import { submitFieldReport } from "@/app/(app)/driver/actions";
 import { Choice } from "./choice";
 
@@ -15,7 +15,8 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
   const router = useRouter();
   const [submissionKey] = useState(() => crypto.randomUUID());
   const [kind, setKind] = useState<ReportKind | "">("");
-  const [equipment, setEquipment] = useState<"" | "truck" | "trailer">("");
+  // Only a truck on this load: it is the one choice, so it is chosen for the driver.
+  const [equipment, setEquipment] = useState<"" | "truck" | "trailer">(defaultReportEquipment(truck, trailer));
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
@@ -47,7 +48,7 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
         <legend className="mb-2 text-base font-bold">What is happening?</legend>
         <div className="space-y-2">
           {REPORT_KINDS.map((k) => (
-            <Choice key={k} name="kind" value={k} checked={kind === k} onChange={(v) => setKind(v as ReportKind)} hint={REPORT_KIND_HELP[k]}>{REPORT_KIND_LABELS[k]}</Choice>
+            <Choice key={k} name="kind" value={k} checked={kind === k} onChange={(v) => { setKind(v as ReportKind); setError(null); }} hint={REPORT_KIND_HELP[k]}>{REPORT_KIND_LABELS[k]}</Choice>
           ))}
         </div>
       </fieldset>
@@ -55,14 +56,14 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
         <fieldset>
           <legend className="mb-2 text-base font-bold">Which equipment?</legend>
           <div className="grid grid-cols-2 gap-2">
-            <Choice name="equipment" value="truck" checked={equipment === "truck"} onChange={() => setEquipment("truck")}>Truck {truck ?? ""}</Choice>
-            {trailer && <Choice name="equipment" value="trailer" checked={equipment === "trailer"} onChange={() => setEquipment("trailer")}>Trailer {trailer}</Choice>}
+            <Choice name="equipment" value="truck" checked={equipment === "truck"} onChange={() => { setEquipment("truck"); setError(null); }}>Truck {truck ?? ""}</Choice>
+            {trailer && <Choice name="equipment" value="trailer" checked={equipment === "trailer"} onChange={() => { setEquipment("trailer"); setError(null); }}>Trailer {trailer}</Choice>}
           </div>
         </fieldset>
       )}
       <div>
         <label htmlFor="r-desc" className="mb-2 block text-base font-bold">What happened?</label>
-        <textarea id="r-desc" rows={4} maxLength={2000} value={description} onChange={(e) => setDescription(e.target.value)} className="w-full rounded-2xl border-2 border-line bg-card px-4 py-3 text-lg focus:border-strong focus:outline-none" />
+        <textarea id="r-desc" rows={4} maxLength={2000} value={description} onChange={(e) => { setDescription(e.target.value); setError(null); }} className="w-full rounded-2xl border-2 border-line bg-card px-4 py-3 text-lg focus:border-strong focus:outline-none" />
       </div>
       {(error || state.kind === "failed") && (
         <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 font-semibold text-red-900 ring-1 ring-red-200">{error ?? (state.kind === "failed" ? state.message : "")}</p>

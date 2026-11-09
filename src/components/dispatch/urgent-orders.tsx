@@ -6,7 +6,7 @@ import { useState } from "react";
 import { Siren } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { updateOrderUrgency } from "@/app/(app)/orders/actions";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { URGENCY_LABELS, URGENCY_NEXT_OWNER } from "@/lib/orders/urgency";
@@ -50,11 +50,17 @@ export function UrgentOrders({ items, canAcknowledge, timezone, back, now }: { i
                     const r = await updateOrderUrgency({ urgencyId: u.id, orderId: u.order_id, state: "acknowledged", note: "" });
                     setBusy(null);
                     if (!r.ok) toast.error(r.error);
-                    else { toast.success("Acknowledged. You are shown as handling it."); router.refresh(); }
+                    else { toast.success(`${u.orders?.order_number ?? "Order"} acknowledged. You are shown as handling it; mark the truck assigned or resolve it from the order.`); router.refresh(); }
                   }}
                 >
                   Acknowledge
                 </Button>
+              )}
+              {/* B7: after acknowledging, the next steps (truck assigned, resolve) live on the order's urgency panel. */}
+              {canAcknowledge && u.state !== "awaiting_acknowledgement" && (
+                <ButtonLink size="sm" variant="secondary" href={withReturn(`/orders/${u.order_id}`, back)}>
+                  {u.state === "assigned" ? "Resolve on the order" : "Truck assigned or resolve"}
+                </ButtonLink>
               )}
             </li>
           );

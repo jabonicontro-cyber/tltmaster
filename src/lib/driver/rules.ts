@@ -30,6 +30,11 @@ export function reportNeedsEquipment(kind: ReportKind): boolean {
   return kind === "breakdown" || kind === "equipment_issue" || kind === "inspection_issue";
 }
 
+/** "Which equipment?" before the driver taps: the truck when it is the only choice (a truck and no trailer), else none. */
+export function defaultReportEquipment(truck: string | null | undefined, trailer: string | null | undefined): "" | "truck" {
+  return truck && !trailer ? "truck" : "";
+}
+
 export const REPORT_STATUS_LABELS: Record<string, string> = {
   open: "Sent: not seen yet",
   acknowledged: "Seen by the office",

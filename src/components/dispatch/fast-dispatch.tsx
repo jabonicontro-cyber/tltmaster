@@ -7,7 +7,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, Select } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
-import { combinationCheck, type ActiveAssignment, type Crew, type CrewProposal } from "@/lib/dispatch/board";
+import { combinationCheck, type ActiveAssignment, type Crew, type CrewProposal, type DayRestrictions } from "@/lib/dispatch/board";
 import { eligibilityMessage } from "@/lib/fleet/eligibility";
 import { formatTime } from "@/lib/orders/schedule";
 import type { DispatchDay, OrderLoadRow } from "@/server/data/dispatch";
@@ -23,6 +23,8 @@ export interface FastLookup {
   trucks: Map<string, DispatchDay["trucks"][number]>;
   trailers: Map<string, DispatchDay["trailers"][number]>;
   drivers: Map<string, DispatchDay["drivers"][number]>;
+  /** The board date's shop visits, reports, documents, time off and shifts (B1), when read. */
+  restrictions?: DayRestrictions | null;
 }
 
 export type BatchItem = Crew & { load: OrderLoadRow };
@@ -44,8 +46,12 @@ export function precheckBatch(items: BatchItem[], active: ActiveAssignment[], lk
       { starts_at: it.load.starts_at, ends_at: it.load.ends_at },
       planned,
       it.load.load_date,
+      null,
+      { load: it.load, restrictions: lk.restrictions },
     );
     const reasons = [...check.blockers.map(eligibilityMessage), ...check.conflicts.map((c) => `The ${c.kind} is already booked at that time.`)];
+    // Off shift: a batch cannot record the reason assign_load asks for.
+    if (check.needsReason) reasons.push(`${check.needsReason}. Assign this load on its own to record a reason.`);
     if (!reasons.length) planned.push({ id: `batch-${i}`, load_id: it.load.id, truck_id: it.truck_id, trailer_id: it.trailer_id, driver_id: it.driver_id, status: "active", starts_at: it.load.starts_at, ends_at: it.load.ends_at });
     return reasons;
   });

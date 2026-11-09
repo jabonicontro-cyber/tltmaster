@@ -29,13 +29,14 @@ export function TimeOffActions({ id, canDecide, canCancel }: { id: string; canDe
         tone={action === "approved" ? "primary" : "danger"}
         onConfirm={async () => {
           if (!action) return;
+          if (action === "denied" && !note.trim()) return "Give the reason for denying it. The employee sees it.";
           const r = action === "cancel" ? await cancelTimeOff({ id, note }) : await decideTimeOff({ id, decision: action, note });
           if (!r.ok) return r.error;
           toast.success(r.message ?? "Saved.");
           router.refresh();
         }}
       >
-        <Field label="Note (optional)" htmlFor="to-note">
+        <Field label={action === "denied" ? "Reason" : "Note (optional)"} htmlFor="to-note" required={action === "denied"}>
           <Textarea id="to-note" rows={3} maxLength={1000} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </ConfirmDialog>

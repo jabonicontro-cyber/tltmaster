@@ -86,7 +86,11 @@ export async function addTime(input: z.input<typeof timeInput>): Promise<ActionR
     const started = zonedTimeToUtc(p.data.date, p.data.start, timezone);
     let ended = zonedTimeToUtc(p.data.date, p.data.end, timezone);
     if (!started || !ended) return fail("Check the date and times.");
-    if (Date.parse(ended) <= Date.parse(started)) ended = new Date(Date.parse(ended) + 86400000).toISOString();
+    if (Date.parse(ended) <= Date.parse(started)) {
+      ended = new Date(Date.parse(ended) + 86400000).toISOString();
+      // Read as past midnight, it would end in the future: the end time was simply entered before the start.
+      if (Date.parse(ended) > Date.now() + 5 * 60_000) return fail("The end time is before the start time. Check both times (work past midnight ends the next day).");
+    }
     return call("maintenance_add_time", { p_wo: p.data.workOrderId, p_user: p.data.userId, p_started: started, p_ended: ended, p_note: p.data.note }, p.data.workOrderId, "Time logged.");
   });
 }

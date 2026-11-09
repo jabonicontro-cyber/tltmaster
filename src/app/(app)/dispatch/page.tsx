@@ -25,6 +25,7 @@ import { businessToday } from "@/server/data/settings";
 import { loadTruckHealth } from "@/server/data/truck-health";
 import { loadSiteWeather } from "@/server/weather";
 import { getWords } from "@/server/industry";
+import { loadDayRestrictions } from "./day-restrictions";
 
 export const metadata = { title: "Dispatch" };
 
@@ -95,7 +96,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
   const base = bases.length > 1 ? parseBaseFilter(baseParam) : null;
-  const [day, urgent, unscheduled, smart, health, weather] = await Promise.all([
+  const [day, urgent, unscheduled, smart, health, weather, restrictions] = await Promise.all([
     getDispatchDay(date, base),
     listOpenUrgencies(),
     view === "board" ? listUnscheduledOrders() : Promise.resolve([]),
@@ -108,6 +109,9 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     view === "board" ? loadTruckHealth().catch(() => null) : Promise.resolve(null),
     // Weather at this day's job sites (B92); a demo reads a sample forecast (DEMO_TENANTS §2).
     view === "board" ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : Promise.resolve(null),
+    // The shown date's shop visits, reports, documents, time off and shifts (B1): the assign window and the truck and
+    // driver lists show them before the server refuses. Never blocks the board.
+    view === "board" ? loadDayRestrictions(date).catch(() => null) : Promise.resolve(null),
   ]);
   // Suggested crew on each unassigned load (B136, owner 2026-11-04): Smart Dispatch's first proposal for loads on this
   // day; the dispatcher's click (after the hours confirmation) assigns through the same checks as Approve.
@@ -178,7 +182,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>
           </p>
         )}
-        <DispatchBoard enterLabel={(await getWords()).enter} day={day} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+        <DispatchBoard enterLabel={(await getWords()).enter} day={day} restrictions={restrictions} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
       </div>
     </>
   );

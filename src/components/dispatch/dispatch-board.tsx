@@ -17,7 +17,8 @@ import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form"
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { bookingsFor, combinationCheck, driverState, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { bookingsFor, combinationCheck, driverDayChecks, driverState, inShop, proposePreviousCrews, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { shiftProblem } from "@/lib/dispatch/smart";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { OrderRoutePanel } from "./order-route-panel";
 import { ReleaseTruckButton, TruckDayDialog, releasedText } from "./truck-day";
@@ -42,6 +43,8 @@ interface Lookup {
   drivers: Map<string, DispatchDay["drivers"][number]>;
   /** Driver pictures by driver id (initials when missing). */
   faces: Record<string, Face>;
+  /** The shown date's shop visits, reports, documents, time off and shifts (B1); null when they could not be read. */
+  restrictions: DayRestrictions | null;
 }
 
 /** Smart Dispatch's first proposal for an unassigned load (B136): one click, then the hours confirmation, assigns it. */
@@ -55,7 +58,7 @@ function describeBooking(a: ActiveAssignment, lk: Lookup) {
   return load ? `${timeRange(load)} · ${order?.order_number ?? "order"} load ${load.load_number}` : "another load";
 }
 
-export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** "Enter delivery ticket" in the company's words ("Enter BOL" for freight). */ enterLabel?: string; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
+export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter delivery ticket", suggestions = {}, canEdit, canEnterTickets = false, focusLoadId = null, bases = [], faces = {}, urgentOrderIds = [], health = {}, creditHolds = {} }: { day: DispatchDay; /** The shown date's restrictions (B1): shop, reports, documents, time off, shifts. */ restrictions?: DayRestrictions | null; /** "Enter delivery ticket" in the company's words ("Enter BOL" for freight). */ enterLabel?: string; /** Suggested crew per load id (B136). */ suggestions?: Record<string, CrewSuggestion>; /** Credit holds (B128) by order id: a badge on the order; assigning asks for a reason. */ creditHolds?: Record<string, string>; /** Truck health (B93) by truck id: shown beside the truck, never blocks. */ health?: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; canEdit: boolean; canEnterTickets?: boolean; focusLoadId?: string | null; /** Active bases; the base filter shows only with two or more. */ bases?: BaseOption[]; faces?: Record<string, Face>; /** Orders with an open urgent flag: their cards get the red edge. */ urgentOrderIds?: string[] }) {
   const router = useRouter();
   // Opened from the command center: bring the affected load into view.
   useEffect(() => {
@@ -88,8 +91,9 @@ export function DispatchBoard({ day, enterLabel = "Enter delivery ticket", sugge
       trailers: new Map(day.trailers.map((t) => [t.id, t])),
       drivers: new Map(day.drivers.map((d) => [d.id, d])),
       faces,
+      restrictions,
     }),
-    [day, faces],
+    [day, faces, restrictions],
   );
   const active = day.assignments.filter((a) => a.status === "active");
   const activeByLoad = new Map(active.map((a) => [a.load_id, a]));
@@ -693,6 +697,7 @@ function AssignmentSummary({ a, lk }: { a: AssignmentRow; lk: Lookup }) {
 function stateLabel(s: ResourceState, lk: Lookup) {
   if (s.state === "unavailable") return `Unavailable · ${eligibilityMessage(s.reasons[0])}`;
   if (s.state === "busy") return `Already assigned ${describeBooking(s.with[0], lk)}`;
+  if (s.needsReason) return `${s.needsReason} (needs a reason)`;
   return s.warnings.length ? `Available · ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
@@ -708,16 +713,20 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
           },
         }
       : {};
+  // Titled for the date the board shows (B5): "Trucks today" only on today.
+  const when = day.date === day.today ? "today" : `on ${new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(new Date(`${day.date}T12:00:00Z`))}`;
   return (
     <div className="space-y-4 self-start">
       <Card>
-        <CardHeader title="Trucks today" description="Bookings on this board and service status." />
+        <CardHeader title={`Trucks ${when}`} description="Bookings on this board, service status and shop visits." />
         {day.trucks.length === 0 ? (
           <p className="px-5 py-4 text-sm text-muted sm:px-6">No active trucks. <Link href="/fleet/trucks/new" className="underline">Add a truck</Link>.</p>
         ) : (
-          <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label="Trucks today">
+          <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label={`Trucks ${when}`}>
             {day.trucks.map((t) => {
               const bookings = bookingsFor(active, "truck", t.id);
+              // In the shop on this date (a scheduled visit or a safety-critical work order), from the same data as the assign window.
+              const shop = inShop("truck", t.id, day.date, lk.restrictions) ? lk.restrictions?.shop.find((w) => w.truck_id === t.id && (w.safety_critical || w.scheduled_for === day.date)) : undefined;
               return (
                 <li key={t.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && t.service_status !== "out_of_service" && "cursor-grab active:cursor-grabbing")} {...(t.service_status !== "out_of_service" ? drag("truck", t.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
@@ -725,13 +734,15 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
                     <Link href={`/fleet/trucks/${t.id}`} draggable={false} className="min-w-0 font-semibold break-words hover:underline">{t.unit_number}</Link>
                     {t.service_status === "out_of_service" ? (
                       <Badge tone="red">Out of service</Badge>
+                    ) : shop ? (
+                      <Badge tone="amber">In the shop</Badge>
                     ) : bookings.length ? (
                       <Badge tone="blue">{bookings.length} load{bookings.length === 1 ? "" : "s"}</Badge>
                     ) : (
                       <Badge tone="green">Free</Badge>
                     )}
                   </div>
-                  <p className="text-xs text-muted">{TRUCK_TYPE_LABELS[t.truck_type]}{t.service_status === "out_of_service" && t.out_of_service_reason ? ` · ${t.out_of_service_reason}` : ""}</p>
+                  <p className="text-xs text-muted">{TRUCK_TYPE_LABELS[t.truck_type]}{t.service_status === "out_of_service" && t.out_of_service_reason ? ` · ${t.out_of_service_reason}` : ""}{t.service_status !== "out_of_service" && shop ? ` · Work order ${shop.number}${shop.safety_critical ? " (safety-critical)" : ""}` : ""}</p>
                   {health[t.id] && t.service_status !== "out_of_service" ? (
                     <p className={cn("text-xs", health[t.id].level === "at_risk" ? "text-critical" : "text-amber-800")}>
                       <span className="font-semibold">{health[t.id].level === "at_risk" ? "At risk" : "Watch"}</span>: {health[t.id].reasons.join(" · ")}
@@ -747,14 +758,17 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
         )}
       </Card>
       <Card>
-        <CardHeader title="Drivers today" description="Eligibility on this date (class B or higher) and bookings." />
+        <CardHeader title={`Drivers ${when}`} description="Eligibility on this date (class B or higher), time off, shifts and bookings." />
         {day.drivers.length === 0 ? (
           <p className="px-5 py-4 text-sm text-muted sm:px-6">No active drivers. <Link href="/fleet/drivers/new" className="underline">Add a driver</Link>.</p>
         ) : (
-          <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label="Drivers today">
+          <ul className="max-h-[32rem] divide-y divide-line overflow-y-auto" aria-label={`Drivers ${when}`}>
             {day.drivers.map((d) => {
               const r = driverChecks(d, false, day.date);
               const bookings = bookingsFor(active, "driver", d.id);
+              // Approved full-day time off, or no shift that day on the schedule (the words Plan the day uses).
+              const off = driverDayChecks(d.id, day.date, lk.restrictions).blockers[0] ?? null;
+              const dayOff = off ? null : shiftProblem(d.id, { load_date: day.date, starts_at: null, ends_at: null }, lk.restrictions?.shifts);
               return (
                 <li key={d.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && r.eligible && "cursor-grab active:cursor-grabbing")} {...(r.eligible ? drag("driver", d.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
@@ -762,13 +776,19 @@ function ResourcePanel({ day, active, lk, canEdit, health }: { day: DispatchDay;
                     <Link href={`/fleet/drivers/${d.id}`} draggable={false} className="flex min-w-0 items-center gap-2 font-semibold break-words hover:underline"><Avatar name={d.display_name} size={28} {...lk.faces[d.id]} /><span className="min-w-0 [overflow-wrap:anywhere]">{d.display_name}</span></Link>
                     {!r.eligible ? (
                       <Badge tone="red">Not eligible</Badge>
+                    ) : off ? (
+                      <Badge tone="amber">Time off</Badge>
                     ) : bookings.length ? (
                       <Badge tone="blue">{bookings.length} load{bookings.length === 1 ? "" : "s"}</Badge>
+                    ) : dayOff ? (
+                      <Badge tone="gray">Day off</Badge>
                     ) : (
                       <Badge tone="green">Free</Badge>
                     )}
                   </div>
                   {!r.eligible && <p className="text-xs text-red-800">{eligibilityMessage(r.blockers[0])}</p>}
+                  {r.eligible && off && <p className="text-xs text-muted">{eligibilityMessage(off)}</p>}
+                  {r.eligible && !off && dayOff && <p className="text-xs text-muted">Scheduled off on this date.</p>}
                   {bookings.map((b) => (
                     <p key={b.id} className="text-xs tabular">{describeBooking(b, lk)}</p>
                   ))}
@@ -896,21 +916,25 @@ function AssignDialog({
   const truck = truckId ? lk.trucks.get(truckId) ?? null : null;
   const trailer = trailerId ? lk.trailers.get(trailerId) ?? null : null;
   const driver = driverId ? lk.drivers.get(driverId) ?? null : null;
-  const check = truck || trailer || driver ? combinationCheck({ truck, trailer, driver }, interval, active, on, except) : null;
+  // B1: the load's quantity, the date's shop visits, reports, documents, time off and shifts, so the window says what
+  // the server will say (the server still decides).
+  const ctx: DayContext = { load, restrictions: lk.restrictions };
+  const check = truck || trailer || driver ? combinationCheck({ truck, trailer, driver }, interval, active, on, except, ctx) : null;
   const unchanged = current && current.truck_id === truckId && (current.trailer_id ?? "") === trailerId && current.driver_id === driverId;
 
   // Group options: available, already assigned at this time, unavailable.
   function grouped<T extends { id: string }>(items: T[], state: (item: T) => ResourceState, label: (item: T) => string) {
-    const groups: Record<ResourceState["state"], Array<{ item: T; s: ResourceState }>> = { available: [], busy: [], unavailable: [] };
+    const groups: Record<ResourceState["state"] | "offShift", Array<{ item: T; s: ResourceState }>> = { available: [], offShift: [], busy: [], unavailable: [] };
     for (const item of items) {
       const s = state(item);
-      groups[s.state].push({ item, s });
+      groups[s.state === "available" && s.needsReason ? "offShift" : s.state].push({ item, s });
     }
+    const titles = { available: "Available", offShift: "Off shift: assigning asks for a reason", busy: "Already assigned at this time", unavailable: "Unavailable" };
     return (
       <>
-        {(["available", "busy", "unavailable"] as const).map((g) =>
+        {(["available", "offShift", "busy", "unavailable"] as const).map((g) =>
           groups[g].length ? (
-            <optgroup key={g} label={g === "available" ? "Available" : g === "busy" ? "Already assigned at this time" : "Unavailable"}>
+            <optgroup key={g} label={titles[g]}>
               {groups[g].map(({ item, s }) => (
                 <option key={item.id} value={item.id}>
                   {label(item)} · {stateLabel(s, lk)}
@@ -982,21 +1006,21 @@ function AssignDialog({
         )}
         <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
           <Field label="Truck" htmlFor="assign-truck" required>
-            <Select id="assign-truck" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
+            <Select id="assign-truck" value={truckId} onChange={(e) => { setTruckId(e.target.value); setError(null); }}>
               <option value="">Choose a truck…</option>
-              {grouped(day.trucks, (t) => truckState(t, interval, active, on, except), (t) => `${t.unit_number} (${TRUCK_TYPE_LABELS[t.truck_type]})`)}
+              {grouped(day.trucks, (t) => truckState(t, interval, active, on, except, ctx, trailer), (t) => `${t.unit_number} (${TRUCK_TYPE_LABELS[t.truck_type]})`)}
             </Select>
           </Field>
           <Field label="Trailer" htmlFor="assign-trailer" hint={truck?.truck_type === "tractor" ? "Required for a tractor" : "Optional"}>
-            <Select id="assign-trailer" value={trailerId} onChange={(e) => setTrailerId(e.target.value)}>
+            <Select id="assign-trailer" value={trailerId} onChange={(e) => { setTrailerId(e.target.value); setError(null); }}>
               <option value="">No trailer</option>
-              {grouped(day.trailers, (t) => trailerState(t, interval, active, on, except), (t) => `${t.unit_number} (${TRAILER_TYPE_LABELS[t.trailer_type]})`)}
+              {grouped(day.trailers, (t) => trailerState(t, interval, active, on, except, ctx, truck), (t) => `${t.unit_number} (${TRAILER_TYPE_LABELS[t.trailer_type]})`)}
             </Select>
           </Field>
           <Field label="Driver" htmlFor="assign-driver" required hint={trailerId ? "Class A CDL needed with a trailer" : undefined}>
-            <Select id="assign-driver" value={driverId} onChange={(e) => { setDriverId(e.target.value); setOffShift(null); }}>
+            <Select id="assign-driver" value={driverId} onChange={(e) => { setDriverId(e.target.value); setOffShift(null); setError(null); }}>
               <option value="">Choose a driver…</option>
-              {grouped(day.drivers, (d) => driverState(d, Boolean(trailerId), interval, active, on, except), (d) => d.display_name)}
+              {grouped(day.drivers, (d) => driverState(d, Boolean(trailerId), interval, active, on, except, ctx), (d) => d.display_name)}
             </Select>
           </Field>
         </div>
@@ -1004,12 +1028,17 @@ function AssignDialog({
           <Input id="assign-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
 
-        {check && (
-          <div role="status" className={cn("rounded-xl border p-3 text-sm", check.eligible ? "border-green-200 bg-green-50" : "border-red-200 bg-red-50")}>
-            {check.eligible ? (
-              <p className="font-semibold text-green-900">{unchanged ? "This is the current assignment." : "This combination can be assigned."}</p>
-            ) : (
+        {/* The board's pre-check; hidden once the server answered with an error or a shift question: its answer counts. */}
+        {check && !error && !offShift && (
+          <div role="status" className={cn("rounded-xl border p-3 text-sm", !check.eligible ? "border-red-200 bg-red-50" : check.needsReason && !unchanged ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50")}>
+            {!check.eligible ? (
               <p className="font-semibold text-red-900">This combination cannot be assigned:</p>
+            ) : unchanged ? (
+              <p className="font-semibold text-green-900">This is the current assignment.</p>
+            ) : check.needsReason ? (
+              <p className="font-semibold text-amber-950">{driver?.display_name ?? "The driver"}: {check.needsReason}. Assigning asks for a reason, which is recorded with the assignment.</p>
+            ) : (
+              <p className="font-semibold text-green-900">This combination can be assigned.</p>
             )}
             <ul className="mt-1 space-y-0.5">
               {check.blockers.map((b) => (

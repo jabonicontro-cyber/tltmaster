@@ -36,7 +36,10 @@ function ExclusionList({ groups, className }: { groups: ExclusionGroup[]; classN
 
 function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; canEdit: boolean; timezone: string; back: string; faces: Record<string, Face> }) {
   const router = useRouter();
-  const options = plan.proposal ? [plan.proposal, ...plan.alternatives] : [];
+  // Options the dispatcher just rejected leave at once (B6), before the board's recompute arrives; put back on error.
+  const [rejected, setRejected] = useState<Set<string>>(() => new Set());
+  const keyOf = (o: Pick<Candidate, "truckId" | "driverId">) => `${o.truckId}|${o.driverId}`;
+  const options = (plan.proposal ? [plan.proposal, ...plan.alternatives] : []).filter((o) => !rejected.has(keyOf(o)));
   const [choice, setChoice] = useState(0);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -65,14 +68,25 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
     router.refresh();
   }
   async function reject() {
-    if (!chosen) return;
+    if (!chosen || busy) return;
+    const option = chosen;
+    const key = keyOf(option);
     setBusy("reject");
-    const r = await rejectRecommendation({ loadId: l.id, truckId: chosen.truckId, driverId: chosen.driverId, reason });
-    setBusy(null);
-    if (!r.ok) return setError(r.error);
+    setError(null);
+    setRejected((s) => new Set(s).add(key));
     setRejecting(false);
-    setReason("");
     setChoice(0);
+    const r = await rejectRecommendation({ loadId: l.id, truckId: option.truckId, driverId: option.driverId, reason }).catch(() => null);
+    setBusy(null);
+    if (!r?.ok) {
+      setRejected((s) => { const n = new Set(s); n.delete(key); return n; });
+      const message = r ? r.error : "Could not be saved. Check the connection and try again.";
+      setError(message);
+      toast.error(message);
+      return;
+    }
+    setReason("");
+    toast.success(`${l.order_number} load ${l.load_number}: truck ${option.truckLabel} with ${option.driverLabel} rejected. ${options.length > 1 ? "The next option is shown." : "Looking for another option."}`);
     router.refresh();
   }
   async function reconsider() {
@@ -80,6 +94,8 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
     const r = await reconsiderRecommendations(l.id);
     setBusy(null);
     if (!r.ok) return setError(r.error);
+    setRejected(new Set());
+    toast.success(r.message ?? "Rejected options will be proposed again.");
     router.refresh();
   }
 
@@ -100,7 +116,9 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
         {l.site_wait != null && l.site_wait >= 30 && <Badge tone="amber">Usually ~{l.site_wait} min wait on site</Badge>}
       </div>
 
-      {plan.proposal ? (
+      {plan.proposal && !options.length ? (
+        <p role="status" className="mt-2.5 rounded-2xl border border-line bg-surface/60 p-3 text-sm text-muted">Option rejected. Updating the proposals for this load…</p>
+      ) : plan.proposal ? (
         <div className="mt-2.5 rounded-2xl border border-line bg-surface/60 p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm">
@@ -119,13 +137,13 @@ function PlanCard({ plan, canEdit, timezone, back, faces }: { plan: BoardPlan; c
                 {rejecting ? (
                   <>
                     <input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={300} placeholder="Why not? (optional)" aria-label="Reason for rejecting" className="h-8 rounded-control border border-line bg-card px-2 text-sm" />
-                    <Button size="sm" variant="secondary" loading={busy === "reject"} onClick={reject}>Reject this option</Button>
-                    <Button size="sm" variant="ghost" onClick={() => setRejecting(false)}>Cancel</Button>
+                    <Button size="sm" variant="secondary" loading={busy === "reject"} disabled={Boolean(busy)} onClick={reject}>Reject this option</Button>
+                    <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => setRejecting(false)}>Cancel</Button>
                   </>
                 ) : (
                   <>
-                    <Button size="sm" variant="ghost" onClick={() => setRejecting(true)}>Reject…</Button>
-                    <Button size="sm" loading={busy === "approve"} onClick={() => setConfirming(true)}>Approve and assign</Button>
+                    <Button size="sm" variant="ghost" disabled={Boolean(busy)} onClick={() => setRejecting(true)}>Reject…</Button>
+                    <Button size="sm" loading={busy === "approve"} disabled={Boolean(busy)} onClick={() => setConfirming(true)}>Approve and assign</Button>
                   </>
                 )}
                 {chosen && (

@@ -7,7 +7,7 @@ import { useCallback, useState } from "react";
 import { Loader2, Send } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { quantityError } from "@/lib/tickets/rules";
+import { TICKET_FIELD_IDS, clearTicketErrors, firstTicketError, preselectedUnit, serverTicketErrors, ticketFormErrors, type TicketErrors, type TicketField } from "@/lib/driver/ticket-form";
 import { recordTicketLocation, submitDriverTicket } from "@/app/(app)/driver/actions";
 import { announceOutbox, enqueue } from "@/lib/offline/store";
 import { Choice } from "./choice";
@@ -38,34 +38,49 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   const [submissionKey] = useState(() => crypto.randomUUID());
   const [lineId, setLineId] = useState(lines.length === 1 ? lines[0].id : "");
   const [quantity, setQuantity] = useState("");
-  const [unit, setUnit] = useState("");
+  // The order line's unit until the driver taps another (UX6); null while they have not chosen.
+  const [pickedUnit, setPickedUnit] = useState<string | null>(null);
   const [date, setDate] = useState(loadDate);
   const [time, setTime] = useState(defaultTime);
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
   const [confirmed, setConfirmed] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<TicketErrors>({});
   const [state, setState] = useState<State>({ kind: "idle" });
   const [photos, setPhotos] = useState<PhotoState>({ ids: [], busy: false, failed: false });
-  const onPhotos = useCallback((p: PhotoState) => setPhotos(p), []);
+  // A field's error goes as soon as the driver changes that field; the rest stay until the next send.
+  const clear = (...fields: TicketField[]) => setErrors((e) => clearTicketErrors(e, ...fields));
+  const onPhotos = useCallback((p: PhotoState) => {
+    setPhotos(p);
+    if (!p.busy && !p.failed) setErrors((e) => clearTicketErrors(e, "photos"));
+  }, []);
   const line = lines.find((l) => l.id === lineId);
-  // The order line's unit first (marked), never preselected.
+  const unit = pickedUnit ?? preselectedUnit(line, units);
+  const setUnit = (code: string) => { setPickedUnit(code); clear("unit", ...(quantity.trim() ? (["quantity"] as const) : [])); };
+  // The order line's unit first (marked, and chosen until the driver taps another).
   const orderedUnits = line ? [...units].sort((a, b) => (a.code === line.unit_code ? -1 : b.code === line.unit_code ? 1 : 0)) : units;
   const HAUL_UNITS = ["ton", "cu_yd", "load"];
   const mainUnits = orderedUnits.filter((u) => u.code === line?.unit_code || HAUL_UNITS.includes(u.code));
   const otherUnits = orderedUnits.filter((u) => !mainUnits.includes(u));
 
-  async function send() {
-    const e: Record<string, string> = {};
-    if (!lineId) e.line = "Choose what you delivered.";
-    if (!unit) e.unit = "Tap the unit on the paper ticket.";
-    const q = quantity.trim() ? quantityError(quantity, unit || "ton") : "Enter the quantity.";
-    if (q) e.quantity = q;
-    if (!time) e.time = "Enter the delivery time.";
-    if (photos.busy) e.photos = "Wait until the photo has uploaded.";
-    else if (photos.failed) e.photos = "A photo did not upload. Tap Retry, or remove it.";
+  // A failed send takes the driver to the first error: above the sticky Send bar it would otherwise be out of view.
+  function showErrors(e: TicketErrors) {
     setErrors(e);
-    if (Object.keys(e).length) return;
+    const first = firstTicketError(e);
+    if (!first) return;
+    window.requestAnimationFrame(() => {
+      const el = document.getElementById(TICKET_FIELD_IDS[first]);
+      if (!el) return;
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+      el.focus({ preventScroll: true });
+    });
+  }
+
+  async function send() {
+    const e = ticketFormErrors({ lineId, quantity, unit, time, photos });
+    if (firstTicketError(e)) { showErrors(e); return; }
+    setErrors({});
     setState({ kind: "sending" });
     const input = {
       assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
@@ -99,7 +114,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         return;
       }
       if ("needsConfirmation" in r) { setState({ kind: "confirm", message: r.error }); return; }
-      setErrors(r.fieldErrors ?? {});
+      showErrors(serverTicketErrors(r.fieldErrors));
       setState({ kind: "failed", message: r.error, offline: false });
     } catch {
       if (keep()) return;
@@ -127,26 +142,26 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         <input id="d-ref" autoComplete="off" maxLength={60} value={reference} onChange={(e) => setReference(e.target.value)} className={field} />
       </div>
 
-      <fieldset>
+      <fieldset id="d-line" tabIndex={-1} aria-describedby={errors.line ? "d-line-error" : undefined} className="focus:outline-none">
         <legend className="mb-2 text-base font-bold">What did you deliver?</legend>
         <div className="space-y-2">
           {lines.map((l) => (
-            <Choice key={l.id} name="line" value={l.id} checked={lineId === l.id} onChange={setLineId}>{l.description}</Choice>
+            <Choice key={l.id} name="line" value={l.id} checked={lineId === l.id} onChange={(v) => { setLineId(v); clear("line", ...(pickedUnit ? [] : (["unit"] as const))); }}>{l.description}</Choice>
           ))}
         </div>
-        {errors.line && <p className="mt-1 font-semibold text-red-700">{errors.line}</p>}
+        {errors.line && <p id="d-line-error" className="mt-1 font-semibold text-red-700">{errors.line}</p>}
       </fieldset>
 
       <div>
         <label htmlFor="d-qty" className="mb-2 block text-base font-bold">Quantity on the ticket</label>
-        <input id="d-qty" inputMode="decimal" autoComplete="off" value={quantity} onChange={(e) => setQuantity(e.target.value)} className={cn(field, "text-right text-2xl font-bold tabular")} aria-invalid={Boolean(errors.quantity)} />
+        <input id="d-qty" inputMode="decimal" autoComplete="off" value={quantity} onChange={(e) => { setQuantity(e.target.value); clear("quantity"); }} className={cn(field, "text-right text-2xl font-bold tabular")} aria-invalid={Boolean(errors.quantity)} />
         {errors.quantity && <p className="mt-1 font-semibold text-red-700">{errors.quantity}</p>}
       </div>
 
-      <fieldset>
+      <fieldset id="d-unit" tabIndex={-1} aria-describedby={errors.unit ? "d-unit-error" : undefined} className="focus:outline-none">
         <legend className="mb-2 text-base font-bold">Unit</legend>
-        {/* The order's unit and the usual haul units first; the rest behind "Other unit" (UX6). Never preselected: the
-            driver reads the unit off the paper ticket. */}
+        {/* The order's unit and the usual haul units first; the rest behind "Other unit" (UX6). The order line's unit is
+            chosen for the driver (UX6) and marked "Order unit"; they tap another if the paper ticket says so. */}
         <div className="grid grid-cols-2 gap-2">
           {mainUnits.map((u) => (
             <Choice key={u.code} name="unit" value={u.code} checked={unit === u.code} onChange={setUnit} hint={line && u.code === line.unit_code ? "Order unit" : undefined}>{u.label}</Choice>
@@ -162,23 +177,25 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
             </div>
           </details>
         )}
+        {line && unit && unit === line.unit_code && pickedUnit === null && <p className="mt-2 text-sm text-muted">Set to the order unit. Tap another if the paper ticket shows a different one.</p>}
         {line && unit && unit !== line.unit_code && <p className="mt-2 text-sm text-amber-900">Different from the order unit. The office will check it. No conversion is made.</p>}
-        {errors.unit && <p className="mt-1 font-semibold text-red-700">{errors.unit}</p>}
+        {errors.unit && <p id="d-unit-error" className="mt-1 font-semibold text-red-700">{errors.unit}</p>}
       </fieldset>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label htmlFor="d-date" className="mb-2 block text-base font-bold">Date</label>
-          <DateInput id="d-date" value={date} onChange={(e) => setDate(e.target.value)} className={field} />
+          <DateInput id="d-date" value={date} onChange={(e) => { setDate(e.target.value); clear("date"); }} className={cn(field, "text-[18px]")} aria-invalid={Boolean(errors.date)} />
+          {errors.date && <p className="mt-1 font-semibold text-red-700">{errors.date}</p>}
         </div>
         <div>
           <label htmlFor="d-time" className="mb-2 block text-base font-bold">Delivery time</label>
-          <input id="d-time" type="time" value={time} onChange={(e) => setTime(e.target.value)} className={field} />
+          <input id="d-time" type="time" value={time} onChange={(e) => { setTime(e.target.value); clear("time"); }} className={field} aria-invalid={Boolean(errors.time)} />
           {errors.time && <p className="mt-1 font-semibold text-red-700">{errors.time}</p>}
         </div>
       </div>
 
-      <div>
+      <div id="d-photos" tabIndex={-1} className="focus:outline-none">
         <PhotoAttachments assignmentId={assignmentId} onChange={onPhotos} disabled={sending} />
         {errors.photos && <p className="mt-1 font-semibold text-red-700">{errors.photos}</p>}
       </div>

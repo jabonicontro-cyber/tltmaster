@@ -155,6 +155,41 @@ export function isNetworkError(e: unknown): boolean {
   return /fetch|network|load failed|connection|offline/i.test(msg);
 }
 
+/**
+ * When an item was saved, as a clock time in the company's time zone (the same clock My Day uses), so the list never
+ * shows the phone's or the server's zone instead. Without a zone (an older saved day) the phone's clock is used.
+ */
+export function outboxTime(iso: string, timeZone?: string | null): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  try {
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", ...(timeZone ? { timeZone } : {}) }).format(d);
+  } catch {
+    return new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit" }).format(d); // unknown zone name
+  }
+}
+
+export type SendOutcome = { sent: true } | { sent: false; network: true } | { sent: false; network: false; error: string };
+
+/**
+ * Send what is waiting for this person, oldest first, through `send` (the same server actions as a live item). Stops at
+ * the first item that fails for lack of a connection; an item Taviron refuses is kept as failed with its message.
+ */
+export async function flushOutbox(userId: string, send: (item: OutboxItem) => Promise<SendOutcome>, s?: Store): Promise<{ sent: number; failed: number; network: boolean }> {
+  const waiting = readOutbox(userId, s).filter((i) => i.status === "waiting");
+  let sent = 0;
+  let failed = 0;
+  let network = false;
+  for (const item of waiting) {
+    const r = await send(item);
+    if (r.sent) { removeItem(item.id, s); sent++; }
+    else if (r.network) { network = true; break; }
+    else { updateItem(item.id, { status: "failed", error: r.error }, s); failed++; }
+    announceOutbox();
+  }
+  return { sent, failed, network };
+}
+
 export const OUTBOX_EVENT = "taviron-outbox-changed";
 export function announceOutbox(): void {
   try {
