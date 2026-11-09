@@ -9,6 +9,8 @@ import { Dialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
+import { WaitForPart } from "@/components/maintenance/my-jobs";
+import { shortStock } from "@/lib/maintenance";
 
 type PartLite = { id: string; part_number: string; name: string; unit: string; location: string; on_hand: number; reorder_point: number };
 
@@ -89,24 +91,43 @@ export function CountButton({ part }: { part: PartLite }) {
   );
 }
 
-/** Use parts from stock on a work order (mechanics and the owner). */
-export function UsePartForm({ workOrderId, parts }: { workOrderId: string; parts: PartLite[] }) {
+/**
+ * Use parts from stock on a work order (mechanics and the owner). When the shelf has fewer than asked, the message says
+ * what to do next: use what is there, or mark the job waiting for the part (first-day review 2026-11-09).
+ */
+export function UsePartForm({ workOrderId, parts, canWait = false, editSeq }: { workOrderId: string; parts: PartLite[]; canWait?: boolean; editSeq?: number }) {
   const [key, setKey] = useState(0);
-  const { pending, onSubmit, formError } = useAction(usePart, () => setKey((k) => k + 1));
+  const [qty, setQty] = useState("1");
+  const [partId, setPartId] = useState("");
+  const { pending, onSubmit, formError } = useAction(usePart, () => { setKey((k) => k + 1); setQty("1"); setPartId(""); });
   const inStock = parts.filter((p) => p.on_hand > 0);
   if (!inStock.length) return <p className="text-sm text-muted">No parts in stock. Receive parts under Maintenance → Parts.</p>;
+  const short = shortStock(formError);
+  const chosen = parts.find((p) => p.id === partId);
   return (
-    <form key={key} onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end" noValidate aria-label="Use a part">
-      <input type="hidden" name="work_order" value={workOrderId} />
-      <div className="sm:col-span-3"><FormError message={formError} /></div>
-      <Field label="Part" htmlFor="use-part">
-        <Select id="use-part" name="part" defaultValue="">
-          <option value="" disabled>Choose a part…</option>
-          {inStock.map((p) => <option key={p.id} value={p.id}>{p.name}{p.part_number ? ` · ${p.part_number}` : ""} ({p.on_hand} {p.unit} on hand)</option>)}
-        </Select>
-      </Field>
-      <Field label="Quantity" htmlFor="use-qty"><Input id="use-qty" name="quantity" inputMode="decimal" defaultValue="1" /></Field>
-      <Button type="submit" variant="secondary" loading={pending}>Use part</Button>
-    </form>
+    <div className="space-y-3">
+      <form key={key} onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_8rem_auto] sm:items-end" noValidate aria-label="Use a part">
+        <input type="hidden" name="work_order" value={workOrderId} />
+        <div className="sm:col-span-3"><FormError message={formError} /></div>
+        <Field label="Part" htmlFor="use-part">
+          <Select id="use-part" name="part" value={partId} onChange={(e) => setPartId(e.target.value)}>
+            <option value="" disabled>Choose a part…</option>
+            {inStock.map((p) => <option key={p.id} value={p.id}>{p.name}{p.part_number ? ` · ${p.part_number}` : ""} ({p.on_hand} {p.unit} on hand)</option>)}
+          </Select>
+        </Field>
+        <Field label="Quantity" htmlFor="use-qty"><Input id="use-qty" name="quantity" inputMode="decimal" value={qty} onChange={(e) => setQty(e.target.value)} /></Field>
+        <Button type="submit" variant="secondary" loading={pending}>Use part</Button>
+      </form>
+      {/* Outside the form: "Waiting for parts" is a form of its own. */}
+      {short && (
+        <div className="flex flex-wrap items-center gap-2 text-sm text-ink" data-testid="short-stock">
+          <span>Next step:</span>
+          {short.onHand > 0 && <Button size="sm" variant="secondary" onClick={() => setQty(String(short.onHand))}>Use {short.onHand} instead</Button>}
+          {canWait && editSeq !== undefined
+            ? <><span className="text-muted">or</span><WaitForPart workOrderId={workOrderId} editSeq={editSeq} size="sm" initialPart={chosen ? chosen.name : ""} /></>
+            : <span className="text-muted">or order more under Maintenance → Parts.</span>}
+        </div>
+      )}
+    </div>
   );
 }

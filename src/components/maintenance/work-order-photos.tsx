@@ -17,8 +17,8 @@ export function WorkOrderPhotos({ workOrderId, photos, canAdd }: { workOrderId: 
   const room = Math.max(0, 8 - photos.length);
   const send = () => start(async () => {
     const failed = await uploadPhotos("/maintenance/photos", { work_order: workOrderId }, files.slice(0, room));
-    if (failed) toast.warning(`${failed} photo${failed === 1 ? "" : "s"} could not be sent.`);
-    else toast.success(files.length === 1 ? "Photo added." : "Photos added.");
+    if (failed) toast.warning(`${failed} photo${failed === 1 ? "" : "s"} could not be saved.`);
+    else toast.success(files.length === 1 ? "Photo saved to the job." : "Photos saved to the job.");
     setFiles([]);
     router.refresh();
   });
@@ -43,7 +43,8 @@ export function WorkOrderPhotos({ workOrderId, photos, canAdd }: { workOrderId: 
       {canAdd && room > 0 && (
         <div className="mt-3 space-y-2">
           <PhotoPicker id={`wo-photos-${workOrderId}`} label="Add photos" files={files} onChange={setFiles} max={room} />
-          {files.length > 0 && <Button size="sm" onClick={send} loading={busy}>Send {files.length} photo{files.length === 1 ? "" : "s"}</Button>}
+          {/* Saves to the work order only; nobody is messaged (first-day review 2026-11-09). */}
+          {files.length > 0 && <Button size="sm" onClick={send} loading={busy}>Save {files.length === 1 ? "photo" : `${files.length} photos`}</Button>}
         </div>
       )}
     </section>

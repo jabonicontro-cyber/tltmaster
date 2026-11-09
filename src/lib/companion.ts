@@ -56,11 +56,17 @@ export function dispatcherDriverTabs(permissions: readonly string[]): DriverTab[
   return tabs;
 }
 
-/** The mechanic's tabs (each page still checks its own permission on the server). */
+/** A job opened from My jobs carries ?from=my-jobs; the tab bar passes it on so My jobs stays highlighted. */
+const FROM_MY_JOBS = /[?&]from=my-jobs(&|$)/;
+
+/**
+ * The mechanic's tabs (each page still checks its own permission on the server). A work order opened from My jobs
+ * keeps "My jobs" highlighted (first-day review 2026-11-09).
+ */
 export function mechanicTabs(permissions: readonly string[]): DriverTab[] {
   const tabs: DriverTab[] = [
-    { href: "/maintenance/my-jobs", label: "My jobs", match: (p) => p.startsWith("/maintenance/my-jobs") },
-    { href: "/maintenance/work-orders", label: "All jobs", match: (p) => p.startsWith("/maintenance/work-orders") },
+    { href: "/maintenance/my-jobs", label: "My jobs", match: (p) => p.startsWith("/maintenance/my-jobs") || (p.startsWith("/maintenance/work-orders/") && FROM_MY_JOBS.test(p)) },
+    { href: "/maintenance/work-orders", label: "All jobs", match: (p) => p.startsWith("/maintenance/work-orders") && !FROM_MY_JOBS.test(p) },
   ];
   if (permissions.includes("comms.message")) tabs.push({ href: "/communications", label: "Messages", match: (p) => p.startsWith("/communications") });
   tabs.push({ href: "/time-off", label: "Time off", match: (p) => p.startsWith("/time-off") });

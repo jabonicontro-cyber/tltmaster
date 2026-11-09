@@ -267,17 +267,84 @@ export function workOrderUnit(
   return `Truck ${(w.truck_id && trucks.get(w.truck_id)) ?? "–"}`;
 }
 
+/** A mechanic's job as the card and the next-step line see it. */
+export interface MechanicJobState {
+  status: string;
+  tasksDone: number;
+  tasksTotal: number;
+  /** Lead, or the only mechanic on the job: they finish it (say what was fixed, then inspection or completed). */
+  finisher?: boolean;
+  /** The person's own crew status on the job. */
+  myStatus?: string;
+  safetyCritical?: boolean;
+  /** The part the job is waiting for, when someone said which. */
+  missingPart?: string | null;
+  /** Who finishes the job when the person is a helper. */
+  leadName?: string | null;
+}
+
+/** Whether this person finishes the job: the lead, the only mechanic on it, or anyone on a crew without a lead. */
+export function finishesJob(myRole: "lead" | "assist", crewSize: number, crewHasLead = true): boolean {
+  return myRole === "lead" || crewSize <= 1 || !crewHasLead;
+}
+
 /**
- * The next step on a mechanic's job card, in plain words (UX14, owner walkthrough 2026-11-04). Matches the buttons the
- * card shows for the same state.
+ * Where a finished job goes next: a safety-critical job always waits for an authorized inspection (the database
+ * refuses to complete it directly); any other job is completed.
  */
-export function mechanicNextStep(job: { status: string; tasksDone: number; tasksTotal: number }, timer: "here" | "elsewhere" | "none"): string {
+export function finishTarget(safetyCritical: boolean): "awaiting_inspection" | "completed" {
+  return safetyCritical ? "awaiting_inspection" : "completed";
+}
+
+/**
+ * The next step on a mechanic's job card, in plain words (UX14, owner walkthrough 2026-11-04; first-day review
+ * 2026-11-09). It follows the real state: a running timer, the checklist, who finishes the job and what is missing.
+ * Matches the buttons the card shows for the same state.
+ */
+export function mechanicNextStep(job: MechanicJobState, timer: "here" | "elsewhere" | "none"): string {
   const left = Math.max(job.tasksTotal - job.tasksDone, 0);
-  const checklist = left > 0 ? ` Work through the checklist (${left} left).` : "";
-  if (job.status === "awaiting_parts") return "Waiting for parts. Start the job again when they are in.";
+  const named = job.leadName?.trim();
+  const lead = named || "The lead mechanic";
+  const leadMid = named || "the lead mechanic";
+  if (job.status === "awaiting_parts") {
+    const part = job.missingPart?.trim();
+    return part ? `Waiting for parts: ${part}. Start the job again when it is in.` : "Waiting for parts. Start the job again when they are in.";
+  }
   if (job.status === "awaiting_inspection") return "Waiting for an authorized inspection before the job can be completed.";
-  if (job.status !== "in_progress") return "Next: tap Start this job when you begin work.";
-  if (timer === "here") return `Your timer is running.${checklist} Stop the timer when you take a break or finish.`;
+  if (job.status !== "in_progress") return "Next: tap Start this job when you begin work. Your timer starts with it.";
+  if (timer === "here") {
+    return left > 0
+      ? `Your timer is running. Work through the checklist (${left} left). Stop the timer when you take a break.`
+      : job.finisher
+        ? "Your timer is running. When the repair is done, tap Finish the job and say what you fixed."
+        : "Your timer is running. Stop the timer when you take a break or your part is done.";
+  }
   if (timer === "elsewhere") return "Your timer is running on another job. Stop it there before you work on this one.";
-  return `Next: start your timer while you work.${checklist} When your part is finished, tap My part is done.`;
+  if (!job.finisher && job.myStatus === "done") return `Your part is done. ${lead} finishes the job.`;
+  if (left > 0) return `Next: start your timer and work through the checklist (${left} left).`;
+  if (job.finisher) {
+    return job.tasksTotal > 0
+      ? `Finish the job: say what you fixed.${job.safetyCritical ? " It then waits for an authorized inspection." : ""}`
+      : `Start your timer while you work. When the repair is done, finish the job: say what you fixed.${job.safetyCritical ? " It then waits for an authorized inspection." : ""}`;
+  }
+  return job.tasksTotal > 0
+    ? `Checklist done. Tap My part is done; ${leadMid} finishes the job.`
+    : `Start your timer while you work. When your part is finished, tap My part is done; ${leadMid} finishes the job.`;
+}
+
+/**
+ * What the finisher wrote ("What did you fix?") added to the work order's Findings, keeping what was already there.
+ * Null when the text is already in the findings (a retry after a lost response adds nothing twice).
+ */
+export function appendFindings(existing: string | null | undefined, added: string, max = 4000): string | null {
+  const add = added.trim();
+  const before = (existing ?? "").trim();
+  if (!add || before.includes(add)) return null;
+  return (before ? `${before}\n${add}` : add).slice(0, max);
+}
+
+/** "Only 2 kit on hand." from the database (part_use): the amount and unit, so the form can offer the next step. */
+export function shortStock(message: string | null | undefined): { onHand: number; unit: string } | null {
+  const m = /^Only ([\d.]+) (.*?) on hand\.?$/.exec((message ?? "").trim());
+  return m ? { onHand: Number(m[1]), unit: m[2] } : null;
 }

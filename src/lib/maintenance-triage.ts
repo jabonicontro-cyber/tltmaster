@@ -112,3 +112,48 @@ export function triageRules(input: TriageInput): TriageSuggestion {
     related,
   };
 }
+
+/** A driver report's own kind (src/lib/driver/rules.ts REPORT_KIND_LABELS). */
+export type DriverReportKind = "delay" | "cannot_complete" | "breakdown" | "equipment_issue" | "inspection_issue";
+
+export interface ReportDraft {
+  title: string;
+  description: string;
+  category: WoCategory;
+  urgency: WoUrgency;
+  safety_critical: boolean;
+  /** Why category, urgency and the safety flag were suggested, in plain words (shown with the form). */
+  reasons: string[];
+}
+
+const URGENCY_ORDER: WoUrgency[] = ["low", "normal", "high", "immediate"];
+const atLeast = (u: WoUrgency, min: WoUrgency) => (URGENCY_ORDER.indexOf(u) >= URGENCY_ORDER.indexOf(min) ? u : min);
+
+/** The first sentence of the report as a short title (at most 80 characters, cut on a word). */
+export function reportTitle(text: string, fallback: string): string {
+  const first = text.trim().split(/(?<=[.!?])\s+|\n+/)[0]?.trim().replace(/[.!?]+$/, "") ?? "";
+  if (first.length < 3) return fallback;
+  if (first.length <= 80) return first;
+  const cut = first.slice(0, 80);
+  return `${cut.slice(0, Math.max(cut.lastIndexOf(" "), 40)).trim()}…`;
+}
+
+/**
+ * A work order draft from a driver report (first-day review 2026-11-09): the title and description come from the
+ * driver's own words, and category, urgency and the safety flag are suggestions (the same rules as triage, plus the
+ * report's kind: a breakdown suggests safety-critical and high urgency). The person creating the work order sees why
+ * and changes anything that is wrong; nothing is saved until they create it.
+ */
+export function workOrderFromReport(report: { kind: DriverReportKind | string; description: string }, kindLabel: string): ReportDraft {
+  const description = report.description.trim();
+  const t = triageRules({ title: "", description, openOnUnit: [] });
+  const reasons = t.reasons.filter((r) => !r.startsWith("No specific system"));
+  let safety = t.safetyReview;
+  let urgency = t.urgency;
+  if (report.kind === "breakdown") {
+    if (!safety) reasons.push("The driver reported a breakdown: the vehicle may not be safe to run until it is checked.");
+    safety = true;
+  }
+  if (safety) urgency = atLeast(urgency, "high");
+  return { title: reportTitle(description, kindLabel), description, category: t.category, urgency, safety_critical: safety, reasons };
+}

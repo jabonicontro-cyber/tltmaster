@@ -32,8 +32,8 @@ export function TriageCard({ workOrderId, triage, canManage, open, decidedByName
   if (!triage || !s) {
     return (
       <div className="space-y-2 text-sm">
-        <p className="text-muted">No triage yet. Taviron can read the report and suggest a category, urgency, whether a safety review is needed and what to ask. You decide.</p>
-        {canManage && open && <Button size="sm" variant="secondary" disabled={pending} icon={<Sparkles className="size-4" aria-hidden />} onClick={() => run(() => suggestTriage({ workOrderId }))}>Suggest triage</Button>}
+        <p className="text-muted">Nothing suggested yet. Taviron can read the report and suggest a category, urgency, whether a safety review is needed and what to ask. You decide.</p>
+        {canManage && open && <Button size="sm" variant="secondary" disabled={pending} icon={<Sparkles className="size-4" aria-hidden />} onClick={() => run(() => suggestTriage({ workOrderId }))}>Suggest what to check</Button>}
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/server/supabase/server";
-import { OPEN_STATUSES } from "@/lib/maintenance";
+import { finishesJob, OPEN_STATUSES } from "@/lib/maintenance";
+import { getPeopleNames } from "@/server/data/quotes";
 
 // Crews, labor time and checklists on a work order (migration 20261120002900). Read through the person's session
 // (maintenance.view, RLS). Before the migration is applied the loader says so instead of returning empty lists.
@@ -26,6 +27,19 @@ export interface WorkOrderCrew {
 
 const MISSING = new Set(["42P01", "PGRST205", "42883", "PGRST202"]);
 
+/**
+ * Mechanic names from the one company directory (public.user_directory), the same source as the account menu, the
+ * lead mechanic and history lines. maintenance_assignee_options returns the login's profile name, which in a demo
+ * company differs from the demo persona the rest of the app shows (first-day review 2026-11-09: "Avery Owner" on the
+ * timer and checklist, "Daniel Mitchell" everywhere else for the same person). Falls back to the option's own name.
+ */
+async function mechanicOptions(options: { data: unknown }): Promise<MechanicOption[]> {
+  const people = await getPeopleNames().catch(() => ({} as Record<string, string>));
+  return ((options.data ?? []) as Array<{ user_id: string; name: string }>)
+    .map((o) => ({ userId: o.user_id, name: people[o.user_id] || o.name }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 export async function getWorkOrderCrew(workOrderId: string, userId: string): Promise<WorkOrderCrew> {
   const supabase = await createClient();
   const [crew, time, tasks, options, mine] = await Promise.all([
@@ -38,7 +52,7 @@ export async function getWorkOrderCrew(workOrderId: string, userId: string): Pro
   if (crew.error && MISSING.has(crew.error.code ?? "")) {
     return { installed: false, crew: [], time: [], tasks: [], options: [], myTimer: null, totalMinutes: 0 };
   }
-  const opts = ((options.data ?? []) as Array<{ user_id: string; name: string }>).map((o) => ({ userId: o.user_id, name: o.name }));
+  const opts = await mechanicOptions(options);
   const nameOf = (id: string) => opts.find((o) => o.userId === id)?.name ?? "Former member";
   const timeRows = ((time.data ?? []) as Array<{ id: string; user_id: string; started_at: string; ended_at: string | null; source: "timer" | "manual"; note: string; voided_at: string | null; void_reason: string }>).map((t) => ({
     id: t.id, userId: t.user_id, name: nameOf(t.user_id), startedAt: t.started_at, endedAt: t.ended_at,
@@ -82,8 +96,8 @@ export async function listShopWorkload(openWorkOrderIds: string[], weekStartIso:
   ]);
   if (crew.error && MISSING.has(crew.error.code ?? "")) return { installed: false, mechanics: [] };
   const byId = new Map<string, MechanicLoad>();
-  for (const o of (options.data ?? []) as Array<{ user_id: string; name: string }>) {
-    byId.set(o.user_id, { userId: o.user_id, name: o.name, leadJobs: 0, helperJobs: 0, working: null, weekMinutes: 0 });
+  for (const o of await mechanicOptions(options)) {
+    byId.set(o.userId, { userId: o.userId, name: o.name, leadJobs: 0, helperJobs: 0, working: null, weekMinutes: 0 });
   }
   const get = (id: string) => byId.get(id) ?? byId.set(id, { userId: id, name: "Former member", leadJobs: 0, helperJobs: 0, working: null, weekMinutes: 0 }).get(id)!;
   for (const c of (crew.data ?? []) as Array<{ user_id: string; role: string }>) {
@@ -172,25 +186,38 @@ export interface MyJob {
   id: string; number: string; title: string; status: string; urgency: string; safetyCritical: boolean;
   scheduledFor: string | null; dueOn: string | null; unit: string; editSeq: number;
   myRole: "lead" | "assist"; myStatus: CrewMember["status"]; tasksDone: number; tasksTotal: number;
+  /** People on the crew; the lead (or the only mechanic) finishes the job. */
+  crewSize: number; finisher: boolean; leadName: string | null;
+  /** What the person who set "Waiting for parts" said is missing (the status change's note), when the job waits. */
+  missingPart: string | null;
 }
 export interface OpenJob { id: string; number: string; title: string; status: string; urgency: string; safetyCritical: boolean; scheduledFor: string | null; unit: string }
 
 /**
  * The mechanic's phone workspace (docs/COMPANION_APP.md): the open work orders the signed-in person is on (not yet
  * done with their part), their running timer, and open jobs nobody leads yet. Read as the person (RLS, maintenance.view).
+ * A job that still needs the person who finishes it (the lead, or the only mechanic) stays listed even after they
+ * marked their own part done, until it is sent for inspection, completed or canceled (first-day review 2026-11-09).
  */
 export async function listMyJobs(userId: string): Promise<{ installed: boolean; mine: MyJob[]; unled: OpenJob[]; myTimer: WorkOrderCrew["myTimer"] }> {
   const supabase = await createClient();
-  const crew = await supabase.from("work_order_mechanics").select("work_order_id, role, status").eq("user_id", userId).neq("status", "done");
+  const crew = await supabase.from("work_order_mechanics").select("work_order_id, role, status").eq("user_id", userId);
   if (crew.error && MISSING.has(crew.error.code ?? "")) return { installed: false, mine: [], unled: [], myTimer: null };
   const rows = (crew.data ?? []) as Array<{ work_order_id: string; role: "lead" | "assist"; status: CrewMember["status"] }>;
   const ids = rows.map((r) => r.work_order_id);
   const cols = "id, number, title, status, urgency, safety_critical, scheduled_for, due_on, edit_seq, truck_id, trailer_id";
-  const [wos, tasks, unled, timer] = await Promise.all([
+  const [wos, tasks, unled, timer, crewAll, partNotes, people] = await Promise.all([
     ids.length ? supabase.from("work_orders").select(cols).in("id", ids).in("status", OPEN_STATUSES) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from("work_order_tasks").select("work_order_id, status").in("work_order_id", ids) : Promise.resolve({ data: [] }),
     supabase.from("work_orders").select(cols).is("assigned_to", null).in("status", ["triaged", "scheduled", "in_progress", "awaiting_parts"]).order("created_at", { ascending: false }).limit(50),
     supabase.from("work_order_time_entries").select("work_order_id, started_at, work_orders(number)").eq("user_id", userId).is("ended_at", null).is("voided_at", null).maybeSingle(),
+    // Everyone on my jobs' crews: who leads, and whether I am the only mechanic.
+    ids.length ? supabase.from("work_order_mechanics").select("work_order_id, user_id, role").in("work_order_id", ids) : Promise.resolve({ data: [] }),
+    // Which part a waiting job needs: the note on its latest "Waiting for parts" status change.
+    ids.length
+      ? supabase.from("work_order_events").select("work_order_id, note, created_at").in("work_order_id", ids).eq("kind", "status").eq("to_status", "awaiting_parts").order("created_at", { ascending: false }).limit(200)
+      : Promise.resolve({ data: [] }),
+    getPeopleNames().catch(() => ({} as Record<string, string>)),
   ]);
   type Wo = { id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; due_on: string | null; edit_seq: number; truck_id: string | null; trailer_id?: string | null };
   const all = [...((wos.data ?? []) as Wo[]), ...((unled.data ?? []) as Wo[])];
@@ -208,15 +235,25 @@ export async function listMyJobs(userId: string): Promise<{ installed: boolean; 
   const taskRows = (tasks.data ?? []) as Array<{ work_order_id: string; status: string }>;
   const rank = (w: { safetyCritical: boolean; urgency: string; status: string }) =>
     (w.status === "in_progress" ? 0 : 10) + (w.safetyCritical ? 0 : 5) + ({ immediate: 0, high: 1, normal: 2, low: 3 }[w.urgency] ?? 4);
-  const mine = ((wos.data ?? []) as Wo[]).map((w) => {
+  const crewRows = (crewAll.data ?? []) as Array<{ work_order_id: string; user_id: string; role: "lead" | "assist" }>;
+  const noteRows = (partNotes.data ?? []) as Array<{ work_order_id: string; note: string | null }>;
+  const mine = ((wos.data ?? []) as Wo[]).map((w): MyJob => {
     const me = rows.find((r) => r.work_order_id === w.id)!;
     const t = taskRows.filter((x) => x.work_order_id === w.id);
+    const onCrew = crewRows.filter((c) => c.work_order_id === w.id);
+    const crewSize = Math.max(onCrew.length, 1);
+    const leadId = onCrew.find((c) => c.role === "lead")?.user_id ?? null;
     return {
       id: w.id, number: w.number, title: w.title, status: w.status, urgency: w.urgency, safetyCritical: w.safety_critical,
       scheduledFor: w.scheduled_for, dueOn: w.due_on, unit: unit(w), editSeq: w.edit_seq, myRole: me.role, myStatus: me.status,
       tasksDone: t.filter((x) => x.status !== "open").length, tasksTotal: t.length,
+      crewSize, finisher: finishesJob(me.role, crewSize, Boolean(leadId)), leadName: leadId ? people[leadId] ?? null : null,
+      missingPart: w.status === "awaiting_parts" ? noteRows.find((n) => n.work_order_id === w.id)?.note?.trim() || null : null,
     };
-  }).sort((a, b) => rank(a) - rank(b) || a.number.localeCompare(b.number));
+  })
+    // My part done: the job leaves my list, unless I am the one who finishes it and it still waits for that.
+    .filter((j) => j.myStatus !== "done" || (j.finisher && j.status !== "awaiting_inspection"))
+    .sort((a, b) => rank(a) - rank(b) || a.number.localeCompare(b.number));
   const m = timer.data as { work_order_id: string; started_at: string; work_orders: { number: string } | null } | null;
   return {
     installed: true,

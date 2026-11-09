@@ -14,7 +14,7 @@ import { listOpenWorkOrders, listRecentClearances, listTrailers, listTrucks, typ
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
-export const metadata = { title: "Clearance queue" };
+export const metadata = { title: "Inspections" };
 
 const TONE: Record<ClearanceStatus, "amber" | "blue" | "red" | "green"> = { awaiting: "amber", in_progress: "blue", failed: "red", cleared: "green" };
 
@@ -37,11 +37,11 @@ export default async function ClearancePage() {
   return (
     <>
       <PageHeader
-        crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Clearance queue" }]}
-        title="Clearance queue"
+        crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Inspections" }]}
+        title="Inspections"
         description={can(access, "maintenance.clear")
           ? "You can inspect and clear trucks. Closing a repair never skips this step for safety-critical work."
-          : "Only people allowed to clear vehicles for service record inspections. You can follow the queue here."}
+          : "Only people allowed to clear vehicles for service record inspections. You can see here what waits for an authorized inspection."}
       />
       <MaintenanceTabs active="clearance" />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">

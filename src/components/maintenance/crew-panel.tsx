@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { Check, Clock, Play, Plus, Square, X } from "lucide-react";
 import { toast } from "sonner";
-import { addMechanic, addTask, addTime, removeMechanic, setMyStatus, setTask, startTimer, stopTimer, voidTime } from "@/app/(app)/maintenance/crew-actions";
+import { addMechanic, addTask, addTime, removeMechanic, setTask, startTimer, stopTimer, voidTime } from "@/app/(app)/maintenance/crew-actions";
+import { FinishJob } from "@/components/maintenance/my-jobs";
+import { finishesJob } from "@/lib/maintenance";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
@@ -46,9 +48,10 @@ function Elapsed({ since }: { since: string }) {
 }
 
 /** Crew and labor time on one work order. */
-export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {} }: {
+export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {}, safetyCritical = false, unit = "truck" }: {
   workOrderId: string; status: string; data: WorkOrderCrew; me: string; canManage: boolean; today: string; timeZone: string;
   /** Mechanic pictures by user id. */ faces?: Record<string, Face>;
+  /** A safety-critical job finishes through an authorized inspection. */ safetyCritical?: boolean; unit?: "truck" | "trailer";
 }) {
   const { pending, run } = useRun();
   const [adding, setAdding] = useState("");
@@ -58,6 +61,8 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
   const router = useRouter();
   const open = !["closed", "canceled"].includes(status);
   const mine = data.crew.find((c) => c.userId === me);
+  const lead = data.crew.find((c) => c.role === "lead");
+  const finisher = Boolean(mine && finishesJob(mine.role, data.crew.length, Boolean(lead)));
   const myTimerHere = data.myTimer?.workOrderId === workOrderId;
   const candidates = data.options.filter((o) => !data.crew.some((c) => c.userId === o.userId));
   const fmt = (iso: string) => new Intl.DateTimeFormat("en-US", { timeZone, month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(new Date(iso));
@@ -72,14 +77,15 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
               <Button size="sm" disabled={pending} onClick={() => run(() => stopTimer())} icon={<Square className="size-4" aria-hidden />}>Stop</Button>
             </>
           ) : data.myTimer ? (
-            <span className="text-sm text-muted">Your timer is running on {data.myTimer.number}. Stop it there before starting here.</span>
+            <span className="text-sm text-muted">Your timer is running on work order {data.myTimer.number}. Stop it there before starting here.</span>
           ) : status === "in_progress" ? (
             <Button size="sm" disabled={pending} onClick={() => run(() => startTimer({ workOrderId }))} icon={<Play className="size-4" aria-hidden />}>Start work</Button>
           ) : (
             <span className="text-sm text-muted">Timers start once the work order is In progress.</span>
           )}
-          {mine && !myTimerHere && mine.status !== "done" && (
-            <Button size="sm" variant="ghost" disabled={pending} onClick={() => run(() => setMyStatus({ workOrderId, status: "done" }))}>Mark my part done</Button>
+          {/* The lead (or the only mechanic) finishes the job in one step; a helper marks their own part done. */}
+          {mine && status === "in_progress" && (finisher || (!myTimerHere && mine.status !== "done")) && (
+            <FinishJob workOrderId={workOrderId} finisher={finisher} safetyCritical={safetyCritical} unit={unit} leadName={lead?.name ?? null} size="sm" />
           )}
         </div>
       )}

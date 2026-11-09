@@ -4,8 +4,10 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isIsoDate, zonedTimeToUtc } from "@/lib/dates";
+import { appendFindings, finishesJob, finishTarget } from "@/lib/maintenance";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
+import { getPeopleNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
@@ -66,6 +68,120 @@ export async function stopTimer(input: { note?: string } = {}): Promise<ActionRe
     const p = z.object({ note: z.string().trim().max(500).default("") }).safeParse(input);
     if (!p.success) return fail("The note is too long.");
     return call("maintenance_stop_timer", { p_note: p.data.note }, undefined, "Timer stopped.");
+  });
+}
+
+/**
+ * "Start this job" in one tap (first-day review 2026-11-09): the job goes to In progress and the person's timer starts,
+ * through the same two database functions as the separate buttons. If the timer cannot start (for example it runs on
+ * another job), the job is still started and the message says why the timer did not.
+ */
+export async function startJob(input: { workOrderId: string; editSeq: number }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ editSeq: z.number().int() }).safeParse(input);
+    if (!p.success) return fail("Invalid work order.");
+    await assertPermission("maintenance.manage");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("maintenance_set_status", { p_id: p.data.workOrderId, p_status: "in_progress", p_note: "", p_expected_seq: p.data.editSeq });
+    if (error) return fail(dbErrorMessage(error));
+    const timer = await supabase.rpc("maintenance_start_timer", { p_wo: p.data.workOrderId, p_note: "" });
+    refresh(p.data.workOrderId);
+    return timer.error
+      ? ok(undefined, `Job started. Your timer did not start: ${dbErrorMessage(timer.error)}`)
+      : ok(undefined, "Job started. Your timer is running.");
+  });
+}
+
+/**
+ * "Waiting for parts" from the phone (first-day review 2026-11-09): says which part is missing (kept as the status
+ * change's note and shown on the job card), and stops the person's own timer on this job first, since nobody works on
+ * it while it waits.
+ */
+export async function waitForPart(input: { workOrderId: string; part: string; editSeq: number }): Promise<ActionResult> {
+  return guard(async () => {
+    const p = woId.extend({ part: z.string().trim().min(2, "Say which part is missing.").max(300, "Use at most 300 characters."), editSeq: z.number().int() }).safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Say which part is missing.");
+    const access = await assertPermission("maintenance.manage");
+    const supabase = await createClient();
+    const running = await supabase.from("work_order_time_entries").select("id").eq("work_order_id", p.data.workOrderId).eq("user_id", access.userId).is("ended_at", null).is("voided_at", null).maybeSingle();
+    if (running.data) {
+      const stop = await supabase.rpc("maintenance_stop_timer", { p_note: "" });
+      if (stop.error) return fail(dbErrorMessage(stop.error));
+    }
+    const { error } = await supabase.rpc("maintenance_set_status", { p_id: p.data.workOrderId, p_status: "awaiting_parts", p_note: p.data.part, p_expected_seq: p.data.editSeq });
+    refresh(p.data.workOrderId);
+    if (error) return fail(dbErrorMessage(error));
+    return ok(undefined, running.data ? "Waiting for parts. Your timer is stopped." : "Waiting for parts.");
+  });
+}
+
+const finishInput = woId.extend({ findings: z.string().trim().max(2000, "Use at most 2000 characters.").default("") });
+
+/**
+ * Done with a job (first-day review 2026-11-09). The lead, or the only mechanic, says what they fixed: it is added to
+ * the work order's Findings, and in the same step a safety-critical job goes to "Waiting for inspection" (the truck
+ * stays out of service until someone authorized records a passed inspection; nothing here can skip that) while any
+ * other job is completed. A helper only marks their own part done; the message names who finishes the job.
+ * Each step is the existing database function, which checks the permission, the state and running timers again.
+ */
+export async function finishJob(input: z.input<typeof finishInput>): Promise<ActionResult<{ outcome: "inspection" | "completed" | "part_done" }>> {
+  return guard(async () => {
+    const p = finishInput.safeParse(input);
+    if (!p.success) return fail(p.error.issues[0]?.message ?? "Check what you wrote.");
+    const access = await assertPermission("maintenance.manage");
+    const supabase = await createClient();
+    const id = p.data.workOrderId;
+    const [{ data: wo, error }, crew, running, people] = await Promise.all([
+      supabase.from("work_orders").select("id, status, safety_critical, findings, edit_seq, trailer_id").eq("id", id).maybeSingle(),
+      supabase.from("work_order_mechanics").select("user_id, role").eq("work_order_id", id),
+      supabase.from("work_order_time_entries").select("id").eq("work_order_id", id).eq("user_id", access.userId).is("ended_at", null).is("voided_at", null).maybeSingle(),
+      getPeopleNames().catch(() => ({} as Record<string, string>)),
+    ]);
+    if (error || !wo) return fail("Work order not found.");
+    const w = wo as { id: string; status: string; safety_critical: boolean; findings: string | null; edit_seq: number; trailer_id?: string | null };
+    const rows = (crew.data ?? []) as Array<{ user_id: string; role: "lead" | "assist" }>;
+    const me = rows.find((r) => r.user_id === access.userId);
+    if (!me) return fail("You are not on this job's crew.");
+    if (w.status !== "in_progress") {
+      return fail(w.status === "awaiting_parts" ? "This job is waiting for parts. Start it again when the part is in." : "Only a job that is in progress can be finished.");
+    }
+    const finisher = finishesJob(me.role, rows.length, rows.some((r) => r.role === "lead"));
+    if (finisher && p.data.findings.length < 3) return fail("Say what you fixed, in a few words.");
+    // A running timer here is stopped first (the database refuses to finish a job with a running timer).
+    if (running.data) {
+      const stop = await supabase.rpc("maintenance_stop_timer", { p_note: "" });
+      if (stop.error) return fail(dbErrorMessage(stop.error));
+    }
+
+    if (!finisher) {
+      const { error: e } = await supabase.rpc("maintenance_set_my_status", { p_wo: id, p_status: "done" });
+      if (e) return fail(dbErrorMessage(e));
+      refresh(id);
+      const leadId = rows.find((r) => r.role === "lead")?.user_id;
+      const lead = (leadId && people[leadId]) || "The lead mechanic";
+      return ok({ outcome: "part_done" as const }, `Your part is marked done. ${lead} finishes the job.`);
+    }
+
+    let seq = w.edit_seq;
+    const merged = appendFindings(w.findings, p.data.findings);
+    if (merged !== null) {
+      const { data: next, error: e } = await supabase.rpc("maintenance_update_work_order", { p_id: id, p_expected_seq: seq, p: { findings: merged } });
+      if (e) return fail(dbErrorMessage(e));
+      seq = Number(next ?? seq + 1);
+    }
+    const target = finishTarget(w.safety_critical);
+    const { error: se } = await supabase.rpc("maintenance_set_status", { p_id: id, p_status: target, p_note: p.data.findings, p_expected_seq: seq });
+    if (se) {
+      refresh(id);
+      return fail(`What you fixed is saved. ${dbErrorMessage(se)}`);
+    }
+    // Their own part is done too (the job is no longer open for work); a failure here changes nothing above.
+    await supabase.rpc("maintenance_set_my_status", { p_wo: id, p_status: "done" });
+    refresh(id);
+    revalidatePath("/fleet", "layout");
+    return target === "awaiting_inspection"
+      ? ok({ outcome: "inspection" as const }, `Sent for inspection. The ${w.trailer_id ? "trailer" : "truck"} stays out of service until someone authorized records a passed inspection.`)
+      : ok({ outcome: "completed" as const }, "Job completed.");
   });
 }
 
@@ -174,7 +290,7 @@ export async function suggestTriage(input: { workOrderId: string }): Promise<Act
     others = w.trailer_id ? others.eq("trailer_id", w.trailer_id) : others.eq("truck_id", w.truck_id ?? "");
     const { triageRules } = await import("@/lib/maintenance-triage");
     const suggestion = triageRules({ title: w.title, description: w.description, openOnUnit: ((await others).data ?? []) as Array<{ id: string; number: string; title: string; category: string }> });
-    return call("maintenance_save_triage", { p_wo: w.id, p_source: "rules", p_model: "", p_suggestion: suggestion }, w.id, "Triage suggested. Check it before accepting.");
+    return call("maintenance_save_triage", { p_wo: w.id, p_source: "rules", p_model: "", p_suggestion: suggestion }, w.id, "Suggestion ready. Check it before accepting.");
   });
 }
 

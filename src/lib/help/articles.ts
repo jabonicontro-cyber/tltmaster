@@ -815,7 +815,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         problem: "“Truck has an open safety-critical work order. It returns to service only after an authorized inspection clears it.”",
-        fix: "Choose another truck, or have the inspection recorded in Maintenance → Clearance queue.",
+        fix: "Choose another truck, or have the inspection recorded in Maintenance → Inspections.",
       },
       { problem: "“A tractor needs a trailer for this load.”", fix: "Choose a trailer, or use a dump truck." },
       { problem: "“On hold: loads cannot be assigned until the hold is released.”", fix: "Release the hold on the order first." },
@@ -1217,7 +1217,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     troubleshooting: [
       {
         problem: "“Truck … has an open safety-critical work order (…). It returns to service only after an authorized inspection clears it in Maintenance.”",
-        fix: "An authorized person records the inspection in Maintenance → Clearance queue; that returns the truck to service.",
+        fix: "An authorized person records the inspection in Maintenance → Inspections; that returns the truck to service.",
       },
       { problem: "“Enter a reason for taking the equipment out of service.”", fix: "Add a short reason before confirming." },
       { problem: "“The expected return date cannot be in the past.”", fix: "Choose today or a later date, or leave it empty." },
@@ -1372,7 +1372,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Suggested shop order**: open work ranked by fixed rules (safety, urgency, downtime, due dates and parts).",
       "**Out of service** with downtime and possible replacement trucks.",
       "**Scheduled in the next 7 days** and **Technician workload**.",
-      "Tabs for **Overview**, **Work orders**, **Preventive** and **Clearance queue**.",
+      "Tabs for **Overview**, **Work orders**, **Preventive** and **Inspections**.",
     ],
     tasks: [
       {
@@ -1426,7 +1426,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         title: "Finish a safety-critical repair",
         steps: [
           "When the repair is done, select **Send for inspection**.",
-          "An authorized person records the result in the **Clearance queue**.",
+          "An authorized person records the result under **Inspections**.",
         ],
       },
       {
@@ -1522,7 +1522,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "maintenance-clearance",
-    title: "Clearance queue",
+    title: "Inspections (waiting for an authorized inspection)",
     summary: "Record the inspection that returns a vehicle to service after a safety-critical repair.",
     category: "maintenance",
     routes: ["/maintenance/clearance"],
@@ -1537,7 +1537,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       {
         title: "Clear a vehicle for service",
         steps: [
-          "Open **Clearance queue** and select **Start inspection** on the work order.",
+          "Open **Inspections** and select **Start inspection** on the work order.",
           "Select **Passed, clear for service**, add **Inspection notes (optional)**, and confirm with **Clear for service**.",
         ],
       },

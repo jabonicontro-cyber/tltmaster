@@ -5,6 +5,7 @@ import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "
 import type { ClearanceStatus, CostKind, PmState, WoCategory, WoStatus, WoUrgency } from "@/lib/maintenance";
 import { OPEN_STATUSES } from "@/lib/maintenance";
 import { parseBaseFilter } from "@/server/data/bases";
+import { getPeopleNames } from "@/server/data/quotes";
 
 export interface WorkOrderRow {
   id: string;
@@ -134,9 +135,13 @@ export async function listDriverOptions(): Promise<Array<{ id: string; name: str
 /** People who can be assigned shop work: active members whose role may manage maintenance. */
 export async function listAssignees(): Promise<Array<{ id: string; name: string; role: string }>> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("maintenance_assignee_options");
+  const [{ data, error }, people] = await Promise.all([supabase.rpc("maintenance_assignee_options"), getPeopleNames().catch(() => ({} as Record<string, string>))]);
   if (error) throw new Error(`Could not load mechanics: ${error.message}`);
-  return ((data ?? []) as Array<{ user_id: string; name: string; role: string }>).map((u) => ({ id: u.user_id, name: u.name, role: u.role }));
+  // Names from the company directory, the same source as the lead mechanic and the account menu (a demo persona in a
+  // demo company); the option's profile name only as a fallback.
+  return ((data ?? []) as Array<{ user_id: string; name: string; role: string }>)
+    .map((u) => ({ id: u.user_id, name: people[u.user_id] || u.name, role: u.role }))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 export interface WorkOrderFilters {
@@ -302,4 +307,16 @@ export async function workOrderPhotoIds(workOrderId: string): Promise<string[]> 
   const { data, error } = await supabase.from("work_order_photos").select("id").eq("work_order_id", workOrderId).order("created_at");
   if (error) return [];
   return ((data ?? []) as Array<{ id: string }>).map((r) => r.id);
+}
+
+/**
+ * Work orders created from a driver report (work_orders.field_report_id), newest first. Empty for people who cannot
+ * see maintenance (RLS) or for an invalid id.
+ */
+export async function workOrdersForReport(reportId: string): Promise<Array<{ id: string; number: string; status: WoStatus }>> {
+  if (!/^[0-9a-f-]{36}$/i.test(reportId)) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("work_orders").select("id, number, status").eq("field_report_id", reportId).order("created_at", { ascending: false });
+  if (error) return [];
+  return (data ?? []) as Array<{ id: string; number: string; status: WoStatus }>;
 }

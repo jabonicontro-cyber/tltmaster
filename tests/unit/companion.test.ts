@@ -34,6 +34,10 @@ describe("mechanic phone workspace", () => {
     expect(mechanicTabs(mechanic).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Messages", "Time off", "Profile"]);
     expect(mechanicTabs(["maintenance.view"]).map((t) => t.label)).toEqual(["My jobs", "All jobs", "Time off", "Profile"]);
     expect(mechanicTabs(mechanic)[0].match("/maintenance/my-jobs")).toBe(true);
+    // A job opened from My jobs keeps My jobs lit; the same job opened from All jobs lights All jobs.
+    const [myJobs, allJobs] = mechanicTabs(mechanic);
+    expect([myJobs.match("/maintenance/work-orders/abc?from=my-jobs"), allJobs.match("/maintenance/work-orders/abc?from=my-jobs")]).toEqual([true, false]);
+    expect([myJobs.match("/maintenance/work-orders/abc"), allJobs.match("/maintenance/work-orders/abc")]).toEqual([false, true]);
   });
 });
 

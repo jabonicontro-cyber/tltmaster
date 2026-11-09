@@ -49,8 +49,8 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await expectToast(page, /already has time logged/);
   await page.getByRole("form", { name: "Log time" }).getByRole("button", { name: "Cancel" }).click();
 
-  // Checklist (the Tasks tab; the work order opens on Labor while in progress).
-  await page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Tasks/ }).click();
+  // Checklist (its own tab; the work order opens on Labor while in progress).
+  await page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Checklist/ }).click();
   await page.getByLabel("New task").fill("Cage the spring brake");
   await page.getByRole("button", { name: "Add", exact: true }).click();
   await expectToast(page, "Task added.");
@@ -62,6 +62,15 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Activity/ }).click();
   await expect(page.getByText("Labor time").first()).toBeVisible();
   await expect(page.getByText("Task added: Cage the spring brake")).toBeVisible();
+
+  // The only mechanic finishes the job in one step (first-day review 2026-11-09): what was fixed goes into Findings and
+  // a job that is not safety-critical is completed.
+  await page.goto(`/maintenance/work-orders/${id}?tab=labor`);
+  await page.getByRole("button", { name: "Finish the job" }).click();
+  await page.getByLabel("What did you fix?").fill("Adjusted the slack adjusters");
+  await page.getByRole("button", { name: "Mark completed" }).click();
+  await expectToast(page, "Job completed.");
+  await expect(page.locator("p", { hasText: "Findings:" })).toContainText("Adjusted the slack adjusters");
 });
 
 test("shop capacity: set up the shop, record skills, and estimate a job", async ({ page }) => {
@@ -104,8 +113,8 @@ test("triage: rules suggest, quote the report and ask questions; a person edits,
   });
   await signIn(page, "mechanic");
   await page.goto(`/maintenance/work-orders/${id}`);
-  await page.getByRole("button", { name: "Suggest triage" }).click();
-  await expectToast(page, "Triage suggested.");
+  await page.getByRole("button", { name: "Suggest what to check" }).click();
+  await expectToast(page, "Suggestion ready.");
   await expect(page.getByText("Suggested by rules", { exact: true })).toBeVisible();
   await expect(page.getByText("“Hissing near the rear brake chamber since this morning.”")).toBeVisible();
   await expect(page.getByText(/Safety review recommended/)).toBeVisible();

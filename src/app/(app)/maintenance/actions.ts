@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { costSchema, readingSchema, scheduleSchema, workOrderEditSchema, workOrderSchema, WO_STATUSES } from "@/lib/maintenance";
+import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -21,7 +22,7 @@ function refresh(id?: string) {
 /** Create a work order (maintenance.manage). A repeated submit with the same key returns the first one. */
 export async function createWorkOrder(formData: FormData): Promise<ActionResult<{ id: string }>> {
   return guard(async () => {
-    await assertPermission("maintenance.manage");
+    const access = await assertPermission("maintenance.manage");
     const parsed = workOrderSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
@@ -29,6 +30,17 @@ export async function createWorkOrder(formData: FormData): Promise<ActionResult<
     if (error) return fail(dbErrorMessage(error));
     const r = data as { id: string; number: string; duplicate: boolean };
     refresh(r.id);
+    // From a driver report (first-day review 2026-11-09): the report is linked (work_orders.field_report_id) and, when
+    // still open and the person may review reports, acknowledged with the work order's number through the same
+    // function as the Acknowledge button. A failure here never undoes the work order.
+    const reportId = parsed.data.field_report_id;
+    if (reportId && !r.duplicate && can(access, "field_reports.manage")) {
+      const { data: rep } = await supabase.from("field_reports").select("status").eq("id", reportId).maybeSingle();
+      if ((rep as { status?: string } | null)?.status === "open") {
+        await supabase.rpc("review_field_report", { p_report_id: reportId, p_action: "acknowledge", p_note: `Work order ${r.number} created.` });
+      }
+      revalidatePath("/field-reports", "layout");
+    }
     return ok({ id: r.id }, r.duplicate ? `Work order ${r.number} was already created.` : `Work order ${r.number} created.`);
   });
 }

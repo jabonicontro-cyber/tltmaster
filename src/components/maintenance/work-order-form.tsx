@@ -44,8 +44,13 @@ interface Options {
  * safety-critical takes that unit out of service until an authorized
  * inspection clears it (the form says so before saving).
  */
-export function WorkOrderForm({ mode, initial, options, action, cancelHref, laborFromTime = false }: {
+export function WorkOrderForm({ mode, initial, options, action, cancelHref, laborFromTime = false, suggestion = null }: {
   mode: "create" | "edit";
+  /**
+   * Category, urgency and the safety flag were pre-filled as a suggestion (from a driver report): the form says so and
+   * why, and the person changes anything that is wrong before creating the work order.
+   */
+  suggestion?: { from: string; reasons: string[] } | null;
   /** Labor hours come from logged time (crew and labor on the work order), so they are not typed here. */
   laborFromTime?: boolean;
   initial: WorkOrderFormValues;
@@ -81,6 +86,13 @@ export function WorkOrderForm({ mode, initial, options, action, cancelHref, labo
   return (
     <form data-guard-unsaved onSubmit={onSubmit} className="space-y-6" noValidate>
       <FormError message={formError} />
+      {suggestion && (
+        <div role="note" className="rounded-xl bg-surface px-4 py-3 text-sm ring-1 ring-line/60">
+          <p className="font-semibold text-ink">Filled in from {suggestion.from}</p>
+          <p className="mt-0.5 text-muted">The title and description are the driver&apos;s words. Category, urgency and the safety flag are suggestions: check them and change anything that is wrong.</p>
+          {suggestion.reasons.length > 0 && <ul className="mt-1 list-disc pl-5 text-muted">{suggestion.reasons.map((r) => <li key={r}>{r}</li>)}</ul>}
+        </div>
+      )}
       {mode === "create" && <input type="hidden" name="submission_key" value={submissionKey} />}
       {mode === "edit" && <input type="hidden" name="edit_seq" value={initial.edit_seq} />}
       {initial.field_report_id && <input type="hidden" name="field_report_id" value={initial.field_report_id} />}

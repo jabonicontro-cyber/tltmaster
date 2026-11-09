@@ -12,7 +12,8 @@ import { REPORT_KIND_LABELS } from "@/lib/driver/rules";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getFieldReport } from "@/server/data/field-reports";
-import { trailerWorkOrdersAvailable } from "@/server/data/maintenance";
+import { trailerWorkOrdersAvailable, workOrdersForReport } from "@/server/data/maintenance";
+import { WO_STATUSES } from "@/lib/maintenance";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 
@@ -28,7 +29,11 @@ export default async function FieldReportPage({ params, searchParams }: { params
   // A trailer report becomes a trailer work order once trailer work orders are installed (20261115000100).
   const trailerWorkOrders = Boolean(r?.trailer_id && r.equipment !== "truck" && can(access, "maintenance.manage") && (await trailerWorkOrdersAvailable()));
   if (!r) notFound();
-  const [people, { timezone }] = await Promise.all([getUserNames(), businessToday()]);
+  const [people, { timezone }, linked] = await Promise.all([getUserNames(), businessToday(),
+    // The work order made from this report (work_orders.field_report_id), for people who see maintenance.
+    can(access, "maintenance.view") ? workOrdersForReport(r.id) : Promise.resolve([])]);
+  // Once a work order exists for the report, the report links to it instead of offering a second one.
+  const offerWorkOrder = linked.length === 0;
   const who = (u: string | null) => people[u ?? ""] ?? "Someone";
   const unit = r.equipment === "truck" ? r.snapshot.truck_unit : r.equipment === "trailer" ? r.snapshot.trailer_unit : null;
   return (
@@ -58,11 +63,16 @@ export default async function FieldReportPage({ params, searchParams }: { params
         <Card>
           <CardHeader title="Act on it" description="The report does not change anything by itself." />
           <CardBody className="flex flex-col gap-2">
+            {linked.map((w) => (
+              <ButtonLink key={w.id} href={`/maintenance/work-orders/${w.id}`} variant="secondary" icon={<Wrench className="size-4" />}>
+                Work order {w.number} · {WO_STATUSES[w.status] ?? w.status}
+              </ButtonLink>
+            ))}
             {can(access, "dispatch.view") && <ButtonLink href={`/dispatch?date=${r.snapshot.load_date}&load=${r.load_id}`} variant="secondary" icon={<CalendarRange className="size-4" />}>Open the load on dispatch</ButtonLink>}
             {can(access, "orders.view") && <ButtonLink href={`/orders/${r.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open the order</ButtonLink>}
             {can(access, "fleet.view") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/fleet/trucks/${r.truck_id}`} variant="secondary" icon={<Truck className="size-4" />}>Truck record and service status</ButtonLink>}
-            {can(access, "maintenance.manage") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/maintenance/work-orders/new?truck=${r.truck_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
-            {trailerWorkOrders && <ButtonLink href={`/maintenance/work-orders/new?trailer=${r.trailer_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
+            {offerWorkOrder && can(access, "maintenance.manage") && r.truck_id && r.equipment !== "trailer" && <ButtonLink href={`/maintenance/work-orders/new?truck=${r.truck_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
+            {offerWorkOrder && trailerWorkOrders && <ButtonLink href={`/maintenance/work-orders/new?trailer=${r.trailer_id}&report=${r.id}&driver=${r.driver_id}`} variant="secondary" icon={<Wrench className="size-4" />}>Create a work order</ButtonLink>}
             {can(access, "fleet.view") && r.trailer_id && r.equipment !== "truck" && <ButtonLink href={`/fleet/trailers/${r.trailer_id}`} variant="secondary" icon={<Truck className="size-4" />}>Trailer record and service status</ButtonLink>}
           </CardBody>
         </Card>

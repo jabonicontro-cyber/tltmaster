@@ -37,15 +37,17 @@ const EVENT_LABELS: Record<string, string> = {
   scheduled: "Scheduled", rescheduled: "Rescheduled", unscheduled: "Schedule removed", canceled: "Canceled",
   inspection_started: "Inspection started", inspection_failed: "Inspection failed", cleared: "Cleared for service",
   restricted: "Unit restricted", returned_to_service: "Unit returned to service",
-  crew: "Crew", time: "Labor time", task: "Checklist", triage: "Triage",
+  crew: "Crew", time: "Labor time", task: "Checklist", triage: "What to check",
 };
 
 type Tab = "tasks" | "labor" | "parts" | "costs" | "triage" | "activity";
 
-export default async function WorkOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string }> }) {
+export default async function WorkOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; from?: string }> }) {
   const access = await requirePagePermission("maintenance.view");
   const { id } = await params;
   const sp = await searchParams;
+  // Opened from the mechanic's My jobs: the way back leads there and the phone's tab bar keeps My jobs highlighted.
+  const fromMyJobs = sp.from === "my-jobs";
   const canCosts = can(access, "maintenance.costs");
   const detail = await getWorkOrder(id, { costs: canCosts });
   if (!detail) notFound();
@@ -70,13 +72,17 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   // Parts used on this job (UX20): parts from stock, and the part cost lines for people who see costs.
   const partsLine = partsSummaryText(summarizeParts([wo.id], partsUsed.map((m) => ({ ...m, work_order_id: wo.id, unit: stock.parts.find((p) => p.id === m.part_id)?.unit ?? null })), canCosts && costs ? costs.map((c) => ({ ...c, work_order_id: wo.id })) : null).get(wo.id));
   const total = (costs ?? []).reduce((s, c) => s + Math.round(c.quantity * c.unit_cost_cents), 0);
+  // Parts used from stock (everyone who sees the job); before the parts update, the part cost lines for people who see costs.
+  const partsCount = stock.installed
+    ? summarizeParts([wo.id], partsUsed.map((m) => ({ ...m, work_order_id: wo.id, unit: stock.parts.find((p) => p.id === m.part_id)?.unit ?? null })), null).get(wo.id)?.parts ?? 0
+    : canCosts && costs ? costs.filter((c) => c.kind === "part").length : null;
   const estimate = "estimated_hours" in wo ? (wo as { estimated_hours: number | null }).estimated_hours : null;
   const doneTasks = crew.tasks.filter((t) => t.status === "done").length;
   const showTriage = triage.installed && Boolean(triage.triage || ["reported", "triaged"].includes(wo.status));
   // The sections as tabs; the default is the one the job needs now.
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
-    ...(showTriage ? [{ key: "triage" as const, label: "Triage" }] : []),
-    { key: "tasks", label: "Tasks", count: crew.installed ? crew.tasks.length : undefined },
+    ...(showTriage ? [{ key: "triage" as const, label: "What to check" }] : []),
+    { key: "tasks", label: "Checklist", count: crew.installed ? crew.tasks.length : undefined },
     { key: "labor", label: "Labor" },
     ...(stock.installed ? [{ key: "parts" as const, label: "Parts used", count: partsUsed.filter((m) => m.kind === "used").length }] : []),
     ...(canCosts && costs ? [{ key: "costs" as const, label: "Parts and costs", count: costs.length }] : []),
@@ -88,7 +94,9 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   return (
     <>
       <PageHeader
-        crumbs={[{ label: "Maintenance", href: "/maintenance" }, { label: "Work orders", href: "/maintenance/work-orders" }, { label: wo.number }]}
+        crumbs={fromMyJobs
+          ? [{ label: "My jobs", href: "/maintenance/my-jobs" }, { label: wo.number }]
+          : [{ label: "Maintenance", href: "/maintenance" }, { label: "Work orders", href: "/maintenance/work-orders" }, { label: wo.number }]}
         title={`${wo.number} · ${wo.title}`}
         description={`${unitWord} ${unit?.unit_number ?? "–"} · ${WO_CATEGORIES[wo.category]}${driver ? ` · Driver ${driver.name}` : ""}`}
         badges={<>
@@ -119,11 +127,11 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
       )}
       {wo.status === "awaiting_inspection" && (
         <Card className="mb-5">
-          <CardHeader title="Inspection and clearance" description={wo.clearance_status === "in_progress" ? `Inspection started by ${who(wo.inspector_id)}.` : "The repair is done and waits for an inspector."} />
+          <CardHeader title="Waiting for an authorized inspection" description={wo.clearance_status === "in_progress" ? `Inspection started by ${who(wo.inspector_id)}.` : "The repair is done and waits for an inspector."} />
           <CardBody>
             {canClear
               ? <ClearanceActions id={wo.id} clearance={wo.clearance_status === "in_progress" ? "in_progress" : "awaiting"} unit={trailer ? "trailer" : "truck"} />
-              : <p className="text-sm text-muted">Only people allowed to clear vehicles for service (Maintenance → clear) can record the inspection.</p>}
+              : <p className="text-sm text-muted">Waiting for an authorized inspection. Only people your company allows to clear vehicles for service can record it.</p>}
           </CardBody>
         </Card>
       )}
@@ -165,12 +173,13 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 {wo.status === "canceled" && <p><span className="text-muted">Cancel reason: </span>{wo.cancel_reason}</p>}
               </CardBody>
             )}
-            <dl className="grid grid-cols-4 border-t border-line/70 text-center" aria-label="Work order totals">
+            <dl className={cn("grid border-t border-line/70 text-center", canCosts && costs ? "grid-cols-4" : "grid-cols-3")} aria-label="Work order totals">
               {[
-                ["Tasks", crew.installed ? `${doneTasks}/${crew.tasks.length}` : "–"],
-                ["Parts", canCosts && costs ? String(costs.filter((c) => c.kind === "part").length) : "–"],
+                ["Checklist", crew.installed ? `${doneTasks}/${crew.tasks.length}` : "–"],
+                ["Parts", partsCount !== null ? String(partsCount) : "–"],
                 ["Time", crew.installed ? `${Math.floor(crew.totalMinutes / 60)}:${String(crew.totalMinutes % 60).padStart(2, "0")}` : fmtNum(wo.labor_hours, " h")],
-                ["Total cost", canCosts && costs ? fmtMoney(total) : "–"],
+                // Only for people who see maintenance costs; no cost lines yet is said plainly, never shown as $0.
+                ...(canCosts && costs ? [["Total cost", costs.length ? fmtMoney(total) : "Not counted yet"]] : []),
               ].map(([label, value]) => (
                 <div key={label} className="border-line/70 px-2 py-3 [&:not(:first-child)]:border-l">
                   <dt className="text-xs text-muted">{label}</dt>
@@ -184,10 +193,11 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
 
         {/* Right: the work, by tab. */}
         <Card className="min-w-0">
-          <nav aria-label="Work order sections" className="flex gap-1 overflow-x-auto border-b border-line/70 px-3 pt-3 sm:px-4">
+          {/* The tabs wrap onto a second line on a phone instead of running off the edge (first-day review 2026-11-09). */}
+          <nav aria-label="Work order sections" className="flex flex-wrap gap-x-1 border-b border-line/70 px-2 pt-2 sm:flex-nowrap sm:overflow-x-auto sm:px-4 sm:pt-3">
             {tabs.map((t) => (
-              <Link key={t.key} href={`/maintenance/work-orders/${wo.id}?tab=${t.key}`} aria-current={tab === t.key ? "page" : undefined} scroll={false}
-                className={cn("-mb-px flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-3 text-sm font-semibold", tab === t.key ? "border-strong text-ink" : "border-transparent text-muted hover:text-ink")}>
+              <Link key={t.key} href={`/maintenance/work-orders/${wo.id}?tab=${t.key}${fromMyJobs ? "&from=my-jobs" : ""}`} aria-current={tab === t.key ? "page" : undefined} scroll={false}
+                className={cn("-mb-px flex h-10 shrink-0 items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold sm:px-3", tab === t.key ? "border-strong text-ink" : "border-transparent text-muted hover:text-ink")}>
                 <span className="pill-text">{t.label}</span>
                 {t.count !== undefined && <Badge tone="gray">{t.count}</Badge>}
               </Link>
@@ -201,7 +211,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 {"estimated_hours" in wo && (manage && editable
                   ? <EstimateForm workOrderId={wo.id} hours={estimate} />
                   : <p className="text-sm text-muted">Estimate: {estimate ?? "not set"}{estimate ? " h" : ""}</p>)}
-                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} />
+                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} safetyCritical={wo.safety_critical} unit={trailer ? "trailer" : "truck"} />
               </div>
             ) : <p className="text-sm text-muted">Labor hours: {fmtNum(wo.labor_hours, " h")}</p>)}
             {tab === "costs" && canCosts && costs && (
@@ -231,7 +241,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             )}
             {tab === "triage" && showTriage && (
               <div className="space-y-3">
-                <p className="text-sm text-muted">What was reported, what is still unknown, and a suggestion. Nothing changes until someone accepts it.</p>
+                <p className="text-sm text-muted">What was reported, what is still unknown, and a suggested category and urgency. Nothing changes until someone accepts it.</p>
                 <TriageCard workOrderId={wo.id} triage={triage.triage} canManage={manage} open={editable} decidedByName={triage.triage?.decidedBy ? who(triage.triage.decidedBy) : null} />
               </div>
             )}
@@ -253,7 +263,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                     })}
                   </ul>
                 ) : <p className="text-sm text-muted">No parts used from stock yet.</p>}
-                {manage && !["completed", "closed", "canceled"].includes(wo.status) && <UsePartForm workOrderId={wo.id} parts={stock.parts.filter((p) => p.active)} />}
+                {manage && !["completed", "closed", "canceled"].includes(wo.status) && <UsePartForm workOrderId={wo.id} parts={stock.parts.filter((p) => p.active)} canWait={wo.status === "in_progress"} editSeq={wo.edit_seq} />}
               </div>
             )}
             {tab === "activity" && (

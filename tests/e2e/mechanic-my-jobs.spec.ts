@@ -8,7 +8,7 @@ import { USERS } from "./users";
 
 test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
 
-test("a mechanic takes a job on a phone, starts it, times it and marks their part done", async ({ page }) => {
+test("a mechanic takes a job on a phone, starts it, waits for a part, times it and finishes it for inspection", async ({ page }) => {
   const title = `My jobs test ${unique()}`;
   await asUser(USERS.owner.email, async (q) => {
     // Its own truck: a safety-critical job restricts the truck, which must not affect other tests' trucks.
@@ -30,16 +30,28 @@ test("a mechanic takes a job on a phone, starts it, times it and marks their par
   const mine = page.getByRole("listitem").filter({ hasText: title }).filter({ hasText: "You lead this job" });
   await expect(mine).toBeVisible();
   await expect(mine.getByRole("button", { name: "My part is done" })).toHaveCount(0); // not before the job starts
+  await expect(mine.getByRole("button", { name: "Finish the job" })).toHaveCount(0);
+  // Plain words: "Work order MWO-…", never the bare code.
+  await expect(mine).toContainText(/Work order MWO-/);
 
-  // Each state says the next step in plain words (UX14).
+  // Each state says the next step in plain words (UX14). Start this job also starts the timer (one tap).
   await expect(mine.getByTestId("next-step")).toHaveText(/^Next: tap Start this job/);
   await mine.getByRole("button", { name: "Start this job" }).click();
-  await expectToast(page, "Status: In progress.");
-  await expect(mine.getByTestId("next-step")).toHaveText(/^Next: start your timer/);
-  await mine.getByRole("button", { name: "Start timer" }).click();
-  await expectToast(page, "Timer started.");
+  await expectToast(page, "Job started. Your timer is running.");
   await expect(page.getByRole("region", { name: "Your running timer" })).toContainText(/Timer running/);
   await expect(mine.getByTestId("next-step")).toHaveText(/^Your timer is running/);
+
+  // Waiting for parts asks which part; the card shows it, the timer stops, and "done" is not offered while waiting.
+  await mine.getByRole("button", { name: "Waiting for parts" }).click();
+  await mine.getByLabel("Which part is missing?").fill("Steer tire 315/80R22.5");
+  await mine.getByRole("button", { name: "Mark waiting for parts" }).click();
+  await expectToast(page, "Waiting for parts. Your timer is stopped.");
+  await expect(mine.getByTestId("next-step")).toHaveText("Waiting for parts: Steer tire 315/80R22.5. Start the job again when it is in.");
+  await expect(mine.getByRole("button", { name: "My part is done" })).toHaveCount(0);
+  await expect(mine.getByRole("button", { name: "Finish the job" })).toHaveCount(0);
+  await mine.getByRole("button", { name: "Part is in: start again" }).click();
+  await expectToast(page, "Job started. Your timer is running.");
+
   // A quick note of what was found, kept with the time entry.
   await mine.getByLabel(/What you found or did/).fill("Cut sidewall, left steer tire");
   await mine.getByRole("button", { name: "Stop timer" }).click();
@@ -50,8 +62,23 @@ test("a mechanic takes a job on a phone, starts it, times it and marks their par
   });
   await expect(page.getByRole("region", { name: "Your running timer" })).toHaveCount(0);
 
-  await mine.getByRole("button", { name: "My part is done" }).click();
-  await expectToast(page, /./);
+  // The whole card opens the job on its checklist, and the phone's tab bar keeps My jobs lit.
+  await mine.click({ position: { x: 24, y: 24 } });
+  await expect(page).toHaveURL(/\/maintenance\/work-orders\/[0-9a-f-]{36}\?tab=tasks&from=my-jobs$/);
+  await expect(page.getByRole("navigation", { name: "Work order sections" }).getByRole("link", { name: /^Checklist/ })).toHaveAttribute("aria-current", "page");
+  await expect(tabs.getByRole("link", { name: "My jobs" })).toHaveAttribute("aria-current", "page");
+  await page.goto("/maintenance/my-jobs");
+
+  // The lead finishes in one step: say what was fixed; a safety-critical job goes for inspection (never completed
+  // directly) and the truck stays out of service.
+  await mine.getByRole("button", { name: "Finish the job" }).click();
+  await mine.getByLabel("What did you fix?").fill("Replaced the left steer tire");
+  await mine.getByRole("button", { name: "Send for inspection" }).click();
+  await expectToast(page, /^Sent for inspection\. The truck stays out of service/);
+  await asUser(USERS.owner.email, async (q) => {
+    const r = await q("select w.status, w.findings, t.service_status from public.work_orders w join public.trucks t on t.id = w.truck_id where w.title = $1", [title]);
+    expect(r.rows[0]).toMatchObject({ status: "awaiting_inspection", findings: "Replaced the left steer tire", service_status: "out_of_service" });
+  });
   await expect(page.getByRole("listitem").filter({ hasText: title }).filter({ hasText: "You lead this job" })).toHaveCount(0);
 });
 

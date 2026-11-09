@@ -26,49 +26,59 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       router.refresh();
     });
 
-  if (status === "awaiting_inspection") return <p className="text-sm text-muted">Waiting for an authorized inspection (clearance queue).</p>;
+  if (status === "awaiting_inspection") return <p className="text-sm text-muted">Waiting for an authorized inspection. Someone allowed to clear vehicles for service records the result.</p>;
   if (!options.length) return null;
+  // Cancel sits on its own line, away from the step that moves the job forward (first-day review 2026-11-09).
+  // The step that moves the job forward comes first.
+  const primary = (s: WoStatus) => (s === "in_progress" || s === "awaiting_inspection" || s === "completed" ? 0 : 1);
+  const forward = options.filter((s) => s !== "canceled").sort((a, b) => primary(a) - primary(b));
+  const button = (to: WoStatus) => (
+    <Button
+      key={to}
+      variant={to === "canceled" ? "ghost" : to === "awaiting_inspection" || to === "completed" || to === "in_progress" ? "primary" : "secondary"}
+      className={to === "canceled" ? "text-muted" : undefined}
+      disabled={pending}
+      onClick={() => {
+        // Cancel asks why, reopening asks for an optional note, and "Waiting for parts" asks which part.
+        if (to === "canceled" || to === "awaiting_parts" || to === "in_progress" && status === "completed") {
+          setNote("");
+          setConfirm(to);
+        } else {
+          start(async () => {
+            const err = await go(to);
+            if (err) toast.error(err);
+          });
+        }
+      }}
+    >
+      {to === "in_progress" && status === "completed" ? "Reopen" : STATUS_ACTION_LABELS[to]}
+    </Button>
+  );
   return (
     <div className="flex flex-wrap gap-2">
-      {options.map((to) => (
-        <Button
-          key={to}
-          variant={to === "canceled" ? "ghost" : to === "awaiting_inspection" || to === "completed" || to === "in_progress" ? "primary" : "secondary"}
-          disabled={pending}
-          onClick={() => {
-            if (to === "canceled" || to === "in_progress" && status === "completed") {
-              setNote("");
-              setConfirm(to);
-            } else {
-              start(async () => {
-                const err = await go(to);
-                if (err) toast.error(err);
-              });
-            }
-          }}
-        >
-          {to === "in_progress" && status === "completed" ? "Reopen" : STATUS_ACTION_LABELS[to]}
-        </Button>
-      ))}
+      {forward.map(button)}
       {safetyCritical && status === "in_progress" && (
         <p className="basis-full text-sm text-muted">Safety-critical: completing goes through an inspection by someone authorized to clear the {unit}.</p>
       )}
+      {options.includes("canceled") && <div className="mt-1 basis-full border-t border-line/70 pt-3">{button("canceled")}</div>}
       <ConfirmDialog
         open={Boolean(confirm)}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={confirm === "canceled" ? "Cancel the work order" : "Reopen the work order"}
+        title={confirm === "canceled" ? "Cancel the work order" : confirm === "awaiting_parts" ? "Waiting for parts" : "Reopen the work order"}
         description={confirm === "canceled"
           ? (unit === "trailer" ? "The driver whose truck usually pulls this trailer sees the cancellation on My Day if it was scheduled." : "The driver of this truck sees the cancellation on My Day if it was scheduled.")
+          : confirm === "awaiting_parts" ? "The job pauses until the part is in. The part you name shows on the job card."
           : safetyCritical ? `The ${unit} goes out of service again until a new inspection clears it.` : "The work order goes back to in progress."}
-        confirmLabel={confirm === "canceled" ? "Cancel work order" : "Reopen"}
+        confirmLabel={confirm === "canceled" ? "Cancel work order" : confirm === "awaiting_parts" ? "Mark waiting for parts" : "Reopen"}
         tone={confirm === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!confirm) return;
           if (confirm === "canceled" && !note.trim()) return "Enter a reason for canceling.";
+          if (confirm === "awaiting_parts" && note.trim().length < 2) return "Say which part is missing.";
           return go(confirm, note);
         }}
       >
-        <Field label={confirm === "canceled" ? "Reason" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled"}>
+        <Field label={confirm === "canceled" ? "Reason" : confirm === "awaiting_parts" ? "Which part is missing?" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled" || confirm === "awaiting_parts"}>
           <Textarea id="status-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </ConfirmDialog>

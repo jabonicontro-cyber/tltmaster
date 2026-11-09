@@ -7,7 +7,7 @@ const TABS = [
   { key: "overview", label: "Overview", href: "/maintenance" },
   { key: "my-jobs", label: "My jobs", href: "/maintenance/my-jobs" },
   { key: "work-orders", label: "Work orders", href: "/maintenance/work-orders" },
-  { key: "clearance", label: "Clearance queue", href: "/maintenance/clearance" },
+  { key: "clearance", label: "Inspections", href: "/maintenance/clearance" },
   { key: "preventive", label: "Preventive", href: "/maintenance/preventive" },
   { key: "parts", label: "Parts", href: "/maintenance/parts" },
   { key: "shop", label: "Shop capacity", href: "/maintenance/shop" },
