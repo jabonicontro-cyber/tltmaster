@@ -20,7 +20,13 @@ function reply(status: number, body: Record<string, unknown>) {
 export async function storeOrderDocument(request: NextRequest, orderId: string) {
   const origin = request.headers.get("origin");
   const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host");
-  if (!origin || !host || new URL(origin).host !== host) return reply(403, { error: "Not permitted." });
+  let sameOrigin = false;
+  try {
+    sameOrigin = Boolean(origin && host && new URL(origin).host === host);
+  } catch {
+    sameOrigin = false; // a malformed Origin header ("null") is refused, not an error
+  }
+  if (!sameOrigin) return reply(403, { error: "Not permitted." });
   if (!uuid.safeParse(orderId).success) return reply(404, { error: "Order not found." });
   let form: FormData;
   try {
@@ -41,6 +47,8 @@ export async function storeOrderDocument(request: NextRequest, orderId: string) 
   const up = await createAdminClient().storage.from(BUCKET).upload(r.data as string, bytes, { contentType: check.type, upsert: false, cacheControl: "private, max-age=0" });
   if (up.error) {
     console.error("Order document upload failed", { error: up.error.message });
+    // Release the reserved record so the order is not left with a document that cannot open (security review, low).
+    await createAdminClient().from("order_documents").update({ removed_at: new Date().toISOString(), remove_reason: "Upload failed" }).eq("object_path", r.data as string).is("removed_at", null);
     return reply(502, { error: "The file could not be stored. Try again." });
   }
   return reply(200, { ok: true });
