@@ -146,6 +146,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("invoices", await rpcCount(db, "demo_invoice_samples"));
   // One invoice for several orders (UX10): a draft that bills two handed-off orders of one customer (nothing is sent).
   note("combined invoice", await rpcCount(db, "demo_combined_invoice_sample"));
+  // Payments by ticket (TP1): a check paying one ticket in full and one in part, with a little kept as credit.
+  note("payments by ticket", await rpcCount(db, "demo_ticket_payment_samples"));
   // GPS and hours (B101): hand-entered sample positions (one stale) and drivers' hours (one nearly out of drive time).
   note("GPS and hours", await rpcCount(db, "demo_telematics_samples"));
   // Wait times (B111): finished pickup and site stops on recent delivered loads, one site clearly slow, 45 free minutes.

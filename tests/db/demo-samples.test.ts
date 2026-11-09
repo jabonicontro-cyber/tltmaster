@@ -199,6 +199,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     if (combined.length === 0) expect(twoReady.rows.length).toBe(0);
     else expect(combined).toEqual([["draft", 2]]);
     expect(invoices.rows.some((r) => r.overdue && Number(r.paid) === 0)).toBe(true);
+    // Payments by ticket (TP1): one check on a partly paid invoice's tickets, one ticket paid in part, $25 kept as credit;
+    // the invoice it paid follows (an invoice payment linked to it).
+    const tp = await q<{ amount: string; apps: string; applied: string; linked: string }>("select p.amount_cents amount, (select count(*) from public.ticket_payment_applications a where a.payment_id = p.id) apps, (select coalesce(sum(a.amount_cents), 0) from public.ticket_payment_applications a where a.payment_id = p.id) applied, (select count(*) from public.invoice_payments ip where ip.customer_payment_id = p.id and ip.voided_at is null) linked from public.customer_payments p where p.company_id = $1", [w.company]);
+    expect(tp.rows).toHaveLength(1);
+    expect(Number(tp.rows[0].apps)).toBeGreaterThanOrEqual(1);
+    expect(Number(tp.rows[0].amount) - Number(tp.rows[0].applied)).toBe(2500);
+    expect(Number(tp.rows[0].linked)).toBe(1);
     // GPS and hours (B101): hand entry turned on, current positions plus one stale truck, hours with one under an hour.
     const gps = await q<{ current: string; stale: string; low: string; source: string }>("select (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at > now() - interval '30 minutes') current, (select count(*) from public.vehicle_positions where company_id = $1 and recorded_at <= now() - interval '30 minutes') stale, (select count(*) from public.driver_hours where company_id = $1 and drive_minutes_left < 60) low, (select source from public.telematics_settings where company_id = $1) source", [w.company]);
     expect(gps.rows[0].source).toBe("manual");

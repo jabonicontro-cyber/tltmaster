@@ -693,6 +693,22 @@ export const FEATURES: Feature[] = [
     verified: "2026-11-04",
   },
   {
+    id: "ticket-payments",
+    name: "Payments by ticket",
+    category: "billing",
+    problem: "Some customers pay against delivery ticket numbers, not invoices, so the office matches check stubs to tickets by hand and loses track of what is still open.",
+    how: "Record the payment, paste the ticket numbers from the stub or remittance, and Taviron selects those tickets; each ticket can be paid in full or in part, money left over stays as the customer's credit, and with Taviron invoicing the invoice balance follows.",
+    value: "Every ticket shows paid, part paid or open, and no payment disappears into an unmatched pile.",
+    points: ["Ticket numbers matched from a stub, scale ticket numbers included", "Pay a ticket in full or in part", "Leftover money kept as visible credit and applied later", "Voiding a payment reopens its tickets"],
+    limitations: ["Payments are not sent to QuickBooks yet", "Remittance files are not read yet: type or paste the numbers"],
+    status: "available",
+    published: false, // built 2026-11-09; publishing is the owner's decision
+    routes: ["/billing/payments"],
+    screenshots: [],
+    related: ["invoicing", "billing"],
+    verified: "2026-11-09",
+  },
+  {
     id: "morning-briefing",
     name: "Morning briefing",
     category: "insight",

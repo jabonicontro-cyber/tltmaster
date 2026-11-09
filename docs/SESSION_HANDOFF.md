@@ -18,6 +18,14 @@ a server-issued proof (`src/server/deliveries.ts`). Monitoring (health check, Se
 wait on the owner's account steps (LAUNCH §4 and §7). New request (owner 2026-11-09): some customers pay later against
 specific delivery tickets; payments applied to tickets, invoice balance follows (master plan §12 TP1).
 
+**TP1 slice 1 built (local, not pushed yet):** Billing → Payments by ticket (`/billing/payments`). Migration
+`20261120009400` (tested rollback) adds `customer_payments` and `ticket_payment_applications`; ticket amounts are each
+ticket's exact share of the billed order. Tickets are capped at what their issued invoice still owes (an invoice paid
+directly shows its tickets as paid on the invoice). QuickBooks companies: tracked in Taviron only until slice 3 sends
+payments to QuickBooks. Demo sample `demo_ticket_payment_samples` (seed and Refresh). Tests:
+`tests/db/ticket-payments.test.ts`, `tests/unit/ticket-payments.test.ts`, `tests/e2e/ticket-payments.spec.ts`,
+`tests/db/demo-samples.test.ts`. Catalog entry `ticket-payments` is unpublished (owner decides).
+
 ## 00000000000000000000000. 2026-11-07 — Support change requests (SA2)
 
 Owner said yes to letting Taviron support handle people and sign-in changes through a per-request approval. Migration

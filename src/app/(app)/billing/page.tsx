@@ -80,6 +80,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           <>
             <ButtonLink href="/billing/leaks" variant="secondary" size="sm">Revenue check</ButtonLink>
             {invoicing.installed && <ButtonLink href="/billing/invoices" variant="secondary" size="sm">Invoices</ButtonLink>}
+            <ButtonLink href="/billing/payments" variant="secondary" size="sm">Payments by ticket</ButtonLink>
             <ButtonLink href="/billing/setup" variant="secondary" size="sm">Businesses and QuickBooks</ButtonLink>
           </>
         }
