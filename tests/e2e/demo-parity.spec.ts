@@ -212,6 +212,24 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await visit(page, "/driver");
         await expect(page.getByText(/\bload \d/i).first(), `${role} My Day has loads`).toBeVisible();
       }
+      // Money owed (Command Center, billing permission): the demo's issued sample invoices (one 45 days past due,
+      // samples.ts demo_invoice_samples) show as owed and overdue; roles without billing never see the tile.
+      await visit(page, "/command-center");
+      if (role === "owner" || role === "office") {
+        await expect(page.getByText("Money owed", { exact: true }), `${role} money owed`).toBeVisible();
+        if (!(await page.getByTestId("money-owed-empty").count())) await expect(page.getByTestId("money-owed-overdue"), `${role} overdue sample invoice`).toContainText(/Oldest \d+ days? late/);
+      } else {
+        await expect(page.getByText("Money owed", { exact: true }), `${role} has no billing`).toHaveCount(0);
+      }
+      // Getting started (first days): on each role's landing page; a step nothing records (tomorrow's plan, today's
+      // load) is open in a fresh browser, so the dispatcher and driver checklists always show.
+      if (role === "dispatcher" || role === "multi") {
+        await expect(page.getByTestId("getting-started"), `${role} getting started`).toContainText("Open tomorrow's plan");
+      }
+      if (role === "driver") {
+        await visit(page, "/driver");
+        await expect(page.getByTestId("getting-started"), "driver getting started").toContainText("Do your pre-trip inspection");
+      }
     }
   } finally {
     await context.clearCookies({ name: PREVIEW_COOKIE });

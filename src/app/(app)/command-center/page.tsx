@@ -37,6 +37,10 @@ import { fleetOverview } from "@/server/data/fleet";
 import { listLeaks } from "@/server/data/leaks";
 import { formatCents } from "@/lib/money";
 import { heldTotal, missedTotal } from "@/lib/billing/leaks";
+import { moneyOwed } from "@/lib/billing/invoices";
+import { invoicingSettings, listInvoices } from "@/server/data/invoices";
+import { GettingStarted } from "@/components/getting-started/getting-started";
+import { MoneyOwedTile } from "@/components/command-center/money-owed-tile";
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { loadOutlook } from "@/server/data/live";
@@ -106,7 +110,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
-  const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks, support] = await Promise.all([
+  const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks, support, money] = await Promise.all([
     ops ? loadOverview({ kind, mine, page, hidden, mineLimit: 5 }) : Promise.resolve(null),
     loadActivity(access, activityPage),
     canAssign ? loadAssigneeOptions() : Promise.resolve([]),
@@ -124,6 +128,11 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     has("billing.view") ? listLeaks().catch(() => null) : none,
     // Support cases past the company's first-reply target (B138); off until the company sets a target.
     has("customers.view") ? supportOverdue() : none,
+    // Money owed (owner first): open receivables from issued invoices, for people who see billing; the same records and
+    // rules as Billing → Invoices. installed false before the invoicing update; null when it cannot be read.
+    has("billing.view")
+      ? Promise.all([listInvoices(), invoicingSettings()]).then(([inv, set]) => ({ installed: Boolean(inv) && set.installed, issuer: set.issuer, owed: moneyOwed(inv ?? [], today) }), () => null)
+      : none,
   ]);
   const summary: Loaded<CommandSummary> | null = attention?.summary ?? null;
   const queue: Loaded<QueuePage> | null = attention?.queue ?? null;
@@ -148,6 +157,8 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   const back = href({ kind, mine, hidden, page });
   const cardCan = { ticketsEdit: has("tickets.edit"), dispatch: has("dispatch.view"), assign: canAssign };
   const s = summary?.ok ? summary.data : null;
+  // Tiles in the pinned strip: three always, Loads today with dispatch, Money owed with billing.
+  const tileCount = 3 + (todayDay ? 1 : 0) + (has("billing.view") ? 1 : 0);
   const linkedDriver = driver?.ok ? driver.data : null;
 
   // ---------------------------------------------------------------------------
@@ -455,6 +466,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         </p>
       )}
 
+      {/* First steps for owners, office staff and dispatchers (on the overview only, never in a drill-in view). */}
+      {overview && <GettingStarted access={access} place="command-center" />}
+
       {sp.welcome === "1" && (
         <div className="mb-5">
           <Notice title={`${access.companyName ?? "Your company"} is ready`}>
@@ -469,7 +483,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           <section aria-label="Attention summary" className="mb-9">
             {/* Today at a glance (owner's references 2026-10-27): a figure per tile, each a way in. Urgent keeps the fixed
                 critical red, never the brand. */}
-            <div className={cn("grid grid-cols-2 gap-3 sm:gap-4", todayDay ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+            <div className={cn("grid grid-cols-2 gap-3 sm:gap-4", tileCount >= 5 ? "lg:grid-cols-3 2xl:grid-cols-5" : tileCount === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
               <StatTile icon={<ListChecks />} tone="brand" label="Needs attention" value={s.exceptions.total} muted={s.exceptions.total === 0}>
                 <p className="font-semibold text-ink">
                   {s.exceptions.total === 0 ? "Nothing needs attention" : `${s.exceptions.total} item${s.exceptions.total === 1 ? "" : "s"} need attention`}
@@ -510,6 +524,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     : <span className="font-semibold text-green-700">All covered</span>}
                 </StatTile>
               )}
+              {has("billing.view") && <MoneyOwedTile money={money} wide={tileCount % 2 === 1} />}
             </div>
             <p className="mt-3 px-1 text-xs text-muted">As of {formatDateTime(s.as_of, timezone)} · read live from the records</p>
           </section>

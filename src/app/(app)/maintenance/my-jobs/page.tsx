@@ -10,6 +10,7 @@ import { partsSummaryFor } from "@/server/data/parts";
 import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { myShiftOffers } from "@/server/data/shift-offers";
 import { MyShiftOffers } from "@/components/schedule/shift-offers";
+import { GettingStarted } from "@/components/getting-started/getting-started";
 
 export const metadata = { title: "My jobs" };
 
@@ -32,6 +33,7 @@ export default async function MyJobsPage() {
         <Notice title="Not available yet">My jobs needs a database update that has not been installed yet.</Notice>
       ) : (
         <div className="mx-auto max-w-2xl">
+          <GettingStarted access={access} place="my-jobs" />
           {jobs.myTimer && <RunningTimer timer={jobs.myTimer} />}
           {/* Shift offers (B102): extra shop shifts this person can take. */}
           {shiftOffers && shiftOffers.length > 0 && (

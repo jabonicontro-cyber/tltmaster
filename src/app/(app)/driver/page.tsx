@@ -1,5 +1,6 @@
 import { OfflineSupport } from "@/components/companion/offline-support";
 import { InspectionForm } from "@/components/fleet/inspection-form";
+import { GettingStarted } from "@/components/getting-started/getting-started";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowRight, ClipboardCheck, FilePlus2, MapPin, MessagesSquare, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
@@ -380,6 +381,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {sp.saved === "offer_accepted" && <p role="status" className="rounded-xl bg-green-50 px-4 py-3 font-semibold text-green-900 ring-1 ring-green-200">Offer accepted. Dispatch confirms it before the load is yours.</p>}
       {sp.saved === "offer_declined" && <p role="status" className="rounded-xl bg-surface px-4 py-3 font-semibold text-ink ring-1 ring-line">Offer declined.</p>}
       {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
+      {/* First steps for a new driver; ticks itself from their own inspections and tickets. */}
+      <GettingStarted access={access} place="my-day" facts={{ myTicket: h.assignments.some((x) => x.tickets.length > 0), todayLoadAnchor: today.length ? "today-loads" : null }} />
       {/* The day in two figures (owner's references 2026-10-27: numbers first). */}
       <div className="grid grid-cols-2 gap-3" aria-label="My day at a glance">
         {/* Each figure goes to its list (a real link, so a tap does what the card suggests). */}
@@ -403,7 +406,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {/* Pre-trip first, but one tap to open (UX6): the long form no longer pushes today's loads off the screen. */}
       {inspTrucks.length > 0 && (
         // Keyed by what is due: once the pre-trip is saved the panel starts closed again for the post-trip.
-        <details key={preTripDue ? "pre-trip" : "post-trip"} className={cn("rounded-2xl border bg-card", preTripDue ? "border-amber-300 ring-1 ring-amber-200" : "border-line")}>
+        <details id="pre-trip" key={preTripDue ? "pre-trip" : "post-trip"} className={cn("rounded-2xl border bg-card", preTripDue ? "border-amber-300 ring-1 ring-amber-200" : "border-line")}>
           <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-base font-semibold text-ink">
             <span data-testid="inspection-banner">{preTripText ?? "Post-trip inspection"}</span>
             <span className="text-sm font-medium text-brand-fg">Open</span>

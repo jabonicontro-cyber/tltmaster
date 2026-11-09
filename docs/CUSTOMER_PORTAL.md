@@ -96,3 +96,22 @@ balance, a printable invoice page, and a statement with the balance and aging (n
 no online payment. The portal home also shows **Today** for orders scheduled today: loads planned for today and tickets
 delivered so far, from recorded data only.
 
+## Tickets and balance (WK2, 2026-11-09)
+
+**Tickets** (portal menu, when the company's Documents switch is on): the customer's own delivery tickets across all their
+orders, newest first and grouped by delivery day (the company's time zone), with job site, material, quantity and unit and
+whether the office has confirmed them. Filters: a date range and one of the customer's saved job sites; **Download CSV**
+gives exactly the filtered list (spreadsheet formulas are neutralised). At most 500 tickets per view; the page says when
+there are more. Each ticket opens the existing printable customer copy (with its photos once confirmed). Data:
+`portal_tickets` (migration `20261120014000`, tested rollback), the same rules as `portal_ticket`: company and customer
+from the signed-in account, live tickets only, no driver, truck or review details. The CSV route
+(`/portal/<slug>/tickets/csv`) calls the same function with the customer's session; signed out it answers 401, refused 403.
+Before the migration the page says "Not available yet" and the CSV answers 404.
+
+**Balance on the portal home:** when the portal shows Invoices, the home page shows the account balance (open invoices
+total) and the overdue amount from the statement (`portal_invoices`), linking to Invoices.
+
+Tests: `tests/db/portal-tickets.test.ts` (another customer of the same company, another company, staff, Documents off and
+signed out see nothing), `tests/unit/portal-tickets.test.ts`, `tests/e2e/portal-tickets.spec.ts`, Testing Lab preview in
+`tests/e2e/testing-lab.spec.ts`.
+

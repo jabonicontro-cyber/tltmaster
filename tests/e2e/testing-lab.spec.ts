@@ -32,6 +32,14 @@ test("the platform owner previews a demo customer's portal and records the check
   await expect(page.getByRole("button", { name: "Sign Out" })).toHaveCount(0);
   await page.getByRole("navigation", { name: "Portal" }).getByRole("link", { name: "Orders" }).click();
   await expect(page.getByRole("heading", { name: "Orders" })).toBeVisible();
+  // Tickets (20261120014000): the demo customer's delivered tickets, newest first, with a CSV of the list. Before
+  // that database update the page shows its normal "not available yet" state.
+  await page.getByRole("navigation", { name: "Portal" }).getByRole("link", { name: "Tickets" }).click();
+  await expect(page.getByRole("heading", { name: "Delivery tickets" })).toBeVisible();
+  if (!(await page.getByText("Not available yet").isVisible())) {
+    await expect(page.getByText("No delivery tickets yet"), "the demo customer has delivered tickets").toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Download CSV" })).toBeVisible();
+  }
   await page.getByRole("button", { name: "End Preview" }).click();
   await page.waitForURL(/\/admin\/testing-lab/);
 

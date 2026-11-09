@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
-import { formatDay, formatWindow, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
+import { formatDay, formatMoney, formatWindow, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalInvoices, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
 import { trimNumber } from "@/lib/fleet/labels";
 import { portalCall, portalGate } from "@/server/portal";
 import { previewPortalAs } from "@/app/admin/testing-lab/actions";
@@ -54,6 +54,11 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
       return { id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty, nextWindow };
     })
     .filter((d) => d.planned > 0 || d.delivered > 0);
+  // Account balance (UX5 statement): only when the portal already shows invoices; a failed read leaves the card out.
+  const statement = c.features.invoices ? await sb.rpc("portal_invoices", { p_slug: slug }).then((r) => {
+    const d = r.error ? null : (r.data as PortalInvoices | null);
+    return d && d.enabled ? { ...d.statement, as_of: d.as_of } : null;
+  }) : null;
   const awaiting = quotes.quotes.filter((q) => q.status === "sent" && !q.response);
   const answered = support.filter((s) => s.status === "answered");
 
@@ -63,6 +68,21 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
         <h1 className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">Welcome, {c.customer.name}</h1>
         {c.welcome ? <p className="mt-2 max-w-2xl whitespace-pre-line text-[15px] text-muted">{c.welcome}</p> : null}
       </div>
+
+      {statement ? (
+        <Link href={`/portal/${slug}/invoices`} data-testid="portal-balance" className="block rounded-panel border border-line/70 bg-card p-4 shadow-card hover:border-strong focus-visible:outline-2 focus-visible:outline-strong sm:p-5">
+          <span className="flex items-baseline justify-between gap-2">
+            <span className="text-sm text-muted">Account balance</span>
+            <span className="text-xs text-muted">As of {formatDay(statement.as_of)}</span>
+          </span>
+          <span className="tabular mt-1 block text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] text-ink">{formatMoney(statement.balance_cents)}</span>
+          <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="text-muted">{statement.open_count ? `${statement.open_count} open invoice${statement.open_count === 1 ? "" : "s"}` : "No open invoices"}</span>
+            {statement.overdue_cents > 0 ? <span className="font-semibold text-amber-700">{formatMoney(statement.overdue_cents)} past due</span> : <span className="text-muted">Nothing past due</span>}
+            <span className="ml-auto inline-flex items-center gap-0.5 font-semibold text-brand-fg">See invoices<ChevronRight className="size-4" aria-hidden /></span>
+          </span>
+        </Link>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {c.features.orders ? <Stat label="Open orders" value={active.length} href={`/portal/${slug}/orders`} /> : null}

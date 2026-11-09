@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { createClient } from "@/server/supabase/server";
 import { isPortalSlug, type PortalCompany, type PortalContext } from "@/lib/portal";
 import { setupRequired } from "@/server/setup";
+import type { PortalTicketList, TicketFilter } from "@/lib/portal-tickets";
 
 // Customer portal data (B66). Every read goes through a portal_* database function that derives the company and the
 // customer from the signed-in account; nothing here passes a company or customer id. Before the portal migration
@@ -63,6 +64,21 @@ export async function portalCall<T>(fn: string, args: Record<string, unknown>): 
     notFound();
   }
   return data as T;
+}
+
+/**
+ * The customer's delivery tickets for the Tickets page and its CSV (public.portal_tickets, 20261120014000), with the
+ * reason when they cannot be read: "missing" before that update is installed, "refused" when the portal says no.
+ */
+export async function portalTickets(slug: string, f: TicketFilter): Promise<{ ok: true; data: PortalTicketList } | { ok: false; reason: "missing" | "refused" | "invalid"; message?: string }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("portal_tickets", { p_slug: slug, p_from: f.from, p_to: f.to, p_site: f.site });
+  if (error) {
+    if (NOT_INSTALLED.test(error.message) || error.code === "PGRST202") return { ok: false, reason: "missing" };
+    if (error.code === "22023") return { ok: false, reason: "invalid", message: error.message };
+    return { ok: false, reason: "refused" };
+  }
+  return { ok: true, data: data as PortalTicketList };
 }
 
 /** The signed-in person's portals (empty for staff, or before the migration). */

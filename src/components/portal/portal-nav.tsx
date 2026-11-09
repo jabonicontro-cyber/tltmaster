@@ -14,6 +14,7 @@ export function PortalNav({ slug, features }: { slug: string; features: PortalFe
     { href: `${base}/orders`, label: "Orders", on: features.orders },
     { href: `${base}/book`, label: "Book loads", on: Boolean(features.booking) },
     { href: `${base}/quotes`, label: "Quotes", on: features.quotes },
+    { href: `${base}/tickets`, label: "Tickets", on: features.documents },
     { href: `${base}/sites`, label: "Job sites", on: features.orders },
     { href: `${base}/invoices`, label: "Invoices", on: Boolean(features.invoices) },
     { href: `${base}/support`, label: "Support", on: features.support },

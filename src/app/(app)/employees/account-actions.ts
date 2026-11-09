@@ -56,6 +56,8 @@ export interface CreatedSignIn extends IssuedCredential {
   employeeId: string;
   personName: string;
   loginUrl: string;
+  /** The person is a driver: "linked" when their driver record follows the sign-in (My Day works), else why not. */
+  driver?: "linked" | "not_linked" | null;
 }
 
 export async function createEmployeeSignIn(formData: FormData): Promise<ActionResult<CreatedSignIn>> {
@@ -103,6 +105,21 @@ export async function createEmployeeSignIn(formData: FormData): Promise<ActionRe
     if (ins.error || !ins.data?.length) return fail(`The sign-in was created, but the person record was not: ${dbErrorMessage(ins.error)}`);
     employeeId = (ins.data[0] as { id: string }).id;
   }
+  // A driver's person record (Fleet → Drivers): the driver record follows the new sign-in, as linking a login does
+  // (linkEmployeeLogin), so the driver's first sign-in opens My Day instead of "not linked to a driver yet".
+  let driver: CreatedSignIn["driver"] = null;
+  const emp = await supabase.from("employees").select("driver_id").eq("id", employeeId).maybeSingle();
+  const driverId = (emp.data as { driver_id: string | null } | null)?.driver_id ?? null;
+  if (driverId) {
+    const current = await supabase.from("drivers").select("user_id").eq("id", driverId).maybeSingle();
+    const linkedTo = (current.data as { user_id: string | null } | null)?.user_id ?? null;
+    if (linkedTo === userId) driver = "linked";
+    else if (linkedTo) driver = "not_linked";
+    else {
+      const d = await supabase.from("drivers").update({ user_id: userId }).eq("id", driverId).is("user_id", null).select("id");
+      driver = !d.error && d.data?.length ? "linked" : "not_linked";
+    }
+  }
   if (p.status === "inactive") {
     const off = await supabase.rpc("set_user_access", { p_user_id: userId, p_role: p.role, p_active: false, p_full_name: p.full_name });
     if (off.error) return fail(dbErrorMessage(off.error));
@@ -111,7 +128,7 @@ export async function createEmployeeSignIn(formData: FormData): Promise<ActionRe
   const issued = await issueSetup("employee", userId, "print");
   if (!issued.ok) return issued;
   revalidatePath("/employees", "layout");
-  return ok({ userId, username, temporaryPassword, expiresAt: issued.data.expiresAt, employeeId, personName: p.full_name, loginUrl: loginUrl("employee") },
+  return ok({ userId, username, temporaryPassword, expiresAt: issued.data.expiresAt, employeeId, personName: p.full_name, loginUrl: loginUrl("employee"), driver },
     p.status === "inactive" ? "Sign-in created, turned off until you turn it on." : "Sign-in created.");
 }
 

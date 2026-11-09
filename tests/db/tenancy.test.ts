@@ -187,7 +187,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.portal_quote", "public.portal_quote_request_update", "public.portal_quote_respond", "public.portal_quote_response_handle",
   "public.portal_quotes", "public.portal_request_quote", "public.portal_revoke", "public.portal_save_settings", "public.portal_staff_reply",
   "public.portal_support_create", "public.portal_support_list", "public.portal_support_reply", "public.portal_support_thread",
-  "public.portal_ticket", "public.portal_track", "public.portal_tracking_create", "public.portal_tracking_revoke",
+  "public.portal_ticket", "public.portal_tickets", "public.portal_track", "public.portal_tracking_create", "public.portal_tracking_revoke",
   // Testing Lab (20261120000800): platform admins only (private.require_platform_admin); portal previews only for demo
   // companies, one customer, one hour; preview state answers only about the caller's own preview.
   "private.portal_preview_account", "public.platform_portal_preview_start", "public.platform_portal_preview_stop", "public.portal_preview_state",
@@ -298,7 +298,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // N10: onboarding with a time zone (second overloads), urgent orders, personal Command Center state.
   "public.complete_company_onboarding", "public.create_company_with_access_code",
   "public.flag_order_urgent", "public.update_order_urgency", "private.urgency_event", "private.close_urgency_with_order",
-  "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome",
+  "public.save_my_preference", "public.hide_exception", "public.unhide_exception", "public.dismiss_demo_welcome", "public.dismiss_getting_started",
   // AI usage ledger (docs/AI.md §6).
   "public.record_ai_usage", "public.ai_usage_summary", "public.ai_usage_limits", "public.ai_reserve_call", "public.demo_auto_refresh_claim", "public.demo_refresh_begin", "public.demo_refresh_end", "public.schedule_range", "public.billing_entity_save", "public.billing_entity_rules_save", "private.billing_entity_for", "private.billing_handoff_stamp_entities", "public.accounting_save_connection", "private.accounting_connection", "public.accounting_set_status", "public.accounting_set_item", "public.accounting_disconnect", "public.accounting_link_customer", "public.accounting_begin_send", "public.accounting_finish_send", "public.schedule_set_pattern", "public.schedule_end_pattern", "public.schedule_set_day", "public.schedule_clear_day", "public.assign_load_off_shift", "private.can_see_schedule", "private.shift_on", "private.schedule_employee", "private.driver_shift_problem", "private.dispatch_shift_check", "private.dispatch_shift_record", "public.maintenance_add_mechanic", "public.maintenance_save_triage", "public.maintenance_decide_triage", "public.maintenance_save_shop", "public.maintenance_set_skills", "public.maintenance_set_estimate", "public.maintenance_capacity", "public.maintenance_remove_mechanic", "public.maintenance_set_my_status", "public.maintenance_start_timer", "public.maintenance_stop_timer", "public.maintenance_add_time", "public.maintenance_void_time", "public.maintenance_add_task", "public.maintenance_set_task", "private.wo_for_crew", "private.can_be_mechanic", "private.wo_person_name", "private.wo_sync_labor", "private.wo_sync_lead", "private.wo_no_running_timer", "public.demo_auto_refresh_finish", "private.demo_owner_company", "private.ai_usage_totals",
   // N11: office scans of paper tickets.

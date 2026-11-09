@@ -104,6 +104,12 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
 
   if (step === "done" && created) {
     return (
+      <div className="space-y-3">
+      {created.driver === "linked" ? (
+        <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm font-semibold text-green-900 ring-1 ring-green-200">Linked to their driver record: once they sign in on their phone, My Day shows their loads.</p>
+      ) : created.driver === "not_linked" ? (
+        <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950 ring-1 ring-amber-200"><span className="font-semibold">The sign-in works, but their driver record is not linked yet.</span> Someone who can edit the fleet chooses this sign-in under Fleet → Drivers → the driver → Edit → Linked user account; until then My Day says they are not linked.</p>
+      ) : null}
       <CredentialDelivery
         c={{ kind: "employee", personName: created.personName, companyName, username: created.username, loginUrl: created.loginUrl, temporaryPassword: created.temporaryPassword, expiresAt: created.expiresAt }}
         email={emailConfigured && email ? { available: true, to: email } : { available: false, reason: emailConfigured ? "Add the person's email to send a setup link." : emailReason }}
@@ -111,6 +117,7 @@ export function SignInWizard({ presets, roles, bases, employee, companyName, ema
         onRecord={(channel) => recordInstructionsHandoff(created.userId, channel)}
         onDone={() => { setCreated(null); router.push(`/employees/${created.employeeId}`); }}
       />
+      </div>
     );
   }
 

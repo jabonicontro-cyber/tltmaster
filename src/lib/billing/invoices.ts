@@ -80,6 +80,43 @@ export function receivablesAging(invoices: InvoiceLite[], today: string): { rows
   return { rows: [...byCustomer.values()].sort((a, b) => b.total - a.total), totals };
 }
 
+export interface MoneyOwed {
+  /** Still owed on issued invoices (after payments). */
+  openCents: number;
+  openCount: number;
+  /** The part of it past the due date. */
+  overdueCents: number;
+  overdueCount: number;
+  /** Days past due of the oldest overdue invoice; null when nothing is overdue. */
+  oldestOverdueDays: number | null;
+  /** Issued invoices of any state (paid ones included): none means invoicing has not started. */
+  issuedCount: number;
+}
+
+/**
+ * The Command Center's "Money owed" tile: what customers still owe on issued invoices, how much of it is past due and
+ * how late the oldest one is. The same rules as the Invoices page (balanceCents, invoiceState); drafts and void
+ * invoices owe nothing.
+ */
+export function moneyOwed(invoices: Array<Pick<InvoiceLite, "status" | "total_cents" | "payments" | "due_date">>, today: string): MoneyOwed {
+  const out: MoneyOwed = { openCents: 0, openCount: 0, overdueCents: 0, overdueCount: 0, oldestOverdueDays: null, issuedCount: 0 };
+  for (const i of invoices) {
+    if (i.status !== "issued") continue;
+    out.issuedCount += 1;
+    const owed = balanceCents(i);
+    if (!owed) continue;
+    out.openCents += owed;
+    out.openCount += 1;
+    if (invoiceState(i, today) === "overdue" && i.due_date) {
+      out.overdueCents += owed;
+      out.overdueCount += 1;
+      const late = daysBetween(i.due_date, today);
+      if (out.oldestOverdueDays === null || late > out.oldestOverdueDays) out.oldestOverdueDays = late;
+    }
+  }
+  return out;
+}
+
 /** "12.50" → 1250 (dollars and cents typed by a person); null when not a positive amount. */
 export function parseAmountCents(v: string): number | null {
   const s = v.replace(/[$,\s]/g, "");

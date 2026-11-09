@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { AlertTriangle, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Smartphone } from "lucide-react";
+import { ButtonLink } from "@/components/ui/button";
 import { ReadinessBadge } from "@/components/fleet/fleet-badges";
 import { DriverActions, QualificationsPanel } from "@/components/fleet/driver-panels";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +41,10 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   const { data: own } = await supabase.from("drivers").select("primary_truck_id").eq("id", d.id).maybeSingle();
   const truckId = (own as { primary_truck_id?: string | null } | null)?.primary_truck_id ?? null;
   const { data: truck } = truckId ? await supabase.from("trucks").select("id, unit_number").eq("id", truckId).maybeSingle() : { data: null };
+  // Phone sign-in (no email needed): from here in one step, for a driver without a login. The sign-in is made on the
+  // driver's People record so the two stay one person; the wizard links the driver record to it.
+  const canSetUpSignIn = !d.user_id && d.active && can(access, "users.manage") && can(access, "employees.edit");
+  const person = canSetUpSignIn ? (await supabase.from("employees").select("id, user_id").eq("driver_id", d.id).maybeSingle()).data as { id: string; user_id: string | null } | null : null;
 
   return (
     <>
@@ -59,6 +64,23 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
       />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
+          {!d.user_id && d.active && (
+            <Card>
+              <CardHeader title="Phone sign-in" description="So this driver sees their loads and sends tickets from their phone (My Day)." />
+              <CardBody>
+                {canSetUpSignIn && person && !person.user_id ? (
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <p className="text-sm text-muted">No email needed. You get a username and a temporary password to print or show them; they choose their own password the first time they sign in.</p>
+                    <ButtonLink href={`/employees/new-sign-in?employee=${person.id}`} icon={<Smartphone className="size-4" />} className="h-12 shrink-0 sm:h-10">Set up phone sign-in</ButtonLink>
+                  </div>
+                ) : canSetUpSignIn ? (
+                  <p className="text-sm text-muted">This driver has no record in People yet. <Link href="/employees" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Open People</Link> to add them, then set up their sign-in there.</p>
+                ) : (
+                  <p className="text-sm text-muted">No sign-in yet. Someone who manages sign-ins (People → Sign-ins &amp; roles) can set one up; no email is needed.</p>
+                )}
+              </CardBody>
+            </Card>
+          )}
           <Card>
             <CardHeader title="Primary truck" description="The truck this driver normally uses. Change it from the truck's page (Fleet → Trucks) or the employee record." />
             <CardBody>
