@@ -1,11 +1,31 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 00000000000000000000000000. 2026-11-09 (evening) — released `111d934`: drivers ready, shop round 2, money owed, portal tickets, dispatcher orders
+
+- **Production = `111d934`** (fast-forward from `86da048`, owner approved the promotion 2026-11-09): full CI green
+  (run 42709374778, full browser suite), Production CI green (42716599991), Preview and Production deploys success.
+  The migration workflow (42717350471) backed up first (encrypted artifact) and applied 21 migrations, `20261120009800`
+  through `20261120014200`. Live `/api/health` ok (app, sign-in, database). Signed-in pages sit behind the early-access
+  gate: **not verified live** beyond the health check.
+- **In it:** one shop-day and one driver-ready rule on every page; every driver in People; driver stop undo and report
+  photos; invoice marked sent; mechanic rounds 1 and 2 (triage never lowers urgency, trucks return to service when
+  every safety job clears, mileage from inspections, trip sheets, fuel and work orders, parts on order, inspection
+  certificate from the work order, outside repairs, part returns, weekly shop report); Money owed tile; portal Tickets
+  with CSV and balance; Getting started per role; phone sign-in for drivers; `orders.create` for dispatchers.
+- **CI found 10 browser-test failures** before release: nine wrong tests, one real demo bug (the sample credit hold
+  could land on the customer owning all of tomorrow's loads; fixed by `20261120014200`).
+- **Owner answers (question by question, now a permanent rule):** master plan §12 MD1, DS1, WS1, SEC3, SEC4. Website
+  copy is pushed to Preview (`b4467dc`), not yet on Production. **Security first for financial data** is a permanent
+  rule; two-step verification will be required for anyone with money access (demo-only accounts exempt).
+- **Building now (agents, separate worktrees):** MD1 shop and dispatcher decisions, SEC3 fixes, DS1 QR then Face ID
+  sign-in (owner step: turn on passkeys in Supabase Auth), plus a financial-data security review.
 
 ## 0000000000000000000000000. 2026-11-09 (later) — released `2f235c4`: walkthrough fixes, payments by ticket, order documents, brokers
 
