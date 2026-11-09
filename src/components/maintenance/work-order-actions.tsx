@@ -7,18 +7,22 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
+import { DateInput } from "@/components/ui/date-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { COMPLETED_VS_CLOSED, COST_KINDS, nextStatuses, STATUS_ACTION_LABELS, type WoStatus } from "@/lib/maintenance";
 import { addCost, generateDueWorkOrders, recordClearance, removeCost, setWorkOrderStatus, startInspection } from "@/app/(app)/maintenance/actions";
 import { startJob } from "@/app/(app)/maintenance/crew-actions";
 import { cn } from "@/lib/cn";
+import { PartOnOrderDialog } from "@/components/maintenance/parts-on-order";
 
 /** Lifecycle buttons: only the moves the database allows from here. Cancel asks for a reason. */
-export function StatusActions({ id, status, safetyCritical, editSeq, canClear, unit = "truck" }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean; unit?: "truck" | "trailer" }) {
+export function StatusActions({ id, status, safetyCritical, editSeq, canClear, unit = "truck", canCosts = false }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean; unit?: "truck" | "trailer"; canCosts?: boolean }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [confirm, setConfirm] = useState<WoStatus | null>(null);
   const [note, setNote] = useState("");
+  // "Waiting for parts" records what is on order (part, vendor, PO, expected date), 20261120012300.
+  const [waiting, setWaiting] = useState(false);
   const options = nextStatuses(status, safetyCritical).filter((s) => !(s === "canceled" && safetyCritical && !canClear));
 
   // Buttons are big enough for gloved hands on a phone (B5) and the usual size from a tablet up.
@@ -45,7 +49,9 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       disabled={pending}
       onClick={() => {
         // Cancel asks why, reopening asks for an optional note, and "Waiting for parts" asks which part.
-        if (to === "canceled" || to === "awaiting_parts" || to === "in_progress" && status === "completed") {
+        if (to === "awaiting_parts") {
+          setWaiting(true);
+        } else if (to === "canceled" || to === "in_progress" && status === "completed") {
           setNote("");
           setConfirm(to);
         } else {
@@ -56,7 +62,7 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
         }
       }}
     >
-      {to === "in_progress" && status === "completed" ? "Reopen" : STATUS_ACTION_LABELS[to]}
+      {to === "in_progress" && status === "completed" ? "Reopen" : to === "triaged" && status === "awaiting_parts" ? "Parts are in: back to the queue" : STATUS_ACTION_LABELS[to]}
     </Button>
   );
   return (
@@ -67,24 +73,23 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       )}
       {status === "completed" && <p className="basis-full text-sm text-muted">{COMPLETED_VS_CLOSED} Reopen it if more work is needed.</p>}
       {options.includes("canceled") && <div className="mt-1 basis-full border-t border-line/70 pt-3">{button("canceled")}</div>}
+      <PartOnOrderDialog workOrderId={id} open={waiting} onOpenChange={setWaiting} setWaiting canCosts={canCosts} />
       <ConfirmDialog
         open={Boolean(confirm)}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={confirm === "canceled" ? "Cancel the work order" : confirm === "awaiting_parts" ? "Waiting for parts" : "Reopen the work order"}
+        title={confirm === "canceled" ? "Cancel the work order" : "Reopen the work order"}
         description={confirm === "canceled"
           ? (unit === "trailer" ? "The driver whose truck usually pulls this trailer sees the cancellation on My Day if it was scheduled." : "The driver of this truck sees the cancellation on My Day if it was scheduled.")
-          : confirm === "awaiting_parts" ? "The job pauses until the part is in. The part you name shows on the job card."
           : safetyCritical ? `The ${unit} goes out of service again until a new inspection clears it.` : "The work order goes back to in progress."}
-        confirmLabel={confirm === "canceled" ? "Cancel work order" : confirm === "awaiting_parts" ? "Mark waiting for parts" : "Reopen"}
+        confirmLabel={confirm === "canceled" ? "Cancel work order" : "Reopen"}
         tone={confirm === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!confirm) return;
           if (confirm === "canceled" && !note.trim()) return "Enter a reason for canceling.";
-          if (confirm === "awaiting_parts" && note.trim().length < 2) return "Say which part is missing.";
           return go(confirm, note);
         }}
       >
-        <Field label={confirm === "canceled" ? "Reason" : confirm === "awaiting_parts" ? "Which part is missing?" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled" || confirm === "awaiting_parts"}>
+        <Field label={confirm === "canceled" ? "Reason" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled"}>
           <Textarea id="status-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </ConfirmDialog>
@@ -137,10 +142,13 @@ export function ClearanceActions({ id, clearance, unit = "truck" }: { id: string
 export function CostForm({ workOrderId }: { workOrderId: string }) {
   const router = useRouter();
   const [formKey, setFormKey] = useState(0);
+  // An outside repair (vendor line) also records the vendor's invoice and warranty (20261120012500).
+  const [kind, setKind] = useState("part");
   const { pending, onSubmit, fieldError, formError } = useFormAction(addCost.bind(null, workOrderId), {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved.");
       setFormKey((k) => k + 1);
+      setKind("part");
       router.refresh();
     },
   });
@@ -149,7 +157,7 @@ export function CostForm({ workOrderId }: { workOrderId: string }) {
     <form key={formKey} onSubmit={onSubmit} className="grid grid-cols-2 gap-3 sm:grid-cols-6" noValidate>
       <div className="col-span-2 sm:col-span-6"><FormError message={formError} /></div>
       <Field label="Kind" htmlFor="cost-kind" className="sm:col-span-1">
-        <Select {...f("kind")} defaultValue="part">{Object.entries(COST_KINDS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
+        <Select {...f("kind")} value={kind} onChange={(e) => setKind(e.target.value)}>{Object.entries(COST_KINDS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}</Select>
       </Field>
       <Field label="Description" htmlFor="cost-description" required error={fieldError("description")} className="col-span-2 sm:col-span-2">
         <Input {...f("description")} maxLength={200} />
@@ -166,6 +174,19 @@ export function CostForm({ workOrderId }: { workOrderId: string }) {
       <Field label="Unit cost ($)" htmlFor="cost-unit_cost" required error={fieldError("unit_cost")} className="sm:col-span-1">
         <Input {...f("unit_cost")} inputMode="decimal" placeholder="0.00" />
       </Field>
+      {kind === "vendor" && (
+        <>
+          <Field label="Vendor invoice number" htmlFor="cost-invoice_number" error={fieldError("invoice_number")} className="sm:col-span-2">
+            <Input {...f("invoice_number")} maxLength={60} />
+          </Field>
+          <Field label="Invoice date" htmlFor="cost-invoice_date" error={fieldError("invoice_date")} className="sm:col-span-2">
+            <DateInput {...f("invoice_date")} />
+          </Field>
+          <Field label="Warranty until" htmlFor="cost-warranty_until" error={fieldError("warranty_until")} hint="Leave empty when there is no warranty." className="col-span-2 sm:col-span-2">
+            <DateInput {...f("warranty_until")} />
+          </Field>
+        </>
+      )}
       <div className="col-span-2 flex items-end sm:col-span-4">
         <Button type="submit" variant="secondary" loading={pending}>Add cost</Button>
       </div>

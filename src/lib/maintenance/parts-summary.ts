@@ -24,8 +24,25 @@ export interface PartCostLine { work_order_id: string; kind: string; quantity: n
 export function summarizeParts(ids: string[], movements: UsedMovement[], costs: PartCostLine[] | null): Map<string, PartsSummary> {
   const out = new Map<string, PartsSummary>(ids.map((id) => [id, { parts: 0, costCents: costs ? 0 : null }]));
   const measured = new Map<string, Set<string>>();
+  // Parts returned to stock from the job (20261120012600) come off the count: countable parts by quantity, a measured
+  // part once it is fully returned.
+  const net = new Map<string, number>();
   for (const m of movements) {
-    if (m.kind !== "used" || !m.work_order_id || !out.has(m.work_order_id)) continue;
+    if ((m.kind !== "used" && m.kind !== "returned") || !m.work_order_id) continue;
+    const k = `${m.work_order_id}:${m.part_id}`;
+    net.set(k, (net.get(k) ?? 0) - Number(m.quantity ?? (m.kind === "used" ? -1 : 1)));
+  }
+  // Uses first, then returns (the movements may come newest first).
+  for (const m of [...movements.filter((x) => x.kind === "used"), ...movements.filter((x) => x.kind === "returned")]) {
+    if (m.kind === "returned") {
+      if (m.work_order_id && out.has(m.work_order_id) && !isMeasuredUnit(m.unit)) {
+        const s = out.get(m.work_order_id)!;
+        s.parts = Math.max(0, s.parts - Math.max(1, Math.ceil(Math.abs(Number(m.quantity ?? 1)) || 1)));
+      }
+      continue;
+    }
+    if (!m.work_order_id || !out.has(m.work_order_id)) continue;
+    if (isMeasuredUnit(m.unit) && (net.get(`${m.work_order_id}:${m.part_id}`) ?? 1) <= 0) continue;
     const s = out.get(m.work_order_id)!;
     if (isMeasuredUnit(m.unit)) {
       const set = measured.get(m.work_order_id) ?? new Set<string>();

@@ -50,11 +50,12 @@ export const OPEN_STATUSES: WoStatus[] = ["reported", "triaged", "scheduled", "i
 
 /** Mirrors private.wo_transition_ok (the database decides; this only picks buttons). */
 export const NEXT_STATUSES: Record<WoStatus, WoStatus[]> = {
-  reported: ["triaged", "scheduled", "in_progress", "canceled"],
-  triaged: ["scheduled", "in_progress", "canceled"],
-  scheduled: ["in_progress", "triaged", "canceled"],
+  // Waiting for parts before work starts, and back to the queue when they are in (20261120012300).
+  reported: ["triaged", "scheduled", "in_progress", "awaiting_parts", "canceled"],
+  triaged: ["scheduled", "in_progress", "awaiting_parts", "canceled"],
+  scheduled: ["in_progress", "triaged", "awaiting_parts", "canceled"],
   in_progress: ["awaiting_parts", "awaiting_inspection", "completed", "scheduled", "canceled"],
-  awaiting_parts: ["in_progress", "scheduled", "canceled"],
+  awaiting_parts: ["in_progress", "scheduled", "triaged", "canceled"],
   awaiting_inspection: [],
   completed: ["closed", "in_progress"],
   closed: [],
@@ -173,6 +174,10 @@ export const readingSchema = z
 
 export const costSchema = z.object({
   kind: z.enum(keys(COST_KINDS)),
+  // Outside repairs (20261120012500): the vendor's invoice number and date and the warranty, on vendor lines only.
+  invoice_number: z.string().trim().max(60, "Use at most 60 characters.").default(""),
+  invoice_date: optionalDate,
+  warranty_until: optionalDate,
   description: z.string().trim().min(1, "Describe the part or work.").max(200, "Use at most 200 characters."),
   part_number: z.string().trim().max(60, "Use at most 60 characters.").default(""),
   vendor_name: z.string().trim().max(120, "Use at most 120 characters.").default(""),
@@ -192,6 +197,11 @@ export const costSchema = z.object({
     }
     return Math.round(Number(clean) * 100);
   }),
+}).superRefine((v, ctx) => {
+  if (v.kind !== "vendor" && (v.invoice_number || v.invoice_date || v.warranty_until))
+    ctx.addIssue({ code: "custom", path: ["invoice_number"], message: "The invoice and warranty belong on an outside vendor line." });
+  if (v.invoice_date && v.warranty_until && v.warranty_until < v.invoice_date)
+    ctx.addIssue({ code: "custom", path: ["warranty_until"], message: "The warranty cannot end before the invoice date." });
 });
 
 // -----------------------------------------------------------------------------
@@ -398,10 +408,11 @@ export function fixedFromNotes(notes: ReadonlyArray<string | null | undefined>, 
 export const COMPLETED_VS_CLOSED = "Completed means the repair is done. Closed means the office has checked the time, parts and costs: a closed work order can no longer be changed.";
 
 /**
- * The reason a truck or trailer is out of service, as it stands now (I3). The stored reason names the work order that
- * took the unit out of service and is not rewritten when that one is cleared while another safety-critical work order
- * still holds the unit. When the stored reason names a work order that is no longer open, the open safety-critical
- * work orders on the unit are named instead. A reason typed by a person (no work order in it) is shown as it is.
+ * The reason a truck or trailer is out of service, as it stands now (I3). Since 20261120012000 the database rewrites the
+ * stored reason to name the open safety-critical work orders that hold the unit (private.wo_hold_reason, same words),
+ * so this only matters for a reason stored before that update. When the stored reason names a work order that is no
+ * longer open, the open safety-critical work orders on the unit are named instead. A reason typed by a person (no work
+ * order in it) is shown as it is.
  */
 export function currentRestrictionReason(stored: string, openSafety: ReadonlyArray<{ number: string; title: string }>): string {
   const named = [...stored.matchAll(/work orders? ([A-Z]{1,5}-\d+)/gi)].map((m) => m[1]);

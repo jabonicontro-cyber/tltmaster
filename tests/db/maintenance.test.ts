@@ -178,6 +178,88 @@ describe("safety-critical defects and clearance", () => {
   });
 });
 
+// 20261120012000: with two safety-critical work orders, the unit returns to service when the last one clears, whichever
+// order they are cleared in; the stored reason names the orders still open; a person's own out-of-service is kept.
+describe("two safety-critical work orders on one unit", () => {
+  const clear = async (s: Session, id: string) => {
+    await status(s, id, "in_progress");
+    await status(s, id, "awaiting_inspection");
+    return (await s.query<{ r: { returned_to_service: boolean } }>("select public.maintenance_record_clearance($1, 'passed', 'Fixed and tested') as r", [id])).rows[0].r.returned_to_service;
+  };
+  const reason = async (s: Session, table: "trucks" | "trailers", id: string) => {
+    await s.asAdmin();
+    return (await s.query<{ v: string; st: string }>(`select out_of_service_reason as v, service_status::text as st from public.${table} where id = $1`, [id])).rows[0];
+  };
+
+  for (const firstCleared of ["first", "second"] as const) {
+    it(`returns the truck when the last one clears (the ${firstCleared} one cleared first)`, async () => {
+      await withSession(async (s) => {
+        const owner = await s.createUser("owner");
+        const t = await truck(s, owner);
+        const a = await createWo(s, { truck_id: t, title: "Steering play", safety_critical: true });
+        const b = await createWo(s, { truck_id: t, title: "Tire sidewall cut", safety_critical: true });
+        // Both open: the reason names both.
+        expect((await reason(s, "trucks", t)).v).toBe(`Safety-critical defects, work orders ${a.number}, ${b.number}`);
+        await s.as(owner);
+        const [one, two] = firstCleared === "first" ? [a, b] : [b, a];
+        expect(await clear(s, one.id)).toBe(false);
+        const mid = await reason(s, "trucks", t);
+        expect(mid.st).toBe("out_of_service");
+        expect(mid.v).toBe(`Safety-critical defect, work order ${two.number}: ${two === a ? "Steering play" : "Tire sidewall cut"}`);
+        await s.as(owner);
+        expect(await clear(s, two.id)).toBe(true);
+        expect(await reason(s, "trucks", t)).toEqual({ v: "", st: "in_service" });
+      });
+    });
+  }
+
+  it("a canceled holding order passes the hold to the order still open", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const t = await truck(s, owner);
+      const a = await createWo(s, { truck_id: t, title: "Brake hose rubbing", safety_critical: true });
+      const b = await createWo(s, { truck_id: t, title: "Cracked wheel", safety_critical: true });
+      await status(s, a.id, "canceled", "Duplicate report");
+      expect((await reason(s, "trucks", t)).v).toBe(`Safety-critical defect, work order ${b.number}: Cracked wheel`);
+      await s.as(owner);
+      expect(await clear(s, b.id)).toBe(true);
+      expect(await serviceStatus(s, t)).toBe("in_service");
+    });
+  });
+
+  it("keeps a truck a person took out of service, with their reason, after the safety orders clear", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const t = await truck(s, owner);
+      await s.query("select public.set_equipment_service_status('truck', $1, 'out_of_service', 'Waiting for new tires', null)", [t]);
+      const a = await createWo(s, { truck_id: t, title: "Steering play", safety_critical: true });
+      const b = await createWo(s, { truck_id: t, title: "Air leak", safety_critical: true });
+      expect((await reason(s, "trucks", t)).v).toBe("Waiting for new tires");
+      await s.as(owner);
+      expect(await clear(s, a.id)).toBe(false);
+      await s.as(owner);
+      expect(await clear(s, b.id)).toBe(false);
+      expect(await reason(s, "trucks", t)).toEqual({ v: "Waiting for new tires", st: "out_of_service" });
+    });
+  });
+
+  it("does the same for trailers", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      await s.as(owner);
+      const tr = await insert(s, "trailers", { unit_number: `TL-${tag()}`, trailer_type: "end_dump", compatible_truck_types: "{tractor}" });
+      const a = await createWo(s, { trailer_id: tr, title: "Trailer brake drum cracked", safety_critical: true });
+      const b = await createWo(s, { trailer_id: tr, title: "Trailer lights out", safety_critical: true });
+      await s.as(owner);
+      expect(await clear(s, a.id)).toBe(false);
+      expect(await reason(s, "trailers", tr)).toEqual({ v: `Safety-critical defect, work order ${b.number}: Trailer lights out`, st: "out_of_service" });
+      await s.as(owner);
+      expect(await clear(s, b.id)).toBe(true);
+      expect(await reason(s, "trailers", tr)).toEqual({ v: "", st: "in_service" });
+    });
+  });
+});
+
 describe("costs", () => {
   it("are visible and editable only with maintenance.costs", async () => {
     await withSession(async (s) => {

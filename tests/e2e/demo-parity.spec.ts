@@ -198,6 +198,15 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await expect(page.getByText("No jobs for you right now"), "mechanic My jobs has jobs").toHaveCount(0);
         await expect(page.getByRole("link", { name: /^Open MWO-/ }).first(), "mechanic My jobs").toBeVisible();
       }
+      // Parts on order (20261120012300, samples.ts demo_part_wait_samples): the Maintenance overview says how many jobs
+      // wait for parts and when the next part is expected; the weekly shop report opens with the week's records.
+      if ((role === "owner" || role === "mechanic") && nav.includes("/maintenance")) {
+        await visit(page, "/maintenance");
+        await expect(page.getByTestId("parts-waiting"), `${role} parts waiting`).toContainText(/Waiting for parts/);
+        await expect(page.getByTestId("parts-waiting"), `${role} parts waiting has jobs`).not.toContainText("None");
+        await visit(page, "/maintenance/weekly");
+        await expect(page.getByRole("heading", { name: /^Shop week of/ }), `${role} weekly shop report`).toBeVisible();
+      }
       // Modes that drive see a day with loads on My Day.
       if (role === "driver" || role === "multi") {
         await visit(page, "/driver");

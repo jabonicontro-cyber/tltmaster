@@ -10,7 +10,8 @@ import { createClient } from "@/server/supabase/server";
 const MISSING = new Set(["42P01", "PGRST205", "42883", "PGRST202"]);
 
 export interface PartRow { id: string; part_number: string; name: string; unit: string; location: string; on_hand: number; reorder_point: number; active: boolean }
-export interface PartMovement { id: number; part_id: string; kind: "received" | "used" | "adjusted"; quantity: number; work_order_id: string | null; note: string; created_by: string | null; created_at: string }
+/** `returned` (20261120012600): a part used on a job and put back in stock; `returned_from` is the use it reverses. */
+export interface PartMovement { id: number; part_id: string; kind: "received" | "used" | "adjusted" | "returned"; quantity: number; work_order_id: string | null; note: string; created_by: string | null; created_at: string; returned_from?: number | null }
 
 export async function listParts(): Promise<{ installed: boolean; parts: PartRow[] }> {
   const supabase = await createClient();
@@ -37,11 +38,18 @@ export async function partCosts(): Promise<Map<string, { unit: number | null; va
 
 export async function recentMovements(limit = 25, workOrderId?: string): Promise<PartMovement[]> {
   if (workOrderId && !uuid.safeParse(workOrderId).success) return [];
-  let q = (await createClient()).from("part_movements").select("id, part_id, kind, quantity, work_order_id, note, created_by, created_at").order("created_at", { ascending: false }).limit(limit);
-  if (workOrderId) q = q.eq("work_order_id", workOrderId);
-  const { data, error } = await q;
+  const supabase = await createClient();
+  const load = (cols: string) => {
+    let q = supabase.from("part_movements").select(cols).order("created_at", { ascending: false }).limit(limit);
+    if (workOrderId) q = q.eq("work_order_id", workOrderId);
+    return q;
+  };
+  const base = "id, part_id, kind, quantity, work_order_id, note, created_by, created_at";
+  // returned_from comes with 20261120012600; before it, the list loads without it.
+  let { data, error } = await load(`${base}, returned_from`);
+  if (error?.code === "42703") ({ data, error } = await load(base));
   if (error) return [];
-  return ((data ?? []) as PartMovement[]).map((m) => ({ ...m, quantity: Number(m.quantity) }));
+  return ((data ?? []) as unknown as PartMovement[]).map((m) => ({ ...m, quantity: Number(m.quantity) }));
 }
 
 /**
@@ -54,10 +62,48 @@ export async function partsSummaryFor(workOrderIds: string[], withCosts: boolean
   if (!ids.length) return new Map();
   const supabase = await createClient();
   const [moves, costs] = await Promise.all([
-    supabase.from("part_movements").select("work_order_id, part_id, kind, quantity, parts(unit)").eq("kind", "used").in("work_order_id", ids).limit(5000),
+    supabase.from("part_movements").select("work_order_id, part_id, kind, quantity, parts(unit)").in("kind", ["used", "returned"]).in("work_order_id", ids).limit(5000),
     withCosts ? supabase.from("work_order_costs").select("work_order_id, kind, quantity, unit_cost_cents").eq("kind", "part").in("work_order_id", ids).limit(5000) : Promise.resolve(null),
   ]);
   type Row = Omit<UsedMovement, "unit"> & { parts: { unit: string } | null };
   const used: UsedMovement[] = moves.error ? [] : ((moves.data ?? []) as unknown as Row[]).map((m) => ({ ...m, unit: m.parts?.unit ?? null }));
   return summarizeParts(ids, used, costs && !costs.error ? ((costs.data ?? []) as PartCostLine[]) : withCosts ? [] : null);
+}
+
+/** A part on order for a work order (20261120012300). `unit_cost_cents` only for maintenance.costs (null otherwise). */
+export interface PartWait {
+  id: string;
+  work_order_id: string;
+  work_order_number: string;
+  part_id: string | null;
+  description: string;
+  part_number: string;
+  quantity: number;
+  vendor_name: string;
+  po_number: string;
+  expected_on: string | null;
+  unit_cost_cents: number | null;
+  status: "waiting" | "received" | "canceled";
+  received_at: string | null;
+  received_by: string | null;
+  cancel_reason: string;
+  created_by: string | null;
+  created_at: string;
+}
+
+/**
+ * Parts on order: a work order's (every status), or with no work order every part still waiting on an open job (the
+ * Maintenance dashboard). Before the update is installed: installed false and nothing listed.
+ */
+export async function partWaits(workOrderId?: string): Promise<{ installed: boolean; rows: PartWait[] }> {
+  if (workOrderId && !uuid.safeParse(workOrderId).success) return { installed: true, rows: [] };
+  const { data, error } = await (await createClient()).rpc("part_waits", { p_work_order: workOrderId ?? null });
+  if (error) {
+    if (MISSING.has(error.code ?? "")) return { installed: false, rows: [] };
+    throw new Error(`Could not load parts on order: ${error.message}`);
+  }
+  return {
+    installed: true,
+    rows: ((data ?? []) as PartWait[]).map((r) => ({ ...r, quantity: Number(r.quantity), unit_cost_cents: r.unit_cost_cents === null ? null : Number(r.unit_cost_cents) })),
+  };
 }

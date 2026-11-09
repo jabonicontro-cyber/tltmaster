@@ -139,9 +139,11 @@ export async function addCost(workOrderId: string, formData: FormData): Promise<
     if (!uuid.safeParse(workOrderId).success) return fail("Invalid work order.");
     const parsed = costSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
-    const { unit_cost, ...rest } = parsed.data;
+    const { unit_cost, invoice_number, invoice_date, warranty_until, ...rest } = parsed.data;
     const supabase = await createClient();
-    const { error } = await supabase.from("work_order_costs").insert({ ...rest, unit_cost_cents: unit_cost, work_order_id: workOrderId });
+    // The vendor invoice and warranty only when given (an outside repair), so other lines save the same as before.
+    const vendor = Object.fromEntries(Object.entries({ invoice_number, invoice_date, warranty_until }).filter(([, v]) => v));
+    const { error } = await supabase.from("work_order_costs").insert({ ...rest, ...vendor, unit_cost_cents: unit_cost, work_order_id: workOrderId });
     if (error) return fail(dbErrorMessage(error));
     refresh(workOrderId);
     return ok(undefined, "Cost added.");

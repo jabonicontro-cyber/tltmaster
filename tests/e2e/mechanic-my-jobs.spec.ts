@@ -116,9 +116,19 @@ test("a fresh driver defect (Reported) needs a mechanic, safety-critical first, 
   });
   // Leaving In progress stops the person's own timer first.
   await page.getByRole("button", { name: "Waiting for parts" }).first().click();
-  await page.getByLabel("Which part is missing?").fill("Steer tire");
+  await page.getByLabel("Which part?").fill("Steer tire");
+  await page.getByLabel("Expected").fill("2099-01-15");
   await page.getByRole("button", { name: "Mark waiting for parts" }).click();
   await expectToast(page, /Your timer is stopped/);
+  // The part is listed on the work order with its expected date; "Part is in" offers the shop queue (20261120012300).
+  await page.goto(`/maintenance/work-orders/${id}?tab=order`);
+  const onOrder = page.getByRole("list", { name: "Parts on order" });
+  await expect(onOrder).toContainText("Steer tire");
+  await expect(onOrder).toContainText("Expected Jan 15, 2099");
+  await onOrder.getByRole("button", { name: "Part is in" }).click();
+  await expect(page.getByLabel("Put the job back in the shop queue")).toBeChecked();
+  await page.getByRole("button", { name: "Mark received" }).click();
+  await expectToast(page, "Part received. The job is back in the shop queue.");
 });
 
 test("people without maintenance access cannot open My jobs", async ({ page }) => {

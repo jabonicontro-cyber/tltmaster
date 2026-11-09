@@ -118,7 +118,11 @@ export async function waitForPart(input: { workOrderId: string; part: string; ed
     const { error } = await supabase.rpc("maintenance_set_status", { p_id: p.data.workOrderId, p_status: "awaiting_parts", p_note: p.data.part, p_expected_seq: p.data.editSeq });
     refresh(p.data.workOrderId);
     if (error) return fail(dbErrorMessage(error));
-    return ok(undefined, running.data ? "Waiting for parts. Your timer is stopped." : "Waiting for parts.");
+    // The part is also listed under Parts on order (20261120012300), where the office adds the vendor, PO and date.
+    // Before that update is installed the status note alone names it.
+    const added = await supabase.rpc("part_wait_add", { p_work_order: p.data.workOrderId, p: { description: p.data.part.slice(0, 160) } });
+    const listed = !added.error || ["42883", "PGRST202"].includes(added.error.code ?? "");
+    return ok(undefined, `${running.data ? "Waiting for parts. Your timer is stopped." : "Waiting for parts."}${listed ? "" : ` The part could not be listed under Parts on order: ${dbErrorMessage(added.error!)}`}`);
   });
 }
 

@@ -229,7 +229,13 @@ export async function listRecentClearances(): Promise<WorkOrderRow[]> {
 }
 
 export interface WoEvent { id: string; kind: string; from_status: string | null; to_status: string | null; note: string; details: Record<string, unknown>; actor_id: string | null; created_at: string }
-export interface WoCost { id: string; kind: CostKind; description: string; part_number: string; vendor_name: string; quantity: number; unit_cost_cents: number; created_at: string }
+export interface WoCost {
+  id: string; kind: CostKind; description: string; part_number: string; vendor_name: string; quantity: number; unit_cost_cents: number; created_at: string;
+  /** Outside repairs (20261120012500): the vendor's invoice and warranty; absent before that update. */
+  invoice_number?: string; invoice_date?: string | null; warranty_until?: string | null;
+  /** A credit for a part returned to stock (20261120012600): not removable by hand. */
+  returned_movement_id?: number | null;
+}
 
 export async function getWorkOrder(id: string, opts: { costs: boolean }) {
   const supabase = await createClient();
@@ -243,7 +249,7 @@ export async function getWorkOrder(id: string, opts: { costs: boolean }) {
   const [events, costs, truck, trailer, driver, schedule] = await Promise.all([
     supabase.from("work_order_events").select("id, kind, from_status, to_status, note, details, actor_id, created_at").eq("work_order_id", id).order("created_at"),
     opts.costs
-      ? supabase.from("work_order_costs").select("id, kind, description, part_number, vendor_name, quantity, unit_cost_cents, created_at").eq("work_order_id", id).order("created_at")
+      ? supabase.from("work_order_costs").select("*").eq("work_order_id", id).order("created_at")
       : Promise.resolve({ data: null, error: null }),
     wo.truck_id
       ? supabase.from("trucks").select("id, unit_number, truck_type, active, service_status, out_of_service_reason, out_of_service_since, expected_return_date").eq("id", wo.truck_id).maybeSingle()

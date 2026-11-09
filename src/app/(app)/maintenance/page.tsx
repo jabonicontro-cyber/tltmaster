@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { partsSummaryFor } from "@/server/data/parts";
+import { partsSummaryFor, partWaits } from "@/server/data/parts";
+import { partsWaitingText, summarizePartsWaiting } from "@/lib/maintenance/parts-waiting";
 import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { CalendarClock, Plus, Wrench } from "lucide-react";
 import { SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
@@ -64,11 +65,14 @@ export default async function MaintenancePage() {
   const weekStart = addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
   const shop = await listShopWorkload(open.map((w) => w.id), zonedTimeToUtc(weekStart, "00:00", timezone) ?? `${weekStart}T00:00:00Z`);
   // Shop insights (B120): repeat failures, parts a job usually needs, the truck's free days. Left out on any error.
-  const [insights, partsUsed] = await Promise.all([
+  const [insights, partsUsed, onOrder] = await Promise.all([
     loadShopInsights(today, open.map((w) => w.id)).catch(() => null),
     // Parts used per job on the board (UX20); the cost only for people who see maintenance costs.
     partsSummaryFor(open.map((w) => w.id), can(access, "maintenance.costs")).catch(() => new Map()),
+    // Parts still on order (20261120012300): "Waiting for parts: N, next expected <date>".
+    partWaits().catch(() => ({ installed: false, rows: [] })),
   ]);
+  const partsWaiting = summarizePartsWaiting(onOrder.rows, today, open.filter((w) => w.status === "awaiting_parts").map((w) => w.id));
   const truckById = new Map(trucks.map((t) => [t.id, t]));
   const trailerById = new Map(trailers.map((t) => [t.id, t]));
   const truckUnits = new Map(trucks.map((t) => [t.id, t.unit_number]));
@@ -170,10 +174,12 @@ export default async function MaintenancePage() {
               { label: "Preventive service overdue", n: overdue.length, href: "/maintenance/preventive?state=overdue", tone: "critical" as const, chip: "Overdue" },
               { label: "Preventive service due soon", n: dueSoon.length, href: "/maintenance/preventive?state=due_soon", tone: "amber" as const, chip: "Due soon" },
               { label: "Repairs awaiting clearance", n: awaiting.length, href: "/maintenance/clearance", tone: "amber" as const, chip: "Inspection" },
+              // "Waiting for parts: N, next expected <date>" (20261120012300); a part past its expected date is flagged Late.
+              { label: partsWaitingText(partsWaiting)?.replace(/^Waiting for parts: \d+/, "Waiting for parts") ?? "Waiting for parts", n: partsWaiting.jobs, href: "/maintenance/work-orders?status=awaiting_parts", tone: "amber" as const, chip: partsWaiting.late ? "Late" : "Parts", testId: "parts-waiting" },
               { label: "Open work orders with no lead mechanic", n: (workload.get("")?.open ?? 0), href: "/maintenance/work-orders?assigned=none", tone: "amber" as const, chip: "Unassigned" },
               { label: "Schedules missing data", n: unknownPm.length, href: "/maintenance/preventive?state=unknown", tone: "gray" as const, chip: "Needs data" },
             ].map((x) => (
-              <li key={x.label}>
+              <li key={x.label} data-testid={"testId" in x ? x.testId : undefined}>
                 <Link href={x.href} className="grid grid-cols-[minmax(0,1fr)_3rem_7rem_auto] items-center gap-3 px-5 py-2.5 text-sm hover:bg-surface sm:px-6">
                   <span className="truncate text-ink">{x.label}</span>
                   <span className={cn("text-right font-semibold tabular", x.n > 0 && x.tone === "critical" && "text-critical")}>{x.n}</span>

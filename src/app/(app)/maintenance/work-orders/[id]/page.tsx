@@ -2,7 +2,9 @@ import { CopyReference } from "@/components/ui/copy-reference";
 import { summarizeParts, partsSummaryText } from "@/lib/maintenance/parts-summary";
 import Link from "next/link";
 import { UsePartForm } from "@/components/maintenance/parts-controls";
-import { listParts, recentMovements, type PartRow } from "@/server/data/parts";
+import { listParts, partWaits, recentMovements, type PartRow } from "@/server/data/parts";
+import { PartsOnOrder } from "@/components/maintenance/parts-on-order";
+import { InspectionCertificateForm, ReturnPartButton } from "@/components/maintenance/shop-records";
 import { notFound } from "next/navigation";
 import { Pencil } from "lucide-react";
 import { fmtMoney, fmtNum, SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
@@ -17,7 +19,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { formatDate, formatDateTime } from "@/lib/dates";
+import { addDays, formatDate, formatDateTime } from "@/lib/dates";
 import { CLEARANCE_STATUSES, COST_KINDS, WO_CATEGORIES, WO_STATUSES } from "@/lib/maintenance";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
@@ -40,7 +42,7 @@ const EVENT_LABELS: Record<string, string> = {
   crew: "Crew", time: "Labor time", task: "Checklist", triage: "What to check",
 };
 
-type Tab = "tasks" | "labor" | "parts" | "costs" | "triage" | "activity";
+type Tab = "tasks" | "labor" | "order" | "parts" | "costs" | "triage" | "activity";
 
 export default async function WorkOrderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ tab?: string; from?: string }> }) {
   const access = await requirePagePermission("maintenance.view");
@@ -56,11 +58,13 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
   const unit = trailer ?? truck;
   const unitWord = trailer ? "Trailer" : "Truck";
   const unitHref = trailer ? `/fleet/trailers/${trailer.id}` : truck ? `/fleet/trucks/${truck.id}` : null;
-  const [people, { timezone, today }, crew, triage, history, stock, partsUsed, photos] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] })),
+  const [people, { timezone, today }, crew, triage, history, stock, partsUsed, photos, onOrder] = await Promise.all([getUserNames(), businessToday(), getWorkOrderCrew(id, access.userId), getLatestTriage(id), completedJobs().catch(() => ({ installed: false, jobs: [] })),
     // Shop parts (B105): what is in stock and what this work order used.
     listParts().catch(() => ({ installed: false, parts: [] as PartRow[] })), recentMovements(100, id),
     // Photos from the driver's inspection and the shop (UX9); none before the update is installed.
-    workOrderPhotoIds(id)]);
+    workOrderPhotoIds(id),
+    // Parts on order for this job (20261120012300); none before the update is installed.
+    partWaits(id).catch(() => ({ installed: false, rows: [] }))]);
   // B91: what comparable completed jobs took, from the company's own recorded labor. Shown beside the shop's estimate,
   // never written over it.
   const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
@@ -78,17 +82,24 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
     : canCosts && costs ? costs.filter((c) => c.kind === "part").length : null;
   const estimate = "estimated_hours" in wo ? (wo as { estimated_hours: number | null }).estimated_hours : null;
   const doneTasks = crew.tasks.filter((t) => t.status === "done").length;
+  // The latest annual inspection recorded from this work order (its history note), if any.
+  const inspectionNote = [...events].reverse().find((e) => e.note.startsWith("Annual inspection recorded"))?.note ?? null;
+  // Parts used and returned to stock (20261120012600): how many of each use can still go back.
+  const returnedByUse = new Map<number, number>();
+  for (const m of partsUsed) if (m.kind === "returned" && m.returned_from) returnedByUse.set(m.returned_from, (returnedByUse.get(m.returned_from) ?? 0) + m.quantity);
+  const usedOrReturned = partsUsed.filter((m) => m.kind === "used" || m.kind === "returned");
   const showTriage = triage.installed && Boolean(triage.triage || ["reported", "triaged"].includes(wo.status));
   // The sections as tabs; the default is the one the job needs now.
   const tabs: Array<{ key: Tab; label: string; count?: number }> = [
     ...(showTriage ? [{ key: "triage" as const, label: "What to check" }] : []),
     { key: "tasks", label: "Checklist", count: crew.installed ? crew.tasks.length : undefined },
     { key: "labor", label: "Labor" },
+    ...(onOrder.installed ? [{ key: "order" as const, label: "Parts on order", count: onOrder.rows.filter((r) => r.status === "waiting").length }] : []),
     ...(stock.installed ? [{ key: "parts" as const, label: "Parts used", count: partsUsed.filter((m) => m.kind === "used").length }] : []),
     ...(canCosts && costs ? [{ key: "costs" as const, label: "Parts and costs", count: costs.length }] : []),
     { key: "activity", label: "Activity", count: events.length },
   ];
-  const fallback: Tab = showTriage && ["reported", "triaged"].includes(wo.status) ? "triage" : wo.status === "in_progress" ? "labor" : "tasks";
+  const fallback: Tab = wo.status === "awaiting_parts" && onOrder.installed ? "order" : showTriage && ["reported", "triaged"].includes(wo.status) ? "triage" : wo.status === "in_progress" ? "labor" : "tasks";
   const tab: Tab = tabs.some((t) => t.key === sp.tab) ? (sp.tab as Tab) : fallback;
 
   return (
@@ -121,8 +132,21 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
         <Card className="mb-5">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-3 px-5 py-4 sm:px-6">
             <span className="text-sm font-semibold text-ink">Next step</span>
-            <StatusActions id={wo.id} status={wo.status} safetyCritical={wo.safety_critical} editSeq={wo.edit_seq} canClear={canClear} unit={trailer ? "trailer" : "truck"} />
+            <StatusActions id={wo.id} status={wo.status} safetyCritical={wo.safety_critical} editSeq={wo.edit_seq} canClear={canClear} unit={trailer ? "trailer" : "truck"} canCosts={canCosts} />
           </div>
+        </Card>
+      )}
+      {/* Annual (DOT) inspection: recorded onto the unit's inspection certificate from the completed work order (20261120012400). */}
+      {wo.category === "inspection" && ["completed", "closed"].includes(wo.status) && (manage || inspectionNote) && (
+        <Card className="mb-5">
+          <CardHeader title="Inspection certificate" description={inspectionNote ?? `Was this the annual inspection? Record it so the ${unitWord.toLowerCase()}'s inspection expiry is up to date.`} />
+          {manage && (
+            <CardBody>
+              {inspectionNote
+                ? <details><summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-ink">Correct the certificate</summary><div className="pt-3"><InspectionCertificateForm workOrderId={wo.id} today={today} defaultExpires={addDays(today, 365)} unitWord={unitWord} /></div></details>
+                : <InspectionCertificateForm workOrderId={wo.id} today={today} defaultExpires={addDays(today, 365)} unitWord={unitWord} />}
+            </CardBody>
+          )}
         </Card>
       )}
       {wo.status === "awaiting_inspection" && (
@@ -224,12 +248,17 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                       <tbody>
                         {costs.map((c) => (
                           <Tr key={c.id}>
-                            <Td><div className="font-medium">{c.description}</div><div className="text-xs text-muted">{COST_KINDS[c.kind]}{c.part_number ? ` · ${c.part_number}` : ""}</div></Td>
+                            <Td>
+                              <div className="font-medium">{c.description}</div>
+                              <div className="text-xs text-muted">{COST_KINDS[c.kind]}{c.part_number ? ` · ${c.part_number}` : ""}</div>
+                              {(c.invoice_number || c.invoice_date) && <div className="text-xs text-muted">Vendor invoice {c.invoice_number || "(no number)"}{c.invoice_date ? ` · ${formatDate(c.invoice_date)}` : ""}</div>}
+                              {c.warranty_until && <div className={cn("text-xs", c.warranty_until >= today ? "font-medium text-ink" : "text-muted")}>{c.warranty_until >= today ? "Under warranty until" : "Warranty ended"} {formatDate(c.warranty_until)}</div>}
+                            </Td>
                             <Td className="hidden text-sm sm:table-cell">{c.vendor_name || "–"}</Td>
                             <Td className="text-right tabular">{c.quantity}</Td>
                             <Td className="text-right tabular">{fmtMoney(c.unit_cost_cents)}</Td>
                             <Td className="text-right font-medium tabular">{fmtMoney(Math.round(c.quantity * c.unit_cost_cents))}</Td>
-                            <Td>{!["closed", "canceled"].includes(wo.status) && <RemoveCostButton workOrderId={wo.id} costId={c.id} label={c.description} />}</Td>
+                            <Td>{!["closed", "canceled"].includes(wo.status) && !c.returned_movement_id && <RemoveCostButton workOrderId={wo.id} costId={c.id} label={c.description} />}</Td>
                           </Tr>
                         ))}
                       </tbody>
@@ -246,19 +275,27 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                   current={{ category: wo.category, urgency: wo.urgency, safetyCritical: wo.safety_critical }} />
               </div>
             )}
+            {tab === "order" && onOrder.installed && (
+              <PartsOnOrder workOrderId={wo.id} rows={onOrder.rows} status={wo.status} today={today} timezone={timezone} canManage={manage} canCosts={canCosts} who={people} />
+            )}
             {tab === "parts" && stock.installed && (
               <div className="space-y-4">
                 {partsLine && <p className="text-sm font-medium text-ink tabular" data-testid="parts-summary">{partsLine}</p>}
-                {partsUsed.filter((m) => m.kind === "used").length > 0 ? (
+                {usedOrReturned.length > 0 ? (
                   <ul className="divide-y divide-line rounded-xl ring-1 ring-line/60" aria-label="Parts used">
-                    {partsUsed.filter((m) => m.kind === "used").map((m) => {
+                    {usedOrReturned.map((m) => {
                       const p = stock.parts.find((x) => x.id === m.part_id);
+                      const left = m.kind === "used" ? -m.quantity - (returnedByUse.get(m.id) ?? 0) : 0;
                       return (
-                        <li key={m.id} className="flex flex-wrap items-baseline gap-x-3 px-4 py-2.5 text-sm">
-                          <span className="font-medium">{p?.name ?? "Part"}</span>
+                        <li key={m.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm">
+                          <span className="font-medium">{m.kind === "returned" ? "Returned to stock: " : ""}{p?.name ?? "Part"}</span>
                           {p?.part_number && <span className="text-muted tabular">{p.part_number}</span>}
-                          <span className="tabular">{-m.quantity} {p?.unit}</span>
+                          <span className="tabular">{Math.abs(m.quantity)} {p?.unit}</span>
+                          {m.kind === "returned" && m.note && <span className="text-muted">({m.note})</span>}
                           <span className="ml-auto text-xs text-muted">{who(m.created_by)} · {formatDateTime(m.created_at, timezone)}</span>
+                          {m.kind === "used" && left > 0 && manage && !["closed", "canceled"].includes(wo.status) && "returned_from" in m && (
+                            <span className="basis-full"><ReturnPartButton useId={m.id} workOrderId={wo.id} name={p?.name ?? "the part"} unit={p?.unit ?? "each"} left={left} /></span>
+                          )}
                         </li>
                       );
                     })}

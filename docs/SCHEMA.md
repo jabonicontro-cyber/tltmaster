@@ -456,11 +456,52 @@ direct access for app users); everything goes through the functions below.
 | `work_order_events` | Append-only history (status, schedule, assignment, inspection, clearance, truck restricted/returned). | Read `maintenance.view`. |
 | `work_order_costs` | Part, labor, vendor and other cost lines (quantity × unit cost in cents). Locked when the work order is closed or canceled. | Read/insert/delete `maintenance.costs` only. |
 | `maintenance_schedules` | Preventive service per truck: interval days/miles/hours, warning windows, last done. | Read `maintenance.view`; write through `maintenance_save_schedule`. |
-| `truck_readings` | Odometer / engine-hour readings; never lower than the latest. | Read `maintenance.view`; write through `record_truck_reading`. |
+| `truck_readings` | Odometer / engine-hour readings; never lower than the latest; `source` and `source_id` say where each came from (20261120012200). | Read `maintenance.view`; write through `record_truck_reading` or the reading triggers (`private.feed_truck_reading`). |
 
 Rules: a trigger on `trucks` refuses a return to service while an open safety-critical work order exists; one
 open work order per schedule (unique partial index); work order numbers come from the `work_order` document
 sequence. Functions: see IMPLEMENTATION_PLAN §5w.
+
+### Shop records and fixes (20261120012000–20261120012600)
+
+- **Units held by safety work orders (012000, bug fix).** `work_orders.restricted_truck` now marks every open
+  safety-critical order that holds its truck or trailer out of service, not only the first: a second one joins the hold
+  (`private.wo_restrict_truck`), and clearing, canceling or downgrading a holding order passes the hold to the orders
+  still open (`private.wo_release_truck`). The unit returns to service when the last holding order clears; a unit a
+  person took out of service by hand (no order holds it) is never returned automatically. The stored
+  `out_of_service_reason` is rewritten to name the open safety-critical orders (`private.wo_hold_reason`, the same words
+  as `currentRestrictionReason` in the app). The migration repaired units stuck by the old behaviour (the hold moved to
+  their open orders); units with no open safety order left were not returned to service automatically.
+- **Triage never lowers urgency (012100).** `maintenance_decide_triage('accepted')` keeps the higher of the current and
+  suggested urgency and never clears the safety flag (the app's `acceptTriage`).
+- **Readings from every entry (012200).** `truck_readings.source` (`manual` | `inspection` | `trip_sheet` | `fuel` |
+  `work_order`) and `source_id`. Triggers on `vehicle_inspections`, `trip_sheets` and `fuel_purchases` (not voided) and
+  on the work order's at-service odometer and engine hours call `private.feed_truck_reading`: a reading never lowers the
+  current one; a lower value or an impossible jump (over 2,000 miles or 24 engine hours per day since the last reading)
+  is not used and is written to `audit_events` (`truck.reading_ignored`, on the truck). Preventive status
+  (`private.pm_due`) therefore follows real mileage. `record_truck_reading` (Preventive page) is unchanged.
+- **Parts on order (012300).** `work_order_part_waits`: work order, optional stock `part_id`, description, part number,
+  quantity, vendor, PO number, expected date, expected unit cost (column not granted: read through `part_waits()` with
+  `maintenance.costs`), status `waiting` / `received` / `canceled`, received by/at, cancel reason, submission key. Read
+  with `maintenance.view`; written only by `part_wait_add` (optionally moves the job to awaiting parts),
+  `part_wait_update`, `part_wait_receive` (a stock part is received and used on the job through `part_movements` with
+  the same cost line as `part_use`; a one-off part with a known cost becomes a part cost line; optionally back to the
+  queue), `part_wait_cancel` (all `maintenance.manage`, through `private.wo_for_crew`). Lifecycle: reported, triaged
+  and scheduled may go to awaiting parts; awaiting parts may go back to triaged. `demo_part_wait_samples()` (demo owner).
+- **Annual inspection (012400).** `maintenance_record_inspection(work_order, p)` (`maintenance.manage`; a completed or
+  closed `inspection` work order): archives the unit's current `inspection` vehicle documents and records the new
+  certificate (inspected on, expires on, inspector as `issuing_authority`, reference; not verified), keyed by the work
+  order (`submission_key`) so recording again corrects it. The report photo uses `work_order_photos`.
+- **Outside repairs (012500).** `work_order_costs.invoice_number`, `invoice_date`, `warranty_until` (vendor lines only;
+  warranty not before the invoice), with the existing insert grant (`maintenance.costs`). `vendor_warranties()`
+  (`maintenance.view`, no amounts) lists repairs still under warranty. `demo_outside_repair_samples()` (demo owner).
+- **Return to stock (012600).** `part_movements.kind` gains `returned` (positive quantity, `returned_from` = the use it
+  reverses; never more than was used). `part_return(use, quantity, reason)` (`maintenance.manage`; not on closed or
+  canceled work orders) adds the movement, puts the part back on hand and, when the use carried a cost, a credit line
+  (`work_order_costs.returned_movement_id`, negative quantity, allowed only on such lines and not removable by hand).
+
+The weekly shop report (`/maintenance/weekly`) needs no table: it reads work orders, labor time, part cost lines,
+`equipment_status_events` and preventive status with the person's own access.
 
 ## Fleet management (20261102000100)
 

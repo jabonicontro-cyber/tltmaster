@@ -18,7 +18,7 @@ import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Parts" };
 
-const KIND_LABEL = { received: "Received", used: "Used", adjusted: "Counted" } as const;
+const KIND_LABEL = { received: "Received", used: "Used", adjusted: "Counted", returned: "Returned to stock" } as const;
 const qty = (n: number) => (Number.isInteger(n) ? String(n) : n.toFixed(2));
 
 /**

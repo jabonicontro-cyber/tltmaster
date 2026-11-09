@@ -174,6 +174,11 @@ export function OwnershipCard({ vehicle, value, canEdit }: { vehicle: { kind: "t
   );
 }
 
+/** Where a reading came from (20261120012200), in plain words. */
+const READING_SOURCES: Record<string, string> = {
+  manual: "entered in Maintenance", inspection: "from an inspection", trip_sheet: "from a trip sheet", fuel: "from a fuel entry", work_order: "from a work order",
+};
+
 const WO_STATUS: Record<string, string> = {
   reported: "Reported", triaged: "Triaged", scheduled: "Scheduled", in_progress: "In progress", awaiting_parts: "Awaiting parts",
   awaiting_inspection: "Awaiting inspection", completed: "Completed", closed: "Closed", canceled: "Canceled",
@@ -238,7 +243,7 @@ export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, ca
                   {records.readings.rows.slice(0, 5).map((r) => (
                     <li key={r.id} className="tabular">
                       {[r.odometer_miles !== null && `${num(r.odometer_miles)} mi`, r.engine_hours !== null && `${num(r.engine_hours)} h`].filter(Boolean).join(" · ")}
-                      <span className="text-muted"> · {formatDateTime(r.read_at, timezone)}</span>
+                      <span className="text-muted"> · {formatDateTime(r.read_at, timezone)}{r.source && READING_SOURCES[r.source] ? ` · ${READING_SOURCES[r.source]}` : ""}</span>
                     </li>
                   ))}
                 </ul>

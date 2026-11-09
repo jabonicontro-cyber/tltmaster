@@ -11,6 +11,8 @@ const TABS = [
   { key: "preventive", label: "Preventive", href: "/maintenance/preventive" },
   { key: "parts", label: "Parts", href: "/maintenance/parts" },
   { key: "shop", label: "Shop capacity", href: "/maintenance/shop" },
+  // The weekly shop report (2026-11-09): printable, read-only.
+  { key: "weekly", label: "Weekly report", href: "/maintenance/weekly" },
   // Estimate against actual per job, kind of job and mechanic (B91): people with cost access (owner, office).
   { key: "estimates", label: "Time estimates", href: "/maintenance/estimates", permission: "maintenance.costs" },
 ] as const;

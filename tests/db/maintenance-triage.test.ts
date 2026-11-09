@@ -82,4 +82,20 @@ describe("maintenance triage", () => {
       expect((await pgError(s.query("select public.maintenance_decide_triage($1, 'accepted')", [first]))).code).toBe("P0002");
     });
   });
+  it("accepting keeps the higher urgency and never clears the safety flag (20261120012100)", async () => {
+    await withSession(async (s) => {
+      const w = await setup(s);
+      // The work order is already Immediate and safety-critical; the suggestion says High and no safety review.
+      await s.query("select public.maintenance_update_work_order($1, null, $2::jsonb)", [w.wo, JSON.stringify({ urgency: "immediate", safety_critical: true })]);
+      const id = await save(s, w.wo, suggestion({ urgency: "high", safetyReview: false, category: "tires" }));
+      await s.query("select public.maintenance_decide_triage($1, 'accepted')", [id]);
+      expect(await woRow(s, w.wo)).toMatchObject({ category: "tires", urgency: "immediate", safety_critical: true });
+      expect((await s.query("select decision from public.work_order_triage where id = $1", [id])).rows[0].decision)
+        .toMatchObject({ urgency: "immediate", safety_critical: true });
+      // A more urgent suggestion still raises it.
+      await s.query("select public.maintenance_update_work_order($1, null, $2::jsonb)", [w.wo, JSON.stringify({ urgency: "low" })]);
+      await s.query("select public.maintenance_decide_triage($1, 'accepted')", [await save(s, w.wo, suggestion({ urgency: "high" }))]);
+      expect((await woRow(s, w.wo)).urgency).toBe("high");
+    });
+  });
 });
