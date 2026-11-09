@@ -3,7 +3,7 @@
 // billing access); going ahead records a reason; other companies see nothing.
 import { afterAll, describe, expect, it } from "vitest";
 import { handedOff } from "./fixtures";
-import { pgError, pool, withSession } from "./helpers";
+import { pgError, pool, withSession, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -47,6 +47,9 @@ describe("credit holds", () => {
       await s.as(dispatcher);
       expect((await pgError(s.query("select public.record_credit_override($1, 'assignment', null, '')", [customer]))).message).toMatch(/reason/);
       await s.query("select public.record_credit_override($1, 'assignment', null, 'Owner approved by phone')", [customer]);
+      // An order override needs orders.edit (dispatchers have it by default since 2026-11-09: taken away here).
+      await withoutPermission(s, "dispatcher", "orders.edit");
+      await s.as(dispatcher);
       expect((await pgError(s.query("select public.record_credit_override($1, 'order', null, 'x')", [customer]))).code).toBe("42501");
       await s.asAdmin();
       const o = (await s.query<{ reason: string; hold_reasons: string[]; context: string }>("select reason, hold_reasons, context from public.credit_hold_overrides where customer_id = $1", [customer])).rows;

@@ -3,7 +3,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { calculateQuote } from "@/lib/quotes/calc";
 import { canTransitionOrder, ORDER_STATUSES, orderTransitionPermission } from "@/lib/orders/status";
-import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session } from "./helpers";
+import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -410,11 +410,14 @@ describe("scheduling and status changes", () => {
 });
 
 describe("permissions", () => {
-  it("dispatchers schedule and move work along but cannot create, edit, confirm or cancel", async () => {
+  it("dispatchers create orders by default (2026-11-09); without orders.edit they schedule and move work along but cannot create, edit, confirm or cancel", async () => {
     await withSession(async (s) => {
       const ids = await sampleIds(s);
       const r = await directOrder(s, ids);
       const dispatcher = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      expect((await saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) })).order_id).toBeTruthy();
+      await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(dispatcher);
       expect((await pgError(saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) }))).code).toBe("42501");
       expect((await pgError(setStatus(s, r.order_id, "confirmed"))).code).toBe("42501");

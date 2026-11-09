@@ -4,7 +4,7 @@
 import { afterAll, describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
 import { businessToday, scheduledOrder } from "./fixtures";
-import { pgError, pool, withSession, type Session } from "./helpers";
+import { pgError, pool, withSession, type Session, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -48,7 +48,10 @@ describe("order documents", () => {
       // Opening: anyone who sees orders; the path only, through the function.
       await s.as(dispatcher);
       expect((await s.query<{ r: { path: string } }>("select public.order_document_path($1) r", [docs[0].id])).rows[0].r.path).toBe(path);
-      expect((await pgError(begin(s, order.id, null, "other"))).code).toBe("42501"); // dispatchers do not edit orders
+      // Adding needs orders.edit (dispatchers have it by default since 2026-11-09: taken away here to prove the check).
+      await withoutPermission(s, "dispatcher", "orders.edit");
+      await s.as(dispatcher);
+      expect((await pgError(begin(s, order.id, null, "other"))).code).toBe("42501");
 
       // Removing keeps the record and a reason; the file can no longer be opened.
       await s.as(office);

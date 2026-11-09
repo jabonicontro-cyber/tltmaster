@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session } from "./helpers";
+import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -191,6 +191,7 @@ describe("converting accepted quotes into orders", () => {
       const q = await acceptedQuote(s, ids);
 
       const dispatcher = await s.createUser("dispatcher");
+      await withoutPermission(s, "dispatcher", "orders.edit"); // default since 2026-11-09; taken away to prove the check
       await s.as(dispatcher);
       expect((await pgError(convert(s, q.quote_id))).code).toBe("42501");
 

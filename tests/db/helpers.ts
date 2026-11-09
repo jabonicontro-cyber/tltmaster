@@ -156,3 +156,13 @@ export async function withDeliveryProof(s: Session, companyId: string, kind: "in
   await s.query("select set_config('request.headers', $1, true)", [JSON.stringify({ "x-taviron-delivery-proof": rows[0].id })]);
   return rows[0].id;
 }
+
+/**
+ * Take a permission from a role in Top Line for this test's transaction only (rolled back with it). Used where a test
+ * proves that a role WITHOUT the permission is refused, after the defaults changed (dispatchers got orders.edit on
+ * 2026-11-09). Leaves the session as admin: switch back with s.as(...) afterwards.
+ */
+export async function withoutPermission(s: Session, role: string, permission: string, companyId = TOP_LINE) {
+  await s.asAdmin();
+  await s.query("delete from public.role_permissions where company_id = $1 and role = $2 and permission = $3", [companyId, role, permission]);
+}

@@ -9,7 +9,7 @@ import { addDays } from "@/lib/dates";
 import { EXCEPTION_KINDS, knowsReason } from "@/lib/command-center/rules";
 import { URGENCY_STATES } from "@/lib/orders/urgency";
 import { assign, businessToday, fleet, insert, planLoad, scheduledOrder } from "./fixtures";
-import { pgError, pool, TOP_LINE, withSession, type Session } from "./helpers";
+import { pgError, pool, TOP_LINE, withSession, type Session, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -53,7 +53,8 @@ describe("urgent orders", () => {
       await s.asAdmin();
       const assignmentsBefore = (await s.query<{ n: number }>("select count(*)::int as n from public.dispatch_assignments where order_id = $1", [w.order.id])).rows[0].n;
 
-      // Only orders.edit can flag.
+      // Only orders.edit can flag (dispatchers have it by default since 2026-11-09: taken away here to prove the check).
+      await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(w.dispatcher);
       expect((await pgError(flag(s, w.order.id, "Customer moved the pour up"))).code).toBe("42501");
       await s.as(w.office);
