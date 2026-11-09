@@ -1,7 +1,7 @@
 "use client";
 
 import { PhoneInput } from "@/components/ui/phone-input";
-import { useRef, useState, type FormEvent } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 type Kind = "demo" | "contact";
@@ -20,6 +20,11 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [fields, setFields] = useState<Record<string, string>>({});
 
+  // Measured from when the form appeared (2026-11-09 hotfix): starting at the first focus made an autofilled form sent
+  // within 2.5 s look automated, and it was dropped while the page said thank you.
+  useEffect(() => {
+    startedAt.current ??= Date.now();
+  }, []);
   const begin = () => {
     startedAt.current ??= Date.now();
   };
