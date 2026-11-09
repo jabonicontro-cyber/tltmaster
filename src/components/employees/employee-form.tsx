@@ -45,7 +45,7 @@ export function EmployeeForm({ initial, action, cancelHref, submitLabel, signIn 
   const { pending, onSubmit, fieldError, formError } = useFormAction(action, {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved.");
-      router.push(`/employees/${r.data.id}`);
+      router.push(`/employees/${r.data.id}${"role" in r.data && r.data.role ? `?role=${r.data.role}` : ""}`);
     },
   });
   const f = (name: string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });

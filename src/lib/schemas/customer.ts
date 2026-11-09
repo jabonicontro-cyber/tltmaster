@@ -14,7 +14,8 @@ export const customerSchema = z.object({
   po_required: checkbox,
   po_instructions: optionalText(500),
   payment_terms: optionalText(60),
-  price_list_id: z.preprocess((v) => (v === "" ? null : v), z.uuid().nullable()),
+  // Missing (the short form inside a quote has no price list field) means none, as an empty choice does.
+  price_list_id: z.preprocess((v) => (v === "" || v === undefined ? null : v), z.uuid().nullable()),
   tax_exempt: checkbox,
   notes: optionalText(4000),
   // Freight brokers (MK2, 20261120009600): the broker is invoiced; its MC number is digits only ("MC-123456" → "123456").

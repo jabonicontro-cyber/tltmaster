@@ -10,10 +10,10 @@ import { ROLE_LABELS, ROLES } from "@/lib/permissions";
 import { inviteEmployee } from "@/app/(app)/employees/actions";
 
 /** Give an existing person a Taviron sign-in, sent to their work email. */
-export function SendSignIn({ employeeId, email, isOwner }: { employeeId: string; email: string; isOwner: boolean }) {
+export function SendSignIn({ employeeId, email, isOwner, initialRole = "" }: { employeeId: string; email: string; isOwner: boolean; initialRole?: string }) {
   const router = useRouter();
   // No default role (owner walkthrough 2026-11-09): a silent "Driver" could give the wrong access in one click.
-  const [role, setRole] = useState("");
+  const [role, setRole] = useState(initialRole);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   return (

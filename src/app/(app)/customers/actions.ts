@@ -74,8 +74,12 @@ export async function quickCreateCustomer(formData: FormData): Promise<ActionRes
     if (!parsed.success) return validationFailure(parsed.error);
     if (!contact.success) return validationFailure(contact.error);
     const supabase = await createClient();
-    let { data, error } = await supabase.from("customers").insert(parsed.data).select("id, name, customer_number").single();
-    if (error?.code === "PGRST204" && !parsed.data.is_broker) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(parsed.data)).select("id, name, customer_number").single());
+    // The quote's short form offers Prospect too (first-day owner walkthrough 2026-11-09): kept, as on the full form.
+    const prospect = formData.get("relationship") === "prospect";
+    const row: Record<string, unknown> = prospect ? { ...parsed.data, relationship: "prospect" } : parsed.data;
+    let { data, error } = await supabase.from("customers").insert(row).select("id, name, customer_number").single();
+    if (error?.code === "PGRST204" && !parsed.data.is_broker) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(row)).select("id, name, customer_number").single());
+    if (error?.code === "PGRST204" && prospect) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(parsed.data)).select("id, name, customer_number").single());
     if (error || !data) return fail(error ? dbErrorMessage(error) : "The customer could not be saved.");
     let contactFailed = false;
     if (contact.data.contact_name) {

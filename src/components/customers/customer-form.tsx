@@ -35,7 +35,7 @@ export const EMPTY_CUSTOMER: CustomerFormValues = {
   billing_line1: "",
   billing_line2: "",
   billing_city: "",
-  billing_state: "IN",
+  billing_state: "",
   billing_postal_code: "",
   po_required: false,
   po_instructions: "",

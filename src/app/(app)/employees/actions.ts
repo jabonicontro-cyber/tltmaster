@@ -44,7 +44,8 @@ export async function saveEmployee(id: string | null, formData: FormData): Promi
     if (!wantsSignIn || !role) return ok({ id: savedId }, id ? "Employee saved." : "Person added.");
 
     const invite = await inviteMember(access, { email: parsed.data.work_email, full_name: parsed.data.full_name, role, employeeId: savedId });
-    if (!invite.ok) return ok({ id: savedId }, `Person added. No sign-in was sent: ${invite.error}`);
+    // The chosen role travels to the person's page, where the sign-in can be sent later without choosing it again.
+    if (!invite.ok) return ok({ id: savedId, role }, `Person added. No sign-in was sent: ${invite.error}`);
     revalidatePath("/employees", "layout");
     return ok({ id: savedId }, `Person added. ${invite.message ?? ""}`.trim());
   });

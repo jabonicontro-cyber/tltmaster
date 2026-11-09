@@ -6,6 +6,7 @@ import { WorkScheduleForm, type WorkSchedule } from "@/components/employees/work
 import { createClient } from "@/server/supabase/server";
 import { EmployeeLoginLink } from "@/components/employees/login-link";
 import { SendSignIn } from "@/components/employees/send-sign-in";
+import { ROLES } from "@/lib/permissions";
 import { AccessEditButton } from "@/components/settings/settings-client";
 import { PrimaryTruckPicker } from "@/components/employees/primary-truck";
 import { Avatar } from "@/components/ui/avatar";
@@ -37,7 +38,8 @@ function Item({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export default async function EmployeePage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EmployeePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ role?: string }> }) {
+  const { role: chosenRole } = await searchParams;
   const access = await requirePagePermission("employees.view");
   const { id } = await params;
   if (!uuid.safeParse(id).success) notFound();
@@ -158,7 +160,7 @@ export default async function EmployeePage({ params }: { params: Promise<{ id: s
                   <ButtonLink href={`/employees/new-sign-in?employee=${e.id}`} size="sm">Create Username Sign-in</ButtonLink>
                 ) : null}
                 {manageUsers && can(access, "employees.edit") && (e.work_email
-                  ? <SendSignIn employeeId={e.id} email={e.work_email} isOwner={access.role === "owner"} />
+                  ? <SendSignIn employeeId={e.id} email={e.work_email} isOwner={access.role === "owner"} initialRole={chosenRole && (ROLES as readonly string[]).includes(chosenRole) && (chosenRole !== "owner" || access.role === "owner") ? chosenRole : ""} />
                   : <p className="text-muted">Add a work email (Edit) to send a sign-in.</p>)}
                 {canLink && candidates.length > 0 && <div className="border-t border-line pt-3"><EmployeeLoginLink employeeId={e.id} linked={false} candidates={candidates} /></div>}
               </>

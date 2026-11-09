@@ -25,7 +25,7 @@ export const stateCode = z
   .string()
   .trim()
   .toUpperCase()
-  .default("IN")
+  .default("")
   .refine((v) => v === "" || /^[A-Z]{2}$/.test(v), "Use the 2-letter state code.");
 
 export const postalCode = z
