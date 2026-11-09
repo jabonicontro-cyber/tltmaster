@@ -42,12 +42,12 @@ mkdir -p "$STATE" "$BIN"
 ensure_binaries() {
   if [[ ! -x "$BIN/postgrest" ]]; then
     echo "Downloading PostgREST $POSTGREST_VERSION…"
-    curl -sSfL "https://github.com/PostgREST/postgrest/releases/download/$POSTGREST_VERSION/postgrest-$POSTGREST_VERSION-linux-static-x86-64.tar.xz" \
+    curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 "https://github.com/PostgREST/postgrest/releases/download/$POSTGREST_VERSION/postgrest-$POSTGREST_VERSION-linux-static-x86-64.tar.xz" \
       | tar -xJ -C "$BIN"
   fi
   if [[ ! -x "$BIN/auth" ]]; then
     echo "Downloading Supabase Auth $AUTH_VERSION…"
-    curl -sSfL "https://github.com/supabase/auth/releases/download/$AUTH_VERSION/auth-$AUTH_VERSION-x86.tar.gz" \
+    curl -sSfL --retry 5 --retry-all-errors --retry-delay 5 "https://github.com/supabase/auth/releases/download/$AUTH_VERSION/auth-$AUTH_VERSION-x86.tar.gz" \
       | tar -xz -C "$BIN"
   fi
 }
