@@ -44,7 +44,7 @@ Resend's domain `mytaviron.com` is already verified.
    `/auth/confirm` to Redirect URLs.
 3. Send yourself a password reset from the sign-in page and confirm it arrives.
 
-### 4. Monitoring (approved 2026-11-05: free tiers) · Built (off), waiting on owner
+### 4. Monitoring (approved 2026-11-05: free tiers) · Done 2026-11-09 (owner: UptimeRobot monitor shows Up; Sentry project created, `SENTRY_DSN` set for Production, redeployed)
 
 - **UptimeRobot** (free): New monitor → HTTP(s) → URL `https://<your address>/api/health` → every 5 minutes → alert
   contact = your email and phone app. The check answers 200 when the app, sign-in and database answer, 503 otherwise, and
@@ -67,7 +67,12 @@ who sees it, retention, sub-processors such as Supabase, Vercel, Resend and, onc
 QuickBooks and Sentry), with where each lives in the code. The lawyer's final terms and privacy replace the drafts
 before outside customers in January.
 
-### 7. Sign-in protection in the Supabase dashboard (security review 2026-11-06, M3) · Waiting on owner
+### 7. Sign-in protection in the Supabase dashboard (security review 2026-11-06, M3) · Partly done 2026-11-09
+
+Done by the owner 2026-11-09 (taviron-staging, free plan): rate limits confirmed (sign-ups and sign-ins 30 / 5 min,
+token verifications 30 / 5 min); minimum password length 10. **Waits for the Supabase Pro upgrade (step 1):** leaked
+password protection (saving it on Free gave an error) and, if also Pro-only, the session time-box and inactivity
+timeout below. Do these right after step 1.
 
 The app now limits wrong passwords per sign-in (8 in 15 minutes) for sign-ins made through Taviron, but someone with a
 stolen password could try authenticator codes against Supabase directly. Only the dashboard settings below stop that.
