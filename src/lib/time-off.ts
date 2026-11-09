@@ -63,3 +63,47 @@ export const timeOffSchema = z
 export function calendarDays(start: string, end: string): number {
   return Math.round((Date.parse(end) - Date.parse(start)) / 86400_000) + 1;
 }
+
+// Request form preview (driver view): how many hours a request uses before it is sent. The database computes the real
+// figure (time_off_save: the work schedule's hours for full days, the times for part of a day) and checks the balance.
+
+/** An employee's weekly work schedule: hours per weekday (employee_work_schedules). */
+export type WeekHours = { mon_hours: number | string; tue_hours: number | string; wed_hours: number | string; thu_hours: number | string; fri_hours: number | string; sat_hours: number | string; sun_hours: number | string };
+
+const WEEKDAYS = [["sun_hours", "Sun"], ["mon_hours", "Mon"], ["tue_hours", "Tue"], ["wed_hours", "Wed"], ["thu_hours", "Thu"], ["fri_hours", "Fri"], ["sat_hours", "Sat"]] as const;
+
+/** The scheduled hours of every day from start to end (inclusive), as the database adds them up; null for bad dates. */
+export function scheduledHours(w: WeekHours, start: string, end: string): number | null {
+  const a = new Date(`${start}T00:00:00Z`);
+  const b = new Date(`${end || start}T00:00:00Z`);
+  if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime()) || b < a || (b.getTime() - a.getTime()) / 86400_000 > 366) return null;
+  let total = 0;
+  for (const d = new Date(a); d <= b; d.setUTCDate(d.getUTCDate() + 1)) total += Number(w[WEEKDAYS[d.getUTCDay()][0]]) || 0;
+  return total;
+}
+
+/** "8 h on Mon, Tue, Wed, Thu, Fri" (or "Mon 8 h, Sat 4 h" when days differ); null when no day has hours. */
+export function scheduleSummary(w: WeekHours): string | null {
+  const days = [...WEEKDAYS.slice(1), WEEKDAYS[0]].map(([k, label]) => ({ label, h: Number(w[k]) || 0 })).filter((d) => d.h > 0);
+  if (!days.length) return null;
+  if (days.every((d) => d.h === days[0].h)) return `${hoursShort(days[0].h)} on ${days.map((d) => d.label).join(", ")}`;
+  return days.map((d) => `${d.label} ${hoursShort(d.h)}`).join(", ");
+}
+
+/** Hours for people: whole or one decimal ("52.3 h", "8 h"), never "52.32 h". A balance rounds down, never up. */
+export const hoursShort = (h: number, down = false) => `${down ? Math.floor(h * 10 + 1e-9) / 10 : Number(h.toFixed(1))} h`;
+
+/** Hours between two "HH:MM" times on one day; null unless the end is after the start. */
+export function hoursBetween(start: string, end: string): number | null {
+  const m = (t: string) => (/^([01]\d|2[0-3]):[0-5]\d$/.test(t) ? Number(t.slice(0, 2)) * 60 + Number(t.slice(3, 5)) : NaN);
+  const d = m(end) - m(start);
+  return Number.isFinite(d) && d > 0 ? Math.round((d / 60) * 100) / 100 : null;
+}
+
+/** "Uses 8 h of your 52.3 h Paid time off." (or that it is more than is available); null when the hours are not known yet. */
+export function usesText(hours: number | null, available: number | null, bank: string): string | null {
+  if (hours === null || !(hours > 0)) return null;
+  if (available === null) return `Uses ${hoursShort(hours)} of ${bank}.`;
+  if (hours > available) return `Uses ${hoursShort(hours)}, but only ${hoursShort(Math.max(available, 0), true)} of your ${bank} are available.`;
+  return `Uses ${hoursShort(hours)} of your ${hoursShort(available, true)} ${bank}.`;
+}

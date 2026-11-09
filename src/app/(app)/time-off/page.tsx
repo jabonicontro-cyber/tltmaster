@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CalendarOff } from "lucide-react";
 import { TimeOffForm } from "@/components/time-off/time-off-form";
+import { CancelRequestButton } from "@/components/time-off/time-off-actions";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
@@ -10,7 +11,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
-import { calendarDays, STATUS_TONE, TIME_OFF_CATEGORIES, TIME_OFF_STATUSES } from "@/lib/time-off";
+import { calendarDays, STATUS_TONE, TIME_OFF_CATEGORIES, TIME_OFF_STATUSES, type WeekHours } from "@/lib/time-off";
 import { buttonClasses } from "@/components/ui/button";
 import { formatHours } from "@/lib/pto";
 import { requireAccess } from "@/server/auth";
@@ -18,6 +19,7 @@ import { balancesFor, listBanks } from "@/server/data/pto";
 import { currentEmployees, employeeNames, listTimeOff, myEmployee, type TimeOffRow } from "@/server/data/time-off";
 import { facesForEmployees, type Face } from "@/server/data/faces";
 import { Avatar } from "@/components/ui/avatar";
+import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Time off" };
 
@@ -29,11 +31,11 @@ function when(r: TimeOffRow) {
   return r.start_date === r.end_date ? `${formatDate(r.start_date)} (full day)` : `${formatDate(r.start_date)} – ${formatDate(r.end_date)} (${days} calendar days)`;
 }
 
-function Requests({ rows, names, showEmployee, faces = {} }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean; faces?: Record<string, Face> }) {
+function Requests({ rows, names, showEmployee, faces = {}, cancelable = false }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean; faces?: Record<string, Face>; /** Own requests: a Cancel button on each pending one. */ cancelable?: boolean }) {
   return (
     <TableWrap>
       <Table>
-        <thead><tr>{showEmployee && <Th>Employee</Th>}<Th>When</Th><Th className="hidden sm:table-cell">Category</Th><Th>Status</Th></tr></thead>
+        <thead><tr>{showEmployee && <Th>Employee</Th>}<Th>When</Th><Th className="hidden sm:table-cell">Category</Th><Th>Status</Th>{cancelable && <Th><span className="sr-only">Actions</span></Th>}</tr></thead>
         <tbody>
           {rows.map((r) => (
             <Tr key={r.id}>
@@ -41,6 +43,7 @@ function Requests({ rows, names, showEmployee, faces = {} }: { rows: TimeOffRow[
               <Td><Link href={`/time-off/${r.id}`} className="font-medium text-ink hover:underline">{when(r)}</Link></Td>
               <Td className="hidden sm:table-cell">{TIME_OFF_CATEGORIES[r.category]}</Td>
               <Td><Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge></Td>
+              {cancelable && <Td className="text-right">{r.status === "pending" ? <CancelRequestButton id={r.id} /> : null}</Td>}
             </Tr>
           ))}
         </tbody>
@@ -74,6 +77,11 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
     listBanks(),
     me ? balancesFor() : Promise.resolve([]),
   ]);
+  // The person's own work schedule: their full-day requests use its hours (the form says so and shows the total).
+  // Readable by the employee themself; null without one or before work schedules are installed.
+  const mySchedule = me
+    ? await (await createClient()).from("employee_work_schedules").select("mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours").eq("employee_id", me.id).maybeSingle().then((r) => (r.error ? null : (r.data as WeekHours | null)), () => null)
+    : null;
   // Which bank each kind of time off draws from, for the request form (null = balances not installed yet).
   const bankFor: Record<string, { name: string; available: number | null }> = {};
   for (const b of (banks ?? []).filter((x) => x.active)) {
@@ -119,14 +127,14 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
         <Card>
           <CardHeader title={canApprove ? "Request or enter time off" : "Request time off"} />
           <CardBody>
-            {me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} bankFor={bankFor} /> : (
+            {me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} bankFor={bankFor} schedule={mySchedule} /> : (
               <p className="text-sm text-muted">Your login is not linked to an employee record, so you cannot request time off here yet. Ask the office to link it in Employees.</p>
             )}
           </CardBody>
         </Card>
         <Card>
           <CardHeader title="My requests" />
-          {!me || mine.length === 0 ? <EmptyState icon={<CalendarOff className="size-6" />} title="No requests yet" /> : <Requests rows={mine} names={names} showEmployee={false} />}
+          {!me || mine.length === 0 ? <EmptyState icon={<CalendarOff className="size-6" />} title="No requests yet" /> : <Requests rows={mine} names={names} showEmployee={false} cancelable />}
         </Card>
       </div>
 

@@ -10,6 +10,7 @@ import { ALL_INSPECTION_ITEMS, itemsFor, KIND_LABEL, type InspectionKind } from 
 import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { submitInspection } from "@/app/(app)/fleet/inspections/actions";
 import { announceOutbox, enqueue, isNetworkError } from "@/lib/offline/store";
+import { pickInspectionTruck } from "@/lib/driver/my-day";
 
 type Truck = { id: string; label: string; pending: InspectionKind[]; /** Dump trucks also check the dump body (UX9). */ dump?: boolean };
 type Mark = { ok: boolean | null; note: string };
@@ -18,7 +19,14 @@ type Mark = { ok: boolean | null; note: string };
  * A pre-trip or post-trip inspection (B132): every item marked OK or Defect, each defect described. Defects open a
  * work order for the shop; a defect in a safety item (marked) takes the truck out of service. Never blocks dispatch.
  */
-export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queue?: { userId: string; day: string } }) {
+export function InspectionForm({ trucks: given, queue, preferredTruckId, neededTruckIds }: {
+  trucks: Truck[];
+  queue?: { userId: string; day: string };
+  /** My Day: the next load's truck, chosen first while its pre-trip is due. */
+  preferredTruckId?: string | null;
+  /** My Day: the trucks on today's loads, chosen before any other truck the driver may inspect. */
+  neededTruckIds?: string[];
+}) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -26,7 +34,10 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
   const [kept, setKept] = useState<string[]>([]);
   const trucks = given.map((t) => ({ ...t, pending: t.pending.filter((k) => !kept.includes(`${t.id}:${k}`)) }));
   const [savedOffline, setSavedOffline] = useState(false);
-  const [truckId, setTruckId] = useState(given[0]?.id ?? "");
+  // null = chosen for the driver: the next load's truck while its pre-trip is due, then the next truck still due. After a
+  // save it goes back to null, so the form moves on to the truck still to inspect.
+  const [picked, setTruckId] = useState<string | null>(null);
+  const truckId = picked && trucks.some((t) => t.id === picked) ? picked : pickInspectionTruck(trucks, preferredTruckId, neededTruckIds);
   const truck = trucks.find((t) => t.id === truckId);
   const [chosenKind, setKind] = useState<InspectionKind>(truck?.pending[0] ?? "pre_trip");
   // After a save (or a truck change) the chosen inspection may be done: move to the next one due for this truck.
@@ -55,6 +66,8 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
       if (!enqueue({ id: crypto.randomUUID(), userId: queue.userId, kind: "inspection", label, payload: { ...input, inspectedOn: queue.day } })) return false;
       announceOutbox();
       setKept((k) => [...k, `${truckId}:${kind}`]);
+      setTruckId(null);
+      setKind("pre_trip");
       if (photos.length) toast.warning("Photos need signal and were not kept. Show the shop the defect, or add photos when you are back in signal.");
       setPhotos([]);
       setMarks(blank());
@@ -79,6 +92,8 @@ export function InspectionForm({ trucks: given, queue }: { trucks: Truck[]; queu
     setMarks(blank());
     setOdometer("");
     setRemarks("");
+    setTruckId(null);
+    setKind("pre_trip");
     router.refresh();
   });
 

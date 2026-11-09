@@ -169,7 +169,7 @@ function RespondButton({ offer }: { offer: MyShiftOffer }) {
       <form onSubmit={withdraw.onSubmit} className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="offer" value={offer.id} />
         <Badge tone="amber">{offer.myStatus === "requested" ? "Asked: waiting" : "Accepted: waiting"}</Badge>
-        <Button type="submit" size="sm" variant="ghost" loading={withdraw.pending}>Withdraw</Button>
+        <Button type="submit" size="sm" variant="ghost" loading={withdraw.pending} className="min-h-11">Withdraw</Button>
         <FormError message={withdraw.formError} />
       </form>
     );
@@ -178,7 +178,7 @@ function RespondButton({ offer }: { offer: MyShiftOffer }) {
   return (
     <form onSubmit={respond.onSubmit} className="space-y-1">
       <input type="hidden" name="offer" value={offer.id} />
-      <Button type="submit" size="sm" loading={respond.pending}>{respondLabel(offer.mode)}</Button>
+      <Button type="submit" size="sm" loading={respond.pending} className="min-h-11">{respondLabel(offer.mode)}</Button>
       <FormError message={respond.formError} />
     </form>
   );

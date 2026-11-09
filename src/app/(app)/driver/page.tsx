@@ -2,7 +2,7 @@ import { OfflineSupport } from "@/components/companion/offline-support";
 import { InspectionForm } from "@/components/fleet/inspection-form";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { AlertTriangle, ClipboardCheck, FilePlus2, MapPin, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
+import { AlertTriangle, ArrowRight, ClipboardCheck, FilePlus2, MapPin, MessagesSquare, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
 import { directionsUrl, telUrl, type LoadPickup } from "@/lib/driver/navigate";
 import { appointmentText, STOP_KIND_LABELS, type DriverStop } from "@/lib/orders/stops";
 import { vocabulary, type Vocabulary } from "@/lib/industry";
@@ -22,6 +22,7 @@ import { isPlatformAdmin } from "@/server/platform";
 import { addDays, formatDate, formatDateTime } from "@/lib/dates";
 import { DRIVER_TICKET_STATUS, REPORT_KIND_LABELS, REPORT_STATUS_LABELS, qualificationReminders, siteAddress } from "@/lib/driver/rules";
 import { trimNumber } from "@/lib/fleet/labels";
+import { nextLoad, nextLoadLine, preTripBanner, preTripProgress, reportEquipmentLabel, restrictedTrucks, todaysTrucks } from "@/lib/driver/my-day";
 import { formatTime } from "@/lib/orders/schedule";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
@@ -88,7 +89,33 @@ function RouteStops({ route }: { route: DriverStop[] }) {
 
 type TruckDayState = { load_id: string; released_at: string | null; release_source: string | null; started: boolean };
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, truckDay, words = vocabulary("aggregate") }: { a: DriverAssignment; /** Truck-day job (UX11): the truck works until released; one ticket per trip. */ truckDay?: TruckDayState; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+/** How the driver reaches dispatch: the company's phone when one is on record (never invented), else Messages. */
+type DispatchContact = { tel: string | null; canMessage: boolean };
+
+/** A truck out of service (a safety defect, or open safety-critical shop work): do not drive it. */
+function RestrictedTruck({ truck, contact }: { truck: string; contact: DispatchContact }) {
+  return (
+    <div role="alert" className="space-y-2 rounded-xl border-2 border-critical bg-critical/5 px-3 py-3 text-critical" data-testid="truck-restricted">
+      <p className="flex gap-2 font-bold"><AlertTriangle className="mt-0.5 size-5 shrink-0" aria-hidden /><span>Truck {truck} is out of service. Do not drive it. {contact.tel ? "Call dispatch." : "Tell dispatch."}</span></p>
+      {contact.tel ? (
+        <a href={contact.tel} className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-critical px-5 text-base font-semibold text-white hover:bg-critical/90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-critical sm:w-auto"><Phone className="size-5" aria-hidden /> Call dispatch</a>
+      ) : contact.canMessage ? (
+        <Link href="/communications" className={buttonClasses("secondary", "md", "min-h-12 w-full justify-center text-base sm:w-auto")}><MessagesSquare className="size-5" aria-hidden /> Tell dispatch in Messages</Link>
+      ) : null}
+    </div>
+  );
+}
+
+/** "Something wrong? Tell the office": the load's problem report, with the ticket number filled in. */
+function TellOffice({ assignmentId, ticket }: { assignmentId: string; ticket: string }) {
+  return (
+    <Link href={`/driver/assignments/${assignmentId}/report?ticket=${encodeURIComponent(ticket)}`} className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-fg underline">
+      Something wrong? Tell the office<span className="sr-only"> about ticket {ticket}</span>
+    </Link>
+  );
+}
+
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, truckDay, words = vocabulary("aggregate"), restricted = false, contact = { tel: null, canMessage: false } }: { a: DriverAssignment; /** The load's truck is out of service (safety defect or open safety-critical shop work). */ restricted?: boolean; contact?: DispatchContact; /** Truck-day job (UX11): the truck works until released; one ticket per trip. */ truckDay?: TruckDayState; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -98,19 +125,23 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
   const toPickup = pickup && !hasRoute ? directionsUrl(pickup) : null;
   const toSite = hasRoute ? null : directionsUrl({ address: [a.site.line1, a.site.city, a.site.state, a.site.postal_code].filter(Boolean).join(", ") });
   const call = telUrl(a.order.contact_phone);
+  // Left the job site (or the last stop) and no ticket yet: the ticket is the next step, so it is called out.
+  const lastStop = hasRoute && route!.every((r) => r.id) ? `stop:${route![route!.length - 1].id}` : "site";
+  const ticketNext = !hasTicket && a.can_submit_ticket && !truckDay && !!stops?.some((s) => s.stop === lastStop && s.departedAt);
   return (
-    <li className={cn("overflow-hidden rounded-panel bg-card shadow-card ring-1", past ? "ring-brand" : "ring-line/60")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
+    <li className={cn("overflow-hidden rounded-panel bg-card shadow-card", restricted ? "ring-2 ring-critical" : past ? "ring-1 ring-brand" : "ring-1 ring-line/60")} aria-label={`Load ${a.load.number}, ${a.order.number}`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-3">
         <p className="text-2xl font-semibold tracking-[-0.03em] tabular">
           {formatTime(a.load.start_time)}<span className="text-base font-semibold text-muted"> – {formatTime(a.load.end_time)}</span>
         </p>
-        <p className="text-sm font-semibold text-muted">{a.load.date === today ? "Today" : formatDate(a.load.date)} · {a.order.number} · {truckDay ? "for the day" : `load ${a.load.number}`}</p>
+        <p className="text-sm text-muted">{a.load.date === today ? "Today" : formatDate(a.load.date)} · {a.order.number} · {truckDay ? "for the day" : `load ${a.load.number}`}</p>
       </div>
       <div className="space-y-2 px-4 py-3 text-[15px]">
+        {restricted && a.truck && <RestrictedTruck truck={a.truck} contact={contact} />}
         <p className="font-bold">{a.order.customer_name}{a.order.project_name ? <span className="font-normal text-muted"> · {a.order.project_name}</span> : null}</p>
         {hasRoute && <RouteStops route={route!} />}
         {pickup && !hasRoute && (
-          <p className="flex gap-2"><Package className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Load at <strong>{pickup.name}</strong>{pickup.address ? <span className="text-muted"> · {pickup.address}</span> : null}</span></p>
+          <p className="flex gap-2"><Package className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Pick up at <strong>{pickup.name}</strong>{pickup.address ? <span className="text-muted"> · {pickup.address}</span> : null}</span></p>
         )}
         {!hasRoute && (a.site.label || site) && (
           <p className="flex gap-2"><MapPin className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>{a.site.label ? <strong>{a.site.label}: </strong> : null}{site}</span></p>
@@ -188,19 +219,21 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
         {hasTicket && (
           <ul className="space-y-1" aria-label="Tickets for this load">
             {a.tickets.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-2 text-sm">
+              <li key={t.id} className="flex flex-wrap items-center gap-x-2 text-sm">
                 <ClipboardCheck className="size-4 text-green-700" aria-hidden />
                 <span className="font-semibold tabular">{t.number}</span>
                 <span className="tabular">{trimNumber(t.quantity)} {t.unit_code}</span>
                 <TicketStatusBadge status={t.status} />
+                {t.status !== "voided" && t.status !== "superseded" && <TellOffice assignmentId={a.assignment_id} ticket={t.number} />}
               </li>
             ))}
           </ul>
         )}
       </div>
-      <div className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row">
+      <div className="flex flex-col gap-2 border-t border-line px-4 py-3 sm:flex-row sm:flex-wrap">
+        {ticketNext && <p className="flex w-full items-center gap-1.5 font-semibold text-brand-fg" data-testid="next-step"><ArrowRight className="size-4" aria-hidden /> Next step: enter the {words.single.toLowerCase()}.</p>}
         {a.can_submit_ticket ? (
-          <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className={buttonClasses(hasTicket ? "secondary" : "primary", "md", big)}>
+          <Link href={`/driver/assignments/${a.assignment_id}/ticket`} className={buttonClasses(hasTicket ? "secondary" : "primary", "md", cn(big, ticketNext && "ring-4 ring-brand/30"))}>
             <FilePlus2 className="size-5" aria-hidden /> {truckDay ? `Enter ${words.one} for a trip` : hasTicket ? `Add another ${words.one}` : `Enter ${words.single.toLowerCase()}`}
           </Link>
         ) : (
@@ -257,14 +290,26 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   // Stops (MK2): absent before 20261120007800 is applied, so the card keeps the pickup and job site.
   const routes = (routeRes.error ? {} : (routeRes.data ?? {})) as Record<string, DriverStop[]>;
   // Ticket or BOL wording (MK1): from the company's "What you haul"; aggregate wording when it can't be read.
-  const words = vocabulary((await getSettings().catch(() => null))?.industry);
+  const settings = await getSettings().catch(() => null);
+  const words = vocabulary(settings?.industry);
   const fuelTrucks = fuelTrucksRes.error ? [] : ((fuelTrucksRes.data ?? []) as Array<{ id: string; unit: string; sheet_done: boolean }>);
   const fuelHome = fuelTrucks.length ? await homeState() : "IA";
   // Inspections (B132): the trucks this driver may inspect today and what is still due; empty before that update.
-  const inspTrucks = (inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean; dump?: boolean }>))
+  const inspRows = inspRes.error ? [] : ((inspRes.data ?? []) as Array<{ id: string; unit: string; pre_trip: boolean; post_trip: boolean; dump?: boolean }>);
+  const inspTrucks = inspRows
     .map((t) => ({ id: t.id, label: `Truck ${t.unit}`, dump: Boolean(t.dump), pending: [...(t.pre_trip ? [] : ["pre_trip" as const]), ...(t.post_trip ? [] : ["post_trip" as const])] }))
     .filter((t) => t.pending.length > 0);
-  const preTripDue = inspTrucks.some((t) => t.pending.includes("pre_trip"));
+  // The trucks of today's loads, in load order: the form starts on the next load's truck, and the banner names which
+  // of them still need their pre-trip ("Truck 103 done · Truck 101 still to inspect").
+  const neededUnits = todaysTrucks(h.assignments, h.today);
+  const idOfUnit = (unit: string | null | undefined) => inspRows.find((t) => t.unit === unit)?.id ?? null;
+  const next = nextLoad(h.assignments, h.today);
+  const preTrip = preTripProgress(inspRows, neededUnits);
+  const preTripText = preTripBanner(preTrip);
+  const preTripDue = preTripText !== null;
+  // Trucks not to drive: a safety defect on today's own inspection, or open safety-critical shop work. Read from the
+  // driver's own inspections (row-level security) and the shop notices below; nothing is read from the fleet registry.
+  const inspToday = inspRows.length ? await sb.from("vehicle_inspections").select("truck_id, safety_defect, created_at").eq("inspected_on", h.today) : null;
   // Pay statements (B131): the driver's own, for approved periods only; empty before that update is installed.
   const pay = payRes.error ? [] : ((payRes.data ?? []) as Array<{ period_id: string; starts_on: string; ends_on: string; total_cents: number }>).slice(0, 4);
   const [shop, updates, offers, score, sitePhotos, shifts, shiftOffers, stopTimes, history] = await Promise.all([
@@ -288,6 +333,13 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
     const waits = (history ?? []).filter((t) => t.stop === "site" && t.placeLabel === siteLabel(a)).map((t) => waitMinutes(t)).filter((m): m is number => m !== null);
     return waits.length >= 2 ? median(waits) : null;
   };
+  const restricted = restrictedTrucks({ inspections: inspToday && !inspToday.error ? ((inspToday.data ?? []) as Array<{ truck_id: string; safety_defect: boolean; created_at: string }>) : [], trucks: inspRows, notices: shop });
+  // Dispatch's number is the company phone in Settings when one is recorded; never invented. Without it: Messages.
+  const contact = { tel: telUrl(settings?.phone), canMessage: can(access, "comms.message") };
+  const isRestricted = (a: DriverAssignment) => !!a.truck && restricted.has(a.truck);
+  // The load a ticket or report belongs to (by order and load number), for its "Tell the office" link and truck label.
+  const loadOf = (order: string, load: string | number) => h.assignments.find((a) => a.order.number === order && String(a.load.number) === String(load)) ?? null;
+  const nextLine = next ? nextLoadLine(next, { pickup: routes[next.load.id]?.find((r) => r.kind === "pickup")?.name ?? pickups[next.load.id]?.name, site: siteLabel(next) }) : null;
   const shiftToday = shiftLine(shifts?.find((d) => d.date === h.today));
   const shiftTomorrow = shiftLine(shifts?.find((d) => d.date === addDays(h.today, 1)));
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
@@ -311,9 +363,14 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         )}
         {/* On phones the Time off tab is one tap away; the link is for wider screens without the tab bar. */}
         <Link href="/time-off" className="mt-1 hidden text-sm font-semibold underline md:inline-block">Request time off</Link>
-        <Link href="/driver/safety" className="mt-1 ml-0 block text-sm font-semibold text-brand-fg underline md:ml-4 md:inline-block">Report a safety incident</Link>
-        <div className="mt-2"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
-        <p className="mt-1 text-xs text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
+        {nextLine && (
+          <p className={cn("mt-2 text-base font-semibold", next && isRestricted(next) ? "text-critical" : "text-ink")} data-testid="next-load">
+            {nextLine}{next && isRestricted(next) ? " (out of service)" : ""}
+          </p>
+        )}
+        <Link href="/driver/safety" className="ml-0 flex min-h-11 items-center text-sm font-semibold text-brand-fg underline md:ml-4 md:inline-flex">Report a safety incident</Link>
+        <div className="mt-1"><Freshness renderedAt={renderedAt} timeZone={h.timezone} /></div>
+        <p className="mt-1 text-sm text-muted">Use Taviron only when you are parked. Nothing here needs an answer while you drive.</p>
       </div>
       {/* What just happened (a ticket or report sent, an offer answered): at the top, where My Day opens after the
           redirect, so the driver sees it without scrolling. */}
@@ -325,33 +382,44 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
       {/* The day in two figures (owner's references 2026-10-27: numbers first). */}
       <div className="grid grid-cols-2 gap-3" aria-label="My day at a glance">
-        <StatTile icon={<Truck />} tone="brand" label="Loads today" value={today.length} muted={today.length === 0}>
-          <span className="text-muted"><span className="sr-only">{today.length} loads today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
-        </StatTile>
-        <StatTile icon={<ClipboardCheck />} tone={earlier.length ? "amber" : "neutral"} label="Tickets to enter" value={earlier.length} muted={earlier.length === 0}>
-          <span className="text-muted"><span className="sr-only">{earlier.length} {words.many} to enter. </span>{earlier.length ? "from earlier days" : "all caught up"}</span>
-        </StatTile>
+        {/* Each figure goes to its list (a real link, so a tap does what the card suggests). */}
+        <Link href="#today-loads" className="block rounded-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
+          <StatTile icon={<Truck />} tone="brand" label="Loads today" value={today.length} muted={today.length === 0} className="h-full">
+            <span className="text-muted"><span className="sr-only">{today.length} loads today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
+          </StatTile>
+        </Link>
+        {earlier.length > 0 ? (
+          <Link href="#tickets-needed" className="block rounded-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
+            <StatTile icon={<ClipboardCheck />} tone="amber" label="Tickets to enter" value={earlier.length} className="h-full">
+              <span className="text-muted"><span className="sr-only">{earlier.length} {words.many} to enter. </span>from earlier days</span>
+            </StatTile>
+          </Link>
+        ) : (
+          <StatTile icon={<ClipboardCheck />} tone="neutral" label="Tickets to enter" value={0} muted>
+            <span className="text-muted"><span className="sr-only">0 {words.many} to enter. </span>all caught up</span>
+          </StatTile>
+        )}
       </div>
       {/* Pre-trip first, but one tap to open (UX6): the long form no longer pushes today's loads off the screen. */}
       {inspTrucks.length > 0 && (
         // Keyed by what is due: once the pre-trip is saved the panel starts closed again for the post-trip.
         <details key={preTripDue ? "pre-trip" : "post-trip"} className={cn("rounded-2xl border bg-card", preTripDue ? "border-amber-300 ring-1 ring-amber-200" : "border-line")}>
           <summary className="flex min-h-14 cursor-pointer items-center justify-between gap-3 px-4 py-3 text-base font-semibold text-ink">
-            <span>{preTripDue ? "Pre-trip inspection: do this before you drive" : "Post-trip inspection"}</span>
+            <span data-testid="inspection-banner">{preTripText ?? "Post-trip inspection"}</span>
             <span className="text-sm font-medium text-brand-fg">Open</span>
           </summary>
           <div className="border-t border-line px-4 pt-3 pb-4">
             <p className="mb-3 text-sm text-muted">{preTripDue ? "Check every item. A defect goes straight to the shop." : "At the end of your shift: check every item and report anything wrong."}</p>
-            <InspectionForm trucks={inspTrucks} queue={{ userId: access.userId, day: h.today }} />
+            <InspectionForm trucks={inspTrucks} queue={{ userId: access.userId, day: h.today }} preferredTruckId={idOfUnit(next?.truck) ?? idOfUnit(neededUnits[0])} neededTruckIds={neededUnits.map(idOfUnit).filter((x): x is string => Boolean(x))} />
           </div>
         </details>
       )}
-      <section aria-label="Today">
+      <section aria-label="Today" id="today-loads" className="scroll-mt-20">
         <h2 className="mb-2 text-lg font-bold">Today</h2>
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
@@ -420,9 +488,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       )}
 
       {earlier.length > 0 && (
-        <section aria-label={`${capitalize(words.many)} still needed`}>
+        <section aria-label={`${capitalize(words.many)} still needed`} id="tickets-needed" className="scroll-mt-20">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">{capitalize(words.many)} still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
         </section>
       )}
 
@@ -439,9 +507,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
           />
           <div className="space-y-6 px-5 pb-5 sm:px-6">
             {fuelTrucks.some((t) => !t.sheet_done) && <TripSheetForm trucks={fuelTrucks.filter((t) => !t.sheet_done).map((t) => ({ id: t.id, label: `Truck ${t.unit}` }))} today={h.today} homeState={fuelHome} />}
-            <details className="rounded-xl border border-line px-4 py-3">
-              <summary className="cursor-pointer text-sm font-semibold text-ink">Record fuel</summary>
-              <div className="pt-3"><FuelForm compact trucks={fuelTrucks.map((t) => ({ id: t.id, label: `Truck ${t.unit}` }))} today={h.today} homeState={fuelHome} /></div>
+            <details className="rounded-xl border border-line px-4 py-1">
+              <summary className="cursor-pointer py-3 text-sm font-semibold text-ink">Record fuel</summary>
+              <div className="pt-1 pb-3"><FuelForm compact trucks={fuelTrucks.map((t) => ({ id: t.id, label: `Truck ${t.unit}` }))} today={h.today} homeState={fuelHome} /></div>
             </details>
           </div>
         </Card>
@@ -489,7 +557,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
                 <p className="text-sm text-muted">{t.order_number} · load {t.load_number} · {formatDateTime(t.delivered_at, h.timezone)}</p>
                 {/* The badge already says Accepted or Voided; the line explains only the in-between states. */}
                 {t.status !== "accepted" && t.status !== "voided" && <p className="text-sm">{DRIVER_TICKET_STATUS[t.status]}</p>}
-                {t.status === "needs_review" && t.review_reasons[0] && <p className="text-xs text-muted">{reviewReasonLabel(t.review_reasons[0])}</p>}
+                {t.status === "needs_review" && t.review_reasons[0] && <p className="text-sm text-muted">{reviewReasonLabel(t.review_reasons[0])}</p>}
+                {(() => { const a = loadOf(t.order_number, t.load_number); return a && t.status !== "voided" && t.status !== "superseded" ? <TellOffice assignmentId={a.assignment_id} ticket={t.number} /> : null; })()}
               </li>
             ))}
           </ul>
@@ -508,7 +577,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
                   <span className="font-semibold">{REPORT_KIND_LABELS[r.kind]}</span>
                   <Badge tone={r.status === "resolved" ? "green" : r.status === "acknowledged" ? "blue" : "amber"}>{REPORT_STATUS_LABELS[r.status]}</Badge>
                 </div>
-                <p className="text-sm text-muted">{r.order_number} · load {r.load_number}{r.equipment_unit ? ` · ${r.equipment_unit}` : ""} · {formatDateTime(r.created_at, h.timezone)}</p>
+                <p className="text-sm text-muted">{r.order_number} · load {r.load_number}{r.equipment_unit ? ` · ${reportEquipmentLabel(r.equipment_unit, loadOf(r.order_number, r.load_number))}` : ""} · {formatDateTime(r.created_at, h.timezone)}</p>
               </li>
             ))}
           </ul>

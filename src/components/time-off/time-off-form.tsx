@@ -7,15 +7,17 @@ import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
-import { TIME_OFF_CATEGORIES } from "@/lib/time-off";
+import { TIME_OFF_CATEGORIES, hoursBetween, hoursShort, scheduleSummary, scheduledHours, usesText, type WeekHours } from "@/lib/time-off";
 import { submitTimeOff } from "@/app/(app)/time-off/actions";
 
 /** Request time off for yourself, or (approvers) enter it for an employee. */
-export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
+export function TimeOffForm({ employees, ownEmployeeId, bankFor = {}, schedule = null }: {
   employees: Array<{ id: string; full_name: string }> | null;
   ownEmployeeId: string | null;
   /** Kinds of time off that draw from a PTO bank, with the caller's own available hours when known. */
   bankFor?: Record<string, { name: string; available: number | null }>;
+  /** The caller's own work schedule (full days use its hours); null when none is recorded or it cannot be read. */
+  schedule?: WeekHours | null;
 }) {
   const [category, setCategory] = useState("vacation");
   const bank = bankFor[category];
@@ -23,6 +25,13 @@ export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
   const [key, setKey] = useState(0);
   const [submissionKey, setSubmissionKey] = useState(() => crypto.randomUUID());
   const [kind, setKind] = useState<"full" | "partial">("full");
+  // What the request uses, shown before sending (own requests only: an approver may enter anyone's).
+  const [v, setV] = useState({ start: "", end: "", from: "", to: "", hours: "" });
+  const own = !employees;
+  const sched = own && schedule && scheduleSummary(schedule) ? schedule : null;
+  const typed = /^\d{1,4}(\.\d{1,2})?$/.test(v.hours.trim()) ? Number(v.hours) : null;
+  const uses = kind === "partial" ? hoursBetween(v.from, v.to) : sched ? (v.start ? scheduledHours(sched, v.start, v.end || v.start) : null) : typed;
+  const usesLine = bank && own ? usesText(uses, bank.available, bank.name) : null;
   const { pending, onSubmit, fieldError, formError } = useFormAction(submitTimeOff, {
     onSuccess: (r) => {
       toast.success(r.message ?? "Sent.");
@@ -30,6 +39,7 @@ export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
       setSubmissionKey(crypto.randomUUID());
       setKind("full");
       setCategory("vacation");
+      setV({ start: "", end: "", from: "", to: "", hours: "" });
       router.refresh();
     },
   });
@@ -58,28 +68,35 @@ export function TimeOffForm({ employees, ownEmployeeId, bankFor = {} }: {
         </div>
       </fieldset>
       <Field label={kind === "full" ? "First day" : "Date"} htmlFor="to-start_date" required error={fieldError("start_date")} className="sm:col-span-2">
-        <DateInput {...f("start_date")} />
+        <DateInput {...f("start_date")} onChange={(e) => setV((x) => ({ ...x, start: e.target.value }))} />
       </Field>
       {kind === "full" ? (
         <Field label="Last day" htmlFor="to-end_date" error={fieldError("end_date")} className="sm:col-span-2" hint="Leave empty for a single day.">
-          <DateInput {...f("end_date")} />
+          <DateInput {...f("end_date")} onChange={(e) => setV((x) => ({ ...x, end: e.target.value }))} />
         </Field>
       ) : (
         <>
           <Field label="From" htmlFor="to-start_time" required error={fieldError("start_time")} className="sm:col-span-2">
-            <Input {...f("start_time")} type="time" />
+            <Input {...f("start_time")} type="time" onChange={(e) => setV((x) => ({ ...x, from: e.target.value }))} />
           </Field>
           <Field label="To" htmlFor="to-end_time" required error={fieldError("end_time")} className="sm:col-span-2">
-            <Input {...f("end_time")} type="time" />
+            <Input {...f("end_time")} type="time" onChange={(e) => setV((x) => ({ ...x, to: e.target.value }))} />
           </Field>
         </>
       )}
-      {bank && kind === "full" && (
+      {bank && kind === "full" && own && sched && (
+        // The database uses the work schedule's hours for an employee's own full-day request: no field to type.
+        <p className="text-sm text-muted sm:col-span-6" data-testid="schedule-hours">Hours come from your work schedule ({scheduleSummary(sched)}). Days without scheduled hours count as 0 h.</p>
+      )}
+      {bank && kind === "full" && !(own && sched) && (
         <Field label={`Hours of ${bank.name}`} htmlFor="to-hours" error={fieldError("hours")} className="sm:col-span-3"
-          hint={`${bank.available !== null && !employees ? `${Number(bank.available.toFixed(2))} h of your ${bank.name} available. ` : `Draws from ${bank.name}. `}With a work schedule the scheduled hours of these days are used${employees ? " (enter hours only to correct them)" : ""}; without one, enter the hours.`}>
-          <Input {...f("hours")} inputMode="decimal" placeholder="8" />
+          hint={own
+            ? `${bank.available !== null ? `${hoursShort(bank.available, true)} of your ${bank.name} available. ` : ""}No work schedule is on record for you, so enter the hours these days use (for example 8 for one 8-hour day).`
+            : `Draws from ${bank.name}. With a work schedule the scheduled hours of these days are used (enter hours only to correct them); without one, enter the hours.`}>
+          <Input {...f("hours")} inputMode="decimal" placeholder={own ? undefined : "8"} onChange={(e) => setV((x) => ({ ...x, hours: e.target.value }))} />
         </Field>
       )}
+      {usesLine && <p className="text-sm font-semibold text-ink sm:col-span-6" role="status" data-testid="uses-hours">{usesLine}</p>}
       {bank && kind === "partial" && <p className="text-sm text-muted sm:col-span-6">The hours between the start and end time are taken from {bank.name}.</p>}
       <Field label="Comment (optional)" htmlFor="to-reason" error={fieldError("reason")} className="sm:col-span-6" hint="Visible to you and to people who manage time off. Never to dispatch.">
         <Textarea {...f("reason")} rows={2} maxLength={1000} />

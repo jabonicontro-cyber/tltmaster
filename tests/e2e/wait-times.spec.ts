@@ -16,16 +16,16 @@ test("a driver records arrival and departure; dispatch sees the wait", async ({ 
   const site = card.getByRole("form", { name: "Job site times" });
   await expect(pickup).toContainText("Not arrived");
 
-  await pickup.getByRole("button", { name: "Arrived" }).click();
+  await pickup.getByRole("button", { name: "Arrived at pickup" }).click();
   await expectToast(page, "Arrived pickup recorded.");
   await expect(pickup).toContainText(/Arrived \d/);
-  await pickup.getByRole("button", { name: "Left" }).click();
+  await pickup.getByRole("button", { name: "Leaving pickup" }).click();
   await expectToast(page, "Left pickup recorded.");
   await expect(pickup).toContainText(/waited \d+ min/);
   await expect(pickup.getByRole("button")).toHaveCount(0);
-  await site.getByRole("button", { name: "Arrived" }).click();
+  await site.getByRole("button", { name: "Arrived at site" }).click();
   await expectToast(page, "Arrived job site recorded.");
-  await expect(site.getByRole("button", { name: "Left" })).toBeVisible();
+  await expect(site.getByRole("button", { name: "Leaving site" })).toBeVisible();
 
   const office = await browser.newPage();
   await signIn(office, "dispatcher");

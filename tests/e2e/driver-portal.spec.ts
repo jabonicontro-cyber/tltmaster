@@ -14,6 +14,8 @@ test("a driver sees only their own day, sends a ticket (saved without signal, se
   await signIn(page, "driver");
   await expect(page).toHaveURL(/\/driver$/);
   await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible();
+  // One plain line says what comes next (first-day walkthrough 2026-11-09).
+  await expect(page.getByTestId("next-load")).toHaveText(/^Next: \d{1,2}:\d{2} [AP]M · /);
   await expect(page.getByText(/medical card expires on/)).toBeVisible();
   const still = page.getByRole("region", { name: "Tickets still needed" });
   const pastCard = still.getByRole("listitem", { name: `Load 1, ${f.orderNumber}` });

@@ -32,7 +32,7 @@ test("without signal, taps and tickets wait on the phone and reach the office on
   const saved = page.getByRole("listitem", { name: `Load 2, ${f.orderNumber}` });
   await expect(saved).toContainText(f.myTruck);
   const tappedAt = Date.now();
-  await saved.getByRole("form", { name: "Pickup times" }).getByRole("button", { name: "Arrived" }).click();
+  await saved.getByRole("form", { name: "Pickup times" }).getByRole("button", { name: "Arrived at pickup" }).click();
   const waiting = page.getByRole("region", { name: "Waiting to send" });
   await expect(waiting).toContainText("Waiting to send (2)");
   await expect(waiting).toContainText(`Arrived pickup · ${f.orderNumber} load 2`);

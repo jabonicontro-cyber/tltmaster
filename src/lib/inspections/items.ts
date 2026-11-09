@@ -19,7 +19,7 @@ export const INSPECTION_ITEMS = [
 export const DUMP_BODY_ITEMS = [
   { key: "air_lines", label: "Air lines and tanks", safety: false },
   { key: "hoist_body", label: "Hoist and dump body", safety: false },
-  { key: "pto", label: "PTO", safety: false },
+  { key: "pto", label: "PTO (power take-off)", safety: false },
   { key: "tarp", label: "Tarp", safety: false },
   { key: "tailgate", label: "Tailgate and latches", safety: false },
 ] as const;

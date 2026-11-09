@@ -51,7 +51,7 @@ export function FuelForm({ trucks, today, homeState, compact = false }: { trucks
         {!compact && <Field label="Station" htmlFor="fuel-vendor" hint="Optional"><Input id="fuel-vendor" value={v.vendor} maxLength={120} onChange={set("vendor")} /></Field>}
         <Field label="Receipt #" htmlFor="fuel-receipt" hint="Optional"><Input id="fuel-receipt" value={v.receipt} maxLength={80} onChange={set("receipt")} /></Field>
       </div>
-      <Button type="submit" loading={busy} disabled={!v.truckId}>Save fuel</Button>
+      <Button type="submit" loading={busy} disabled={!v.truckId} className="min-h-11">Save fuel</Button>
     </form>
   );
 }
@@ -99,16 +99,16 @@ export function TripSheetForm({ trucks, today, homeState }: { trucks: Truck[]; t
               <Input aria-label={`Miles in ${l.jurisdiction || "state"} ${i + 1}`} inputMode="numeric" value={l.miles} onChange={(e) => setLegs((ls) => ls.map((y, k) => (k === i ? { ...y, miles: e.target.value } : y)))} className="max-w-28" placeholder="Miles" />
             )}
             {legs.length > 1 && (
-              <Button type="button" variant="ghost" size="sm" aria-label="Remove state" onClick={() => setLegs((ls) => ls.filter((_, k) => k !== i))}><X className="size-4" /></Button>
+              <Button type="button" variant="ghost" size="sm" aria-label="Remove state" className="min-h-11 min-w-11" onClick={() => setLegs((ls) => ls.filter((_, k) => k !== i))}><X className="size-4" /></Button>
             )}
           </div>
         ))}
-        <Button type="button" variant="ghost" size="sm" icon={<Plus className="size-4" />} onClick={() => setLegs((ls) => [...ls, { jurisdiction: "", miles: "" }])}>Crossed into another state</Button>
+        <Button type="button" variant="ghost" size="sm" className="min-h-11" icon={<Plus className="size-4" />} onClick={() => setLegs((ls) => [...ls, { jurisdiction: "", miles: "" }])}>Crossed into another state</Button>
         <p className="text-xs text-muted tabular">
           {Number.isFinite(driven) && odo.start && odo.end ? `${driven} miles driven` : "Miles come from the odometer."}{!oneState && odo.start && odo.end ? ` · ${sum} entered by state` : ""}
         </p>
       </fieldset>
-      <Button type="submit" loading={busy} disabled={!truckId}>Save trip sheet</Button>
+      <Button type="submit" loading={busy} disabled={!truckId} className="min-h-11">Save trip sheet</Button>
     </form>
   );
 }

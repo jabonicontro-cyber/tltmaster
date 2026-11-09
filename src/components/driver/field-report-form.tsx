@@ -11,13 +11,14 @@ import { Choice } from "./choice";
 
 type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string };
 
-export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId: string; truck: string | null; trailer: string | null }) {
+export function FieldReportForm({ assignmentId, truck, trailer, ticket = null }: { assignmentId: string; truck: string | null; trailer: string | null; /** A sent ticket this report is about ("Something wrong? Tell the office"). */ ticket?: string | null }) {
   const router = useRouter();
   const [submissionKey] = useState(() => crypto.randomUUID());
   const [kind, setKind] = useState<ReportKind | "">("");
   // Only a truck on this load: it is the one choice, so it is chosen for the driver.
   const [equipment, setEquipment] = useState<"" | "truck" | "trailer">(defaultReportEquipment(truck, trailer));
-  const [description, setDescription] = useState("");
+  const prefill = ticket ? `About ticket ${ticket}: ` : "";
+  const [description, setDescription] = useState(prefill);
   const [error, setError] = useState<string | null>(null);
   const [state, setState] = useState<State>({ kind: "idle" });
   const needsEquipment = kind !== "" && reportNeedsEquipment(kind);
@@ -25,7 +26,7 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
   async function send() {
     if (!kind) return setError("Choose what you are reporting.");
     if (needsEquipment && !equipment) return setError("Choose the truck or the trailer.");
-    if (description.trim().length < 3) return setError("Say in a few words what happened.");
+    if (description.trim().length < 3 || (prefill && description.trim() === prefill.trim())) return setError(ticket ? "Say what is wrong with the ticket." : "Say in a few words what happened.");
     setError(null);
     setState({ kind: "sending" });
     try {
@@ -43,6 +44,7 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
   const sending = state.kind === "sending";
   return (
     <form onSubmit={(e) => { e.preventDefault(); if (!sending) void send(); }} className="space-y-5" noValidate>
+      {ticket && <p className="rounded-xl bg-surface px-4 py-3 text-sm"><strong>About ticket {ticket}.</strong> Choose what fits best below and say what is wrong (quantity, unit, material, time). The office sees the ticket number and checks it.</p>}
       <p className="rounded-xl bg-surface px-4 py-3 text-sm">This sends a message to the office. It does not take the truck out of service or change your loads. <strong>In an emergency, call 911 and dispatch first.</strong></p>
       <fieldset>
         <legend className="mb-2 text-base font-bold">What is happening?</legend>
@@ -56,7 +58,7 @@ export function FieldReportForm({ assignmentId, truck, trailer }: { assignmentId
         <fieldset>
           <legend className="mb-2 text-base font-bold">Which equipment?</legend>
           <div className="grid grid-cols-2 gap-2">
-            <Choice name="equipment" value="truck" checked={equipment === "truck"} onChange={() => { setEquipment("truck"); setError(null); }}>Truck {truck ?? ""}</Choice>
+            <Choice name="equipment" value="truck" checked={equipment === "truck"} onChange={() => { setEquipment("truck"); setError(null); }}>{truck ? `Truck ${truck}` : "Truck"}</Choice>
             {trailer && <Choice name="equipment" value="trailer" checked={equipment === "trailer"} onChange={() => { setEquipment("trailer"); setError(null); }}>Trailer {trailer}</Choice>}
           </div>
         </fieldset>

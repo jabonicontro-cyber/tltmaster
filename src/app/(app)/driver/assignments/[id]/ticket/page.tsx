@@ -51,6 +51,7 @@ export default async function DriverTicketPage({ params }: { params: Promise<{ i
           units={f.units}
           existing={f.tickets}
           perTrip={perTrip}
+          planned={{ quantity: f.load.planned_quantity, unit: f.load.unit_code }}
           queue={{ userId: access.userId, label: `Ticket for ${f.order.number} load ${f.load.number}` }}
         />
       )}

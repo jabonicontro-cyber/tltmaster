@@ -10,6 +10,7 @@ import { cn } from "@/lib/cn";
 import { TICKET_FIELD_IDS, clearTicketErrors, firstTicketError, preselectedUnit, serverTicketErrors, ticketFormErrors, type TicketErrors, type TicketField } from "@/lib/driver/ticket-form";
 import { recordTicketLocation, submitDriverTicket } from "@/app/(app)/driver/actions";
 import { announceOutbox, enqueue } from "@/lib/offline/store";
+import { implausibleQuantity } from "@/lib/driver/my-day";
 import { Choice } from "./choice";
 import { PhotoAttachments, type PhotoState } from "./photo-attachments";
 
@@ -26,13 +27,15 @@ interface Props {
   queue?: { userId: string; label: string };
   /** After the ticket is saved on the phone (the offline page returns to its list). */
   onQueued?: () => void;
+  /** The load's planned quantity and unit: a quantity far above it is asked about before sending. */
+  planned?: { quantity: number | string | null; unit: string | null };
 }
 
-type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string } | { kind: "queued" };
+type State = { kind: "idle" } | { kind: "sending" } | { kind: "failed"; message: string; offline: boolean } | { kind: "confirm"; message: string } | { kind: "queued" } | { kind: "check"; message: string };
 
 const field = "min-h-12 w-full rounded-2xl border-2 border-line bg-card px-4 text-lg focus:border-strong focus:outline-none";
 
-export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing, perTrip = false, queue, onQueued }: Props) {
+export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, units, existing, perTrip = false, queue, onQueued, planned }: Props) {
   const router = useRouter();
   // One key for this form: retries and double taps can never create a second ticket.
   const [submissionKey] = useState(() => crypto.randomUUID());
@@ -48,6 +51,8 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   const [errors, setErrors] = useState<TicketErrors>({});
   const [state, setState] = useState<State>({ kind: "idle" });
   const [photos, setPhotos] = useState<PhotoState>({ ids: [], busy: false, failed: false });
+  // The quantity the driver said is right after the "Is that right?" question ("152|ton"), so it is asked once.
+  const [quantityOk, setQuantityOk] = useState<string | null>(null);
   // A field's error goes as soon as the driver changes that field; the rest stay until the next send.
   const clear = (...fields: TicketField[]) => setErrors((e) => clearTicketErrors(e, ...fields));
   const onPhotos = useCallback((p: PhotoState) => {
@@ -56,7 +61,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
   }, []);
   const line = lines.find((l) => l.id === lineId);
   const unit = pickedUnit ?? preselectedUnit(line, units);
-  const setUnit = (code: string) => { setPickedUnit(code); clear("unit", ...(quantity.trim() ? (["quantity"] as const) : [])); };
+  const setUnit = (code: string) => { setPickedUnit(code); clear("unit", ...(quantity.trim() ? (["quantity"] as const) : [])); if (state.kind === "check") setState({ kind: "idle" }); };
   // The order line's unit first (marked, and chosen until the driver taps another).
   const orderedUnits = line ? [...units].sort((a, b) => (a.code === line.unit_code ? -1 : b.code === line.unit_code ? 1 : 0)) : units;
   const HAUL_UNITS = ["ton", "cu_yd", "load"];
@@ -77,10 +82,14 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
     });
   }
 
-  async function send() {
+  async function send(sendAnyway = false) {
     const e = ticketFormErrors({ lineId, quantity, unit, time, photos });
     if (firstTicketError(e)) { showErrors(e); return; }
     setErrors({});
+    // A quantity far above the planned one is usually a typo (152 for 15.2): asked in plain words before sending.
+    const odd = planned ? implausibleQuantity(quantity, unit, planned) : null;
+    if (odd && !sendAnyway && quantityOk !== `${quantity.trim()}|${unit}`) { setState({ kind: "check", message: odd }); return; }
+    if (odd) setQuantityOk(`${quantity.trim()}|${unit}`);
     setState({ kind: "sending" });
     const input = {
       assignmentId, orderLineId: lineId, deliveredDate: date, deliveredTime: time, quantity, unitCode: unit,
@@ -154,7 +163,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
 
       <div>
         <label htmlFor="d-qty" className="mb-2 block text-base font-bold">Quantity on the ticket</label>
-        <input id="d-qty" inputMode="decimal" autoComplete="off" value={quantity} onChange={(e) => { setQuantity(e.target.value); clear("quantity"); }} className={cn(field, "text-right text-2xl font-bold tabular")} aria-invalid={Boolean(errors.quantity)} />
+        <input id="d-qty" inputMode="decimal" autoComplete="off" value={quantity} onChange={(e) => { setQuantity(e.target.value); clear("quantity"); if (state.kind === "check") setState({ kind: "idle" }); }} className={cn(field, "text-right text-2xl font-bold tabular")} aria-invalid={Boolean(errors.quantity)} />
         {errors.quantity && <p className="mt-1 font-semibold text-red-700">{errors.quantity}</p>}
       </div>
 
@@ -195,9 +204,12 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
         </div>
       </div>
 
-      <div id="d-photos" tabIndex={-1} className="focus:outline-none">
+      {/* A photo is only sent with the ticket: leaving the form with one attached asks first (the app's unsaved-changes
+          guard, for links and for closing the page). */}
+      <div id="d-photos" tabIndex={-1} className="focus:outline-none" data-guard-unsaved>
         <PhotoAttachments assignmentId={assignmentId} onChange={onPhotos} disabled={sending} />
         {errors.photos && <p className="mt-1 font-semibold text-red-700">{errors.photos}</p>}
+        {photos.ids.length > 0 && <p className="mt-1 text-sm text-muted">The photo goes to the office with the ticket when you tap Send ticket.</p>}
       </div>
 
       <div>
@@ -214,6 +226,18 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
           </label>
         </div>
       )}
+      {state.kind === "check" && (
+        <div role="alert" className="space-y-3 rounded-xl bg-amber-50 px-4 py-3 text-amber-950 ring-1 ring-amber-300" data-testid="quantity-check">
+          <p className="font-semibold">{state.message}</p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={buttonClasses("secondary", "md", "min-h-12 flex-1 justify-center text-base")} onClick={() => {
+              setState({ kind: "idle" });
+              window.requestAnimationFrame(() => { const el = document.getElementById("d-qty") as HTMLInputElement | null; el?.focus(); el?.select(); });
+            }}>Fix it</button>
+            <button type="button" className={buttonClasses("primary", "md", "min-h-12 flex-1 justify-center text-base")} onClick={() => void send(true)}>Send anyway</button>
+          </div>
+        </div>
+      )}
       {state.kind === "queued" && (
         <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 font-semibold text-amber-950 ring-1 ring-amber-200">
           Saved on this phone, not sent yet. It sends by itself when you have signal; My Day shows it under Waiting to send. Keep the paper ticket.
@@ -227,7 +251,7 @@ export function DriverTicketForm({ assignmentId, loadDate, defaultTime, lines, u
 
       <div className="sticky bottom-0 -mx-4 flex gap-2 border-t border-line bg-card/95 px-4 py-3 backdrop-blur">
         <Link href="/driver" className={buttonClasses("secondary", "md", "min-h-14 flex-1 justify-center text-base")}>Back</Link>
-        <button type="submit" disabled={sending || state.kind === "queued" || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
+        <button type="submit" disabled={sending || state.kind === "queued" || state.kind === "check" || photos.busy || (state.kind === "confirm" && !confirmed)} className={buttonClasses("primary", "md", "min-h-14 flex-[2] justify-center text-lg")}>
           {sending ? <><Loader2 className="size-5 animate-spin" aria-hidden /> Sending…</> : <><Send className="size-5" aria-hidden /> {state.kind === "failed" ? "Send again" : "Send ticket"}</>}
         </button>
       </div>

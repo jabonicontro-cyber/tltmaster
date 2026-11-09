@@ -11,6 +11,7 @@ import { cn } from "@/lib/cn";
 import { STOP_LABEL, minutesLabel, waitMinutes, type Stop } from "@/lib/dispatch/wait-times";
 import { announceOutbox, enqueue, isNetworkError } from "@/lib/offline/store";
 import { useOutbox } from "@/components/companion/offline-support";
+import { stopButtonLabel } from "@/lib/driver/my-day";
 
 // Wait times (B111) on My Day: Arrived / Left at the pickup and the job site. Times are recorded when tapped.
 
@@ -69,7 +70,7 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
         {s.departedAt ? ` · left ${time(s.departedAt)} · waited ${minutesLabel(waitMinutes(s))}` : ""}
       </span>
       {/* Glove-size target (UX6): at least 48 px tall and wide enough to hit from a cab. */}
-      {event && <Button type="submit" variant={event === "arrive" ? "secondary" : "primary"} loading={pending} className="min-h-12 min-w-28 text-base">{event === "arrive" ? "Arrived" : "Left"}</Button>}
+      {event && <Button type="submit" variant={event === "arrive" ? "secondary" : "primary"} loading={pending} className="min-h-12 min-w-28 text-base">{stopButtonLabel(s.stop, event)}</Button>}
       <FormError message={formError} />
     </form>
   );

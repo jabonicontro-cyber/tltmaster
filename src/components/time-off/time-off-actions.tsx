@@ -17,7 +17,7 @@ export function TimeOffActions({ id, canDecide, canCancel }: { id: string; canDe
     <div className="flex flex-wrap gap-2">
       {canDecide && <Button onClick={() => { setNote(""); setAction("approved"); }}>Approve</Button>}
       {canDecide && <Button variant="secondary" onClick={() => { setNote(""); setAction("denied"); }}>Deny</Button>}
-      {canCancel && <Button variant="ghost" onClick={() => { setNote(""); setAction("cancel"); }}>Cancel request</Button>}
+      {canCancel && <Button variant="secondary" className="min-h-11" onClick={() => { setNote(""); setAction("cancel"); }}>Cancel request</Button>}
       <ConfirmDialog
         open={Boolean(action)}
         onOpenChange={(o) => !o && setAction(null)}
@@ -41,5 +41,30 @@ export function TimeOffActions({ id, canDecide, canCancel }: { id: string; canDe
         </Field>
       </ConfirmDialog>
     </div>
+  );
+}
+
+/** My requests: cancel a pending request of one's own in one tap (the database checks it is still pending and theirs). */
+export function CancelRequestButton({ id }: { id: string }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button variant="secondary" size="sm" className="min-h-11" onClick={() => setOpen(true)}>Cancel<span className="sr-only"> request</span></Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Cancel this request?"
+        description="It is withdrawn: the dates are free again and its hours stay in your balance."
+        confirmLabel="Yes, cancel it"
+        tone="danger"
+        onConfirm={async () => {
+          const r = await cancelTimeOff({ id, note: "" });
+          if (!r.ok) return r.error;
+          toast.success(r.message ?? "Request canceled.");
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

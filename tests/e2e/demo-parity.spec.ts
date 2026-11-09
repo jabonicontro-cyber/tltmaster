@@ -327,7 +327,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
         await expect(owner.getByText(/\bload \d/i).first(), `${role} My Day has loads`).toBeVisible();
         await expect(owner.getByText(/Last checked by the office|Not checked by the office yet/), `${role} My Day shows site directions status`).not.toHaveCount(0);
         // Pickups (UX7, samples.ts orderPickups): where to load, and one tap to the maps app for the pickup and the site.
-        await expect(owner.getByText(/^Load at /).first(), `${role} My Day shows the pickup`).toBeVisible();
+        await expect(owner.getByText(/^Pick up at /).first(), `${role} My Day shows the pickup`).toBeVisible();
         await expect(owner.getByRole("link", { name: "Navigate to pickup" }).first()).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\//);
         await expect(owner.getByRole("link", { name: "Navigate to site" }).first()).toHaveAttribute("href", /destination=/);
       }
