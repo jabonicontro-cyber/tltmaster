@@ -21,7 +21,7 @@ export interface InvoiceLine {
   line_no: number; kind: string; description: string; unit_code: string | null; quantity: string | null; unit_rate_cents: number | null;
   amount_cents: number; delivered_quantity: string | null; calc_method: string; taxable: boolean;
 }
-export interface InvoicePayment { id: string; amount_cents: number; received_on: string; method: PaymentMethod; reference: string; note: string; created_at: string; voided_at: string | null; void_reason: string; recorded_by: string | null }
+export interface InvoicePayment { id: string; amount_cents: number; received_on: string; method: PaymentMethod; reference: string; note: string; created_at: string; voided_at: string | null; void_reason: string; recorded_by: string | null; customer_payment_id?: string | null }
 export interface Invoice extends InvoiceLite {
   number: string | null;
   handoff_order_id: string;
@@ -49,7 +49,7 @@ export interface Invoice extends InvoiceLite {
   payments: InvoicePayment[];
 }
 
-const COLUMNS = "id, number, status, handoff_order_id, order_id, customer_id, order_number, customer_po, project_name, service_start, service_end, bill_to, issued_by_entity, lines, subtotal_cents, discount_cents, tax_cents, total_cents, terms_days, footer, issue_date, due_date, sent_at, sent_to, void_reason, created_at, invoice_payments(id, amount_cents, received_on, method, reference, note, created_at, voided_at, void_reason, recorded_by)";
+const COLUMNS = "id, number, status, handoff_order_id, order_id, customer_id, order_number, customer_po, project_name, service_start, service_end, bill_to, issued_by_entity, lines, subtotal_cents, discount_cents, tax_cents, total_cents, terms_days, footer, issue_date, due_date, sent_at, sent_to, void_reason, created_at, invoice_payments(id, amount_cents, received_on, method, reference, note, created_at, voided_at, void_reason, recorded_by, customer_payment_id)";
 
 type Raw = Omit<Invoice, "payments" | "customer_name" | "po_label"> & { invoice_payments: InvoicePayment[] };
 const shape = (r: Raw): Invoice => ({

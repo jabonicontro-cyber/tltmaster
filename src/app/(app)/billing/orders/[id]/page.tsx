@@ -28,6 +28,8 @@ import { DetentionCard, type DetentionRow } from "@/components/billing/detention
 import { createClient } from "@/server/supabase/server";
 import { ExtraChargeForm } from "@/components/billing/extra-charge-form";
 import { TruckHoursCard, type TruckHours } from "@/components/billing/truck-hours-card";
+import { HandOffOne } from "@/components/billing/hand-off-form";
+import { invoicingSettings } from "@/server/data/invoices";
 
 export const metadata = { title: "Order billing" };
 
@@ -53,6 +55,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const e = sayExplanation(readinessExplanation(o.readiness, o), say);
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
+  const issuer = canManage && o.readiness === "ready" ? (await invoicingSettings().catch(() => null))?.issuer : null;
   const ticketsOf = (pred: (t: (typeof tickets)[number]) => boolean) => tickets.filter(pred);
   const person = (uid: string | null) => people[uid ?? ""] ?? "Someone";
   // Detention proposals (DT1, 20261120008200): none before the migration or when the customer has no detention set.
@@ -75,7 +78,10 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         title={`Billing · ${o.order_number}`}
         description={`${o.customer_name ?? ""}${o.project_name ? ` · ${o.project_name}` : ""}${o.customer_po ? ` · PO ${o.customer_po}` : ""}`}
         badges={<ReadinessBadge readiness={o.readiness} />}
-        actions={<ButtonLink href={`/orders/${o.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open order</ButtonLink>}
+        actions={<>
+          <ButtonLink href={`/orders/${o.order_id}`} variant="secondary" icon={<ClipboardList className="size-4" />}>Open order</ButtonLink>
+          {canManage && o.readiness === "ready" && <HandOffOne orderId={o.order_id} orderNumber={o.order_number} taviron={issuer === "taviron"} />}
+        </>}
       />
 
       <div className="space-y-5">

@@ -123,13 +123,14 @@ test("the office loads a remittance file: tickets and amounts are filled in, unk
   const form = page.getByRole("form", { name: "Record a payment by ticket" });
   const csv = `Invoice,Ticket #,Date,Amount Paid\nINV-77,${o.first},11/02/2026,"${dollars(o.firstCents)}"\nINV-77,${o.second},11/02/2026,40.00\nINV-77,NOPE-404,11/02/2026,5.00\n`;
   await form.getByLabel("Remittance file (CSV)").setInputFiles({ name: "remittance.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
-  await expect(form.getByText(/remittance\.csv: 3 lines for .*2 tickets selected/)).toBeVisible();
+  await expect(form.getByText(/remittance\.csv: 3 lines, 2 tickets selected .*\$5\.00 is on lines that match no open ticket/)).toBeVisible();
   await expect(form.getByText("Not found among this customer's open tickets: NOPE-404")).toBeVisible();
-  await expect(form.getByLabel("Amount received")).toHaveValue(dollars(o.firstCents + 4000 + 500));
+  // Only matched lines fill the amount; the unknown line's $5.00 is named, not added.
+  await expect(form.getByLabel("Amount received")).toHaveValue(dollars(o.firstCents + 4000));
   await expect(form.getByLabel(`Amount for ticket ${o.second}`)).toHaveValue("40.00");
   await form.getByLabel("Check or bank reference").fill("REM-77");
   await form.getByRole("button", { name: "Record payment" }).click();
-  await expectToast(page, /Payment recorded\. \$5\.00 is kept as credit/);
+  await expectToast(page, /Payment recorded\./);
   const payment = page.getByRole("listitem").filter({ hasText: "Check #REM-77" }).first();
   await expect(payment).toContainText(`${o.second} $40.00`);
   // Leave nothing behind for other runs: void it.

@@ -132,7 +132,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
               description={board.view === "ready" ? say("An order is ready when it is completed, every load has an accepted ticket and every exception is acknowledged.") : "Scheduled, in-progress and completed orders appear here with what still blocks billing."}
             />
           ) : board.view === "ready" ? (
-            <HandOffForm orders={board.orders} canManage={canManage} />
+            <HandOffForm orders={board.orders} canManage={canManage} taviron={invoicing.issuer === "taviron"} />
           ) : (
             <TableWrap>
               <Table>

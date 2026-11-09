@@ -451,7 +451,10 @@ describe.skipIf(!available)("demo feature samples", () => {
       await client.query("begin");
       await client.query("set local session_replication_role = replica");
       // The demo's sample invoices hang off its handoffs (B99): they go too, or they would point at nothing.
+      // Payments by ticket (TP1) hang off the handoffs too.
+      await client.query("delete from public.ticket_payment_applications where company_id = $1", [w.company]);
       await client.query("delete from public.invoice_payments where company_id = $1", [w.company]);
+      await client.query("delete from public.customer_payments where company_id = $1", [w.company]);
       await client.query("delete from public.invoice_orders where company_id = $1", [w.company]);
       await client.query("delete from public.invoices where company_id = $1", [w.company]);
       await client.query("delete from public.billing_handoff_orders where handoff_id in (select id from public.billing_handoffs where company_id = $1)", [w.company]);

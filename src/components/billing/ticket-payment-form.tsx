@@ -72,12 +72,16 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
       return next;
     });
     setNotFound(m.notFound.map((l) => l.ticket));
-    const total = r.lines.reduce((t, l) => t + (l.amount_cents ?? 0), 0);
-    if (mode.kind === "record" && !amount.trim() && total > 0) setAmount(centsToInput(total));
+    // Only lines that matched a ticket count toward the amount filled in; unmatched lines are named, never silently
+    // turned into credit (demo-employee review 2026-11-09).
+    const matchedTotal = Object.values(m.selected).reduce<number>((t, c) => t + (c ?? 0), 0);
+    const unmatchedTotal = m.notFound.reduce((t, l) => t + (l.amount_cents ?? 0), 0);
+    if (mode.kind === "record" && !amount.trim() && matchedTotal > 0) setAmount(centsToInput(matchedTotal));
     const matchedCount = Object.keys(m.selected).length;
-    setReadNote(`${from}: ${r.lines.length} ${r.lines.length === 1 ? "line" : "lines"} for ${formatCents(total)}, ${matchedCount} ${matchedCount === 1 ? "ticket" : "tickets"} selected.`
+    setReadNote(`${from}: ${r.lines.length} ${r.lines.length === 1 ? "line" : "lines"}, ${matchedCount} ${matchedCount === 1 ? "ticket" : "tickets"} selected for ${formatCents(matchedTotal)}.`
+      + (unmatchedTotal > 0 ? ` ${formatCents(unmatchedTotal)} is on lines that match no open ticket and is not included; check them before you change the amount.` : "")
       + (m.over.length ? ` More than is open on ${m.over.join(", ")}: check those amounts.` : "")
-      + " Check everything before you record it.");
+      + (mode.kind === "apply" ? "" : " Check everything before you record it."));
     return true;
   }
 

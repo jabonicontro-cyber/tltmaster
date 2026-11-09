@@ -2146,6 +2146,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "Open **Ready to bill** and tick the orders.",
           "Select **Hand off selected**, add a **Reference (optional)** and **Notes (optional)**.",
           "Confirm with **Create batch**, then **Download file (CSV)** and enter the invoices in your accounting system.",
+          "If your company issues invoices in Taviron (Settings → Invoicing), skip the file: create each invoice from the **Handed off** view and issue it.",
         ],
       },
       {

@@ -26,8 +26,46 @@ export interface ReadyOrder {
   acknowledgment_reason: string | null;
 }
 
+const handOffText = (taviron: boolean) => taviron
+  ? "Creates a numbered batch and marks these orders as handed off. Nothing is changed in prices. Next, create each invoice from the Handed off view and issue it. An order can be in only one active batch."
+  : "Creates a numbered batch and marks these orders as handed off. It does not create invoices or change prices; enter the invoices in your accounting system from the batch file. An order can be in only one active batch.";
+
+/** One ready order handed off from its own billing page (same action and batch rules as the list). */
+export function HandOffOne({ orderId, orderNumber, taviron = false }: { orderId: string; orderNumber: string; taviron?: boolean }) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [key, setKey] = useState("");
+  return (
+    <>
+      <Button icon={<Send className="size-4" />} onClick={() => { setKey(crypto.randomUUID()); setOpen(true); }}>Hand off for billing</Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={`Hand off ${orderNumber} for billing`}
+        description={handOffText(taviron)}
+        confirmLabel="Create batch"
+        onConfirm={async () => {
+          const r = await handOffOrders({ orderIds: [orderId], reference, notes, submissionKey: key });
+          if (!r.ok) return r.error;
+          toast.success(r.message ?? "Saved");
+          router.push(`/billing?view=handed_off&batch=${r.data.handoffId}`);
+        }}
+      >
+        <Field label="Reference (optional)" htmlFor="handoff-one-ref" hint="For example the accounting batch or the person entering the invoices.">
+          <Input id="handoff-one-ref" maxLength={80} value={reference} onChange={(e) => setReference(e.target.value)} />
+        </Field>
+        <Field label="Notes (optional)" htmlFor="handoff-one-notes">
+          <Textarea id="handoff-one-notes" rows={2} maxLength={1000} value={notes} onChange={(e) => setNotes(e.target.value)} />
+        </Field>
+      </ConfirmDialog>
+    </>
+  );
+}
+
 /** Ready orders with selection and the "hand off" step (one batch per submit). */
-export function HandOffForm({ orders, canManage }: { orders: ReadyOrder[]; canManage: boolean }) {
+export function HandOffForm({ orders, canManage, taviron = false }: { orders: ReadyOrder[]; canManage: boolean; taviron?: boolean }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
@@ -91,7 +129,7 @@ export function HandOffForm({ orders, canManage }: { orders: ReadyOrder[]; canMa
         open={open}
         onOpenChange={setOpen}
         title={`Hand off ${chosen.length} order${chosen.length === 1 ? "" : "s"} for billing`}
-        description="Creates a numbered batch and marks these orders as handed off. It does not create invoices or change prices; enter the invoices in your accounting system from the batch file. An order can be in only one active batch."
+        description={handOffText(taviron)}
         confirmLabel="Create batch"
         onConfirm={async () => {
           const r = await handOffOrders({ orderIds: chosen.map((o) => o.order_id), reference, notes, submissionKey: key });

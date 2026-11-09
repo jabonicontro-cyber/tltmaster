@@ -86,7 +86,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       {queue && (
         <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-control border border-line bg-card px-3 py-2 text-sm">
           <span className="font-semibold">
-            {queue.position ? `Review queue: ${queue.position} of ${queue.total}` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
+            {queue.position ? `Review queue: ${queue.position} of ${queue.total} (needs review and submitted)` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
           </span>
           {queue.prevId && <Link href={queueHref(queue.prevId)} className="underline">Previous</Link>}
           {queue.nextId && queue.nextId !== t.id && <Link href={queueHref(queue.nextId)} className="underline">Next</Link>}
@@ -178,7 +178,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                   },
                   { label: "Truck · driver", value: `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""} · ${s.driver_name}` },
                   { label: "Entered", value: `${formatDateTime(t.created_at, timezone)} by ${who(t.created_by)}` },
-                  ...(t.reviewed_at ? [{ label: "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? `: ${t.review_note}` : ""}` }] : []),
+                  ...(t.reviewed_at ? [{ label: t.status === "needs_review" ? "Flagged" : "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? `: ${t.review_note}` : ""}` }] : []),
                   ...(t.correction_reason ? [{ label: "Correction reason", value: t.correction_reason, wide: true }] : []),
                   { label: "Notes", value: t.notes, wide: true },
                 ]}
@@ -192,7 +192,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               {progress ? (
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4" aria-label="Order line progress">
                   <div><dt className="text-muted">Ordered</dt><dd className="font-semibold tabular">{progress.ordered} {unitLabel(progress.unit)}</dd></div>
-                  <div><dt className="text-muted">{say("Verified on other tickets")}</dt><dd className="font-semibold tabular">{progress.verifiedOthers}</dd></div>
+                  <div><dt className="text-muted">{say("Verified on other tickets")}</dt><dd className="font-semibold tabular">{progress.verifiedOthers} {unitLabel(progress.unit)}</dd></div>
                   <div><dt className="text-muted">{say("This ticket")}</dt><dd className="font-semibold tabular">{progress.thisTicket ?? `other unit (${unitLabel(t.unit_code)})`}</dd></div>
                   <div>
                     <dt className="text-muted">Remaining after this</dt>

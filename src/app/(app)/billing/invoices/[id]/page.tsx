@@ -129,6 +129,9 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                       {p.note && <span className="text-muted">· {p.note}</span>}
                       {p.voided_at ? (
                         <span className="w-full text-muted">Voided: {p.void_reason}</span>
+                      ) : p.customer_payment_id ? (
+                        // Paid by ticket (TP1): voided with its ticket payment, on Payments by ticket.
+                        <Link href={`/billing/payments?customer=${inv.customer_id}`} className="ml-auto text-sm font-medium text-brand-fg underline-offset-2 hover:underline">Paid by ticket: change it on Payments by ticket</Link>
                       ) : manage ? (
                         <form action={voidPayment} className="ml-auto flex items-center gap-2">
                           <input type="hidden" name="invoice" value={inv.id} />

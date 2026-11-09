@@ -85,7 +85,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
             <EmptyState
               icon={<ClipboardCheck className="size-6" />}
               title={`No loads waiting for a ${words.one}`}
-              description={`Assigned loads appear here from their delivery day until a ${words.one} is entered.`}
+              description={`Loads appear here from their delivery day until a ${words.one} is entered.`}
             />
           ) : (
             <TableWrap>
@@ -100,7 +100,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                   </tr>
                 </thead>
                 <tbody>
-                  {awaiting.rows.map(({ load, order, truck, trailer, driver }) => (
+                  {awaiting.rows.map(({ load, order, assignment, truck, trailer, driver }) => (
                     <Tr key={load.id}>
                       <Td>
                         <Link href={`/orders/${order.id}`} className="font-semibold tabular hover:underline">{order.order_number}</Link> · load {load.load_number}
@@ -110,10 +110,12 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                         {order.customer_name}
                         <div className="text-sm text-muted">{[order.site_label || order.site_line1, order.site_city].filter(Boolean).join(", ")}</div>
                       </Td>
-                      <Td className="hidden md:table-cell">{truck}{trailer ? ` + ${trailer}` : ""} · {driver}</Td>
+                      <Td className="hidden md:table-cell">{assignment ? <>{truck}{trailer ? ` + ${trailer}` : ""} · {driver}</> : <span className="text-muted">Not assigned</span>}</Td>
                       <Td className="hidden sm:table-cell tabular">{load.planned_quantity !== null ? `${trimNumber(load.planned_quantity)} ${(load.unit_code ?? "").replace(/_/g, " ")}` : <span className="text-muted">–</span>}</Td>
                       <Td align="right">
-                        {canEdit && (
+                        {!assignment ? (
+                          <Link href={`/dispatch?date=${load.load_date}`} className="text-sm font-medium text-brand-fg hover:underline">Assign in Dispatch</Link>
+                        ) : canEdit && (
                           <ButtonLink href={`/tickets/new?load=${load.id}`} size="sm" variant="secondary" icon={<FilePlus2 className="size-4" />}>{words.enter}</ButtonLink>
                         )}
                       </Td>
@@ -176,7 +178,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                       <Td className="hidden md:table-cell">{t.snapshot.truck_unit}{t.snapshot.trailer_unit ? ` + ${t.snapshot.trailer_unit}` : ""} · {t.snapshot.driver_name}</Td>
                       <Td>
                         <TicketStatusBadge status={t.status} />
-                        {t.status === "needs_review" && t.review_reasons[0] && <div className="mt-1 max-w-56 text-xs text-muted">{say(reviewReasonLabel(t.review_reasons[0]))}</div>}
+                        {t.status === "needs_review" && t.review_reasons[0] && <div className="mt-1 max-w-56 text-xs text-muted">{say(reviewReasonLabel(t.review_reasons[0]))}{t.review_reasons.length > 1 ? ` (+${t.review_reasons.length - 1} more)` : ""}</div>}
+                        {t.status === "needs_review" && t.review_note && <div className="mt-1 max-w-56 text-xs text-muted">Note: {t.review_note}</div>}
                       </Td>
                     </Tr>
                   ))}

@@ -129,3 +129,35 @@ describe("payments by ticket", () => {
     });
   });
 });
+
+// Remove sample data with a payment by ticket on a sample order (fix 20261120009700): the sample order goes, its ticket
+// shares go with it, a payment left with no ticket is voided (kept on record), and payments are otherwise never deleted.
+describe("ticket payments and sample data", () => {
+  it("removes a sample order paid by ticket and voids the payment it leaves without tickets", async () => {
+    await withSession(async (s) => {
+      const office = await s.createUser("office");
+      const owner = await s.createUser("owner");
+      const { order, handoffOrder } = await handedOff(s, office);
+      await s.as(owner);
+      const customer = (await s.query<{ customer_id: string }>("select customer_id from public.orders where id = $1", [order.id])).rows[0].customer_id;
+      const ticket = (await s.query<{ r: { tickets: Array<{ handoff_order_id: string; ticket_number: string; billed_cents: number }> } }>("select public.customer_ticket_balances($1) r", [customer])).rows[0].r.tickets.find((t) => t.handoff_order_id === handoffOrder)!;
+      const today = await businessToday(s);
+      await s.as(owner);
+      const payment = (await s.query<{ r: string }>("select public.customer_payment_record($1::jsonb) r", [JSON.stringify({ customer_id: customer, amount_cents: 1000, received_on: today, method: "check", reference: "S-1", note: "", tickets: [{ handoff_order_id: handoffOrder, ticket_number: ticket.ticket_number, amount_cents: 1000 }] })])).rows[0].r;
+      await s.asAdmin();
+      // Outside sample removal a payment is never deleted.
+      expect((await pgError(s.query("delete from public.customer_payments where id = $1", [payment]))).message).toMatch(/never deleted/);
+      expect((await pgError(s.query("delete from public.ticket_payment_applications where payment_id = $1", [payment]))).message).toMatch(/never deleted/);
+      // A real customer's sample order (the fixture customer is a seed sample customer; its payments would go with it).
+      await s.query("update public.customers set is_sample = false where id = $1", [customer]);
+      await s.query("update public.orders set is_sample = true where id = $1", [order.id]);
+      await s.as(owner);
+      await s.query("select public.remove_sample_data()");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.orders where id = $1", [order.id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.ticket_payment_applications where payment_id = $1", [payment])).rowCount).toBe(0);
+      const kept = (await s.query<{ void_reason: string; voided: boolean }>("select void_reason, voided_at is not null voided from public.customer_payments where id = $1", [payment])).rows[0];
+      expect(kept).toEqual({ void_reason: "Sample data removed", voided: true });
+    });
+  });
+});

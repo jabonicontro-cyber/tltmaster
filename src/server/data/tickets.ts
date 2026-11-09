@@ -131,16 +131,18 @@ export async function listLoadsAwaitingTickets() {
   const orderById = new Map(((orders.data ?? []) as OrderListRow[]).map((o) => [o.id, o]));
   const names = await resourceNames();
   const rows = loadRows
-    .filter((l) => byLoad.has(l.id) && !ticketed.has(l.id) && IN_WORK.includes(orderById.get(l.order_id)?.status ?? ""))
+    // Unassigned past loads are included too, so this list matches the "missing ticket" counts in Billing and the
+    // Command Center; they are marked as not assigned and link to Dispatch.
+    .filter((l) => !ticketed.has(l.id) && IN_WORK.includes(orderById.get(l.order_id)?.status ?? ""))
     .map((l) => {
-      const a = byLoad.get(l.id)!;
+      const a = byLoad.get(l.id) ?? null;
       return {
         load: l,
         order: orderById.get(l.order_id)!,
         assignment: a,
-        truck: names.trucks.get(a.truck_id) ?? "–",
-        trailer: a.trailer_id ? names.trailers.get(a.trailer_id) ?? "–" : null,
-        driver: names.drivers.get(a.driver_id) ?? "–",
+        truck: a ? names.trucks.get(a.truck_id) ?? "–" : null,
+        trailer: a?.trailer_id ? names.trailers.get(a.trailer_id) ?? "–" : null,
+        driver: a ? names.drivers.get(a.driver_id) ?? "–" : null,
       };
     });
   return { rows, today };
