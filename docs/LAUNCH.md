@@ -71,8 +71,8 @@ before outside customers in January.
 
 Done by the owner 2026-11-09 (taviron-staging, free plan): rate limits confirmed (sign-ups and sign-ins 30 / 5 min,
 token verifications 30 / 5 min); minimum password length 10. **Waits for the Supabase Pro upgrade (step 1):** leaked
-password protection (saving it on Free gave an error) and, if also Pro-only, the session time-box and inactivity
-timeout below. Do these right after step 1.
+password protection (saving it on Free gave an error) and the session time-box and inactivity timeout below
+(greyed out on Free, owner 2026-11-09). Do these three right after step 1.
 
 The app now limits wrong passwords per sign-in (8 in 15 minutes) for sign-ins made through Taviron, but someone with a
 stolen password could try authenticator codes against Supabase directly. Only the dashboard settings below stop that.
