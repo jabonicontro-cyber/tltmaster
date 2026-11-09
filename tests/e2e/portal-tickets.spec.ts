@@ -37,7 +37,7 @@ test("a customer lists, filters and downloads their own delivery tickets and ope
   const username = `e2e-tix-${unique()}`;
   // The newest live ticket of this customer, and one of another customer (never shown).
   const mine = (await sql<{ id: string; ticket_number: string; order_id: string; day: string }>(
-    `select t.id, t.ticket_number, t.order_id, (t.delivered_at at time zone coalesce(nullif(cs.timezone, ''), 'America/Chicago'))::date::text day
+    `select t.id, t.ticket_number, t.order_id, (t.delivered_at at time zone coalesce(nullif(cs.timezone, ''), 'America/Chicago'))::date::text as day
        from public.delivery_tickets t join public.orders o on o.id = t.order_id join public.customers c on c.id = o.customer_id
        left join public.company_settings cs on cs.company_id = t.company_id
       where t.company_id = $1 and c.name = $2 and o.status <> 'draft' and t.status in ('submitted', 'needs_review', 'accepted')
@@ -109,7 +109,7 @@ test("a customer lists, filters and downloads their own delivery tickets and ope
     // Opening a ticket shows the customer copy (the existing printable page).
     await list.getByText(mine.ticket_number).click();
     await cust.waitForURL(new RegExp(`/portal/${TOP_LINE_SLUG}/orders/${mine.order_id}/tickets/${mine.id}$`));
-    await expect(cust.getByText("Delivery ticket")).toBeVisible();
+    await expect(cust.getByText("Delivery ticket", { exact: true })).toBeVisible();
 
     // A day without deliveries: the empty state says what to do.
     await cust.goto(`/portal/${TOP_LINE_SLUG}/tickets?from=2000-01-01&to=2000-01-02`);

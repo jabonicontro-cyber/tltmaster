@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
+import { driverFixture } from "./driver-fixture";
 import { signIn } from "./helpers";
 import { USERS } from "./users";
 
@@ -67,6 +68,8 @@ test("dispatcher: opening tomorrow's plan ticks that step on this device", async
 });
 
 test("driver: the checklist is on My Day with the pre-trip step", async ({ page }) => {
+  // The e2e driver account linked to a driver record (an earlier spec leaves it unlinked on purpose: driver-portal).
+  await driverFixture();
   await reset("driver");
   await signIn(page, "driver");
   await page.goto("/driver");

@@ -43,7 +43,7 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
   await expect(page.getByRole("button", { name: "Mark completed" })).toHaveCount(0); // never directly for safety work
   await page.getByRole("button", { name: "Send for inspection" }).click();
   await expectToast(page, "Status: Awaiting inspection. Your timer is stopped.");
-  await expect(page.getByText("Only people allowed to clear vehicles")).toBeVisible();
+  await expect(page.getByText(/Only people your company allows to clear vehicles for service can record it/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Passed/ })).toHaveCount(0);
 
   const owner = await browser.newPage();

@@ -196,7 +196,7 @@ test("every demo mode opens its pages and each feature shows sample data", async
       if (role === "mechanic") {
         await visit(page, "/maintenance/my-jobs");
         await expect(page.getByText("No jobs for you right now"), "mechanic My jobs has jobs").toHaveCount(0);
-        await expect(page.getByRole("link", { name: /^Open MWO-/ }).first(), "mechanic My jobs").toBeVisible();
+        await expect(page.getByRole("link", { name: /^Open work order MWO-/ }).first(), "mechanic My jobs").toBeVisible();
       }
       // Parts on order (20261120012300, samples.ts demo_part_wait_samples): the Maintenance overview says how many jobs
       // wait for parts and when the next part is expected; the weekly shop report opens with the week's records.

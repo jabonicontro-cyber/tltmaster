@@ -23,6 +23,10 @@ test("the platform owner previews a demo customer's portal and records the check
     await turnOn.click();
     await expect(page.getByRole("button", { name: "Preview as Customer" })).toBeVisible();
   }
+  // A demo customer with deliveries: the presenter seed gives Cedar Ridge Builders yesterday's delivered tickets (the
+  // list's first customer may only have today's or cancelled orders, so its Tickets page is rightly empty).
+  const customer = page.getByLabel("Demo customer");
+  await customer.selectOption((await customer.locator("option", { hasText: "Cedar Ridge Builders (demo)" }).first().getAttribute("value"))!);
   await page.getByRole("button", { name: "Preview as Customer" }).click();
   await page.waitForURL(/\/portal\/[a-z0-9-]+$/);
   await expect(page.getByRole("status").filter({ hasText: "Testing Lab preview" })).toBeVisible();

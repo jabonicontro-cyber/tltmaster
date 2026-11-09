@@ -1,7 +1,9 @@
 // Credit holds (B128, 20261120005600): billing puts a customer on hold (reason required) or releases it; the overdue
 // and credit-limit rules flag customers from issued invoices; order and dispatch staff see holds (amounts only with
 // billing access); going ahead records a reason; other companies see nothing.
+import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
+import { addDays } from "@/lib/dates";
 import { handedOff } from "./fixtures";
 import { pgError, pool, withSession, withoutPermission } from "./helpers";
 
@@ -104,6 +106,46 @@ describe("credit holds", () => {
       const owner = await s.createUser("owner");
       await s.as(owner);
       expect((await pgError(s.query("select public.demo_credit_hold_sample()"))).code).toBe("42501");
+    });
+  });
+
+  // 20261120014200: the hold never lands on the customer whose loads are still to be planned after today, so the demo's
+  // "Plan the day" keeps work to plan; that customer is chosen only when no other one qualifies.
+  it("the demo sample avoids the customer of the coming days' planned loads", async () => {
+    await withSession(async (s) => {
+      const demo = await s.createCompany(`Hold Demo ${randomUUID().slice(0, 6)}`);
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'prospect' where id = $1", [demo]);
+      const owner = await s.createUser("owner", { companyId: demo });
+      await s.asAdmin();
+      await s.query("update public.profiles set active_company_id = $1 where id = $2", [demo, owner]);
+      const today = (await s.query<{ d: string }>("select private.business_today($1)::text d", [demo])).rows[0].d;
+      const tomorrow = addDays(today, 1);
+      let n = 0;
+      const customer = async (name: string) => (await s.query<{ id: string }>(
+        "insert into public.customers (company_id, name, customer_number) values ($1, $2, $3) returning id", [demo, name, `HD-${++n}`])).rows[0].id;
+      const order = async (customerId: string) => (await s.query<{ id: string }>(
+        "insert into public.orders (company_id, customer_id, order_number, order_date, status) values ($1, $2, $3, $4, 'scheduled') returning id",
+        [demo, customerId, `HD-ORD-${++n}`, today])).rows[0].id;
+      const load = (orderId: string, day: string) => s.query(
+        `insert into public.order_loads (company_id, order_id, load_number, load_date, start_time, end_time, starts_at, ends_at)
+         values ($1, $2, 1, $3::date, '07:00', '08:00', $3::date + time '07:00', $3::date + time '08:00')`, [demo, orderId, day]);
+      // Fewest orders, but its load is tomorrow: the earlier rule put it on hold.
+      const planning = await customer("Planning Day Customer (test)");
+      await load(await order(planning), tomorrow);
+      // Two orders, today's load only: held now.
+      const other = await customer("Today Customer (test)");
+      await load(await order(other), today);
+      await order(other);
+
+      await s.as(owner);
+      expect((await s.query<{ n: number }>("select public.demo_credit_hold_sample() n")).rows[0].n).toBe(1);
+      await s.asAdmin();
+      const held = await s.query<{ id: string }>("select id from public.customers where company_id = $1 and credit_hold", [demo]);
+      expect(held.rows.map((r) => r.id)).toEqual([other]);
+      // Once a customer is on hold, the sample adds nothing.
+      await s.as(owner);
+      expect((await s.query<{ n: number }>("select public.demo_credit_hold_sample() n")).rows[0].n).toBe(0);
     });
   });
 });

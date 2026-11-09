@@ -8,8 +8,10 @@ import { USERS } from "./users";
 
 test("a mechanic works a job with a crew, timer, logged time and checklist", async ({ page }) => {
   const title = `Crew test ${unique()}`;
+  // Its own truck: work in progress keeps a truck in the shop (not assignable), which must not affect other tests' trucks.
+  const truck = await asUser(USERS.owner.email, async (q) =>
+    (await q("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump') returning id", [`ZCR-${unique()}`.slice(0, 20)])).rows[0].id as string);
   const { id } = await asUser(USERS.mechanic.email, async (q) => {
-    const truck = (await q("select id from public.trucks where active and service_status = 'in_service' order by unit_number limit 1")).rows[0].id as string;
     const wo = (await q("select public.maintenance_create_work_order($1::jsonb) r", [JSON.stringify({ truck_id: truck, title, category: "brakes" })])).rows[0].r.id as string;
     await q("select public.maintenance_set_status($1, 'in_progress')", [wo]);
     return { id: wo };
@@ -68,7 +70,8 @@ test("a mechanic works a job with a crew, timer, logged time and checklist", asy
   await page.goto(`/maintenance/work-orders/${id}?tab=labor`);
   await page.getByRole("button", { name: "Finish the job" }).click();
   await page.getByLabel("What did you fix?").fill("Adjusted the slack adjusters");
-  await page.getByRole("button", { name: "Mark completed" }).click();
+  // The finish form's own button (the Next step bar also offers a plain "Mark completed" without findings).
+  await page.getByRole("form", { name: "Finish the job" }).getByRole("button", { name: "Mark completed" }).click();
   await expectToast(page, "Job completed.");
   await expect(page.locator("p", { hasText: "Findings:" })).toContainText("Adjusted the slack adjusters");
 });
@@ -107,8 +110,10 @@ test("shop capacity: set up the shop, record skills, and estimate a job", async 
 });
 
 test("triage: rules suggest, quote the report and ask questions; a person edits, and the safety flag is added", async ({ page }) => {
+  // Its own truck: the safety flag added below restricts the truck, which must not take another test's truck out of service.
+  const truck = await asUser(USERS.owner.email, async (q) =>
+    (await q("insert into public.trucks (unit_number, truck_type) values ($1, 'tri_axle_dump') returning id", [`ZTA-${unique()}`.slice(0, 20)])).rows[0].id as string);
   const { id } = await asUser(USERS.mechanic.email, async (q) => {
-    const truck = (await q("select id from public.trucks where active and service_status = 'in_service' order by unit_number desc limit 1")).rows[0].id as string;
     // Led by the mechanic, so these test jobs do not pile up under "Needs a mechanic" run after run.
     return { id: (await q("select public.maintenance_create_work_order($1::jsonb || jsonb_build_object('assigned_to', auth.uid())) r", [JSON.stringify({ truck_id: truck, title: `Air leak ${unique()}`, description: "Hissing near the rear brake chamber since this morning. It is getting worse.", category: "repair" })])).rows[0].r.id as string };
   });

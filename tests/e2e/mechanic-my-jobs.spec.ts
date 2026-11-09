@@ -2,6 +2,10 @@ import { expect, test } from "@playwright/test";
 import { expectToast, signIn, unique } from "./helpers";
 import { asUser } from "./db";
 import { USERS } from "./users";
+import { formatDate } from "@/lib/dates";
+
+/** A day about two months ahead: the shop accepts an expected part date within a year (part_wait_add). */
+const partExpected = () => new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 
 // The mechanic's phone workspace (docs/COMPANION_APP.md): My jobs is home, the mechanic tab bar shows on a phone, and
 // a job taken from "Needs a mechanic" can be started, timed and finished with the same rules as the work order page.
@@ -117,14 +121,15 @@ test("a fresh driver defect (Reported) needs a mechanic, safety-critical first, 
   // Leaving In progress stops the person's own timer first.
   await page.getByRole("button", { name: "Waiting for parts" }).first().click();
   await page.getByLabel("Which part?").fill("Steer tire");
-  await page.getByLabel("Expected").fill("2099-01-15");
+  const expected = partExpected();
+  await page.getByLabel("Expected").fill(expected);
   await page.getByRole("button", { name: "Mark waiting for parts" }).click();
   await expectToast(page, /Your timer is stopped/);
   // The part is listed on the work order with its expected date; "Part is in" offers the shop queue (20261120012300).
   await page.goto(`/maintenance/work-orders/${id}?tab=order`);
   const onOrder = page.getByRole("list", { name: "Parts on order" });
   await expect(onOrder).toContainText("Steer tire");
-  await expect(onOrder).toContainText("Expected Jan 15, 2099");
+  await expect(onOrder).toContainText(`Expected ${formatDate(expected)}`);
   await onOrder.getByRole("button", { name: "Part is in" }).click();
   await expect(page.getByLabel("Put the job back in the shop queue")).toBeChecked();
   await page.getByRole("button", { name: "Mark received" }).click();

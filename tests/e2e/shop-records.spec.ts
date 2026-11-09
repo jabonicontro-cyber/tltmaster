@@ -20,7 +20,8 @@ test("a job waits for parts before work starts; the overview says when the part 
   await page.getByRole("button", { name: "Waiting for parts" }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Which part?").fill("Mirror bracket");
-  await dialog.getByLabel("Expected").fill("2099-03-02");
+  // Within a year: the shop refuses an expected date further out (part_wait_add).
+  await dialog.getByLabel("Expected").fill(new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10));
   await dialog.getByText(/Vendor, PO number/).click();
   await dialog.getByLabel("Vendor").fill("Fictional Parts Co");
   await dialog.getByLabel("PO number").fill(`PO-${id}`.slice(0, 20));

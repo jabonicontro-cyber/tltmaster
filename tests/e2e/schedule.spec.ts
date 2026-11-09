@@ -36,7 +36,9 @@ test("a dispatcher schedules a driver, gives a day off, and assigning on that da
     const d = await ins("drivers", { name });
     await ins("driver_qualifications", { driver_id: d, kind: "cdl", cdl_class: "A", expires_on: "2030-01-01", verified_at: verified });
     await ins("driver_qualifications", { driver_id: d, kind: "medical_card", expires_on: "2030-01-01", verified_at: verified });
-    await ins("employees", { full_name: name, department: "operations", driver_id: d });
+    // Every driver gets its People record from the database (20261120010000_driver_people): no second insert here.
+    const emp = await q("select full_name, department from public.employees where driver_id = $1", [d]);
+    expect(emp.rows).toEqual([{ full_name: name, department: "operations" }]);
     const cust = await q("select id from public.customers where name = 'Prairie View Landscaping' and company_id = '00000000-0000-4000-8000-000000000001'");
     const r = await q("select public.save_order_draft($1::jsonb) as r", [JSON.stringify({ customer_id: cust.rows[0].id, project_name: `Schedule e2e ${id}`, site_line1: "42 Sample Lane", site_city: "Crown Point", lines: [{ kind: "other", calc_method: "per_unit", description: "Hauling (e2e)", unit_code: "load", quantity: "1", unit_rate_cents: 10000 }] })]);
     const orderId = r.rows[0].r.order_id as string;
