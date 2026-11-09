@@ -99,6 +99,11 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Honest data:**
   - Never invent business rules (pay formulas, pricing), contacts, customers, testimonials or metrics.
   - Missing data is shown as missing; estimates are labelled.
+- **Security first, above all for financial data (owner 2026-11-09, permanent):** security is the top priority. Anything
+  that shows or changes money (invoices, payments, balances, prices, rates, pay and settlements, costs, accounting
+  exports, bank or tax details) gets the strictest checks: its own permission on the server and in the database, never
+  widened for convenience or by an AI tool, support visits and role previews included; financial changes audited;
+  each such change security-reviewed before it ships. When in doubt, refuse and ask.
 - **Deployment and secrets:**
   - Never deploy to production, change DNS or add paid services without approval.
   - Never print or commit secrets.
