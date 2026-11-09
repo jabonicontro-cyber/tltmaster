@@ -9,7 +9,7 @@ import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { PAYMENT_METHODS, parseAmountCents } from "@/lib/billing/invoices";
-import { applicationsOf, matchTickets, parseTicketList, payableCents, ticketKey, ticketState, type BilledTicket } from "@/lib/billing/ticket-payments";
+import { applicationsOf, matchRemittance, matchTickets, parseRemittance, parseTicketList, payableCents, ticketKey, ticketState, type BilledTicket } from "@/lib/billing/ticket-payments";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { centsToInput, formatCents } from "@/lib/money";
@@ -42,7 +42,7 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
     {
       onSuccess: (res) => {
         toast.success(res.message ?? "Saved.");
-        setSelected({}); setPasted(""); setNotFound([]);
+        setSelected({}); setPasted(""); setNotFound([]); setReadNote(null);
         if (mode.kind === "record") setAmount("");
         router.replace(mode.kind === "apply" ? window.location.pathname + window.location.search.replace(/[?&]apply=[^&]*/, "") : window.location.pathname + window.location.search, { scroll: false });
         router.refresh();
@@ -59,7 +59,55 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
     });
   }
 
+  const [readNote, setReadNote] = useState<string | null>(null);
+
+  /** A remittance with amounts (file or pasted rows): tick its tickets with its amounts; otherwise just the numbers. */
+  function applyText(text: string, from: string) {
+    const r = parseRemittance(text);
+    if (!r.hasAmounts) return false;
+    const m = matchRemittance(r.lines, open);
+    setSelected((s) => {
+      const next = { ...s };
+      for (const [k, cents] of Object.entries(m.selected)) next[k] = cents === null ? next[k] ?? "" : centsToInput(cents);
+      return next;
+    });
+    setNotFound(m.notFound.map((l) => l.ticket));
+    const total = r.lines.reduce((t, l) => t + (l.amount_cents ?? 0), 0);
+    if (mode.kind === "record" && !amount.trim() && total > 0) setAmount(centsToInput(total));
+    const matchedCount = Object.keys(m.selected).length;
+    setReadNote(`${from}: ${r.lines.length} ${r.lines.length === 1 ? "line" : "lines"} for ${formatCents(total)}, ${matchedCount} ${matchedCount === 1 ? "ticket" : "tickets"} selected.`
+      + (m.over.length ? ` More than is open on ${m.over.join(", ")}: check those amounts.` : "")
+      + " Check everything before you record it.");
+    return true;
+  }
+
+  async function readFile(file: File | undefined) {
+    setReadNote(null);
+    if (!file) return;
+    if (/\.(xlsx|xls|numbers|ods|pdf)$/i.test(file.name)) {
+      setReadNote("Save the remittance as CSV first (in Excel: File → Save As → CSV), or copy its rows and paste them above.");
+      return;
+    }
+    if (file.size > 2_000_000) {
+      setReadNote("That file is too large for a remittance (over 2 MB).");
+      return;
+    }
+    const text = await file.text();
+    if (!applyText(text, file.name)) {
+      const { matched, notFound: missing } = matchTickets(parseRemittance(text).lines.map((l) => l.ticket), open);
+      setSelected((s) => {
+        const next = { ...s };
+        for (const t of matched) next[ticketKey(t)] = next[ticketKey(t)] ?? centsToInput(payableCents(t));
+        return next;
+      });
+      setNotFound(missing);
+      setReadNote(`${file.name}: no amounts found, so each ticket is filled with what it has open. Check the amounts.`);
+    }
+  }
+
   function findPasted() {
+    setReadNote(null);
+    if (applyText(pasted, "Pasted rows")) return;
     const { matched, notFound: missing } = matchTickets(parseTicketList(pasted), open);
     setSelected((s) => {
       const next = { ...s };
@@ -115,7 +163,7 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
       <input type="hidden" name="tickets" value={JSON.stringify(apps)} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-        <Field label="Ticket numbers from the check stub or remittance" htmlFor="tp-paste" hint="Paste or type them, separated by commas, spaces or new lines. Scale ticket numbers work too.">
+        <Field label="Ticket numbers from the check stub or remittance" htmlFor="tp-paste" hint="Type them, or paste rows copied from the customer's spreadsheet or email (with amounts, each ticket gets its amount). Scale ticket numbers work too.">
           <Textarea id="tp-paste" rows={2} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="TKT-1017, TKT-1018, 1019" />
         </Field>
         <div className="flex flex-wrap gap-2">
@@ -123,6 +171,11 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
           <Button variant="ghost" size="sm" onClick={fillOldestFirst} disabled={paymentCents <= 0}>Oldest first</Button>
         </div>
       </div>
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <label htmlFor="tp-file" className="font-medium text-ink">Remittance file (CSV)</label>
+        <input id="tp-file" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" className="text-sm text-muted file:mr-3 file:rounded-full file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink" onChange={(e) => { void readFile(e.target.files?.[0]); e.target.value = ""; }} />
+      </div>
+      {readNote && <p className="text-sm text-muted" role="status">{readNote}</p>}
       {notFound.length > 0 && (
         <p className="text-sm text-amber-800" role="status">
           Not found among this customer&apos;s open tickets: {notFound.join(", ")}. Check the number, or it may already be paid.

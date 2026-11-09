@@ -113,6 +113,32 @@ test("the office records a payment by ticket numbers, keeps credit, applies it a
   await expect(again.getByRole("row").filter({ hasText: o.second })).toContainText(money(o.secondCents));
 });
 
+// Slice 2: the customer's remittance as a CSV file; each listed ticket gets its listed amount, the check amount is the
+// file's total, and a line for an unknown ticket is reported instead of applied.
+test("the office loads a remittance file: tickets and amounts are filled in, unknown lines are listed", async ({ page }) => {
+  test.slow();
+  const o = await twoTicketOrder();
+  await signIn(page, "office");
+  await page.goto(`/billing/payments?customer=${o.customer}`);
+  const form = page.getByRole("form", { name: "Record a payment by ticket" });
+  const csv = `Invoice,Ticket #,Date,Amount Paid\nINV-77,${o.first},11/02/2026,"${dollars(o.firstCents)}"\nINV-77,${o.second},11/02/2026,40.00\nINV-77,NOPE-404,11/02/2026,5.00\n`;
+  await form.getByLabel("Remittance file (CSV)").setInputFiles({ name: "remittance.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await expect(form.getByText(/remittance\.csv: 3 lines for .*2 tickets selected/)).toBeVisible();
+  await expect(form.getByText("Not found among this customer's open tickets: NOPE-404")).toBeVisible();
+  await expect(form.getByLabel("Amount received")).toHaveValue(dollars(o.firstCents + 4000 + 500));
+  await expect(form.getByLabel(`Amount for ticket ${o.second}`)).toHaveValue("40.00");
+  await form.getByLabel("Check or bank reference").fill("REM-77");
+  await form.getByRole("button", { name: "Record payment" }).click();
+  await expectToast(page, /Payment recorded\. \$5\.00 is kept as credit/);
+  const payment = page.getByRole("listitem").filter({ hasText: "Check #REM-77" }).first();
+  await expect(payment).toContainText(`${o.second} $40.00`);
+  // Leave nothing behind for other runs: void it.
+  await payment.getByRole("button", { name: "Void" }).click();
+  await payment.getByLabel("Reason to void this payment").fill("Test cleanup (e2e)");
+  await payment.getByRole("button", { name: "Void payment" }).click();
+  await expectToast(page, /Payment voided/);
+});
+
 test("a dispatcher cannot open payments by ticket", async ({ page }) => {
   await signIn(page, "dispatcher");
   await page.goto("/billing/payments");
