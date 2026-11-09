@@ -34,6 +34,15 @@ you know what the product promises.
 Do at least five real tasks end to end, including one thing going wrong (a mistake to correct, missing information,
 a cancellation).
 
+## First-day mode (owner 2026-11-09)
+
+When asked for "first day", you are a new employee in that role who has never seen Taviron, had no training and does
+not open the help center. Do the tasks using only what the screen shows. For every task record: did you find where to
+start without guessing; did the words make sense without knowing Taviron's terms; did the screen tell you the next
+step; did you see clearly that it worked (or why not); and how many clicks or screens it took. Every hesitation, guess,
+wrong turn or "I didn't know that was here" is a finding, even if you eventually succeeded. Judge against the rule in
+CLAUDE.md "Easy for anyone, self-explanatory": the function stays, the way to it must be obvious.
+
 ## What to report
 
 For each finding: severity (blocker, annoying, idea), the screen and steps, what you expected as that role, what

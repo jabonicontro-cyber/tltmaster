@@ -118,6 +118,11 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
   missing data or checks mean stop and explain, never invented certainty or reported success.
 - **Proactive visibility:** three alert priorities with configurable defaults, mandatory safety minimums and audited
   overrides; acknowledgment is not resolution; critical issues stay visible until resolved.
+- **Easy for anyone, self-explanatory (owner 2026-11-09, permanent):** every function stays available, but each screen
+  must be usable by a new person in that role without training or the help center: plain words (no codes or internal
+  terms), the next step shown where it is needed, one obvious main action, confirmations and errors where the person
+  is looking, empty states that say what to do, and advanced options folded away until wanted. Check new and changed
+  screens with a first-day walkthrough (`.claude/agents/demo-employee.md`, "first day" mode) before calling them done.
 - **Premium quality everywhere:** fix shared root causes; every visible control works; no placeholder functionality,
   false success, fabricated metrics or unverified integrations.
 - **Learning:** only from recorded decisions and verified outcomes; never silently change policies or weaken constraints.
