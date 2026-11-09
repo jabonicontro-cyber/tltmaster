@@ -18,7 +18,7 @@ import { reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "@/server/data/settings";
-import { getTicket, getTicketContext, reviewQueuePosition } from "@/server/data/tickets";
+import { CHECK_FILTERS, getTicket, getTicketContext, queueFilter, reviewQueuePosition } from "@/server/data/tickets";
 import { QueueKeys } from "@/components/tickets/queue-keys";
 import { TicketScanUpload } from "@/components/tickets/ticket-scan-upload";
 import { TicketReading } from "@/components/tickets/ticket-reading";
@@ -49,20 +49,30 @@ const FIELD_LABELS: Record<string, string> = {
   notes: "Notes",
 };
 
-export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ queue?: string; back?: string }> }) {
+const DONE_LABELS = { accepted: "Accepted", flagged: "Flagged", voided: "Voided" } as const;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export default async function TicketPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ queue?: string; back?: string; saved?: string; photo?: string; count?: string; failed?: string; done?: string; doneId?: string; doneNo?: string }> }) {
   const say = await getSay();
   const access = await requirePagePermission("tickets.view");
   const { id } = await params;
-  const { queue: queueParam, back } = await searchParams;
+  const sp = await searchParams;
+  const { queue: queueParam, back } = sp;
   const detail = await getTicket(id);
   if (!detail) notFound();
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
   // Opened from the review queue: show its position and where to go next.
-  const inQueue = queueParam === "review";
-  const [queue, context] = await Promise.all([inQueue ? reviewQueuePosition(id) : Promise.resolve(null), getTicketContext(detail.ticket)]);
-  const returnTo = returnTarget(back)?.href ?? (inQueue ? "/tickets?view=review" : null);
-  const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=review`, returnTo) : `/tickets/${ticketId}?queue=review`);
-  const { ticket: t, revisions, events, units, people, photos } = detail;
+  // The queue is "To check" or one of its filters (flagged / not flagged), so the position matches the list it came from.
+  const filter = queueFilter(queueParam);
+  const queueKey = filter === "all" ? "review" : filter;
+  const [queue, context] = await Promise.all([filter ? reviewQueuePosition(id, filter) : Promise.resolve(null), getTicketContext(detail.ticket)]);
+  const returnTo = returnTarget(back)?.href ?? (filter ? `/tickets?view=check${filter === "all" ? "" : `&show=${filter}`}` : null);
+  const queueHref = (ticketId: string) => (returnTo ? withReturn(`/tickets/${ticketId}?queue=${queueKey}`, returnTo) : `/tickets/${ticketId}?queue=${queueKey}`);
+  // The decision just taken on the previous ticket of the queue, shown in the queue bar (not a toast over the buttons).
+  const done = sp.done && sp.done in DONE_LABELS && sp.doneId && UUID.test(sp.doneId) && sp.doneNo && /^[A-Za-z0-9-]{1,40}$/.test(sp.doneNo)
+    ? { label: DONE_LABELS[sp.done as keyof typeof DONE_LABELS], id: sp.doneId, number: sp.doneNo, flagged: sp.done === "flagged" }
+    : null;
+  const { ticket: t, revisions, events, units, people, photos, names } = detail;
   const { timezone } = await businessToday();
   // Where the driver's phone was when the ticket was sent (B98); missing update or none recorded: nothing shown.
   const located = (await (await createClient()).from("ticket_locations").select("latitude, longitude, accuracy_m, recorded_at").in("ticket_id", revisions.map((r) => r.id)).limit(1).maybeSingle()).data as { latitude: number; longitude: number; accuracy_m: number | null; recorded_at: string } | null;
@@ -85,8 +95,16 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
       {queue && <QueueKeys nextHref={queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null} prevHref={queue.prevId ? queueHref(queue.prevId) : null} />}
       {queue && (
         <nav aria-label="Review queue" className="mb-3 flex flex-wrap items-center gap-3 rounded-control border border-line bg-card px-3 py-2 text-sm">
+          {done && (
+            <span role="status" className="w-full text-sm">
+              <strong>{done.label} {done.number}.</strong> {done.flagged ? "It stays in To check, marked Needs review, until an office reviewer corrects, accepts or voids it. " : ""}This is the next ticket.{" "}
+              <Link href={queueHref(done.id)} className="font-semibold underline">Back to {done.number}</Link>
+            </span>
+          )}
           <span className="font-semibold">
-            {queue.position ? `Review queue: ${queue.position} of ${queue.total} (needs review and submitted)` : queue.total ? `Not in the review queue any more · ${queue.total} waiting` : "The review queue is empty"}
+            {queue.position
+              ? `To check: ${queue.position} of ${queue.total}${filter === "all" ? "" : ` (${CHECK_FILTERS[filter!].label.toLowerCase()})`}`
+              : queue.total ? `Not in this list any more · ${queue.total} still to check` : "Nothing left to check"}
           </span>
           {queue.prevId && <Link href={queueHref(queue.prevId)} className="underline">Previous</Link>}
           {queue.nextId && queue.nextId !== t.id && <Link href={queueHref(queue.nextId)} className="underline">Next</Link>}
@@ -116,13 +134,24 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               orderId={t.order_id}
               status={t.status}
               permissions={{ edit: can(access, "tickets.edit"), review: can(access, "tickets.review") }}
-              queue={queue ? { nextHref: queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null, doneHref: returnTo ?? "/tickets?view=review" } : null}
+              queue={queue ? { nextHref: queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null, doneHref: returnTo ?? "/tickets?view=check" } : null}
             />
           ) : undefined
         }
       />
 
       <div className="mb-5 space-y-3">
+        {sp.saved === "submitted" && (
+          <p role="status" className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">
+            {say(`Ticket ${t.ticket_number} submitted.`)}
+            {sp.photo === "attached" && ` ${Number(sp.count) > 1 ? `${Number(sp.count)} photos` : "Photo"} attached.`}
+          </p>
+        )}
+        {sp.saved === "submitted" && sp.photo === "failed" && (
+          <Notice tone="warning" title="The photo was not attached">
+            The ticket is saved, but {Number(sp.failed) > 1 ? `${Number(sp.failed)} photos` : "the photo"} could not be added. Add it under Paper ticket photos below.
+          </Notice>
+        )}
         {t.status === "superseded" && current && (
           <Notice tone="warning" title={`This is revision ${t.revision}, replaced by a correction`}>
             See the <Link href={`/tickets/${current.id}`} className="font-semibold underline">current revision {current.revision}</Link>.
@@ -176,7 +205,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                     label: "Planned for this load",
                     value: `${formatDate(s.load_date)}${s.planned_quantity !== null ? ` · ${trimNumber(s.planned_quantity)} ${unitLabel(s.planned_unit_code)} (plan only)` : ""}`,
                   },
-                  { label: "Truck · driver", value: `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""} · ${s.driver_name}` },
+                  { label: "Truck · driver", value: `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""} · ${names.drivers.get(t.driver_id) ?? s.driver_name}` },
                   { label: "Entered", value: `${formatDateTime(t.created_at, timezone)} by ${who(t.created_by)}` },
                   ...(t.reviewed_at ? [{ label: t.status === "needs_review" ? "Flagged" : "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? `: ${t.review_note}` : ""}` }] : []),
                   ...(t.correction_reason ? [{ label: "Correction reason", value: t.correction_reason, wide: true }] : []),

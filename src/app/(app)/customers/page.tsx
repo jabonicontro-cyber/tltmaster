@@ -13,6 +13,9 @@ import { requirePagePermission } from "@/server/auth";
 import { listCustomers } from "@/server/data/customers";
 import { pendingSiteNotes } from "@/server/data/site-notes";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
+import { owedByCustomer } from "@/server/data/billing-balance";
+import { businessToday } from "@/server/data/settings";
+import { formatCents } from "@/lib/money";
 import { getSay } from "@/server/industry";
 
 export const metadata = { title: "Customers" };
@@ -30,6 +33,8 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
     pendingSiteNotes().catch(() => null),
   ]);
   const siteNotes = notes?.length ?? 0;
+  // What each customer owes on issued invoices (people who see billing only; one query for the page).
+  const owed = can(access, "billing.view") ? await owedByCustomer(rows.map((c) => c.id), (await businessToday()).today).catch(() => null) : null;
   const filtered = Boolean(sp.q || sp.type || sp.relationship || sp.tag || (sp.status && sp.status !== "active"));
   const exportParams = new URLSearchParams(Object.entries({ q: sp.q, type: sp.type, status: sp.status, relationship: sp.relationship, tag: sp.tag }).filter((e): e is [string, string] => Boolean(e[1])));
 
@@ -130,6 +135,7 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                     <Th className="hidden lg:table-cell">Phone</Th>
                     <Th className="hidden lg:table-cell">Email</Th>
                     <Th className="hidden sm:table-cell">City</Th>
+                    {owed && <Th align="right" className="hidden sm:table-cell">Owed on invoices</Th>}
                     <Th>Status</Th>
                   </tr>
                 </thead>
@@ -152,6 +158,12 @@ export default async function CustomersPage({ searchParams }: { searchParams: Pr
                       <Td className="hidden whitespace-nowrap lg:table-cell">{c.phone}</Td>
                       <Td className="hidden lg:table-cell">{c.email}</Td>
                       <Td className="hidden sm:table-cell">{[c.billing_city, c.billing_state].filter(Boolean).join(", ")}</Td>
+                      {owed && (
+                        <Td align="right" className="hidden tabular sm:table-cell">
+                          {owed.get(c.id)?.owed ? formatCents(owed.get(c.id)!.owed) : <span className="text-muted">–</span>}
+                          {owed.get(c.id)?.overdue ? <div className="text-xs font-semibold text-critical">{formatCents(owed.get(c.id)!.overdue)} overdue</div> : null}
+                        </Td>
+                      )}
                       <Td>
                         <ActiveBadge active={c.active} />
                       </Td>

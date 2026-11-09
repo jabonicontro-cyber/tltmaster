@@ -62,13 +62,18 @@ test("the office invoices a handed-off order, emails it and records a partial pa
     await expect(page.getByRole("heading", { name: "Draft invoice", level: 1 })).toBeVisible();
     await expect(page.getByRole("table", { name: "Invoice lines" })).toContainText("Gravel #53 limestone");
 
+    // Issuing cannot be undone: the button asks first (office walkthrough 2026-11-09).
     await page.getByRole("button", { name: "Issue invoice" }).click();
+    await expect(page.getByText("This cannot be undone")).toBeVisible();
+    await page.getByRole("button", { name: "Yes, issue it" }).click();
     await expect(page.getByText(/Issued\. The invoice is numbered and locked/)).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/^Invoice INV-\d{4,}$/);
+    await expect(page.getByText("Not sent yet")).toBeVisible();
 
     await page.getByRole("textbox", { name: "To", exact: true }).fill("ap@prairieview.example");
     await page.getByRole("button", { name: "Send invoice" }).click();
-    await expect(page.getByText(/Preview only. Nothing was sent|Test mode: the email went to the test inbox|Emailed to the customer/)).toBeVisible();
+    // A preview is not shown as a success: it says the invoice is still not marked sent.
+    await expect(page.getByText(/Not sent: this was a preview only|Test mode: the email went to the test inbox|Emailed to the customer/)).toBeVisible();
 
     const pay = page.getByRole("form", { name: "Record a payment" });
     await pay.getByLabel("Amount ($)").fill("100.00");
@@ -79,7 +84,9 @@ test("the office invoices a handed-off order, emails it and records a partial pa
     await expect(page.getByRole("list", { name: "Payments" })).toContainText("Check #4521");
 
     await page.goto("/billing/invoices?view=partly_paid");
-    await expect(page.getByRole("table", { name: "Invoices" }).getByRole("row").filter({ hasText: orderNumber })).toContainText("Partly paid");
+    const listed = page.getByRole("table", { name: "Invoices" }).getByRole("row").filter({ hasText: orderNumber });
+    await expect(listed).toContainText("Partly paid");
+    await expect(listed).toContainText(/Not sent yet|Sent /);
     await expect(page.getByRole("table", { name: "Receivables by age" })).toContainText("Prairie View Landscaping");
   } finally {
     await office(async (q) => { await q("select public.invoicing_save_settings('quickbooks', 30, '')"); });

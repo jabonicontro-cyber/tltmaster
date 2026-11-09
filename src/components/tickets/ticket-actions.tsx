@@ -60,7 +60,7 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
             ? "Confirms the ticket matches the paper record. It does not bill the customer or change the order."
             : action === "void"
               ? "The ticket stays on record as voided and no longer counts for the load. This cannot be undone. Enter a new ticket if needed."
-              : "Marks the ticket as needing office review."
+              : "Marks it Needs review with your reason. It stays in the office's To check list until someone allowed to review tickets corrects, accepts or voids it. The driver's app shows it as being checked by the office."
         }
         confirmLabel={action === "accept" ? "Accept" : action === "flag" ? "Flag" : "Void ticket"}
         tone={action === "void" ? "danger" : "primary"}
@@ -68,9 +68,13 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
           if (!action) return;
           const r = await reviewTicket({ ticketId, orderId, action, note });
           if (!r.ok) return r.error;
-          if (queue) {
-            toast.success(`${r.message ?? "Saved"}${queue.nextHref ? " Opening the next ticket." : " The review queue is done."}`);
-            router.push(queue.nextHref ?? queue.doneHref);
+          if (queue?.nextHref) {
+            // The next ticket says what was done here, in its queue bar, with a link back (a toast would cover its buttons).
+            const done = action === "accept" ? "accepted" : action === "flag" ? "flagged" : "voided";
+            router.push(`${queue.nextHref}&${new URLSearchParams({ done, doneId: ticketId, doneNo: ticketNumber })}`);
+          } else if (queue) {
+            toast.success(`${r.message ?? "Saved"} Nothing else is waiting in this list.`);
+            router.push(queue.doneHref);
           } else {
             toast.success(r.message ?? "Saved");
             router.refresh();

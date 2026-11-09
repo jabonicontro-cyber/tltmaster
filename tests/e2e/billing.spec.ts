@@ -100,7 +100,7 @@ test("office follows an order from a missing ticket to a billing handoff and bac
   await page.getByRole("checkbox", { name: `Select ${f.orderNumber}` }).check();
   await page.getByRole("button", { name: "Hand off selected" }).click();
   await page.getByRole("dialog").getByLabel("Reference (optional)").fill("QB entry e2e");
-  await page.getByRole("dialog").getByRole("button", { name: "Create batch" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Hand off", exact: true }).click();
   await expectToast(page, /Batch BIL-\d{4,} created with 1 order\./);
   await expect(page).toHaveURL(/view=handed_off/);
   const batch = page.getByRole("listitem").filter({ hasText: f.orderNumber }).filter({ hasText: "QB entry e2e" });
@@ -131,11 +131,41 @@ test("office follows an order from a missing ticket to a billing handoff and bac
   await expect(history.getByText(/Customer confirmed partial delivery \(e2e\)/)).toBeVisible();
   await expect(page.getByRole("link", { name: ticket.ticket_number })).toBeVisible();
 
-  // 7. Ready again: handed off from its own billing page (office walkthrough 2026-11-09).
+  // 7. Ready again: handed off from its own billing page (office walkthrough 2026-11-09). The page stays and shows the
+  // new state at once, with the next step for the company's invoicing setting (QuickBooks here: accounting).
   await page.getByRole("button", { name: "Hand off for billing" }).click();
-  await page.getByRole("dialog").getByRole("button", { name: "Create batch" }).click();
-  await expectToast(page, /Batch BIL-\d{4,} created with 1 order\./);
-  await expect(page).toHaveURL(/view=handed_off/);
+  await page.getByRole("dialog").getByRole("button", { name: "Hand off", exact: true }).click();
+  await expectToast(page, /Batch BIL-\d{4,} created with 1 order\. Next: enter the invoice in your accounting system\./);
+  await expect(page).toHaveURL(new RegExp(`/billing/orders/${f.orderId}$`));
+  await expect(page.getByText("Handed off", { exact: true }).first()).toBeVisible();
+  await expect(page.getByRole("button", { name: "Hand off for billing" })).toHaveCount(0);
+});
+
+// Every blocker at once on the order's billing page, with the action for each (office walkthrough 2026-11-09): the
+// office completes the order from there (Start work, then Complete, through the order status rules).
+test("the billing page lists every blocker and completes the order from there", async ({ page }) => {
+  const f = await fixture();
+  const ticket = await office(async (q) => {
+    const r = await q("select public.submit_delivery_ticket($1::jsonb) as r", [
+      JSON.stringify({ load_id: f.loadId, order_line_id: f.line, delivered_date: f.yesterday, delivered_time: "08:30", quantity: "21.47", unit_code: "ton", external_reference: f.paper }),
+    ]);
+    return r.rows[0].r as { ticket_id: string; ticket_number: string };
+  });
+  await signIn(page, "office");
+  await page.goto(`/billing/orders/${f.orderId}`);
+  const blockers = page.getByRole("list", { name: "What blocks billing" });
+  await expect(blockers.getByText("1 ticket not accepted yet")).toBeVisible();
+  await expect(blockers.getByText("The order is not completed")).toBeVisible();
+  await expect(blockers.getByRole("link", { name: "Check the tickets" })).toHaveAttribute("href", `/tickets/${ticket.ticket_id}?queue=review`);
+
+  await office(async (q) => { await q("select public.review_delivery_ticket($1, 'accept', '')", [ticket.ticket_id]); });
+  await page.reload();
+  await expect(blockers.getByText("1 ticket not accepted yet")).toHaveCount(0);
+  await blockers.getByRole("button", { name: "Start work and complete" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Start work and complete" }).click();
+  await expectToast(page, /marked completed\./);
+  await expect(blockers.getByText("The order is not completed")).toHaveCount(0);
+  await expect(blockers.getByText(/differences? to acknowledge/)).toBeVisible();
 });
 
 // An unassigned past load counts as a missing ticket in Billing; Tickets lists it too, marked Not assigned, with the way

@@ -300,7 +300,7 @@ export async function getOrderBilling(orderId: string) {
     businessToday(),
     // Every line (percentages and discounts too) and the order's tax rate, for the invoice draft.
     supabase.from("order_lines").select("id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").eq("order_id", orderId).order("line_no"),
-    supabase.from("orders").select("tax_rate_bp, total_cents").eq("id", orderId).maybeSingle(),
+    supabase.from("orders").select("tax_rate_bp, total_cents, edit_seq").eq("id", orderId).maybeSingle(),
   ]);
   const draft = buildInvoiceDraft({
     lines: (orderLines.data ?? []) as DraftOrderLine[],
@@ -311,6 +311,8 @@ export async function getOrderBilling(orderId: string) {
   });
   return {
     draft,
+    /** The order's edit counter, for completing it from the billing page (the database refuses a stale one). */
+    editSeq: (order.data as { edit_seq?: number } | null)?.edit_seq ?? null,
     status: status as BillingOrderRow,
     loads: (loads.data ?? []) as BillingLoadRow[],
     lines: (lines.data ?? []) as BillingLineRow[],

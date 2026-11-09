@@ -10,6 +10,8 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Checkbox, Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
+import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
+import { toJpeg } from "@/lib/files/to-jpeg";
 import { trimNumber } from "@/lib/fleet/labels";
 import { quantityError, unitRequiresWhole } from "@/lib/tickets/rules";
 import type { UnitRow } from "@/server/data/types";
@@ -47,7 +49,12 @@ interface Props {
 
 export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, units, trucks, trailers, drivers, assignment, cancelHref }: Props) {
   const router = useRouter();
-  const [v, setV] = useState(initial);
+  const [v, setV] = useState(() => {
+    // A new ticket on a one-line order starts with that line's unit ("Order line is in tons" → Tons).
+    if (mode !== "new" || initial.unitCode || !initial.orderLineId) return initial;
+    const code = lines.find((l) => l.id === initial.orderLineId)?.unit_code ?? "";
+    return units.some((u) => u.code === code) ? { ...initial, unitCode: code } : initial;
+  });
   const [reason, setReason] = useState("");
   // One key per form: a double click or retry returns the same ticket.
   const [submissionKey] = useState(() => (mode === "new" ? crypto.randomUUID() : null));
@@ -56,8 +63,19 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirmMessage, setConfirmMessage] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
+  // Paper-ticket photos chosen with the entry (new tickets): sent right after the ticket is saved.
+  const [photos, setPhotos] = useState<File[]>([]);
+  const lineUnit = (id: string) => {
+    const code = lines.find((l) => l.id === id)?.unit_code ?? "";
+    return units.some((u) => u.code === code) ? code : "";
+  };
   const set = (k: keyof TicketFormValues) => (e: { target: { value: string } }) => {
-    setV((x) => ({ ...x, [k]: e.target.value }));
+    const value = e.target.value;
+    setV((x) => {
+      // The unit starts as the order line's unit (and follows the line until someone picks another unit).
+      if (k === "orderLineId" && (!x.unitCode || x.unitCode === lineUnit(x.orderLineId))) return { ...x, orderLineId: value, unitCode: lineUnit(value) || x.unitCode };
+      return { ...x, [k]: value };
+    });
     if (k === "externalReference") {
       setConfirmMessage(null);
       setConfirmed(false);
@@ -100,15 +118,36 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
       setFieldErrors(r.fieldErrors ?? {});
       return;
     }
-    toast.success(r.message ?? "Saved");
-    router.push(`/tickets/${r.data.ticketId}`);
+    if (mode === "correct") {
+      toast.success(r.message ?? "Saved");
+      router.push(`/tickets/${r.data.ticketId}`);
+      return;
+    }
+    // New ticket: attach the chosen photos now, then open the ticket; it says what was saved (no toast over its buttons).
+    let photo = "";
+    if (photos.length) {
+      setPending(true);
+      let failed = 0;
+      for (const file of photos) {
+        let blob: Blob;
+        try {
+          blob = await toJpeg(file);
+        } catch {
+          failed++;
+          continue;
+        }
+        failed += await uploadPhotos(`/tickets/${r.data.ticketId}/scans`, { upload_key: crypto.randomUUID() }, [new File([blob], "ticket.jpg", { type: blob.type })]);
+      }
+      photo = failed ? `&photo=failed&failed=${failed}` : `&photo=attached&count=${photos.length}`;
+    }
+    router.push(`/tickets/${r.data.ticketId}?saved=submitted${photo}`);
   }
 
   return (
     <div className="space-y-5">
       <FormError message={error} />
       <Card>
-        <CardHeader title="What was delivered" description="Enter the figures from the paper or scale ticket. Nothing is filled in from the plan." />
+        <CardHeader title="What was delivered" description="Enter the figures from the paper or scale ticket. Only the unit starts as the order line's unit; change it if the paper says otherwise." />
         <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-6">
           <Field label="Order line" htmlFor="t-line" required error={fieldErrors.orderLineId} className="sm:col-span-6">
             <Select id="t-line" value={v.orderLineId} onChange={set("orderLineId")}>
@@ -196,6 +235,24 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           </Field>
         </CardBody>
       </Card>
+
+      {mode === "new" && (
+        <Card>
+          <CardBody>
+            <PhotoPicker
+              id="t-photos"
+              label="Paper ticket photo or scan (optional)"
+              files={photos}
+              onChange={setPhotos}
+              max={4}
+              camera={false}
+              accept="image/jpeg,image/png,image/webp,image/heic"
+              empty="Choose a photo or scan of the paper ticket"
+              hint="Attached to the ticket right after you submit it (location data removed). If it cannot be attached, the ticket is still saved and says so; add it from the ticket page."
+            />
+          </CardBody>
+        </Card>
+      )}
 
       {mode === "correct" && (
         <Card>

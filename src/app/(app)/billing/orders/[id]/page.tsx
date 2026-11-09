@@ -1,9 +1,10 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { vocabulary } from "@/lib/industry";
 import { getSettings } from "@/server/data/settings";
 import { ReturnLink } from "@/components/ui/return-link";
 import { notFound } from "next/navigation";
-import { ClipboardList, FilePlus2 } from "lucide-react";
+import { CalendarRange, ClipboardCheck, ClipboardList, FilePlus2 } from "lucide-react";
 import { AcknowledgeButton, RevertHandoffButton } from "@/components/billing/decision-buttons";
 import { ExceptionTable } from "@/components/billing/exception-table";
 import { InvoiceDraftCard } from "@/components/billing/invoice-draft";
@@ -29,7 +30,12 @@ import { createClient } from "@/server/supabase/server";
 import { ExtraChargeForm } from "@/components/billing/extra-charge-form";
 import { TruckHoursCard, type TruckHours } from "@/components/billing/truck-hours-card";
 import { HandOffOne } from "@/components/billing/hand-off-form";
-import { invoicingSettings } from "@/server/data/invoices";
+import { invoicesByHandoff, invoicingSettings } from "@/server/data/invoices";
+import { CompleteOrderButton } from "@/components/billing/complete-order";
+import { acknowledgementChange, billingBlockers, completionSteps, type Blocker } from "@/lib/billing/blockers";
+import { buttonClasses } from "@/components/ui/button";
+import { createInvoice } from "@/app/(app)/billing/invoices/actions";
+import type { OrderStatus } from "@/server/data/types";
 
 export const metadata = { title: "Order billing" };
 
@@ -51,11 +57,28 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const { id } = await params;
   const data = await getOrderBilling(id);
   if (!data) notFound();
-  const { draft, status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone } = data;
-  const e = sayExplanation(readinessExplanation(o.readiness, o), say);
+  const { draft, status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone, editSeq } = data;
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
-  const issuer = canManage && o.readiness === "ready" ? (await invoicingSettings().catch(() => null))?.issuer : null;
+  // Who issues invoices decides the next step after the handoff (Taviron: create the invoice; else accounting).
+  const invoicing = await invoicingSettings().catch(() => null);
+  const issuer = invoicing?.installed ? invoicing.issuer : null;
+  const e = sayExplanation(readinessExplanation(o.readiness, o, issuer), say);
+  const handoffInvoice = issuer === "taviron" && o.readiness === "handed_off" && o.handoff_order_id ? (await invoicesByHandoff([o.handoff_order_id]))[o.handoff_order_id] ?? null : null;
+  // Everything that still blocks billing, at once; an acknowledgement that stopped counting says why.
+  const lastReview = reviews[0];
+  const ackChange = !o.acknowledgment_id && o.exceptions_count > 0 && lastReview && lastReview.fingerprint !== o.exceptions_fingerprint
+    ? acknowledgementChange(lastReview.exceptions, exceptions)
+    : null;
+  const missingLoads = loads.filter((l) => l.documentation_state === "missing");
+  const blockers = billingBlockers(o, { unassignedMissing: missingLoads.filter((l) => !l.assignment_id).length, ackChange });
+  const steps = can(access, "orders.schedule") && editSeq !== null ? completionSteps(o.status as OrderStatus) : null;
+  const completeFacts = [
+    o.loads_not_due > 0 && `${o.loads_not_due} planned load(s) have not run yet.`,
+    o.loads_missing > 0 && `${o.loads_missing} delivered load(s) have no delivery ticket.`,
+    o.tickets_pending > 0 && `${o.tickets_pending} ticket(s) are not accepted yet.`,
+  ].filter((f): f is string => Boolean(f));
+  const pendingTickets = tickets.filter((t) => t.status === "submitted" || t.status === "needs_review");
   const ticketsOf = (pred: (t: (typeof tickets)[number]) => boolean) => tickets.filter(pred);
   const person = (uid: string | null) => people[uid ?? ""] ?? "Someone";
   // Detention proposals (DT1, 20261120008200): none before the migration or when the customer has no detention set.
@@ -85,14 +108,65 @@ export default async function OrderBillingPage({ params, searchParams }: { param
       />
 
       <div className="space-y-5">
-        <Notice tone={o.readiness === "ready" || o.readiness === "handed_off" ? "info" : "warning"} title={e.why}>
-          {e.action}
-          {o.readiness === "handed_off" && (
-            <> Batch {o.batch_number}{o.handoff_reference ? ` (${o.handoff_reference})` : ""}, {formatDateTime(o.handed_off_at, timezone)} by {person(o.handed_off_by)}.</>
-          )}
-          {o.changed_since_handoff && <strong>{say("Tickets changed after the handoff: check the invoice in your accounting system.")}</strong>}
-        </Notice>
+        {blockers.length > 0 ? (
+          <Card>
+            <CardHeader
+              title={blockers.length === 1 ? "One thing keeps this order out of billing" : `${blockers.length} things keep this order out of billing`}
+              description="Everything at once, with what to do for each. The order is ready to bill when this list is empty."
+            />
+            <ul className="divide-y divide-line border-t border-line" aria-label="What blocks billing">
+              {blockers.map((b) => (
+                <li key={b.key} className="flex flex-wrap items-start justify-between gap-3 px-5 py-3 sm:px-6">
+                  <div className="min-w-0 max-w-2xl">
+                    <p className="font-semibold">{say(b.title)}</p>
+                    <p className="text-sm text-muted">{say(b.detail)}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <BlockerAction
+                      blocker={b}
+                      enterHref={canEnterTickets && missingLoads.length === 1 && missingLoads[0].assignment_id ? `/tickets/new?load=${missingLoads[0].load_id}` : null}
+                      enterLabel={words.enter}
+                      dispatchHref={can(access, "dispatch.view") ? `/dispatch?date=${missingLoads.find((l) => !l.assignment_id)?.load_date ?? ""}` : null}
+                      reviewHref={pendingTickets.length ? `/tickets/${pendingTickets[0].id}?queue=review` : null}
+                      exceptions={canManage && b.actionable && o.exceptions_count > 0 && !o.acknowledgment_id ? (
+                        <AcknowledgeButton size="sm" orderId={o.order_id} orderNumber={o.order_number} fingerprint={o.exceptions_fingerprint} count={o.exceptions_count} />
+                      ) : null}
+                      complete={steps && steps.length > 0 ? (
+                        <CompleteOrderButton orderId={o.order_id} orderNumber={o.order_number} status={o.status as OrderStatus} editSeq={editSeq!} steps={steps} facts={completeFacts} />
+                      ) : null}
+                      orderHref={`/orders/${o.order_id}`}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ) : (
+          <Notice tone={o.readiness === "ready" || o.readiness === "handed_off" ? "info" : "warning"} title={e.why}>
+            {e.action}
+            {o.readiness === "handed_off" && (
+              <> Batch {o.batch_number}{o.handoff_reference ? ` (${o.handoff_reference})` : ""}, {formatDateTime(o.handed_off_at, timezone)} by {person(o.handed_off_by)}.</>
+            )}
+            {o.changed_since_handoff && <strong>{say(issuer === "taviron" ? " Tickets changed after the handoff: check the invoice." : " Tickets changed after the handoff: check the invoice in your accounting system.")}</strong>}
+            {issuer === "taviron" && o.readiness === "handed_off" && o.handoff_order_id && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {handoffInvoice ? (
+                  <Link href={`/billing/invoices/${handoffInvoice.id}`} className={buttonClasses("primary", "sm")}>
+                    {handoffInvoice.number ? `Open invoice ${handoffInvoice.number}` : "Open the draft invoice"}
+                  </Link>
+                ) : canManage ? (
+                  <form action={createInvoice}>
+                    <input type="hidden" name="handoff" value={o.handoff_order_id} />
+                    <input type="hidden" name="back" value={`/billing/orders/${o.order_id}`} />
+                    <button type="submit" className={buttonClasses("primary", "sm")}><FilePlus2 className="size-4" aria-hidden />Create the invoice</button>
+                  </form>
+                ) : null}
+              </div>
+            )}
+          </Notice>
+        )}
 
+        <div id="loads" className="scroll-mt-24">
         <Card>
           <CardHeader title="Loads" description={say("Planned against delivered, from the current ticket revisions. Voided and replaced revisions do not count.")} />
           {loads.length === 0 ? (
@@ -134,6 +208,9 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                           {l.documentation_state === "missing" && l.assignment_id && canEnterTickets && (
                             <ButtonLink href={`/tickets/new?load=${l.load_id}`} size="sm" className="mt-1" icon={<FilePlus2 className="size-4" />}>{words.enter}</ButtonLink>
                           )}
+                          {l.documentation_state === "missing" && !l.assignment_id && (
+                            <p className="mt-1 max-w-64 text-xs text-muted">No truck was assigned, so no ticket can be entered. Dispatch assigns it (or cancels the load if it did not run).</p>
+                          )}
                         </Td>
                         <Td align="right" className="tabular">{l.planned_quantity !== null ? `${qty(l.planned_quantity)} ${l.planned_unit_code}` : "–"}</Td>
                         <Td align="right" className="tabular">{l.delivered_quantity !== null ? `${qty(l.delivered_quantity)} ${l.planned_unit_code}` : l.live_count ? `in ${(l.ticket_units ?? []).join(", ")}` : "–"}</Td>
@@ -149,6 +226,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
             </TableWrap>
           )}
         </Card>
+        </div>
 
         {extraOptions.length > 0 && <ExtraChargeForm orderId={id} options={extraOptions} />}
         {truckHours?.job_type === "truck_day" && <TruckHoursCard data={truckHours} timeZone={timezone} orderId={id} canManage={canManage} locked={o.readiness === "handed_off"} />}
@@ -206,6 +284,11 @@ export default async function OrderBillingPage({ params, searchParams }: { param
             <CardBody><p className="text-sm text-muted">No exceptions.</p></CardBody>
           ) : (
             <>
+              {ackChange && (
+                <CardBody className="border-b border-line text-sm">
+                  <Badge tone="amber">Acknowledge again</Badge> {ackChange}
+                </CardBody>
+              )}
               {o.acknowledgment_id && (
                 <CardBody className="border-b border-line text-sm">
                   <Badge tone="green">Acknowledged</Badge> by {person(o.acknowledged_by)} on {formatDateTime(o.acknowledged_at, timezone)}: “{o.acknowledgment_reason}”
@@ -240,7 +323,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                   <li key={r.id} className="text-sm">
                     <div className="font-semibold">
                       Exceptions acknowledged ({r.exceptions.length})
-                      {r.fingerprint !== o.exceptions_fingerprint && <Badge tone="gray" className="ml-2">No longer current: exceptions changed</Badge>}
+                      {r.fingerprint !== o.exceptions_fingerprint && <Badge tone="gray" className="ml-2">No longer current: the differences changed</Badge>}
                     </div>
                     <div className="text-muted">{person(r.decided_by)} · {formatDateTime(r.decided_at, timezone)}: “{r.reason}”</div>
                   </li>
@@ -252,4 +335,27 @@ export default async function OrderBillingPage({ params, searchParams }: { param
       </div>
     </>
   );
+}
+
+/** The one action for a blocker, where the person may take it; otherwise where to go. */
+function BlockerAction({ blocker, enterHref, enterLabel, dispatchHref, reviewHref, exceptions, complete, orderHref }: {
+  blocker: Blocker; enterHref: string | null; enterLabel: string; dispatchHref: string | null; reviewHref: string | null;
+  exceptions: ReactNode; complete: ReactNode; orderHref: string;
+}) {
+  switch (blocker.key) {
+    case "missing_tickets":
+      return enterHref
+        ? <ButtonLink href={enterHref} size="sm" icon={<FilePlus2 className="size-4" />}>{enterLabel}</ButtonLink>
+        : <a href="#loads" className={buttonClasses("secondary", "sm")}>Go to the loads</a>;
+    case "unassigned_loads":
+      return dispatchHref ? <ButtonLink href={dispatchHref} size="sm" variant="secondary" icon={<CalendarRange className="size-4" />}>Open dispatch</ButtonLink> : <span className="text-sm text-muted">For dispatch</span>;
+    case "no_tickets":
+      return <a href="#loads" className={buttonClasses("secondary", "sm")}>Go to the loads</a>;
+    case "tickets_to_check":
+      return reviewHref ? <ButtonLink href={reviewHref} size="sm" icon={<ClipboardCheck className="size-4" />}>Check the tickets</ButtonLink> : null;
+    case "not_completed":
+      return complete ?? <ButtonLink href={orderHref} size="sm" variant="secondary" icon={<ClipboardList className="size-4" />}>Open the order</ButtonLink>;
+    case "exceptions":
+      return exceptions ?? (blocker.actionable ? null : <span className="text-sm text-muted">After completing</span>);
+  }
 }

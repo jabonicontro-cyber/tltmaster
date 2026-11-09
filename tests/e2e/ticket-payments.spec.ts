@@ -69,6 +69,8 @@ test("the office records a payment by ticket numbers, keeps credit, applies it a
   await page.goto("/billing");
   await page.getByRole("link", { name: "Payments by ticket" }).click();
   await expect(page.getByRole("heading", { name: "Payments by ticket", level: 1 })).toBeVisible();
+  // Choosing a customer loads their tickets at once: there is no Show button to press.
+  await expect(page.getByRole("button", { name: "Show" })).toHaveCount(0);
   await page.goto(`/billing/payments?customer=${o.customer}`);
 
   // The check pays the first ticket in full and $50 of the second, with $10 more than the tickets: kept as credit.
@@ -84,6 +86,8 @@ test("the office records a payment by ticket numbers, keeps credit, applies it a
   await expect(form.getByText("Kept as credit")).toBeVisible();
   await form.getByRole("button", { name: "Record payment" }).click();
   await expectToast(page, /Payment recorded\. \$10\.00 is kept as credit/);
+  // Also said next to the button, where the person is looking (office walkthrough 2026-11-09).
+  await expect(form.getByRole("status").filter({ hasText: /Payment recorded\. \$10\.00 is kept as credit/ })).toBeVisible();
 
   const payment = page.getByRole("listitem").filter({ hasText: "Check #20417" }).filter({ hasText: money(o.firstCents + 6000) }).first();
   await expect(payment).toContainText("$10.00 credit");

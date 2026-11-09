@@ -141,7 +141,7 @@ test("clean received tickets are accepted together after confirmation; flagged o
   try {
     await signIn(page, "office");
     // Search for this test's order: the bulk list follows the search, and a database with earlier runs holds many other clean tickets.
-    await page.goto(`/tickets?view=submitted&q=${encodeURIComponent(f.orderNumber)}`);
+    await page.goto(`/tickets?view=check&show=new&q=${encodeURIComponent(f.orderNumber)}`);
     await page.getByRole("button", { name: /Accept clean tickets/ }).click();
     const d = page.getByRole("dialog");
     const list = d.getByRole("group", { name: "Tickets to accept" });
@@ -162,7 +162,7 @@ test("clean received tickets are accepted together after confirmation; flagged o
     expect(st.find((r) => r.ticket_number === f.tickets[2].number)?.status).not.toBe("accepted");
 
     // Filters: by review reason.
-    await page.goto(`/tickets?view=review&reason=missing_external_reference`);
+    await page.goto(`/tickets?view=check&show=flagged&reason=missing_external_reference`);
     await expect(page.getByRole("link", { name: f.tickets[2].number, exact: true })).toBeVisible();
   } finally {
     await cleanup(f.orderId);

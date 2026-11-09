@@ -21,6 +21,7 @@ import { getInvoice, invoiceOrders, invoiceSender } from "@/server/data/invoices
 import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 import { addPayment, issueInvoice, sendInvoice, voidInvoice, voidPayment } from "../actions";
+import { IssueInvoiceForm } from "@/components/billing/issue-invoice-form";
 
 export const metadata = { title: "Invoice" };
 
@@ -29,7 +30,6 @@ const SAVED: Record<string, string> = {
   issued: "Issued. The invoice is numbered and locked; send it or download the PDF.",
   sent: "Emailed to the customer with the PDF attached.",
   test_sent: "Test mode: the email went to the test inbox only and the invoice is not marked sent.",
-  previewed: "Preview only. Nothing was sent (demo company or email not set up). Download the PDF to send it yourself.",
   payment: "Payment recorded.",
   payment_voided: "Payment voided. It stays on record with your reason.",
   voided: "Invoice voided. It stays on record with its number and your reason.",
@@ -65,7 +65,18 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </>
         }
       />
-      <AdminFlash error={sp.error} saved={sp.saved} savedText={SAVED[sp.saved ?? ""] ?? "Saved."} />
+      {(sp.saved === "previewed" || sp.saved === "previewed_demo") && !sp.error ? (
+        // A preview is not a success: nothing left Taviron and the invoice is still not marked sent.
+        <div className="mb-4" role="status">
+          <Notice title="Not sent: this was a preview only">
+            {sp.saved === "previewed_demo" ? "Demo companies never send email." : "Email is not set up on this server, so nothing was emailed."} The invoice is still not marked as sent.
+            {" "}To get it to the customer, download the PDF and mail or email it yourself.{sp.saved === "previewed_demo" ? " In a live company with email set up, Send invoice emails the PDF and marks it sent." : " Once email is set up, Send invoice emails the PDF and marks it sent."}
+            {" "}Recording an invoice you sent yourself as sent is not available yet.
+          </Notice>
+        </div>
+      ) : (
+        <AdminFlash error={sp.error} saved={sp.saved} savedText={SAVED[sp.saved ?? ""] ?? "Saved."} />
+      )}
       {inv.status === "void" && <div className="mb-4"><Notice tone="warning" title="Void">{inv.void_reason}</Notice></div>}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]">
@@ -163,7 +174,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <dt className="text-muted">Due</dt><dd className={state === "overdue" ? "font-semibold text-critical tabular" : "tabular"}>{inv.due_date ? formatDate(inv.due_date) : `${inv.terms_days} days after issue`}</dd>
                 <dt className="text-muted">Terms</dt><dd>{inv.terms_days === 0 ? "Due on receipt" : `Net ${inv.terms_days}`}</dd>
                 {inv.customer_po && <><dt className="text-muted">{inv.po_label}</dt><dd>{inv.customer_po}</dd></>}
-                <dt className="text-muted">Sent</dt><dd>{inv.sent_at ? `${formatDateTime(inv.sent_at, timezone)} to ${inv.sent_to.join(", ")}` : "Not sent"}</dd>
+                <dt className="text-muted">Sent</dt><dd>{inv.sent_at ? `${formatDateTime(inv.sent_at, timezone)} to ${inv.sent_to.join(", ")}` : inv.status === "issued" ? <span className="font-semibold">Not sent yet</span> : "Not sent"}</dd>
               </dl>
               <p className="text-xs text-muted">From {sender.name}, with your company&apos;s logo and colour on the PDF.</p>
             </CardBody>
@@ -173,11 +184,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <Card>
               <CardHeader title="Issue this invoice" description="Issuing locks it, gives it the next invoice number and sets the due date. It cannot be edited afterwards; a mistake is voided and invoiced again." />
               <CardBody>
-                <form action={issueInvoice} className="space-y-3">
-                  <input type="hidden" name="invoice" value={inv.id} />
-                  <Field label="Issue date" htmlFor="issue_date"><DateInput id="issue_date" name="issue_date" defaultValue={today} max={today} /></Field>
-                  <SubmitButton pendingLabel="Issuing…">Issue invoice</SubmitButton>
-                </form>
+                <IssueInvoiceForm invoiceId={inv.id} today={today} action={issueInvoice} />
               </CardBody>
             </Card>
           )}

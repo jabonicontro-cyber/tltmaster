@@ -9,7 +9,8 @@ import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { PAYMENT_METHODS, parseAmountCents } from "@/lib/billing/invoices";
-import { applicationsOf, matchRemittance, matchTickets, parseRemittance, parseTicketList, payableCents, ticketKey, ticketState, type BilledTicket } from "@/lib/billing/ticket-payments";
+import { applicationsOf, canPayNow, matchRemittance, matchTickets, parseRemittance, parseTicketList, payableCents, ticketKey, ticketState, type BilledTicket, type TicketBalances } from "@/lib/billing/ticket-payments";
+import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
 import { centsToInput, formatCents } from "@/lib/money";
@@ -20,9 +21,12 @@ import { useFormAction } from "@/components/ui/use-form-action";
 
 type Mode = { kind: "record"; customerId: string; today: string } | { kind: "apply"; paymentId: string; creditCents: number };
 
-export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: BilledTicket[] }) {
+export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mode: Mode; tickets: BilledTicket[]; issuer?: TicketBalances["issuer"] }) {
   const router = useRouter();
-  const open = useMemo(() => tickets.filter((t) => payableCents(t) > 0), [tickets]);
+  // Only tickets the database will take a payment for: with Taviron invoices, a ticket must be on an issued invoice.
+  const open = useMemo(() => tickets.filter((t) => canPayNow(t, issuer)), [tickets, issuer]);
+  const waitingInvoice = useMemo(() => (issuer === "taviron" ? tickets.filter((t) => payableCents(t) > 0 && !t.invoice_number) : []), [tickets, issuer]);
+  const [recorded, setRecorded] = useState<string | null>(null);
   const [amount, setAmount] = useState(mode.kind === "apply" ? centsToInput(mode.creditCents) : "");
   const [selected, setSelected] = useState<Record<string, string>>({});
   const [pasted, setPasted] = useState("");
@@ -42,6 +46,8 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
     {
       onSuccess: (res) => {
         toast.success(res.message ?? "Saved.");
+        // Said next to the button too, where the person is looking.
+        setRecorded(res.message ?? (mode.kind === "record" ? "Payment recorded." : "Credit applied."));
         setSelected({}); setPasted(""); setNotFound([]); setReadNote(null);
         if (mode.kind === "record") setAmount("");
         router.replace(mode.kind === "apply" ? window.location.pathname + window.location.search.replace(/[?&]apply=[^&]*/, "") : window.location.pathname + window.location.search, { scroll: false });
@@ -51,6 +57,7 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
   );
 
   function toggle(t: BilledTicket, on: boolean) {
+    setRecorded(null);
     setSelected((s) => {
       const next = { ...s };
       if (on) next[ticketKey(t)] = centsToInput(payableCents(t));
@@ -72,6 +79,7 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
       return next;
     });
     setNotFound(m.notFound.map((l) => l.ticket));
+    setRecorded(null);
     // Only lines that matched a ticket count toward the amount filled in; unmatched lines are named, never silently
     // turned into credit (demo-employee review 2026-11-09).
     const matchedTotal = Object.values(m.selected).reduce<number>((t, c) => t + (c ?? 0), 0);
@@ -147,7 +155,7 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
           <input type="hidden" name="customer" value={mode.customerId} />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Field label="Amount received" htmlFor="tp-amount" required error={fieldError("amount")}>
-              <Input id="tp-amount" name="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => setAmount(e.target.value)} required />
+              <Input id="tp-amount" name="amount" inputMode="decimal" placeholder="0.00" value={amount} onChange={(e) => { setAmount(e.target.value); setRecorded(null); }} required />
             </Field>
             <Field label="Received on" htmlFor="tp-date" required error={fieldError("received_on")}>
               <DateInput id="tp-date" name="received_on" defaultValue={mode.today} max={mode.today} required />
@@ -180,14 +188,32 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
         <input id="tp-file" type="file" accept=".csv,.txt,.tsv,text/csv,text/plain" className="text-sm text-muted file:mr-3 file:rounded-full file:border file:border-line file:bg-card file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-ink" onChange={(e) => { void readFile(e.target.files?.[0]); e.target.value = ""; }} />
       </div>
       {readNote && <p className="text-sm text-muted" role="status">{readNote}</p>}
-      {notFound.length > 0 && (
-        <p className="text-sm text-amber-800" role="status">
-          Not found among this customer&apos;s open tickets: {notFound.join(", ")}. Check the number, or it may already be paid.
+      {notFound.length > 0 && (() => {
+        const notInvoiced = matchTickets(notFound, waitingInvoice).matched.map((t) => t.ticket_number);
+        const missing = notFound.filter((n) => !matchTickets([n], waitingInvoice).matched.length);
+        return (
+          <>
+            {missing.length > 0 && (
+              <p className="text-sm text-amber-800" role="status">
+                Not found among this customer&apos;s open tickets: {missing.join(", ")}. Check the number, or it may already be paid.
+              </p>
+            )}
+            {notInvoiced.length > 0 && (
+              <p className="text-sm text-amber-800" role="status">
+                Not on an issued invoice yet, so not payable here: {notInvoiced.join(", ")}. Issue their invoice first.
+              </p>
+            )}
+          </>
+        );
+      })()}
+      {waitingInvoice.length > 0 && (
+        <p className="text-sm text-muted">
+          {waitingInvoice.length} billed {waitingInvoice.length === 1 ? "ticket is" : "tickets are"} not on an issued invoice yet ({formatCents(waitingInvoice.reduce((n, t) => n + payableCents(t), 0))}) and {waitingInvoice.length === 1 ? "is" : "are"} not listed: a payment applies to a ticket once its invoice is issued (Billing → Handed off → Create invoice, then Issue).
         </p>
       )}
 
       {open.length === 0 ? (
-        <p className="text-sm text-muted">This customer has no open billed tickets.{mode.kind === "record" ? " A payment recorded now is kept as credit." : ""}</p>
+        <p className="text-sm text-muted">This customer has no open tickets that can be paid now.{mode.kind === "record" ? " A payment recorded now is kept as credit." : ""}</p>
       ) : (
         <div className="space-y-2">
           {open.length > 8 && (
@@ -258,9 +284,16 @@ export function TicketPaymentForm({ mode, tickets }: { mode: Mode; tickets: Bill
             <dd className={cn("font-medium tabular-nums", leftCents < 0 && "text-critical")}>{formatCents(Math.abs(leftCents))}</dd>
           </div>
         </dl>
-        <Button type="submit" loading={pending} disabled={blocked}>
-          {mode.kind === "record" ? (pending ? "Recording…" : "Record payment") : (pending ? "Applying…" : "Apply credit")}
-        </Button>
+        <span className="flex flex-wrap items-center gap-3">
+          {recorded && !pending && (
+            <span role="status" className="inline-flex items-center gap-1.5 font-semibold text-green-800">
+              <CheckCircle2 className="size-4" aria-hidden /> {recorded}
+            </span>
+          )}
+          <Button type="submit" loading={pending} disabled={blocked}>
+            {mode.kind === "record" ? (pending ? "Recording…" : "Record payment") : (pending ? "Applying…" : "Apply credit")}
+          </Button>
+        </span>
       </div>
       <FormError message={formError} />
     </form>

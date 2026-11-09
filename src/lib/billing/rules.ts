@@ -61,7 +61,17 @@ const NEXT_STEP: Record<Readiness, (o: ReadinessCounts) => string> = {
   handed_off: () => "Enter the invoice in accounting",
 };
 
-export function readinessExplanation(readiness: Readiness, o: ReadinessCounts): { why: string; action: string; next: string } {
+/** Who issues the company's invoices (Settings → Invoicing): Taviron, or the accounting system (QuickBooks). */
+export type InvoiceIssuer = "taviron" | "quickbooks";
+
+/**
+ * The next step after the handoff follows the company's invoicing setting: with Taviron the office creates and issues
+ * the invoice here; otherwise it is entered in the accounting system. Without the setting, the accounting wording.
+ */
+export function readinessExplanation(readiness: Readiness, o: ReadinessCounts, issuer?: InvoiceIssuer | null): { why: string; action: string; next: string } {
+  if (readiness === "handed_off" && issuer === "taviron") {
+    return { why: "Handed off for billing.", action: "Next: create the invoice from this handoff, check it and issue it. Undo the handoff only if it was a mistake.", next: "Create the invoice" };
+  }
   return { ...explain(readiness, o), next: NEXT_STEP[readiness](o) };
 }
 

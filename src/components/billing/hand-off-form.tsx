@@ -27,8 +27,8 @@ export interface ReadyOrder {
 }
 
 const handOffText = (taviron: boolean) => taviron
-  ? "Creates a numbered batch and marks these orders as handed off. Nothing is changed in prices. Next, create each invoice from the Handed off view and issue it. An order can be in only one active batch."
-  : "Creates a numbered batch and marks these orders as handed off. It does not create invoices or change prices; enter the invoices in your accounting system from the batch file. An order can be in only one active batch.";
+  ? "Hands these orders off for billing in one numbered batch. Prices do not change. Next, create the invoice and issue it (Taviron issues your invoices). An order can be in only one active batch."
+  : "Hands these orders off for billing in one numbered batch. It does not create invoices or change prices. Next, enter the invoices in your accounting system (QuickBooks) from the batch file or Send to QuickBooks. An order can be in only one active batch.";
 
 /** One ready order handed off from its own billing page (same action and batch rules as the list). */
 export function HandOffOne({ orderId, orderNumber, taviron = false }: { orderId: string; orderNumber: string; taviron?: boolean }) {
@@ -45,12 +45,13 @@ export function HandOffOne({ orderId, orderNumber, taviron = false }: { orderId:
         onOpenChange={setOpen}
         title={`Hand off ${orderNumber} for billing`}
         description={handOffText(taviron)}
-        confirmLabel="Create batch"
+        confirmLabel="Hand off"
         onConfirm={async () => {
           const r = await handOffOrders({ orderIds: [orderId], reference, notes, submissionKey: key });
           if (!r.ok) return r.error;
-          toast.success(r.message ?? "Saved");
-          router.push(`/billing?view=handed_off&batch=${r.data.handoffId}`);
+          toast.success(`${r.message ?? "Handed off."} ${taviron ? "Next: create the invoice." : "Next: enter the invoice in your accounting system."}`);
+          // Stay on the order: it now shows Handed off and the next step (the dialog closes after this returns).
+          router.refresh();
         }}
       >
         <Field label="Reference (optional)" htmlFor="handoff-one-ref" hint="For example the accounting batch or the person entering the invoices.">
@@ -130,7 +131,7 @@ export function HandOffForm({ orders, canManage, taviron = false }: { orders: Re
         onOpenChange={setOpen}
         title={`Hand off ${chosen.length} order${chosen.length === 1 ? "" : "s"} for billing`}
         description={handOffText(taviron)}
-        confirmLabel="Create batch"
+        confirmLabel="Hand off"
         onConfirm={async () => {
           const r = await handOffOrders({ orderIds: chosen.map((o) => o.order_id), reference, notes, submissionKey: key });
           if (!r.ok) return r.error;

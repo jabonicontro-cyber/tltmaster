@@ -19,6 +19,9 @@ test("office staff create, find, extend and archive a customer", async ({ page }
   await page.getByRole("button", { name: "Create customer" }).click();
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.locator("p", { hasText: "Chris Contact" }).first()).toBeVisible();
+  // The Balance block is always there for people who see billing, also with nothing owed (office walkthrough 2026-11-09).
+  await expect(page.getByRole("heading", { name: "Balance", exact: true })).toBeVisible();
+  await expect(page.getByText("Nothing is owed and nothing is waiting to be billed.")).toBeVisible();
 
   await page.getByRole("button", { name: "Add job site" }).click();
   await page.getByLabel("Site name").fill("North pit road");
@@ -29,6 +32,7 @@ test("office staff create, find, extend and archive a customer", async ({ page }
 
   await page.goto(`/customers?q=${encodeURIComponent(name)}`);
   await expect(page.getByRole("link", { name })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Owed on invoices" })).toBeVisible();
 
   await page.getByRole("link", { name }).click();
   await page.getByRole("button", { name: "Archive" }).first().click();

@@ -100,15 +100,42 @@ export async function photoCounts(ticketNumbers: string[]) {
   return m;
 }
 
+/**
+ * The list's tabs. "To check" is the office's queue (first-day office walkthrough 2026-11-09: "Needs review" and
+ * "Submitted" side by side did not say which was the office's work): every ticket waiting for the office, flagged or
+ * not, in the same order as the review queue, with sub-filters for the two statuses.
+ */
 export const TICKET_VIEWS = {
   awaiting: "Loads awaiting a ticket",
-  review: "Needs review",
-  submitted: "Submitted",
+  check: "To check",
   accepted: "Accepted",
   voided: "Voided",
   all: "All tickets",
 } as const;
 export type TicketView = keyof typeof TICKET_VIEWS;
+
+/** Sub-filters of "To check": flagged (status needs_review) or not flagged (status submitted). */
+export const CHECK_FILTERS = {
+  all: { label: "All to check", statuses: ["needs_review", "submitted"] as TicketStatus[] },
+  flagged: { label: "Flagged: needs review", statuses: ["needs_review"] as TicketStatus[] },
+  new: { label: "Not flagged: submitted", statuses: ["submitted"] as TicketStatus[] },
+} as const;
+export type CheckFilter = keyof typeof CHECK_FILTERS;
+
+/** Old links (?view=review, ?view=submitted) open the matching "To check" filter. */
+export function ticketViewFromParams(view: string | undefined, show: string | undefined): { view: TicketView; show: CheckFilter } {
+  if (view === "review") return { view: "check", show: "flagged" };
+  if (view === "submitted") return { view: "check", show: "new" };
+  const v = view && view in TICKET_VIEWS ? (view as TicketView) : "awaiting";
+  return { view: v, show: show && show in CHECK_FILTERS ? (show as CheckFilter) : "all" };
+}
+
+/** The queue a ticket was opened from (?queue=): the whole "To check" list or one of its filters. */
+export function queueFilter(queue: string | undefined): CheckFilter | null {
+  if (queue === "review" || queue === "all") return "all";
+  if (queue === "flagged" || queue === "new") return queue;
+  return null;
+}
 
 const IN_WORK = ["scheduled", "dispatched", "in_progress", "partially_completed", "completed"];
 
@@ -163,13 +190,14 @@ export async function resourceNames() {
 }
 
 /** Current revisions (superseded ones are history). */
-export async function listTickets(view: TicketView, q?: string) {
+export async function listTickets(view: TicketView, q?: string, show: CheckFilter = "all") {
   const supabase = await createClient();
-  // Review views work like a queue: oldest first (as in the Command Center). Others: newest delivery first.
-  const queue = view === "review" || view === "submitted";
-  let query = supabase.from("delivery_tickets").select("*").neq("status", "superseded").order(queue ? "created_at" : "delivered_at", { ascending: queue }).limit(300);
-  if (view === "review") query = query.eq("status", "needs_review");
-  else if (view === "submitted") query = query.eq("status", "submitted");
+  // "To check" works like the review queue: oldest entry first, the same order as reviewQueuePosition (and the
+  // Command Center), so "3 of 7" on a ticket is its row in this list. Others: newest delivery first.
+  const queue = view === "check";
+  let query = supabase.from("delivery_tickets").select("*").neq("status", "superseded");
+  query = (queue ? query.order("created_at").order("id") : query.order("delivered_at", { ascending: false })).limit(300);
+  if (queue) query = query.in("status", CHECK_FILTERS[show].statuses);
   else if (view === "accepted") query = query.eq("status", "accepted");
   else if (view === "voided") query = query.eq("status", "voided");
   const pattern = ilikePattern(q);
@@ -271,13 +299,13 @@ export async function liveTicketsForLoads(loadIds: string[]) {
 /** Tickets waiting for verification (received or flagged), oldest first — the same order as the Command Center. */
 export const REVIEW_QUEUE_STATUSES: TicketStatus[] = ["needs_review", "submitted"];
 
-/** Where a ticket sits in the review queue: its position, and the tickets before and after it. */
-export async function reviewQueuePosition(ticketId: string): Promise<{ position: number | null; total: number; prevId: string | null; nextId: string | null } | null> {
+/** Where a ticket sits in the review queue (or one of its filters): its position, and the tickets before and after it. */
+export async function reviewQueuePosition(ticketId: string, filter: CheckFilter = "all"): Promise<{ position: number | null; total: number; prevId: string | null; nextId: string | null } | null> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("delivery_tickets")
     .select("id")
-    .in("status", REVIEW_QUEUE_STATUSES)
+    .in("status", filter === "all" ? REVIEW_QUEUE_STATUSES : CHECK_FILTERS[filter].statuses)
     .order("created_at")
     .order("id")
     .limit(500);

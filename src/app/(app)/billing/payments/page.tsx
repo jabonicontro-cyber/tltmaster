@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { TicketPaymentForm, VoidTicketPayment } from "@/components/billing/ticket-payment-form";
 import { Badge } from "@/components/ui/badge";
-import { ButtonLink } from "@/components/ui/button";
+import { ButtonLink, buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Select } from "@/components/ui/form";
+import { LiveFilterForm } from "@/components/ui/live-filter-form";
 import { PageHeader } from "@/components/ui/page-header";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { PAYMENT_METHODS, type PaymentMethod } from "@/lib/billing/invoices";
@@ -54,6 +54,8 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
   const applying = balances && sp.apply ? balances.payments.find((p) => p.id === sp.apply && !p.voided && p.unapplied_cents > 0) : undefined;
   const openCents = balances?.tickets.reduce((t, k) => t + payableCents(k), 0) ?? 0;
   const openCount = balances?.tickets.filter((k) => payableCents(k) > 0).length ?? 0;
+  // With Taviron invoices a ticket is payable only once its invoice is issued (the database rule); say how many wait.
+  const notInvoiced = balances && balances.issuer === "taviron" ? balances.tickets.filter((k) => payableCents(k) > 0 && !k.invoice_number).length : 0;
   const settled = balances?.tickets.filter((k) => ticketState(k) !== "open" || payableCents(k) < k.open_cents) ?? [];
   const customerName = customers.find((c) => c.id === customerId)?.name;
 
@@ -64,15 +66,16 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
         <EmptyState title="No billed tickets yet" description="Tickets show here once their order is handed off to billing." action={<ButtonLink href="/billing" size="sm">Go to billing</ButtonLink>} />
       ) : (
         <div className="space-y-5">
-          <form method="get" className="flex flex-wrap items-end gap-2" aria-label="Choose a customer">
+          {/* Choosing a customer loads their tickets at once; Show stays for browsers without JavaScript. */}
+          <LiveFilterForm action="/billing/payments" className="flex flex-wrap items-end gap-2">
             <div>
               <label htmlFor="tp-customer" className="mb-1 block text-sm font-medium text-ink">Customer</label>
               <Select id="tp-customer" name="customer" defaultValue={customerId} className="min-w-64">
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </div>
-            <SubmitButton variant="secondary">Show</SubmitButton>
-          </form>
+            <noscript><button type="submit" className={buttonClasses("secondary")}>Show</button></noscript>
+          </LiveFilterForm>
 
           {!balances ? (
             <Notice tone="warning" title="Customer not found">Choose a customer from the list.</Notice>
@@ -86,7 +89,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
 
               <Notice title={balances.issuer === "taviron" ? "Invoices follow the tickets" : "Recorded in Taviron"}>
                 {balances.issuer === "taviron"
-                  ? "Money applied to a ticket also pays the issued invoice it is on, so invoice balances, aging and the customer portal stay right. A ticket must be on an issued invoice first."
+                  ? `Money applied to a ticket also pays the issued invoice it is on, so invoice balances, aging and the customer portal stay right. Only tickets on an issued invoice can be paid here${notInvoiced ? `; ${notInvoiced} open ${notInvoiced === 1 ? "ticket is" : "tickets are"} still waiting for theirs` : ""}.`
                   : "Payments are tracked here by ticket. Sending them to QuickBooks is not built yet, so record the payment in QuickBooks as well for now."}
               </Notice>
 
@@ -104,6 +107,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
                       key={applying ? `apply-${applying.id}` : `record-${customerId}`}
                       mode={applying ? { kind: "apply", paymentId: applying.id, creditCents: applying.unapplied_cents } : { kind: "record", customerId: customerId!, today }}
                       tickets={balances.tickets}
+                      issuer={balances.issuer}
                     />
                   </CardBody>
                 </Card>

@@ -10,7 +10,7 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
 import { cn } from "@/lib/cn";
-import { formatDate } from "@/lib/dates";
+import { formatDate, todayIn } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
@@ -32,7 +32,7 @@ const dollars = (c: number) => formatCents(c).replace(/\.\d\d$/, "");
 export default async function InvoicesPage({ searchParams }: { searchParams: Promise<{ view?: string; error?: string; saved?: string }> }) {
   const access = await requirePagePermission("billing.view");
   const sp = await searchParams;
-  const [invoices, settings, { today }] = await Promise.all([listInvoices(), invoicingSettings(), businessToday()]);
+  const [invoices, settings, { today, timezone }] = await Promise.all([listInvoices(), invoicingSettings(), businessToday()]);
   const view = VIEWS.some((v) => v.key === sp.view) ? (sp.view as "all" | InvoiceState) : "all";
   const header = (
     <PageHeader
@@ -136,7 +136,10 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                     <Td className={cn("hidden text-sm tabular sm:table-cell", state === "overdue" && "font-semibold text-critical")}>{i.due_date ? formatDate(i.due_date) : "–"}</Td>
                     <Td align="right" className="tabular">{formatCents(i.total_cents)}</Td>
                     <Td align="right" className="font-semibold tabular">{i.status === "issued" ? formatCents(balanceCents(i)) : "–"}</Td>
-                    <Td><Badge tone={STATE_LABEL[state].tone}>{STATE_LABEL[state].label}</Badge></Td>
+                    <Td>
+                      <Badge tone={STATE_LABEL[state].tone}>{STATE_LABEL[state].label}</Badge>
+                      {i.status === "issued" && <div className={cn("mt-1 text-xs", i.sent_at ? "text-muted" : "font-semibold text-ink")}>{i.sent_at ? `Sent ${formatDate(todayIn(timezone, new Date(i.sent_at)))}` : "Not sent yet"}</div>}
+                    </Td>
                   </Tr>
                 ))}
               </tbody>

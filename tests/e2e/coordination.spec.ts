@@ -136,19 +136,21 @@ test("reviewing tickets in sequence: queue position, accept and next, and back t
   const f = await fixture(2);
   try {
     await signIn(page, "office");
-    await page.goto("/tickets?view=submitted");
+    await page.goto("/tickets?view=check&show=new");
     const first = (await admin((c) => c.query("select ticket_number from public.delivery_tickets where id = $1", [f.ticketIds[0]]))).rows[0].ticket_number as string;
     await page.getByRole("link", { name: first, exact: true }).click();
-    await expect(page.getByRole("navigation", { name: "Review queue" })).toContainText(/Review queue: \d+ of \d+/);
+    await expect(page.getByRole("navigation", { name: "Review queue" })).toContainText(/To check: \d+ of \d+ \(not flagged: submitted\)/);
     await page.getByRole("button", { name: "Accept and next" }).click();
     await page.getByRole("dialog").getByRole("button", { name: "Accept" }).click();
-    await expectToast(page, /Opening the next ticket/);
-    await expect(page).not.toHaveURL(new RegExp(f.ticketIds[0]));
-    await expect(page.getByRole("navigation", { name: "Review queue" })).toBeVisible();
+    await expect(page).not.toHaveURL(new RegExp(`/tickets/${f.ticketIds[0]}`));
+    // What was done is said in the queue bar of the next ticket, with a link back (no toast over its buttons).
+    const bar = page.getByRole("navigation", { name: "Review queue" });
+    await expect(bar).toContainText(`Accepted ${first}.`);
+    await expect(bar.getByRole("link", { name: `Back to ${first}` })).toBeVisible();
     // The accepted ticket left the queue; its order shows the step done.
     expect((await admin((c) => c.query("select status from public.delivery_tickets where id = $1", [f.ticketIds[0]]))).rows[0].status).toBe("accepted");
     await page.getByRole("link", { name: "Back to the ticket queue" }).click();
-    await expect(page).toHaveURL(/\/tickets\?view=submitted$/);
+    await expect(page).toHaveURL(/\/tickets\?view=check&show=new$/);
   } finally {
     await cancel(f.orderId);
   }

@@ -49,6 +49,15 @@ export function payableCents(t: Pick<BilledTicket, "open_cents"> & { invoice_ope
   return t.invoice_open_cents === null || t.invoice_open_cents === undefined ? open : Math.max(0, Math.min(open, t.invoice_open_cents));
 }
 
+/**
+ * Whether money can be applied to the ticket now. Mirrors private.apply_customer_payment (20261120009400): something
+ * must be open on it, and where Taviron issues the invoices the ticket must be on an issued invoice first (until then
+ * it is billed but not invoiced, and the database refuses the payment).
+ */
+export function canPayNow(t: Pick<BilledTicket, "open_cents" | "invoice_number"> & { invoice_open_cents?: number | null }, issuer: TicketBalances["issuer"]): boolean {
+  return payableCents(t) > 0 && (issuer !== "taviron" || Boolean(t.invoice_number));
+}
+
 /** How a ticket stands: paid, part paid, open, or settled on its invoice (paid there, not by ticket). */
 export function ticketState(t: Pick<BilledTicket, "billed_cents" | "applied_cents" | "open_cents"> & { invoice_open_cents?: number | null }): "paid" | "part" | "open" | "invoice" {
   if (t.open_cents <= 0) return "paid";

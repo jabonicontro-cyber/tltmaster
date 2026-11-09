@@ -64,6 +64,8 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await expect(page.getByRole("heading", { name: `Ticket for ${f.orderNumber} load 1` })).toBeVisible();
 
   await page.getByLabel("Order line").selectOption({ label: "Gravel #53 limestone, ordered 44 tons" });
+  // The unit starts as the order line's unit (office walkthrough 2026-11-09).
+  await expect(page.getByLabel("Unit")).toHaveValue("ton");
   await page.getByLabel("Delivered quantity").fill("2.5");
   await page.getByLabel("Unit").selectOption({ label: "Loads (whole numbers)" });
   await expect(page.getByText("Quantities in load must be whole numbers.")).toBeVisible();
@@ -73,8 +75,9 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await page.getByLabel("Delivery time").fill("08:30");
   await page.getByLabel("Paper / scale ticket #").fill(f.paper);
   await page.getByRole("button", { name: "Submit ticket" }).click();
-  await expectToast(page, /Ticket TKT-\d{4,} submitted\./);
-  await expect(page).toHaveURL(/\/tickets\/[0-9a-f-]{36}$/);
+  // Said on the ticket itself, not in a toast over its buttons.
+  await expect(page.getByText(/Ticket TKT-\d{4,} submitted\./)).toBeVisible();
+  await expect(page).toHaveURL(/\/tickets\/[0-9a-f-]{36}\?saved=submitted$/);
   const number = (await page.getByRole("heading", { level: 1 }).textContent())!.replace("Ticket ", "").trim();
   await expect(page.getByText("21.47 tons")).toBeVisible();
   await expect(page.getByText("Submitted", { exact: true }).first()).toBeVisible();
@@ -102,7 +105,7 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   // Office accepts it.
   await page.context().clearCookies();
   await signIn(page, "office");
-  await page.goto(`/tickets?view=submitted&q=${number}`);
+  await page.goto(`/tickets?view=check&show=new&q=${number}`);
   await page.getByRole("link", { name: number }).click();
   // Wait for the ticket itself: the list has its own "Accept clean tickets" button.
   await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/);
@@ -111,7 +114,8 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   // Opened from the list, the ticket is in the review queue: accepting moves on (next ticket or back to the list).
   await page.getByRole("button", { name: /^Accept/ }).click();
   await page.getByRole("dialog").getByRole("button", { name: "Accept" }).click();
-  await expectToast(page, "Ticket accepted.");
+  // The next ticket's queue bar says what was done; with nothing left the list opens with a toast.
+  await expect(page.getByText(new RegExp(`Accepted ${number}\\.|Ticket accepted\\.`)).first()).toBeVisible();
   await page.waitForURL((u) => u.toString().split("?")[0] !== ticketUrl);
   await page.goto(ticketUrl);
   await expect(page.getByText("Accepted", { exact: true }).first()).toBeVisible();
@@ -129,7 +133,7 @@ test("enter a ticket from paper, correct it, review it, and guard against a dupl
   await expect(page.getByRole("button", { name: "Submit ticket" })).toBeDisabled();
   await page.getByLabel(/Yes, this is a separate delivery/).check();
   await page.getByRole("button", { name: "Submit ticket" }).click();
-  await expectToast(page, /submitted\./);
+  await expect(page.getByText(/Ticket TKT-\d{4,} submitted\./)).toBeVisible();
   await expect(page.getByText("Needs review", { exact: true }).first()).toBeVisible();
   await expect(page.getByText("Another ticket already exists for this load.")).toBeVisible();
 

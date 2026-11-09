@@ -136,7 +136,8 @@ export async function sendInvoice(formData: FormData) {
     const { error } = await supabase.rpc("invoice_record_sent", { p_invoice: id, p_to: to, p_simulated: true });
     if (error) go(page(id), "error", dbErrorMessage(error));
     refresh(id);
-    go(page(id), "saved", "previewed");
+    // Which preview it was decides what the page tells the person (a demo never sends; elsewhere email is not set up).
+    go(page(id), "saved", access.isDemo ? "previewed_demo" : "previewed");
   }
   let pdf: Awaited<ReturnType<typeof renderInvoicePdf>>;
   let filename: string;
