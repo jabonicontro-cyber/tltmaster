@@ -1702,6 +1702,16 @@ async function partCostLines(db: Db): Promise<number> {
 }
 
 /** Pickups on open demo orders that have none (UX7); 0 before that update is installed or without loading places. */
+/** Orders with an active load assigned to a driver who signs in (the demo owner's relief day, ownerDriverDay). */
+async function personaOrderIds(db: Db): Promise<Set<string>> {
+  const ids = new Set<string>();
+  const persona = ((await db.from("drivers").select("id").not("user_id", "is", null)).data ?? []) as Array<{ id: string }>;
+  if (persona.length === 0) return ids;
+  const rows = ((await db.from("dispatch_assignments").select("order_loads(order_id)").eq("status", "active").in("driver_id", persona.map((d) => d.id))).data ?? []) as unknown as Array<{ order_loads: { order_id: string } | null }>;
+  for (const r of rows) if (r.order_loads?.order_id) ids.add(r.order_loads.order_id);
+  return ids;
+}
+
 async function orderPickups(db: Db): Promise<number> {
   const orders = await db.from("orders").select("id, order_number")
     .in("status", ["scheduled", "dispatched", "in_progress", "partially_completed"]).is("pickup_location_id", null).order("order_number").limit(200);
@@ -1709,9 +1719,12 @@ async function orderPickups(db: Db): Promise<number> {
   if (orders.error) throw new Error(`Demo samples (order pickups): ${orders.error.message}`);
   const places = ((await db.from("company_locations").select("id").eq("active", true).in("kind", ["quarry", "plant"]).order("name")).data ?? []) as Array<{ id: string }>;
   if (places.length === 0) return 0;
+  // Orders driven by a signed-in person (the owner's relief day, ownerDriverDay) always get a pickup, so their My Day
+  // shows one in every demo mode; the others ending in 5 stay without, to show that case.
+  const personal = await personaOrderIds(db);
   let n = 0;
   for (const [i, o] of ((orders.data ?? []) as Array<{ id: string; order_number: string }>).entries()) {
-    if (o.order_number.endsWith("5")) continue;
+    if (o.order_number.endsWith("5") && !personal.has(o.id)) continue;
     const { error } = await db.rpc("set_order_pickup", { p_order: o.id, p_location: places[i % places.length].id });
     if (missing(error)) return n;
     if (error) throw new Error(`Demo samples (order pickups): ${error.message}`);
@@ -1731,7 +1744,11 @@ async function orderStopSamples(db: Db, today: string): Promise<number> {
   const loads = ((await db.from("order_loads").select("id, order_id, start_time").eq("load_date", today).eq("status", "planned").order("start_time")).data ?? []) as Array<{ id: string; order_id: string; start_time: string }>;
   if (loads.length === 0) return 0;
   const assigned = new Set((((await db.from("dispatch_assignments").select("load_id").in("load_id", loads.map((l) => l.id)).eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
-  const orderIds = [...new Set(loads.filter((l) => assigned.has(l.id)).map((l) => l.order_id))];
+  // Not the owner's own relief load when there is another: their My Day keeps the plain pickup line (UX7) in every mode.
+  const personal = await personaOrderIds(db);
+  const all = [...new Set(loads.filter((l) => assigned.has(l.id)).map((l) => l.order_id))];
+  const others = all.filter((id) => !personal.has(id));
+  const orderIds = others.length ? others : all;
   if (orderIds.length === 0) return 0;
   type O = { id: string; customer_id: string; site_id: string | null; site_label: string | null; site_line1: string | null; site_city: string | null; site_state: string | null; site_postal_code: string | null; pickup_location_id: string | null; customer_po: string | null; order_number: string };
   const orders = ((await db.from("orders").select("id, customer_id, site_id, site_label, site_line1, site_city, site_state, site_postal_code, pickup_location_id, customer_po, order_number")
