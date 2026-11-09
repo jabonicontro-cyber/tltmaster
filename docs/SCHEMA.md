@@ -144,7 +144,8 @@ total           = subtotal − discounts + tax
 - **Status transitions**: `private.order_transition_allowed` (table in
   docs/IMPLEMENTATION_PLAN.md §5a, mirrored by `src/lib/orders/status.ts`).
   Confirming a draft and canceling need `orders.edit`; every other move needs
-  `orders.schedule`. Scheduled / dispatched / in progress need a scheduled date;
+  `orders.schedule`. `orders.create` also confirms a direct draft the person
+  started themselves (`private.require_order_transition`, `20261120009900`). Scheduled / dispatched / in progress need a scheduled date;
   on hold and canceled need a reason; confirming needs a line. Completed and
   canceled are final: no further status, detail or schedule changes.
 - **Checks**: scheduled end ≥ start (no end without a start); time window both or
@@ -154,10 +155,10 @@ total           = subtotal − discounts + tax
 
 | Function | Permission | Does |
 | --- | --- | --- |
-| `save_order_draft(payload)` | `orders.edit` | Create a direct order (allocates number, status Draft) or update its draft: customer, contact, site, dates, terms, tax, lines priced like quotes on the order date; `pricing.override` for overrides and discounts; `edit_seq` conflict check. |
+| `save_order_draft(payload)` | `orders.edit`, or `orders.create` for a new order and the person's own draft | Create a direct order (allocates number, status Draft) or update its draft: customer, contact, site, dates, terms, tax, lines priced like quotes on the order date; `pricing.override` for overrides and discounts; `edit_seq` conflict check. With only `orders.create` (`private.require_order_draft_save`, `20261120009900`): someone else's or a confirmed order is refused, and so is a customer on credit hold (new order or changed customer). |
 | `update_order_details(order, edit_seq, payload)` | `orders.edit` | Contact, job site, project, PO, instructions, internal notes, requested date of any open order. Never prices. Audits a field diff. |
 | `update_order_schedule(order, edit_seq, payload)` | `orders.schedule` | Scheduled date range, time window, scheduling notes. Audits a field diff. |
-| `set_order_status(order, status, note, edit_seq)` | per transition | Applies the transition rules, sets timestamps, writes a status event and an audit entry. |
+| `set_order_status(order, status, note, edit_seq)` | per transition | Applies the transition rules, sets timestamps, writes a status event and an audit entry. Draft to confirmed also with `orders.create` for the person's own direct draft. |
 | `convert_quote_to_order(quote)` | `orders.edit` | See below. |
 
 Audit entries of orders (`entity_type = 'order'`) are readable by everyone with

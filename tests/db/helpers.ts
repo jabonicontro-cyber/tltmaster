@@ -159,8 +159,8 @@ export async function withDeliveryProof(s: Session, companyId: string, kind: "in
 
 /**
  * Take a permission from a role in Top Line for this test's transaction only (rolled back with it). Used where a test
- * proves that a role WITHOUT the permission is refused, after the defaults changed (dispatchers got orders.edit on
- * 2026-11-09). Leaves the session as admin: switch back with s.as(...) afterwards.
+ * proves that a role WITHOUT the permission is refused whatever the defaults are (for example orders.edit or
+ * orders.create for dispatchers). Leaves the session as admin: switch back with s.as(...) afterwards.
  */
 export async function withoutPermission(s: Session, role: string, permission: string, companyId = TOP_LINE) {
   await s.asAdmin();

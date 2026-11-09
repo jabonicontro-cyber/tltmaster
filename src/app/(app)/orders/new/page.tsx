@@ -3,14 +3,15 @@ import { PageHeader } from "@/components/ui/page-header";
 import { can } from "@/lib/permissions";
 import { uuid } from "@/lib/schemas/common";
 import { isIsoDate } from "@/lib/dates";
-import { requirePagePermission } from "@/server/auth";
+import { requireAnyPagePermission } from "@/server/auth";
 import { loadCustomerContextFor, loadEditorReferenceData, newOrderEditorState } from "@/server/quotes/editor-data";
 import { getIndustry } from "@/server/industry";
 
 export const metadata = { title: "New order" };
 
 export default async function NewOrderPage({ searchParams }: { searchParams: Promise<{ customer?: string; date?: string }> }) {
-  const access = await requirePagePermission("orders.edit");
+  // orders.create (owner 2026-11-09: dispatchers take phoned-in orders) or orders.edit; the database checks again.
+  const access = await requireAnyPagePermission("orders.create", "orders.edit");
   const { customer, date } = await searchParams;
   const customerId = customer && uuid.safeParse(customer).success ? customer : null;
   const ref = await loadEditorReferenceData();

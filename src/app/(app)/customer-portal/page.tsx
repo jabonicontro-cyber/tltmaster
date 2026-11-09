@@ -4,7 +4,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
-import { can, type Access } from "@/lib/permissions";
+import { can, canCreateOrders, type Access } from "@/lib/permissions";
 import { formatDay, formatQuantity, REQUEST_STATUS_LABEL } from "@/lib/portal";
 import { isUsernameEmail } from "@/lib/usernames";
 import { requirePagePermission } from "@/server/auth";
@@ -412,7 +412,7 @@ async function BookingTab(access: Access, portalOpen: boolean) {
       {canDecide && (r.status === "pending" || (r.status === "approved" && !r.order_id)) && (
         <div className="flex flex-wrap items-end gap-3">
           <BookingDecision request={r.id} status={r.status} orders={orderRows.filter((o) => o.customer_id === r.customer_id).slice(0, 30).map((o) => ({ id: o.id, number: o.order_number }))} />
-          {can(access, "orders.edit") && <Link href={`/orders/new?customer=${r.customer_id}`} className="text-sm font-semibold text-brand-fg hover:underline">Create the order</Link>}
+          {canCreateOrders(access) && <Link href={`/orders/new?customer=${r.customer_id}`} className="text-sm font-semibold text-brand-fg hover:underline">Create the order</Link>}
         </div>
       )}
     </li>

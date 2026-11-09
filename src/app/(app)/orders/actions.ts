@@ -17,11 +17,14 @@ import {
   type OrderScheduleInput,
   type OrderStatusInput,
 } from "@/lib/schemas/order";
-import { ORDER_STATUS_LABELS, orderTransitionPermission } from "@/lib/orders/status";
+import { ORDER_STATUS_LABELS, orderTransitionPermissions } from "@/lib/orders/status";
 import { NOTE_REQUIRED, URGENCY_LABELS, URGENCY_STATES } from "@/lib/orders/urgency";
 import { zonedTimeToUtc } from "@/lib/dates";
 import { businessToday } from "@/server/data/settings";
-import { assertPermission } from "@/server/auth";
+import { can } from "@/lib/permissions";
+import { rolesPhrase } from "@/lib/permission-words";
+import { assertAnyPermission, assertPermission } from "@/server/auth";
+import { rolesWith } from "@/server/permission-holders";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
@@ -67,24 +70,42 @@ export async function convertQuoteToOrder(quoteId: string, creditReason?: string
 }
 
 /**
+ * Who decides about a new order for a customer on credit hold, for people who may create orders but not go ahead for
+ * a customer on hold (orders.create without orders.edit).
+ */
+async function creditHoldDecider(): Promise<string> {
+  return `Going ahead is up to ${rolesPhrase(await rolesWith("orders.edit"))}: ask one of them to enter this order (they record why), or ask billing to release the hold.`;
+}
+
+/**
  * Create or edit a direct order (no quote) while it is a Draft. The database
  * prices every line (customer list → standard list → manual) and refuses
  * overrides and discounts without pricing.override.
+ *
+ * orders.edit: any draft, as before. orders.create (owner 2026-11-09, dispatchers take phoned-in orders): a new order
+ * and the person's own draft only, never for a customer on credit hold (checked again in the database,
+ * private.require_order_draft_save).
  */
 export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResult<{ orderId: string; editSeq: number; orderNumber: string; totalCents: number }>> {
   return guard(async () => {
-    await assertPermission("orders.edit");
+    const access = await assertAnyPermission("orders.create", "orders.edit");
     const parsed = orderDraftInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
-    // Credit hold (B128): a new order for a customer on hold needs a reason, which is recorded; never blocked.
     const isNew = !parsed.data.orderId;
-    const gate = isNew ? await creditGate(parsed.data.customerId, parsed.data.creditReason) : null;
+    // Credit hold (B128): a new order for a customer on hold needs a reason, which is recorded; only people who can
+    // change orders may give one. Everyone else is told who decides.
+    const mayGoAhead = can(access, "orders.edit");
+    if (isNew && !mayGoAhead) {
+      const hold = (await creditHolds([parsed.data.customerId])).get(parsed.data.customerId);
+      if (hold) return fail(`${creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`)} ${await creditHoldDecider()}`);
+    }
+    const gate = isNew && mayGoAhead ? await creditGate(parsed.data.customerId, parsed.data.creditReason) : null;
     if (gate) return fail(gate.message, { creditReason: "Give a reason to go ahead." });
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("save_order_draft", { p_payload: toOrderDraftPayload(parsed.data) });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { order_id: string; edit_seq: number; order_number: string; total_cents: number };
-    if (isNew && parsed.data.creditReason) await recordCreditOverride(parsed.data.customerId, "order", r.order_id, parsed.data.creditReason);
+    if (isNew && mayGoAhead && parsed.data.creditReason) await recordCreditOverride(parsed.data.customerId, "order", r.order_id, parsed.data.creditReason);
     revalidateOrder(r.order_id);
     if (parsed.data.saveSite) revalidatePath(`/customers/${parsed.data.customerId}`);
     return ok({ orderId: r.order_id, editSeq: r.edit_seq, orderNumber: r.order_number, totalCents: r.total_cents }, `Order ${r.order_number} saved.`);
@@ -94,7 +115,7 @@ export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResu
 /** Customer contacts, sites and configured prices for the direct-order editor. */
 export async function loadOrderCustomerContext(customerId: string, onDate: string) {
   return guard(async () => {
-    await assertPermission("orders.edit");
+    const access = await assertAnyPermission("orders.create", "orders.edit");
     if (!uuid.safeParse(customerId).success || !/^\d{4}-\d{2}-\d{2}$/.test(onDate)) return fail("Invalid request.");
     const context = await getCustomerQuoteContext(customerId);
     if (!context) return fail("Customer not found.");
@@ -102,7 +123,13 @@ export async function loadOrderCustomerContext(customerId: string, onDate: strin
     const { data, error } = await supabase.rpc("effective_prices", { p_customer_id: customerId, p_on: onDate });
     if (error) return fail(dbErrorMessage(error));
     const hold = (await creditHolds([customerId])).get(customerId);
-    return ok({ ...context, prices: (data ?? []) as EffectivePrice[], creditHold: hold ? creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`) : null });
+    return ok({
+      ...context,
+      prices: (data ?? []) as EffectivePrice[],
+      creditHold: hold ? creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`) : null,
+      // People who may create orders but not go ahead for a customer on hold are told who decides (no reason field).
+      creditDecider: hold && !can(access, "orders.edit") ? await creditHoldDecider() : null,
+    });
   });
 }
 
@@ -153,7 +180,8 @@ export async function setOrderStatus(input: OrderStatusInput & { from: OrderStat
     const parsed = orderStatusInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const to = parsed.data.status as OrderStatus;
-    await assertPermission(orderTransitionPermission(input.from, to));
+    // Confirming a draft also takes orders.create, for the person's own new order only (the database checks whose).
+    await assertAnyPermission(...orderTransitionPermissions(input.from, to));
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("set_order_status", {
       p_order_id: parsed.data.orderId,

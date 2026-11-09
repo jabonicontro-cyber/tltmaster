@@ -44,7 +44,7 @@ export const GUIDES: Guide[] = [
     id: "create-order",
     title: "Create an order",
     summary: "Take a direct order (or convert an accepted quote) so dispatch can schedule it.",
-    permissions: ["orders.edit"],
+    permissions: ["orders.create", "orders.edit"],
     article: "orders",
     steps: [
       { route: "/orders", anchor: "orders-new", title: "Start an order", body: "Select New order. Orders from an accepted quote are created from the quote instead, with its prices." },

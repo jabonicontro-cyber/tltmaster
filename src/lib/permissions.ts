@@ -13,6 +13,7 @@ export const PERMISSIONS = [
   "quotes.send",
   "quotes.status",
   "orders.view",
+  "orders.create",
   "orders.edit",
   "orders.schedule",
   "fleet.view",
@@ -97,6 +98,14 @@ export interface Access {
 
 export function can(access: Pick<Access, "permissions"> | null | undefined, permission: Permission): boolean {
   return Boolean(access?.permissions.includes(permission));
+}
+
+/**
+ * Starting a new order (the "New order" entry points): orders.create (owner 2026-11-09: dispatchers take phoned-in
+ * orders) or orders.edit (which always could). Changing existing orders stays orders.edit.
+ */
+export function canCreateOrders(access: Pick<Access, "permissions"> | null | undefined): boolean {
+  return can(access, "orders.create") || can(access, "orders.edit");
 }
 
 /**

@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { formatScheduleDates, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/lib/orders/status";
-import { can } from "@/lib/permissions";
+import { canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listOrders, ORDER_SCHEDULE_FILTERS } from "@/server/data/orders";
 import { listOpenUrgencies } from "@/server/data/urgency";
@@ -54,7 +54,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
   // Orders with an open urgent flag get the red edge (owner 2026-10-26); if flags cannot be read, rows stay plain.
   const urgentIds = new Set((urgencies ?? []).map((u) => u.order_id));
   const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base);
-  const canCreate = can(access, "orders.edit");
+  const canCreate = canCreateOrders(access);
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
     for (const [k, v] of Object.entries(sp)) if (v && k !== "page") params.set(k, v);

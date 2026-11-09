@@ -410,19 +410,43 @@ describe("scheduling and status changes", () => {
 });
 
 describe("permissions", () => {
-  it("dispatchers create orders by default (2026-11-09); without orders.edit they schedule and move work along but cannot create, edit, confirm or cancel", async () => {
+  it("dispatchers create orders by default (orders.create, 2026-11-09): a new order and their own draft, which they confirm, schedule and dispatch; without orders.create they cannot", async () => {
     await withSession(async (s) => {
       const ids = await sampleIds(s);
       const r = await directOrder(s, ids);
       const dispatcher = await s.createUser("dispatcher");
+      // The narrow permission, not orders.edit.
+      await s.asAdmin();
+      const held = (await s.query<{ permission: string }>("select permission from public.role_permissions where company_id = $1 and role = 'dispatcher' and permission like 'orders.%' order by 1", [TOP_LINE])).rows.map((x) => x.permission);
+      expect(held).toEqual(["orders.create", "orders.schedule", "orders.view"]);
+      const defaults = (await s.query<{ role: string }>("select role::text from public.role_permission_defaults where permission = 'orders.create' order by 1")).rows.map((x) => x.role);
+      expect(defaults).toEqual(["dispatcher", "office", "owner"]);
+
       await s.as(dispatcher);
-      expect((await saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) })).order_id).toBeTruthy();
-      await withoutPermission(s, "dispatcher", "orders.edit");
+      const mine = await saveOrder(s, { customer_id: ids.customerId, order_date: "2026-10-12", site_line1: "7 Phone-in Road", project_name: "Urgent pad", lines: standardLines(ids) });
+      expect(mine.order_id).toBeTruthy();
+      // Their own draft can be changed until it is confirmed (same prices, so no override is needed).
+      const again = await saveOrder(s, { order_id: mine.order_id, expected_edit_seq: mine.edit_seq, customer_id: ids.customerId, order_date: "2026-10-12", site_line1: "7 Phone-in Road", project_name: "Urgent pad", lines: standardLines(ids, "20") });
+      expect(again.edit_seq).toBe(mine.edit_seq + 1);
+      // A different rate still needs pricing.override.
+      const cheaper = standardLines(ids).map((l, i) => (i === 0 ? { ...l, unit_rate_cents: 900 } : l));
+      expect((await pgError(saveOrder(s, { customer_id: ids.customerId, lines: cheaper }))).message).toMatch(/override pricing/);
+
+      // Confirm their own draft, then schedule and dispatch it with orders.schedule as before.
+      await setStatus(s, mine.order_id, "confirmed");
+      await schedule(s, mine.order_id, { scheduled_start: "2026-10-20" });
+      await setStatus(s, mine.order_id, "scheduled");
+      await setStatus(s, mine.order_id, "dispatched");
+      expect((await order(s, mine.order_id)).status).toBe("dispatched");
+
+      // Without orders.create (an owner turned it off for the role): no new orders, no confirming.
+      await withoutPermission(s, "dispatcher", "orders.create");
       await s.as(dispatcher);
       expect((await pgError(saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) }))).code).toBe("42501");
       expect((await pgError(setStatus(s, r.order_id, "confirmed"))).code).toBe("42501");
       expect((await pgError(details(s, r.order_id, { project_name: "x" }))).code).toBe("42501");
 
+      // Scheduling and moving work along stay orders.schedule; canceling stays orders.edit.
       await s.as(r.office);
       await setStatus(s, r.order_id, "confirmed");
       await s.as(dispatcher);
@@ -431,6 +455,54 @@ describe("permissions", () => {
       await setStatus(s, r.order_id, "dispatched");
       expect((await pgError(setStatus(s, r.order_id, "canceled", "No"))).code).toBe("42501");
       expect((await order(s, r.order_id)).status).toBe("dispatched");
+    });
+  });
+
+  it("orders.create alone never changes someone else's order, confirms their draft, cancels, converts quotes, sends tracking links, adds documents or overrides a credit hold", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const officeDraft = await directOrder(s, ids);
+      const owner = await s.createUser("owner");
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      const mine = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+
+      // Someone else's draft: not changed, not confirmed, not canceled; their own order is not canceled either.
+      expect((await pgError(saveOrder(s, { order_id: officeDraft.order_id, customer_id: ids.customerId, lines: standardLines(ids, "1") }))).code).toBe("42501");
+      expect((await pgError(setStatus(s, officeDraft.order_id, "confirmed"))).code).toBe("42501");
+      expect((await pgError(setStatus(s, officeDraft.order_id, "canceled", "Not needed"))).code).toBe("42501");
+      expect((await pgError(details(s, officeDraft.order_id, { project_name: "x" }))).code).toBe("42501");
+      expect((await pgError(setStatus(s, mine.order_id, "canceled", "Entered twice"))).code).toBe("42501");
+      await setStatus(s, mine.order_id, "confirmed");
+      // Once confirmed, their own order is no longer theirs to change (details and lines need orders.edit).
+      expect((await pgError(saveOrder(s, { order_id: mine.order_id, customer_id: ids.customerId, lines: standardLines(ids) }))).code).toBe("42501");
+      expect((await pgError(details(s, mine.order_id, { project_name: "x" }))).code).toBe("42501");
+      expect((await pgError(setStatus(s, mine.order_id, "canceled", "Customer called back"))).code).toBe("42501");
+
+      // Tracking links, order documents and quote conversion stay orders.edit.
+      const quote = await acceptedQuote(s, ids);
+      await s.as(dispatcher);
+      expect((await pgError(s.query("select public.convert_quote_to_order($1)", [quote.quote.quote_id]))).code).toBe("42501");
+      expect((await pgError(s.query("select public.portal_tracking_create($1, 7)", [mine.order_id]))).code).toBe("42501");
+      expect((await pgError(s.query("select public.portal_tracking_revoke(gen_random_uuid())"))).code).toBe("42501");
+      expect((await pgError(s.query("select public.order_document_begin($1, null, 'other', 'application/pdf', 1000, 'Rate confirmation.pdf')", [mine.order_id]))).code).toBe("42501");
+
+      // Credit hold: a new order (or switching their draft to a customer on hold) is refused and never recorded as an
+      // override; someone who can change orders decides, as before. (A line without a configured price: no override.)
+      const manual = [{ kind: "material", calc_method: "per_unit", description: "Fill sand", unit_code: "ton", quantity: "5", unit_rate_cents: 700 }];
+      await s.as(owner);
+      await s.query("select public.set_customer_credit_hold($1, true, 'Two invoices 60 days late')", [ids.contractCustomerId]);
+      await s.as(dispatcher);
+      const refused = await pgError(saveOrder(s, { customer_id: ids.contractCustomerId, lines: manual }));
+      expect(refused.code).toBe("42501");
+      expect(refused.message).toMatch(/credit hold/);
+      const draft = await saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) });
+      expect((await pgError(saveOrder(s, { order_id: draft.order_id, customer_id: ids.contractCustomerId, lines: manual }))).message).toMatch(/credit hold/);
+      expect((await pgError(s.query("select public.record_credit_override($1, 'order', $2, 'Customer promised to pay')", [ids.contractCustomerId, draft.order_id]))).code).toBe("42501");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.credit_hold_overrides where customer_id = $1", [ids.contractCustomerId])).rowCount).toBe(0);
+      await s.as(officeDraft.office);
+      expect((await saveOrder(s, { customer_id: ids.contractCustomerId, lines: manual })).order_id).toBeTruthy();
     });
   });
 

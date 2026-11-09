@@ -16,7 +16,7 @@ import { cn } from "@/lib/cn";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { PageHeader } from "@/components/ui/page-header";
 import { formatDateLong, isIsoDate } from "@/lib/dates";
-import { can } from "@/lib/permissions";
+import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDispatchDay, listUnscheduledOrders } from "@/server/data/dispatch";
 import { facesForDrivers } from "@/server/data/faces";
@@ -79,7 +79,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
           <div className="flex flex-wrap gap-2">
             <ButtonLink href={`/dispatch/plan?back=${encodeURIComponent(`/dispatch?date=${date}`)}`} icon={<Sparkles className="size-4" />}>Plan the day</ButtonLink>
             {/* Dispatchers take phoned-in orders too (owner 2026-11-09): the new order asks for delivery on the shown day. */}
-            {can(access, "orders.edit") && <ButtonLink href={`/orders/new?date=${date}`} variant="secondary" icon={<Plus className="size-4" />}>New order</ButtonLink>}
+            {canCreateOrders(access) && <ButtonLink href={`/orders/new?date=${date}`} variant="secondary" icon={<Plus className="size-4" />}>New order</ButtonLink>}
             <ButtonLink href={`/dispatch/resources?date=${date}`} variant="secondary" icon={<Users className="size-4" />}>Driver &amp; truck availability</ButtonLink>
             {hired && <ButtonLink href="/hired-trucks" variant="secondary" icon={<Truck className="size-4" />}>Hired trucks</ButtonLink>}
           </div>

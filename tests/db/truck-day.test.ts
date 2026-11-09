@@ -46,8 +46,8 @@ describe("truck-day jobs", () => {
       expect((await pgError(s.query("select public.truck_day_plan($1, $2, 2, '00:00', '23:59')", [order.id, today]))).message).toMatch(/set number of loads/);
       expect((await pgError(s.query("select public.set_order_job_type($1, 'loads', 'hours')", [order.id]))).code).toBe("22023");
       await s.query("select public.set_order_job_type($1, 'truck_day', 'hours')", [order.id]);
-      // Without orders.edit a dispatcher cannot change how an order runs but still plans the trucks (dispatchers have
-      // orders.edit by default since 2026-11-09: taken away here to prove the check).
+      // Without orders.edit a dispatcher cannot change how an order runs but still plans the trucks (orders.edit is not
+      // a dispatcher default; orders.create, which dispatchers have, does not cover it. Taken away to make sure).
       await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(dispatcher);
       expect((await pgError(s.query("select public.set_order_job_type($1, 'loads', 'tickets')", [order.id]))).code).toBe("42501");

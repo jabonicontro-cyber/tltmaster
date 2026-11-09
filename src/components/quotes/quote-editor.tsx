@@ -85,6 +85,8 @@ export interface CustomerContext {
   prices: EffectivePrice[];
   /** Orders only: why the customer is on credit hold (B128), or null. */
   creditHold?: string | null;
+  /** Orders only: set when this person may create orders but not go ahead for a customer on hold: who decides. */
+  creditDecider?: string | null;
 }
 
 interface Props {
@@ -504,9 +506,13 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
             {isOrder && !state.quoteId && context?.creditHold && (
               <div role="alert" className="mt-3 space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
                 <p className="text-sm font-semibold text-critical">{context.creditHold}</p>
-                <Field label="Reason for going ahead" htmlFor="credit-reason" required error={fieldErrors.creditReason} hint="Recorded with the order. Billing can release the hold.">
-                  <Input id="credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
-                </Field>
+                {context.creditDecider ? (
+                  <p className="text-sm text-ink">{context.creditDecider}</p>
+                ) : (
+                  <Field label="Reason for going ahead" htmlFor="credit-reason" required error={fieldErrors.creditReason} hint="Recorded with the order. Billing can release the hold.">
+                    <Input id="credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
+                  </Field>
+                )}
               </div>
             )}
           </div>

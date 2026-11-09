@@ -5,7 +5,7 @@ import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { canEditOrderDetails, canEditOrderLines } from "@/lib/orders/status";
 import { can } from "@/lib/permissions";
-import { requirePagePermission } from "@/server/auth";
+import { requireAnyPagePermission } from "@/server/auth";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { getOrderDetail } from "@/server/data/orders";
 import { editorStateFromOrder, loadCustomerContextFor, loadEditorReferenceData } from "@/server/quotes/editor-data";
@@ -14,12 +14,16 @@ import { getIndustry } from "@/server/industry";
 export const metadata = { title: "Edit order" };
 
 export default async function EditOrderPage({ params }: { params: Promise<{ id: string }> }) {
-  const access = await requirePagePermission("orders.edit");
+  const access = await requireAnyPagePermission("orders.edit", "orders.create");
   const { id } = await params;
   const detail = await getOrderDetail(id);
   if (!detail) notFound();
   const { order, lines, customer } = detail;
   if (!canEditOrderDetails(order.status)) redirect(`/orders/${id}`);
+  // orders.create alone: only the person's own new direct order, while it is a draft (private.require_order_draft_save).
+  if (!can(access, "orders.edit") && !(order.created_by === access.userId && canEditOrderLines(order.status, order.source_quote_id))) {
+    redirect("/no-access?missing=orders.edit");
+  }
 
   const header = (
     <PageHeader

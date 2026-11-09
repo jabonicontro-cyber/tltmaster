@@ -92,7 +92,8 @@ test("create a direct order, confirm it, schedule it and take it through deliver
 });
 
 // Owner decision 2026-11-09 (migration 20261120009900): dispatchers take phoned-in orders, from Orders and from the
-// dispatch board for the day shown there.
+// dispatch board for the day shown there, with the narrow orders.create permission: they finish and confirm their own
+// new order, then schedule it; canceling and changing other orders stay with orders.edit.
 test("dispatchers create orders from Orders and from the board; others are told who can, in plain words", async ({ page }) => {
   await signIn(page, "dispatcher");
   await page.goto("/orders");
@@ -108,10 +109,29 @@ test("dispatchers create orders from Orders and from the board; others are told 
   await expect(page.getByLabel("Requested delivery")).toHaveValue(day);
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
 
+  // The phoned-in order: saved, confirmed by the dispatcher who entered it, ready to schedule. No cancel button.
+  await page.getByRole("combobox", { name: "Customer" }).click();
+  await page.keyboard.type("Lakeshore");
+  await page.keyboard.press("Enter");
+  await page.getByLabel("Job site / delivery address").selectOption({ index: 1 });
+  await page.getByRole("button", { name: "Add material" }).click();
+  await page.getByRole("listitem", { name: "Line 1" }).getByLabel("Material").selectOption({ label: "Gravel #53 limestone" });
+  await page.getByRole("listitem", { name: "Line 1" }).getByLabel("Quantity").fill("8");
+  await page.getByRole("button", { name: "Save & review" }).click();
+  await expect(page).toHaveURL(/\/orders\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("link", { name: "Edit draft" })).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Cancel/ })).toHaveCount(0);
+  await page.getByRole("button", { name: "Confirm order" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Confirm order" }).click();
+  await expectToast(page, "Order marked confirmed.");
+  await expect(page.getByRole("button", { name: "Mark scheduled" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Edit details" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^Cancel/ })).toHaveCount(0);
+
   // A role without it: the page names the activity and the roles that have it, never the permission code.
   await signIn(page, "mechanic");
   await page.goto("/orders/new");
   await expect(page.getByRole("heading", { name: "You do not have access to that page" })).toBeVisible();
-  await expect(page.getByText(/Creating and changing orders is not part of your role\. Here it is part of the .*Dispatcher.* roles?: ask one of them/)).toBeVisible();
-  await expect(page.getByText("orders.edit")).toHaveCount(0);
+  await expect(page.getByText(/Creating new orders is not part of your role\. Here it is part of the .*Dispatcher.* roles?: ask one of them/)).toBeVisible();
+  await expect(page.getByText("orders.create")).toHaveCount(0);
 });

@@ -48,7 +48,8 @@ describe("order documents", () => {
       // Opening: anyone who sees orders; the path only, through the function.
       await s.as(dispatcher);
       expect((await s.query<{ r: { path: string } }>("select public.order_document_path($1) r", [docs[0].id])).rows[0].r.path).toBe(path);
-      // Adding needs orders.edit (dispatchers have it by default since 2026-11-09: taken away here to prove the check).
+      // Adding needs orders.edit: not a dispatcher default, and orders.create (which they have) does not cover it.
+      // Taken away to make sure.
       await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(dispatcher);
       expect((await pgError(begin(s, order.id, null, "other"))).code).toBe("42501");

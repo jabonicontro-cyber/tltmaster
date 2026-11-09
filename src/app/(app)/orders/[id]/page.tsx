@@ -138,7 +138,12 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             lineCount={lines.length}
             orderDate={order.order_date}
             schedule={{ start: order.scheduled_start, end: order.scheduled_end, windowStart: order.window_start, windowEnd: order.window_end, notes: order.scheduling_notes }}
-            permissions={{ edit: can(access, "orders.edit"), schedule: can(access, "orders.schedule") }}
+            permissions={{
+              edit: can(access, "orders.edit"),
+              schedule: can(access, "orders.schedule"),
+              // orders.create alone: the person's own new direct order, which they finish and confirm themselves.
+              ownNewOrder: can(access, "orders.create") && order.created_by === access.userId && !order.source_quote_id,
+            }}
             completionCheck={completionCheck}
           />
         }

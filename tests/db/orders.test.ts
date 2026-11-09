@@ -191,7 +191,7 @@ describe("converting accepted quotes into orders", () => {
       const q = await acceptedQuote(s, ids);
 
       const dispatcher = await s.createUser("dispatcher");
-      await withoutPermission(s, "dispatcher", "orders.edit"); // default since 2026-11-09; taken away to prove the check
+      await withoutPermission(s, "dispatcher", "orders.edit"); // not a dispatcher default (orders.create is); made sure here
       await s.as(dispatcher);
       expect((await pgError(convert(s, q.quote_id))).code).toBe("42501");
 

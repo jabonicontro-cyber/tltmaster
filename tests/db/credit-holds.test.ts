@@ -47,7 +47,8 @@ describe("credit holds", () => {
       await s.as(dispatcher);
       expect((await pgError(s.query("select public.record_credit_override($1, 'assignment', null, '')", [customer]))).message).toMatch(/reason/);
       await s.query("select public.record_credit_override($1, 'assignment', null, 'Owner approved by phone')", [customer]);
-      // An order override needs orders.edit (dispatchers have it by default since 2026-11-09: taken away here).
+      // An order override needs orders.edit: not a dispatcher default, and orders.create (which they have) does not
+      // cover it. Taken away to make sure.
       await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(dispatcher);
       expect((await pgError(s.query("select public.record_credit_override($1, 'order', null, 'x')", [customer]))).code).toBe("42501");

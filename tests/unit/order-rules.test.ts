@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { canCreateOrders } from "@/lib/permissions";
 import { buildOrderTimeline, describeChanges } from "@/lib/orders/history";
 import { formatScheduleDates, formatTime, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import {
@@ -10,6 +11,7 @@ import {
   ORDER_STATUSES,
   orderTransitionLabel,
   orderTransitionNeedsReason,
+  orderTransitionPermissions,
   orderTransitionNeedsSchedule,
   orderTransitionPermission,
 } from "@/lib/orders/status";
@@ -39,6 +41,23 @@ describe("order status rules", () => {
     expect(orderTransitionPermission("confirmed", "scheduled")).toBe("orders.schedule");
     expect(orderTransitionPermission("on_hold", "confirmed")).toBe("orders.schedule");
     expect(orderTransitionPermission("in_progress", "completed")).toBe("orders.schedule");
+  });
+
+  it("lets orders.create ask to confirm a draft (own new orders only, checked in the database) and nothing else", () => {
+    expect(orderTransitionPermissions("draft", "confirmed")).toEqual(["orders.edit", "orders.create"]);
+    expect(orderTransitionPermissions("draft", "canceled")).toEqual(["orders.edit"]);
+    expect(orderTransitionPermissions("confirmed", "canceled")).toEqual(["orders.edit"]);
+    expect(orderTransitionPermissions("confirmed", "scheduled")).toEqual(["orders.schedule"]);
+    for (const from of ORDER_STATUSES)
+      for (const to of allowedOrderTransitions(from))
+        if (!(from === "draft" && to === "confirmed")) expect(orderTransitionPermissions(from, to), `${from} → ${to}`).toEqual([orderTransitionPermission(from, to)]);
+  });
+
+  it("New order is offered with orders.create or orders.edit", () => {
+    expect(canCreateOrders({ permissions: ["orders.create"] })).toBe(true);
+    expect(canCreateOrders({ permissions: ["orders.edit"] })).toBe(true);
+    expect(canCreateOrders({ permissions: ["orders.view", "orders.schedule"] })).toBe(false);
+    expect(canCreateOrders(null)).toBe(false);
   });
 
   it("knows which transitions need a reason or a date", () => {

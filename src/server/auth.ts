@@ -108,6 +108,13 @@ export async function requirePagePermission(permission: Permission): Promise<Acc
   return access;
 }
 
+/** For pages open to people with any of several permissions; the "not permitted" screen names the first one. */
+export async function requireAnyPagePermission(...permissions: [Permission, ...Permission[]]): Promise<Access> {
+  const access = await requireAccess();
+  if (!permissions.some((p) => can(access, p))) redirect(`/no-access?missing=${encodeURIComponent(permissions[0])}`);
+  return access;
+}
+
 export class PermissionError extends Error {
   constructor(permission: Permission) {
     // Plain words, never the permission code (first-day finding 2026-11-09).

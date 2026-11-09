@@ -15,7 +15,7 @@ import { CreditPanel } from "@/components/customers/credit-panel";
 import { creditHolds } from "@/server/credit";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
-import { can } from "@/lib/permissions";
+import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getCustomerDetail } from "@/server/data/customers";
 import { businessToday, getSettings } from "@/server/data/settings";
@@ -100,7 +100,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
                 New quote
               </ButtonLink>
             )}
-            {can(access, "orders.edit") && customer.active && (
+            {canCreateOrders(access) && customer.active && (
               <ButtonLink href={`/orders/new?customer=${customer.id}`} variant="secondary" icon={<Plus className="size-4" />}>
                 New order
               </ButtonLink>

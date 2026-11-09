@@ -277,6 +277,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.revise_quote", "public.sample_data_counts", "public.save_quote_draft", "public.set_quote_status",
   "public.set_role_permission", "public.set_user_access", "public.user_directory",
   "public.save_order_draft", "public.update_order_details", "public.update_order_schedule", "public.set_order_status",
+  // orders.create (20261120009900): called only from save_order_draft / set_order_status; require_company(), the
+  // person's own draft (created_by = auth.uid()) and private.credit_holds of that company; no company id argument.
+  "private.require_order_draft_save", "private.require_order_transition",
   "private.qualification_check", "private.member_summary", "public.set_equipment_service_status", "public.check_assignment_eligibility",
   "private.assignment_eligibility", "private.local_time_label", "private.resource_conflict", "private.check_assignment",
   "private.assignment_label", "private.release_order_assignments",

@@ -606,7 +606,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "A list of orders with **Quick filters**: Open, Scheduled today, Not scheduled, Drafts and On hold, plus a **Status** filter.",
       "Each order's source (From quote or Direct order), customer, schedule and status.",
-      "A **New order** button for direct orders (with the permission to edit orders).",
+      "A **New order** button for direct orders (with the permission to create orders).",
     ],
     tasks: [
       {
@@ -627,7 +627,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: ["On **Orders**, select the **Not scheduled** quick filter."],
       },
     ],
-    prerequisites: ["Creating orders needs the permission to edit orders."],
+    prerequisites: [
+      "Creating a direct order needs the permission to create orders (owners, office staff and dispatchers by default). With only that permission you can change and confirm your own new order while it is a draft; changing other orders, canceling, and converting quotes need the permission to change orders.",
+    ],
     troubleshooting: [
       {
         problem: "“Customer … is archived. Reactivate the customer before creating an order.”",
@@ -638,6 +640,10 @@ export const HELP_ARTICLES: HelpArticle[] = [
         fix: "Prices are as accepted on the quote. Revise the quote if the customer agreed to different prices.",
       },
       { problem: "“Owner approval needed” appears in the editor.", fix: "A rate differs from the configured price or a line has a discount, and your role cannot override pricing. Ask an owner." },
+      {
+        problem: "“… is on credit hold. Going ahead is up to …”",
+        fix: "Your role can create orders but not go ahead for a customer on credit hold. Ask one of the people named to enter the order (they record why), or ask billing to release the hold.",
+      },
     ],
     next: ["order-detail"],
     related: ["quotes", "dispatch-board", "order-to-cash"],
