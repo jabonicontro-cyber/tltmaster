@@ -26,7 +26,7 @@ test("the office adds a rate confirmation and a proof of delivery for a stop, op
   await office.getByLabel("File (photo or PDF, up to 10 MB)").setInputFiles({ name: "rate-con-4411.pdf", mimeType: "application/pdf", buffer: PDF });
   await expectToast(office, "Rate confirmation added.");
   await office.getByLabel("Document", { exact: true }).selectOption("proof_of_delivery");
-  await office.getByLabel("For").selectOption({ label: "Delivery 2: Lakeside Build (e2e)" });
+  await office.getByLabel("For", { exact: true }).selectOption({ label: "Delivery 2: Lakeside Build (e2e)" });
   await office.getByLabel("File (photo or PDF, up to 10 MB)").setInputFiles({ name: "signed-bol.pdf", mimeType: "application/pdf", buffer: PDF });
   await expectToast(office, "Proof of delivery added.");
 
