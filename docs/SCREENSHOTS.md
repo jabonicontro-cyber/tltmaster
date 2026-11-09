@@ -39,6 +39,9 @@ catalog's screenshots, docs/MARKETING.md).
   not saved.
 - `public/site/manifest.json` records each accepted capture.
 - `--only id,id` captures a subset.
+- Website images use plain names and Taviron blue (owner 2026-11-09): just before each capture the script removes the
+  "(demo)", "(sample)" and "(fictional)" tags from the screen and sets the brand colour to Taviron's blue. The demo
+  itself and its data keep the tags; captions still say the data is fictional. `CAPTURE_KEEP_TAGS=1` keeps them.
 - Credentials come from environment variables only. The signed-in person's name appears in the screens (header, greeting, and as a driver in the
 demo), so capture with an account whose display name is a plain person's name — not a test label such as
 "Platform" or "e2e". Platform-team accounts always show their own name and "Taviron Administrator" (never a demo

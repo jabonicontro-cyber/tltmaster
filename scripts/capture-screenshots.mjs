@@ -88,6 +88,29 @@ if (!label.includes("(demo company)")) {
     .catch(() => { throw new Error("Presentation mode did not turn on."); });
 }
 
+/**
+ * Website images (owner 2026-11-09, "clean names in site images"): the demo's fictional records carry "(demo)",
+ * "(sample)" or "(fictional)" so people using the demo know; the website caption already says the data is fictional,
+ * so captures drop those tags from the screen and show the app in Taviron's own blue instead of the demo company's
+ * colour. Only the captured image changes; the demo and its data keep their tags. CAPTURE_KEEP_TAGS=1 turns it off.
+ */
+async function siteStyle() {
+  if (process.env.CAPTURE_KEEP_TAGS === "1") return;
+  await page.evaluate(() => {
+    const tag = /\s*\((?:demo|sample|fictional)\)/gi;
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+      if (tag.test(n.nodeValue ?? "")) n.nodeValue = (n.nodeValue ?? "").replace(tag, "");
+      tag.lastIndex = 0;
+    }
+    // Drop the company's own colours (src/lib/branding.ts sets them inline), so the app's defaults, Taviron blue and
+    // navy, apply everywhere: buttons, selected tabs, badges and the navigation.
+    for (const el of document.querySelectorAll("[style*='--color-']")) {
+      for (const k of [...el.style].filter((p) => /^--color-(brand|charcoal)/.test(p))) el.style.removeProperty(k);
+    }
+  });
+}
+
 /** The quality gate (docs/MARKETING.md §Screenshots). Returns the failed checks. */
 async function gate(shot) {
   const failed = [];
@@ -140,6 +163,8 @@ for (const s of selected) {
     console.error(`REJECTED ${s.file}: ${failed.join("; ")}`);
     continue;
   }
+  await siteStyle();
+  await page.waitForTimeout(500); // colour transitions (tabs, buttons) finish before the capture
   await page.screenshot({ path: join(outDir, s.file) });
   manifest.shots[s.id] = { file: s.file, feature: s.feature, path: s.path, viewport: s.viewport, capturedAt: new Date().toISOString(), source: new URL(base).host, checks: "passed" };
   console.log("captured", s.file);

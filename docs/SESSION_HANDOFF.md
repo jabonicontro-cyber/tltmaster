@@ -26,6 +26,13 @@ payments to QuickBooks. Demo sample `demo_ticket_payment_samples` (seed and Refr
 `tests/db/ticket-payments.test.ts`, `tests/unit/ticket-payments.test.ts`, `tests/e2e/ticket-payments.spec.ts`,
 `tests/db/demo-samples.test.ts`. Catalog entry `ticket-payments` is unpublished (owner decides).
 
+**Website images re-shot (owner 2026-11-09, "clean names in site images"):** all 41 catalog screenshots captured
+2026-11-09 from a local production build of a fresh presenter demo (fictional data). The capture script now removes the
+"(demo)/(sample)/(fictional)" tags from the screen and drops the company colour so Taviron blue shows; the demo keeps its
+tags. Homepage hero recomposed: the Command Center card no longer runs off the window (nothing cut off) and the phone
+hangs below the summary tiles instead of covering them. Note: `billing.png` shows the new "Payments by ticket" button
+(feature built, unpublished).
+
 ## 00000000000000000000000. 2026-11-07 — Support change requests (SA2)
 
 Owner said yes to letting Taviron support handle people and sign-in changes through a per-request approval. Migration

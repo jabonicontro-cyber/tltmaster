@@ -116,7 +116,7 @@ export default function HomePage() {
           the message on the left and the real product running off the right edge. No truck scene. */}
       <section className="relative overflow-hidden" aria-labelledby="hero-title">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_70%_at_85%_10%,rgb(15_111_214/0.18),transparent_70%),radial-gradient(45%_60%_at_10%_90%,rgb(199_209_222/0.55),transparent_70%),linear-gradient(180deg,#ffffff,#f5f7fb)]" aria-hidden />
-        <Container className="relative grid items-center gap-x-14 pt-14 pb-24 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24 lg:pb-32">
+        <Container className="relative grid items-center gap-x-14 pt-14 pb-24 sm:pt-20 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pt-24 lg:pb-44">
           <div className="max-w-xl">
             <p className="site-enter inline-flex h-[30px] items-center gap-2 rounded-full border border-[#0c1a2b]/10 bg-white/70 px-3 text-[13px] font-semibold text-silver backdrop-blur">
               <span className="size-1.5 rounded-full bg-electric" aria-hidden /> <span className="pill-text">Built for hauling and aggregate companies</span>
