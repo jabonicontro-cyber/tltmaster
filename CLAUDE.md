@@ -69,6 +69,9 @@ ones, so check `node_modules/next/dist/docs/` before writing Next.js code. The p
 - **Working with the founder:**
   - Audit before rebuilding; verify earlier reports instead of trusting them.
   - During requirements discovery ask one concise question at a time; never re-ask what the master plan answers.
+  - **Question by question, always (owner 2026-11-09, permanent):** every decision for the owner (product, wording,
+    security, account steps) is asked one at a time, each with a recommendation, and the next only after the answer.
+    Never list several open questions for the owner to answer together.
   - Keep code written / tested / committed / pushed / deployed / verified as separate statuses.
   - **Show every visible change (owner 2026-10-14):** with each update, send screenshots of what changed in the chat
     (before/after where useful), taken from the running app or site; say when a screenshot is local and not the deployed site.
