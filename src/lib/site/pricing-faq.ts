@@ -30,8 +30,20 @@ export const PRICING_FAQ: Faq[] = [
 ];
 
 // Switching from spreadsheets (shown on /pricing and /faq). Only what is already true in the product and on the pricing
-// page: no go-live times, contract or cancellation terms beyond the pricing answers above (those are the owner's to set).
+// page, plus the go-live, cancellation and data-export terms the owner set on 2026-11-09.
 export const SWITCHING_FAQ: Faq[] = [
+  {
+    q: "How long does it take to go live?",
+    a: "Plan for about 2 to 4 weeks from sign-up to go-live: importing your records, setup, training and a test period. You pick the go-live date, and the monthly subscription starts then. Larger fleets with several dispatch bases may take longer.",
+  },
+  {
+    q: "Can we cancel if it does not work out?",
+    a: "Yes. Standard plans are month to month: cancel any time with 30 days' notice and no cancellation fee. The onboarding fee is not refunded. An annual commitment runs its 12 months.",
+  },
+  {
+    q: "Can we take our data with us if we leave?",
+    a: "Yes. When you leave, we provide your records (customers, orders, loads, tickets with their photos, invoices, people and trucks) as spreadsheet files within 30 days of your request, and then delete your company's data.",
+  },
   {
     q: "Can we bring our existing spreadsheets?",
     a: "Yes. Onboarding includes importing your existing records: customers, materials, trucks and drivers come in from CSV files (save Excel sheets as CSV first). Every row is checked and shown to you before anything is created, possible duplicates are flagged, and an import can be undone. Orders, tickets and history are not imported.",

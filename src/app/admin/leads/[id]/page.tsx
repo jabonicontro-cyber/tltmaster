@@ -126,7 +126,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
               </dl>
               {lead.message ? (
                 <div className="mt-4">
-                  <p className="text-sm text-muted">{lead.kind === "demo" ? "What they would most like Taviron to improve" : "Message"}</p>
+                  <p className="text-sm text-muted">{lead.kind === "demo" ? "What slows their operation down most" : "Message"}</p>
                   <p className="mt-1 rounded-xl bg-surface p-3 text-sm whitespace-pre-wrap">{lead.message}</p>
                 </div>
               ) : null}

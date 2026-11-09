@@ -80,7 +80,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByLabel("Full name").fill(`Pat Example ${id}`);
   await page.getByLabel("Work email").fill(email);
   await page.getByLabel(/^Company/).fill(`Example Hauling ${id} (test)`);
-  await page.getByLabel(/What would you most like Taviron to improve/).fill("Dispatch board and ticket review.");
+  await page.getByLabel(/What slows your operation down most today/).fill("Phoning drivers and chasing paper tickets.");
   await page.waitForTimeout(2600); // a person takes a moment; instant submissions are treated as automated
   // The truck and dispatch-base counts are required.
   await page.getByRole("button", { name: "Request a demo" }).click();
@@ -108,7 +108,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("link", { name: `Pat Example ${id}` }).click();
   await expect(page.getByText(`Example Hauling ${id} (test)`).first()).toBeVisible();
-  await expect(page.getByText("Dispatch board and ticket review.")).toBeVisible();
+  await expect(page.getByText("Phoning drivers and chasing paper tickets.")).toBeVisible();
   await expect(page.getByText("Hauling trucks").locator("..")).toContainText("18");
   await expect(page.getByText("Dispatch bases").locator("..")).toContainText("2");
   // Both emails were recorded, and nothing was sent (preview mode).

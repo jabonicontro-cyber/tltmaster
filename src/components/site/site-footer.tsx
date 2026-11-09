@@ -29,7 +29,7 @@ export function SiteFooter() {
           </div>
         ))}
       </div>
-      <div className={cn(SITE_CONTAINER, "border-t border-silver/10 py-6 text-xs text-silver")}>© {new Date().getFullYear()} Taviron. All rights reserved.</div>
+      <div className={cn(SITE_CONTAINER, "border-t border-silver/10 py-6 text-xs text-silver")}>© {new Date().getFullYear()} Taviron · Crown Point, Indiana. All rights reserved.</div>
     </footer>
   );
 }

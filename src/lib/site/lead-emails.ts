@@ -45,7 +45,7 @@ export function notificationEmail(lead: LeadForEmail, opts: { leadUrl: string; c
     ["Phone", lead.phone],
   ];
   if (lead.kind === "demo") details.push(["Hauling trucks", String(lead.truck_count ?? "")], ["Dispatch bases", String(lead.base_count ?? "")]);
-  details.push([lead.kind === "demo" ? "Would most like to improve" : "Message", lead.message]);
+  details.push([lead.kind === "demo" ? "Slows them down most" : "Message", lead.message]);
   const lines = [
     intro,
     "",
@@ -57,7 +57,7 @@ export function notificationEmail(lead: LeadForEmail, opts: { leadUrl: string; c
   if (lead.kind === "demo") {
     lines.push(`Hauling trucks: ${lead.truck_count ?? "not given"}`, `Dispatch bases: ${lead.base_count ?? "not given"}`);
   }
-  lines.push("", lead.kind === "demo" ? "What they would most like Taviron to improve:" : "Message:", lead.message || "not given", "", `Open the lead: ${opts.leadUrl}`);
+  lines.push("", lead.kind === "demo" ? "What slows their operation down most:" : "Message:", lead.message || "not given", "", `Open the lead: ${opts.leadUrl}`);
   const subject = `${label}: ${lead.company_name || lead.name}${opts.created ? "" : " (sent again)"}`;
   return {
     subject,

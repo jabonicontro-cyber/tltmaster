@@ -37,7 +37,8 @@ export default function PricingPage() {
       <PageIntro title="Priced by the size of your operation.">
         <p>
           One monthly price per company, set by your number of hauling trucks and dispatch bases. Every tier includes the whole platform; Hired trucks (outside haulers and
-          their settlements) is an optional add-on, switched on per company. Prices are in US dollars, before applicable taxes.
+          their settlements) is an optional add-on, switched on per company and priced to the number of hired haulers you work with: ask us for a price.
+          Prices are in US dollars, before applicable taxes.
         </p>
       </PageIntro>
 

@@ -265,7 +265,7 @@ export default function HomePage() {
       <section aria-labelledby="solutions-title" className="border-t border-silver/10">
         <Container className="py-20 sm:py-24">
           <SectionHeading id="solutions-title" title="The same platform, sized to your operation.">
-            <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform, and Hired trucks is an optional add-on.</p>
+            <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform, and Hired trucks is an optional add-on, priced on request.</p>
           </SectionHeading>
           <ul className="mt-10 grid gap-4 md:grid-cols-3">
             {SEGMENTS.map((s, i) => (

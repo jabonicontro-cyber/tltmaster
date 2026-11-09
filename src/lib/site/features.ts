@@ -798,7 +798,7 @@ export const FEATURES: Feature[] = [
     points: ["Branded with the company's name, logo and colour", "Only that customer's own orders, tickets and quotes", "Quote requests without duplicates", "Shareable tracking links that expire"],
     limitations: ["No online payment: invoices and statements are read-only", "Invitations are links the office sends; Taviron does not email them yet", "Times are planned windows, not live GPS arrival estimates"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-09 (with self-booking, which lives in it)
     routes: ["/customer-portal"],
     screenshots: [],
     related: ["help-center"],

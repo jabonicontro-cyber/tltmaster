@@ -154,7 +154,7 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
       <label className="block text-sm font-medium text-cloud">
         {kind === "demo" ? (
           <>
-            What would you most like Taviron to improve? <span className="text-silver">(optional)</span>
+            What slows your operation down most today? <span className="text-silver">(optional)</span>
           </>
         ) : (
           "Message"
