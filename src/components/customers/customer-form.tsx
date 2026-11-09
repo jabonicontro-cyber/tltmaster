@@ -23,6 +23,8 @@ export interface CustomerFormValues {
   price_list_id: string | null;
   tax_exempt: boolean;
   notes: string;
+  is_broker?: boolean;
+  mc_number?: string;
 }
 
 export const EMPTY_CUSTOMER: CustomerFormValues = {
@@ -75,6 +77,12 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
             <option value="residential">Residential</option>
           </Select>
         </Field>
+        <div className="flex flex-wrap items-end gap-4 sm:col-span-6">
+          <Checkbox name="is_broker" defaultChecked={Boolean(initial.is_broker)} label="Freight broker (invoiced for loads it books; the shipper and receiver are the stops)" />
+          <Field label="Broker MC number" htmlFor="mc_number" error={fieldError("mc_number")} className="w-48">
+            <Input {...f("mc_number")} defaultValue={initial.mc_number ?? ""} inputMode="numeric" maxLength={12} placeholder="Optional" />
+          </Field>
+        </div>
         <Field label="Main email" htmlFor="email" error={fieldError("email")} className="sm:col-span-3">
           <Input {...f("email")} type="email" defaultValue={initial.email} autoComplete="off" />
         </Field>

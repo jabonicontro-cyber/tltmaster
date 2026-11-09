@@ -159,7 +159,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 <dt className="text-muted">Issued</dt><dd className="tabular">{inv.issue_date ? formatDate(inv.issue_date) : "Not yet"}</dd>
                 <dt className="text-muted">Due</dt><dd className={state === "overdue" ? "font-semibold text-critical tabular" : "tabular"}>{inv.due_date ? formatDate(inv.due_date) : `${inv.terms_days} days after issue`}</dd>
                 <dt className="text-muted">Terms</dt><dd>{inv.terms_days === 0 ? "Due on receipt" : `Net ${inv.terms_days}`}</dd>
-                {inv.customer_po && <><dt className="text-muted">PO</dt><dd>{inv.customer_po}</dd></>}
+                {inv.customer_po && <><dt className="text-muted">{inv.po_label}</dt><dd>{inv.customer_po}</dd></>}
                 <dt className="text-muted">Sent</dt><dd>{inv.sent_at ? `${formatDateTime(inv.sent_at, timezone)} to ${inv.sent_to.join(", ")}` : "Not sent"}</dd>
               </dl>
               <p className="text-xs text-muted">From {sender.name}, with your company&apos;s logo and colour on the PDF.</p>

@@ -29,6 +29,7 @@ export async function buildInvoiceDocument(inv: Invoice): Promise<InvoiceDocumen
     billTo: { name: b.name, customerNumber: b.customer_number ?? "", addressLines: [b.line1, b.line2, cityLine].filter((l): l is string => Boolean(l && l.trim())) },
     orderNumber: inv.order_number,
     customerPo: inv.customer_po,
+    poLabel: inv.po_label,
     projectName: pdfText(inv.project_name),
     serviceDates: inv.service_start ? (inv.service_end && inv.service_end !== inv.service_start ? `${formatDate(inv.service_start)} – ${formatDate(inv.service_end)}` : formatDate(inv.service_start)) : "",
     lines: inv.lines.map((l, i) => {

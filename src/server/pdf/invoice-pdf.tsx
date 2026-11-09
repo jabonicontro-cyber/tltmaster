@@ -23,6 +23,7 @@ export interface InvoiceDocument {
   billTo: { name: string; customerNumber: string; addressLines: string[] };
   orderNumber: string;
   customerPo: string;
+  poLabel: string;
   projectName: string;
   serviceDates: string;
   lines: Array<{ no: number; description: string; quantity: string; unit: string; rate: string; amount: string }>;
@@ -94,7 +95,7 @@ function InvoicePdf({ doc }: { doc: InvoiceDocument }) {
             <Text style={s.h}>{doc.orderNumber.includes(", ") ? "ORDERS" : "ORDER"}</Text>
             <Text style={s.bold}>{doc.orderNumber}</Text>
             {doc.projectName ? <Text>{doc.projectName}</Text> : null}
-            {doc.customerPo ? <Text>PO {doc.customerPo}</Text> : null}
+            {doc.customerPo ? <Text>{doc.poLabel} {doc.customerPo}</Text> : null}
             {doc.serviceDates ? <Text style={s.small}>Service {doc.serviceDates}</Text> : null}
           </View>
         </View>

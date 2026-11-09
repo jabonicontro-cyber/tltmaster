@@ -500,8 +500,12 @@ describe.skipIf(!available)("demo feature samples", () => {
       expect(first.length).toBeLessThanOrEqual(3);
       expect(first.every((o) => o.kinds[0] === "pickup" && o.kinds[o.kinds.length - 1] === "delivery")).toBe(true);
       expect(first.some((o) => o.refs[0].startsWith("PU-"))).toBe(true);
+      // Brokers (MK2): one customer books loads as a freight broker, with a fictional MC number; added once.
+      const brokers = async () => (await q<{ mc_number: string }>("select mc_number from public.customers where company_id = $1 and is_broker", [w.company])).rows;
+      expect((await brokers()).map((b) => b.mc_number)).toEqual(["0000123"]);
       await ensureFeatureSamples(as(w.owner), today);
       expect((await orders()).length).toBe(first.length);
+      expect(await brokers()).toHaveLength(1);
     } finally {
       await q("update public.company_settings set industry = 'aggregate' where company_id = $1", [w.company]);
     }

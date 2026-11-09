@@ -17,7 +17,17 @@ export const customerSchema = z.object({
   price_list_id: z.preprocess((v) => (v === "" ? null : v), z.uuid().nullable()),
   tax_exempt: checkbox,
   notes: optionalText(4000),
+  // Freight brokers (MK2, 20261120009600): the broker is invoiced; its MC number is digits only ("MC-123456" → "123456").
+  is_broker: checkbox,
+  mc_number: z.preprocess((v) => String(v ?? "").replace(/^\s*mc[\s#:-]*/i, "").replace(/[\s-]/g, ""), z.string().regex(/^[0-9]{0,8}$/, { error: "An MC number is up to 8 digits." })),
 });
+
+/** The broker fields, left out when saving to a database that does not have them yet (before 20261120009600). */
+export const withoutBrokerFields = <T extends Record<string, unknown>>(row: T) => {
+  const { is_broker: _b, mc_number: _m, ...rest } = row;
+  void _b; void _m;
+  return rest;
+};
 
 export type CustomerInput = z.infer<typeof customerSchema>;
 

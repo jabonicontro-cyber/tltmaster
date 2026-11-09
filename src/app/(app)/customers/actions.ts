@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
-import { contactSchema, customerSchema, siteSchema } from "@/lib/schemas/customer";
+import { contactSchema, customerSchema, siteSchema, withoutBrokerFields } from "@/lib/schemas/customer";
 import { optionalEmail, optionalPhone, optionalText, uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -39,8 +39,10 @@ export async function createCustomer(formData: FormData): Promise<ActionResult<{
     const prospect = formData.get("relationship") === "prospect";
     const row: Record<string, unknown> = prospect ? { ...parsed.data, relationship: "prospect" } : parsed.data;
     let { data, error } = await supabase.from("customers").insert(row).select("id").single();
+    // Before the broker update (20261120009600): save without the broker fields.
+    if (error?.code === "PGRST204" && !parsed.data.is_broker) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(row)).select("id").single());
     // Before the CRM update (20261119000100) there is no relationship column: save the customer without it.
-    if (error?.code === "PGRST204" && prospect) ({ data, error } = await supabase.from("customers").insert(parsed.data).select("id").single());
+    if (error?.code === "PGRST204" && prospect) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(parsed.data)).select("id").single());
     if (error || !data) return fail(error ? dbErrorMessage(error) : "The customer could not be saved.");
 
     if (contact.data.contact_name) {
@@ -72,8 +74,9 @@ export async function quickCreateCustomer(formData: FormData): Promise<ActionRes
     if (!parsed.success) return validationFailure(parsed.error);
     if (!contact.success) return validationFailure(contact.error);
     const supabase = await createClient();
-    const { data, error } = await supabase.from("customers").insert(parsed.data).select("id, name, customer_number").single();
-    if (error) return fail(dbErrorMessage(error));
+    let { data, error } = await supabase.from("customers").insert(parsed.data).select("id, name, customer_number").single();
+    if (error?.code === "PGRST204" && !parsed.data.is_broker) ({ data, error } = await supabase.from("customers").insert(withoutBrokerFields(parsed.data)).select("id, name, customer_number").single());
+    if (error || !data) return fail(error ? dbErrorMessage(error) : "The customer could not be saved.");
     let contactFailed = false;
     if (contact.data.contact_name) {
       const { error: cErr } = await supabase.from("customer_contacts").insert({
@@ -100,7 +103,8 @@ export async function updateCustomer(id: string, formData: FormData): Promise<Ac
     const parsed = customerSchema.safeParse(Object.fromEntries(formData));
     if (!parsed.success) return validationFailure(parsed.error);
     const supabase = await createClient();
-    const { data, error } = await supabase.from("customers").update(parsed.data).eq("id", id).select("id");
+    let { data, error } = await supabase.from("customers").update(parsed.data).eq("id", id).select("id");
+    if (error?.code === "PGRST204" && !parsed.data.is_broker) ({ data, error } = await supabase.from("customers").update(withoutBrokerFields(parsed.data)).eq("id", id).select("id"));
     if (error) return fail(dbErrorMessage(error));
     if (!data || data.length === 0) return fail("Customer not found or you do not have permission to edit it.");
     done = true;

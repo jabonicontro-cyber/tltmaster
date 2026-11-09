@@ -331,7 +331,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   // A freight order names its pickups as stops (MK2): the quarry/yard pickup picker is for aggregate hauls.
                   ...(pickup.installed && (haulsAggregate(companySettings?.industry) || pickup.pickupId) ? [{ label: "Pickup", value: <OrderPickup orderId={id} pickupId={pickup.pickupId} locations={pickup.locations} canEdit={can(access, "orders.edit")} />, wide: true }] : []),
                   { label: "Project", value: order.project_name },
-                  { label: "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required: not entered</Badge> : "") },
+                  { label: customer.is_broker ? "Broker load #" : "Customer PO", value: order.customer_po || (customer.po_required ? <Badge tone="amber">Required: not entered</Badge> : "") },
                   { label: "Payment terms", value: billTo?.payment_terms ?? customer.payment_terms },
                   { label: "Created", value: `${formatDateTime(order.created_at, timezone)} by ${who(order.created_by)}` },
                   ...(order.confirmed_at ? [{ label: "Confirmed", value: formatDateTime(order.confirmed_at, timezone) }] : []),

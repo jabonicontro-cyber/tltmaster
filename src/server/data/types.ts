@@ -5,6 +5,9 @@ import type { CalcMethod, ChargeKind } from "@/lib/quotes/calc";
 import type { QuoteStatus } from "@/lib/quotes/status";
 
 export interface CustomerRow {
+  /** Freight broker (MK2, 20261120009600). Absent before the migration. */
+  is_broker?: boolean;
+  mc_number?: string;
   /** Detention (DT1, 20261120008200): both null = off. Absent before the migration. */
   detention_free_minutes?: number | null;
   detention_rate_cents?: number | null;

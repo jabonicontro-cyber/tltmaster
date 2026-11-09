@@ -88,6 +88,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             <ActiveBadge active={customer.active} />
             <SampleBadge show={customer.is_sample} />
             {hold && <Badge tone="red">On credit hold</Badge>}
+            {customer.is_broker && <Badge tone="blue">{customer.mc_number ? `Freight broker · MC ${customer.mc_number}` : "Freight broker"}</Badge>}
             {"is_priority" in customer && <PriorityToggle customerId={customer.id} priority={Boolean((customer as { is_priority?: boolean }).is_priority)} canEdit={canEdit} />}
           </>
         }

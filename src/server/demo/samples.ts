@@ -170,6 +170,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // Freight (MK3): a demo set to haul general freight (Settings → What you haul) gets shipper-to-receiver stops on a
   // few of today's and tomorrow's orders, so it demonstrates a freight carrier. Aggregate demos are unchanged.
   note("freight stops", await freightStopSamples(db, today));
+  // Brokers (MK2, owner 2026-11-09): in a freight demo, one customer books loads as a freight broker.
+  note("freight broker", await brokerSample(db));
   // Support center (B138): a 4-hour first-reply target and three cases (one waiting past it, one answered with an
   // internal note, one closed recently). Once per demo.
   note("support cases", await rpcCount(db, "demo_support_samples"));
@@ -1836,6 +1838,19 @@ async function orderStopSamples(db: Db, today: string): Promise<number> {
  * numbers. Only while fewer than three orders have stops; only when the demo's industry is freight or both. Places
  * come from the demo's own customers and sites.
  */
+/** A freight demo's broker customer (fictional MC number); once, and never when one is already marked. */
+async function brokerSample(db: Db): Promise<number> {
+  const settings = await db.from("company_settings").select("industry").maybeSingle();
+  const industry = (settings.data as { industry?: string } | null)?.industry ?? "aggregate";
+  if (settings.error || (industry !== "freight" && industry !== "both")) return 0;
+  const already = await db.from("customers").select("id").eq("is_broker", true).limit(1);
+  if (missing(already.error) || already.error?.code === "42703" || (already.data ?? []).length) return 0;
+  const first = ((await db.from("customers").select("id").eq("active", true).eq("customer_type", "commercial").order("name").limit(1)).data ?? []) as Array<{ id: string }>;
+  if (!first.length) return 0;
+  await must("broker", db.from("customers").update({ is_broker: true, mc_number: "0000123" }).eq("id", first[0].id));
+  return 1;
+}
+
 async function freightStopSamples(db: Db, today: string): Promise<number> {
   const settings = await db.from("company_settings").select("industry").maybeSingle();
   if (settings.error) return 0; // before 20261120007600

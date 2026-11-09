@@ -28,6 +28,8 @@ export interface Invoice extends InvoiceLite {
   order_id: string;
   order_number: string;
   customer_po: string;
+  /** "Load #" for a freight broker's load number (MK2, 20261120009600), "PO" otherwise. */
+  po_label: "PO" | "Load #";
   project_name: string;
   service_start: string | null;
   service_end: string | null;
@@ -49,9 +51,10 @@ export interface Invoice extends InvoiceLite {
 
 const COLUMNS = "id, number, status, handoff_order_id, order_id, customer_id, order_number, customer_po, project_name, service_start, service_end, bill_to, issued_by_entity, lines, subtotal_cents, discount_cents, tax_cents, total_cents, terms_days, footer, issue_date, due_date, sent_at, sent_to, void_reason, created_at, invoice_payments(id, amount_cents, received_on, method, reference, note, created_at, voided_at, void_reason, recorded_by)";
 
-type Raw = Omit<Invoice, "payments" | "customer_name"> & { invoice_payments: InvoicePayment[] };
+type Raw = Omit<Invoice, "payments" | "customer_name" | "po_label"> & { invoice_payments: InvoicePayment[] };
 const shape = (r: Raw): Invoice => ({
   ...r,
+  po_label: "PO",
   total_cents: Number(r.total_cents), subtotal_cents: Number(r.subtotal_cents), discount_cents: Number(r.discount_cents), tax_cents: Number(r.tax_cents),
   customer_name: r.bill_to?.name ?? "Customer",
   payments: (r.invoice_payments ?? []).map((p) => ({ ...p, amount_cents: Number(p.amount_cents) })).sort((a, b) => a.received_on.localeCompare(b.received_on)),
@@ -73,7 +76,11 @@ export async function getInvoice(id: string): Promise<Invoice | null> {
     if (MISSING.has(error.code ?? "")) return null;
     throw new Error(`Invoice: ${error.message}`);
   }
-  return data ? shape(data as unknown as Raw) : null;
+  if (!data) return null;
+  const inv = shape(data as unknown as Raw);
+  // The broker mark is read from the customer; before 20261120009600 there is none and the label stays "PO".
+  const broker = await (await createClient()).from("customers").select("is_broker").eq("id", inv.customer_id).maybeSingle();
+  return { ...inv, po_label: (broker.data as { is_broker?: boolean } | null)?.is_broker ? "Load #" : "PO" };
 }
 
 /** Active invoices by handed-off order, for the Billing board's Handed off view. */
