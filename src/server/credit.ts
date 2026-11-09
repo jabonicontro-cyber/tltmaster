@@ -39,7 +39,7 @@ export async function creditGate(customerId: string, reason: string | undefined)
   const hold = (await creditHolds([customerId])).get(customerId);
   if (!hold) return null;
   if (reason && reason.trim().length >= 3) return null;
-  return { hold, message: `${hold.name} is ${holdSummary(hold)}. To go ahead, give a reason; it is recorded.` };
+  return { hold, message: `${hold.name} is ${holdSummary(hold).replace(/\.+$/, "")}. To go ahead, give a reason; it is recorded.` };
 }
 
 /** Records why someone went ahead; false when it could not be recorded (the caller says so). */

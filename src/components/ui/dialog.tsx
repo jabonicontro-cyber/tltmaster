@@ -1,6 +1,7 @@
 "use client";
 
 import { Dialog as D } from "radix-ui";
+import { useAppRoot } from "./app-root";
 import { X } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { cn } from "@/lib/cn";
@@ -18,9 +19,10 @@ interface DialogProps {
 }
 
 export function Dialog({ open, onOpenChange, title, description, children, footer, size = "md" }: DialogProps) {
+  const appRoot = useAppRoot();
   return (
     <D.Root open={open} onOpenChange={onOpenChange}>
-      <D.Portal>
+      <D.Portal container={appRoot}>
         <D.Overlay className="ui-fade fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px]" />
         <D.Content
           className={cn(

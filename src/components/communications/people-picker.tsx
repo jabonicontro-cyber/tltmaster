@@ -33,7 +33,12 @@ export function PeoplePicker({ people, selected, onChange, multiple = true, excl
       <Input type="search" placeholder="Search people…" aria-label="Search people" value={q} onChange={(e) => setQ(e.target.value)} />
       {/* A list of toggle buttons (pressed = chosen): buttons inside listbox options are not allowed (LR1 accessibility). */}
       <ul className="max-h-72 divide-y divide-line overflow-y-auto rounded-xl border border-line" aria-label="People">
-        {shown.length === 0 && <li className="px-3 py-3 text-sm text-muted">Nobody matches.</li>}
+        {shown.length === 0 && (
+          <li className="px-3 py-3 text-sm text-muted">
+            {/* Only people with a Taviron sign-in can be messaged (first-day dispatcher walkthrough 2026-11-09). */}
+            {q.trim() ? "Nobody matches." : "Nobody to message yet. Only people with a Taviron sign-in get messages here; call drivers who have none, or give them a sign-in on their People page."}
+          </li>
+        )}
         {shown.map((p) => {
           const on = selected.includes(p.user_id);
           return (

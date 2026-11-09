@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useAppRoot } from "./app-root";
 import { Info } from "lucide-react";
 import { Popover as P } from "radix-ui";
 
@@ -9,6 +10,7 @@ import { Popover as P } from "radix-ui";
  * 2026-10-27: numbers first, words second). A popover, not a hover tooltip, so it works on touch and with the keyboard.
  */
 export function InfoTip({ label, children }: { label: string; children: ReactNode }) {
+  const appRoot = useAppRoot();
   return (
     <P.Root>
       <P.Trigger
@@ -17,7 +19,7 @@ export function InfoTip({ label, children }: { label: string; children: ReactNod
       >
         <Info className="size-4" aria-hidden />
       </P.Trigger>
-      <P.Portal>
+      <P.Portal container={appRoot}>
         <P.Content side="bottom" align="start" sideOffset={6} collisionPadding={12} className="ui-pop z-50 max-w-xs rounded-2xl border border-line/70 bg-card p-3.5 text-sm leading-relaxed text-ink shadow-float">
           {children}
           <P.Arrow className="fill-card" />
