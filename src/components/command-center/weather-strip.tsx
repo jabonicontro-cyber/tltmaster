@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, CloudSun, CloudRain } from "lucide-react";
+import { AlertTriangle, ChevronRight, CloudSun, CloudRain } from "lucide-react";
 import { InfoTip } from "@/components/ui/info-tip";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
@@ -49,20 +49,26 @@ export function WeatherStrip({ weather, today, timezone }: { weather: WeatherRes
             const severe = a.severity === "Severe" || a.severity === "Extreme";
             return (
               <li key={`${a.site}-${a.event}-${i}`}>
+                {/* The same card as the tiles around it (owner 2026-11-09: the amber box did not match the page): a tinted
+                    icon chip carries the severity; severe and extreme alerts use the critical red, others amber. */}
                 <Link
                   href={`/dispatch?date=${today}`}
-                  className={cn(
-                    "flex items-start gap-3 rounded-2xl px-4 py-3 text-sm transition-colors",
-                    severe ? "bg-critical text-white hover:bg-critical/90" : "bg-amber-50 text-amber-900 ring-1 ring-amber-200 hover:bg-amber-100",
-                  )}
+                  className="group flex items-center gap-3 rounded-panel bg-card px-4 py-3 text-sm shadow-card ring-1 ring-line/60 transition-shadow hover:ring-line focus-visible:outline-2 focus-visible:outline-strong sm:px-5"
                 >
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden />
-                  <span className="min-w-0">
-                    <span className="font-semibold">{a.event}</span>{weather.sample ? " (sample)" : ""} at {a.site}
-                    {a.endsAt ? <>, until {until(a.endsAt, today, timezone)}</> : null}
-                    <span className={cn("block text-xs", severe ? "text-white/85" : "text-amber-800")}>
-                      {a.orders.length} deliver{a.orders.length === 1 ? "y" : "ies"} today ({a.orders.join(", ")}) · Open dispatch
+                  <span className={cn("flex size-8 shrink-0 items-center justify-center rounded-full", severe ? "bg-red-50 text-critical" : "bg-amber-50 text-amber-700")} aria-hidden>
+                    <AlertTriangle className="size-4" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="text-ink">
+                      <span className={cn("font-semibold", severe && "text-critical")}>{a.event}</span>{weather.sample ? " (sample)" : ""} at {a.site}
+                      {a.endsAt ? <>, until {until(a.endsAt, today, timezone)}</> : null}
                     </span>
+                    <span className="block text-[13px] text-muted">
+                      {a.orders.length} deliver{a.orders.length === 1 ? "y" : "ies"} today ({a.orders.join(", ")})
+                    </span>
+                  </span>
+                  <span className="hidden shrink-0 items-center gap-1 text-sm font-semibold text-brand-fg group-hover:underline sm:inline-flex">
+                    Open dispatch<ChevronRight className="size-4" aria-hidden />
                   </span>
                 </Link>
               </li>

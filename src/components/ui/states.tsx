@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { AlertTriangle, Inbox, Loader2 } from "lucide-react";
+import { AlertTriangle, Info, Inbox, Loader2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 
 export function EmptyState({ title, description, action, icon, className, as: Title = "p" }: {
@@ -47,15 +47,17 @@ export function LoadingState({ label = "Loading…" }: { label?: string }) {
 }
 
 export function Notice({ tone = "info", title, children }: { tone?: "info" | "warning"; title?: string; children: ReactNode }) {
+  // The same surface as the cards around it (owner 2026-11-09: the tinted amber/blue boxes did not match the page): a
+  // tinted icon chip carries the tone, the text stays in the page's ink.
   return (
-    <div
-      className={cn(
-        "rounded-2xl border px-4 py-3.5 text-sm",
-        tone === "info" ? "border-blue-100 bg-blue-50 text-blue-900" : "border-amber-200 bg-amber-50 text-amber-950",
-      )}
-    >
-      {title && <p className="font-semibold">{title}</p>}
-      <div className={title ? "mt-0.5" : undefined}>{children}</div>
+    <div className="flex items-start gap-3 rounded-2xl bg-card px-4 py-3.5 text-sm text-ink shadow-card ring-1 ring-line/60">
+      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-full", tone === "info" ? "bg-brand-light text-brand-fg" : "bg-amber-50 text-amber-700")} aria-hidden>
+        {tone === "info" ? <Info className="size-4" /> : <AlertTriangle className="size-4" />}
+      </span>
+      <div className="min-w-0 flex-1 pt-0.5">
+        {title && <p className="font-semibold">{title}</p>}
+        <div className={cn(title ? "mt-0.5 text-ink/80" : undefined)}>{children}</div>
+      </div>
     </div>
   );
 }
