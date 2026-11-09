@@ -29,9 +29,9 @@ export default async function PortalLayout({ children, params }: { children: Rea
   const accessibility = gate.kind === "customer" && !preview ? await getMyAccessibility() : null;
   const style = company ? brandingStyle({ logo: company.logo, color: company.color, sidebarColor: "" }) : {};
   return (
-    <div className="app-root min-h-dvh bg-surface text-ink" style={style}>
+    <div className="app-root min-h-dvh bg-surface text-ink print:bg-white" style={style}>
       <AccessibilitySync settings={accessibility} />
-      <header className="border-b border-line bg-card">
+      <header className="border-b border-line bg-card print:border-0">
         <div className="mx-auto flex h-16 w-full max-w-5xl items-center gap-3 px-4">
           <Link href={`/portal/${slug}`} className="flex min-w-0 items-center gap-3 rounded-xl focus-visible:outline-2 focus-visible:outline-strong">
             {/* The logo or the name, not both (owner 2026-10-26): a logo already carries the company's name. */}
@@ -50,7 +50,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
             )}
           </Link>
           {gate.kind === "customer" && !preview ? (
-            <div className="ml-auto flex items-center gap-3">
+            <div className="ml-auto flex items-center gap-3 print:hidden">
               <span className="hidden truncate text-sm text-muted sm:inline">{gate.context.customer.name}</span>
               <Link href={`/portal/${slug}/accessibility`} className="rounded-xl px-2 py-1 text-sm font-semibold text-muted hover:bg-surface hover:text-ink focus-visible:outline-2 focus-visible:outline-strong">
                 Accessibility
@@ -64,10 +64,10 @@ export default async function PortalLayout({ children, params }: { children: Rea
             </div>
           ) : null}
         </div>
-        {gate.kind === "customer" ? <PortalNav slug={slug} features={gate.context.features} /> : null}
+        {gate.kind === "customer" ? <div className="print:hidden"><PortalNav slug={slug} features={gate.context.features} /></div> : null}
       </header>
       {preview ? (
-        <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-strong px-4 py-2 text-center text-sm text-white">
+        <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-strong px-4 py-2 text-center text-sm text-white print:hidden">
           <span>Testing Lab preview: you are seeing what <strong>{preview.customer}</strong> sees. You have not signed in as them.</span>
           <form action={stopPortalPreview}>
             <button type="submit" className="rounded border border-white/60 px-2 py-0.5 font-semibold hover:bg-white/10">End Preview</button>
@@ -75,7 +75,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
         </div>
       ) : null}
       {company?.is_demo ? (
-        <p className="bg-amber-50 px-4 py-2 text-center text-sm text-amber-900">Demo portal: fictional company and records. Nothing here is sent or charged.</p>
+        <p className="bg-amber-50 px-4 py-2 text-center text-sm text-amber-900 print:bg-transparent print:py-1 print:text-xs">Demo portal: fictional company and records. Nothing here is sent or charged.</p>
       ) : null}
       <main id="main" className="mx-auto w-full max-w-5xl px-4 py-6 sm:py-8">
         {children}

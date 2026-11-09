@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, scheduleText, type PortalOrder } from "@/lib/portal";
+import { formatDay, formatMoment, formatMoney, formatQuantity, formatTime, portalIsPast, portalStatusLabel, scheduleText, type PortalOrder } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { ReleasePortalTruck } from "@/components/portal/portal-forms";
 import { createClient } from "@/server/supabase/server";
@@ -17,6 +17,7 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
   if (!c.features.orders || !UUID.test(id)) notFound();
   const o = await portalCall<PortalOrder>("portal_order", { p_slug: slug, p_order: id });
   const loads = o.loads.filter((l) => !l.canceled);
+  const today = new Date().toISOString().slice(0, 10);
   // Trucks working for the day on this order today (UX11); empty for other orders or before 20261120008600.
   const trucksRes = await (await createClient()).rpc("portal_order_trucks", { p_slug: slug, p_order: id });
   const trucks = (trucksRes.error ? [] : trucksRes.data ?? []) as Array<{ load_id: string; truck: string; start: string; end: string; released_at: string | null; started: boolean; trips: number }>;
@@ -28,7 +29,8 @@ export default async function PortalOrderPage({ params }: { params: Promise<{ sl
           <h1 className="text-2xl font-bold text-ink">Order {o.number}</h1>
           <p className="mt-1 text-sm text-muted">{[o.project, o.site, o.po ? `PO ${o.po}` : ""].filter(Boolean).join(" · ")}</p>
         </div>
-        <Badge tone={o.status === "canceled" ? "gray" : "brand"} className="text-sm">{o.status_label}</Badge>
+        {/* The same status as the Orders list ("Delivered" once finished but not closed yet). */}
+        <Badge tone={o.status === "canceled" ? "gray" : o.status === "on_hold" ? "amber" : portalIsPast(o, today) ? "green" : "brand"} className="text-sm">{portalStatusLabel(o, today)}</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">

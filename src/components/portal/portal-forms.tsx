@@ -158,7 +158,7 @@ export function QuoteResponseForm({ slug, quote }: { slug: string; quote: string
 type LinkOption = { id: string; label: string };
 
 /** A new support case (B138): what it is about, an optional order, ticket or invoice, and photos or PDFs. */
-export function SupportForm({ slug, orders, defaultOrder, tickets = [], invoices = [] }: { slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string; tickets?: LinkOption[]; invoices?: LinkOption[] }) {
+export function SupportForm({ slug, orders, defaultOrder, defaultTicket, tickets = [], invoices = [] }: { slug: string; orders: Array<{ id: string; number: string }>; defaultOrder?: string; defaultTicket?: string; tickets?: LinkOption[]; invoices?: LinkOption[] }) {
   const router = useRouter();
   const [files, setFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -194,7 +194,7 @@ export function SupportForm({ slug, orders, defaultOrder, tickets = [], invoices
         ) : null}
         {tickets.length ? (
           <Field label="Ticket (optional)" htmlFor="ticket">
-            <Select id="ticket" name="ticket" defaultValue=""><option value="">None</option>{tickets.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</Select>
+            <Select id="ticket" name="ticket" defaultValue={tickets.some((t) => t.id === defaultTicket) ? defaultTicket : ""}><option value="">None</option>{tickets.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}</Select>
           </Field>
         ) : null}
         {invoices.length ? (

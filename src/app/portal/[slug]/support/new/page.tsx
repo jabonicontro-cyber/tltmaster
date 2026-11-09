@@ -8,9 +8,9 @@ import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "New Support Request" };
 
-export default async function NewSupportRequest({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ order?: string }> }) {
+export default async function NewSupportRequest({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ order?: string; ticket?: string }> }) {
   const { slug } = await params;
-  const { order } = await searchParams;
+  const { order, ticket } = await searchParams;
   const c = await requirePortalCustomer(slug, `/portal/${slug}/support/new`);
   if (!c.features.support) notFound();
   const orders = c.features.orders ? await portalCall<PortalOrderSummary[]>("portal_orders", { p_slug: slug }) : [];
@@ -26,7 +26,7 @@ export default async function NewSupportRequest({ params, searchParams }: { para
       </div>
       <Card>
         <CardBody>
-          <SupportForm slug={slug} orders={orders.slice(0, 50).map((o) => ({ id: o.id, number: o.number }))} defaultOrder={orders.some((o) => o.id === order) ? order : undefined}
+          <SupportForm slug={slug} orders={orders.slice(0, 50).map((o) => ({ id: o.id, number: o.number }))} defaultOrder={orders.some((o) => o.id === order) ? order : undefined} defaultTicket={ticket}
             tickets={c.features.orders ? links.tickets : []} invoices={links.invoices} />
         </CardBody>
       </Card>

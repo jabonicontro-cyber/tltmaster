@@ -28,7 +28,10 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
     <div className="space-y-4">
       <div className="no-print flex items-center justify-between gap-3 text-sm">
         <Link href={`/portal/${slug}/orders/${id}`} className="text-muted hover:text-ink hover:underline">← Order {t.order.number}</Link>
-        <PrintButton />
+        <span className="flex items-center gap-3">
+          {c.features.support ? <Link href={`/portal/${slug}/support/new?order=${id}&ticket=${ticketId}`} className="font-semibold text-brand-fg hover:underline">Question about this ticket?</Link> : null}
+          <PrintButton />
+        </span>
       </div>
       <article className="force-light rounded-panel border border-line/70 bg-card shadow-card p-6 text-ink">
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-line pb-4">

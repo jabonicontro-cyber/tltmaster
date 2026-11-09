@@ -230,7 +230,7 @@ async function billingEntities(db: Db, companyId: string): Promise<number> {
   const n = await count(db, "billing_entities");
   if (n === null || n > 0) return 0;
   const { data: c } = await db.from("companies").select("name").eq("id", companyId).maybeSingle();
-  const base = ((c as { name?: string } | null)?.name ?? "Demo").replace(/\b(freight|trucking|hauling|aggregates?|logistics|transport|inc\.?|llc)\b/gi, "").replace(/\s+/g, " ").trim() || "Demo";
+  const base = ((c as { name?: string } | null)?.name ?? "Demo").replace(/\(demo\)/gi, "").replace(/\b(freight|trucking|hauling|aggregates?|logistics|transport|inc\.?|llc)\b/gi, "").replace(/\s+/g, " ").trim() || "Demo";
   const save = (p: Record<string, unknown>) => db.rpc("billing_entity_save", { p_id: null, p });
   const hauling = await save({ name: `${base} Trucking (demo)`, invoice_prefix: "TR", is_default: true, city: "Fictional City", region: "ZZ" });
   if (hauling.error) return 0;
