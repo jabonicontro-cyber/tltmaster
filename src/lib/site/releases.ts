@@ -45,12 +45,12 @@ export const RELEASES: ReleaseHighlight[] = [
   },
   {
     id: "proof-of-delivery",
-    title: "Proof of delivery customers can see",
-    summary: "Customers open each confirmed ticket on their portal with its photos and where it was sent from.",
+    title: "Proof of delivery on every ticket",
+    summary: "Each delivery ticket now keeps its photos and where it was sent from, so the office can answer a disputed delivery from the record.",
     benefits: [
       "The driver's phone records the position once, when the ticket is sent",
-      "Ticket photos on the customer's confirmed ticket",
-      "Print or save as PDF from the portal",
+      "Ticket photos kept with the ticket",
+      "Where it was sent, shown on the ticket with a map link",
     ],
     limitations: ["The driver can decline the location; the ticket still goes through"],
     releasedOn: "2026-10-27",
@@ -62,13 +62,13 @@ export const RELEASES: ReleaseHighlight[] = [
   {
     id: "site-notes-from-customers",
     title: "Gate codes and drop spots from the customer",
-    summary: "Customers send job-site notes and photos from their portal; the office applies them and drivers see them on their load.",
+    summary: "Job-site notes and photos from customers wait for the office; once applied, drivers see them on their load.",
     benefits: [
       "Gate code, drop spot, site contact, notes and up to three photos",
       "Reviewed by the office before drivers see anything",
       "Photos on the driver's load",
     ],
-    limitations: ["Needs the customer portal"],
+    limitations: ["How customers send notes to you: ask in the demo"],
     releasedOn: "2026-10-27",
     evidence: ["/customers"],
     image: null,

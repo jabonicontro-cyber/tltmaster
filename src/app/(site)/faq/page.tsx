@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Container, FinalCta, PageIntro } from "@/components/site/ui";
 import { PRODUCT_FAQ, type Faq } from "@/lib/site/faq";
-import { PRICING_FAQ } from "@/lib/site/pricing-faq";
+import { PRICING_FAQ, SWITCHING_FAQ } from "@/lib/site/pricing-faq";
 
 export const metadata: Metadata = {
   title: "FAQ",
@@ -37,7 +37,7 @@ export default function FaqPage() {
   const faqLd = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
-    mainEntity: [...PRODUCT_FAQ, ...PRICING_FAQ].map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    mainEntity: [...PRODUCT_FAQ, ...SWITCHING_FAQ, ...PRICING_FAQ].map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
   };
   return (
     <>
@@ -47,6 +47,7 @@ export default function FaqPage() {
       </PageIntro>
       <Container className="max-w-3xl pb-10">
         <Group id="product-faq" title="The product" items={PRODUCT_FAQ} />
+        <Group id="switching-faq" title="Switching from spreadsheets" items={SWITCHING_FAQ} />
         <Group id="pricing-faq" title="Pricing and going live" items={PRICING_FAQ} />
         <p className="pb-6 text-[15px] text-silver">
           See <Link href="/pricing" className="font-semibold text-electric hover:underline">pricing</Link> and <Link href="/trust" className="font-semibold text-electric hover:underline">Trust &amp; Security</Link> for the details.

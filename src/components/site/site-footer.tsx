@@ -11,7 +11,7 @@ export function SiteFooter() {
         <div className="space-y-3">
           <TavironLogo />
           <p className="max-w-xs text-sm text-silver">Your entire trucking operation. Connected. Orders, dispatch, drivers, delivery tickets, maintenance and billing readiness in one place.</p>
-          <p className="text-xs text-silver">In early access. Taviron is a working product name.</p>
+          <p className="text-xs text-silver">In early access.</p>
         </div>
         {FOOTER_GROUPS.map((c) => (
           <div key={c.title}>

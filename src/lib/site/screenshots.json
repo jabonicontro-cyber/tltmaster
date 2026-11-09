@@ -197,7 +197,7 @@
       "path": "/customers/site-notes",
       "viewport": "desktop",
       "ready": "Site notes from customers",
-      "alt": "Site notes customers sent from their portal in a demo company, waiting for the office to review before drivers see them",
+      "alt": "Site notes from customers in a demo company, waiting for the office to review before drivers see them",
       "caption": "Site notes from customers. Demo company, fictional data."
     },
     {
@@ -422,7 +422,7 @@
       "path": "/customer-portal?tab=booking",
       "viewport": "desktop",
       "ready": "Booking",
-      "alt": "The customer portal settings in a demo company, where dispatch opens days for customers to request loads",
+      "alt": "Booking requests in a demo company: dispatch approves or declines each one and sets how many loads are open per day",
       "caption": "Customer self-booking. Demo company, fictional data."
     }
   ]

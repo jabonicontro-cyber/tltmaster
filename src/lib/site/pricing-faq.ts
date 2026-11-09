@@ -1,5 +1,5 @@
 import type { Faq } from "./faq";
-import { ANNUAL_DISCOUNT_PERCENT } from "./pricing";
+import { ANNUAL_DISCOUNT_PERCENT, EXTRA_TRAINING_CENTS, usd } from "./pricing";
 
 // Pricing questions, shown on /pricing and /faq (written once here).
 export const PRICING_FAQ: Faq[] = [
@@ -26,5 +26,30 @@ export const PRICING_FAQ: Faq[] = [
   {
     q: "Can I pay on this website?",
     a: "No. Nothing is charged through this website. Your tier, prices and terms are set out in a written service agreement before anything is billed.",
+  },
+];
+
+// Switching from spreadsheets (shown on /pricing and /faq). Only what is already true in the product and on the pricing
+// page: no go-live times, contract or cancellation terms beyond the pricing answers above (those are the owner's to set).
+export const SWITCHING_FAQ: Faq[] = [
+  {
+    q: "Can we bring our existing spreadsheets?",
+    a: "Yes. Onboarding includes importing your existing records: customers, materials, trucks and drivers come in from CSV files (save Excel sheets as CSV first). Every row is checked and shown to you before anything is created, possible duplicates are flagged, and an import can be undone. Orders, tickets and history are not imported.",
+  },
+  {
+    q: "How does the team learn it?",
+    a: `Onboarding includes one live training session. More sessions are ${usd(EXTRA_TRAINING_CENTS)} each, up to 60 minutes. The demo walks through the product from each role's point of view, so you can see what your dispatchers, office and drivers will use.`,
+  },
+  {
+    q: "What if a driver has no signal at a job site?",
+    a: "The driver app keeps today's loads on the phone. Tickets, inspections and arrival taps made without signal are saved on the phone and sent when signal returns, with the time they really happened. Photos need signal.",
+  },
+  {
+    q: "Does it work with QuickBooks?",
+    a: "Not yet. QuickBooks Online sync is coming soon and is not available today. Each company chooses who bills: Taviron issues the invoice from the verified deliveries once someone approves it, or ready orders are handed off in batches to your own accounting.",
+  },
+  {
+    q: "What support do we get?",
+    a: "Email support, Monday to Friday, 9 a.m. to 5 p.m. Central, excluding U.S. federal holidays, with a first response targeted within one business day.",
   },
 ];

@@ -25,7 +25,7 @@ export const PRODUCT_FAQ: Faq[] = [
   },
   {
     q: "Does Taviron send invoices or take payments?",
-    a: "Invoices, yes; card or bank payments, no. Each company chooses: Taviron issues the invoice from the verified deliveries with your logo, emails it as a PDF and tracks what each customer owes as you record payments, or you hand ready orders to your accounting system. QuickBooks Online sync is coming soon. There is no online card or bank payment.",
+    a: "Invoices, yes; card or bank payments, no. Each company chooses: Taviron issues the invoice from the verified deliveries with your logo, emails it as a PDF and tracks what each customer owes as you record payments, or you hand ready orders to your accounting system. QuickBooks Online sync is coming soon and is not available yet. There is no online card or bank payment.",
   },
   {
     q: "Does Taviron use AI?",
@@ -45,6 +45,6 @@ export const PRODUCT_FAQ: Faq[] = [
   },
   {
     q: "How do we get help?",
-    a: "Signed-in users have a Help Center with step-by-step articles for each page. For anything else, use the contact form; support terms are set out in your service agreement.",
+    a: "Use the contact form or the email on it; support terms are set out in your service agreement.",
   },
 ];

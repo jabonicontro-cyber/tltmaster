@@ -47,7 +47,7 @@ export const AREAS: PlatformArea[] = [
       "Hours of service are not tracked (no ELD connection), so every proposal says the dispatcher must confirm them.",
     ],
     features: ["smart-dispatch", "plan-the-day", "delivery-tickets"],
-    notYet: ["Hours of service from an ELD", "Travel distance and drive time in plans", "GPS tracking of trucks"],
+    notYet: ["A built-in connection to a specific GPS or ELD brand (positions and hours come from your own provider feed or are entered by dispatch)", "Travel distance and drive time in plans"],
     connects: ["fleet", "customers", "intelligence"],
   },
   {
@@ -69,7 +69,7 @@ export const AREAS: PlatformArea[] = [
       "Vehicle documents carry expiry dates that dispatch checks under the company's policy.",
     ],
     features: ["maintenance", "fleet"],
-    notYet: ["Parts inventory and purchasing", "Telematics readings (miles are entered, not read from the truck)"],
+    notYet: ["Purchase orders to parts suppliers", "Telematics readings (miles are entered, not read from the truck)"],
     connects: ["dispatch", "intelligence"],
   },
   {
@@ -83,15 +83,15 @@ export const AREAS: PlatformArea[] = [
       { step: "Price it", detail: "Standard and customer-specific price lists with effective dates; quotes are versioned PDFs and issued versions are locked." },
       { step: "Accept it", detail: "An accepted quote converts to one order, with its prices. A retry or double click does not make a second." },
       { step: "Deliver it", detail: "Loads are dispatched and every delivery ticket is reviewed beside its order; corrections are new revisions." },
-      { step: "Hand it to billing", detail: "Differences between ordered and delivered quantities must be acknowledged; ready orders are handed off to accounting in batches with an audit trail." },
+      { step: "Bill it", detail: "Differences between ordered and delivered quantities must be acknowledged; ready orders are handed off in batches with an audit trail, then invoiced by Taviron once someone approves the invoice, or by your own accounting." },
     ],
     controls: [
       "Accepted prices on a quote-linked order cannot be edited.",
       "Billing readiness comes only from accepted tickets; nothing is approved for billing automatically.",
-      "Invoice drafts are previews: nothing is issued, sent or exported from Taviron.",
+      "Invoices are issued and emailed only after a person approves them; nothing is sent on its own.",
     ],
-    features: ["orders", "delivery-tickets", "billing"],
-    notYet: ["Issuing invoices and recording payments", "An accounting integration", "Quote emails until an email provider is configured"],
+    features: ["orders", "delivery-tickets", "billing", "invoicing"],
+    notYet: ["QuickBooks Online sync (coming soon)", "Online card or bank payments", "Quote emails until an email provider is configured"],
     connects: ["dispatch", "intelligence"],
   },
   {
@@ -160,7 +160,7 @@ export const AREAS: PlatformArea[] = [
       "Personal data is used only to run the service (see the privacy notice).",
     ],
     features: ["company-controls", "reports", "people"],
-    notYet: ["Accounting, ELD and payment integrations", "Self-service data export"],
+    notYet: ["QuickBooks Online sync (coming soon)", "Built-in ELD connections and online payments", "Self-service data export"],
     connects: ["intelligence", "automation"],
   },
 ];
@@ -256,7 +256,7 @@ export const SEGMENTS: Segment[] = [
     areas: ["control", "automation", "intelligence"],
     notYet: [
       "Multiple dispatch bases with per-person base access are built and shown in the plan demos, but not yet generally available. Ask us about your locations.",
-      "Single sign-on and accounting integrations are not available yet.",
+      "Single sign-on is not available yet, and QuickBooks Online sync is coming soon.",
     ],
   },
 ];

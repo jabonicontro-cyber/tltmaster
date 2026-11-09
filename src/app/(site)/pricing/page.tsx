@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { Check, Info } from "lucide-react";
 import { Container, CtaLink, FinalCta, PageIntro, order } from "@/components/site/ui";
 import { CUSTOM, EXTRA_TRAINING_CENTS, TIERS, annualMonthlyCents, usd } from "@/lib/site/pricing";
-import { PRICING_FAQ as FAQ } from "@/lib/site/pricing-faq";
+import { PRICING_FAQ as FAQ, SWITCHING_FAQ } from "@/lib/site/pricing-faq";
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -12,12 +12,14 @@ export const metadata: Metadata = {
 };
 
 // Every tier includes the same software; tiers differ by how many hauling trucks and
-// dispatch bases they cover. Only capabilities that exist today are listed.
+// dispatch bases they cover. Only capabilities that exist today are listed. Hired trucks is the one optional add-on
+// (owner 2026-10-25, master plan B83: not in the base plans, switched on per company).
 const INCLUDED = [
   "Command Center, customers, quotes and orders",
   "Dispatch board with Smart Dispatch suggestions you approve",
   "Driver portal on the phone, with ticket photos",
   "Delivery ticket review and billing readiness",
+  "Invoices issued by Taviron once someone approves them, or handoff to your own accounting",
   "Fleet, drivers, qualifications and equipment status",
   "Users by role, with your company's own permissions and branding",
 ];
@@ -34,8 +36,8 @@ export default function PricingPage() {
     <>
       <PageIntro title="Priced by the size of your operation.">
         <p>
-          One monthly price per company, set by your number of hauling trucks and dispatch bases. Every tier includes the whole platform. Prices are in US dollars, before
-          applicable taxes.
+          One monthly price per company, set by your number of hauling trucks and dispatch bases. Every tier includes the whole platform; Hired trucks (outside haulers and
+          their settlements) is an optional add-on, switched on per company. Prices are in US dollars, before applicable taxes.
         </p>
       </PageIntro>
 
@@ -95,6 +97,7 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
+            <p className="mt-5 text-sm text-silver">QuickBooks Online sync is coming soon and is not available yet.</p>
           </div>
           <div>
             <h2 className="text-xl font-semibold text-cloud">Onboarding includes</h2>
@@ -117,6 +120,20 @@ export default function PricingPage() {
             Prices are per company, in US dollars, before applicable taxes. Your tier, prices and terms are confirmed in a written service agreement; nothing is charged
             through this website.
           </p>
+        </Container>
+      </section>
+
+      <section aria-labelledby="switching-title" id="switching" className="scroll-mt-24">
+        <Container className="pt-16">
+          <h2 id="switching-title" className="text-2xl font-semibold text-cloud">Switching from spreadsheets</h2>
+          <dl className="mt-6 grid gap-4 md:grid-cols-2">
+            {SWITCHING_FAQ.map((f) => (
+              <div key={f.q} className="rounded-2xl border border-silver/15 bg-navy-2 p-5 shadow-card">
+                <dt className="font-semibold text-cloud">{f.q}</dt>
+                <dd className="mt-2 text-sm leading-relaxed text-silver">{f.a}</dd>
+              </div>
+            ))}
+          </dl>
         </Container>
       </section>
 

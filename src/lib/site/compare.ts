@@ -42,7 +42,7 @@ export const COMPARISONS: Comparison[] = [
       { topic: "Assigning a truck", other: "Nothing stops a truck that was reported with bad brakes.", taviron: "Every assignment is checked against service status, open safety reports, documents and time conflicts, with the reason when it is refused.", feature: "smart-dispatch" },
       { topic: "Telling drivers", other: "Group texts and phone calls; changes get missed.", taviron: "Each driver sees their own assignments and job instructions on the phone and can report a delay or breakdown.", feature: "driver-portal" },
       { topic: "Delivery tickets", other: "Paper in the truck, retyped at the office, sometimes lost.", taviron: "Tickets with photos start on the driver's phone and are reviewed beside their order; corrections keep a history.", feature: "delivery-tickets" },
-      { topic: "Getting to an invoice", other: "Someone checks every ticket against the order before billing.", taviron: "Only fully delivered, verified orders reach billing; Taviron issues the invoice after someone reviews it, or hands it to your accounting system, never on its own.", feature: "billing" },
+      { topic: "Getting to an invoice", other: "Someone checks every ticket against the order before billing.", taviron: "Only fully delivered, verified orders reach billing. Taviron issues the invoice once someone approves it, or ready orders are handed off to your own accounting; nothing is sent on its own.", feature: "invoicing" },
       { topic: "The shop", other: "A separate notebook or spreadsheet that dispatch never sees.", taviron: "Work orders, preventive schedules and restrictions sit on the same truck record dispatch uses.", feature: "maintenance" },
       { topic: "Who did what", other: "Cells get overwritten; nobody knows who changed a quantity.", taviron: "Key changes to assignments, tickets and billing handoffs are kept with who made them and when.", feature: "company-controls" },
     ],
@@ -50,7 +50,11 @@ export const COMPARISONS: Comparison[] = [
       "A spreadsheet costs nothing and everyone already knows it. For a handful of trucks and one person doing everything, it may be enough.",
       "Moving takes some setup: your customers, materials, trucks and people need to be entered or imported, and the team needs a short walkthrough.",
     ],
-    notYet: ["Built-in Samsara or Motive connections (positions and hours come from your provider's feed or are entered by hand)", "Online card or bank payments"],
+    notYet: [
+      "QuickBooks Online sync: coming soon, not available yet. Until then, Taviron issues your invoices or ready orders are handed off to your own accounting.",
+      "Built-in Samsara or Motive connections (positions and hours come from your provider's feed or are entered by hand)",
+      "Online card or bank payments",
+    ],
   },
   {
     slug: "dispatch-only",

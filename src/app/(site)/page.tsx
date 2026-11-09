@@ -82,6 +82,10 @@ const FLOW = [
   { icon: Receipt, title: "Bill", text: "Fully delivered orders hand off with an audit trail." },
 ];
 
+// A handful of capabilities for the home page, led by dispatch, tickets and billing. Only published catalog entries show.
+const HIGHLIGHT_IDS = ["smart-dispatch", "delivery-tickets", "invoicing", "driver-portal", "maintenance", "offline-driver"];
+const highlights = HIGHLIGHT_IDS.map((id) => publishedFeatures().find((f) => f.id === id)).filter((f) => f !== undefined);
+
 const ROLES = [
   { icon: Gauge, title: "Owners", text: "One Command Center for what needs attention today, across the whole operation." },
   { icon: Route, title: "Dispatchers", text: "Today's loads, conflicts caught before assignment, urgent orders first." },
@@ -140,6 +144,80 @@ export default function HomePage() {
         </Container>
       </section>
 
+      {/* The core day first (owner walkthrough 2026-11-09): the six steps, then a handful of capabilities from the catalog
+          led by dispatch, tickets and billing. Everything else is on the Platform page. */}
+      <section aria-labelledby="core-day-title" className="border-y border-silver/10 bg-navy-2">
+        <Container className="py-16 sm:py-20">
+          <SectionHeading id="core-day-title" title="One record carries every job through the day.">
+            <p>From the quote to the bill, the office, dispatch and the trucks work from the same records.</p>
+          </SectionHeading>
+          <ol className="mt-10 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-6">
+            {FLOW.map((f, i) => (
+              <li key={f.title} style={order(i % 6)} className="site-reveal bg-navy-2 p-5">
+                <div className="flex items-center justify-between">
+                  <f.icon className="size-5 text-electric" aria-hidden />
+                  <span className="text-xs text-silver tabular-nums">{i + 1}</span>
+                </div>
+                <h3 className="mt-4 font-semibold text-cloud">{f.title}</h3>
+                <p className="mt-1 text-sm leading-relaxed text-silver">{f.text}</p>
+              </li>
+            ))}
+          </ol>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {highlights.map((f, i) => (
+              <li key={f.id} style={order(i % 3)} className="site-reveal">
+                <Link href={`/platform#feature-${f.id}`} className="site-lift group flex h-full flex-col rounded-xl border border-silver/12 bg-navy p-5 hover:border-electric/50">
+                  <span className="font-semibold text-cloud group-hover:text-electric">{f.name}</span>
+                  <span className="mt-1.5 text-sm leading-relaxed text-silver">{f.value}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link href="/platform" className="mt-8 inline-block text-[15px] font-semibold text-electric hover:underline">
+            See everything on the Platform page
+          </Link>
+        </Container>
+      </section>
+
+      {/* Dispatch */}
+      <section>
+        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
+          <div>
+            <SectionHeading title="Assign with the rules already checked.">
+              <p>Loads are planned against each order and checked before a truck or driver is committed. When something does not fit, Taviron says why.</p>
+            </SectionHeading>
+            <Points
+              items={[
+                "Service status, open safety reports, recorded capacity, driver qualifications and time conflicts are checked on every assignment.",
+                "Smart Dispatch suggests a truck and driver for each open load, with its reasons and alternatives. Nothing is assigned until a dispatcher approves.",
+                "Confirmed orders without a delivery date wait in a queue instead of disappearing.",
+              ]}
+            />
+          </div>
+          <CatalogShot id="dispatch" />
+        </Container>
+      </section>
+
+      {/* Tickets and drivers */}
+      <section className="border-t border-silver/10 bg-navy-2">
+        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
+          <CatalogShot id="tickets" className="lg:order-first" />
+          <div>
+            <SectionHeading title="Quantities you can stand behind.">
+              <p>The ticket starts in the truck, not in a shoebox, and an order reaches billing only when its deliveries are verified.</p>
+            </SectionHeading>
+            <Points
+              items={[
+                "Drivers see their assignments on the phone and submit tickets with photos; the office enters paper tickets and scans.",
+                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason. Nothing is overwritten.",
+                "Partly delivered orders stay out of billing; invoice drafts are prepared for review, not sent.",
+                "Bill your way: Taviron issues the invoice once someone approves it, or ready orders are handed off to your own accounting. QuickBooks Online sync is coming soon, not available yet.",
+              ]}
+            />
+          </div>
+        </Container>
+      </section>
+
       {/* What it does today: each statement matches an available capability; what is still being built says so. */}
       <section aria-labelledby="story-title" className="border-t border-silver/10">
         <Container className="py-16 sm:py-20">
@@ -183,97 +261,11 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* Workflow */}
-      <section aria-labelledby="flow-title" className="border-y border-silver/10 bg-navy-2">
-        <Container className="py-14 sm:py-16">
-          <h2 id="flow-title" className="text-sm font-semibold text-silver">
-            One record carries every job through the day
-          </h2>
-          <ol className="mt-6 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-6">
-            {FLOW.map((f, i) => (
-              <li key={f.title} style={order(i % 6)} className="site-reveal bg-navy-2 p-5">
-                <div className="flex items-center justify-between">
-                  <f.icon className="size-5 text-electric" aria-hidden />
-                  <span className="text-xs text-silver tabular-nums">{i + 1}</span>
-                </div>
-                <h3 className="mt-4 font-semibold text-cloud">{f.title}</h3>
-                <p className="mt-1 text-sm leading-relaxed text-silver">{f.text}</p>
-              </li>
-            ))}
-          </ol>
-        </Container>
-      </section>
-
-      {/* Dispatch */}
-      <section>
-        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
-          <div>
-            <SectionHeading title="Assign with the rules already checked.">
-              <p>Loads are planned against each order and checked before a truck or driver is committed. When something does not fit, Taviron says why.</p>
-            </SectionHeading>
-            <Points
-              items={[
-                "Service status, open safety reports, recorded capacity, driver qualifications and time conflicts are checked on every assignment.",
-                "Smart Dispatch suggests a truck and driver for each open load, with its reasons and alternatives. Nothing is assigned until a dispatcher approves.",
-                "Confirmed orders without a delivery date wait in a queue instead of disappearing.",
-              ]}
-            />
-          </div>
-          <CatalogShot id="dispatch" />
-        </Container>
-      </section>
-
-      {/* Tickets and drivers */}
-      <section className="border-t border-silver/10 bg-navy-2">
-        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
-          <CatalogShot id="tickets" className="lg:order-first" />
-          <div>
-            <SectionHeading title="Quantities you can stand behind.">
-              <p>The ticket starts in the truck, not in a shoebox, and an order reaches billing only when its deliveries are verified.</p>
-            </SectionHeading>
-            <Points
-              items={[
-                "Drivers see their assignments on the phone and submit tickets with photos; the office enters paper tickets and scans.",
-                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason. Nothing is overwritten.",
-                "Partly delivered orders stay out of billing; invoice drafts are prepared for review, not sent.",
-              ]}
-            />
-          </div>
-        </Container>
-      </section>
-
-      {/* Every capability, from the feature catalog: one line each, linking to its section on the platform page. */}
-      <section aria-labelledby="capabilities-title" className="border-t border-silver/10">
-        <Container className="py-20 sm:py-24">
-          <SectionHeading id="capabilities-title" title="One system for the office, dispatch, the shop and the trucks.">
-            <p>Each of these is in the app today, shown with the demo company&apos;s fictional data on the platform page.</p>
-          </SectionHeading>
-          <ul className="mt-12 grid gap-px overflow-hidden rounded-xl border border-silver/10 bg-silver/10 sm:grid-cols-2 lg:grid-cols-3">
-            {publishedFeatures().map((f, i) => (
-              <li key={f.id} style={order(i % 3)} className="site-reveal bg-navy">
-                <Link href={`/platform#feature-${f.id}`} className="group flex h-full flex-col p-5 hover:bg-navy-2 focus-visible:bg-navy-2">
-                  <span className="font-semibold text-cloud group-hover:text-electric">{f.name}</span>
-                  <span className="mt-1.5 text-sm leading-relaxed text-silver">{f.value}</span>
-                </Link>
-              </li>
-            ))}
-            {/* Closes the grid evenly whatever the number of capabilities: it fills the rest of the last row. */}
-            <li className={`bg-navy-2 ${publishedFeatures().length % 2 === 0 ? "sm:col-span-2" : "sm:col-span-1"} ${["lg:col-span-3", "lg:col-span-2", "lg:col-span-1"][publishedFeatures().length % 3]}`}>
-              <Link href="/platform" className="group flex h-full flex-col justify-center p-5 hover:bg-navy">
-                <span className="font-semibold text-electric group-hover:underline">See every capability on the real app</span>
-                <span className="mt-1.5 text-sm text-silver">Screens from the demo company, what each one does, and what it does not do yet.</span>
-              </Link>
-            </li>
-          </ul>
-        </Container>
-      </section>
-
-
       {/* Solutions and plans */}
       <section aria-labelledby="solutions-title" className="border-t border-silver/10">
         <Container className="py-20 sm:py-24">
           <SectionHeading id="solutions-title" title="The same platform, sized to your operation.">
-            <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform.</p>
+            <p>Plans differ by the number of hauling trucks and dispatch bases; every plan includes the whole platform, and Hired trucks is an optional add-on.</p>
           </SectionHeading>
           <ul className="mt-10 grid gap-4 md:grid-cols-3">
             {SEGMENTS.map((s, i) => (

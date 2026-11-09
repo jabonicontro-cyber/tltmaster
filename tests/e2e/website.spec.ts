@@ -71,6 +71,23 @@ test("pricing on solutions pages matches the pricing page", async ({ page }) => 
   await expect(page.getByText("$499").first()).toBeVisible();
   await page.goto("/pricing");
   await expect(page.getByText("$499").first()).toBeVisible();
+  // Switching questions and the QuickBooks status are on the pricing page, stated as not available yet.
+  await expect(page.getByRole("heading", { name: "Switching from spreadsheets" })).toBeVisible();
+  await expect(page.getByText("QuickBooks Online sync is coming soon and is not available yet.")).toBeVisible();
+  await expect(page.getByText("Hired trucks (outside haulers and their settlements) is an optional add-on", { exact: false })).toBeVisible();
+});
+
+test("the home page leads with the core day and points to the Platform page for the rest", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "One record carries every job through the day." })).toBeVisible();
+  for (const step of ["Quote", "Order", "Dispatch", "Deliver", "Review", "Bill"]) await expect(page.getByRole("heading", { name: step, exact: true, level: 3 })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Invoices and receivables/ })).toBeVisible();
+  // The full catalog is on the Platform page, not repeated here.
+  await expect(page.getByRole("link", { name: /^Speed, measured/ })).toHaveCount(0);
+  await expect(page.getByText(/QuickBooks Online sync is coming soon, not available yet/)).toBeVisible();
+  await expect(page.locator("footer")).not.toContainText("working product name");
+  await page.getByRole("link", { name: "See everything on the Platform page" }).click();
+  await expect(page).toHaveURL(/\/platform$/);
 });
 
 test("on a phone the menu works and no page scrolls sideways", async ({ page }) => {
@@ -85,6 +102,8 @@ test("on a phone the menu works and no page scrolls sideways", async ({ page }) 
   expect(box!.width).toBeGreaterThanOrEqual(44);
   expect(box!.height).toBeGreaterThanOrEqual(44);
   await button.click();
+  // Pricing is the first link in the phone menu, above the long Platform and Solutions lists.
+  await expect(page.locator("details.site-menu nav a").first()).toHaveText("Pricing");
   await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Trust & Security" }).click();
   await expect(page).toHaveURL(/\/trust$/);
   // The menu closes after a link is followed (the header stays mounted across pages)…
@@ -128,6 +147,7 @@ test("comparisons, guides and the link preview", async ({ page, request }) => {
   await page.goto("/compare/spreadsheets");
   await expect(page.getByRole("table", { name: /compared with Taviron/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: "What Taviron does not do yet." })).toBeVisible();
+  await expect(page.getByText(/QuickBooks Online sync: coming soon, not available yet/)).toBeVisible();
   await page.getByRole("link", { name: /All-in-one vs dispatch-only/ }).last().click();
   await expect(page).toHaveURL(/\/compare\/dispatch-only$/);
   await page.goto("/guides");

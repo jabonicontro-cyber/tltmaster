@@ -27,7 +27,8 @@ export function SiteHeader() {
         </div>
         <MobileMenu>
           <nav aria-label="Main" className="absolute right-0 mt-2 max-h-[calc(100dvh-5rem)] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-silver/15 bg-navy-2 p-2 shadow-2xl shadow-black/40">
-            {SITE_NAV.map((g) =>
+            {/* On phones, plain links (Pricing) come first so they are not below two long menus. */}
+            {[...SITE_NAV.filter((g) => !g.links), ...SITE_NAV.filter((g) => g.links)].map((g) =>
               g.links ? (
                 <div key={g.label} className="py-1">
                   <p className="px-3 pt-2 pb-1 text-xs font-semibold text-silver">{g.label}</p>
