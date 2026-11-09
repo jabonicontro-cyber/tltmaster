@@ -1069,12 +1069,16 @@ async function ownerDriverDay(db: Db, today: string): Promise<number> {
     n += 2;
     // One open load today (or tomorrow), with a truck free at that time; refused assignments stay open.
     for (const day of [today, addDays(today, 1)]) {
-      const open = ((await db.from("order_loads").select("id, starts_at, ends_at, orders(customer_id, site_line1)").eq("load_date", day).eq("status", "planned").order("starts_at")).data ?? []) as unknown as Array<{ id: string; orders: { customer_id: string; site_line1: string } | null }>;
+      const open = ((await db.from("order_loads").select("id, order_id, starts_at, ends_at, orders(customer_id, site_line1)").eq("load_date", day).eq("status", "planned").order("starts_at")).data ?? []) as unknown as Array<{ id: string; order_id: string; orders: { customer_id: string; site_line1: string } | null }>;
       const booked = new Set((((await db.from("dispatch_assignments").select("load_id").eq("status", "active")).data ?? []) as Array<{ load_id: string }>).map((a) => a.load_id));
       // A load at a site with directions first, so My Day shows the site directions check (B51).
       const withDirections = (((await db.from("customer_sites").select("customer_id, line1").neq("directions", "")).data ?? []) as Array<{ customer_id: string; line1: string }>);
       const atSite = (l: (typeof open)[number]) => withDirections.some((x) => x.customer_id === l.orders?.customer_id && x.line1.trim() === l.orders?.site_line1.trim());
-      const free = open.filter((l) => !booked.has(l.id));
+      // Not an order that makes stops (MK2): its card shows the stops route, and My Day should show the plain pickup (UX7).
+      const withStops = new Set((((await db.from("order_stops").select("order_id").is("removed_at", null)).data ?? []) as Array<{ order_id: string }>).map((x) => x.order_id));
+      const allFree = open.filter((l) => !booked.has(l.id));
+      const plain = allFree.filter((l) => !withStops.has(l.order_id));
+      const free = plain.length ? plain : allFree;
       const load = free.find(atSite) ?? free[0];
       if (!load) continue;
       const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>;
