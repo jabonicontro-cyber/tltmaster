@@ -91,5 +91,14 @@ $$;
 revoke all on function public.signin_qr_issue(uuid, text) from public, anon;
 grant execute on function public.signin_qr_issue(uuid, text) to authenticated;
 drop function if exists private.holds_money_permission(uuid);
-drop function if exists private.is_money_permission(text);
+-- private.is_money_permission stays while 20261120018000 is installed: the two-step rule (private.money_mfa_required,
+-- called by private.current_company_id) uses it, and dropping it would break every check for unverified sessions.
+-- Roll back 018000 first to remove it with this file.
+do $$
+begin
+  if to_regprocedure('private.money_permissions()') is null then
+    drop function if exists private.is_money_permission(text);
+  end if;
+end;
+$$;
 commit;

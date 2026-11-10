@@ -126,6 +126,60 @@ describe("M1: a price typed with orders.create only", () => {
     });
   });
 
+  // Security review 2026-11-10: the confirmation is tied to everything that decides the amount (quantity included), as a
+  // structured value, so a changed quantity or reshaped lines always ask again.
+  it("a confirmation never survives a changed quantity or an added typed line", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const dispatcher = await s.createUser("dispatcher");
+      const office = await s.createUser("office");
+      const base = { customer_id: ids.customerId, site_line1: "9 Quantity Road" };
+      await s.as(dispatcher);
+      const o = await save(s, { ...base, lines: phonedInLines(ids) });
+      await s.as(office);
+      expect(await confirmPrice(s, o.order_id, "Rush rate agreed")).toMatchObject({ confirmed: true });
+
+      // Same typed price, 100 times the quantity: asks again.
+      const [gravel, typed] = phonedInLines(ids);
+      await s.as(dispatcher);
+      await save(s, { ...base, order_id: o.order_id, lines: [gravel, { ...typed, quantity: "4000" }] });
+      let row = await orderRow(s, o.order_id);
+      expect([row.price_check_requested_by, row.price_checked_at]).toEqual([dispatcher, null]);
+
+      // Confirmed again, then the typed line is split in two with the same description: asks again.
+      await s.as(office);
+      expect(await confirmPrice(s, o.order_id)).toMatchObject({ confirmed: true });
+      await s.as(dispatcher);
+      await save(s, { ...base, order_id: o.order_id, lines: [gravel, { ...typed, quantity: "4000" }, { ...typed, quantity: "1", unit_rate_cents: 999999 }] });
+      row = await orderRow(s, o.order_id);
+      expect([row.price_check_requested_by, row.price_checked_at]).toEqual([dispatcher, null]);
+    });
+  });
+
+  it("a price typed during a Taviron support visit waits for someone at the company", async () => {
+    await withSession(async (s) => {
+      const B = await s.createCompany("Visit Pricing Haul (test)");
+      const staff = await s.createUser(null, { membership: false });
+      await s.asAdmin();
+      const email = (await s.query<{ email: string }>("select email from auth.users where id = $1", [staff])).rows[0].email;
+      await s.query("set local role service_role");
+      await s.query("select public.platform_admin_grant($1, 'test')", [email]);
+      await s.asAdmin();
+      await s.query("update private.platform_admins set level = 'support' where user_id = $1", [staff]);
+      await s.query("insert into private.company_lifecycle (company_id, stage, live_at) values ($1, 'live', now())", [B]);
+      const customer = (await s.query<{ id: string }>("insert into public.customers (company_id, customer_number, name) values ($1, 'V-1', 'Visit Customer (test)') returning id", [B])).rows[0].id;
+      const bOwner = (await s.query<{ user_id: string }>("select user_id from public.company_memberships where company_id = $1 and role = 'owner' limit 1", [B])).rows[0]?.user_id ?? await s.createUser("owner", { companyId: B });
+      await s.as(bOwner);
+      await s.query("select public.support_access_grant(1)");
+      await s.as(staff);
+      await s.query("select public.platform_support_enter($1, 'Enter a rush order')", [B]);
+      const o = await save(s, { customer_id: customer, site_line1: "1 Visit Lane", lines: [{ kind: "hauling", calc_method: "per_unit", description: "Rush haul (typed)", unit_code: "ton", quantity: "10", unit_rate_cents: 5000, taxable: false }] });
+      const row = await orderRow(s, o.order_id);
+      expect(row.price_check_requested_by).toBe(staff);
+      expect(row.price_checked_at).toBeNull();
+    });
+  });
+
   it("only pricing.edit, pricing.override or billing.manage confirm; never another company or a Taviron support visit", async () => {
     await withSession(async (s) => {
       const ids = await sampleIds(s);
@@ -393,6 +447,25 @@ describe("L4: who changes a customer's money fields", () => {
       await s.as(await s.createUser("office"));
       await upd("tax_exempt", false);
       expect((await pgError(upd("payment_terms", "Net 15"))).code).toBe("42501");
+    });
+  });
+});
+
+describe("L4 and the platform import (security review 2026-11-10)", () => {
+  it("the audited platform import brings a spreadsheet's payment terms and tax exemption in; anything else is still refused", async () => {
+    await withSession(async (s) => {
+      const B = await s.createCompany("Import Terms Haul (test)");
+      // A Taviron admin with no membership in the company, inside a definer function as platform_import_approve runs
+      // (row rules bypassed by the function's owner; auth.uid() is the admin).
+      const admin = await s.createUser(null, { membership: false });
+      await s.asAdmin();
+      await s.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: admin, role: "authenticated", aal: "aal2" })]);
+      const insert = () => s.query("insert into public.customers (company_id, customer_number, name, payment_terms, tax_exempt) values ($1, $2, 'Imported Customer (test)', 'Net 30', true)", [B, `I-${randomUUID().slice(0, 6)}`]);
+      expect((await pgError(insert())).code).toBe("42501");
+      await s.query("select set_config('tlt.platform_write', 'on', true)");
+      await insert();
+      await s.query("select set_config('tlt.platform_write', 'off', true)");
+      expect((await pgError(insert())).code).toBe("42501");
     });
   });
 });

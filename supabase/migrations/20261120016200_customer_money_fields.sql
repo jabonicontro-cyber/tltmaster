@@ -93,6 +93,12 @@ begin
       raise exception 'Only billing can change a customer''s payment terms or detention charge.' using errcode = '42501';
     end if;
   else
+    -- The audited platform import (platform_import_approve sets tlt.platform_write inside its own function, as the
+    -- platform guard in 20261024000100 already trusts) brings a company's own spreadsheet in: its terms and tax
+    -- exemptions are the company's data, approved by the Taviron team for that company, not a person's own change.
+    if current_setting('tlt.platform_write', true) = 'on' then
+      return new;
+    end if;
     if (new.credit_hold or new.credit_limit_cents is not null) and not private.has_permission('billing.manage') then
       raise exception 'Only billing can put a customer on credit hold or set a credit limit.' using errcode = '42501';
     end if;

@@ -181,11 +181,7 @@ begin
        where l.order_id = v_order.id and l.company_id = v_company and l.calc_method <> 'per_unit';
       perform private.recompute_order_totals(v_order.id);
       select total_cents into v_total from public.orders where id = v_order.id;
-      select md5(string_agg(concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                      l.unit_rate_cents, l.percent_bp, l.description), ','
-                            order by concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                               l.unit_rate_cents, l.percent_bp, l.description)))
-        into v_fp from public.order_lines l where l.order_id = v_order.id and l.company_id = v_company and l.price_entered_by is not null;
+      v_fp := private.order_price_fingerprint(v_order.id, v_company);
       update public.orders set price_check_fingerprint = v_fp where id = v_order.id;
       perform private.log_event('order.price_corrected', 'order', v_order.id,
         format('%s: typed price corrected (%s): %s', v_order.order_number,

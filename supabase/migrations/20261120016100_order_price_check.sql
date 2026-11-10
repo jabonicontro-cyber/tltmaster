@@ -140,6 +140,22 @@ revoke all on function private.require_order_draft_save(jsonb) from public, anon
 -- pricing.edit, pricing.override and billing.manage get price_entered_by; the order is flagged to be checked. A
 -- confirmation stays valid while the typed prices are the same (fingerprint); a changed one asks again. When no typed
 -- price is left, nothing remains to check.
+-- The typed prices of an order, as one value: every line priced by hand, in line order, with what decides its amount
+-- (quantity and taxable included). Structured (jsonb), so free-text descriptions cannot make two different sets of
+-- lines look the same. NULL when no line was priced by hand. A confirmation stands only while this value is unchanged.
+create or replace function private.order_price_fingerprint(p_order uuid, p_company uuid)
+returns text
+language sql
+stable
+set search_path = ''
+as $$
+  select md5(jsonb_agg(jsonb_build_array(l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code, l.quantity,
+                                         l.unit_rate_cents, l.percent_bp, l.taxable, l.description) order by l.line_no, l.id)::text)
+    from public.order_lines l
+   where l.order_id = p_order and l.company_id = p_company and l.price_entered_by is not null;
+$$;
+revoke all on function private.order_price_fingerprint(uuid, uuid) from public, anon, authenticated;
+
 create or replace function private.order_price_check_after_save(p_order_id uuid)
 returns void
 language plpgsql
@@ -152,8 +168,11 @@ declare
   v_fp    text;
   v_lines jsonb;
 begin
-  if private.has_permission('orders.edit') or private.has_permission('pricing.edit')
-     or private.has_permission('pricing.override') or private.has_permission('billing.manage') then
+  -- People who set prices are not flagged; a Taviron support visit is (it holds the owner's rights but never confirms
+  -- prices, so a price it types waits for someone at the company).
+  if private.support_company() is null
+     and (private.has_permission('orders.edit') or private.has_permission('pricing.edit')
+          or private.has_permission('pricing.override') or private.has_permission('billing.manage')) then
     return;
   end if;
   select * into v_order from public.orders where id = p_order_id and company_id = private.require_company() for update;
@@ -163,13 +182,10 @@ begin
   update public.order_lines set price_entered_by = auth.uid()
    where order_id = v_order.id and company_id = v_order.company_id and price_source = 'manual';
 
-  select md5(string_agg(concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                  l.unit_rate_cents, l.percent_bp, l.description), ','
-                        order by concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                           l.unit_rate_cents, l.percent_bp, l.description))),
-         jsonb_agg(jsonb_build_object('line_no', l.line_no, 'description', l.description, 'unit_code', l.unit_code,
+  v_fp := private.order_price_fingerprint(v_order.id, v_order.company_id);
+  select jsonb_agg(jsonb_build_object('line_no', l.line_no, 'description', l.description, 'unit_code', l.unit_code,
                                       'unit_rate_cents', l.unit_rate_cents, 'percent_bp', l.percent_bp) order by l.line_no)
-    into v_fp, v_lines
+    into v_lines
     from public.order_lines l
    where l.order_id = v_order.id and l.company_id = v_order.company_id and l.price_entered_by is not null;
 
@@ -533,11 +549,7 @@ begin
    where m.company_id = v_demo and m.role = 'dispatcher' and m.active order by m.created_at limit 1;
   v_by := coalesce(v_by, auth.uid());
   update public.order_lines set price_entered_by = v_by where order_id = v_order.id and company_id = v_demo and price_source = 'manual';
-  select md5(string_agg(concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                  l.unit_rate_cents, l.percent_bp, l.description), ','
-                        order by concat_ws('|', l.kind, l.calc_method, l.material_id, l.charge_item_id, l.unit_code,
-                                           l.unit_rate_cents, l.percent_bp, l.description)))
-    into v_fp from public.order_lines l where l.order_id = v_order.id and l.company_id = v_demo and l.price_entered_by is not null;
+  v_fp := private.order_price_fingerprint(v_order.id, v_demo);
   update public.orders set price_check_requested_at = now(), price_check_requested_by = v_by, price_check_fingerprint = v_fp,
                            price_checked_at = null, price_checked_by = null, price_check_note = ''
    where id = v_order.id;

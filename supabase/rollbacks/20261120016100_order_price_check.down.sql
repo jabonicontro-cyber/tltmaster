@@ -252,6 +252,7 @@ drop function if exists public.demo_price_check_sample(uuid);
 drop function if exists public.order_confirm_price(uuid, text);
 drop function if exists private.require_prices_checked(uuid[]);
 drop function if exists private.order_price_check_after_save(uuid);
+drop function if exists private.order_price_fingerprint(uuid, uuid);
 
 alter table public.orders drop constraint if exists orders_price_check_order;
 alter table public.orders
