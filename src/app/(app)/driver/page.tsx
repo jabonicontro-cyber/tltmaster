@@ -1,6 +1,8 @@
 import { OfflineSupport } from "@/components/companion/offline-support";
 import { InspectionForm } from "@/components/fleet/inspection-form";
 import { GettingStarted } from "@/components/getting-started/getting-started";
+import { PasskeyOffer } from "@/components/accounts/passkey";
+import { passkeyRefusal, passkeysAvailable } from "@/server/passkeys";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AlertTriangle, ArrowRight, ClipboardCheck, FilePlus2, MapPin, MessagesSquare, Navigation, Package, Phone, Truck, Wrench } from "lucide-react";
@@ -346,6 +348,9 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   // When this answer was read from Taviron: the phone says so once it may be out of date (docs/COMPANION_APP.md §4).
   const renderedAt = readTime();
   const whose = access.isDemo && shown && !platformAdmin ? shown : h.driver.name;
+  // Face or fingerprint next time (DS1): only when the site offers passkeys, and only for an active driver sign-in without
+  // money permissions (SEC4); never the Taviron team or a demo sign-in. The database decides (my_passkey_refusal).
+  const offerPasskey = !platformAdmin && !access.support && Boolean(access.userId) && (await passkeysAvailable()) && (await passkeyRefusal()) === null;
 
   return (
     <div className="mx-auto max-w-2xl space-y-5">
@@ -383,6 +388,8 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {sp.error && <p role="alert" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">{sp.error}</p>}
       {/* First steps for a new driver; ticks itself from their own inspections and tickets. */}
       <GettingStarted access={access} place="my-day" facts={{ myTicket: h.assignments.some((x) => x.tickets.length > 0), todayLoadAnchor: today.length ? "today-loads" : null }} />
+      {/* Face or fingerprint next time (DS1): only when the site offers it, the phone can, and the sign-in may. */}
+      {offerPasskey ? <PasskeyOffer userId={access.userId} /> : null}
       {/* The day in two figures (owner's references 2026-10-27: numbers first). */}
       <div className="grid grid-cols-2 gap-3" aria-label="My day at a glance">
         {/* Each figure goes to its list (a real link, so a tap does what the card suggests). */}

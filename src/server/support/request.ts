@@ -104,6 +104,7 @@ export const REQUEST_SPECS = {
   "signin.email": { describe: async ([u]) => { const n = await memberName(u); return { summary: `Email ${n} a link to set their password`, details: lines(["Person", n]) }; } },
   "signin.off": { describe: async ([u]) => { const n = await memberName(u); return { summary: `Turn off ${n}'s sign-in`, details: lines(["Person", n]) }; } },
   "signin.on": { describe: async ([u]) => { const n = await memberName(u); return { summary: `Turn ${n}'s sign-in back on`, details: lines(["Person", n]) }; } },
+  "signin.passkeys_remove": { describe: async ([u]) => { const n = await memberName(u); return { summary: `Remove ${n}'s face or fingerprint sign-in (lost or new phone)`, details: lines(["Person", n]) }; } },
   "portal.signin_create": {
     form: ["request_key", "customer", "contact", "contact_name", "contact_email", "username"],
     describe: async ([fd]) => {

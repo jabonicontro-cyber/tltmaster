@@ -47,6 +47,7 @@ describe("every requestable action asks first during a visit", () => {
     "src/app/(app)/employees/account-actions.ts": ["signin.create", "signin.reissue", "signin.email", "signin.off", "signin.on"],
     "src/app/(app)/customer-portal/account-actions.ts": ["portal.signin_create", "portal.signin_reissue", "portal.signin_email", "portal.signin_off", "portal.signin_on"],
     "src/app/(app)/customer-portal/actions.ts": ["portal.invite", "portal.revoke"],
+    "src/app/(app)/fleet/drivers/phone-sign-in-actions.ts": ["signin.passkeys_remove"],
     "src/app/(app)/settings/accountant-actions.ts": ["accountant.invite", "accountant.change"],
   };
   it("has a hook, a description and a runner for each kind", () => {

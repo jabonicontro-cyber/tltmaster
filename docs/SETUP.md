@@ -21,6 +21,7 @@ dashboard (production). Never commit real values.
 | `EARLY_ACCESS_DAYS` | no (30) | How long a device stays admitted (1–90 days, never beyond the code's expiry) |
 | `EARLY_ACCESS_PASSWORD` | no | The shared Early Access password (12–128 characters, server only; DEPLOYMENT §3b). Empty: only personal site codes open the gate |
 | `EARLY_ACCESS_PASSWORD_MAX_DEVICES` | no (500) | Devices admitted with the shared password at the same time (1–1000) |
+| `PASSKEYS` | no (asks the auth server) | `off` hides face or fingerprint sign-in (passkeys) even when Supabase Auth offers it. Otherwise it is shown only when passkeys are turned on in Supabase Auth (ACCOUNT_PROVISIONING §7) |
 | `EARLY_ACCESS_RECHECK_SECONDS` | no (300) | How often an admitted device is re-checked against the database (revocation delay) |
 | `PUBLIC_SITE` | no (closed) | `on` opens the public website (home, pricing, demo request…) to everyone while the early-access gate is on. Empty: behind the gate like the rest. (With the gate off, as in `npm run dev`, it is open anyway) |
 | `SITE_INDEXING` | no (off) | `on` lets search engines index the public pages only (`SITE_PAGES`; read at build time) |

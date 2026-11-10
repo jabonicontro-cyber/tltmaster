@@ -50,6 +50,18 @@ const TENANT_TABLES = [
 
 /** Every SECURITY DEFINER function has been reviewed for company checks. Adding one fails this test until it is reviewed. */
 const REVIEWED_DEFINER_FUNCTIONS = [
+  // Driver QR sign-in and passkeys (20261120017000, DS1): issue/status/cancel need users.manage in the caller's company
+  // (require_company) and refuse demos and support visits; the driver is looked up with company_id = v_company and the
+  // target must pass account_issue_allowed and signin_qr_refusal (this company's active driver username sign-in only);
+  // redeem and failed are service-role only (the server makes the session); passkey check/removed follow
+  // account_issue_allowed; my_passkey_added writes only the caller's own audit row.
+  "private.signin_qr_refusal", "public.signin_qr_issue", "public.signin_qr_status", "public.signin_qr_cancel",
+  "public.signin_qr_redeem", "public.signin_qr_failed", "public.signin_passkey_check", "public.signin_passkeys_removed",
+  "public.my_passkey_added",
+  // Money rule for QR and passkeys (20261120017100, SEC4): holds_money_permission reads one person's memberships and
+  // role permissions (no company argument from a client; private, not granted); my_passkey_refusal reads only the
+  // caller's own sign-in (auth.uid()).
+  "private.holds_money_permission", "public.my_passkey_refusal",
   // Driver scorecard (20261120003800): read-only; a driver gets their own row, dispatch or employee access gets all.
   "public.driver_scorecard",
   // Proof of delivery (20261120004000): the ticket's own driver records its position once; the customer's portal reads

@@ -45,6 +45,8 @@ const ALLOWED = new Set([
   "src/app/(app)/customer-portal/account-actions.ts",
   "src/app/(app)/settings/accountant-actions.ts", // B134: no real accountant sign-in from a demo (as employee sign-ins)
   "src/app/(app)/customer-portal/page.tsx",
+  // QR sign-in (DS1): a demo shows a labelled sample code that signs nothing in; the database refuses real codes there.
+  "src/app/(app)/fleet/drivers/[id]/page.tsx",
   // QuickBooks Online (B82): demos never connect to or send to QuickBooks; sends are recorded as simulated.
   "src/server/accounting/send.ts",
   "src/app/api/accounting/qbo/connect/route.ts",

@@ -65,6 +65,14 @@ const EVENT_LABELS: Record<string, string> = {
   "account.revoked": "Portal access removed",
   "account.sessions_blocked": "Signed out everywhere (blocked in Auth)",
   "account.sessions_unblocked": "Sign-in unblocked in Auth",
+  "account.qr_issued": "Sign-in QR code shown",
+  "account.qr_used": "Signed in on a phone with a QR code",
+  "account.qr_expired": "QR code scanned after it expired (refused)",
+  "account.qr_refused": "QR code refused",
+  "account.qr_cancelled": "QR code cancelled",
+  "account.qr_failed": "QR code used, but the phone could not be signed in",
+  "account.passkey_added": "Face or fingerprint sign-in set up on a phone",
+  "account.passkeys_removed": "Face or fingerprint sign-in removed",
 };
 
 export function SignInManager({ s, personName, companyName, email, kind = "employee" }: {

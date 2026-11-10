@@ -68,7 +68,7 @@ export function publicSiteEnabled(): boolean {
  * page and function checks the company's portal switches and the customer's account itself. The Taviron team invitation
  * page (/join-team, SA1) opens only with a valid single-use invitation link.
  */
-const EXEMPT = ["/api/health", "/early-access", "/auth/confirm", "/auth/callback", "/auth/error", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe", "/join-team"];
+const EXEMPT = ["/api/health", "/early-access", "/auth/confirm", "/auth/qr", "/auth/callback", "/auth/error", "/api/cron", "/api/telematics/ingest", "/manifest.webmanifest", "/sw.js", "/offline", "/portal", "/track", "/unsubscribe", "/join-team"];
 export function isGateExempt(path: string): boolean {
   return EXEMPT.some((p) => path === p || path.startsWith(`${p}/`));
 }

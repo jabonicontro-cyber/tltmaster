@@ -7,13 +7,15 @@ import { DriverActions, QualificationsPanel } from "@/components/fleet/driver-pa
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
+import { PhoneSignInQr } from "@/components/accounts/phone-sign-in-qr";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { addDays, formatDate, formatDateTime } from "@/lib/dates";
 import { EXPIRY_WARNING_DAYS, eligibilityMessage } from "@/lib/fleet/eligibility";
-import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
+import { can, isMoneyPermission, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDriver } from "@/server/data/fleet";
+import { managedPasskeys } from "@/server/passkeys";
 import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import Link from "next/link";
@@ -45,6 +47,19 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   // driver's People record so the two stay one person; the wizard links the driver record to it.
   const canSetUpSignIn = !d.user_id && d.active && can(access, "users.manage") && can(access, "employees.edit");
   const person = canSetUpSignIn ? (await supabase.from("employees").select("id, user_id").eq("driver_id", d.id).maybeSingle()).data as { id: string; user_id: string | null } | null : null;
+  // Sign in without typing (DS1): a one-time QR code for a driver sign-in, and face or fingerprint sign-in to remove
+  // for a lost phone. users.manage, as for resetting a sign-in; the database checks every rule again. In a demo company
+  // the code is a labelled sample for any driver (nothing real signs in from a demo; docs/DEMO_TENANTS.md §2).
+  const canManageSignIns = d.active && can(access, "users.manage");
+  const demoQr = canManageSignIns && Boolean(access.isDemo);
+  const driverLogin = canManageSignIns && !access.isDemo && Boolean(d.user_id) && d.account_role === "driver" && d.account_active !== false;
+  // Two-step verification is for anyone who can see or change money (SEC4): when this company gave the driver role a
+  // money permission, drivers sign in with a password and two-step verification, not a code (the database refuses too).
+  const moneyRole = driverLogin
+    ? ((await supabase.from("role_permissions").select("permission").eq("role", "driver")).data ?? []).some((r) => isMoneyPermission(String((r as { permission: string }).permission)))
+    : false;
+  const liveQr = driverLogin && !moneyRole;
+  const passkeys = liveQr && d.user_id ? await managedPasskeys(d.user_id) : null;
 
   return (
     <>
@@ -77,6 +92,23 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
                   <p className="text-sm text-muted">This driver has no record in People yet. <Link href="/employees" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Open People</Link> to add them, then set up their sign-in there.</p>
                 ) : (
                   <p className="text-sm text-muted">No sign-in yet. Someone who manages sign-ins (People → Sign-ins &amp; roles) can set one up; no email is needed.</p>
+                )}
+                {demoQr ? <div className="mt-3 border-t border-line pt-3"><PhoneSignInQr driverId={d.id} userId={null} driverName={d.display_name} demo passkeys={null} /></div> : null}
+              </CardBody>
+            </Card>
+          )}
+          {d.user_id && canManageSignIns && (
+            <Card>
+              <CardHeader title="Phone sign-in" description="Sign this driver in on their phone without typing, or stop a lost phone signing in with face or fingerprint." />
+              <CardBody>
+                {liveQr || demoQr ? (
+                  <PhoneSignInQr driverId={d.id} userId={d.user_id} driverName={d.display_name} demo={demoQr} passkeys={passkeys} supportVisit={Boolean(access.support)} />
+                ) : moneyRole ? (
+                  <p className="text-sm text-muted" data-testid="qr-money-refused">QR sign-in is off for drivers here: the driver role can see or change money (Settings → Roles and permissions), so drivers sign in with their username, password and two-step verification. Remove the money permissions from the driver role to use QR codes.</p>
+                ) : d.account_active === false ? (
+                  <p className="text-sm text-muted">This sign-in is turned off. Turn it on in People first; then you can show a QR code.</p>
+                ) : (
+                  <p className="text-sm text-muted">QR sign-in is for driver sign-ins only. This login has the role {d.account_role ? (ROLE_LABELS[d.account_role as AppRole] ?? d.account_role) : "of no role"}; they sign in with their username or email and password.</p>
                 )}
               </CardBody>
             </Card>
