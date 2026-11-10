@@ -504,6 +504,35 @@ sequence. Functions: see IMPLEMENTATION_PLAN §5w.
 The weekly shop report (`/maintenance/weekly`) needs no table: it reads work orders, labor time, part cost lines,
 `equipment_status_events` and preventive status with the person's own access.
 
+### Mechanic and dispatcher decisions (20261120015000–20261120015700, master plan MD1, SEC3)
+
+- **Part on order, job not started (015000).** `work_orders.work_started_at`: the first move to in progress (or later),
+  or the first time entry; set by triggers (`private.wo_mark_started`, `private.wo_mark_started_by_time`), never
+  cleared. `private.assignment_eligibility`: waiting for parts blocks (`*_shop_work_open`) only once work started or
+  for a safety-critical job; a job waiting for parts that never started is the warning `*_part_on_order`.
+  `dispatch_shop_schedule` returns `work_started_at` and the job's waiting `parts` (description, expected date). The
+  app's rule is `holdsUnit` / `partOnOrderNotes` in `src/lib/fleet/readiness.ts` (absent `work_started_at` counts as
+  started).
+- **Wrong reading set aside (015100).** `truck_readings.set_aside_at`, `set_aside_by`, `set_aside_reason`.
+  `truck_reading_set_aside(reading, reason)` (`maintenance.manage` or `fleet.edit`; audit `truck.reading_set_aside`).
+  `private.feed_truck_reading`, `private.pm_due`, `private.wo_complete_schedule` and `record_truck_reading` use only
+  readings not set aside; since 015600 each takes the **highest** reading not set aside as the current one (the feed
+  already did).
+- **Certificate from the shop (015200).** `vehicle_documents.work_order_id` (read-only for app roles), set by
+  `maintenance_record_inspection`; unverified ones are the office's list on the Fleet overview until
+  `verify_vehicle_document` (`fleet.edit`). Since 015700 each one also raises the operational alert
+  `documents.certificate_check` to the company's `fleet.edit` people (trigger `private.certificate_check_alert` on
+  `vehicle_documents`, through `private.raise_certificate_check`), resolved when the certificate is verified or
+  archived; acknowledging does not resolve it.
+- **Truck parked by hand (015300).** `units_back_from_shop()` (`fleet.view`, caller's bases): out of service, no open
+  work order, a work order finished since. `return_unit_after_shop(kind, id)` (`fleet.service`, `fleet.edit` or
+  `maintenance.manage`; audit `fleet.returned_after_shop`) through `private.apply_service_status`, the step
+  `set_equipment_service_status` now shares. Nothing returns by itself.
+- **Parts on order by base (015400).** Restrictive read rule on `work_order_part_waits` (its work order must be
+  visible); `private.wo_base_check` in `private.wo_for_crew` refuses another base's job for every crew function;
+  `part_waits()` lists only the caller's bases.
+- **Demo samples (015500).** `demo_shop_decision_samples()` (demo owner, once each).
+
 ## Fleet management (20261102000100)
 
 | Table / column | Purpose | Access |

@@ -133,7 +133,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                     {t.shopToday && (t.availability.ready || t.availability.state === "in_shop")
                       ? <Badge tone="amber"><CalendarClock className="size-3" aria-hidden />In the shop this day</Badge>
                       : <AvailabilityBadge a={t.availability} />}
-                    <div className="mt-1 max-w-72 text-xs text-muted">{t.shopToday ? `${t.shopToday.number}: ${t.shopToday.title}` : t.availability.ready ? (t.availability.upcoming[0] ? `Next shop visit ${t.availability.upcoming[0].date}` : "") : t.availability.detail}</div>
+                    <div className="mt-1 max-w-72 text-xs text-muted">{t.shopToday ? `${t.shopToday.number}: ${t.shopToday.title}` : t.availability.ready ? (t.availability.notes?.length ? t.availability.notes.join(" ") : t.availability.upcoming[0] ? `Next shop visit ${t.availability.upcoming[0].date}` : "") : t.availability.detail}</div>
                   </Td>
                   <Td className="text-sm"><Bookings items={t.bookings} timezone={r.timezone} date={date} /></Td>
                   <Td className="hidden text-sm md:table-cell">{t.driver ? <Link href={`/fleet/drivers/${t.driver.id}`} className="hover:underline">{t.driver.name}</Link> : <span className="text-muted">–</span>}</Td>

@@ -13,6 +13,8 @@ export interface WorkOrderRow {
   truck_id: string | null;
   /** Absent until migration 20261115000100 (trailer work orders) is applied. */
   trailer_id?: string | null;
+  /** When work first started (20261120015000); absent before it (the readiness rule then counts the job as started). */
+  work_started_at?: string | null;
   driver_id: string | null;
   field_report_id: string | null;
   schedule_id: string | null;
@@ -293,15 +295,20 @@ export async function getSchedule(id: string) {
   return data as Record<string, unknown> | null;
 }
 
-/** Latest reading per truck. */
+/**
+ * Current reading per truck: the highest odometer and engine hours not marked wrong (20261120015100, 015600), with the
+ * time of that reading (the latest one among equal values).
+ */
 export async function latestReadings(): Promise<Map<string, { miles: number | null; milesAt: string | null; hours: number | null; hoursAt: string | null }>> {
   const supabase = await createClient();
-  const { data } = await supabase.from("truck_readings").select("truck_id, odometer_miles, engine_hours, read_at").order("read_at", { ascending: false }).limit(2000);
+  const { data } = await supabase.from("truck_readings").select("*").order("read_at", { ascending: false }).limit(2000);
   const out = new Map<string, { miles: number | null; milesAt: string | null; hours: number | null; hoursAt: string | null }>();
-  for (const r of (data ?? []) as Array<{ truck_id: string; odometer_miles: unknown; engine_hours: unknown; read_at: string }>) {
+  for (const r of (data ?? []) as Array<{ truck_id: string; odometer_miles: unknown; engine_hours: unknown; read_at: string; set_aside_at?: string | null }>) {
+    if (r.set_aside_at) continue;
     const cur = out.get(r.truck_id) ?? { miles: null, milesAt: null, hours: null, hoursAt: null };
-    if (cur.miles === null && r.odometer_miles !== null) { cur.miles = Number(r.odometer_miles); cur.milesAt = r.read_at; }
-    if (cur.hours === null && r.engine_hours !== null) { cur.hours = Number(r.engine_hours); cur.hoursAt = r.read_at; }
+    // Rows come newest first: a strictly higher value replaces, an equal one keeps the newer time.
+    if (r.odometer_miles !== null && (cur.miles === null || Number(r.odometer_miles) > cur.miles)) { cur.miles = Number(r.odometer_miles); cur.milesAt = r.read_at; }
+    if (r.engine_hours !== null && (cur.hours === null || Number(r.engine_hours) > cur.hours)) { cur.hours = Number(r.engine_hours); cur.hoursAt = r.read_at; }
     out.set(r.truck_id, cur);
   }
   return out;

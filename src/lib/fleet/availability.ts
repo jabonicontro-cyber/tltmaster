@@ -1,5 +1,5 @@
 import { addDays, formatDate } from "@/lib/dates";
-import { IN_SHOP_STATUSES, vehicleReadyOn } from "@/lib/fleet/readiness";
+import { holdsUnit, vehicleReadyOn, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
 
 // One view of a vehicle's mechanical availability, derived from the records
 // that already decide it: the service status (set only through
@@ -41,6 +41,10 @@ export interface OpenWorkOrder {
   safety_critical: boolean;
   scheduled_for: string | null;
   clearance_status: string | null;
+  /** When work first started (20261120015000); absent when not read, then counted as started. */
+  work_started_at?: string | null;
+  /** Parts still on order, when the reader has them (the "Part on order" note). */
+  parts?: ReadinessWorkOrder["parts"];
 }
 
 export type AvailabilityState = "inactive" | "awaiting_clearance" | "restricted" | "out_of_service" | "in_shop" | "available";
@@ -54,14 +58,17 @@ export interface Availability {
   ready: boolean;
   /** Future shop dates that will affect availability (not yet enforced by Smart Dispatch). */
   upcoming: Array<{ date: string; number: string; title: string }>;
+  /** "Part on order: …" notes: jobs waiting for a part that have not started (the vehicle can still run). */
+  notes?: string[];
 }
 
 const WORK_WORDS: Record<string, string> = { in_progress: "in progress", awaiting_parts: "waiting for parts" };
 
 /**
  * Availability of one vehicle on `day` (the company's `today` by default), from the shared readiness rule
- * (src/lib/fleet/readiness.ts, owner 2026-11-09): shop work in progress or waiting for parts, or a shop visit that
- * day, makes it not ready; out of service is not ready today, and on a later day counts as back from its expected
+ * (src/lib/fleet/readiness.ts, owner 2026-11-09): shop work that has started (in progress, or waiting for parts after
+ * it started), or a shop visit that day, makes it not ready; a part on order for a job not started yet is a note on an
+ * available vehicle (MD1); out of service is not ready today, and on a later day counts as back from its expected
  * return date.
  */
 export function vehicleAvailability(
@@ -71,7 +78,7 @@ export function vehicleAvailability(
   today: string = day,
 ): Availability {
   const upcoming = openWorkOrders
-    .filter((w) => w.scheduled_for && w.scheduled_for > day && !IN_SHOP_STATUSES.includes(w.status) && w.status !== "awaiting_inspection")
+    .filter((w) => w.scheduled_for && w.scheduled_for > day && !holdsUnit(w) && w.status !== "awaiting_inspection")
     .map((w) => ({ date: w.scheduled_for!, number: w.number, title: w.title }))
     .sort((a, b) => a.date.localeCompare(b.date));
   if (!v.active) return { state: "inactive", label: "Inactive", detail: "Deactivated: not part of the working fleet.", ready: false, upcoming };
@@ -95,8 +102,12 @@ export function vehicleAvailability(
   if (r.reason === "in_shop" && r.workOrder) {
     return { state: "in_shop", label: "In the shop", detail: `${r.workOrder.number} is ${WORK_WORDS[r.workOrder.status] ?? r.workOrder.status.replace("_", " ")}. It cannot be assigned until the work is done.`, ready: false, upcoming };
   }
+  const notes = r.notes.length ? { notes: r.notes } : {};
   if (r.expectedBack) {
-    return { state: "available", label: "Expected back", detail: `Out of service now, expected back ${formatDate(r.expectedBack)}. Return it to service in Fleet before assigning.`, ready: true, upcoming };
+    return { state: "available", label: "Expected back", detail: `Out of service now, expected back ${formatDate(r.expectedBack)}. Return it to service in Fleet before assigning.`, ready: true, upcoming, ...notes };
+  }
+  if (r.notes.length) {
+    return { state: "available", label: "Available", detail: `${r.notes.join(" ")} It can run until the shop starts the job.`, ready: true, upcoming, ...notes };
   }
   return { state: "available", label: "Available", detail: upcoming.length ? `Shop visit scheduled ${upcoming[0].date} (${upcoming[0].number}).` : "In service, no open restriction.", ready: true, upcoming };
 }

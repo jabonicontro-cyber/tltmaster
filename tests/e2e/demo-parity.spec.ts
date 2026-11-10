@@ -207,6 +207,22 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await visit(page, "/maintenance/weekly");
         await expect(page.getByRole("heading", { name: /^Shop week of/ }), `${role} weekly shop report`).toBeVisible();
       }
+      // Shop decisions (MD1, samples.ts demo_shop_decision_samples): a truck with a part on order for a job not started
+      // stays on the board with its note; a truck parked by hand whose shop work is done is offered back to the shop
+      // and dispatch; the office's list of inspection certificates the shop recorded and nobody checked yet.
+      if (nav.includes("/dispatch")) {
+        await visit(page, "/dispatch");
+        await expect(page.getByTestId("part-on-order-note").first(), `${role} board part on order`).toContainText(/^Part on order: /);
+        await expect(page.getByTestId("back-from-shop"), `${role} board shop work done`).toContainText("Put it back in service?");
+      }
+      if (nav.includes("/maintenance") && role !== "driver") {
+        await visit(page, "/maintenance");
+        await expect(page.getByTestId("back-from-shop"), `${role} maintenance shop work done`).toContainText("Put it back in service?");
+      }
+      if (nav.includes("/fleet")) {
+        await visit(page, "/fleet");
+        await expect(page.getByTestId("certificates-to-check"), `${role} certificates to check`).toContainText("Not checked yet");
+      }
       // Modes that drive see a day with loads on My Day.
       if (role === "driver" || role === "multi") {
         await visit(page, "/driver");

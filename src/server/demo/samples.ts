@@ -206,6 +206,11 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("sample history times", await rpcCount(db, "demo_sample_timeline"));
   // Last, after every sample assignment: documents mostly valid, one lapsed registration on idle equipment (UX, 2026-11-09).
   note("vehicle document edge cases", await documentEdgeCases(db, today));
+  // Mechanic and dispatcher decisions (MD1, 2026-11-09), last (after the parts on order and every sample assignment, so a
+  // truck it parks has nothing booked): a part on order for a job not started (the truck stays dispatchable with a
+  // note), a wrong reading with a correct one the feed did not use, an inspection certificate the shop recorded and the
+  // office has not checked, and a truck parked by hand whose shop work is done.
+  note("shop decisions", await rpcCount(db, "demo_shop_decision_samples"));
   return result;
 }
 

@@ -29,6 +29,8 @@ import { ChevronRight, ShieldAlert } from "lucide-react";
 import { TruckHealthCard } from "@/components/maintenance/truck-health";
 import { vehicleReadyOn } from "@/lib/fleet/readiness";
 import { loadTruckHealth } from "@/server/data/truck-health";
+import { unitsBackFromShop } from "@/server/data/fleet";
+import { BackFromShopPrompt } from "@/components/fleet/shop-decisions";
 
 export const metadata = { title: "Maintenance" };
 
@@ -72,6 +74,8 @@ export default async function MaintenancePage() {
     // Parts still on order (20261120012300): "Waiting for parts: N, next expected <date>".
     partWaits().catch(() => ({ installed: false, rows: [] })),
   ]);
+  // Trucks and trailers a person parked whose shop work is all done (MD1): "Put it back in service?". [] before the update.
+  const backFromShop = can(access, "fleet.view") ? await unitsBackFromShop() : [];
   const partsWaiting = summarizePartsWaiting(onOrder.rows, today, open.filter((w) => w.status === "awaiting_parts").map((w) => w.id));
   const truckById = new Map(trucks.map((t) => [t.id, t]));
   const trailerById = new Map(trailers.map((t) => [t.id, t]));
@@ -138,6 +142,7 @@ export default async function MaintenancePage() {
         actions={can(access, "maintenance.manage") && <ButtonLink href="/maintenance/work-orders/new" icon={<Plus className="size-4" />}>New work order</ButtonLink>}
       />
       <MaintenanceTabs active="overview" />
+      <BackFromShopPrompt units={backFromShop} canReturn={can(access, "fleet.service") || can(access, "fleet.edit") || can(access, "maintenance.manage")} />
 
       <section aria-label="Overview" className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
         <Card>

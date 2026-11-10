@@ -297,6 +297,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     const est = await q<{ estimated: string; unestimated: string }>("select count(*) filter (where estimated_hours is not null) estimated, count(*) filter (where estimated_hours is null) unestimated from public.work_orders where company_id = $1 and status not in ('completed', 'closed', 'canceled')", [w.company]);
     expect(Number(est.rows[0].estimated)).toBeGreaterThan(0);
     expect(Number(est.rows[0].unestimated)).toBe(1);
+    // Shop decisions (MD1, 20261120015500): a part on order for a job not started, a correct reading the feed did not use,
+    // a certificate the shop recorded and nobody checked yet, and a truck parked by hand whose shop work is all done.
+    const md1 = await q<{ waiting: string; ignored: string; unchecked: string; parked: string }>(`select
+        (select count(*) from public.work_orders where company_id = $1 and status = 'awaiting_parts' and work_started_at is null and not safety_critical) waiting,
+        (select count(*) from public.audit_events where company_id = $1 and action = 'truck.reading_ignored') ignored,
+        (select count(*) from public.vehicle_documents where company_id = $1 and work_order_id is not null and verified_at is null and archived_at is null) unchecked,
+        (select count(*) from public.trucks t where t.company_id = $1 and t.service_status = 'out_of_service'
+           and not exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since)) parked`, [w.company]);
+    expect(md1.rows.map((r) => [Number(r.waiting), Number(r.ignored) >= 1, Number(r.unchecked), Number(r.parked)])).toEqual([[1, true, 1, 1]]);
     // Planned work in the next two weeks, with one day holding more jobs than the shop has bays.
     const plan = await q<{ d: string; n: string }>("select scheduled_for::text as d, count(*) as n from public.work_orders where company_id = $1 and estimated_hours is not null and status not in ('completed', 'closed', 'canceled') and scheduled_for between current_date and current_date + 14 group by 1", [w.company]);
     expect(plan.rows.length).toBeGreaterThan(0);

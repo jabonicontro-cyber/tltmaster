@@ -18,6 +18,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { formatDateLong, isIsoDate } from "@/lib/dates";
 import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
+import { unitsBackFromShop } from "@/server/data/fleet";
+import { BackFromShopPrompt } from "@/components/fleet/shop-decisions";
 import { getDispatchDay, listUnscheduledOrders } from "@/server/data/dispatch";
 import { facesForDrivers } from "@/server/data/faces";
 import { baseOptions, parseBaseFilter } from "@/server/data/bases";
@@ -131,6 +133,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   }
   // Inspections (B132): today's working trucks without a pre-trip; flagged, never blocking. [] before the update.
   const noPreTrip = view === "board" && date === today ? await missingPreTrips().catch(() => []) : [];
+  // Trucks and trailers a person parked whose shop work is all done (MD1): "Put it back in service?". [] before the update.
+  const backFromShop = view === "board" && can(access, "fleet.view") ? await unitsBackFromShop() : [];
   // Faces for every driver on the board or in a proposal (larger fleets: put a face to a name).
   const faces = await facesForDrivers(day.drivers.map((d) => d.id));
   // Credit holds (B128) for this day's customers: a badge on their orders (assigning asks for a reason).
@@ -183,6 +187,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
             </section>
           ) : null;
         })()}
+        <BackFromShopPrompt units={backFromShop} canReturn={can(access, "fleet.service") || can(access, "fleet.edit") || can(access, "maintenance.manage")} />
         {noPreTrip.length > 0 && (
           <p role="status" className="mb-4 rounded-panel border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
             <span className="font-semibold">No pre-trip inspection yet:</span> {noPreTrip.map((t) => `Truck ${t.unit}`).join(", ")}. They can still run; remind the driver. <Link href="/fleet/inspections" className="font-semibold underline">Inspections</Link>

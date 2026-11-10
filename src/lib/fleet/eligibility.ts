@@ -149,6 +149,8 @@ export const ELIGIBILITY_MESSAGES: Record<string, string> = {
   trailer_safety_restricted: "Trailer has an open safety-critical work order. It returns to service only after an authorized inspection clears it.",
   trailer_shop_scheduled: "Trailer is scheduled in the shop on this date.",
   trailer_shop_work_open: "Trailer is in the shop: work is in progress or waiting for parts. It cannot be assigned until the work is done.",
+  truck_part_on_order: "A part is on order for a job on this truck that has not started. The truck can run until the work starts.",
+  trailer_part_on_order: "A part is on order for a job on this trailer that has not started. The trailer can run until the work starts.",
   truck_capacity_unknown: "Truck capacity is not recorded.",
   truck_capacity_unverified: "Truck capacity is recorded but not verified.",
   trailer_inactive: "Trailer is deactivated.",

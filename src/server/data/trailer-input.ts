@@ -32,7 +32,8 @@ export async function getTrailerInput(from: string, to: string): Promise<Pick<Op
     })),
     trailerBookings: (booked.data ?? []) as OptimizationInput["trailerBookings"],
     trailerShopVisits: ((shopMissing ? [] : shop.data ?? []) as Array<TrailerShopVisit & { trailer_id?: string | null }>)
-      .filter((v) => v.trailer_id).map((v) => ({ trailer_id: v.trailer_id as string, number: v.number, scheduled_for: v.scheduled_for, status: v.status, safety_critical: v.safety_critical })),
+      // work_started_at (20261120015000) only when the database sent it: absent counts as started (blocks, as before).
+      .filter((v) => v.trailer_id).map((v) => ({ trailer_id: v.trailer_id as string, number: v.number, scheduled_for: v.scheduled_for, status: v.status, safety_critical: v.safety_critical, ...(v.work_started_at !== undefined ? { work_started_at: v.work_started_at } : {}) })),
     trailerReports: ((reports.data ?? []) as Array<{ trailer_id: string | null; kind: string }>).filter((r) => r.trailer_id).map((r) => ({ trailer_id: r.trailer_id as string, kind: r.kind })),
   };
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { driverNotReadyText, driverReadyCaption, driverReadyOn, notReadyText, shopHolds, summarizeDriversReady, vehicleReadyOn, type ReadinessDriver, type ReadinessTimeOff, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
+import { driverNotReadyText, driverReadyCaption, driverReadyOn, holdsUnit, notReadyText, partOnOrderNotes, partOnOrderText, shopHolds, summarizeDriversReady, vehicleReadyOn, type ReadinessDriver, type ReadinessTimeOff, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
 
 // The shared truck and trailer readiness rule (owner decision 2026-11-09, master plan WK1), used by Taviron Live, the
 // dispatch board, Fleet, Maintenance, Smart Dispatch and Plan the day.
@@ -10,7 +10,7 @@ const wo = (p: Partial<ReadinessWorkOrder>): ReadinessWorkOrder => ({ number: "W
 
 describe("truck and trailer readiness", () => {
   it("is ready with no shop work and in service", () => {
-    expect(vehicleReadyOn(inService, [], today, today)).toEqual({ ready: true, reason: null, workOrder: null, expectedBack: null });
+    expect(vehicleReadyOn(inService, [], today, today)).toEqual({ ready: true, reason: null, workOrder: null, expectedBack: null, notes: [] });
   });
 
   it("an open safety-critical work order makes it not ready on every day, even while waiting for inspection", () => {
@@ -40,12 +40,48 @@ describe("truck and trailer readiness", () => {
     const down = { active: true, service_status: "out_of_service", expected_return_date: "2026-11-10" };
     expect(vehicleReadyOn({ ...down, expected_return_date: today }, [], today, today)).toMatchObject({ ready: false, reason: "out_of_service" });
     expect(vehicleReadyOn({ ...down, expected_return_date: "2026-11-01" }, [], today, today)).toMatchObject({ ready: false, reason: "out_of_service" });
-    expect(vehicleReadyOn(down, [], "2026-11-10", today)).toEqual({ ready: true, reason: null, workOrder: null, expectedBack: "2026-11-10" });
+    expect(vehicleReadyOn(down, [], "2026-11-10", today)).toEqual({ ready: true, reason: null, workOrder: null, expectedBack: "2026-11-10", notes: [] });
     expect(vehicleReadyOn(down, [], later, today).ready).toBe(true);
     expect(vehicleReadyOn({ ...down, expected_return_date: null }, [], later, today)).toMatchObject({ ready: false, reason: "out_of_service" });
     // Back by then, but still in the shop: not ready.
     expect(vehicleReadyOn(down, [wo({ status: "awaiting_parts" })], later, today)).toMatchObject({ ready: false, reason: "in_shop" });
     expect(vehicleReadyOn({ ...inService, active: false }, [], today, today)).toMatchObject({ ready: false, reason: "inactive" });
+  });
+
+  // Owner decision 2026-11-09 (MD1), mirrored by private.assignment_eligibility (20261120015000).
+  it("a part on order for a job that has not started leaves it ready, with the note", () => {
+    const waiting = wo({ status: "awaiting_parts", number: "WO-9", work_started_at: null, parts: [{ description: "Seat cushion", expected_on: "2026-11-13" }] });
+    const r = vehicleReadyOn(inService, [waiting], later, today);
+    expect(r).toEqual({ ready: true, reason: null, workOrder: null, expectedBack: null, notes: ["Part on order: Seat cushion, expected Nov 13, 2026."] });
+    expect(holdsUnit(waiting)).toBe(false);
+    expect(shopHolds([waiting], later)).toEqual([]);
+  });
+
+  it("blocks once work has started, for a safety-critical job, and when it is not known whether work started", () => {
+    const started = wo({ status: "awaiting_parts", number: "WO-3", work_started_at: "2026-11-08T15:00:00Z" });
+    expect(vehicleReadyOn(inService, [started], later, today)).toMatchObject({ ready: false, reason: "in_shop", workOrder: { number: "WO-3" }, notes: [] });
+    const safety = wo({ status: "awaiting_parts", safety_critical: true, work_started_at: null });
+    expect(vehicleReadyOn(inService, [safety], later, today)).toMatchObject({ ready: false, reason: "safety_restricted" });
+    expect(holdsUnit(safety)).toBe(true);
+    expect(partOnOrderNotes([safety])).toEqual([]);
+    // Read without work_started_at (before the update, or a reader that does not have it): counted as started.
+    expect(vehicleReadyOn(inService, [wo({ status: "awaiting_parts" })], later, today)).toMatchObject({ ready: false, reason: "in_shop" });
+    // In progress always blocks, started or not recorded.
+    expect(vehicleReadyOn(inService, [wo({ status: "in_progress", work_started_at: null })], later, today)).toMatchObject({ ready: false, reason: "in_shop" });
+  });
+
+  it("a part on order still does not override a shop visit that day or out of service", () => {
+    const waiting = wo({ status: "awaiting_parts", work_started_at: null, scheduled_for: today });
+    expect(vehicleReadyOn(inService, [waiting], today, today)).toMatchObject({ ready: false, reason: "shop_scheduled" });
+    const down = { active: true, service_status: "out_of_service", expected_return_date: null };
+    expect(vehicleReadyOn(down, [wo({ status: "awaiting_parts", work_started_at: null })], today, today)).toMatchObject({ ready: false, reason: "out_of_service" });
+  });
+
+  it("words the note plainly: several parts, a missing date, no parts list", () => {
+    expect(partOnOrderText({ parts: [{ description: "Sensor", expected_on: "2026-11-12" }, { description: "Clip", expected_on: "2026-11-15" }] })).toBe("Part on order: Sensor and 1 more, expected Nov 15, 2026.");
+    expect(partOnOrderText({ parts: [{ description: "Sensor", expected_on: null }] })).toBe("Part on order: Sensor, no expected date yet.");
+    expect(partOnOrderText({ number: "WO-12", parts: [] })).toBe("Part on order for WO-12.");
+    expect(partOnOrderText({})).toBe("Part on order.");
   });
 
   it("lists holds as the database does: safety first, then a visit that day or else work in progress", () => {

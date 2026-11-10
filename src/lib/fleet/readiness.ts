@@ -6,19 +6,27 @@
  *   - an open safety-critical work order (any date; it returns only through clearance in Maintenance);
  *   - a work order scheduled for that day that is not finished (reported, triaged, scheduled, in progress or waiting
  *     for parts);
- *   - shop work in progress or waiting for parts (any date): it is in the shop until the work is done;
+ *   - shop work that has started (any date): in progress, or waiting for parts after work started; it is in the shop
+ *     until the work is done (owner 2026-11-09, MD1). A job waiting for a part that has NOT started and is not
+ *     safety-critical does not keep the unit in the shop: it can run, with a note "Part on order: <part>, expected
+ *     <date>" (partOnOrderNotes);
  *   - or it is out of service. Today it is not ready whatever its expected return date says; on a later day it counts
  *     as ready from its expected return date (a projection for planning only: assigning still needs a person to put it
  *     back in service, and assign_load refuses it until then).
  * Inactive equipment is never ready. The database applies the same shop rules in private.assignment_eligibility
- * (codes *_safety_restricted, *_shop_scheduled, *_shop_work_open: all blockers since 20261120009800).
+ * (codes *_safety_restricted, *_shop_scheduled, *_shop_work_open: all blockers since 20261120009800; the part-on-order
+ * case is the warning *_part_on_order since 20261120015000, which also added work_orders.work_started_at).
  */
 
+import { formatDate } from "@/lib/dates";
 import { driverChecks, type EligibilityQualification } from "@/lib/fleet/eligibility";
 
 /** Work-order statuses that keep the unit in the shop on the day the order is scheduled for. */
 export const SHOP_DAY_STATUSES: readonly string[] = ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts"];
-/** Work-order statuses that keep the unit in the shop whatever date the order carries. */
+/**
+ * Work-order statuses that can keep the unit in the shop whatever date the order carries. Waiting for parts only does
+ * once work has started, or for a safety-critical job (holdsUnit).
+ */
 export const IN_SHOP_STATUSES: readonly string[] = ["in_progress", "awaiting_parts"];
 /** Finished work orders: never a restriction. */
 const FINISHED = new Set(["completed", "closed", "canceled"]);
@@ -28,6 +36,56 @@ export interface ReadinessWorkOrder {
   scheduled_for: string | null;
   safety_critical: boolean;
   number?: string;
+  /**
+   * When work first started on the job (work_orders.work_started_at, 20261120015000). null = never started. Absent =
+   * not known (read without it, or before that update): counted as started, so the unit stays blocked as before.
+   */
+  work_started_at?: string | null;
+  /** Parts still on order for the job (the dispatch shop schedule lists them), for the "Part on order" note. */
+  parts?: ReadonlyArray<{ description: string; expected_on: string | null }> | null;
+}
+
+/** Has work started on this job? Unknown counts as started (the safe answer: the unit stays blocked). */
+export function workStarted(w: Pick<ReadinessWorkOrder, "work_started_at">): boolean {
+  return w.work_started_at !== null;
+}
+
+/**
+ * Does this open job keep its unit in the shop whatever date it carries? Work in progress, or waiting for parts once
+ * work has started or when the job is safety-critical (owner 2026-11-09, MD1; private.assignment_eligibility).
+ */
+export function holdsUnit(w: ReadinessWorkOrder): boolean {
+  if (w.status === "in_progress") return true;
+  return w.status === "awaiting_parts" && (w.safety_critical || workStarted(w));
+}
+
+/** A job waiting for a part that has not started and is not safety-critical: the unit can run, with a note. */
+export function partOnOrderOnly(w: ReadinessWorkOrder): boolean {
+  return w.status === "awaiting_parts" && !w.safety_critical && !workStarted(w);
+}
+
+/**
+ * The note for one job waiting for parts before work starts: "Part on order: Seat cushion, expected Nov 13, 2026."
+ * Several parts name the first and how many more, with the latest expected date (when everything is in). Without the
+ * parts list: "Part on order for WO-12."
+ */
+export function partOnOrderText(w: Pick<ReadinessWorkOrder, "parts" | "number">): string {
+  const parts = w.parts ?? [];
+  if (!parts.length) return `Part on order${w.number ? ` for ${w.number}` : ""}.`;
+  const name = parts.length === 1 ? parts[0].description : `${parts[0].description} and ${parts.length - 1} more`;
+  const dates = parts.map((p) => p.expected_on);
+  const when = dates.some((d) => !d) ? "no expected date yet" : `expected ${formatDate(dates.reduce((a, b) => (a! > b! ? a : b)))}`;
+  return `Part on order: ${name}, ${when}.`;
+}
+
+/** The "Part on order" notes of one unit's open jobs (jobs waiting for parts that have not started). */
+export function partOnOrderNotes(workOrders: readonly ReadinessWorkOrder[]): string[] {
+  return workOrders.filter(partOnOrderOnly).map(partOnOrderText);
+}
+
+/** True for a note made by partOnOrderText (to show it first among a resource's notes). */
+export function isPartOnOrderNote(text: string): boolean {
+  return text.startsWith("Part on order");
 }
 
 export interface ReadinessVehicle {
@@ -48,7 +106,8 @@ export interface ShopHold<W extends ReadinessWorkOrder = ReadinessWorkOrder> {
 
 /**
  * Every shop hold of one unit on `day`, as the database lists them: a safety-critical order, then either a visit
- * scheduled that day or shop work in progress / waiting for parts (one of the two, the visit first).
+ * scheduled that day or shop work that has started (one of the two, the visit first). A job waiting for a part that
+ * has not started is not a hold (partOnOrderNotes).
  */
 export function shopHolds<W extends ReadinessWorkOrder>(workOrders: readonly W[], day: string): ShopHold<W>[] {
   const out: ShopHold<W>[] = [];
@@ -56,7 +115,7 @@ export function shopHolds<W extends ReadinessWorkOrder>(workOrders: readonly W[]
   const safety = open.find((w) => w.safety_critical);
   if (safety) out.push({ reason: "safety_restricted", workOrder: safety });
   const visit = open.find((w) => w.scheduled_for === day && SHOP_DAY_STATUSES.includes(w.status));
-  const working = open.find((w) => IN_SHOP_STATUSES.includes(w.status));
+  const working = open.find(holdsUnit);
   if (visit) out.push({ reason: "shop_scheduled", workOrder: visit });
   else if (working) out.push({ reason: "in_shop", workOrder: working });
   return out;
@@ -69,6 +128,8 @@ export interface DayReadiness<W extends ReadinessWorkOrder = ReadinessWorkOrder>
   workOrder: W | null;
   /** Out of service now, counted as ready on this later day from its expected return date. */
   expectedBack: string | null;
+  /** "Part on order: …" notes for jobs waiting for parts that have not started (the unit can still run). */
+  notes: string[];
 }
 
 /** Whether out-of-service equipment counts as back on `day` (only a later day, from its expected return date). */
@@ -78,7 +139,8 @@ export function backInServiceBy(v: ReadinessVehicle, day: string, today: string)
 
 /** The shared rule: can this truck or trailer run on `day` (today is the company's business date)? */
 export function vehicleReadyOn<W extends ReadinessWorkOrder>(v: ReadinessVehicle, workOrders: readonly W[], day: string, today: string): DayReadiness<W> {
-  const no = (reason: NotReadyReason, workOrder: W | null = null): DayReadiness<W> => ({ ready: false, reason, workOrder, expectedBack: null });
+  const notes = partOnOrderNotes(workOrders);
+  const no = (reason: NotReadyReason, workOrder: W | null = null): DayReadiness<W> => ({ ready: false, reason, workOrder, expectedBack: null, notes });
   if (v.active === false) return no("inactive");
   const holds = shopHolds(workOrders, day);
   const safety = holds.find((h) => h.reason === "safety_restricted");
@@ -87,7 +149,7 @@ export function vehicleReadyOn<W extends ReadinessWorkOrder>(v: ReadinessVehicle
   if (v.service_status === "out_of_service" && !projected) return no("out_of_service");
   const shop = holds[0];
   if (shop) return no(shop.reason, shop.workOrder);
-  return { ready: true, reason: null, workOrder: null, expectedBack: projected ? v.expected_return_date : null };
+  return { ready: true, reason: null, workOrder: null, expectedBack: projected ? v.expected_return_date : null, notes };
 }
 
 /** Plain words for a reason, for one unit ("Truck 101 is in the shop (WO-12)."). */

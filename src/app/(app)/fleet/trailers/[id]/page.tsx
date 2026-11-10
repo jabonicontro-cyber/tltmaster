@@ -11,7 +11,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { TRAILER_TYPE_LABELS } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { documentRules, getTrailer, vehicleRecords } from "@/server/data/fleet";
+import { documentRules, getTrailer, unitsBackFromShop, vehicleRecords } from "@/server/data/fleet";
+import { BackFromShopPrompt } from "@/components/fleet/shop-decisions";
 import { downtimeDays, vehicleAvailability } from "@/lib/fleet/availability";
 import { AvailabilityCard, DocumentsCard, MaintenanceCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
 import { OPEN_STATUSES } from "@/lib/maintenance";
@@ -28,7 +29,12 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
   const { trailer: t, events, audit, defaultTruck, names } = detail;
   const { timezone, today } = await businessToday();
   const seeMaintenance = can(access, "maintenance.view");
-  const [records, rules] = await Promise.all([vehicleRecords("trailer", t.id, { maintenance: seeMaintenance, costs: false }), documentRules()]);
+  const [records, rules, backFromShop] = await Promise.all([
+    vehicleRecords("trailer", t.id, { maintenance: seeMaintenance, costs: false }),
+    documentRules(),
+    // "All shop work is done. Put it back in service?" (MD1): only for this trailer, only when it applies.
+    t.service_status === "out_of_service" ? unitsBackFromShop() : Promise.resolve([]),
+  ]);
   const availability = vehicleAvailability(t, records.workOrders.rows.filter((w) => (OPEN_STATUSES as string[]).includes(w.status)), today);
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
 
@@ -60,6 +66,7 @@ export default async function TrailerPage({ params, searchParams }: { params: Pr
           />
         }
       />
+      <BackFromShopPrompt units={backFromShop.filter((u) => u.kind === "trailer" && u.id === t.id)} canReturn={can(access, "fleet.service") || can(access, "fleet.edit") || can(access, "maintenance.manage")} />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="space-y-5 xl:col-span-2">
           <AvailabilityCard a={availability} timezone={timezone} />

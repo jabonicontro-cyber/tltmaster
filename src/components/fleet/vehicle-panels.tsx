@@ -136,7 +136,7 @@ export function DocumentForm({ vehicle, doc, onDone }: { vehicle: Vehicle; doc?:
   );
 }
 
-export function DocumentRowActions({ vehicle, doc, canVerify = false }: { vehicle: Vehicle; doc: DocumentValues; canVerify?: boolean }) {
+export function DocumentRowActions({ vehicle, doc, canVerify = false, verifyLabel = "Mark verified" }: { vehicle: Vehicle; doc: DocumentValues; canVerify?: boolean; /** "Mark checked" on a certificate the shop recorded. */ verifyLabel?: string }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
@@ -151,7 +151,7 @@ export function DocumentRowActions({ vehicle, doc, canVerify = false }: { vehicl
             if (!r.ok) toast.error(r.error);
             else { toast.success(r.message ?? "Verified."); router.refresh(); }
           });
-        }}>Mark verified</Button>
+        }}>{verifyLabel}</Button>
       )}
       <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)} aria-label={`Edit ${DOCUMENT_KINDS[doc.kind as keyof typeof DOCUMENT_KINDS] ?? "document"}`}>Edit</Button>
       <Button size="sm" variant="ghost" disabled={pending} icon={<Archive className="size-3.5" />} onClick={() => {

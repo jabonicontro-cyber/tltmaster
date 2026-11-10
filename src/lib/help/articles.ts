@@ -1517,7 +1517,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     prerequisites: ["Needs the permission to manage maintenance."],
     troubleshooting: [
-      { problem: "“The odometer cannot go down: the last reading was … miles.”", fix: "Check the reading. A value lower than the last one is refused." },
+      { problem: "“The odometer cannot go down: the last reading was … miles.”", fix: "Check the reading. A value lower than the last one is refused. If the last reading itself is wrong (a typo), open the truck's page and select **Mark as wrong** next to it under Readings: it is kept in the history but no longer counts." },
       { problem: "“Enter the odometer, the engine hours, or both.”", fix: "Fill in at least one reading." },
       { problem: "“Enter a name for the service, for example “Oil and filter”.”", fix: "Name the service before saving." },
       { problem: "A schedule shows “not enough data”.", fix: "Enter when it was last done and record a current reading." },
