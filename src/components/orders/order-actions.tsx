@@ -17,6 +17,7 @@ import {
   orderTransitionNeedsReason,
   orderTransitionNeedsSchedule,
   orderTransitionPermission,
+  ownDraftTransition,
   scheduleRequired,
 } from "@/lib/orders/status";
 import type { OrderStatus } from "@/server/data/types";
@@ -31,7 +32,7 @@ interface Props {
   lineCount: number;
   schedule: { start: string | null; end: string | null; windowStart: string | null; windowEnd: string | null; notes: string };
   orderDate: string;
-  /** ownNewOrder: orders.create and this is the person's own direct order; they edit and confirm it while a draft. */
+  /** ownNewOrder: orders.create and this is the person's own direct order; they edit, confirm or cancel it while a draft. */
   permissions: { edit: boolean; schedule: boolean; ownNewOrder?: boolean };
   /** Facts shown before completing the order (completing never waits for tickets; billing readiness does). */
   completionCheck?: { loadsWithoutTicket: number; ticketsAwaitingReview: number; loadsStillToRun: number };
@@ -75,8 +76,9 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
   const [scheduleThen, setScheduleThen] = useState<OrderStatus | null>(null);
 
   const ownDraft = Boolean(permissions.ownNewOrder) && status === "draft";
+  // orders.create alone: confirm or cancel one's own direct draft (the database checks whose it is and the credit hold).
   const allowed = allowedOrderTransitions(status).filter((t) =>
-    orderTransitionPermission(status, t) === "orders.edit" ? permissions.edit || (ownDraft && t === "confirmed") : permissions.schedule,
+    orderTransitionPermission(status, t) === "orders.edit" ? permissions.edit || (ownDraft && ownDraftTransition(status, t)) : permissions.schedule,
   );
   const hasSchedule = Boolean(schedule.start);
   const canEdit = (permissions.edit && canEditOrderDetails(status)) || (ownDraft && canEditOrderLines(status, sourceQuoteId));

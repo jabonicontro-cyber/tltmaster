@@ -36,6 +36,8 @@ import { acknowledgementChange, billingBlockers, completionSteps, type Blocker }
 import { buttonClasses } from "@/components/ui/button";
 import { createInvoice } from "@/app/(app)/billing/invoices/actions";
 import type { OrderStatus } from "@/server/data/types";
+import { ConfirmPriceButton } from "@/components/orders/price-check";
+import { canConfirmPrices } from "@/lib/permissions";
 
 export const metadata = { title: "Order billing" };
 
@@ -57,7 +59,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const { id } = await params;
   const data = await getOrderBilling(id);
   if (!data) notFound();
-  const { draft, status: o, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone, editSeq } = data;
+  const { draft, status: o, priceCheck, loads, lines, exceptions, reviews, handoffs, tickets, names, people, timezone, editSeq } = data;
   const canManage = can(access, "billing.manage");
   const canEnterTickets = can(access, "tickets.edit");
   // Who issues invoices decides the next step after the handoff (Taviron: create the invoice; else accounting).
@@ -120,6 +122,12 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                   <div className="min-w-0 max-w-2xl">
                     <p className="font-semibold">{say(b.title)}</p>
                     <p className="text-sm text-muted">{say(b.detail)}</p>
+                    {b.key === "price_check" && priceCheck && (
+                      <ul className="mt-1 list-disc pl-5 text-sm text-muted" aria-label="Typed prices">
+                        <li>Typed by {person(priceCheck.requestedBy)} on {formatDateTime(priceCheck.requestedAt, timezone)}</li>
+                        {priceCheck.lines.map((l) => <li key={l}>{l}</li>)}
+                      </ul>
+                    )}
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <BlockerAction
@@ -135,6 +143,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                         <CompleteOrderButton orderId={o.order_id} orderNumber={o.order_number} status={o.status as OrderStatus} editSeq={editSeq!} steps={steps} facts={completeFacts} />
                       ) : null}
                       orderHref={`/orders/${o.order_id}`}
+                      price={canConfirmPrices(access) ? <ConfirmPriceButton orderId={o.order_id} orderNumber={o.order_number} lines={canManage ? priceCheck?.correctable ?? [] : []} /> : null}
                     />
                   </div>
                 </li>
@@ -258,6 +267,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                       {QUANTITY_CHECK_LABELS[l.quantity_check]}
                       {l.quantity_difference !== null && !["match", "in_progress"].includes(l.quantity_check) && <span className="font-semibold tabular"> ({formatDifference(l.quantity_difference)})</span>}
                       {l.pricing_check === "zero_rate" && <div className="text-amber-900">Rate is $0.00</div>}
+                      {l.pricing_check === "manual_price" && <div className="text-amber-900">Price to be checked</div>}
                     </Td>
                     <Td align="right" className="hidden md:table-cell tabular">{formatCents(l.unit_rate_cents)} · {formatCents(l.amount_cents)}</Td>
                   </Tr>
@@ -276,7 +286,7 @@ export default async function OrderBillingPage({ params, searchParams }: { param
           <CardHeader
             title={`Exceptions (${o.exceptions_count})`}
             description={say(QUANTITY_POLICY)}
-            actions={canManage && o.readiness === "blocked" ? (
+            actions={canManage && o.readiness === "blocked" && o.exceptions_count > 0 && !o.acknowledgment_id ? (
               <AcknowledgeButton orderId={o.order_id} orderNumber={o.order_number} fingerprint={o.exceptions_fingerprint} count={o.exceptions_count} />
             ) : undefined}
           />
@@ -338,9 +348,9 @@ export default async function OrderBillingPage({ params, searchParams }: { param
 }
 
 /** The one action for a blocker, where the person may take it; otherwise where to go. */
-function BlockerAction({ blocker, enterHref, enterLabel, dispatchHref, reviewHref, exceptions, complete, orderHref }: {
+function BlockerAction({ blocker, enterHref, enterLabel, dispatchHref, reviewHref, exceptions, complete, orderHref, price }: {
   blocker: Blocker; enterHref: string | null; enterLabel: string; dispatchHref: string | null; reviewHref: string | null;
-  exceptions: ReactNode; complete: ReactNode; orderHref: string;
+  exceptions: ReactNode; complete: ReactNode; orderHref: string; price: ReactNode;
 }) {
   switch (blocker.key) {
     case "missing_tickets":
@@ -357,5 +367,7 @@ function BlockerAction({ blocker, enterHref, enterLabel, dispatchHref, reviewHre
       return complete ?? <ButtonLink href={orderHref} size="sm" variant="secondary" icon={<ClipboardList className="size-4" />}>Open the order</ButtonLink>;
     case "exceptions":
       return exceptions ?? (blocker.actionable ? null : <span className="text-sm text-muted">After completing</span>);
+    case "price_check":
+      return price ?? <span className="text-sm text-muted">For someone who sets prices or manages billing</span>;
   }
 }

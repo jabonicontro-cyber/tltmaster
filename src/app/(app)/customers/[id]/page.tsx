@@ -17,7 +17,7 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
 import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getCustomerDetail } from "@/server/data/customers";
+import { customerMoneyTerms, getCustomerDetail } from "@/server/data/customers";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { getUserNames } from "@/server/data/quotes";
 import { directionsStatus } from "@/lib/sites";
@@ -43,6 +43,9 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   // Credit hold (B128): null hold = in good standing; the panel only once the update is installed.
   const creditInstalled = "credit_hold" in customer;
   const hold = creditInstalled ? (await creditHolds([id])).get(id) ?? null : null;
+  // Credit limit and detention rate are billing data (financial review L1): read only with billing.view.
+  const billingView = can(access, "billing.view");
+  const money = billingView ? await customerMoneyTerms(id) : null;
   const userNames = crm || (verification && sites.some((s) => s.directions_verified_by)) ? await getUserNames() : {};
   const account = customer as typeof customer & { relationship?: Relationship; account_owner_id?: string | null; tags?: string[] };
   const intervals = { site_review_days_standard: settings.site_review_days_standard ?? null, site_review_days_safety: settings.site_review_days_safety ?? null };
@@ -131,12 +134,12 @@ export default async function CustomerPage({ params, searchParams }: { params: P
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
-          {creditInstalled && (can(access, "billing.view") || hold) && (
-            <CreditPanel customerId={customer.id} hold={hold} limitCents={(customer as { credit_limit_cents?: number | null }).credit_limit_cents ?? null} canManage={can(access, "billing.manage")} />
+          {creditInstalled && (billingView || hold) && (
+            <CreditPanel customerId={customer.id} hold={hold} limitCents={money?.creditLimitCents ?? null} canManage={can(access, "billing.manage")} />
           )}
-          {can(access, "billing.view") && <CustomerBalance customerId={customer.id} today={today} />}
-          {"detention_rate_cents" in customer && (can(access, "billing.view") || can(access, "customers.edit")) && (
-            <DetentionPanel customerId={customer.id} freeMinutes={customer.detention_free_minutes ?? null} rateCents={customer.detention_rate_cents ?? null} canEdit={can(access, "customers.edit")} />
+          {billingView && <CustomerBalance customerId={customer.id} today={today} />}
+          {money && (
+            <DetentionPanel customerId={customer.id} freeMinutes={money.detentionFreeMinutes} rateCents={money.detentionRateCents} canEdit={can(access, "billing.manage")} />
           )}
           <Card>
             <CardHeader title="Details" />

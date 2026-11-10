@@ -20,7 +20,7 @@ describe("row level security and permissions", () => {
     await withSession(async (s) => {
       const pending = await s.createUser(null);
       await s.as(pending);
-      expect((await s.query("select * from public.customers")).rowCount).toBe(0);
+      expect((await s.query("select id from public.customers")).rowCount).toBe(0);
       expect((await s.query("select * from public.materials")).rowCount).toBe(0);
       expect((await s.query("select * from public.company_settings")).rowCount).toBe(0);
       const err = await pgError(s.query("insert into public.customers (name) values ('X')"));
@@ -34,7 +34,7 @@ describe("row level security and permissions", () => {
     await withSession(async (s) => {
       const inactive = await s.createUser("office", { active: false });
       await s.as(inactive);
-      expect((await s.query("select * from public.customers")).rowCount).toBe(0);
+      expect((await s.query("select id from public.customers")).rowCount).toBe(0);
     });
   });
 
@@ -42,7 +42,7 @@ describe("row level security and permissions", () => {
     await withSession(async (s) => {
       const dispatcher = await s.createUser("dispatcher");
       await s.as(dispatcher);
-      expect((await s.query("select * from public.customers")).rowCount).toBeGreaterThan(0);
+      expect((await s.query("select id from public.customers")).rowCount).toBeGreaterThan(0);
       expect((await pgError(s.query("insert into public.customers (name) values ('Nope')"))).code).toBe("42501");
       const upd = await s.query("update public.customers set notes = 'x'");
       expect(upd.rowCount).toBe(0);

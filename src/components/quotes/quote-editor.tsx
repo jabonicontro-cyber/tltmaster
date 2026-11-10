@@ -106,6 +106,13 @@ interface Props {
   revisionReason?: string;
   /** "order": direct order (no quote) — order date, requested delivery date, saved as an order draft. */
   mode?: "quote" | "order";
+  /**
+   * Orders entered with orders.create and without orders.edit (financial review M1, owner 2026-11-10): sales tax follows
+   * the customer and company settings (the rate and each line's "Taxable" cannot be changed), and a price typed on a line
+   * without a price-list rate is checked by the office before billing (`typedPriceChecked`).
+   */
+  taxLocked?: boolean;
+  typedPriceChecked?: boolean;
 }
 
 let keySeq = 0;
@@ -126,7 +133,7 @@ function toCalcLine(l: EditorLine): CalcLine {
   };
 }
 
-export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote" }: Props) {
+export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote", taxLocked = false, typedPriceChecked = false }: Props) {
   const router = useRouter();
   const isOrder = mode === "order";
   const words = vocabulary(industry);
@@ -239,7 +246,8 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
           contactPhone: sameCustomer ? s.contactPhone : primary?.phone ?? "",
           siteId: unchanged ? s.siteId : "",
           ...(unchanged ? {} : { siteLabel: "", siteLine1: "", siteLine2: "", siteCity: "", siteState: "IN", sitePostalCode: "" }),
-          taxRate: ctx.customer.tax_exempt ? "0" : s.taxRate,
+          // Locked tax (M1): always the company's default for a taxed customer.
+          taxRate: ctx.customer.tax_exempt ? "0" : taxLocked ? bpToInput(defaultTaxRateBp) || "0" : s.taxRate,
           lines,
         };
       });
@@ -762,7 +770,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                     </div>
 
                     <div className="col-span-12 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-                      <Checkbox checked={l.taxable} onChange={(e) => updateLine(l.key, { taxable: e.target.checked })} label="Taxable" />
+                      <Checkbox checked={l.taxable} disabled={taxLocked} onChange={(e) => updateLine(l.key, { taxable: e.target.checked })} label="Taxable" />
                       {isCharge && l.isCustom && (
                         <label className="inline-flex items-center gap-2">
                           <span className="text-muted">Calculated</span>
@@ -791,7 +799,9 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                           Override: configured {cat?.rate_cents !== null && cat?.rate_cents !== undefined ? formatCents(cat.rate_cents) : formatBp(cat?.percent_bp ?? 0)}
                         </Badge>
                       )}
-                      {!cat && (l.materialId || l.chargeItemId) && <span className="text-muted">No configured rate: enter manually</span>}
+                      {!cat && (l.materialId || l.chargeItemId || l.isCustom) && (typedPriceChecked
+                        ? <span className="text-muted">No price-list rate: type the price. The office checks it before billing.</span>
+                        : (l.materialId || l.chargeItemId) && <span className="text-muted">No configured rate: enter manually</span>)}
                       <div className="ml-auto flex gap-1">
                         <Button size="sm" variant="ghost" aria-label={`Move line ${i + 1} up`} disabled={i === 0} onClick={() => moveLine(i, -1)}>
                           <ArrowUp className="size-4" />
@@ -851,13 +861,14 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                     inputMode="decimal"
                     className="h-8 w-20 text-right tabular"
                     value={state.taxRate}
-                    disabled={selectedCustomer?.tax_exempt}
+                    disabled={selectedCustomer?.tax_exempt || taxLocked}
                     aria-invalid={Boolean(fieldErrors.taxRate) || parsePercentToBp(state.taxRate || "0") === null || undefined}
                     onChange={(e) => update({ taxRate: e.target.value })}
                   />
                 </dd>
               </div>
               {fieldErrors.taxRate && <p className="text-sm text-red-700">{fieldErrors.taxRate}</p>}
+              {taxLocked && <p className="text-sm text-muted">Sales tax follows the customer and the company setting.</p>}
               <div className="flex justify-between"><dt className="text-muted">Tax (on {formatCents(totals.taxableCents)} taxable)</dt><dd className="tabular">{formatCents(totals.taxCents)}</dd></div>
               <div className="flex justify-between border-t-2 border-strong pt-2 text-xl font-black"><dt>Total</dt><dd className="tabular">{formatCents(totals.totalCents)}</dd></div>
             </dl>

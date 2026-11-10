@@ -7,7 +7,7 @@ import { allowedOrderTransitions } from "@/lib/orders/status";
 import type { OrderStatus } from "@/server/data/types";
 import { EXCEPTION_LABELS, FULFILLMENT_GAP_LABELS, type ExceptionKind, type FulfillmentGap, type Readiness } from "./rules";
 
-export type BlockerKey = "not_completed" | "missing_tickets" | "unassigned_loads" | "no_tickets" | "tickets_to_check" | "exceptions";
+export type BlockerKey = "not_completed" | "missing_tickets" | "unassigned_loads" | "no_tickets" | "tickets_to_check" | "exceptions" | "price_check";
 
 export interface Blocker {
   key: BlockerKey;
@@ -27,6 +27,8 @@ export interface BlockerInput {
   tickets_pending: number;
   exceptions_count: number;
   acknowledgment_id: string | null;
+  /** A typed price waits for someone with pricing or billing rights (M1, 20261120016100). */
+  price_check_pending?: boolean;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -76,6 +78,14 @@ export function billingBlockers(o: BlockerInput, extra: { unassignedMissing?: nu
       actionable: true,
       title: "The order is not completed",
       detail: `It is ${o.status.replace(/_/g, " ")}${gap}. Mark it completed when all its work is done. Completing it also compares the delivered quantities with the order, which can add differences to acknowledge.`,
+    });
+  }
+  if (o.price_check_pending) {
+    out.push({
+      key: "price_check",
+      actionable: true,
+      title: "Price to be checked",
+      detail: "A price was typed on a line that has no price-list rate. Someone who sets prices or manages billing confirms it; until then the order is not handed off or invoiced.",
     });
   }
   if (o.exceptions_count > 0 && !o.acknowledgment_id) {

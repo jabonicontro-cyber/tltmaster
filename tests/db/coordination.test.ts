@@ -53,8 +53,9 @@ describe("urgent orders", () => {
       await s.asAdmin();
       const assignmentsBefore = (await s.query<{ n: number }>("select count(*)::int as n from public.dispatch_assignments where order_id = $1", [w.order.id])).rows[0].n;
 
-      // Only orders.edit can flag. Dispatchers do not hold it by default (they create orders with orders.create,
-      // 20261120009900); taking it away makes sure, in case a company granted it by hand.
+      // Only orders.edit can flag someone else's order. Dispatchers do not hold it by default (they create orders with
+      // orders.create, 20261120009900, and flag only their own: order-management.test.ts); taking it away makes sure,
+      // in case a company granted it by hand.
       await withoutPermission(s, "dispatcher", "orders.edit");
       await s.as(w.dispatcher);
       expect((await pgError(flag(s, w.order.id, "Customer moved the pour up"))).code).toBe("42501");

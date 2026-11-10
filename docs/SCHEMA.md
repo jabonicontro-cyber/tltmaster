@@ -583,6 +583,39 @@ See docs/COMMUNICATIONS.md for behaviour. All tables carry `company_id` and RLS;
 `private.credit_holds` computes who is on hold (manual, overdue past the set days, open issued invoices over the limit);
 `customer_credit_holds` returns it to order, dispatch and customer staff (amounts only with `billing.view`).
 
+Since `20261120016300` (financial review L2) `assign_load` (`p_credit_reason`), `assign_load_off_shift` (`p_credit_reason`)
+and `hauler_offer_confirm` (`p_reason`) refuse a load for a customer on hold without a reason (hint `credit_hold`) and
+write the `credit_hold_overrides` row (context `assignment`) themselves, in the same transaction as the assignment.
+
+## Customer money fields (20261120016200, financial review L1 and L4)
+
+`customers` is readable **column by column**: every column except `credit_limit_cents` and `detention_rate_cents`, which
+come only from `customer_money_terms(customers)` (`billing.view`). Never `select("*")` on customers (the database
+refuses it); use `CUSTOMER_COLUMNS` (`src/server/data/customers.ts`). **A column added to `customers` later needs its own
+`grant select (column) on public.customers to authenticated`** (`tests/db/financial-review.test.ts` lists the columns
+signed-in people cannot read). `private.customer_credit_guard` (insert and update): price list and tax exemption need
+`pricing.edit`; payment terms and detention (rate and free time) `billing.manage`; credit hold and limit `billing.manage`.
+
+## Price to be checked (20261120016100, financial review M1)
+
+| Column | Purpose |
+| --- | --- |
+| `orders.price_check_requested_at/_by`, `price_check_fingerprint` | A price typed on a line without a price-list rate by someone with `orders.create` and without `orders.edit`, `pricing.edit`, `pricing.override` and `billing.manage` (set by `private.order_price_check_after_save`, called from `save_order_draft`). A confirmation stays valid while the typed prices (fingerprint) are unchanged. |
+| `orders.price_checked_at/_by`, `price_check_note` | Set by `order_confirm_price` (`pricing.edit`, `pricing.override` or `billing.manage`; never during a support visit), audited as `order.price_checked`. |
+| `order_lines.price_entered_by` | Who typed that line's price. |
+
+For those people `private.require_order_draft_save` also refuses a tax rate other than the company default
+(`company_settings.default_tax_rate_bp`, any rate for a tax-exempt customer) and a line `taxable` other than its
+material's or charge's default (no item: not taxable). While a check is pending `billing_order_status.readiness` is
+`blocked` and `price_check_pending` is true, `billing_line_status.pricing_check` is `manual_price` on the typed lines, and
+`hand_off_orders`, `invoice_create` and `invoice_create_combined` refuse the order (`private.require_prices_checked`).
+Since `20261120016400` (owner 2026-11-10) `order_confirm_price(order, note, corrections)` lets `billing.manage` correct
+each typed per-unit price in the same step (`[{line_id, unit_rate_cents}]`, a reason of at least 3 characters), also
+on a confirmed order: line amounts, percentage lines and totals are recomputed as a draft save does, the audit event
+`order.price_corrected` keeps each old and new price, the old and new total, who and why. Refused for an order on an
+issued invoice, a handed-off order (undo the handoff first), a canceled order and during a support visit. The order
+guards allow it only inside that function (`tlt.price_correction`, transaction-local, updates only).
+
 ## Hauler settlements (20261120005700)
 
 `haulers.commission_bp` (0–5000). `hauler_settlements` (number, hauler, period, status draft/approved/paid/void, gross,

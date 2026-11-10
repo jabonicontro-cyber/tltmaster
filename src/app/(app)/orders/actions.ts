@@ -133,6 +133,36 @@ export async function loadOrderCustomerContext(customerId: string, onDate: strin
   });
 }
 
+/**
+ * Confirm a price typed on an order line without a price-list rate ("Price to be checked", financial review M1, owner
+ * 2026-11-10). pricing.edit, pricing.override or billing.manage confirm; billing.manage may also correct each typed
+ * per-unit price in the same step, with a reason (20261120016400), even on a confirmed order. Checked again in the
+ * database, which recomputes the totals, records the old and new prices in the order's history, and refuses an order on
+ * an issued invoice or a handed-off one, and any of it during a Taviron support visit.
+ */
+export async function confirmOrderPrice(orderId: string, note: string, corrections: Array<{ line_id: string; unit_rate_cents: number }> = []): Promise<ActionResult<{ confirmed: boolean; corrected: number }>> {
+  return guard(async () => {
+    if (corrections.length) await assertPermission("billing.manage");
+    else await assertAnyPermission("pricing.edit", "pricing.override", "billing.manage");
+    if (!uuid.safeParse(orderId).success) return fail("Order not found.");
+    const parsed = z.array(z.object({ line_id: z.uuid(), unit_rate_cents: z.number().int().min(0).max(100_000_000) })).max(200).safeParse(corrections);
+    if (!parsed.success) return fail("Enter each corrected price in dollars, for example 95 or 12.50.");
+    const reason = note.trim().slice(0, 500);
+    if (parsed.data.length && reason.length < 3) return fail("Say why the price is corrected.", { note: "Say why the price is corrected." });
+    const supabase = await createClient();
+    const args: Record<string, unknown> = { p_order_id: orderId, p_note: reason };
+    if (parsed.data.length) args.p_corrections = parsed.data;
+    const { data, error } = await supabase.rpc("order_confirm_price", args);
+    if (error) return fail(dbErrorMessage(error));
+    const r = data as { confirmed: boolean; corrected?: number };
+    revalidateOrder(orderId);
+    revalidatePath("/billing");
+    revalidatePath(`/billing/orders/${orderId}`);
+    const corrected = r.corrected ?? 0;
+    return ok({ confirmed: r.confirmed, corrected }, !r.confirmed ? "The price was already confirmed." : corrected ? "Price corrected and confirmed. The order can be billed." : "Price confirmed. The order can be billed.");
+  });
+}
+
 /** Contact, job site, PO, instructions, notes and requested date of an open order. Prices never change here. */
 export async function updateOrderDetails(input: OrderDetailsInput): Promise<ActionResult<{ editSeq: number }>> {
   return guard(async () => {
@@ -180,9 +210,17 @@ export async function setOrderStatus(input: OrderStatusInput & { from: OrderStat
     const parsed = orderStatusInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const to = parsed.data.status as OrderStatus;
-    // Confirming a draft also takes orders.create, for the person's own new order only (the database checks whose).
-    await assertAnyPermission(...orderTransitionPermissions(input.from, to));
+    // Confirming or canceling a draft also takes orders.create, for the person's own new order only (the database
+    // checks whose).
+    const access = await assertAnyPermission(...orderTransitionPermissions(input.from, to));
     const supabase = await createClient();
+    // Confirming one's own draft without orders.edit (SEC3): the customer may have been put on credit hold since the
+    // draft was saved. Say who decides, as when saving a new order (the database refuses it as well).
+    if (input.from === "draft" && to === "confirmed" && !can(access, "orders.edit")) {
+      const draft = (await supabase.from("orders").select("customer_id").eq("id", parsed.data.orderId).maybeSingle()).data as { customer_id: string } | null;
+      const hold = draft ? (await creditHolds([draft.customer_id])).get(draft.customer_id) : undefined;
+      if (hold) return fail(`${creditHoldSentence(`${hold.name} is ${holdSummary(hold)}`)} ${await creditHoldDecider()}`);
+    }
     const { data, error } = await supabase.rpc("set_order_status", {
       p_order_id: parsed.data.orderId,
       p_status: to,
@@ -207,11 +245,12 @@ const urgencyFlagInput = z.object({
 /**
  * Flag an order as urgent (or update the reason/deadline of its open flag).
  * Safe to repeat: one open flag per order. It never assigns a truck, changes an
- * assignment or promises the customer a time.
+ * assignment or promises the customer a time. orders.edit on any order; orders.create on a direct order the person
+ * entered themselves (owner 2026-11-09, MD1; the database checks whose, private.require_own_order_change).
  */
 export async function flagOrderUrgent(input: z.input<typeof urgencyFlagInput>): Promise<ActionResult<{ created: boolean }>> {
   return guard(async () => {
-    await assertPermission("orders.edit");
+    await assertAnyPermission("orders.edit", "orders.create");
     const parsed = urgencyFlagInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const f = parsed.data;

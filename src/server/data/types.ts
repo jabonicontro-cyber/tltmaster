@@ -408,11 +408,22 @@ export interface OrderRow {
   completed_at: string | null;
   canceled_at: string | null;
   updated_by: string | null;
+  /**
+   * "Price to be checked" (financial review M1, 20261120016100): who typed a price without a price-list rate, and who
+   * confirmed it. Absent before the update is installed.
+   */
+  price_check_requested_at?: string | null;
+  price_check_requested_by?: string | null;
+  price_checked_at?: string | null;
+  price_checked_by?: string | null;
+  price_check_note?: string;
 }
 
 export type OrderLineRow = Omit<QuoteLineRow, "quote_version_id"> & {
   order_id: string;
   source_quote_line_id: string | null;
+  /** Who typed this line's price without a price-list rate (M1, 20261120016100); absent before it. */
+  price_entered_by?: string | null;
 };
 
 export interface OrderStatusEventRow {

@@ -1,4 +1,5 @@
 import "server-only";
+import { correctableLines, typedPriceLines, type PriceCheckLine } from "@/lib/orders/price-check";
 import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/billing/invoice-draft";
 import { uuid } from "@/lib/schemas/common";
 import type { ExceptionKind, FulfillmentGap, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
@@ -49,6 +50,8 @@ export interface BillingOrderRow {
   fulfilled: boolean;
   fulfillment_gap: FulfillmentGap | null;
   readiness: Readiness;
+  /** A typed price waits for someone with pricing or billing rights (M1, 20261120016100); absent before it. */
+  price_check_pending?: boolean;
 }
 
 export interface BillingLoadRow {
@@ -101,7 +104,8 @@ export interface BillingLineRow {
   ticket_units: string[] | null;
   quantity_check: QuantityCheck;
   quantity_difference: Num | null;
-  pricing_check: "ok" | "zero_rate";
+  /** manual_price: a price typed without a price-list rate, still to be checked (M1, 20261120016100). */
+  pricing_check: "ok" | "zero_rate" | "manual_price";
 }
 
 export interface BillingExceptionRow {
@@ -302,6 +306,17 @@ export async function getOrderBilling(orderId: string) {
     supabase.from("order_lines").select("id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").eq("order_id", orderId).order("line_no"),
     supabase.from("orders").select("tax_rate_bp, total_cents, edit_seq").eq("id", orderId).maybeSingle(),
   ]);
+  // "Price to be checked" (M1, 20261120016100): who typed which price; nothing before that update is installed.
+  const [checkRes, typedRes] = (status as BillingOrderRow).price_check_pending
+    ? await Promise.all([
+        supabase.from("orders").select("price_check_requested_at, price_check_requested_by").eq("id", orderId).maybeSingle(),
+        supabase.from("order_lines").select("id, line_no, description, calc_method, unit_code, unit_label, unit_rate_cents, percent_bp, price_entered_by").eq("order_id", orderId).not("price_entered_by", "is", null).order("line_no"),
+      ])
+    : [null, null];
+  const check = checkRes?.data as { price_check_requested_at: string | null; price_check_requested_by: string | null } | null | undefined;
+  const priceCheck = check?.price_check_requested_at
+    ? { requestedAt: check.price_check_requested_at, requestedBy: check.price_check_requested_by, lines: typedPriceLines((typedRes?.data ?? []) as PriceCheckLine[]), correctable: correctableLines((typedRes?.data ?? []) as PriceCheckLine[]) }
+    : null;
   const draft = buildInvoiceDraft({
     lines: (orderLines.data ?? []) as DraftOrderLine[],
     tickets: (tickets.data ?? []) as DraftTicket[],
@@ -314,6 +329,7 @@ export async function getOrderBilling(orderId: string) {
     /** The order's edit counter, for completing it from the billing page (the database refuses a stale one). */
     editSeq: (order.data as { edit_seq?: number } | null)?.edit_seq ?? null,
     status: status as BillingOrderRow,
+    priceCheck,
     loads: (loads.data ?? []) as BillingLoadRow[],
     lines: (lines.data ?? []) as BillingLineRow[],
     exceptions: (exceptions.data ?? []) as BillingExceptionRow[],

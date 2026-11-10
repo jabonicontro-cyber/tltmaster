@@ -9,7 +9,7 @@ import { loadHosProvider } from "@/server/data/telematics";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
-import { creditGate, creditHolds, holdSummary, orderCustomer, recordCreditOverride } from "@/server/credit";
+import { creditGate, creditHolds, holdSummary, orderCustomer, recordCreditOverride, rpcWithCreditReason } from "@/server/credit";
 import { checkPair } from "@/lib/dispatch/smart";
 import { creditHoldSentence } from "@/lib/dispatch/board";
 import { driverNotice } from "./driver-notice";
@@ -121,14 +121,17 @@ export async function assignLoad(input: z.input<typeof assignInput>): Promise<Ac
       p_note: a.note,
       p_replace_assignment_id: a.replaceAssignmentId,
     };
-    const { data, error } = a.offShiftReason
-      ? await supabase.rpc("assign_load_off_shift", { ...args, p_reason: a.offShiftReason })
-      : await supabase.rpc("assign_load", args);
+    // The database checks the credit hold again and records the reason with the assignment (financial review L2).
+    const { data, error, recorded: byDatabase } = a.offShiftReason
+      ? await rpcWithCreditReason(supabase, "assign_load_off_shift", { ...args, p_reason: a.offShiftReason }, a.creditReason)
+      : await rpcWithCreditReason(supabase, "assign_load", args, a.creditReason);
     // The driver is scheduled off then: the dialog asks for a reason and tries again (fieldErrors.offShift).
     if (error && error.hint === "off_shift") return fail(error.message, { offShift: error.message });
+    // Put on hold since the board was loaded: the dialog asks for a reason (fieldErrors.creditHold).
+    if (error && error.hint === "credit_hold") return fail(error.message, { creditHold: error.message });
     if (error) return fail(dbErrorMessage(error));
     const r = data as { assignment_id: string; warnings: string[] };
-    const recorded = customerId && a.creditReason ? await recordCreditOverride(customerId, "assignment", r.assignment_id, a.creditReason) : true;
+    const recorded = byDatabase || !customerId || !a.creditReason ? true : await recordCreditOverride(customerId, "assignment", r.assignment_id, a.creditReason);
     revalidateBoard(a.orderId);
     const warnings = recorded ? r.warnings : [...(r.warnings ?? []), "The reason for going ahead despite the credit hold could not be recorded."];
     const notice = await driverNotice([a.driverId]);

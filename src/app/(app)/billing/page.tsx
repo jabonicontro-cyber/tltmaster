@@ -283,7 +283,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                         ) : (
                           <ReadinessBadge readiness={o.readiness} />
                         )}
-                        {canManage && o.readiness === "blocked" && (
+                        {o.price_check_pending && <Badge tone="amber">Price to be checked</Badge>}
+                        {canManage && o.readiness === "blocked" && o.exceptions_count > 0 && !o.acknowledgment_id && (
                           <AcknowledgeButton size="sm" orderId={o.order_id} orderNumber={o.order_number} fingerprint={o.exceptions_fingerprint} count={o.exceptions_count} />
                         )}
                       </div>

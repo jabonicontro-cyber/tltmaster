@@ -9,6 +9,7 @@ import { TRUCK_TYPES } from "@/lib/fleet/labels";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { creditGate, orderCustomer, recordCreditOverride, rpcWithCreditReason } from "@/server/credit";
 
 // Hired trucks (B83). Every action is checked again in the database (permission, add-on switch, documents, company).
 // Results come back as ?error= / ?saved= so every form works without JavaScript.
@@ -111,8 +112,17 @@ export async function confirmOffer(f: FormData) {
   const supabase = await db("dispatch.edit");
   const offer = id(f, "offer_id");
   if (!offer) back("Offer not found.");
-  const { error } = await supabase.rpc("hauler_offer_confirm", { p_offer: offer });
+  // Credit hold (B128, financial review L2): as on the board, a load for a customer on hold goes ahead only with a
+  // reason, which is recorded. The database checks and records it as well.
+  const reason = text(f, "credit_reason").slice(0, 500);
+  const loadId = ((await supabase.from("hauler_offers").select("load_id").eq("id", offer!).maybeSingle()).data as { load_id: string } | null)?.load_id;
+  const orderId = loadId ? ((await supabase.from("order_loads").select("order_id").eq("id", loadId).maybeSingle()).data as { order_id: string } | null)?.order_id : null;
+  const customer = orderId ? await orderCustomer(orderId) : null;
+  const gate = customer ? await creditGate(customer, reason) : null;
+  if (gate) back(gate.message);
+  const { data, error, recorded } = await rpcWithCreditReason(supabase, "hauler_offer_confirm", { p_offer: offer }, reason);
   if (error) back(dbErrorMessage(error));
+  if (!recorded && customer && reason) await recordCreditOverride(customer, "assignment", typeof data === "string" ? data : null, reason);
   done("confirmed");
 }
 

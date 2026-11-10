@@ -65,13 +65,19 @@ export function orderTransitionPermission(from: OrderStatus, to: OrderStatus): P
 }
 
 /**
- * The permissions that may ask for a move (the server checks one of them, the database the rest). Confirming a draft
- * also takes orders.create, but only for the person's own new direct order (owner 2026-11-09: dispatchers enter
- * phoned-in orders; private.require_order_transition, 20261120009900). Canceling stays orders.edit.
+ * The permissions that may ask for a move (the server checks one of them, the database the rest). Confirming or
+ * canceling a draft also takes orders.create, but only for the person's own new direct order (owner 2026-11-09:
+ * dispatchers enter phoned-in orders, 20261120009900, and cancel their own draft, MD1 20261120016000;
+ * private.require_order_transition). Canceling a confirmed order stays orders.edit.
  */
 export function orderTransitionPermissions(from: OrderStatus, to: OrderStatus): [Permission, ...Permission[]] {
-  if (from === "draft" && to === "confirmed") return ["orders.edit", "orders.create"];
+  if (ownDraftTransition(from, to)) return ["orders.edit", "orders.create"];
   return [orderTransitionPermission(from, to)];
+}
+
+/** Moves a person with orders.create (and without orders.edit) may make on a direct draft they entered themselves. */
+export function ownDraftTransition(from: OrderStatus, to: OrderStatus): boolean {
+  return from === "draft" && (to === "confirmed" || to === "canceled");
 }
 
 export function orderTransitionNeedsReason(to: OrderStatus): boolean {

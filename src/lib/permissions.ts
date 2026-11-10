@@ -139,6 +139,39 @@ export function canCreateOrders(access: Pick<Access, "permissions"> | null | und
 }
 
 /**
+ * Who confirms a price typed on an order line without a price-list rate (financial review M1, owner 2026-11-10;
+ * public.order_confirm_price checks the same).
+ */
+export function canConfirmPrices(access: Pick<Access, "permissions"> | null | undefined): boolean {
+  return can(access, "pricing.edit") || can(access, "pricing.override") || can(access, "billing.manage");
+}
+
+/**
+ * A price this person types on an order line without a price-list rate is flagged "Price to be checked": they enter
+ * orders without orders.edit and cannot decide prices themselves (private.order_price_check_after_save checks the same).
+ */
+export function typedPriceChecked(access: Pick<Access, "permissions"> | null | undefined): boolean {
+  return !can(access, "orders.edit") && !canConfirmPrices(access);
+}
+
+type OrderOwnerFacts = { created_by: string | null; source_quote_id: string | null };
+
+/**
+ * A direct order (not from a quote) this person entered themselves, while they hold orders.create. On it they may,
+ * without orders.edit: change, confirm or cancel it while it is a draft, flag it urgent and change its stops (owner
+ * 2026-11-09, MD1). The database checks the same (private.require_order_transition, private.require_own_order_change).
+ */
+export function isOwnDirectOrder(access: Pick<Access, "permissions" | "userId"> | null | undefined, order: OrderOwnerFacts): boolean {
+  if (!access || !can(access, "orders.create")) return false;
+  return order.created_by !== null && order.created_by === access.userId && order.source_quote_id === null;
+}
+
+/** Flag an order urgent and change its stops: orders.edit on any order, orders.create on the person's own direct order. */
+export function canChangeOrderUrgencyAndStops(access: Pick<Access, "permissions" | "userId"> | null | undefined, order: OrderOwnerFacts): boolean {
+  return can(access, "orders.edit") || isOwnDirectOrder(access, order);
+}
+
+/**
  * An outside accountant's sign-in (B134): its role can hold only these two permissions (enforced by the database), so
  * the app shows it only the accountant view and the finance pages it may read.
  */
