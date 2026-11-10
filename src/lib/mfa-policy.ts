@@ -1,27 +1,9 @@
-import type { Permission } from "@/lib/permissions";
 
 // Two-step verification rules shared by the server and the pages (20261120000900, 20261120018000). The database decides
 // who must verify (public.mfa_policy, private.current_company_id); this file only words it.
 
-/**
- * The permissions that show or change money (owner decision 2026-11-09, master plan §12 SEC4). Anyone who holds one
- * in a real (non-demo) company always uses two-step verification. The same list as private.money_permissions() in the
- * database (checked by tests/db/money-two-step.test.ts).
- */
-export const MONEY_PERMISSIONS = [
-  "billing.view",
-  "billing.manage",
-  "accounting.view",
-  "payroll.manage",
-  "employees.compensation",
-  "pricing.edit",
-  "pricing.override",
-  "maintenance.costs",
-  "audit.view",
-  // Company settings set the default sales tax rate; user management can hand any money permission to any account.
-  "settings.manage",
-  "users.manage",
-] as const satisfies readonly Permission[];
+// The money list lives in src/lib/permissions.ts (one list for two-step verification and QR sign-in).
+export { MONEY_PERMISSIONS } from "@/lib/permissions";
 
 export const MONEY_MFA_REASON = "Your access to invoices, payments or pay requires two-step verification.";
 

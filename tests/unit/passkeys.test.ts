@@ -74,12 +74,12 @@ describe("passkey conversions", () => {
 });
 
 describe("who may sign in without typing (SEC4)", () => {
-  it("treats every billing, pricing, pay, compensation, accounting, cost and audit permission as money", () => {
+  it("treats every billing, pricing, pay, compensation, accounting, cost, audit, settings and user-management permission as money", () => {
     const money = PERMISSIONS.filter(isMoneyPermission);
-    expect([...money].sort()).toEqual(["accounting.view", "audit.view", "billing.manage", "billing.view", "employees.compensation", "maintenance.costs", "payroll.manage", "pricing.edit", "pricing.override"]);
+    expect([...money].sort()).toEqual(["accounting.view", "audit.view", "billing.manage", "billing.view", "employees.compensation", "maintenance.costs", "payroll.manage", "pricing.edit", "pricing.override", "settings.manage", "users.manage"]);
     expect(isMoneyPermission("billing.anything_new")).toBe(true);
     expect(isMoneyPermission("pricing.anything_new")).toBe(true);
-    for (const p of ["driver.portal", "comms.message", "tickets.edit", "users.manage", "maintenance.view", "quotes.view"]) expect(isMoneyPermission(p), p).toBe(false);
+    for (const p of ["driver.portal", "comms.message", "tickets.edit", "maintenance.view", "quotes.view"]) expect(isMoneyPermission(p), p).toBe(false);
   });
 
   it("the migration's list is the app's list", () => {
@@ -88,7 +88,8 @@ describe("who may sign in without typing (SEC4)", () => {
     expect(fn).toContain("p_permission like 'billing.%'");
     expect(fn).toContain("p_permission like 'pricing.%'");
     const listed = [...fn.matchAll(/'([a-z_]+\.[a-z_]+)'/g)].map((m) => m[1]).sort();
-    expect(listed).toEqual([...MONEY_PERMISSIONS].sort());
+    // billing.* and pricing.* are matched by prefix in SQL; every other money permission is named.
+    expect(listed).toEqual(MONEY_PERMISSIONS.filter((p) => !/^(billing|pricing)\./.test(p)).sort());
   });
 
   it("says why face or fingerprint is refused and what to do instead", () => {

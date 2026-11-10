@@ -31,6 +31,18 @@ returns text[] language sql immutable set search_path = '' as $$
 $$;
 revoke all on function private.money_permissions() from public, anon, authenticated;
 
+-- One list from here on: the QR sign-in rule (20261120017100) asks the same question through private.is_money_permission,
+-- now answered from private.money_permissions() plus every billing.* and pricing.* permission (including future ones).
+create or replace function private.is_money_permission(p_permission text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(p_permission like 'billing.%' or p_permission like 'pricing.%' or p_permission = any (private.money_permissions()), false);
+$$;
+revoke all on function private.is_money_permission(text) from public, anon, authenticated;
+
 -- Does the caller hold money access in any real company? (Active membership with a role, access not ended, active
 -- non-demo company, a money permission for that role there, or an accountant's payroll access.)
 create or replace function private.money_mfa_required()
@@ -45,7 +57,7 @@ returns boolean language sql stable security definer set search_path = '' as $$
       and (m.access_ends_at is null or m.access_ends_at > now())
       and (m.payroll_view
            or exists (select 1 from public.role_permissions rp
-                      where rp.company_id = m.company_id and rp.role = m.role and rp.permission = any (private.money_permissions())))
+                      where rp.company_id = m.company_id and rp.role = m.role and private.is_money_permission(rp.permission)))
   )
 $$;
 revoke all on function private.money_mfa_required() from public, anon, authenticated;

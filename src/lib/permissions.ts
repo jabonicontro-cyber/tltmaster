@@ -66,7 +66,25 @@ export type Permission = (typeof PERMISSIONS)[number];
  * two-step verification; QR codes and face or fingerprint sign-in are only for driver sign-ins without them (DS1). The
  * database has the same rule (private.is_money_permission, migration 20261120017100).
  */
-export const MONEY_PERMISSIONS = ["payroll.manage", "employees.compensation", "accounting.view", "maintenance.costs", "audit.view"] as const;
+/**
+ * The permissions that show or change money (owner decision 2026-11-09, master plan §12 SEC4): two-step verification is
+ * always required for them in a real company, and QR or face sign-in is refused. Every billing.* and pricing.*
+ * permission counts too (isMoneyPermission), including future ones. The same list as private.money_permissions().
+ */
+export const MONEY_PERMISSIONS = [
+  "billing.view",
+  "billing.manage",
+  "accounting.view",
+  "payroll.manage",
+  "employees.compensation",
+  "pricing.edit",
+  "pricing.override",
+  "maintenance.costs",
+  "audit.view",
+  // Company settings set the default sales tax rate; user management can hand any money permission to any account.
+  "settings.manage",
+  "users.manage",
+] as const;
 
 export function isMoneyPermission(permission: string): boolean {
   return permission.startsWith("billing.") || permission.startsWith("pricing.") || (MONEY_PERMISSIONS as readonly string[]).includes(permission);

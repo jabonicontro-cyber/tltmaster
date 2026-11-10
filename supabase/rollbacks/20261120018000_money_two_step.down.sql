@@ -92,6 +92,19 @@ drop function if exists public.mfa_recovery_confirm();
 drop function if exists private.mfa_recovery_ready();
 drop table if exists private.mfa_recovery_confirmations;
 drop function if exists private.money_mfa_required();
+-- private.is_money_permission back to its 20261120017100 definition (its own list) before the shared list goes.
+create or replace function private.is_money_permission(p_permission text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select coalesce(p_permission like 'billing.%' or p_permission like 'pricing.%'
+    or p_permission in ('payroll.manage', 'employees.compensation', 'accounting.view', 'maintenance.costs', 'audit.view',
+      -- Company settings set the default sales tax rate; user management can hand any money permission to any account.
+      'settings.manage', 'users.manage'), false);
+$$;
+revoke all on function private.is_money_permission(text) from public, anon, authenticated;
 drop function if exists private.money_permissions();
 
 commit;

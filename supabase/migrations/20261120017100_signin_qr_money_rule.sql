@@ -28,7 +28,9 @@ immutable
 set search_path = ''
 as $$
   select coalesce(p_permission like 'billing.%' or p_permission like 'pricing.%'
-    or p_permission in ('payroll.manage', 'employees.compensation', 'accounting.view', 'maintenance.costs', 'audit.view'), false);
+    or p_permission in ('payroll.manage', 'employees.compensation', 'accounting.view', 'maintenance.costs', 'audit.view',
+      -- Company settings set the default sales tax rate; user management can hand any money permission to any account.
+      'settings.manage', 'users.manage'), false);
 $$;
 revoke all on function private.is_money_permission(text) from public, anon, authenticated;
 
