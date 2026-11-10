@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
+import { QBO_SUPPORT_VISIT_MESSAGE } from "@/lib/accounting/qbo";
 import { can } from "@/lib/permissions";
 import { listItems, qboConfigured } from "@/server/accounting/qbo";
 import { requirePagePermission } from "@/server/auth";
@@ -19,6 +20,9 @@ export const metadata = { title: "Businesses and QuickBooks" };
 export default async function BillingSetupPage({ searchParams }: { searchParams: Promise<{ saved?: string; error?: string }> }) {
   const access = await requirePagePermission("billing.view");
   const manage = can(access, "billing.manage");
+  // A Taviron support visit never connects, changes or disconnects QuickBooks (financial review L3); businesses and the
+  // billing split stay editable.
+  const manageQbo = manage && !access.support;
   const sp = await searchParams;
   const setup = await getAccountingSetup();
   const configured = qboConfigured();
@@ -44,6 +48,7 @@ export default async function BillingSetupPage({ searchParams }: { searchParams:
         actions={manage && setup.entitiesInstalled ? <AddBusinessButton /> : undefined} />
       {sp.saved === "connected" && <div className="mb-4"><Notice title="QuickBooks connected">Choose the product or service for invoice lines below, then send handed-off orders from the Billing board.</Notice></div>}
       {sp.error && <div className="mb-4"><Notice tone="warning" title="QuickBooks">{sp.error}</Notice></div>}
+      {manage && access.support && <div className="mb-4"><Notice title="Support visit">{QBO_SUPPORT_VISIT_MESSAGE}</Notice></div>}
       {!setup.entitiesInstalled || !setup.quickbooksInstalled ? (
         <Notice title="Not available yet">Businesses and QuickBooks need a database update that has not been installed yet.</Notice>
       ) : (
@@ -51,7 +56,7 @@ export default async function BillingSetupPage({ searchParams }: { searchParams:
           {setup.entities.length === 0 ? (
             <Card>
               <CardHeader title="One business" description="Everything is billed under the company. Add a business when part of the work is billed by another business you own." />
-              <CardBody><QuickBooksPanel entityId={null} connection={company} items={items[""]?.items ?? null} itemsError={items[""]?.error ?? null} canManage={manage} configured={configured} isDemo={Boolean(access.isDemo)} /></CardBody>
+              <CardBody><QuickBooksPanel entityId={null} connection={company} items={items[""]?.items ?? null} itemsError={items[""]?.error ?? null} canManage={manageQbo} configured={configured} isDemo={Boolean(access.isDemo)} /></CardBody>
             </Card>
           ) : (
             <>
@@ -63,7 +68,7 @@ export default async function BillingSetupPage({ searchParams }: { searchParams:
                     actions={manage ? <EditBusinessButton entity={e} /> : undefined} />
                   <CardBody>
                     <h3 className="mb-2 text-sm font-semibold text-ink">QuickBooks</h3>
-                    <QuickBooksPanel entityId={e.id} connection={byEntity(e.id)} items={items[e.id]?.items ?? null} itemsError={items[e.id]?.error ?? null} canManage={manage} configured={configured} isDemo={Boolean(access.isDemo)} />
+                    <QuickBooksPanel entityId={e.id} connection={byEntity(e.id)} items={items[e.id]?.items ?? null} itemsError={items[e.id]?.error ?? null} canManage={manageQbo} configured={configured} isDemo={Boolean(access.isDemo)} />
                   </CardBody>
                 </Card>
               ))}

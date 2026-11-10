@@ -409,6 +409,25 @@ Taviron support** (their banner says how many wait); approving makes exactly tha
 permissions checked again, and any one-time password or link is shown to the owner only. Requests expire after 3
 days; you can withdraw your own. The company's two-step rule and the GPS feed key stay with the owner.
 
+**QuickBooks during a visit (financial review L3, migration `20261120018100`, tested rollback):** a visit cannot
+connect, change or disconnect a company's QuickBooks, and sends nothing to it (owner 2026-11-10: the Billing board
+shows what would be sent and what was sent, without a Send button; a demo's simulated sends still work). The pages say
+so and the database refuses too. Connecting,
+connecting again and disconnecting are in the company's history, and a connected business cannot be pointed at another
+QuickBooks company without disconnecting first.
+
+**Two-step verification for money access (SEC4, owner 2026-11-09, migration `20261120018000`, tested rollback):**
+anyone who can see or change money in a real company (owners, office staff, outside accountants, and anyone given a
+billing, accounting, payroll, pay, pricing, cost, audit, settings or user-management permission) sets up an
+authenticator at their next sign-in and uses it every time, whatever the company's own setting; the database gives them
+no company data without it. Drivers, mechanics and dispatchers without such a permission are unaffected. Accounts that
+belong only to demo companies are exempt. Recovery codes are required for them too (owner 2026-11-10): setup finishes
+only once they create the codes and tick that they saved them, and nothing opens until then. A Taviron support visit
+into a real company always needs two-step verification, even with the database emergency switch off.
+**Before applying it on a live database:** every such person will be asked to
+set up an authenticator app the next time they open Taviron; tell them first (what the app is, and to keep the recovery
+codes).
+
 **Operator fallback** (server access with the service-role key; grants the Admin level):
 
 ```bash

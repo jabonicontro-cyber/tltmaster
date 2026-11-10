@@ -331,7 +331,7 @@ describe("concurrency", () => {
         as: async (uid) => {
           await setup.query("reset role");
           await setup.query("set local role authenticated");
-          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated" })]);
+          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated", aal: "aal2" })]);
         },
         asAdmin: async () => {
           await setup.query("reset role");
@@ -368,7 +368,7 @@ describe("concurrency", () => {
     const as = async (c: typeof a) => {
       await c.query("begin");
       await c.query("set local role authenticated");
-      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ids.office, role: "authenticated" })]);
+      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ids.office, role: "authenticated", aal: "aal2" })]);
     };
     try {
       await as(a);

@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signIn, closeDemoWelcomeIfShown, signInPlatform } from "./helpers";
+import { signIn, closeDemoWelcomeIfShown, passSecondFactor, signInPlatform } from "./helpers";
 import { PASSWORD, USERS } from "./users";
 
 test("anonymous visitors are sent to sign in, then back to the page they wanted", async ({ page }) => {
@@ -55,6 +55,7 @@ test("after sign-in, a 'next' that a browser would read as another site is ignor
   await page.getByLabel("Email").fill(USERS.office.email);
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await passSecondFactor(page, "office"); // money access: the authenticator code first (20261120018000)
   await expect(page).toHaveURL(/localhost:\d+\/command-center/);
 });
 

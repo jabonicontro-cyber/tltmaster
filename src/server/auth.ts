@@ -9,7 +9,7 @@ import { missingPermissionText } from "@/lib/permission-words";
 import { PREVIEW_COOKIE, applyPreview, parsePreviewRole } from "@/lib/platform/preview";
 import { isPlatformAdmin, platformStaffLevel } from "@/server/platform";
 import { myPortals } from "@/server/portal";
-import { MfaRequiredError, mfaBlocks } from "@/server/mfa";
+import { MfaRequiredError, mfaBlock, mfaBlocks } from "@/server/mfa";
 import { setupRequired } from "@/server/setup";
 
 /** The signed-in user's access, loaded once per request from the database. */
@@ -129,7 +129,8 @@ export async function assertPermission(permission: Permission): Promise<Access> 
   if (!access || !access.active || !access.companyId || !can(access, permission)) {
     throw new PermissionError(permission);
   }
-  if (await mfaBlocks()) throw new MfaRequiredError();
+  const blocked = await mfaBlock();
+  if (blocked) throw new MfaRequiredError(blocked);
   return access;
 }
 
@@ -139,6 +140,7 @@ export async function assertAnyPermission(...permissions: [Permission, ...Permis
   if (!access || !access.active || !access.companyId || !permissions.some((p) => can(access, p))) {
     throw new PermissionError(permissions[0]);
   }
-  if (await mfaBlocks()) throw new MfaRequiredError();
+  const blocked = await mfaBlock();
+  if (blocked) throw new MfaRequiredError(blocked);
   return access;
 }

@@ -261,7 +261,7 @@ describe("converting accepted quotes into orders", () => {
         as: async (uid) => {
           await setup.query("reset role");
           await setup.query("set local role authenticated");
-          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated" })]);
+          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated", aal: "aal2" })]);
         },
         asAdmin: async () => {
           await setup.query("reset role");
@@ -292,7 +292,7 @@ describe("converting accepted quotes into orders", () => {
     const as = async (c: typeof a) => {
       await c.query("begin");
       await c.query("set local role authenticated");
-      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ownerId, role: "authenticated" })]);
+      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ownerId, role: "authenticated", aal: "aal2" })]);
     };
     try {
       await as(a);
@@ -315,7 +315,7 @@ describe("converting accepted quotes into orders", () => {
       const c = await pool.connect();
       await c.query("begin");
       await c.query("set local role authenticated");
-      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ownerId, role: "authenticated" })]);
+      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ownerId, role: "authenticated", aal: "aal2" })]);
       await c.query("select set_config('tlt.sample_purge', 'on', true)");
       await c.query("reset role");
       await c.query("update public.quotes set current_version_id = null, accepted_version_id = null where id = $1", [quoteId]);

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { QBO_SUPPORT_SEND_MESSAGE, QBO_SUPPORT_VISIT_MESSAGE } from "@/lib/accounting/qbo";
 import { uuid } from "@/lib/schemas/common";
 import { revokeTokens } from "@/server/accounting/qbo";
 import { sendHandoffOrder } from "@/server/accounting/send";
@@ -64,7 +65,8 @@ export async function saveBillingRules(input: Partial<Record<(typeof KINDS)[numb
 
 export async function setQuickBooksItem(input: { connectionId: string; itemId: string; itemName: string }): Promise<ActionResult> {
   return guard(async () => {
-    await assertPermission("billing.manage");
+    const access = await assertPermission("billing.manage");
+    if (access.support) return fail(QBO_SUPPORT_VISIT_MESSAGE);
     const p = z.object({ connectionId: uuid, itemId: z.string().min(1).max(40), itemName: z.string().max(200) }).safeParse(input);
     if (!p.success) return fail("Choose a product or service.");
     const supabase = await createClient();
@@ -77,7 +79,9 @@ export async function setQuickBooksItem(input: { connectionId: string; itemId: s
 
 export async function disconnectQuickBooks(input: { connectionId: string }): Promise<ActionResult> {
   return guard(async () => {
-    await assertPermission("billing.manage");
+    const access = await assertPermission("billing.manage");
+    // Before anything reaches Intuit: a visit must not revoke the company's tokens (the database refuses the removal too).
+    if (access.support) return fail(QBO_SUPPORT_VISIT_MESSAGE);
     const p = z.object({ connectionId: uuid }).safeParse(input);
     if (!p.success) return fail("Invalid connection.");
     const supabase = await createClient();
@@ -94,6 +98,8 @@ export async function disconnectQuickBooks(input: { connectionId: string }): Pro
 export async function sendToQuickBooks(input: { handoffOrderIds: string[] }): Promise<ActionResult> {
   return guard(async () => {
     const access = await assertPermission("billing.manage");
+    // A support visit sends nothing to QuickBooks (a demo's simulated send excepted); checked again by the database.
+    if (access.support && !access.isDemo) return fail(QBO_SUPPORT_SEND_MESSAGE);
     const p = z.object({ handoffOrderIds: z.array(uuid).min(1).max(200) }).safeParse(input);
     if (!p.success) return fail("Choose what to send.");
     const results = [];

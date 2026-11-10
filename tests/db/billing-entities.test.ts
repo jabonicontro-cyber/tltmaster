@@ -133,4 +133,46 @@ describe("QuickBooks sends", () => {
       expect((await s.query("select simulated, status from public.accounting_invoice_sends where id = $1", [r.id])).rows[0]).toEqual({ simulated: true, status: "sent" });
     });
   });
+
+  it("a Taviron support visit sees the sends but sends nothing to QuickBooks; a demo's simulated send still works (20261120018100)", async () => {
+    await withSession(async (s) => {
+      const office = await s.createUser("office");
+      await s.as(office);
+      const { handoffOrder } = await handedOff(s, office);
+      const conn = (await s.query<{ id: string }>("select public.accounting_save_connection(null, 'sandbox', 'visit-test', 'Visit Co') as id")).rows[0].id;
+      await s.query("select public.accounting_set_item($1, '1', 'Services')", [conn]);
+      const earlier = await begin(s, handoffOrder, null, false);
+      await finish(s, earlier.id as string, false, "", "QuickBooks: the customer is inactive");
+      const customer = (await s.query<{ id: string }>("select id from public.customers limit 1")).rows[0].id;
+
+      // Support staff, let in by an owner, visit the company.
+      const staffId = await s.createUser(null, { membership: false });
+      await s.asAdmin();
+      const email = (await s.query<{ email: string }>("select email from auth.users where id = $1", [staffId])).rows[0].email;
+      await s.query("set local role service_role");
+      await s.query("select public.platform_admin_grant($1, 'test')", [email]);
+      await s.asAdmin();
+      await s.query("update private.platform_admins set level = 'support' where user_id = $1", [staffId]);
+      await s.as(await s.createUser("owner"));
+      await s.query("select public.support_access_grant(3)");
+      await s.as(staffId);
+      await s.query("select public.platform_support_enter($1, '')", [TOP_LINE]);
+
+      const message = "Taviron support cannot send anything to QuickBooks. Ask someone in the company to send it.";
+      for (const e of [
+        await pgError(begin(s, handoffOrder, null, false)),
+        await pgError(s.query("select public.accounting_link_customer($1, $2, '77', 'Matched', false)", [conn, customer])),
+      ]) expect(e).toEqual({ code: "42501", message });
+      // Viewing what would be sent and what was sent still works.
+      expect((await s.query("select status, last_error from public.accounting_invoice_sends where id = $1", [earlier.id])).rows[0])
+        .toEqual({ status: "failed", last_error: "QuickBooks: the customer is inactive" });
+      expect((await s.query("select 1 from public.billing_handoff_orders where id = $1", [handoffOrder])).rowCount).toBe(1);
+
+      // A demo company's sends are simulated: nothing leaves Taviron, so a visit there can still show them.
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'prospect' where id = $1", [TOP_LINE]);
+      await s.as(staffId);
+      expect(await begin(s, handoffOrder, null, true)).toMatchObject({ go: true });
+    });
+  });
 });

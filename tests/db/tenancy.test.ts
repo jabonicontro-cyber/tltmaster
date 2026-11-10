@@ -207,6 +207,14 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Two-step verification (20261120000900): about the caller only (auth.uid()); recovery codes hashed and rate
   // limited; the company policy needs settings.manage and an aal2 session; the platform switch is read-only here.
   "private.security_log", "private.platform_mfa_enforced", "public.mfa_policy", "public.set_company_mfa_policy",
+  // Money access always needs two-step verification (20261120018000): about the caller only (auth.uid()), not callable
+  // by app users. QuickBooks (20261120018100): refusal during a support visit, a business name for the caller's own
+  // company's history line, and the disconnect history line (only for a person working in that company).
+  "private.money_mfa_required", "private.forbid_accounting_during_support_visit", "private.accounting_business_label",
+  "private.accounting_connection_removed",
+  // Recovery codes required for money access, and no QuickBooks sends during a visit (owner 2026-11-10): the caller's
+  // own confirmation only (aal2, codes must exist); the send refusal reads only the visit's company.
+  "public.mfa_recovery_confirm", "private.mfa_recovery_ready", "private.forbid_accounting_send_during_support_visit",
   "public.mfa_recovery_generate", "public.mfa_recovery_redeem", "public.mfa_record_event", "public.my_security_events",
   // Guided onboarding (20261120001000): company side needs settings.manage in the task's own company (current
   // company); Taviron side needs require_platform_admin (aal2); generation reads only the target company; documents
