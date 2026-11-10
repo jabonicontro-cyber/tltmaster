@@ -32,6 +32,28 @@ export const withoutBrokerFields = <T extends Record<string, unknown>>(row: T) =
 
 export type CustomerInput = z.infer<typeof customerSchema>;
 
+/** Who may set a customer's money fields (financial review L4, 20261120016200; the database checks the same). */
+export interface CustomerMoneyAccess {
+  /** pricing.edit: the customer's price list and sales tax exemption. */
+  pricing: boolean;
+  /** billing.manage: payment terms (and detention, on the customer page). */
+  billing: boolean;
+}
+
+/**
+ * Leaves out the money fields this person may not set, so a saved customer keeps its value and a new one gets the
+ * default (no price list, taxed, no payment terms).
+ */
+export function withoutLockedMoneyFields<T extends Record<string, unknown>>(row: T, may: CustomerMoneyAccess): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...row };
+  if (!may.pricing) {
+    delete out.price_list_id;
+    delete out.tax_exempt;
+  }
+  if (!may.billing) delete out.payment_terms;
+  return out;
+}
+
 export const contactSchema = z.object({
   name: requiredText(120, "Contact name"),
   title: optionalText(80),

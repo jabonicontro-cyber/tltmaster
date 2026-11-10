@@ -138,4 +138,37 @@ describe("hired trucks", () => {
       expect((await pgError(s.query("select public.hauler_record_document($1, null, 'w9', '', null)", [h.h]))).message).toMatch(/Hauler not found/);
     });
   });
+  // Financial review L2 (20261120016300): confirming an accepted offer for a customer on credit hold needs a reason,
+  // which the database records with the assignment (the REST API and the app's confirm button went ahead without one).
+  it("confirming an offer for a customer on credit hold needs a reason, recorded with the assignment", async () => {
+    await withSession(async (s) => {
+      await entitle(s);
+      const owner = await s.createUser("owner");
+      const dispatcher = await s.createUser("dispatcher");
+      const on = addDays(await businessToday(s), 3);
+      const order = await scheduledOrder(s, owner, on);
+      const load = await planLoad(s, order.id, on, "08:00", "10:00", { planned_quantity: "20", unit_code: "ton" });
+      const ok = await hauler(s, owner, on);
+      const offer = await one<string>(s, "select public.hauler_offer_send($1, $2, null, $3, 1500, 'ton', '') as r", [load.load_id, ok.truck, ok.driver]);
+      await s.query("select public.hauler_offer_respond($1, true, 'Answered by phone')", [offer]);
+      await s.asAdmin();
+      const customer = (await s.query<{ c: string }>("select customer_id c from public.orders where id = $1", [order.id])).rows[0].c;
+      await s.as(owner);
+      await s.query("select public.set_customer_credit_hold($1, true, 'Two invoices 60 days late')", [customer]);
+
+      await s.as(dispatcher);
+      for (const sql of ["select public.hauler_offer_confirm($1)", "select public.hauler_offer_confirm($1, ' ')"]) {
+        const e = await pgError(s.query(sql, [offer]));
+        expect(e.code).toBe("22023");
+        expect(e.message).toMatch(/is on credit hold\. To go ahead, give a reason; it is recorded\.$/);
+      }
+      await s.asAdmin();
+      expect((await s.query("select status from public.hauler_offers where id = $1", [offer])).rows[0]).toEqual({ status: "accepted" });
+      await s.as(dispatcher);
+      const assignment = await one<string>(s, "select public.hauler_offer_confirm($1, 'Owner approved this haul') as r", [offer]);
+      await s.asAdmin();
+      expect((await s.query("select entity_id, reason, context, created_by from public.credit_hold_overrides where customer_id = $1", [customer])).rows)
+        .toEqual([{ entity_id: assignment, reason: "Owner approved this haul", context: "assignment", created_by: dispatcher }]);
+    });
+  });
 });

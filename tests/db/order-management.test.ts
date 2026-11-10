@@ -458,7 +458,7 @@ describe("permissions", () => {
     });
   });
 
-  it("orders.create alone never changes someone else's order, confirms their draft, cancels, converts quotes, sends tracking links, adds documents or overrides a credit hold", async () => {
+  it("orders.create alone never changes someone else's order, confirms or cancels their draft, cancels a confirmed order, converts quotes, sends tracking links, adds documents or overrides a credit hold", async () => {
     await withSession(async (s) => {
       const ids = await sampleIds(s);
       const officeDraft = await directOrder(s, ids);
@@ -467,12 +467,12 @@ describe("permissions", () => {
       await s.as(dispatcher);
       const mine = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
 
-      // Someone else's draft: not changed, not confirmed, not canceled; their own order is not canceled either.
+      // Someone else's draft: not changed, not confirmed, not canceled. (Their own draft they may cancel since MD1,
+      // 20261120016000: see "own direct orders" below.)
       expect((await pgError(saveOrder(s, { order_id: officeDraft.order_id, customer_id: ids.customerId, lines: standardLines(ids, "1") }))).code).toBe("42501");
       expect((await pgError(setStatus(s, officeDraft.order_id, "confirmed"))).code).toBe("42501");
       expect((await pgError(setStatus(s, officeDraft.order_id, "canceled", "Not needed"))).code).toBe("42501");
       expect((await pgError(details(s, officeDraft.order_id, { project_name: "x" }))).code).toBe("42501");
-      expect((await pgError(setStatus(s, mine.order_id, "canceled", "Entered twice"))).code).toBe("42501");
       await setStatus(s, mine.order_id, "confirmed");
       // Once confirmed, their own order is no longer theirs to change (details and lines need orders.edit).
       expect((await pgError(saveOrder(s, { order_id: mine.order_id, customer_id: ids.customerId, lines: standardLines(ids) }))).code).toBe("42501");
@@ -534,6 +534,209 @@ describe("permissions", () => {
       expect(new Set(rows.rows.map((a) => a.entity_type))).toEqual(new Set(["order"]));
       const changed = await s.query<{ details: { changes: Record<string, unknown> } }>("select details from public.audit_events where action = 'order.updated' and entity_id = $1", [r.order_id]);
       expect(changed.rows[0].details.changes).toEqual({ project_name: { from: "Driveway base", to: "Driveway base, phase 2" }, contact_name: { from: "Jordan Example", to: "" }, site_line1: { from: "42 Sample Lane", to: "" }, site_city: { from: "Crown Point", to: "" }, site_state: { from: "IN", to: "" }, requested_date: { from: "2026-10-15", to: null } });
+    });
+  });
+});
+
+// MD1 and SEC3 (owner 2026-11-09, 20261120016000): with orders.create a person cancels a direct draft they entered,
+// flags their own direct order urgent and changes its stops (draft or confirmed); confirming their draft rechecks the
+// credit hold; the price list answers them. Anyone else's order, and a confirmed order's cancel, still need orders.edit.
+describe("own direct orders (orders.create)", () => {
+  const flag = (s: Session, orderId: string, reason: string) =>
+    s.query<{ r: { urgency_id: string; created: boolean; changed: boolean } }>("select public.flag_order_urgent($1, $2) as r", [orderId, reason]).then((x) => x.rows[0].r);
+  const stops = (s: Session, orderId: string, list: Array<{ kind: string; name: string }>) =>
+    s.query<{ n: number }>("select public.save_order_stops($1, $2::jsonb) as n", [orderId, JSON.stringify(list)]).then((x) => x.rows[0].n);
+  const twoStops = [{ kind: "pickup", name: "North yard (test)" }, { kind: "delivery", name: "Phone-in site (test)" }];
+
+  it("cancels their own draft with a reason, recorded in its history; never someone else's draft or a confirmed order", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const officeDraft = await directOrder(s, ids);
+      const dispatcher = await s.createUser("dispatcher");
+      const other = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      const mine = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+
+      // A reason is required, as for every cancel.
+      expect((await pgError(setStatus(s, mine.order_id, "canceled"))).message).toMatch(/Enter a reason/);
+      expect(await setStatus(s, mine.order_id, "canceled", "Customer called back: entered twice")).toMatchObject({ status: "canceled" });
+      expect((await order(s, mine.order_id))).toMatchObject({ status: "canceled", status_note: "Customer called back: entered twice" });
+      expect((await order(s, mine.order_id)).canceled_at).not.toBeNull();
+      await s.asAdmin();
+      const history = (await s.query<{ from_status: string; to_status: string; note: string; actor_id: string }>("select from_status::text, to_status::text, note, actor_id from public.order_status_events where order_id = $1 order by occurred_at", [mine.order_id])).rows;
+      expect(history.at(-1)).toEqual({ from_status: "draft", to_status: "canceled", note: "Customer called back: entered twice", actor_id: dispatcher });
+      expect((await s.query("select 1 from public.audit_events where action = 'order.status_changed' and entity_id = $1 and actor_id = $2", [mine.order_id, dispatcher])).rowCount).toBe(1);
+
+      // Someone else's draft (the office's, another dispatcher's): refused, and left as it was.
+      await s.as(dispatcher);
+      expect((await pgError(setStatus(s, officeDraft.order_id, "canceled", "Not needed"))).code).toBe("42501");
+      await s.as(other);
+      const theirs = await saveOrder(s, { customer_id: ids.customerId, site_line1: "9 Other Road", lines: standardLines(ids) });
+      await s.as(dispatcher);
+      expect((await pgError(setStatus(s, theirs.order_id, "canceled", "Not needed"))).code).toBe("42501");
+      expect((await order(s, officeDraft.order_id)).status).toBe("draft");
+      expect((await order(s, theirs.order_id)).status).toBe("draft");
+
+      // Their own order once confirmed: canceling it is an office decision (orders.edit).
+      await s.as(dispatcher);
+      const confirmed = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+      await setStatus(s, confirmed.order_id, "confirmed");
+      expect((await pgError(setStatus(s, confirmed.order_id, "canceled", "Customer called back"))).code).toBe("42501");
+      expect((await order(s, confirmed.order_id)).status).toBe("confirmed");
+      await s.as(officeDraft.office);
+      expect(await setStatus(s, confirmed.order_id, "canceled", "Customer called back")).toMatchObject({ status: "canceled" });
+
+      // Without orders.create (turned off for the role): not even their own draft.
+      await s.as(dispatcher);
+      const last = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+      await withoutPermission(s, "dispatcher", "orders.create");
+      await s.as(dispatcher);
+      expect((await pgError(setStatus(s, last.order_id, "canceled", "Entered twice"))).code).toBe("42501");
+      expect((await order(s, last.order_id)).status).toBe("draft");
+    });
+  });
+
+  it("confirming their own draft rechecks the credit hold: a hold put on after the draft was saved stops it", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const owner = await s.createUser("owner");
+      const office = await s.createUser("office");
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      const draft = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+      const second = await saveOrder(s, { customer_id: ids.customerId, site_line1: "8 Phone-in Road", lines: standardLines(ids) });
+      const third = await saveOrder(s, { customer_id: ids.customerId, site_line1: "9 Phone-in Road", lines: standardLines(ids) });
+      // Put on hold after the drafts were saved.
+      await s.as(owner);
+      await s.query("select public.set_customer_credit_hold($1, true, 'Two invoices 60 days late')", [ids.customerId]);
+      await s.asAdmin();
+      const name = (await s.query<{ name: string }>("select name from public.customers where id = $1", [ids.customerId])).rows[0].name;
+
+      // The same message as saving a new order for them.
+      await s.as(dispatcher);
+      const refused = await pgError(setStatus(s, draft.order_id, "confirmed"));
+      expect(refused.code).toBe("42501");
+      expect(refused.message).toBe(`${name} is on credit hold. A new order for them needs someone who can change orders: they decide whether to go ahead and record why.`);
+      expect(await pgError(saveOrder(s, { customer_id: ids.customerId, lines: standardLines(ids) }))).toEqual(refused);
+      expect((await order(s, draft.order_id)).status).toBe("draft");
+
+      // Canceling stays possible (nothing goes ahead for the customer).
+      await s.as(dispatcher);
+      expect(await setStatus(s, third.order_id, "canceled", "Customer on hold, entered by mistake")).toMatchObject({ status: "canceled" });
+
+      // Someone who can change orders decides, as before: the office confirms the second draft.
+      await s.as(office);
+      expect(await setStatus(s, second.order_id, "confirmed")).toMatchObject({ status: "confirmed" });
+
+      // Hold released: the dispatcher confirms their draft.
+      await s.as(owner);
+      await s.query("select public.set_customer_credit_hold($1, false, 'Paid in full')", [ids.customerId]);
+      await s.as(dispatcher);
+      expect(await setStatus(s, draft.order_id, "confirmed")).toMatchObject({ status: "confirmed" });
+    });
+  });
+
+  it("flags their own direct order urgent and changes its stops, draft or confirmed; never anyone else's order", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const officeDraft = await directOrder(s, ids);
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      const mine = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+
+      // Draft: flag, change the reason, save stops.
+      expect(await flag(s, mine.order_id, "Customer needs it before noon")).toMatchObject({ created: true, changed: true });
+      expect(await flag(s, mine.order_id, "Customer needs it before 11")).toMatchObject({ created: false, changed: true });
+      expect(await stops(s, mine.order_id, twoStops)).toBe(2);
+      // Confirmed: still theirs to flag and to give stops.
+      await setStatus(s, mine.order_id, "confirmed");
+      expect(await flag(s, mine.order_id, "Customer needs it before 10")).toMatchObject({ created: false, changed: true });
+      expect(await stops(s, mine.order_id, [...twoStops, { kind: "delivery", name: "Second drop (test)" }])).toBe(3);
+      await s.asAdmin();
+      expect((await s.query<{ flagged_by: string; reason: string }>("select flagged_by, reason from public.order_urgencies where order_id = $1 and closed_at is null", [mine.order_id])).rows).toEqual([{ flagged_by: dispatcher, reason: "Customer needs it before 10" }]);
+      expect((await s.query("select 1 from public.audit_events where action = 'order.stops_saved' and entity_id = $1 and actor_id = $2", [mine.order_id, dispatcher])).rowCount).toBe(2);
+
+      // Withdrawing the flag stays orders.edit (dispatch moves it along and resolves it, as before).
+      const urgency = (await s.query<{ id: string }>("select id from public.order_urgencies where order_id = $1 and closed_at is null", [mine.order_id])).rows[0].id;
+      await s.as(dispatcher);
+      expect((await pgError(s.query("select public.update_order_urgency($1, 'canceled', 'Not urgent after all')", [urgency]))).code).toBe("42501");
+
+      // Someone else's order (the office's draft, then confirmed): refused, nothing changed.
+      expect((await pgError(flag(s, officeDraft.order_id, "Customer called"))).code).toBe("42501");
+      expect((await pgError(stops(s, officeDraft.order_id, twoStops))).code).toBe("42501");
+      await s.as(officeDraft.office);
+      await setStatus(s, officeDraft.order_id, "confirmed");
+      await s.as(dispatcher);
+      expect((await pgError(flag(s, officeDraft.order_id, "Customer called"))).code).toBe("42501");
+      expect((await pgError(stops(s, officeDraft.order_id, twoStops))).code).toBe("42501");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.order_urgencies where order_id = $1", [officeDraft.order_id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.order_stops where order_id = $1", [officeDraft.order_id])).rowCount).toBe(0);
+
+      // An order from a quote is never "their own direct order", even when they converted nothing themselves.
+      const quote = await acceptedQuote(s, ids);
+      await s.as(dispatcher);
+      expect((await pgError(flag(s, quote.orderId, "Customer called"))).code).toBe("42501");
+
+      // A canceled order of their own: closed, as for everyone.
+      const done = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+      await setStatus(s, done.order_id, "canceled", "Entered twice");
+      expect((await pgError(flag(s, done.order_id, "Customer called"))).message).toMatch(/cannot be flagged/);
+      expect((await pgError(stops(s, done.order_id, twoStops))).message).toMatch(/completed or canceled/);
+
+      // The office (orders.edit) still flags and gives stops on any order, the dispatcher's included.
+      await s.as(officeDraft.office);
+      expect(await stops(s, mine.order_id, twoStops)).toBe(2);
+      expect(await flag(s, officeDraft.order_id, "Customer called")).toMatchObject({ created: true });
+
+      // Without orders.create: not even their own order.
+      await withoutPermission(s, "dispatcher", "orders.create");
+      await s.as(dispatcher);
+      expect((await pgError(flag(s, mine.order_id, "Customer needs it before 9"))).code).toBe("42501");
+      expect((await pgError(stops(s, mine.order_id, twoStops))).code).toBe("42501");
+    });
+  });
+
+  it("another company's dispatcher cannot cancel, flag or give stops to a Top Line order", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const dispatcher = await s.createUser("dispatcher");
+      await s.as(dispatcher);
+      const mine = await saveOrder(s, { customer_id: ids.customerId, site_line1: "7 Phone-in Road", lines: standardLines(ids) });
+      const B = await s.createCompany("Brookside Aggregates (test)");
+      const bDispatcher = await s.createUser("dispatcher", { companyId: B });
+      await s.as(bDispatcher);
+      expect((await pgError(setStatus(s, mine.order_id, "canceled", "x"))).message).toMatch(/Order not found/);
+      expect((await pgError(flag(s, mine.order_id, "Customer called"))).message).toMatch(/Order not found/);
+      expect((await pgError(stops(s, mine.order_id, twoStops))).message).toMatch(/Order not found/);
+      expect((await order(s, mine.order_id)).status).toBe("draft");
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.order_urgencies where order_id = $1", [mine.order_id])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.order_stops where order_id = $1", [mine.order_id])).rowCount).toBe(0);
+    });
+  });
+
+  it("the price list (effective_prices) answers quotes.view, orders.edit or orders.create, and no one else", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const prices = (s2: Session) => s2.query<{ material_id: string | null; rate_cents: string }>("select * from public.effective_prices($1, '2026-10-12')", [ids.customerId]);
+      const dispatcher = await s.createUser("dispatcher");
+      // A dispatcher who can create orders but not see quotes still gets the prices a new order needs.
+      await withoutPermission(s, "dispatcher", "quotes.view");
+      await s.as(dispatcher);
+      const rows = (await prices(s)).rows;
+      expect(rows.find((r) => r.material_id === ids.gravelId)?.rate_cents).toBe("1000");
+      // Neither quotes.view nor orders.create (nor orders.edit): refused.
+      await withoutPermission(s, "dispatcher", "orders.create");
+      await s.as(dispatcher);
+      expect((await pgError(prices(s))).code).toBe("42501");
+      for (const role of ["driver", "mechanic"] as const) {
+        await s.as(await s.createUser(role));
+        expect((await pgError(prices(s))).code, role).toBe("42501");
+      }
+      // The office (quotes.view, orders.edit) as before.
+      await s.as(await s.createUser("office"));
+      expect((await prices(s)).rows.length).toBeGreaterThan(0);
     });
   });
 });

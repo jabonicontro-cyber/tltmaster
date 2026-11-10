@@ -280,6 +280,16 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // orders.create (20261120009900): called only from save_order_draft / set_order_status; require_company(), the
   // person's own draft (created_by = auth.uid()) and private.credit_holds of that company; no company id argument.
   "private.require_order_draft_save", "private.require_order_transition",
+  // MD1 / SEC3 (20261120016000): called only from flag_order_urgent / save_order_stops and portal_support_open;
+  // require_company() and created_by = auth.uid() (own order), private.portal_feature of the portal account's company
+  // (from portal_me, never the caller) before the shared support_check_links; no company id from the client.
+  "private.require_own_order_change", "private.portal_support_check_links",
+  // Financial review M1 (20261120016100): order_price_check_after_save only from save_order_draft, require_prices_checked
+  // only from hand_off_orders / invoice_create(_combined), both scoped by require_company(); order_confirm_price needs
+  // pricing.edit, pricing.override or billing.manage, refuses support visits, require_company(); demo_price_check_sample
+  // demo_owner_company() only. L1 (20261120016200): customer_money_terms needs billing.view, require_company().
+  "private.order_price_check_after_save", "private.require_prices_checked", "public.order_confirm_price",
+  "public.demo_price_check_sample", "public.customer_money_terms",
   "private.qualification_check", "private.member_summary", "public.set_equipment_service_status", "public.check_assignment_eligibility",
   "private.assignment_eligibility", "private.local_time_label", "private.resource_conflict", "private.check_assignment",
   "private.assignment_label", "private.release_order_assignments",
@@ -484,7 +494,7 @@ describe("reads are limited to the caller's company", () => {
       }
       await s.as(w.bOwner);
       expect((await s.query("select * from public.quotes where id = $1", [w.tlQuote.quote_id])).rowCount).toBe(0);
-      expect((await s.query("select * from public.customers where id = $1", [w.ids.customerId])).rowCount).toBe(0);
+      expect((await s.query("select id from public.customers where id = $1", [w.ids.customerId])).rowCount).toBe(0);
       expect((await s.query("select * from public.companies")).rows.map((r) => r.id)).toEqual([w.B]);
     });
   });
@@ -642,7 +652,7 @@ describe("elevated-privilege functions refuse other companies' records", () => {
       // B cannot attach a Top Line user by id (security review 2026-11-06, M1: existing sign-ins are invited and accept),
       // never sees Top Line data and cannot rename them.
       expect((await pgError(s.query("select public.add_company_member($1, 'dispatcher', 'Renamed by B')", [w.tlOffice]))).message).toMatch(/User not found/);
-      expect((await s.query("select * from public.customers where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
+      expect((await s.query("select id from public.customers where company_id = $1", [TOP_LINE])).rowCount).toBe(0);
 
       await s.asAdmin();
       const tlm = await s.query("select role, active from public.company_memberships where user_id = $1 and company_id = $2", [w.tlOffice, TOP_LINE]);
@@ -722,13 +732,13 @@ describe("membership states", () => {
       const none = await s.createUser("office", { membership: false });
       for (const u of [inactive, pending, none]) {
         await s.as(u);
-        expect((await s.query("select * from public.customers")).rowCount).toBe(0);
+        expect((await s.query("select id from public.customers")).rowCount).toBe(0);
         expect((await s.query<{ a: { company_id: string | null } }>("select public.my_access() as a")).rows[0].a.company_id).toBeNull();
       }
       await s.asAdmin();
       await s.query("update public.companies set active = false where id = $1", [w.B]);
       await s.as(w.bOwner);
-      expect((await s.query("select * from public.customers")).rowCount).toBe(0);
+      expect((await s.query("select id from public.customers")).rowCount).toBe(0);
     });
   });
 

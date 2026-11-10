@@ -4,7 +4,7 @@ import { QuoteEditor } from "@/components/quotes/quote-editor";
 import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { canEditOrderDetails, canEditOrderLines } from "@/lib/orders/status";
-import { can } from "@/lib/permissions";
+import { can, typedPriceChecked } from "@/lib/permissions";
 import { requireAnyPagePermission } from "@/server/auth";
 import { getCustomerQuoteContext } from "@/server/data/customers";
 import { getOrderDetail } from "@/server/data/orders";
@@ -60,6 +60,8 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
           defaultTaxRateBp={ref.settings.default_tax_rate_bp}
           validityDays={ref.settings.quote_validity_days}
           canOverride={can(access, "pricing.override")}
+          taxLocked={!can(access, "orders.edit")}
+          typedPriceChecked={typedPriceChecked(access)}
           canEditCustomers={can(access, "customers.edit")}
           priceLists={ref.priceLists}
         />

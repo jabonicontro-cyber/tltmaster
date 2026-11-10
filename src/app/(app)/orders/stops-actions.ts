@@ -4,12 +4,14 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { MAX_STOPS, STOP_KINDS, stopProblems, type StopInput } from "@/lib/orders/stops";
-import { assertPermission } from "@/server/auth";
+import { assertAnyPermission } from "@/server/auth";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
-// Stops on an order (MK2 slice 1). orders.edit is checked here and again in save_order_stops, which also refuses
-// completed and canceled orders and records the change in the order's history.
+// Stops on an order (MK2 slice 1). orders.edit (any order) or orders.create (a direct order the person entered
+// themselves; owner 2026-11-09, MD1) is checked here and again in save_order_stops, which also checks whose order it
+// is (private.require_own_order_change), refuses completed and canceled orders and records the change in the order's
+// history.
 
 const text = (max: number) => z.string().trim().max(max).default("");
 const stop = z.object({
@@ -29,7 +31,7 @@ const stop = z.object({
 
 export async function saveOrderStops(orderId: string, stops: StopInput[]): Promise<ActionResult<{ count: number }>> {
   return guard(async () => {
-    await assertPermission("orders.edit");
+    await assertAnyPermission("orders.edit", "orders.create");
     if (!z.uuid().safeParse(orderId).success) return fail("Order not found.");
     if (!Array.isArray(stops) || stops.length > MAX_STOPS) return fail(`An order can have at most ${MAX_STOPS} stops.`);
     const parsed = z.array(stop).safeParse(stops);

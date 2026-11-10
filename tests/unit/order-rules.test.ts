@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canCreateOrders } from "@/lib/permissions";
+import { canChangeOrderUrgencyAndStops, canCreateOrders, isOwnDirectOrder, type Permission } from "@/lib/permissions";
 import { buildOrderTimeline, describeChanges } from "@/lib/orders/history";
 import { formatScheduleDates, formatTime, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import {
@@ -14,6 +14,7 @@ import {
   orderTransitionPermissions,
   orderTransitionNeedsSchedule,
   orderTransitionPermission,
+  ownDraftTransition,
 } from "@/lib/orders/status";
 import { orderDetailsInput, orderDraftInput, orderScheduleInput, toOrderSchedulePayload } from "@/lib/schemas/order";
 
@@ -43,14 +44,19 @@ describe("order status rules", () => {
     expect(orderTransitionPermission("in_progress", "completed")).toBe("orders.schedule");
   });
 
-  it("lets orders.create ask to confirm a draft (own new orders only, checked in the database) and nothing else", () => {
+  it("lets orders.create ask to confirm or cancel a draft (own new orders only, checked in the database) and nothing else", () => {
     expect(orderTransitionPermissions("draft", "confirmed")).toEqual(["orders.edit", "orders.create"]);
-    expect(orderTransitionPermissions("draft", "canceled")).toEqual(["orders.edit"]);
+    // MD1 (owner 2026-11-09): canceling one's own draft; a confirmed order's cancel stays orders.edit.
+    expect(orderTransitionPermissions("draft", "canceled")).toEqual(["orders.edit", "orders.create"]);
     expect(orderTransitionPermissions("confirmed", "canceled")).toEqual(["orders.edit"]);
+    expect(orderTransitionPermissions("scheduled", "canceled")).toEqual(["orders.edit"]);
+    expect(orderTransitionPermissions("on_hold", "canceled")).toEqual(["orders.edit"]);
     expect(orderTransitionPermissions("confirmed", "scheduled")).toEqual(["orders.schedule"]);
     for (const from of ORDER_STATUSES)
-      for (const to of allowedOrderTransitions(from))
-        if (!(from === "draft" && to === "confirmed")) expect(orderTransitionPermissions(from, to), `${from} → ${to}`).toEqual([orderTransitionPermission(from, to)]);
+      for (const to of allowedOrderTransitions(from)) {
+        expect(ownDraftTransition(from, to), `${from} → ${to}`).toBe(from === "draft");
+        if (from !== "draft") expect(orderTransitionPermissions(from, to), `${from} → ${to}`).toEqual([orderTransitionPermission(from, to)]);
+      }
   });
 
   it("New order is offered with orders.create or orders.edit", () => {
@@ -58,6 +64,31 @@ describe("order status rules", () => {
     expect(canCreateOrders({ permissions: ["orders.edit"] })).toBe(true);
     expect(canCreateOrders({ permissions: ["orders.view", "orders.schedule"] })).toBe(false);
     expect(canCreateOrders(null)).toBe(false);
+  });
+
+  it("urgent flag and stops: orders.edit on any order, orders.create only on one's own direct order", () => {
+    const me = "11111111-1111-4111-8111-111111111111";
+    const someone = "22222222-2222-4222-8222-222222222222";
+    const mine = { created_by: me, source_quote_id: null };
+    const theirs = { created_by: someone, source_quote_id: null };
+    const fromQuote = { created_by: me, source_quote_id: "33333333-3333-4333-8333-333333333333" };
+    const dispatcher = { userId: me, permissions: ["orders.create", "orders.view", "orders.schedule"] satisfies Permission[] };
+    const office = { userId: me, permissions: ["orders.edit", "orders.view"] satisfies Permission[] };
+    const viewer = { userId: me, permissions: ["orders.view", "orders.schedule"] satisfies Permission[] };
+
+    expect(isOwnDirectOrder(dispatcher, mine)).toBe(true);
+    expect(isOwnDirectOrder(dispatcher, theirs)).toBe(false);
+    expect(isOwnDirectOrder(dispatcher, fromQuote)).toBe(false);
+    expect(isOwnDirectOrder(dispatcher, { created_by: null, source_quote_id: null })).toBe(false);
+    expect(isOwnDirectOrder(viewer, mine)).toBe(false);
+    expect(isOwnDirectOrder(null, mine)).toBe(false);
+
+    expect(canChangeOrderUrgencyAndStops(dispatcher, mine)).toBe(true);
+    expect(canChangeOrderUrgencyAndStops(dispatcher, theirs)).toBe(false);
+    expect(canChangeOrderUrgencyAndStops(dispatcher, fromQuote)).toBe(false);
+    expect(canChangeOrderUrgencyAndStops(office, theirs)).toBe(true);
+    expect(canChangeOrderUrgencyAndStops(office, fromQuote)).toBe(true);
+    expect(canChangeOrderUrgencyAndStops(viewer, mine)).toBe(false);
   });
 
   it("knows which transitions need a reason or a date", () => {

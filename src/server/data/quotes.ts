@@ -1,4 +1,5 @@
 import "server-only";
+import { CUSTOMER_COLUMNS } from "./customers";
 import { createClient } from "@/server/supabase/server";
 import { referenceKey } from "@/lib/search";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
@@ -89,7 +90,7 @@ export async function getQuoteDetail(id: string) {
   const q = quote as QuoteRow;
 
   const [customer, versions, lines, events, deliveries, names] = await Promise.all([
-    supabase.from("customers").select("*").eq("id", q.customer_id).single(),
+    supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", q.customer_id).single(),
     supabase.from("quote_versions").select("*").eq("quote_id", id).order("version_no", { ascending: false }),
     supabase.from("quote_lines").select("*").eq("quote_version_id", q.current_version_id).order("line_no"),
     supabase.from("quote_status_events").select("*").eq("quote_id", id).order("occurred_at", { ascending: false }),
@@ -102,7 +103,7 @@ export async function getQuoteDetail(id: string) {
   const allVersions = (versions.data ?? []) as QuoteVersionRow[];
   return {
     quote: q,
-    customer: customer.data as CustomerRow,
+    customer: customer.data as unknown as CustomerRow,
     versions: allVersions,
     current: allVersions.find((v) => v.id === q.current_version_id)!,
     lines: (lines.data ?? []) as QuoteLineRow[],
@@ -122,12 +123,12 @@ export async function getQuoteVersion(quoteId: string, versionId: string) {
   if (quote.error || version.error || lines.error) throw new Error("Could not load quote version.");
   if (!quote.data || !version.data) return null;
   const q = quote.data as QuoteRow;
-  const { data: customer, error } = await supabase.from("customers").select("*").eq("id", q.customer_id).single();
+  const { data: customer, error } = await supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", q.customer_id).single();
   if (error) throw new Error("Could not load customer.");
   return {
     quote: q,
     version: version.data as QuoteVersionRow,
     lines: (lines.data ?? []) as QuoteLineRow[],
-    customer: customer as CustomerRow,
+    customer: customer as unknown as CustomerRow,
   };
 }

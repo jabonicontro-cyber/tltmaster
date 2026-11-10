@@ -5,8 +5,8 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
-import { assign, businessToday, fleet, planLoad, scheduledOrder } from "./fixtures";
-import { TOP_LINE, pool, sampleIds, withSession, type Session } from "./helpers";
+import { assign, businessToday, fleet, handedOff, planLoad, scheduledOrder } from "./fixtures";
+import { TOP_LINE, pgError, pool, sampleIds, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -94,6 +94,73 @@ describe("portal ticket and site details", () => {
       const otherSites = (await s.query<{ r: Site[] }>("select public.portal_sites($1) r", [slug])).rows[0].r;
       expect(otherSites.map((x) => x.id)).not.toContain(siteId);
       expect(otherSites.flatMap((x) => x.pending_notes.map((n) => n.id))).not.toContain(note);
+    });
+  });
+
+  // SEC3 (owner 2026-11-09, 20261120016000): the "Ask a question" picker offers orders only while the portal shows
+  // orders, tickets only while it shows documents, invoices only while it shows invoices; a general question always
+  // works, and a case cannot be linked to something the portal hides.
+  it("offers orders, tickets and invoices to link a question to only while the portal shows them", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const office = await s.createUser("office");
+      const { handoffOrder } = await handedOff(s, office);
+      await s.asAdmin();
+      const order = (await s.query<{ id: string; customer_id: string }>("select o.id, o.customer_id from public.billing_handoff_orders h join public.orders o on o.id = h.order_id where h.id = $1", [handoffOrder])).rows[0];
+      const ticket = (await s.query<{ id: string }>("select id from public.delivery_tickets where order_id = $1 and status = 'accepted' limit 1", [order.id])).rows[0].id;
+      await s.query("insert into private.portal_entitlements (company_id, entitled) values ($1, true) on conflict (company_id) do update set entitled = true", [TOP_LINE]);
+      await s.query("insert into public.portal_settings (company_id, enabled, feature_orders, feature_documents, feature_support) values ($1, true, true, true, true) on conflict (company_id) do update set enabled = true, feature_orders = true, feature_documents = true, feature_support = true", [TOP_LINE]);
+      const slug = (await s.query<{ slug: string }>("select slug from public.companies where id = $1", [TOP_LINE])).rows[0].slug;
+      await s.as(owner);
+      await s.query("select public.invoicing_save_settings('taviron', 15, 'Thank you')");
+      const invoice = (await s.query<{ r: string }>("select public.invoice_create($1) r", [handoffOrder])).rows[0].r;
+      await s.query("select public.invoice_issue($1, null)", [invoice]);
+
+      const customer = await portalUser(s, owner, order.customer_id);
+      type Options = { orders: Array<{ id: string }>; tickets: Array<{ id: string }>; invoices: Array<{ id: string }> };
+      const options = async () => (await s.query<{ r: Options }>("select public.portal_support_link_options($1) r", [slug])).rows[0].r;
+      // Each case its own subject (the same subject twice within minutes is taken as a double submit).
+      let asked = 0;
+      const open = (o: string | null, t: string | null, i: string | null) =>
+        s.query<{ r: { id: string } }>("select public.portal_support_open($1, 'delivery', $5, 'About my delivery, please call.', $2, $3, $4) r", [slug, o, t, i, `Question ${++asked} (test)`]);
+      const switches = async (orders: boolean, documents: boolean) => {
+        await s.asAdmin();
+        await s.query("update public.portal_settings set feature_orders = $2, feature_documents = $3 where company_id = $1", [TOP_LINE, orders, documents]);
+        await customer();
+      };
+
+      // Everything shown: all three are offered and can be linked.
+      let o = await options();
+      expect(o.orders.map((x) => x.id)).toContain(order.id);
+      expect(o.tickets.map((x) => x.id)).toContain(ticket);
+      expect(o.invoices.map((x) => x.id)).toContain(invoice);
+      expect((await open(order.id, ticket, invoice)).rows[0].r.id).toBeTruthy();
+
+      // Orders hidden: no orders offered or linked; tickets and invoices still are.
+      await switches(false, true);
+      o = await options();
+      expect(o.orders).toEqual([]);
+      expect(o.tickets.map((x) => x.id)).toContain(ticket);
+      expect(o.invoices.map((x) => x.id)).toContain(invoice);
+      expect((await pgError(open(order.id, null, null))).message).toMatch(/Order not found/);
+      expect((await open(null, ticket, invoice)).rows[0].r.id).toBeTruthy();
+
+      // Documents hidden: no tickets or invoices offered or linked; orders are.
+      await switches(true, false);
+      o = await options();
+      expect(o.orders.map((x) => x.id)).toContain(order.id);
+      expect(o.tickets).toEqual([]);
+      expect(o.invoices).toEqual([]);
+      expect((await pgError(open(null, ticket, null))).message).toMatch(/Ticket not found/);
+      expect((await pgError(open(null, null, invoice))).message).toMatch(/Invoice not found/);
+      expect((await open(order.id, null, null)).rows[0].r.id).toBeTruthy();
+
+      // Both hidden: nothing to link, and a general question still goes through.
+      await switches(false, false);
+      expect(await options()).toEqual({ orders: [], tickets: [], invoices: [] });
+      const general = (await open(null, null, null)).rows[0].r.id;
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.portal_support_requests where id = $1 and order_id is null and ticket_id is null and invoice_id is null", [general])).rowCount).toBe(1);
     });
   });
 });

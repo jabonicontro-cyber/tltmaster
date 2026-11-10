@@ -35,7 +35,7 @@ export interface Offer {
   response_note: string;
   by_phone: boolean;
   assignment_id: string | null;
-  load: { load_number: number; load_date: string; start_time: string; end_time: string; order_number: string; site: string; planned: string };
+  load: { load_number: number; load_date: string; start_time: string; end_time: string; order_number: string; site: string; planned: string; customer_id: string | null };
 }
 
 export interface OpenLoad {
@@ -59,17 +59,17 @@ export async function loadHiredTrucks(today: string, horizonDays = 14): Promise<
     supabase.from("trucks").select("id, unit_number, truck_type, hauler_id").not("hauler_id", "is", null).eq("active", true).order("unit_number"),
     supabase.from("drivers").select("id, name, phone, user_id, hauler_id").not("hauler_id", "is", null).eq("active", true).order("name"),
     supabase.from("hauler_offers").select("id, load_id, hauler_id, truck_id, driver_id, rate_cents, rate_unit, note, status, offered_at, responded_at, response_note, by_phone, assignment_id").order("offered_at", { ascending: false }).limit(200),
-    supabase.from("order_loads").select("id, load_number, load_date, start_time, end_time, planned_quantity, unit_code, status, order:orders(order_number, site_label, site_city)").gte("load_date", today).lte("load_date", until).neq("status", "canceled").order("load_date").order("start_time").limit(300),
+    supabase.from("order_loads").select("id, load_number, load_date, start_time, end_time, planned_quantity, unit_code, status, order:orders(order_number, site_label, site_city, customer_id)").gte("load_date", today).lte("load_date", until).neq("status", "canceled").order("load_date").order("start_time").limit(300),
   ]);
   for (const r of [haulers, docs, trucks, drivers, offers, loads]) if (r.error) throw new Error(`Could not load hired trucks: ${r.error.message}`);
 
-  type LoadRow = { id: string; load_number: number; load_date: string; start_time: string; end_time: string; planned_quantity: number | null; unit_code: string | null; status: string; order: { order_number: string; site_label: string | null; site_city: string | null } | null };
+  type LoadRow = { id: string; load_number: number; load_date: string; start_time: string; end_time: string; planned_quantity: number | null; unit_code: string | null; status: string; order: { order_number: string; site_label: string | null; site_city: string | null; customer_id: string } | null };
   const loadRows = (loads.data ?? []) as unknown as LoadRow[];
   const offerRows = (offers.data ?? []) as Array<Omit<Offer, "load">>;
   // Loads of offers outside the horizon (older confirmed ones) are fetched too, for labels and pay.
   const missingIds = offerRows.map((o) => o.load_id).filter((id) => !loadRows.some((l) => l.id === id));
   if (missingIds.length) {
-    const more = await supabase.from("order_loads").select("id, load_number, load_date, start_time, end_time, planned_quantity, unit_code, status, order:orders(order_number, site_label, site_city)").in("id", missingIds);
+    const more = await supabase.from("order_loads").select("id, load_number, load_date, start_time, end_time, planned_quantity, unit_code, status, order:orders(order_number, site_label, site_city, customer_id)").in("id", missingIds);
     loadRows.push(...((more.data ?? []) as unknown as LoadRow[]));
   }
   const loadById = new Map(loadRows.map((l) => [l.id, l]));
@@ -81,6 +81,7 @@ export async function loadHiredTrucks(today: string, horizonDays = 14): Promise<
     order_number: l?.order?.order_number ?? "Order",
     site: [l?.order?.site_label, l?.order?.site_city].filter(Boolean).join(", "),
     planned: l?.planned_quantity ? `${Number(l.planned_quantity)} ${l.unit_code ?? ""}`.trim() : "",
+    customer_id: l?.order?.customer_id ?? null,
   });
 
   // Open loads: no active assignment and no open offer.

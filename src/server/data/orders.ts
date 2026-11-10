@@ -1,4 +1,5 @@
 import "server-only";
+import { CUSTOMER_COLUMNS } from "./customers";
 import { createClient } from "@/server/supabase/server";
 import { parseBaseFilter } from "@/server/data/bases";
 import { addDays } from "@/lib/dates";
@@ -92,7 +93,7 @@ export async function getOrderDetail(id: string) {
   if (!order) return null;
   const o = order as OrderRow;
   const [customer, lines, events, audit, quote, version, names, site] = await Promise.all([
-    supabase.from("customers").select("*").eq("id", o.customer_id).single(),
+    supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", o.customer_id).single(),
     supabase.from("order_lines").select("*").eq("order_id", id).order("line_no"),
     supabase.from("order_status_events").select("*").eq("order_id", id).order("occurred_at", { ascending: false }),
     supabase.from("audit_events").select("*").eq("entity_type", "order").eq("entity_id", id).order("occurred_at", { ascending: false }).limit(100),
@@ -106,7 +107,7 @@ export async function getOrderDetail(id: string) {
   }
   return {
     order: o,
-    customer: customer.data as CustomerRow,
+    customer: customer.data as unknown as CustomerRow,
     lines: (lines.data ?? []) as OrderLineRow[],
     events: (events.data ?? []) as OrderStatusEventRow[],
     // Edits and status changes recorded in the audit log (status changes also appear in events).

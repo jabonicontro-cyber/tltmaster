@@ -46,6 +46,8 @@ export interface ReadinessCounts {
   tickets_live: number;
   tickets_pending: number;
   exceptions_count: number;
+  /** A typed price waits for someone with pricing or billing rights (M1, 20261120016100). */
+  price_check_pending?: boolean;
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -55,7 +57,7 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const NEXT_STEP: Record<Readiness, (o: ReadinessCounts) => string> = {
   missing_documentation: (o) => (o.loads_missing > 0 ? "Enter the missing tickets" : "Enter the tickets"),
   needs_review: () => "Review the tickets",
-  blocked: () => "Resolve the exceptions",
+  blocked: (o) => (o.price_check_pending ? "Confirm the typed price" : "Resolve the exceptions"),
   in_progress: (o) => (o.fulfillment_gap === "quantity_short" ? "Plan the rest, or complete the order" : "Finish the loads, or complete the order"),
   ready: () => "Hand off for billing",
   handed_off: () => "Enter the invoice in accounting",
@@ -84,6 +86,12 @@ function explain(readiness: Readiness, o: ReadinessCounts): { why: string; actio
     case "needs_review":
       return { why: `${plural(o.tickets_pending, "ticket")} not accepted yet.`, action: "Open each ticket and accept, correct or void it." };
     case "blocked":
+      if (o.price_check_pending) {
+        return {
+          why: "A price typed without a price-list rate is to be checked.",
+          action: "Someone who sets prices or manages billing confirms the price on the order; until then it is not handed off or invoiced.",
+        };
+      }
       return { why: `${plural(o.exceptions_count, "exception")} not acknowledged.`, action: "Check the differences below and acknowledge them with a reason, or correct the tickets." };
     case "in_progress":
       return {

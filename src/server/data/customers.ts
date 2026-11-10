@@ -58,17 +58,51 @@ export async function listCustomers(filters: CustomerFilters) {
   return { rows: ranked, total: res.count ?? 0, crm };
 }
 
+/**
+ * Every customer column people may read (financial review L1, 20261120016200): never select("*"), which the database
+ * refuses since the credit limit and detention rate are billing data. Those come from customerMoneyTerms (billing.view).
+ */
+export const CUSTOMER_COLUMNS =
+  "id, customer_number, name, customer_type, email, phone, billing_line1, billing_line2, billing_city, billing_state, billing_postal_code, " +
+  "po_required, po_instructions, payment_terms, price_list_id, tax_exempt, notes, active, is_sample, created_at, updated_at, " +
+  "relationship, account_owner_id, tags, is_priority, credit_hold, credit_hold_reason, credit_hold_at, credit_hold_by, " +
+  "detention_free_minutes, is_broker, mc_number";
+
 export async function getCustomer(id: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("customers").select("*").eq("id", id).maybeSingle();
+  const { data, error } = await supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`Could not load customer: ${error.message}`);
-  return data as CustomerRow | null;
+  return data as unknown as CustomerRow | null;
+}
+
+export interface CustomerMoneyTerms {
+  creditLimitCents: number | null;
+  detentionFreeMinutes: number | null;
+  detentionRateCents: number | null;
+}
+
+/**
+ * A customer's credit limit and detention charge, for people with billing.view only (public.customer_money_terms,
+ * 20261120016200). Null for everyone else, and when the update is not installed.
+ */
+export async function customerMoneyTerms(customerId: string): Promise<CustomerMoneyTerms | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("customer_money_terms", { p_customers: [customerId] });
+  if (error) return null;
+  const row = ((data ?? []) as Array<{ customer_id: string; credit_limit_cents: number | string | null; detention_free_minutes: number | null; detention_rate_cents: number | null }>)
+    .find((r) => r.customer_id === customerId);
+  if (!row) return null;
+  return {
+    creditLimitCents: row.credit_limit_cents === null ? null : Number(row.credit_limit_cents),
+    detentionFreeMinutes: row.detention_free_minutes,
+    detentionRateCents: row.detention_rate_cents,
+  };
 }
 
 export async function getCustomerDetail(id: string) {
   const supabase = await createClient();
   const [customer, contacts, sites, quotes] = await Promise.all([
-    supabase.from("customers").select("*, price_lists(name)").eq("id", id).maybeSingle(),
+    supabase.from("customers").select(`${CUSTOMER_COLUMNS}, price_lists(name)`).eq("id", id).maybeSingle(),
     supabase.from("customer_contacts").select("*").eq("customer_id", id).order("active", { ascending: false }).order("is_primary", { ascending: false }).order("name"),
     supabase.from("customer_sites").select("*").eq("customer_id", id).order("active", { ascending: false }).order("label"),
     supabase.from("quote_list").select("*").eq("customer_id", id).order("created_at", { ascending: false }).limit(50),
@@ -78,7 +112,7 @@ export async function getCustomerDetail(id: string) {
   }
   if (!customer.data) return null;
   return {
-    customer: customer.data as CustomerRow & { price_lists: { name: string } | null },
+    customer: customer.data as unknown as CustomerRow & { price_lists: { name: string } | null },
     contacts: (contacts.data ?? []) as ContactRow[],
     sites: (sites.data ?? []) as SiteRow[],
     // Users without quotes.view simply get no rows (RLS).

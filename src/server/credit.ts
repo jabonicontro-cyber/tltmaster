@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/server/supabase/server";
 
 // Credit holds (B128; owner 2026-11-02: warn, and a reason to proceed). Read with the person's own session; amounts come
@@ -49,6 +50,25 @@ export async function recordCreditOverride(customerId: string, context: "order" 
   const { error } = await supabase.rpc("record_credit_override", { p_customer: customerId, p_context: context, p_entity: entityId, p_reason: reason.trim() });
   if (error) console.warn("Credit override not recorded", { code: error.code });
   return !error;
+}
+
+/**
+ * Calls a dispatch function with the credit-hold reason the database asks for and records itself since 20261120016300
+ * (financial review L2): assign_load and assign_load_off_shift take p_credit_reason, hauler_offer_confirm p_reason.
+ * Before that update the functions have no such argument (PGRST202): the call is made without it and `recorded` is
+ * false, so the caller records the reason with recordCreditOverride as before.
+ */
+export async function rpcWithCreditReason(
+  supabase: SupabaseClient,
+  fn: "assign_load" | "assign_load_off_shift" | "hauler_offer_confirm",
+  args: Record<string, unknown>,
+  reason: string | undefined,
+): Promise<{ data: unknown; error: { message: string; code?: string; hint?: string } | null; recorded: boolean }> {
+  const key = fn === "hauler_offer_confirm" ? "p_reason" : "p_credit_reason";
+  const first = await supabase.rpc(fn, { ...args, [key]: reason?.trim() || null });
+  if (first.error?.code !== "PGRST202") return { data: first.data, error: first.error, recorded: true };
+  const old = await supabase.rpc(fn, args);
+  return { data: old.data, error: old.error, recorded: false };
 }
 
 /** The customer of an order (null when it cannot be read). */

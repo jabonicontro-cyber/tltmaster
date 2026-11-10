@@ -87,6 +87,11 @@ case by writing within 14 days (after that they start a new one). Internal notes
 portal or its functions. Each reply sends a short email notice with a link to the portal (no message content), to the
 customer's active portal logins; demo companies never send, and a server without email set up only previews.
 
+Only what the portal shows can be linked (SEC3, owner 2026-11-09, migration 20261120016000): the picker
+(`portal_support_link_options`) offers orders only while the **Orders** switch is on, tickets only while **Documents**
+is on, and invoices only while the portal shows invoices (Documents on and invoices issued in Taviron); opening a case
+(`portal_support_open`) refuses a link to anything hidden. A general question, with nothing linked, always works.
+
 ## Invoices, statement and Today (UX5, 2026-11-04)
 
 When the company issues its invoices in Taviron (Settings → Invoicing) and the portal's Documents switch is on, the

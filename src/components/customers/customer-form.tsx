@@ -56,9 +56,14 @@ interface Props<T> {
   withContact?: boolean;
   compact?: boolean;
   onSuccess?: (data: T, message?: string) => void;
+  /**
+   * Money fields this person may set (financial review L4): price list and tax exemption with pricing.edit, payment
+   * terms with billing.manage. Others see them read-only; the server keeps the saved value. Default: both.
+   */
+  money?: { pricing: boolean; billing: boolean };
 }
 
-export function CustomerForm<T>({ initial, priceLists, action, submitLabel, cancelHref, onCancel, withContact, compact, onSuccess }: Props<T>) {
+export function CustomerForm<T>({ initial, priceLists, action, submitLabel, cancelHref, onCancel, withContact, compact, onSuccess, money = { pricing: true, billing: true } }: Props<T>) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(action, { onSuccess: (r) => onSuccess?.(r.data, r.message) });
   const f = (name: keyof CustomerFormValues | string) => ({ id: name, name, ...describedBy(name, fieldError(name)) });
 
@@ -140,16 +145,16 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
       {!compact && (
         <fieldset className="grid grid-cols-1 gap-4 sm:grid-cols-6">
           <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Billing and pricing</legend>
-          <Field label="Payment terms" htmlFor="payment_terms" error={fieldError("payment_terms")} className="sm:col-span-2" hint="Informational: invoices are issued in your accounting system.">
-            <Input {...f("payment_terms")} defaultValue={initial.payment_terms} list="payment-terms" />
+          <Field label="Payment terms" htmlFor="payment_terms" error={fieldError("payment_terms")} className="sm:col-span-2" hint={money.billing ? "Informational: invoices are issued in your accounting system." : "Set by billing."}>
+            <Input {...f("payment_terms")} defaultValue={initial.payment_terms} list="payment-terms" disabled={!money.billing} />
             <datalist id="payment-terms">
               {PAYMENT_TERMS_SUGGESTIONS.map((t) => (
                 <option key={t} value={t} />
               ))}
             </datalist>
           </Field>
-          <Field label="Customer price list" htmlFor="price_list_id" error={fieldError("price_list_id")} className="sm:col-span-4" hint="Rates on this list are used before standard rates when quoting.">
-            <Select {...f("price_list_id")} defaultValue={initial.price_list_id ?? ""}>
+          <Field label="Customer price list" htmlFor="price_list_id" error={fieldError("price_list_id")} className="sm:col-span-4" hint={money.pricing ? "Rates on this list are used before standard rates when quoting." : "Set by someone who can edit prices."}>
+            <Select {...f("price_list_id")} defaultValue={initial.price_list_id ?? ""} disabled={!money.pricing}>
               <option value="">Standard rates only</option>
               {priceLists.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -160,7 +165,7 @@ export function CustomerForm<T>({ initial, priceLists, action, submitLabel, canc
           </Field>
           <div className="flex flex-col gap-3 sm:col-span-6 sm:flex-row sm:gap-8">
             <Checkbox name="po_required" defaultChecked={initial.po_required} label="Purchase order number required" />
-            <Checkbox name="tax_exempt" defaultChecked={initial.tax_exempt} label="Tax exempt (quotes will not charge tax)" />
+            <Checkbox name="tax_exempt" defaultChecked={initial.tax_exempt} disabled={!money.pricing} label={money.pricing ? "Tax exempt (quotes will not charge tax)" : "Tax exempt (set by someone who can edit prices)"} />
           </div>
           <Field label="PO instructions" htmlFor="po_instructions" error={fieldError("po_instructions")} className="sm:col-span-6">
             <Input {...f("po_instructions")} defaultValue={initial.po_instructions} placeholder="e.g. PO number on every delivery document and invoice" />

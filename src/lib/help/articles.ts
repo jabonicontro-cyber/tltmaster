@@ -628,7 +628,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
     ],
     prerequisites: [
-      "Creating a direct order needs the permission to create orders (owners, office staff and dispatchers by default). With only that permission you can change and confirm your own new order while it is a draft; changing other orders, canceling, and converting quotes need the permission to change orders.",
+      "Creating a direct order needs the permission to create orders (owners, office staff and dispatchers by default). With only that permission you can change, confirm or cancel your own new order while it is a draft, and flag it as urgent or change its stops afterwards too; changing other orders, canceling a confirmed order, and converting quotes need the permission to change orders. A customer put on credit hold after you saved the draft stops you from confirming it: someone who can change orders decides. With only that permission, sales tax follows the customer and the company setting, and a price you type on a line that has no price-list rate shows as “Price to be checked”: the order runs as usual and is billed once someone who sets prices or manages billing confirms the price.",
     ],
     troubleshooting: [
       {
@@ -691,7 +691,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
         steps: ["Under **Delivery and schedule**, change **Dispatch base** and save."],
       },
     ],
-    prerequisites: ["Scheduling needs the scheduling permission; status changes and details need the permission to edit orders; urgency actions need dispatch or order edit access."],
+    prerequisites: ["Scheduling needs the scheduling permission; status changes and details need the permission to edit orders; urgency actions need dispatch or order edit access. With the permission to create orders you can also flag your own order as urgent, change its stops, and confirm or cancel it while it is a draft."],
     troubleshooting: [
       {
         problem: "“Add the delivery location to order … before scheduling it: a job-site address, or a site name such as “Customer pickup at the yard”.”",

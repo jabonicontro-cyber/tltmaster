@@ -19,6 +19,7 @@ import { requirePagePermission } from "@/server/auth";
 import { loadHiredTrucks } from "@/server/data/hired-trucks";
 import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
+import { creditHolds, holdSummary } from "@/server/credit";
 import { addDays } from "@/lib/dates";
 import { addHaulerDriver, addHaulerTruck, confirmOffer, createSettlement, recordAnswer, recordHaulerDocument, saveHauler, sendOffer, setHaulerCommission, withdrawOffer } from "./actions";
 
@@ -77,6 +78,8 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
   const settlementsRes = seePay ? await (await createClient()).from("hauler_settlements").select("id, number, hauler_id, period_start, period_end, status, net_cents").order("number", { ascending: false }).limit(30) : null;
   const settlements = settlementsRes && !settlementsRes.error ? (settlementsRes.data as Array<{ id: string; number: number; hauler_id: string; period_start: string; period_end: string; status: keyof typeof SETTLEMENT_STATUS; net_cents: number }>) : null;
   const commissions = settlements ? new Map(((await (await createClient()).from("haulers").select("id, commission_bp")).data as Array<{ id: string; commission_bp: number }> | null ?? []).map((h) => [h.id, h.commission_bp])) : new Map<string, number>();
+  // Credit holds (B128, financial review L2): confirming an accepted offer for a customer on hold asks why (recorded).
+  const holds = await creditHolds([...new Set(open.filter((o) => o.status === "accepted").map((o) => o.load.customer_id).filter((c): c is string => Boolean(c)))]);
   const when = (o: (typeof data.offers)[number]) => `${formatDate(o.load.load_date)} ${formatTime(o.load.start_time)}`;
 
   return (
@@ -102,9 +105,20 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
                   <Badge tone={OFFER_STATUS[o.status].tone}>{OFFER_STATUS[o.status].label}</Badge>
                   {dispatchEdit && (
                     <div className="flex flex-wrap gap-2">
-                      {o.status === "accepted" && (
-                        <form action={confirmOffer}><input type="hidden" name="offer_id" value={o.id} /><SubmitButton size="sm">Confirm and assign</SubmitButton></form>
-                      )}
+                      {o.status === "accepted" && (() => {
+                        const hold = o.load.customer_id ? holds.get(o.load.customer_id) : undefined;
+                        return hold ? (
+                          <form action={confirmOffer} className="flex flex-wrap items-end gap-2">
+                            <input type="hidden" name="offer_id" value={o.id} />
+                            <Field label={`${hold.name} is ${holdSummary(hold).replace(/\.+$/, "")}. Why go ahead? (recorded)`} htmlFor={`credit-${o.id}`} required className="min-w-64 flex-1">
+                              <Input id={`credit-${o.id}`} name="credit_reason" required minLength={3} maxLength={500} placeholder="e.g. Billing approved this delivery" />
+                            </Field>
+                            <SubmitButton size="sm">Confirm and assign</SubmitButton>
+                          </form>
+                        ) : (
+                          <form action={confirmOffer}><input type="hidden" name="offer_id" value={o.id} /><SubmitButton size="sm">Confirm and assign</SubmitButton></form>
+                        );
+                      })()}
                       {o.status === "offered" && (
                         <form action={recordAnswer} className="flex gap-1">
                           <input type="hidden" name="offer_id" value={o.id} />

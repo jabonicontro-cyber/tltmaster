@@ -19,6 +19,8 @@ import type { UrgencyEventRow, UrgencyRow } from "@/server/data/urgency";
 interface Props {
   orderId: string;
   orderClosed: boolean;
+  /** Flag it or change the open flag's reason and deadline: orders.edit, or orders.create on one's own direct order (MD1). */
+  canFlag: boolean;
   open: UrgencyRow | null;
   events: UrgencyEventRow[];
   permissions: Permission[];
@@ -32,7 +34,7 @@ interface Props {
 const stateTone = (s: UrgencyState) => (s === "awaiting_acknowledgement" || s === "blocked" ? "red" : s === "assigned" ? "green" : "amber");
 
 /** The order's urgent flag: what, why, by when, its state, who acts next, and the allowed next steps. */
-export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, names, timezone, today, now }: Props) {
+export function UrgencyPanel({ orderId, orderClosed, canFlag, open, events, permissions, names, timezone, today, now }: Props) {
   const router = useRouter();
   const can = (p: Permission) => permissions.includes(p);
   const [flagOpen, setFlagOpen] = useState(false);
@@ -45,7 +47,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
   const actions = open ? urgencyActions(open.state, can) : [];
   const overdue = open?.needed_by ? new Date(open.needed_by).getTime() < new Date(now).getTime() : false;
 
-  if (!open && (orderClosed || !can("orders.edit")) && events.length === 0) return null;
+  if (!open && (orderClosed || !canFlag) && events.length === 0) return null;
 
   return (
     <Card urgent={Boolean(open)}>
@@ -53,7 +55,7 @@ export function UrgencyPanel({ orderId, orderClosed, open, events, permissions, 
         title={open ? "Urgent order" : "Urgency"}
         description={open ? "Visible to dispatch on the board and in the Command Center until resolved." : "Flag this order when the customer needs it sooner than planned. Dispatch is asked to acknowledge; nothing is assigned automatically."}
         actions={
-          can("orders.edit") && !orderClosed ? (
+          canFlag && !orderClosed ? (
             <Button
               size="sm"
               variant="secondary"

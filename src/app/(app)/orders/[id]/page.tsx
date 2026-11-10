@@ -13,7 +13,9 @@ import { formatBp, formatCents } from "@/lib/money";
 import { buildOrderTimeline } from "@/lib/orders/history";
 import { formatScheduleDates, formatTime, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { canEditOrderLines, ORDER_STATUS_LABELS } from "@/lib/orders/status";
-import { can } from "@/lib/permissions";
+import { can, canChangeOrderUrgencyAndStops, canConfirmPrices, isOwnDirectOrder } from "@/lib/permissions";
+import { correctableLines, priceCheckPending, typedPriceLines } from "@/lib/orders/price-check";
+import { PriceCheckNotice } from "@/components/orders/price-check";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderDispatch } from "@/server/data/dispatch";
 import { liveTicketsForLoads, orderLineTickets } from "@/server/data/tickets";
@@ -91,6 +93,11 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
     : null;
   const timeline = buildOrderTimeline(events, audit);
   const linesEditable = canEditOrderLines(order.status, order.source_quote_id);
+  // orders.create alone (owner 2026-11-09, MD1): the person's own direct order, which they finish, confirm or cancel
+  // while it is a draft, and flag urgent or give stops at any time. Anyone else's order needs orders.edit.
+  const ownOrder = isOwnDirectOrder(access, order);
+  const urgencyAndStops = canChangeOrderUrgencyAndStops(access, order);
+  const orderOpen = order.status !== "completed" && order.status !== "canceled";
   const late = isPastRequested(order, today);
   const scheduled = formatScheduleDates(order.scheduled_start, order.scheduled_end);
   const progress = orderProgress({
@@ -141,8 +148,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             permissions={{
               edit: can(access, "orders.edit"),
               schedule: can(access, "orders.schedule"),
-              // orders.create alone: the person's own new direct order, which they finish and confirm themselves.
-              ownNewOrder: can(access, "orders.create") && order.created_by === access.userId && !order.source_quote_id,
+              ownNewOrder: ownOrder,
             }}
             completionCheck={completionCheck}
           />
@@ -153,6 +159,25 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         {(order.status === "on_hold" || order.status === "canceled") && order.status_note && (
           <Notice tone="warning" title={order.status === "canceled" ? "Canceled" : "On hold"}>
             {order.status_note}
+          </Notice>
+        )}
+        {priceCheckPending(order) && order.status !== "canceled" && (
+          <PriceCheckNotice
+            check={{
+              orderId: order.id,
+              orderNumber: order.order_number,
+              typedBy: who(order.price_check_requested_by ?? null),
+              typedAt: formatDateTime(order.price_check_requested_at!, timezone),
+              lines: typedPriceLines(lines),
+              correctable: correctableLines(lines),
+            }}
+            canConfirm={canConfirmPrices(access)}
+            canCorrect={can(access, "billing.manage")}
+          />
+        )}
+        {order.price_checked_at && (
+          <Notice title="Price checked">
+            {who(order.price_checked_by ?? null)} confirmed the typed price on {formatDateTime(order.price_checked_at, timezone)}{order.price_check_note ? `: ${order.price_check_note}` : "."}
           </Notice>
         )}
         {order.status === "draft" && (
@@ -184,7 +209,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         {urgency && (
           <UrgencyPanel
             orderId={order.id}
-            orderClosed={order.status === "completed" || order.status === "canceled"}
+            orderClosed={!orderOpen}
+            canFlag={urgencyAndStops}
             open={urgency.open}
             events={urgency.events}
             permissions={access.permissions}
@@ -233,7 +259,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
           {showStops && (
             <Card>
               <CardHeader title="Stops" description={stops.stops.length ? `${stopsSummary(stops.stops)}, in the order the truck makes them.` : "Pickups and deliveries, with appointment times and reference numbers."} />
-              <OrderStops orderId={id} stops={stops.stops} canEdit={can(access, "orders.edit") && !["completed", "canceled"].includes(order.status)} />
+              <OrderStops orderId={id} stops={stops.stops} canEdit={urgencyAndStops && orderOpen} />
             </Card>
           )}
 

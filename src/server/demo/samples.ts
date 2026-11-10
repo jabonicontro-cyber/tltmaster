@@ -4,7 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
 import { calculatePeriod, loadActiveRules } from "@/server/payroll/calculate";
 import { triageRules } from "@/lib/maintenance-triage";
-import { demoAssign } from "./assign";
+import { demoAssign, demoConfirmOffer } from "./assign";
 
 // Feature sample data shared by every demo (presenter seed, prospect seed and Refresh demo data), so each
 // released feature is demonstrable in every demo mode and existing demos receive it without being recreated
@@ -109,6 +109,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("billing: ready and handed off", await billing(db, today));
   // An order delivered about six weeks ago and handed off, so the invoice sample has an honestly past-due invoice.
   note("past-due order to invoice", await pastDueOrder(db, today));
+  // Price to be checked (financial review M1, owner 2026-11-10): a phoned-in order whose typed price the office checks
+  // before billing, so the order and billing pages show the check and its Confirm price action. Once per demo.
+  note("price to be checked", await priceCheckSample(db, today));
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
@@ -213,12 +216,21 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
 const DEMO_DETENTION = { freeMinutes: 30, rateCents: 7500 };
 
 async function detentionSample(db: Db): Promise<number> {
-  const probe = await db.from("customers").select("id").not("detention_rate_cents", "is", null).limit(1);
-  if (probe.error) return 0; // before 20261120008200
+  // The detention rate is billing data (financial review L1, 20261120016200): read through customer_money_terms (the
+  // demo owner has billing.view); before that update straight from the table, as before.
+  let hasDetention: boolean;
+  const terms = await db.rpc("customer_money_terms", { p_customers: null });
+  if (!terms.error) {
+    hasDetention = ((terms.data ?? []) as Array<{ detention_rate_cents: number | null }>).some((t) => t.detention_rate_cents !== null);
+  } else {
+    const probe = await db.from("customers").select("id").not("detention_rate_cents", "is", null).limit(1);
+    if (probe.error) return 0; // before 20261120008200
+    hasDetention = (probe.data ?? []).length > 0;
+  }
   let n = 0;
   const extras = await db.from("charge_items").update({ ticket_required: false }).in("code", ["DETENTION", "DET-HR", "LUMPER", "TONU"]).eq("ticket_required", true).select("id");
   n += extras.data?.length ?? 0;
-  if ((probe.data ?? []).length) return n;
+  if (hasDetention) return n;
   const waits = ((await db.from("load_stop_times").select("order_id, arrived_at, departed_at").not("arrived_at", "is", null).not("departed_at", "is", null).limit(500)).data ?? []) as Array<{ order_id: string; arrived_at: string; departed_at: string }>;
   const longest = waits
     .map((w) => ({ order: w.order_id, minutes: (Date.parse(w.departed_at) - Date.parse(w.arrived_at)) / 60000 }))
@@ -551,6 +563,38 @@ async function pastDueOrder(db: Db, today: string): Promise<number> {
   return o.delivered + 1;
 }
 
+/** The project name of the price-check sample, found again by it so Refresh never adds a second one. */
+const PRICE_CHECK_PROJECT = "Rush job phoned in (sample)";
+
+/**
+ * A direct order with a typed hauling price (a line without any price-list rate), confirmed and scheduled for tomorrow,
+ * marked as typed by the demo's dispatcher through public.demo_price_check_sample (the same flag a dispatcher's own save
+ * sets). The office (or owner) confirms it on the order or billing page. Nothing before 20261120016100 is installed.
+ */
+async function priceCheckSample(db: Db, today: string): Promise<number> {
+  const probe = await db.from("orders").select("id").not("price_check_requested_at", "is", null).limit(1);
+  if (probe.error || (probe.data ?? []).length) return 0;
+  const done = await db.from("orders").select("id").eq("project_name", PRICE_CHECK_PROJECT).limit(1);
+  if (done.error || (done.data ?? []).length) return 0;
+  const tmpl = await billingTemplate(db);
+  if (!tmpl) return 0;
+  const { src } = tmpl;
+  const day = addDays(today, 1);
+  const o = (await must("price-check order", db.rpc("save_order_draft", { p_payload: {
+    customer_id: tmpl.customer_id, order_date: today, requested_date: day, project_name: PRICE_CHECK_PROJECT,
+    job_instructions: "Demo: the customer phoned this in; dispatch typed the rush price.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+    lines: [
+      { kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "24", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable },
+      { kind: "hauling", calc_method: "per_unit", description: "Rush haul, same day", unit_code: src.unit_code, quantity: "24", unit_rate_cents: 650, taxable: false },
+    ],
+  } }))) as { order_id: string };
+  await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
+  await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
+  await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
+  const flagged = await db.rpc("demo_price_check_sample", { p_order_id: o.order_id });
+  return flagged.error ? 1 : 1 + Number(flagged.data ?? 0);
+}
+
 /** The weekday on or before a date. */
 function weekdayOnOrBefore(day: string): string {
   let d = day;
@@ -729,7 +773,7 @@ async function previousCrew(db: Db, today: string): Promise<number> {
     let staffedNow = false;
     for (const t of trucks.filter((t) => !busy.has(t.id)).slice(0, 6)) {
       for (const d of drivers.filter((d) => !busy.has(d.id)).slice(0, 6)) {
-        const r = await db.rpc("assign_load", { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: null, p_driver_id: d.id, p_note: "Demo sample", p_replace_assignment_id: null });
+        const r = await demoAssign(db, { p_load_id: loadId, p_truck_id: t.id, p_trailer_id: null, p_driver_id: d.id, p_note: "Demo sample", p_replace_assignment_id: null });
         if (!r.error) { staffedNow = true; break; }
       }
       if (staffedNow) break;
@@ -2152,7 +2196,7 @@ async function hiredTrucks(db: Db, today: string, companyId: string): Promise<nu
     if (offers === 2) {
       // The second: accepted by phone and confirmed by dispatch, so the board and hauler pay show a hired load.
       const answered = await db.rpc("hauler_offer_respond", { p_offer: sent.data, p_accept: true, p_note: "Answered by phone (demo)" });
-      if (!answered.error) await db.rpc("hauler_offer_confirm", { p_offer: sent.data });
+      if (!answered.error) await demoConfirmOffer(db, sent.data);
     }
   }
   return added + offers;
@@ -2205,7 +2249,7 @@ async function haulerSettlement(db: Db, today: string): Promise<number> {
     if (offer.error) continue;
     const answered = await db.rpc("hauler_offer_respond", { p_offer: offer.data, p_accept: true, p_note: "Answered by phone (demo)" });
     if (answered.error) continue;
-    const confirmed = await db.rpc("hauler_offer_confirm", { p_offer: offer.data });
+    const confirmed = await demoConfirmOffer(db, offer.data);
     if (confirmed.error) continue;
     const ticket = ((await must("hauler ticket", db.rpc("submit_delivery_ticket", { p_payload: { load_id: loadId, order_line_id: lineId, delivered_date: day, delivered_time: end, quantity: qty, unit_code: unit, external_reference: `DEMO-H-${o.order_number}-${k + 1}` } }))) as { ticket_id: string }).ticket_id;
     await must("accept", db.rpc("review_delivery_ticket", { p_ticket_id: ticket, p_action: "accept", p_note: "" }));
