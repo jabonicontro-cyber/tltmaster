@@ -32,7 +32,8 @@ const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(
 function token(sub: string) {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const now = Math.floor(Date.now() / 1000);
-  const head = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub, role: "authenticated", aud: "authenticated", iat: now, exp: now + 600 })}`;
+  // Verified two-step sessions (aal2), as tests/db/helpers.ts: owners need it since 20261120018000 (money access).
+  const head = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub, role: "authenticated", aud: "authenticated", aal: "aal2", iat: now, exp: now + 600 })}`;
   return `${head}.${createHmac("sha256", env.DEV_JWT_SECRET).update(head).digest("base64url")}`;
 }
 const as = (sub: string | null): SupabaseClient =>
@@ -71,7 +72,7 @@ async function setup() {
     const asUser = async (id: string) => {
       await c.query("reset role");
       await c.query("set local role authenticated");
-      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: id, role: "authenticated" })]);
+      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: id, role: "authenticated", aal: "aal2" })]);
     };
     const ins = async (table: string, row: Record<string, unknown>) => {
       const cols = Object.keys(row);

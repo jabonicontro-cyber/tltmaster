@@ -33,9 +33,11 @@ const TZ = "America/Chicago";
 function token(sub: string) {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const now = Math.floor(Date.now() / 1000);
-  const head = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub, role: "authenticated", aud: "authenticated", iat: now, exp: now + 1800 })}`;
+  const head = `${b64({ alg: "HS256", typ: "JWT" })}.${b64({ sub, role: "authenticated", aud: "authenticated", aal: "aal2", iat: now, exp: now + 1800 })}`;
   return `${head}.${createHmac("sha256", env.DEV_JWT_SECRET).update(head).digest("base64url")}`;
 }
+// A verified two-step session (aal2), as tests/db/helpers.ts acts: real-company owners need it since 20261120018000
+// (money access); the rule itself is tested in tests/db/money-two-step.test.ts.
 const as = (sub: string): SupabaseClient =>
   createClient(URL_, env.DEV_ANON_KEY, { auth: { persistSession: false, autoRefreshToken: false }, global: { headers: { Authorization: `Bearer ${token(sub)}` } } });
 

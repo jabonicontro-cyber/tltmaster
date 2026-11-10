@@ -268,7 +268,7 @@ describe("face or fingerprint sign-in (passkeys): company checks and audit", () 
 
 // SEC4 (owner 2026-11-09, migration 20261120017100): two-step verification will be required for anyone with money
 // access, so QR codes and face or fingerprint sign-in are only for driver sign-ins that hold no money permission.
-const MONEY_SAMPLES = ["billing.view", "billing.manage", "pricing.edit", "pricing.override", "payroll.manage", "employees.compensation", "accounting.view", "maintenance.costs", "audit.view"];
+const MONEY_SAMPLES = ["billing.view", "billing.manage", "pricing.edit", "pricing.override", "payroll.manage", "employees.compensation", "accounting.view", "maintenance.costs", "audit.view", "settings.manage", "users.manage"];
 
 describe("money permissions (SEC4): no QR code or face or fingerprint sign-in", () => {
   it("the database and the app agree on which permissions are about money", async () => {
