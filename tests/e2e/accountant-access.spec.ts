@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { signIn, unique } from "./helpers";
+import { setUpAuthenticator, signIn, unique } from "./helpers";
 
 // Accountant view (B134), end to end on the local stack: an owner gives an outside accountant a read-only sign-in
 // until a date; the accountant sets a password, lands on the accountant view, sees only the finance pages and cannot
@@ -56,6 +56,10 @@ test("an owner gives an accountant read-only access until a date, then ends it",
     await acct.getByLabel("New password").fill("Ledger-Season-2027!");
     await acct.getByLabel("Type it again").fill("Ledger-Season-2027!");
     await acct.getByRole("button", { name: "Save My Password" }).click();
+    // An accountant sees invoices and payments: two-step verification first (20261120018000).
+    await acct.waitForURL(/\/mfa/);
+    await expect(acct.getByText("Your access to invoices, payments or pay requires two-step verification.")).toBeVisible();
+    await setUpAuthenticator(acct);
     await acct.waitForURL(/\/accountant/);
     await expect(acct.getByRole("heading", { name: "Accountant view" })).toBeVisible();
     await expect(acct.getByText(/Your access ends /)).toBeVisible();

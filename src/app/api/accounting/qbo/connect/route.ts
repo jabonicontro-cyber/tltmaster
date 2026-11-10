@@ -1,11 +1,13 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { QBO_SUPPORT_VISIT_MESSAGE } from "@/lib/accounting/qbo";
 import { can } from "@/lib/permissions";
 import { authorizeUrl, qboConfigured } from "@/server/accounting/qbo";
 import { getAccess } from "@/server/auth";
 import { env } from "@/server/env";
 
-// Start connecting QuickBooks Online (master plan B82): billing.manage only, never in a demo company (demos simulate).
+// Start connecting QuickBooks Online (master plan B82): billing.manage only, never in a demo company (demos simulate)
+// and never during a Taviron support visit (financial review L3; the database refuses too, 20261120018100).
 // The state value is kept in a short-lived, HTTP-only cookie and checked on the way back.
 
 const STATE_COOKIE = "taviron-qbo-state";
@@ -14,6 +16,7 @@ export async function GET(req: NextRequest) {
   const access = await getAccess();
   const back = (msg: string) => NextResponse.redirect(`${env().APP_BASE_URL}/billing/setup?error=${encodeURIComponent(msg)}`);
   if (!access?.companyId || !can(access, "billing.manage")) return back("You need billing management to connect QuickBooks.");
+  if (access.support) return back(QBO_SUPPORT_VISIT_MESSAGE);
   if (access.isDemo) return back("Demo companies do not connect to QuickBooks; sending is simulated.");
   if (!qboConfigured()) return back("QuickBooks is not set up for Taviron yet (the app keys are missing).");
   // Which business this QuickBooks belongs to (none = the whole company). Checked again when the connection is saved.

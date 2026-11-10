@@ -123,6 +123,20 @@ export async function generateRecoveryCodes(): Promise<ActionResult<{ codes: str
 }
 
 /**
+ * "I saved my recovery codes" (20261120018000): recorded by the database for this person, for the newest set. Required
+ * before anything opens for someone with money access (owner 2026-11-10); recorded for everyone who confirms.
+ */
+export async function confirmRecoveryCodes(): Promise<ActionResult> {
+  const { supabase } = await signedIn();
+  const { error } = await supabase.rpc("mfa_recovery_confirm");
+  // Before 20261120018000 nothing records it and nothing waits for it.
+  if (error && ["PGRST202", "42883"].includes(error.code ?? "")) return ok(undefined);
+  if (error) return fail(error.code === "42501" ? "Verify with your authenticator app first." : error.code === "P0001" ? "Create recovery codes first." : "Could not save that. Try again.");
+  revalidatePath("/", "layout");
+  return ok(undefined, "Recovery codes saved.");
+}
+
+/**
  * Lost the phone: a one-time recovery code (with the password already entered at sign-in) removes the authenticator
  * so a new one can be set up right away. The code is checked and used up by the database; factors are removed with
  * the Auth admin API. A password reset alone never does this.

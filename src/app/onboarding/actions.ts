@@ -9,8 +9,19 @@ import { timezoneSchema } from "@/lib/schemas/settings";
 import { getAccess } from "@/server/auth";
 import { accessCodeHash, clientIp, rateKey } from "@/server/early-access";
 import { dbErrorMessage } from "@/server/errors";
+import { mfaBlocks } from "@/server/mfa";
 import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
+
+/**
+ * Into the new company. A new owner holds money access, so two-step verification comes first (20261120018000): the
+ * setup page, then the welcome.
+ */
+async function toWorkspace(): Promise<never> {
+  const welcome = "/command-center?welcome=1";
+  if (await mfaBlocks()) redirect(`/mfa?next=${encodeURIComponent(welcome)}`);
+  redirect(welcome);
+}
 
 const nameSchema = z.string().trim().min(2, "Enter the company name (2 to 120 characters).").max(120);
 
@@ -24,7 +35,7 @@ export async function completeOnboarding(formData: FormData): Promise<ActionResu
   const { error } = await supabase.rpc("complete_company_onboarding", { p_company_name: name.data, p_timezone: tz.data });
   if (error) return { ok: false, error: dbErrorMessage(error) };
   revalidatePath("/", "layout");
-  redirect("/command-center?welcome=1");
+  return toWorkspace();
 }
 
 const createSchema = z.object({
@@ -60,5 +71,5 @@ export async function createAnotherCompany(formData: FormData): Promise<ActionRe
   const r = data as { ok: boolean; reason?: string };
   if (!r.ok) return { ok: false, error: ACCESS_CODE_ERRORS[r.reason ?? ""] ?? ACCESS_CODE_ERRORS.unknown };
   revalidatePath("/", "layout");
-  redirect("/command-center?welcome=1");
+  return toWorkspace();
 }

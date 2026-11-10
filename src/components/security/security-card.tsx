@@ -9,17 +9,20 @@ import { Button, buttonClasses } from "@/components/ui/button";
 import { CardHeader } from "@/components/ui/card";
 import { Field, FormError, Input } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
-import { generateRecoveryCodes, removeAuthenticator } from "@/app/mfa/actions";
+import { confirmRecoveryCodes, generateRecoveryCodes, removeAuthenticator } from "@/app/mfa/actions";
 
 /** My profile → Security: two-step verification status, recovery codes, removal (when no policy requires it). */
-export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, installed, events }: {
+export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, installed, events, codesRequired = false }: {
   enrolled: boolean; aal2: boolean; required: boolean; reason: string | null; recoveryLeft: number; installed: boolean;
   events: Array<{ event: string; at: string }>;
+  /** Money access: a new set must be confirmed as saved before anything else opens (owner 2026-11-10). */
+  codesRequired?: boolean;
 }) {
   const router = useRouter();
   const [codes, setCodes] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
   const remove = useFormAction(removeAuthenticator, { onSuccess: (r) => { toast.success(r.message ?? "Removed."); router.refresh(); } });
   return (
     <section aria-label="Security">
@@ -47,7 +50,7 @@ export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, i
                       setError(null);
                       const r = await generateRecoveryCodes();
                       setBusy(false);
-                      if (r.ok) setCodes(r.data.codes);
+                      if (r.ok) { setCodes(r.data.codes); setConfirmed(false); }
                       else setError(r.error);
                     }}
                   >
@@ -57,9 +60,34 @@ export function SecurityCard({ enrolled, aal2, required, reason, recoveryLeft, i
                   <Link href="/mfa?next=/profile" className={buttonClasses("secondary")}>Verify to Manage</Link>
                 )}
                 {codes ? (
-                  <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-3 font-mono" aria-label="New recovery codes">
-                    {codes.map((c) => <li key={c}>{c}</li>)}
-                  </ol>
+                  <>
+                    <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-3 font-mono" aria-label="New recovery codes">
+                      {codes.map((c) => <li key={c}>{c}</li>)}
+                    </ol>
+                    {confirmed ? (
+                      <p className="text-muted">Saved. Keep them somewhere safe away from your phone.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        <p className="text-muted">
+                          Save them now (print them or keep them in a password manager), then confirm.
+                          {codesRequired ? " Your account can see or change money, so Taviron waits for this confirmation." : ""}
+                        </p>
+                        <Button
+                          variant="secondary"
+                          loading={busy}
+                          onClick={async () => {
+                            setBusy(true);
+                            const r = await confirmRecoveryCodes();
+                            setBusy(false);
+                            if (r.ok) { setConfirmed(true); router.refresh(); }
+                            else setError(r.error);
+                          }}
+                        >
+                          I Saved Them
+                        </Button>
+                      </div>
+                    )}
+                  </>
                 ) : null}
               </div>
             ) : null}

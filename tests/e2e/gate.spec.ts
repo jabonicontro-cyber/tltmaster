@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import pg from "pg";
 import { normalizeAccessCode } from "../../src/lib/early-access";
+import { passSecondFactor } from "./helpers";
 import { PASSWORD, USERS } from "./users";
 
 // The early-access gate on a production build (run with E2E_GATE=on against a
@@ -118,6 +119,7 @@ test("personal site codes still work on the Early Access page (phone): wrong cod
   await expect(page.getByText("Email or password is incorrect.")).toBeVisible();
   await page.getByLabel("Password").fill(PASSWORD);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await passSecondFactor(page, "office"); // money access: the authenticator code first (20261120018000)
   await expect(page).toHaveURL(/\/command-center/);
   await expect(page.getByRole("heading", { name: "Command Center", level: 1 })).toBeVisible();
   // Passing the gate granted nothing: roles still apply.
@@ -248,6 +250,7 @@ test.describe("shared Early Access password", () => {
     await page.getByLabel("Email").fill(USERS.office.email);
     await page.getByLabel("Password").fill(PASSWORD);
     await page.getByRole("button", { name: "Sign in" }).click();
+    await passSecondFactor(page, "office");
     await expect(page).toHaveURL(/\/command-center/);
     await page.goto("/settings?tab=users");
     await expect(page.getByRole("button", { name: "Invite user" })).toHaveCount(0);

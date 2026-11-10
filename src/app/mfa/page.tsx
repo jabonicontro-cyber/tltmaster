@@ -15,7 +15,8 @@ export const metadata = { title: "Two-Step Verification" };
 
 /**
  * Two-step verification: set up an authenticator app, or enter its code to continue. Reached when a page requires it
- * (platform administrators always; company members when their company requires it) or from My profile.
+ * (platform administrators and anyone with money access in a real company always; company members when their company
+ * requires it) or from My profile.
  */
 export default async function MfaPage({ searchParams }: { searchParams: Promise<{ next?: string; reset?: string; setup?: string }> }) {
   const sp = await searchParams;
@@ -31,7 +32,10 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
   // Text-message codes (B109): only when the server allows them, never for platform administrators.
   const smsAllowed = env().MFA_SMS && !state.policy?.platform;
   const done = verified && state.aal === "aal2";
-  const needsCodes = done && state.installed && (state.policy?.recovery_codes ?? 0) === 0;
+  // Recovery codes: offered to everyone after setup; required (no "Later") for money access, until the person confirms
+  // they saved the newest set (owner 2026-11-10; every page and action waits for it, src/server/mfa.ts).
+  const codesRequired = state.policy?.money === true;
+  const needsCodes = done && state.installed && ((state.policy?.recovery_codes ?? 0) === 0 || state.recoveryPending);
 
   return (
     // Same frame as sign-in (src/app/(auth)/layout.tsx): Taviron's mark on the dark background, one card.
@@ -47,14 +51,20 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
       <div className="rounded-2xl bg-card p-6 shadow-xl">
         <h1 className="flex items-center gap-2 text-xl font-bold">
           <ShieldCheck className="size-5 shrink-0 text-brand-fg" aria-hidden />
-          {done ? "You are verified" : verified ? "Enter your code" : "Set up two-step verification"}
+          {needsCodes ? "One last step: recovery codes" : done ? "You are verified" : verified ? "Enter your code" : "Set up two-step verification"}
         </h1>
-        <p className="mt-1 mb-5 text-sm text-muted">
-          {sp.reset ? "Your lost authenticator was removed. Set up a new one now. " : ""}
-          {state.reason ?? (verified ? (hasApp ? "Open your authenticator app for the current code." : "We text a code to your phone.") : "Protect your account with a code from your phone, in addition to your password.")}
-        </p>
+        <div className="mt-1 mb-5 space-y-2 text-sm">
+          {sp.reset ? <p className="text-ink">Your lost authenticator was removed. Set up a new one now.</p> : null}
+          {state.reason && !done ? <p className="font-medium text-ink">{state.reason}</p> : null}
+          {!verified ? (
+            // First time (owner rule "easy for anyone"): what it is and why, in plain words, before any step.
+            <p className="text-muted">After your password, Taviron asks for a 6-digit code from an app on your phone. Someone who learns your password still cannot get in without your phone.</p>
+          ) : !done ? (
+            <p className="text-muted">{hasApp ? "Open the authenticator app on your phone and type the 6-digit code it shows for Taviron." : "We text a 6-digit code to your phone."}</p>
+          ) : null}
+        </div>
         {needsCodes ? (
-          <RecoveryCodesStep next={next} />
+          <RecoveryCodesStep next={next} required={codesRequired} replacing={(state.policy?.recovery_codes ?? 0) > 0} />
         ) : done ? (
           <Link href={next} className="font-semibold text-brand-fg hover:underline">Continue</Link>
         ) : verified ? (

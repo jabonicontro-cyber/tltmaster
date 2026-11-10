@@ -62,28 +62,34 @@ describe("security hardening", () => {
   it("F2: below aal2 the database gives no company to a person with an authenticator or in a company that requires it", async () => {
     await withSession(async (s) => {
       const owner = await s.createUser("owner");
-      // No authenticator, no policy: a password session works as before.
-      await asAal(s, owner, "aal1");
+      // Without money access (20261120018000 makes it always required for owners), no authenticator and no policy, a
+      // password session works as before.
+      const dispatcher = await s.createUser("dispatcher");
+      await asAal(s, dispatcher, "aal1");
       expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(1);
       // Company requires two-step verification: nothing at aal1, everything at aal2.
       await s.asAdmin();
       await s.query("update public.company_settings set require_mfa = true where company_id = $1", [TOP_LINE]);
-      await asAal(s, owner, "aal1");
+      await asAal(s, dispatcher, "aal1");
       expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(0);
       expect((await s.query<{ r: { current_company: boolean } }>("select public.mfa_policy() r")).rows[0].r.current_company).toBe(true);
+      await asAal(s, owner, "aal1");
       // ...and the policy cannot be switched off with a password alone.
       expect((await pgError(s.query("select public.set_company_mfa_policy(false)"))).code).toBe("42501");
       await asAal(s, owner, "aal2");
       expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(1);
       await s.query("select public.set_company_mfa_policy(false)");
-      // A person who set up an authenticator: aal1 sees nothing even without a company policy.
-      const office = await s.createUser("office");
+      // A person who set up an authenticator: aal1 sees nothing even without a company policy (a dispatcher, so it is
+      // the authenticator and not money access that decides).
+      const enrolled = await s.createUser("dispatcher");
+      await asAal(s, enrolled, "aal1");
+      expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(1);
       await s.asAdmin();
-      await s.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified', now(), now())", [office]);
-      await asAal(s, office, "aal1");
+      await s.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'phone', 'totp', 'verified', now(), now())", [enrolled]);
+      await asAal(s, enrolled, "aal1");
       expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(0);
       expect((await s.query<{ r: { enrolled: boolean } }>("select public.mfa_policy() r")).rows[0].r.enrolled).toBe(true);
-      await asAal(s, office, "aal2");
+      await asAal(s, enrolled, "aal2");
       expect((await s.query("select 1 from public.customers limit 1")).rowCount).toBe(1);
     });
   });

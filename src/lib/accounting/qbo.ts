@@ -9,6 +9,18 @@ export const QBO_TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens
 export const QBO_REVOKE_URL = "https://developer.api.intuit.com/v2/oauth2/tokens/revoke";
 export const QBO_MINOR_VERSION = "75";
 
+/**
+ * A Taviron support visit never connects, changes or disconnects a company's QuickBooks (financial review L3); the
+ * database refuses with the same words (20261120018100).
+ */
+export const QBO_SUPPORT_VISIT_MESSAGE = "Taviron support cannot connect, change or disconnect QuickBooks. Ask an owner of the company.";
+
+/**
+ * Nothing is sent to QuickBooks during a Taviron support visit to a real company (owner decision 2026-11-10); the
+ * database refuses with the same words (20261120018100). A demo company's sends are simulated and stay allowed.
+ */
+export const QBO_SUPPORT_SEND_MESSAGE = "Taviron support cannot send anything to QuickBooks. Ask someone in the company to send it.";
+
 export function qboApiBase(environment: "sandbox" | "production") {
   return environment === "production" ? "https://quickbooks.api.intuit.com" : "https://sandbox-quickbooks.api.intuit.com";
 }

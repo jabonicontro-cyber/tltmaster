@@ -54,10 +54,14 @@ export async function getInvoiceSends(handoffOrderIds: string[]): Promise<Record
  */
 export async function getQuickBooksForHandoffs(handoffOrderIds: string[], access: Access) {
   const setup = await getAccountingSetup();
-  const canSend = can(access, "billing.manage") && setup.quickbooksInstalled && (Boolean(access.isDemo) || setup.connections.some((c) => c.status === "connected"));
+  // A Taviron support visit to a real company sees the sends but cannot send (owner decision 2026-11-10).
+  const supportBlocked = Boolean(access.support) && !access.isDemo && setup.quickbooksInstalled && can(access, "billing.manage");
+  const canSend = can(access, "billing.manage") && setup.quickbooksInstalled && !supportBlocked
+    && (Boolean(access.isDemo) || setup.connections.some((c) => c.status === "connected"));
   return {
     canSend,
-    shown: setup.quickbooksInstalled && (canSend || setup.connections.length > 0),
+    supportBlocked,
+    shown: setup.quickbooksInstalled && (canSend || supportBlocked || setup.connections.length > 0),
     sends: setup.quickbooksInstalled ? await getInvoiceSends(handoffOrderIds) : {},
     entityNames: Object.fromEntries(setup.entities.map((e) => [e.id, e.name])) as Record<string, string>,
   };

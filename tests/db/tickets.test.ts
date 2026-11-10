@@ -338,7 +338,7 @@ describe("ticket numbers under concurrency", () => {
         as: async (uid) => {
           await setup.query("reset role");
           await setup.query("set local role authenticated");
-          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated" })]);
+          await setup.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: uid, role: "authenticated", aal: "aal2" })]);
         },
         asAdmin: async () => {
           await setup.query("reset role");
@@ -378,7 +378,7 @@ describe("ticket numbers under concurrency", () => {
     const as = async (c: typeof a) => {
       await c.query("begin");
       await c.query("set local role authenticated");
-      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ids.office, role: "authenticated" })]);
+      await c.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: ids.office, role: "authenticated", aal: "aal2" })]);
     };
     const payload = (load: string, ref: string) =>
       JSON.stringify({ load_id: load, order_line_id: ids.lines[0], delivered_date: yesterday, delivered_time: "08:00", quantity: "20", unit_code: "ton", external_reference: ref });

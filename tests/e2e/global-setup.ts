@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import pg from "pg";
 import { writeFileSync } from "node:fs";
-import { TOTP_FILE, totp } from "./mfa";
+import { TOTP_FILE, totp, writeUserTotpSecret } from "./mfa";
 import { OTHER_COMPANY, PASSWORD, PLATFORM_USER, USERS } from "./users";
 
 /**
@@ -92,4 +92,50 @@ export default async function globalSetup() {
   const { error: vErr } = await userClient.auth.mfa.challengeAndVerify({ factorId: enrolled.id, code: totp(enrolled.totp.secret) });
   if (vErr) throw new Error(`MFA verify: ${vErr.message}`);
   writeFileSync(TOTP_FILE, enrolled.totp.secret, { mode: 0o600 });
+
+  // Shared test users: a fresh authenticator for each one the database says must use two-step verification (money
+  // access in a real company, 20261120018000, or a company rule); none for the others. Never turned off for tests.
+  const policyDb = new pg.Client({ connectionString: dbUrl });
+  await policyDb.connect();
+  try {
+    for (const [who, u] of Object.entries(USERS)) {
+      const { data: row } = await admin.from("profiles").select("id").eq("email", u.email).single();
+      const userId = (row as { id: string }).id;
+      const { data: factors } = await admin.auth.admin.mfa.listFactors({ userId });
+      for (const f of factors?.factors ?? []) await admin.auth.admin.mfa.deleteFactor({ id: f.id, userId });
+      if (!(await twoStepRequired(policyDb, userId))) {
+        writeUserTotpSecret(who, null);
+        continue;
+      }
+      const client = createClient(url, anon, { auth: { persistSession: false, autoRefreshToken: false } });
+      const { error: inErr } = await client.auth.signInWithPassword({ email: u.email, password: PASSWORD });
+      if (inErr) throw new Error(`${u.email} sign-in for MFA setup: ${inErr.message}`);
+      const { data: f, error: fErr } = await client.auth.mfa.enroll({ factorType: "totp", friendlyName: "e2e" });
+      if (fErr || !f) throw new Error(`MFA enroll ${u.email}: ${fErr?.message}`);
+      const { error: cErr } = await client.auth.mfa.challengeAndVerify({ factorId: f.id, code: totp(f.totp.secret) });
+      if (cErr) throw new Error(`MFA verify ${u.email}: ${cErr.message}`);
+      // Setup is finished with recovery codes created and confirmed as saved (required for money access, owner
+      // 2026-11-10), from this verified session, as the person does on the page.
+      const { error: gErr } = await client.rpc("mfa_recovery_generate");
+      if (gErr) throw new Error(`recovery codes ${u.email}: ${gErr.message}`);
+      const { error: kErr } = await client.rpc("mfa_recovery_confirm");
+      if (kErr && !["PGRST202", "42883"].includes(kErr.code ?? "")) throw new Error(`recovery codes saved ${u.email}: ${kErr.message}`);
+      writeUserTotpSecret(who, f.totp.secret);
+    }
+  } finally {
+    await policyDb.end();
+  }
+}
+
+/** What the database's own policy says for this person (public.mfa_policy, evaluated as them). */
+async function twoStepRequired(db: pg.Client, userId: string): Promise<boolean> {
+  await db.query("begin");
+  try {
+    await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: userId, role: "authenticated", aal: "aal1" })]);
+    const { rows } = await db.query<{ p: { platform?: boolean; money?: boolean; current_company?: boolean } }>("select public.mfa_policy() p");
+    const p = rows[0]?.p ?? {};
+    return Boolean(p.platform || p.money || p.current_company);
+  } finally {
+    await db.query("rollback");
+  }
 }

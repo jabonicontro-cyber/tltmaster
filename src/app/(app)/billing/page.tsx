@@ -21,6 +21,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import {
   EXCEPTION_KINDS, EXCEPTION_LABELS, QUANTITY_POLICY, READINESS, READINESS_LABELS, readinessExplanation, sayExplanation,
 } from "@/lib/billing/rules";
+import { QBO_SUPPORT_SEND_MESSAGE } from "@/lib/accounting/qbo";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
@@ -327,6 +328,9 @@ async function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoi
   const combinable = [...waiting.values()].filter((n) => n >= 2).length;
   return (
     <>
+    {issuer === "quickbooks" && qb.supportBlocked && (
+      <div className="border-b border-line px-5 py-3 text-sm text-muted sm:px-6" role="note">{QBO_SUPPORT_SEND_MESSAGE} What would be sent, and what was sent, is shown below.</div>
+    )}
     {canManage && combinable > 0 && (
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3 text-sm sm:px-6">
         <span className="text-muted">{combinable === 1 ? "One customer has" : `${combinable} customers have`} several orders waiting for an invoice.</span>

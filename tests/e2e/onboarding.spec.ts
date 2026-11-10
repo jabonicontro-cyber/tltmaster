@@ -2,7 +2,7 @@ import { createHash, randomInt } from "node:crypto";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import { normalizeAccessCode } from "../../src/lib/early-access";
-import { signIn, unique } from "./helpers";
+import { setUpAuthenticator, signIn, unique } from "./helpers";
 import { latestMail } from "./mailbox";
 import { USERS } from "./users";
 
@@ -81,7 +81,12 @@ test("a new customer signs up with an access code, verifies the email, creates a
   // The time zone is the new company's own choice (nothing inherited from another company).
   await page.getByLabel("Time zone").selectOption("America/Denver");
   await page.getByRole("button", { name: "Create my company" }).click();
-  await expect(page).toHaveURL(/\/command-center/);
+  // The new owner holds money access, so two-step verification comes first, whatever the company setting
+  // (20261120018000); then the workspace's welcome.
+  await expect(page).toHaveURL(/\/mfa/);
+  await expect(page.getByText("Your access to invoices, payments or pay requires two-step verification.")).toBeVisible();
+  await setUpAuthenticator(page);
+  await expect(page).toHaveURL(/\/command-center\?welcome=1/);
   await expect(page.getByRole("banner")).toContainText(company);
   const companyId = (await sql<{ id: string }>("select id from public.companies where name = $1", [company]))[0].id;
   expect(await sql("select role from public.company_memberships where company_id = $1", [companyId])).toEqual([{ role: "owner" }]);
@@ -113,6 +118,9 @@ test("a new customer signs up with an access code, verifies the email, creates a
   await page.getByLabel("New password", { exact: true }).fill(`Office-${id}-Passw0rd`);
   await page.getByLabel("Confirm new password").fill(`Office-${id}-Passw0rd`);
   await page.getByRole("button", { name: "Save password" }).click();
+  // Office staff see invoices and payments: the authenticator is set up before the workspace opens.
+  await page.waitForURL(/\/mfa/);
+  await setUpAuthenticator(page);
   await expect(page).toHaveURL(/\/command-center/);
   await expect(page.getByRole("banner")).toContainText(`Office staff · ${company}`);
 

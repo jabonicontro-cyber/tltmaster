@@ -12,7 +12,10 @@ export async function asUser<T>(email: string, fn: (q: (sql: string, params?: un
     const { rows } = await client.query<{ id: string }>("select id from public.profiles where email = $1", [email]);
     if (!rows[0]) throw new Error(`No e2e user ${email}`);
     await client.query("set local role authenticated");
-    await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: rows[0].id, role: "authenticated" })]);
+    // A session that passed two-step verification (aal2), as the person's own browser session does after the code: owners
+    // and office staff always verify (money access, 20261120018000), and the database gives them no company below it.
+    // tests/db/helpers.ts acts the same way; tests of the aal1 refusal set aal1 explicitly.
+    await client.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: rows[0].id, role: "authenticated", aal: "aal2" })]);
     const result = await fn((sql, params) => client.query(sql, params as unknown[]));
     await client.query("commit");
     return result;

@@ -16,6 +16,7 @@ export async function SecuritySection() {
         reason={mfa.reason}
         recoveryLeft={mfa.policy?.recovery_codes ?? 0}
         installed={mfa.installed}
+        codesRequired={mfa.policy?.money === true}
         events={(events as Array<{ event: string; at: string }> | null) ?? []}
       />
     </Card>

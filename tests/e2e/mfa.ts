@@ -1,11 +1,26 @@
 import { createHmac } from "node:crypto";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 // Two-step verification in browser tests: global-setup enrolls an authenticator (TOTP) for the platform test account
-// and leaves its secret here; tests compute the current code like a phone would (RFC 6238, SHA-1, 6 digits, 30 s).
+// and for every shared test user the database says must use one (money access, 20261120018000), and leaves each secret
+// in a file; tests compute the current code like a phone would (RFC 6238, SHA-1, 6 digits, 30 s).
 export const TOTP_FILE = join(tmpdir(), "taviron-e2e-platform-totp");
+
+/** Where the authenticator secret of a shared test user (a tests/e2e/users.ts key) is kept for this run. */
+export const userTotpFile = (who: string) => join(tmpdir(), `taviron-e2e-totp-${who}`);
+
+export function writeUserTotpSecret(who: string, secret: string | null) {
+  if (secret) writeFileSync(userTotpFile(who), secret, { mode: 0o600 });
+  else rmSync(userTotpFile(who), { force: true });
+}
+
+/** The user's authenticator secret, or null when this user signs in with the password alone. */
+export function userTotpSecret(who: string): string | null {
+  const f = userTotpFile(who);
+  return existsSync(f) ? readFileSync(f, "utf8").trim() || null : null;
+}
 
 function base32(secret: string): Buffer {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
