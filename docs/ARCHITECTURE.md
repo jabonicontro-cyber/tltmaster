@@ -255,6 +255,12 @@ stored as SHA-256, with label, maximum uses, expiry and revocation.
 - **RLS**: enabled on every table. `anon` has no table grants and no policy applies to it (signed-out features call reviewed functions); `anon` and `authenticated` have no TRUNCATE, TRIGGER or REFERENCES on any public table (`20261120002200`; asserted by `tests/db/tenancy.test.ts`). Quote and order tables are read-only to clients; all writes go through `SECURITY DEFINER` functions with `search_path = ''`.
 - **Dispatch base access** (per person, master plan B62; `20261120000200`, `001700`, `001800`, `002000`, `002100`, `002300`): see below.
 - **Secrets**: the service-role key is only read in `src/server/supabase/admin.ts` (server-only) for invitations (after the caller's `users.manage` permission has been checked) and early-access sign-up (after the code and rate limits have been checked).
+- **Driver QR sign-in (DS1)**: the service role redeems a one-time code (`signin_qr_redeem`, service role only) and makes
+  that driver's session with an Auth admin magic link verified on the server (`src/server/signin-qr.ts`); it lists and
+  removes a person's passkeys only after `signin_passkey_check` (users.manage, same rules as resetting a sign-in).
+  `/auth/qr` is exempt from the early-access gate; the token travels in the address fragment only. QR codes and
+  passkeys are only for active driver sign-ins without money permissions, never the Taviron team or a demo
+  (`signin_qr_refusal`, `my_passkey_refusal`, `20261120017100`, owner rule SEC4). See ACCOUNT_PROVISIONING §7.
 - **Indexing**: `X-Robots-Tag: noindex`, `robots.txt` disallow, and `robots` metadata.
 - **Input**: all server actions validate with zod; database functions validate again.
 

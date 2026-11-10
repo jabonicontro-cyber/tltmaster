@@ -60,6 +60,18 @@ export const PERMISSIONS = [
 
 export type Permission = (typeof PERMISSIONS)[number];
 
+/**
+ * Permissions that show or change money (owner rule SEC4, 2026-11-09): every billing.* and pricing.* permission, pay,
+ * compensation, accounting, repair costs and the audit records. A sign-in holding one signs in with a password and
+ * two-step verification; QR codes and face or fingerprint sign-in are only for driver sign-ins without them (DS1). The
+ * database has the same rule (private.is_money_permission, migration 20261120017100).
+ */
+export const MONEY_PERMISSIONS = ["payroll.manage", "employees.compensation", "accounting.view", "maintenance.costs", "audit.view"] as const;
+
+export function isMoneyPermission(permission: string): boolean {
+  return permission.startsWith("billing.") || permission.startsWith("pricing.") || (MONEY_PERMISSIONS as readonly string[]).includes(permission);
+}
+
 /** Roles given to people who work in the company (role pickers). */
 export const ROLES = ["owner", "office", "dispatcher", "mechanic", "driver"] as const;
 /** Every role, including an outside accountant's time-limited, read-only role (B134; given only through Accountant access). */

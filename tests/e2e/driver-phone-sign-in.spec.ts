@@ -69,7 +69,11 @@ test("a driver without a login gets a phone sign-in from Fleet in one step and l
     await phone.close();
   }
 
-  // Back on the Fleet page the card is gone: the driver has a login.
+  // Back on the Fleet page the set-up card is gone: the driver has a login. The Phone sign-in card now offers the
+  // one-time QR code for that login instead (DS1), and nothing to set up again.
   await page.goto(`/fleet/drivers/${driverId}`);
-  await expect(page.getByRole("heading", { name: "Phone sign-in" })).toHaveCount(0);
+  await expect(page.getByText("No email needed.")).toHaveCount(0);
+  await expect(page.getByRole("link", { name: "Set up phone sign-in" })).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Phone sign-in" })).toHaveCount(1);
+  await expect(page.getByTestId("show-sign-in-qr")).toBeVisible();
 });

@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { Field, FormError, Input } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { PasskeySignInButton } from "@/components/accounts/passkey";
 import { PasswordInput } from "@/components/ui/password-input";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { requestPasswordReset, signIn, updatePassword } from "./actions";
 
-export function LoginForm({ next, gate = false }: { next?: string; gate?: boolean }) {
+export function LoginForm({ next, gate = false, passkeys = false }: { next?: string; gate?: boolean; passkeys?: boolean }) {
   const { pending, onSubmit, result: state } = useFormAction(signIn);
   return (
     <>
@@ -29,6 +30,7 @@ export function LoginForm({ next, gate = false }: { next?: string; gate?: boolea
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
+      {passkeys ? <PasskeySignInButton /> : null}
       <p className="text-center text-sm">
         <Link href="/forgot-password" className="inline-flex min-h-11 items-center font-semibold text-brand-fg hover:underline">
           Forgot your password?

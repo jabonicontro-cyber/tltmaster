@@ -1,4 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 import { expect, test, type APIRequestContext } from "@playwright/test";
 import pg from "pg";
 import { normalizeAccessCode } from "../../src/lib/early-access";
@@ -29,6 +30,8 @@ async function siteCode(uses = 10) {
 }
 const NOT_VALID = "That password isn't valid. Check it and try again, or ask the person who invited you.";
 const resetAttempts = () => sql("delete from private.access_attempts where scope = 'site'");
+/** Invented QR sign-in codes are limited per network address (DS1); this test server is reached from 127.0.0.1. */
+const resetQrLimit = () => sql("delete from private.signin_failures f using unnest($1::text[]) ip where f.login_hash = encode(sha256(convert_to('qr-sign-in:' || ip, 'UTF8')), 'hex')", [["127.0.0.1", "::1", "::ffff:127.0.0.1", "local"]]);
 
 test.beforeAll(resetAttempts);
 test.afterAll(async () => {
@@ -72,6 +75,16 @@ test("without early access nothing is reachable except the public website, the g
   expect((await request.get("/early-access")).status()).toBe(200);
   const confirm = await request.get("/auth/confirm?token_hash=invalid&type=email", { maxRedirects: 0 });
   expect(confirm.headers().location ?? "").not.toMatch(/early-access/);
+  // A driver's one-time QR code opens on a brand-new phone (DS1): the page holds no data and the redeem endpoint
+  // answers the code itself (an invented one is refused there, not by the gate).
+  const qr = await request.get("/auth/qr", { headers: { accept: "text/html" }, maxRedirects: 0 });
+  expect(qr.status()).toBe(200);
+  expect(await qr.text()).not.toMatch(/Top Line|company_id|data-testid="greeting"/);
+  const base = new URL(qr.url()).origin;
+  await resetQrLimit();
+  const redeem = await request.post("/auth/qr/redeem", { headers: { origin: base, "content-type": "application/json" }, data: { token: "A".repeat(43) }, maxRedirects: 0 });
+  expect([400, 503]).toContain(redeem.status());
+  expect((await request.post("/auth/qr/redeem", { headers: { origin: "https://evil.example" }, data: { token: "A".repeat(43) }, maxRedirects: 0 })).status()).toBe(403);
   // The companion app's manifest, service worker and offline page install without access; none carries company data.
   const manifest = await request.get("/manifest.webmanifest", { maxRedirects: 0 });
   expect(manifest.status()).toBe(200);
@@ -324,4 +337,38 @@ test("uptime monitors reach the health check without the early-access password (
   const r = await request.get("/api/health", { maxRedirects: 0 });
   expect(r.status()).toBe(200);
   expect((await r.json()).ok).toBe(true);
+});
+
+test("a driver's one-time QR code signs a brand-new phone in without early access, once (DS1)", async ({ browser }) => {
+  // A driver username sign-in with its driver record, and a code stored as "Show sign-in QR code" stores it (only the
+  // SHA-256 of the token; the token itself is what the QR code carries).
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const tag = randomUUID().slice(0, 8);
+  const { data, error } = await admin.auth.admin.createUser({ email: `e2e-qr-gate-${tag}@users.mytaviron.com`, password: `Gate-${randomUUID()}`, email_confirm: true });
+  expect(error).toBeNull();
+  const user = data.user!.id;
+  const TOP_LINE = "00000000-0000-4000-8000-000000000001";
+  await sql("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, 'driver', true)", [TOP_LINE, user]);
+  const [{ id: driver }] = await sql<{ id: string }>("insert into public.drivers (company_id, name, user_id) values ($1, 'E2E QR Gate Driver', $2) returning id", [TOP_LINE, user]);
+  const token = randomBytes(32).toString("base64url");
+  await sql("insert into private.signin_qr_codes (company_id, user_id, driver_id, token_hash, expires_at) values ($1, $2, $3, $4, now() + interval '10 minutes')", [TOP_LINE, user, driver, createHash("sha256").update(token).digest("hex")]);
+  try {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+    const page = await ctx.newPage();
+    await page.goto(`/auth/qr#t=${token}`);
+    await page.waitForURL(/\/driver$/, { timeout: 60_000 });
+    await expect(page.getByRole("heading", { name: "My Day" })).toBeVisible();
+    expect((await ctx.cookies()).find((c) => c.name === "taviron-access")).toBeUndefined(); // signed in, not admitted
+    const otherCtx = await browser.newContext();
+    const again = await otherCtx.newPage();
+    await again.goto(`/auth/qr#t=${token}`);
+    await expect(again.getByTestId("qr-refused")).toContainText("already used");
+    await again.goto("/driver");
+    await expect(again).toHaveURL(/\/early-access/);
+    await ctx.close();
+    await otherCtx.close();
+  } finally {
+    await sql("update public.drivers set active = false where id = $1", [driver]);
+    await sql("update public.company_memberships set active = false where user_id = $1", [user]);
+  }
 });

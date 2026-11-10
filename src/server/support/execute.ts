@@ -5,6 +5,7 @@ import { inviteEmployee } from "@/app/(app)/employees/actions";
 import {
   createEmployeeSignIn, deactivateEmployeeSignIn, emailEmployeeSetup, reactivateEmployeeSignIn, reissueEmployeeSignIn,
 } from "@/app/(app)/employees/account-actions";
+import { removeDriverPasskeys } from "@/app/(app)/fleet/drivers/phone-sign-in-actions";
 import { inviteUser, setRolePermission, updateUserAccess } from "@/app/(app)/settings/actions";
 import { changeAccountantAccess, inviteAccountant } from "@/app/(app)/settings/accountant-actions";
 import {
@@ -28,6 +29,7 @@ export const REQUEST_RUNNERS: Record<RequestKind, (args: unknown[]) => Promise<A
   "signin.email": ([u]) => emailEmployeeSetup(str(u)),
   "signin.off": ([u]) => deactivateEmployeeSignIn(str(u)),
   "signin.on": ([u]) => reactivateEmployeeSignIn(str(u)),
+  "signin.passkeys_remove": ([u]) => removeDriverPasskeys(str(u)),
   "portal.signin_create": ([fd]) => createPortalSignIn(form(fd)),
   "portal.signin_reissue": ([u]) => reissuePortalSignIn(str(u)),
   "portal.signin_email": ([u]) => emailPortalSetup(str(u)),

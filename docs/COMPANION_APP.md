@@ -79,6 +79,10 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
     else's sign-in.
   - *Not offline.* Messages, photos, field reports, fuel and trip sheets, time off and anything for another day still
     need signal.
+- **Signing in without typing (DS1):** the office shows a one-time QR code (Fleet → a driver); the phone's camera opens
+  it and the phone is signed in on My Day. My Day then offers face or fingerprint sign-in when the site has passkeys on
+  (ACCOUNT_PROVISIONING §7). On iPhone a home-screen app keeps its own sign-in apart from Safari: a code opened from the
+  camera signs Safari in, not the installed app (not tested on a device).
 - **Sessions:** an expired or revoked session sends the person to sign-in on the next request, as in the browser. A
   removed permission takes effect on the next request (every page checks on the server).
 
