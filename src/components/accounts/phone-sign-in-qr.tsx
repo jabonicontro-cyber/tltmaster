@@ -85,11 +85,20 @@ export function PhoneSignInQr({ driverId, userId, driverName, demo, passkeys, su
 
   const close = (next: boolean) => {
     if (next) return setOpen(true);
-    setOpen(false);
-    // Closing the window stops a code that was not used: nobody can scan it from a photo later.
-    if (code && status === "waiting") void cancelDriverSignInQr(code.id);
-    if (status === "used") router.refresh();
+    const waiting = code && status === "waiting" ? code.id : null;
+    // The code leaves the screen at once; the window closes once the code is cancelled, so a code whose window is
+    // gone never signs anyone in (nobody can scan it from a photo later).
     setCode(null);
+    if (status === "used") router.refresh();
+    if (!waiting) return setOpen(false);
+    startBusy(async () => {
+      try {
+        await cancelDriverSignInQr(waiting);
+      } finally {
+        // Even if the cancel could not be sent, the code stops working after its few minutes.
+        setOpen(false);
+      }
+    });
   };
 
   return (
@@ -128,7 +137,7 @@ export function PhoneSignInQr({ driverId, userId, driverName, demo, passkeys, su
         size="sm"
         title={`Sign ${driverName} in on their phone`}
         description={demo ? "Demo: a sample code. Nothing signs in." : "Only show this code to the driver. Anyone who scans it is signed in as them."}
-        footer={<Button variant="secondary" onClick={() => close(false)}>{status === "used" ? "Done" : "Close"}</Button>}
+        footer={<Button variant="secondary" onClick={() => close(false)} loading={busy && !code}>{status === "used" ? "Done" : "Close"}</Button>}
       >
         {demo ? (
           <div className="space-y-3 text-center" data-testid="qr-demo">

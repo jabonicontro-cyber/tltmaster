@@ -34,11 +34,11 @@ for (const [name, viewport] of [["desktop", { width: 1440, height: 900 }], ["pho
     await expect(page.getByRole("heading", { name: "Maintenance", level: 2 })).toBeInViewport();
     // The "Not yet" list was taken off the Platform page (owner 2026-10-26); it stays in the catalog as the internal record.
     await expect(page.getByRole("heading", { name: /Not yet/ })).toHaveCount(0);
-    // Hired trucks is in the app today (an add-on); only its text-message offers are coming soon, and no published copy
-    // promises a customer portal.
+    // Hired trucks is in the app today (an add-on); only its text-message offers are coming soon.
     await expect(page.getByText("Load offers by text message for hired trucks")).toBeVisible();
     await expect(page.getByText("Hired trucks and owner-operators")).toHaveCount(0);
-    await expect(page.getByRole("main")).not.toContainText(/customer'?s? portal|from their portal/i);
+    // The customer portal is published (owner 2026-11-09, with self-booking in it): its own section is on the page.
+    await expect(page.locator("#feature-customer-portal")).toHaveCount(1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
     expect(errors).toEqual([]);
   });

@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import pg from "pg";
-import { signIn, unique } from "./helpers";
+import { setUpAuthenticator, signIn, unique } from "./helpers";
 
 // Driver sign-in without typing (DS1, migration 20261120017000), end to end on the local stack: the owner opens a driver
 // in Fleet and shows a one-time QR code; a phone opening the code's address is signed in as that driver and lands on
@@ -44,6 +44,11 @@ test.afterAll(async () => {
   await sql("update public.drivers set active = false where name like 'E2E QR %'");
   await sql("update public.company_memberships set active = false where user_id in (select id from auth.users where email like 'e2e-qr-%@users.mytaviron.com')");
 });
+
+// The office side runs without the app's service worker, so the code's answer is always seen on its way to the page
+// (requests a service worker answers bypass page.route); the drivers' phones (their own contexts) keep it, as real
+// phones do.
+test.use({ serviceWorkers: "block" });
 
 /** Show a code from the driver's page; the token is read from the server action's answer (as the QR code holds it). */
 async function showCode(page: Page): Promise<string> {
@@ -197,6 +202,8 @@ test("a company whose driver role can see money gets no QR code: the page says w
     await page.getByLabel("Password", { exact: true }).fill(password);
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
     await page.waitForURL((u) => !u.pathname.startsWith("/login"));
+    // A real company's owner has money access, so two-step verification comes first (SEC4, 20261120018000).
+    await setUpAuthenticator(page);
     await page.goto(`/fleet/drivers/${driver}`);
     await expect(page.getByTestId("qr-money-refused")).toContainText("can see or change money");
     await expect(page.getByTestId("show-sign-in-qr")).toHaveCount(0);
