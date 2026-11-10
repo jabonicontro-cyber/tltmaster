@@ -2,7 +2,7 @@
 // exclusion constraints); these helpers explain the state before a request.
 import { driverChecks, evaluateAssignment, type EligibilityQualification, type EligibilityResult, type EligibilityTrailer, type EligibilityTruck } from "@/lib/fleet/eligibility";
 import { ON_LEAVE_TEXT, shiftProblem, type SmartShift } from "@/lib/dispatch/smart";
-import { notReadyText, shopHolds, vehicleReadyOn, type NotReadyReason, type ShopHold } from "@/lib/fleet/readiness";
+import { isPartOnOrderNote, notReadyText, partOnOrderNotes, shopHolds, vehicleReadyOn, type NotReadyReason, type ReadinessWorkOrder, type ShopHold } from "@/lib/fleet/readiness";
 
 export interface Interval {
   starts_at: string;
@@ -44,7 +44,8 @@ export function bookingsFor(assignments: ActiveAssignment[], kind: ResourceKind,
  * private.assignment_eligibility, so the board and the server's refusal use the same words (ELIGIBILITY_MESSAGES).
  */
 export interface DayRestrictions {
-  shop: Array<{ truck_id: string | null; trailer_id: string | null; number: string; status: string; scheduled_for: string | null; safety_critical: boolean }>;
+  /** Open work orders (dispatch_shop_schedule); work_started_at and parts since 20261120015000 (absent before it). */
+  shop: Array<{ truck_id: string | null; trailer_id: string | null; number: string; status: string; scheduled_for: string | null; safety_critical: boolean; work_started_at?: string | null; parts?: ReadinessWorkOrder["parts"] }>;
   reports: Array<{ equipment: "truck" | "trailer"; truck_id: string | null; trailer_id: string | null; kind: string }>;
   documents: Array<{ truck_id: string | null; trailer_id: string | null; blocks: boolean }>;
   timeOff: Array<{ driver_id: string; status: "approved" | "pending"; full_day: boolean; start_date: string; end_date: string }>;
@@ -88,17 +89,31 @@ export function vehicleDayChecks(kind: "truck" | "trailer", id: string, on: stri
   const reports = r.reports.filter((x) => x.equipment === kind && mine(x));
   if (reports.some((x) => x.kind === "breakdown" || x.kind === "inspection_issue")) out.blockers.push(`${kind}_safety_report_open`);
   else if (reports.some((x) => x.kind === "equipment_issue")) out.warnings.push(`${kind}_equipment_report_open`);
-  // Shop work: a safety-critical order, a visit that day, or work in progress / waiting for parts all block (WK1).
-  for (const h of holdsOf(kind, id, on, r)) out.blockers.push(`${kind}_${SHOP_CODE[h.reason]}`);
+  // Shop work: a safety-critical order, a visit that day, or work that has started (in progress, or waiting for parts
+  // after it started) all block (WK1). A part on order for a job not started yet is a note: the unit can run (MD1).
+  const holds = holdsOf(kind, id, on, r);
+  for (const h of holds) out.blockers.push(`${kind}_${SHOP_CODE[h.reason]}`);
+  if (!holds.length) out.warnings.push(...partNotesOf(kind, id, r));
   const docs = r.documents.filter(mine);
   if (docs.some((d) => d.blocks)) out.blockers.push(`${kind}_document_expired`);
   else if (docs.length) out.warnings.push(`${kind}_document_review`);
   return out;
 }
 
+/** "Part on order: …, expected …" for each job of the unit waiting for a part that has not started (MD1). */
+export function partNotesOf(kind: "truck" | "trailer", id: string, r: DayRestrictions | null | undefined): string[] {
+  if (!r) return [];
+  return partOnOrderNotes(r.shop.filter((w) => (kind === "truck" ? w.truck_id : w.trailer_id) === id));
+}
+
+/** A resource's notes with any "Part on order" note first, so the board's one-line state names it. */
+function partNotesFirst(warnings: string[]): string[] {
+  return [...warnings.filter(isPartOnOrderNote), ...warnings.filter((w) => !isPartOnOrderNote(w))];
+}
+
 /**
  * The work order that keeps the truck or trailer in the shop on the date, or null: a safety-critical order, a visit
- * that day, or work in progress or waiting for parts (the shared readiness rule). The board shows "In the shop" with it.
+ * that day, or work that has started (the shared readiness rule). The board shows "In the shop" with it.
  */
 export function shopWorkOn(kind: "truck" | "trailer", id: string, on: string, r: DayRestrictions | null | undefined): ShopRow | null {
   return holdsOf(kind, id, on, r)[0]?.workOrder ?? null;
@@ -126,8 +141,9 @@ type ReadinessUnit = { id: string; unit_number: string; active?: boolean; servic
 /**
  * Whether the truck and trailer of an active assignment can run on `on` (src/lib/fleet/readiness.ts, the rule the
  * Command Center's Assignment problems and assign_load use): out of service, an open safety-critical work order, a shop
- * visit that day, or work in progress or waiting for parts. A unit missing from the board's active list counts as
- * deactivated. The truck is checked first; null when both can run. Only explains: the dispatcher reassigns.
+ * visit that day, or work that has started (in progress, or waiting for parts after it started). A unit missing from
+ * the board's active list counts as deactivated. The truck is checked first; null when both can run. Only explains:
+ * the dispatcher reassigns.
  */
 export function assignmentProblem(
   a: { truck_id: string; trailer_id: string | null },
@@ -265,7 +281,7 @@ export function truckState(truck: EligibilityTruck & CapacityRecord & { id: stri
   }
   if (reasons.length) return { state: "unavailable", reasons };
   const busy = conflictsFor(assignments, "truck", truck.id, interval, exceptId);
-  return busy.length ? { state: "busy", with: busy } : available([...r.warnings, ...day.warnings]);
+  return busy.length ? { state: "busy", with: busy } : available(partNotesFirst([...r.warnings, ...day.warnings]));
 }
 
 /** A trailer for the load; `truck` is the truck chosen with it, for the combined capacity. */
@@ -279,7 +295,7 @@ export function trailerState(trailer: EligibilityTrailer & CapacityRecord & { id
   }
   if (reasons.length) return { state: "unavailable", reasons };
   const busy = conflictsFor(assignments, "trailer", trailer.id, interval, exceptId);
-  return busy.length ? { state: "busy", with: busy } : available([...r.warnings, ...day.warnings]);
+  return busy.length ? { state: "busy", with: busy } : available(partNotesFirst([...r.warnings, ...day.warnings]));
 }
 
 export function driverState(

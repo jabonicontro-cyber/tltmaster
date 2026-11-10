@@ -19,7 +19,7 @@ import {
   trailerSchema,
   truckSchema,
 } from "@/lib/schemas/fleet";
-import { assertPermission } from "@/server/auth";
+import { assertAnyPermission, assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 
@@ -324,5 +324,53 @@ export async function verifyVehicleDocument(vehicle: z.input<typeof vehicleRef>,
     revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
     revalidatePath("/dispatch", "layout");
     return ok(undefined, "Document marked verified.");
+  });
+}
+
+/** A function the database does not have yet (its update is not installed). */
+const notInstalled = (e: { code?: string }) => e.code === "PGRST202" || e.code === "42883";
+
+const readingWrong = z.object({ truckId: uuid, readingId: uuid, reason: z.string().trim().min(3, "Say why the reading is wrong (for example, a typo).").max(300) });
+
+/**
+ * Mark an odometer or engine-hour reading as wrong (owner 2026-11-09, MD1): maintenance.manage or fleet.edit. The
+ * reading is kept and set aside; the truck's current reading falls back to the last good one (20261120015100).
+ */
+export async function markReadingWrong(input: z.input<typeof readingWrong>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertAnyPermission("maintenance.manage", "fleet.edit");
+    const parsed = readingWrong.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("truck_reading_set_aside", { p_reading: parsed.data.readingId, p_reason: parsed.data.reason });
+    if (error) return fail(notInstalled(error) ? "Marking a reading wrong is not available until the latest database update is installed." : dbErrorMessage(error));
+    revalidateFleet(`/fleet/trucks/${parsed.data.truckId}`);
+    revalidatePath("/maintenance", "layout");
+    const cur = data as { current_miles: number | null; current_hours: number | null } | null;
+    const parts = [
+      cur?.current_miles != null ? `${Number(cur.current_miles).toLocaleString("en-US")} mi` : null,
+      cur?.current_hours != null ? `${Number(cur.current_hours).toLocaleString("en-US")} h` : null,
+    ].filter(Boolean);
+    return ok(undefined, parts.length ? `Reading set aside. The current reading is now ${parts.join(", ")}.` : "Reading set aside. No good reading is left: record one in Maintenance.");
+  });
+}
+
+/**
+ * Put a truck or trailer back in service once all its shop work is done (owner 2026-11-09, MD1): fleet.service,
+ * fleet.edit or maintenance.manage. The database refuses a unit with open shop work and records the change.
+ */
+export async function returnUnitAfterShop(vehicle: z.input<typeof vehicleRef>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertAnyPermission("fleet.service", "fleet.edit", "maintenance.manage");
+    const v = vehicleRef.safeParse(vehicle);
+    if (!v.success) return fail("Invalid vehicle.");
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("return_unit_after_shop", { p_kind: v.data.kind, p_id: v.data.id });
+    if (error) return fail(notInstalled(error) ? "This is not available until the latest database update is installed. Use Return to service on the vehicle's page." : dbErrorMessage(error));
+    revalidateFleet(`/fleet/${v.data.kind}s/${v.data.id}`);
+    revalidatePath("/maintenance", "layout");
+    revalidatePath("/dispatch", "layout");
+    const unit = (data as { unit_number?: string } | null)?.unit_number;
+    return ok(undefined, `${v.data.kind === "truck" ? "Truck" : "Trailer"}${unit ? ` ${unit}` : ""} is back in service and can be assigned.`);
   });
 }

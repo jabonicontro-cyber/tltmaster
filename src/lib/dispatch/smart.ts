@@ -30,7 +30,7 @@
 import { addDays, formatDate } from "@/lib/dates";
 import { straightLineMiles, type Point } from "@/lib/routing/route";
 import { driverChecks, eligibilityMessage, type EligibilityQualification } from "@/lib/fleet/eligibility";
-import { shopHolds } from "@/lib/fleet/readiness";
+import { partOnOrderNotes, shopHolds, type ReadinessWorkOrder } from "@/lib/fleet/readiness";
 
 export interface SmartLoad {
   id: string;
@@ -247,6 +247,10 @@ export interface SmartShopVisit {
   status: string;
   scheduled_for: string | null;
   safety_critical: boolean;
+  /** When work first started (20261120015000); absent before that update (then counted as started). */
+  work_started_at?: string | null;
+  /** Parts still on order, for the "Part on order" note. */
+  parts?: ReadinessWorkOrder["parts"];
 }
 
 /** Hours of service are never assumed: proposals do not check them (Fleet → Locations and hours shows recorded hours). */
@@ -426,7 +430,8 @@ function truckExclusions(t: SmartTruck, l: SmartLoad, input: SmartInput, taken: 
   if (!t.active) out.push(eligibilityMessage("truck_inactive"));
   if (t.service_status === "out_of_service") out.push(`Out of service${t.expected_return_date ? ` (expected back ${formatDate(t.expected_return_date)})` : ""}.`);
   // Shop work, by the shared readiness rule (src/lib/fleet/readiness.ts, owner 2026-11-09): a safety-critical order,
-  // a visit that day, or work in progress or waiting for parts keeps the truck out of proposals.
+  // a visit that day, or work that has started (in progress, or waiting for parts after it started) keeps the truck out
+  // of proposals. A part on order for a job not started yet is a note on the proposal (scoreTruck), not an exclusion.
   for (const h of shopHolds(ix.shopByTruck.get(t.id) ?? NONE, l.load_date)) {
     if (h.reason === "safety_restricted") out.push(`Safety-critical work order ${h.workOrder.number} is open. The truck returns only through clearance in Maintenance.`);
     else if (h.reason === "shop_scheduled") out.push(`In the shop on this date (${h.workOrder.number}).`);
@@ -531,6 +536,8 @@ function scoreTruck(t: SmartTruck, l: SmartLoad, input: SmartInput, dayWork: Day
     warnings.push(eligibilityMessage("truck_capacity_unverified"));
   }
   const ix = indexOf(input);
+  // A part on order for a job that has not started (MD1): the truck can run; the dispatcher sees what is coming.
+  warnings.push(...partOnOrderNotes(ix.shopByTruck.get(t.id) ?? NONE));
   if ((ix.reportsByTruck.get(t.id) ?? NONE).some((r) => r.kind === "equipment_issue")) {
     score -= 10;
     warnings.push(eligibilityMessage("truck_equipment_report_open"));

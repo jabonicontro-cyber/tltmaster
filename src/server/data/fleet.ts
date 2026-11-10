@@ -232,8 +232,8 @@ export async function fleetOverview(opts: { shop?: "maintenance" | "dispatch" | 
   type ShopRow = ReadinessWorkOrder & { truck_id: string | null; trailer_id: string | null };
   const shopRead = async (): Promise<ShopRow[] | null> => {
     if (opts.shop === "maintenance") {
-      const r = await supabase.from("work_orders").select("truck_id, trailer_id, number, status, scheduled_for, safety_critical")
-        .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(2000);
+      const r = await withNewColumns((x) => supabase.from("work_orders").select(`truck_id, trailer_id, number, status, scheduled_for, safety_critical${x}`)
+        .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(2000), STARTED);
       return r.error ? null : ((r.data ?? []) as ShopRow[]);
     }
     if (opts.shop === "dispatch") {
@@ -313,6 +313,8 @@ export interface VehicleDocumentRow {
   created_at: string;
   /** A person confirmed the record (20261112000200); absent before that update is installed. */
   verified_at?: string | null;
+  /** The work order the shop recorded this certificate from (20261120015200); the office checks such a record. */
+  work_order_id?: string | null;
 }
 
 export type DocumentRule = "block" | "warn";
@@ -325,6 +327,20 @@ export async function documentRules(): Promise<Record<"registration" | "insuranc
 }
 
 type Optional<T> = { available: boolean; rows: T[] };
+
+type Read = PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
+
+/**
+ * Read with columns a recent database update added (`extra`, e.g. ", work_started_at"), and again without them when
+ * the database does not have them yet (42703): the page then works as before that update.
+ */
+async function withNewColumns(run: (extra: string) => Read, extra: string): Promise<Awaited<Read>> {
+  const first = await run(extra);
+  return first.error?.code === "42703" ? run("") : first;
+}
+
+/** Started (20261120015000) is read with every open work order the readiness rule needs. */
+const STARTED = ", work_started_at";
 
 async function optionalRows<T>(run: () => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>): Promise<Optional<T>> {
   try {
@@ -352,14 +368,22 @@ export async function fleetContext(opts: { maintenance: boolean }): Promise<Flee
       supabase.from("drivers").select("id, name, primary_truck_id").eq("active", true).not("primary_truck_id", "is", null)),
     opts.maintenance
       ? optionalRows<OpenWorkOrder & { truck_id: string | null }>(() =>
-          supabase.from("work_orders").select("id, number, title, status, safety_critical, scheduled_for, clearance_status, truck_id")
-            .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(1000))
+          withNewColumns((x) => supabase.from("work_orders").select(`id, number, title, status, safety_critical, scheduled_for, clearance_status, truck_id${x}`)
+            .in("status", ["reported", "triaged", "scheduled", "in_progress", "awaiting_parts", "awaiting_inspection"]).limit(1000), STARTED))
       : Promise.resolve({ available: false, rows: [] }),
     opts.maintenance
       ? optionalRows<{ truck_id: string; state: string; readings_stale: boolean }>(() => supabase.rpc("maintenance_pm_status"))
       : Promise.resolve({ available: false, rows: [] }),
     optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").is("archived_at", null).order("expires_on", { ascending: true, nullsFirst: false }).limit(2000)),
   ]);
+  // Parts still on order (20261120012300), for the "Part on order: …, expected …" note; none when it cannot be read.
+  const waiting = opts.maintenance && open.rows.some((w) => w.status === "awaiting_parts")
+    ? await optionalRows<{ work_order_id: string; description: string; expected_on: string | null }>(() => supabase.rpc("part_waits", { p_work_order: null }))
+    : { available: false, rows: [] };
+  for (const w of open.rows) {
+    const parts = waiting.rows.filter((p) => p.work_order_id === w.id);
+    if (parts.length) w.parts = parts.map((p) => ({ description: p.description, expected_on: p.expected_on }));
+  }
   const driverByTruck = new Map(drivers.rows.map((d) => [d.primary_truck_id!, { id: d.id, name: d.name }]));
   const openByTruck = new Map<string, OpenWorkOrder[]>();
   // Truck work orders only; a trailer's open work orders are read on its own profile.
@@ -388,10 +412,15 @@ export async function fleetContext(opts: { maintenance: boolean }): Promise<Flee
 export interface VehicleRecords {
   documents: Optional<VehicleDocumentRow>;
   assignments: Optional<{ id: string; driver_id: string; action: "assigned" | "unassigned"; actor_id: string | null; created_at: string }>;
-  workOrders: Optional<{ id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; clearance_status: string | null; created_at: string; completed_at: string | null; cleared_at: string | null }>;
+  workOrders: Optional<{ id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; clearance_status: string | null; created_at: string; completed_at: string | null; cleared_at: string | null; work_started_at?: string | null }>;
   schedules: Optional<{ schedule_id: string; truck_id: string; name: string; state: string; next_due_on: string | null; next_due_miles: number | null; next_due_hours: number | null; readings_stale: boolean }>;
-  /** `source` (20261120012200): where the reading was entered; absent before that update. */
-  readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null; source?: string }>;
+  /**
+   * `source` (20261120012200): where the reading was entered; `set_aside_*` (20261120015100): marked wrong, kept for
+   * history and never the current reading. Absent before those updates.
+   */
+  readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null; source?: string; note?: string; set_aside_at?: string | null; set_aside_by?: string | null; set_aside_reason?: string }>;
+  /** Readings the feed did not use (audit 'truck.reading_ignored', 20261120012200), newest first. */
+  ignoredReadings: Optional<{ id: string; occurred_at: string; summary: string; details: { value?: number; current?: number; kind?: string; why?: string; source?: string } }>;
   costs: Optional<{ work_order_id: string; quantity: number; unit_cost_cents: number }>;
   driverNames: Map<string, string>;
 }
@@ -406,10 +435,14 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
     optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").eq(column, id).order("archived_at", { ascending: false, nullsFirst: true }).order("expires_on", { ascending: true, nullsFirst: false })),
     isTruck ? optionalRows<VehicleRecords["assignments"]["rows"][number]>(() => supabase.from("truck_assignment_events").select("id, driver_id, action, actor_id, created_at").eq("truck_id", id).order("created_at", { ascending: false }).limit(50)) : none,
     // Trailer work orders need 20261115000100; before it the query fails and the card says history is unavailable.
-    opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => supabase.from("work_orders").select("id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at").eq(column, id).order("created_at", { ascending: false }).limit(100)) : none,
+    opts.maintenance ? optionalRows<VehicleRecords["workOrders"]["rows"][number]>(() => withNewColumns((x) => supabase.from("work_orders").select(`id, number, title, status, urgency, safety_critical, scheduled_for, clearance_status, created_at, completed_at, cleared_at${x}`).eq(column, id).order("created_at", { ascending: false }).limit(100), STARTED)) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["schedules"]["rows"][number]>(() => supabase.rpc("maintenance_pm_status")) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("*").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
   ]);
+  const ignoredReadings = isTruck && opts.maintenance
+    ? await optionalRows<VehicleRecords["ignoredReadings"]["rows"][number]>(() => supabase.from("audit_events").select("id, occurred_at, summary, details")
+        .eq("entity_type", "truck").eq("entity_id", id).eq("action", "truck.reading_ignored").order("occurred_at", { ascending: false }).limit(10))
+    : { available: false, rows: [] };
   const woIds = workOrders.rows.map((w) => w.id);
   const costs = opts.costs && woIds.length
     ? await optionalRows<VehicleRecords["costs"]["rows"][number]>(() => supabase.from("work_order_costs").select("work_order_id, quantity, unit_cost_cents").in("work_order_id", woIds))
@@ -422,6 +455,7 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
     workOrders,
     schedules: { available: schedules.available, rows: schedules.rows.filter((r) => r.truck_id === id) },
     readings: { available: readings.available, rows: readings.rows.map((r) => ({ ...r, odometer_miles: r.odometer_miles === null ? null : Number(r.odometer_miles), engine_hours: r.engine_hours === null ? null : Number(r.engine_hours) })) },
+    ignoredReadings,
     costs: { available: costs.available, rows: costs.rows.map((c) => ({ ...c, quantity: Number(c.quantity), unit_cost_cents: Number(c.unit_cost_cents) })) },
     driverNames: new Map(((names.data ?? []) as Array<{ id: string; name: string }>).map((d) => [d.id, d.name])),
   };
@@ -479,4 +513,72 @@ export function buildDirectory<T extends TruckRow | TrailerRow>(
   else if (f.sort === "year") out = [...out].sort((a, b) => (b.model_year ?? 0) - (a.model_year ?? 0) || a.unit_number.localeCompare(b.unit_number));
   else if (f.sort === "status") out = [...out].sort((a, b) => facts.get(a.id)!.rank - facts.get(b.id)!.rank || a.unit_number.localeCompare(b.unit_number));
   return { rows: out, extras };
+}
+
+/** A truck or trailer a person took out of service whose shop work is all done (20261120015300). */
+export interface UnitBackFromShop {
+  kind: "truck" | "trailer";
+  id: string;
+  unit_number: string;
+  out_of_service_reason: string;
+  out_of_service_since: string;
+  work_done_at: string;
+  /** The last finished job; null without maintenance.view. */
+  work_order_id: string | null;
+  work_order_number: string | null;
+}
+
+/**
+ * Units out of service whose shop work is done, for the "Put it back in service?" prompt (owner 2026-11-09, MD1).
+ * Empty when the database update is not installed or the list cannot be read: the prompt is a convenience; the fleet
+ * page's Return to service always works.
+ */
+export async function unitsBackFromShop(): Promise<UnitBackFromShop[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("units_back_from_shop");
+  if (error) return [];
+  return (data ?? []) as UnitBackFromShop[];
+}
+
+/** An inspection certificate the shop recorded from a work order and nobody has checked yet (20261120015200). */
+export interface CertificateToCheck {
+  id: string;
+  kind: "truck" | "trailer";
+  vehicle_id: string;
+  unit_number: string;
+  issued_on: string | null;
+  expires_on: string | null;
+  issuing_authority: string;
+  reference_number: string;
+  created_at: string;
+}
+
+/**
+ * The office's to-do: shop-recorded inspection certificates not verified yet (owner 2026-11-09, MD1). They already
+ * count for dispatch; a person checks them against the paper. `installed` is false before the database update.
+ */
+export async function certificatesToCheck(): Promise<{ installed: boolean; rows: CertificateToCheck[] }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("vehicle_documents")
+    .select("id, truck_id, trailer_id, issued_on, expires_on, issuing_authority, reference_number, created_at, trucks(unit_number), trailers(unit_number)")
+    .not("work_order_id", "is", null).is("verified_at", null).is("archived_at", null).order("created_at").limit(200);
+  if (error) return { installed: false, rows: [] };
+  type Row = {
+    id: string; truck_id: string | null; trailer_id: string | null; issued_on: string | null; expires_on: string | null; issuing_authority: string;
+    reference_number: string; created_at: string; trucks: { unit_number: string } | null; trailers: { unit_number: string } | null;
+  };
+  return {
+    installed: true,
+    rows: ((data ?? []) as unknown as Row[]).map((r) => ({
+      id: r.id,
+      kind: r.truck_id ? "truck" as const : "trailer" as const,
+      vehicle_id: (r.truck_id ?? r.trailer_id)!,
+      unit_number: r.trucks?.unit_number ?? r.trailers?.unit_number ?? "",
+      issued_on: r.issued_on,
+      expires_on: r.expires_on,
+      issuing_authority: r.issuing_authority,
+      reference_number: r.reference_number,
+      created_at: r.created_at,
+    })),
+  };
 }

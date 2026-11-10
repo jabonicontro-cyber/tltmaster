@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignmentProblem, bookingsFor, capacityProblem, combinationCheck, conflictsFor, creditHoldSentence, defaultLoadTimes, driverDayChecks, driverState, inShop, minutes, shopWorkOn, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
+import { assignmentProblem, bookingsFor, capacityProblem, combinationCheck, conflictsFor, creditHoldSentence, defaultLoadTimes, driverDayChecks, driverState, inShop, minutes, partNotesOf, shopWorkOn, overlaps, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions } from "@/lib/dispatch/board";
 
 const ON = "2026-10-20";
 const at = (h: string) => `${ON}T${h}:00-05:00`;
@@ -110,6 +110,24 @@ describe("the shown date's restrictions (B1: agree with the server before it ref
     // Reports and documents follow the database's rules too.
     expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ reports: [{ equipment: "truck", truck_id: "T1", trailer_id: null, kind: "breakdown" }] })).state).toBe("unavailable");
     expect(trailerState(trailer, iv("13:00", "14:30"), [], ON, null, ctx({ documents: [{ truck_id: null, trailer_id: "R1", blocks: false }] }))).toEqual({ state: "available", warnings: ["trailer_document_review"] });
+  });
+
+  it("a part on order for a job not started leaves the truck available with the note first; started work blocks (MD1)", () => {
+    const waiting = { truck_id: "T1", trailer_id: null, number: "WO-8", status: "awaiting_parts", scheduled_for: null, safety_critical: false, work_started_at: null, parts: [{ description: "Seat cushion", expected_on: "2026-11-13" }] };
+    const note = "Part on order: Seat cushion, expected Nov 13, 2026.";
+    const unverified = { ...truck, capacity_verified_at: null };
+    const s1 = truckState(unverified, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [waiting] }));
+    expect(s1.state).toBe("available");
+    expect(s1.state === "available" && s1.warnings[0]).toBe(note);
+    expect(shopWorkOn("truck", "T1", ON, { ...none, shop: [waiting] })).toBeNull();
+    expect(partNotesOf("truck", "T1", { ...none, shop: [waiting] })).toEqual([note]);
+    const check = combinationCheck({ truck, driver }, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [waiting] }));
+    expect(check.eligible).toBe(true);
+    expect(check.warnings).toContain(note);
+    // Once the job has started, or when it is safety-critical, it blocks as before.
+    expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...waiting, work_started_at: "2026-10-01T12:00:00Z" }] }))).toEqual({ state: "unavailable", reasons: ["truck_shop_work_open"] });
+    expect(truckState(truck, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...waiting, safety_critical: true }] }))).toEqual({ state: "unavailable", reasons: ["truck_safety_restricted", "truck_shop_work_open"] });
+    expect(trailerState(trailer, iv("13:00", "14:30"), [], ON, null, ctx({ shop: [{ ...waiting, truck_id: null, trailer_id: "R1" }] }))).toMatchObject({ state: "available", warnings: [note] });
   });
 
   it("refuses approved full-day time off and asks for a reason when the driver is off shift", () => {

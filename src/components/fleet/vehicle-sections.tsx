@@ -9,6 +9,7 @@ import { DOCUMENT_KINDS, documentAttention, documentState, type Availability, ty
 import type { VehicleDocumentRow, VehicleRecords } from "@/server/data/fleet";
 import { AvailabilityBadge, DocumentStateBadge } from "./fleet-status";
 import { AssignDriverForm, DocumentForm, DocumentRowActions, OwnershipForm } from "./vehicle-panels";
+import { MarkReadingWrong } from "./shop-decisions";
 
 const money = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
 const num = (n: number) => n.toLocaleString("en-US", { maximumFractionDigits: 1 });
@@ -127,14 +128,19 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules =
                           <FileText className="size-4 text-muted" aria-hidden />
                           {d.kind === "other" ? d.title : DOCUMENT_KINDS[d.kind]}{d.kind !== "other" && d.title ? ` · ${d.title}` : ""}
                           <DocumentStateBadge state={documentState(d.expires_on, today)} expiresOn={d.expires_on} />
-                          {rules && d.kind in rules && <Badge tone={d.verified_at ? "green" : "gray"}>{d.verified_at ? "Verified" : "Not verified"}</Badge>}
+                          {d.work_order_id && !d.verified_at ? (
+                            <Badge tone="amber">Not checked yet</Badge>
+                          ) : rules && d.kind in rules ? <Badge tone={d.verified_at ? "green" : "gray"}>{d.verified_at ? "Verified" : "Not verified"}</Badge> : null}
                         </p>
+                        {d.work_order_id && !d.verified_at && (
+                          <p className="text-sm text-muted">Recorded by the shop from its inspection work order. It counts already; the office checks it against the paper certificate.</p>
+                        )}
                         <p className="text-sm text-muted">
                           {[d.reference_number && `No. ${d.reference_number}`, d.issuing_authority, d.issued_on && `issued ${formatDate(d.issued_on)}`].filter(Boolean).join(" · ") || "No number or issuer recorded"}
                         </p>
                         {d.notes && <p className="text-sm whitespace-pre-line">{d.notes}</p>}
                       </div>
-                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} canVerify={Boolean(rules && d.kind in rules && !d.verified_at)} />}
+                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} canVerify={Boolean(((rules && d.kind in rules) || d.work_order_id) && !d.verified_at)} verifyLabel={d.work_order_id ? "Mark checked" : undefined} />}
                     </div>
                   </li>
                 ))}
@@ -184,12 +190,14 @@ const WO_STATUS: Record<string, string> = {
   awaiting_inspection: "Awaiting inspection", completed: "Completed", closed: "Closed", canceled: "Canceled",
 };
 
-export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, canCreate, timezone }: {
+export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, canCreate, canMarkWrong = false, timezone }: {
   kind?: "truck" | "trailer";
   vehicleId: string;
   records: VehicleRecords;
   canSee: boolean;
   canCreate: boolean;
+  /** maintenance.manage or fleet.edit: may mark a reading as wrong (20261120015100). */
+  canMarkWrong?: boolean;
   timezone: string;
 }) {
   // Preventive schedules and readings are truck records; a trailer shows its work orders.
@@ -236,19 +244,7 @@ export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, ca
                 </ul>
               )}
             </div>}
-            {isTruck && <div>
-              <p className="flex items-center gap-1.5 text-sm font-semibold"><Gauge className="size-4 text-muted" aria-hidden />Readings</p>
-              {records.readings.rows.length === 0 ? <p className="text-sm text-muted">No odometer or engine-hour readings recorded. <Link href="/maintenance/preventive" className="underline">Record one</Link>.</p> : (
-                <ul className="mt-1 space-y-0.5 text-sm">
-                  {records.readings.rows.slice(0, 5).map((r) => (
-                    <li key={r.id} className="tabular">
-                      {[r.odometer_miles !== null && `${num(r.odometer_miles)} mi`, r.engine_hours !== null && `${num(r.engine_hours)} h`].filter(Boolean).join(" · ")}
-                      <span className="text-muted"> · {formatDateTime(r.read_at, timezone)}{r.source && READING_SOURCES[r.source] ? ` · ${READING_SOURCES[r.source]}` : ""}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>}
+            {isTruck && <ReadingsSection truckId={vehicleId} records={records} canMarkWrong={canMarkWrong} timezone={timezone} />}
           </>
         )}
       </CardBody>
@@ -256,9 +252,63 @@ export function MaintenanceCard({ kind = "truck", vehicleId, records, canSee, ca
   );
 }
 
+const readingText = (r: { odometer_miles: number | null; engine_hours: number | null }) =>
+  [r.odometer_miles !== null && `${num(r.odometer_miles)} mi`, r.engine_hours !== null && `${num(r.engine_hours)} h`].filter(Boolean).join(" · ");
+
+/**
+ * The truck's readings (owner 2026-11-09, MD1): the current reading (the highest one not marked wrong), the latest
+ * readings with "Mark as wrong" for maintenance.manage or fleet.edit, readings marked wrong (kept, with the reason), and
+ * readings the feed did not use (lower than the current one, or an impossible jump), so a wrong reading is visible.
+ */
+function ReadingsSection({ truckId, records, canMarkWrong, timezone }: { truckId: string; records: VehicleRecords; canMarkWrong: boolean; timezone: string }) {
+  const rows = records.readings.rows;
+  const good = rows.filter((r) => !r.set_aside_at);
+  const maxOf = (k: "odometer_miles" | "engine_hours") => good.reduce<number | null>((m, r) => (r[k] !== null && (m === null || r[k]! > m) ? r[k] : m), null);
+  const current = { odometer_miles: maxOf("odometer_miles"), engine_hours: maxOf("engine_hours") };
+  const ignored = records.ignoredReadings.rows;
+  return (
+    <div data-testid="truck-readings">
+      <p className="flex items-center gap-1.5 text-sm font-semibold"><Gauge className="size-4 text-muted" aria-hidden />Readings</p>
+      {rows.length === 0 ? <p className="text-sm text-muted">No odometer or engine-hour readings recorded. <Link href="/maintenance/preventive" className="underline">Record one</Link>.</p> : (
+        <>
+          <p className="mt-1 text-sm">
+            <span className="text-muted">Current: </span>
+            <span className="font-semibold tabular">{current.odometer_miles === null && current.engine_hours === null ? "no good reading" : readingText(current)}</span>
+          </p>
+          <ul className="mt-1 divide-y divide-line/70 text-sm">
+            {rows.slice(0, 8).map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
+                <span className={r.set_aside_at ? "tabular text-muted line-through" : "tabular"}>{readingText(r)}</span>
+                <span className="text-muted">· {formatDateTime(r.read_at, timezone)}{r.source && READING_SOURCES[r.source] ? ` · ${READING_SOURCES[r.source]}` : ""}</span>
+                {r.set_aside_at ? (
+                  <span className="flex flex-wrap items-center gap-1.5"><Badge tone="gray">Marked wrong</Badge><span className="text-xs text-muted">{r.set_aside_reason} ({formatDateTime(r.set_aside_at, timezone)})</span></span>
+                ) : canMarkWrong && r.set_aside_at !== undefined ? (
+                  <MarkReadingWrong truckId={truckId} readingId={r.id} label={readingText(r)} />
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      {ignored.length > 0 && (
+        <div className="mt-3" data-testid="readings-not-used">
+          <p className="text-sm font-semibold">Readings not used</p>
+          <p className="text-xs text-muted">A reading lower than the current one, or too far above it to be possible, is not used. If the current reading is wrong, mark it as wrong above: the next correct reading then counts.</p>
+          <ul className="mt-1 space-y-0.5 text-sm">
+            {ignored.map((e) => (
+              <li key={e.id}>{e.summary} <span className="text-muted">· {formatDateTime(e.occurred_at, timezone)}</span></li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Recorded costs, recorded mileage and recorded downtime — no estimates. */
 export function CostsCard({ records, downtime90, canSeeCosts }: { records: VehicleRecords; downtime90: number; canSeeCosts: boolean }) {
-  const odo = records.readings.rows.filter((r) => r.odometer_miles !== null);
+  // Readings marked wrong (20261120015100) are left out of the recorded miles.
+  const odo = records.readings.rows.filter((r) => r.odometer_miles !== null && !r.set_aside_at);
   const latest = odo[0];
   const earliest = odo[odo.length - 1];
   const miles = latest && earliest && latest !== earliest ? latest.odometer_miles! - earliest.odometer_miles! : null;

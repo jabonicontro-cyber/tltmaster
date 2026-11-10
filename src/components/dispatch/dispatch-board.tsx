@@ -17,7 +17,7 @@ import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form"
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDate, formatDateTime } from "@/lib/dates";
-import { assignmentProblem, bookingsFor, checkFirst, combinationCheck, defaultLoadTimes, driverDayChecks, driverState, proposePreviousCrews, shopWorkOn, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type EquipmentProblem, type Interval, type ResourceState } from "@/lib/dispatch/board";
+import { assignmentProblem, bookingsFor, checkFirst, combinationCheck, defaultLoadTimes, driverDayChecks, driverState, partNotesOf, proposePreviousCrews, shopWorkOn, shiftDate, trailerState, truckState, type ActiveAssignment, type DayContext, type DayRestrictions, type EquipmentProblem, type Interval, type ResourceState } from "@/lib/dispatch/board";
 import { shiftProblem } from "@/lib/dispatch/smart";
 import { BulkAssignDialog, CopyCrewsDialog, ShortcutsDialog } from "./fast-dispatch";
 import { OrderRoutePanel } from "./order-route-panel";
@@ -786,6 +786,8 @@ function ResourcePanel({ day, active, lk, canEdit, health, problems, onMove }: {
               // In the shop on this date (a safety-critical work order, a visit that day, or work in progress or waiting for
               // parts: the shared readiness rule), from the same data as the assign window.
               const shop = shopWorkOn("truck", t.id, day.date, lk.restrictions);
+              // A part on order for a job that has not started: the truck can run; the note says what is coming (MD1).
+              const partNotes = shop ? [] : partNotesOf("truck", t.id, lk.restrictions);
               // Its loads still to run while it cannot run that day: moved one at a time in the assign window.
               const stuck = bookings.filter((b) => problems.get(b.load_id)?.kind === "truck").map((b) => b.load_id);
               return (
@@ -804,6 +806,9 @@ function ResourcePanel({ day, active, lk, canEdit, health, problems, onMove }: {
                     )}
                   </div>
                   <p className="text-xs text-muted">{TRUCK_TYPE_LABELS[t.truck_type]}{t.service_status === "out_of_service" && t.out_of_service_reason ? ` · ${t.out_of_service_reason}` : ""}{t.service_status !== "out_of_service" && shop ? ` · Work order ${shop.number}${shop.safety_critical ? " (safety-critical)" : ""}` : ""}</p>
+                  {partNotes.length > 0 && t.service_status !== "out_of_service" && (
+                    <p className="text-xs text-amber-800" data-testid="part-on-order-note">{partNotes.join(" ")} It can run until the shop starts the job.</p>
+                  )}
                   {health[t.id] && t.service_status !== "out_of_service" ? (
                     <p className={cn("text-xs", health[t.id].level === "at_risk" ? "text-critical" : "text-amber-800")}>
                       <span className="font-semibold">{health[t.id].level === "at_risk" ? "At risk" : "Watch"}</span>: {health[t.id].reasons.join(" · ")}

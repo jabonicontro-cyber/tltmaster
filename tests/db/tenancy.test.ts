@@ -333,6 +333,17 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   "public.part_wait_update", "public.part_wait_receive", "public.part_wait_cancel", "public.part_waits",
   "public.demo_part_wait_samples", "public.maintenance_record_inspection", "public.vendor_warranties", "public.part_return",
   "public.demo_outside_repair_samples",
+  // 20261120015000-015500 (MD1, SEC3): the first recorded time marks its own job started (trigger only; the time
+  // entry's company); a reading set aside (maintenance.manage or fleet.edit, the caller's company, base guard on the
+  // row); the shared service-status step (private: called after each caller's own permission check, with the caller's
+  // company); units whose shop work is done (fleet.view, the caller's company and bases) and putting one back in
+  // service (fleet.service, fleet.edit or maintenance.manage, the caller's company); the work order base check
+  // (private.my_bases of the caller). Demo samples: demo owner only.
+  "private.wo_mark_started_by_time", "public.truck_reading_set_aside", "private.apply_service_status",
+  "public.units_back_from_shop", "public.return_unit_after_shop", "private.wo_base_check", "public.demo_shop_decision_samples",
+  // 20261120015700: the office's to-do for a certificate the shop recorded (trigger only; the document's own company;
+  // recipients are that company's fleet.edit people, as for the expiring-document alerts).
+  "private.raise_certificate_check", "private.certificate_check_alert",
 ];
 
 /**

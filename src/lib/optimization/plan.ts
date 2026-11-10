@@ -781,12 +781,17 @@ export function parsePriorities(values: Partial<Record<keyof Priorities, string 
   return out;
 }
 
-export interface TrailerShopVisit { trailer_id: string; number: string; scheduled_for: string | null; status: string; safety_critical: boolean }
+export interface TrailerShopVisit {
+  trailer_id: string; number: string; scheduled_for: string | null; status: string; safety_critical: boolean;
+  /** When work first started (20261120015000); absent = not known, counted as started. */
+  work_started_at?: string | null;
+}
 
 /**
  * Maintenance blockers for a trailer on a day, the shared readiness rule (src/lib/fleet/readiness.ts) and the same
  * codes as the database (trailer_safety_restricted, trailer_shop_scheduled, trailer_shop_work_open): an open
- * safety-critical work order, a shop visit scheduled that day, or shop work in progress or waiting for parts.
+ * safety-critical work order, a shop visit scheduled that day, or shop work that has started (in progress, or waiting
+ * for parts after it started). A part on order for a job not started yet does not block (MD1).
  */
 export function trailerShopBlockers(input: Pick<OptimizationInput, "trailerShopVisits">, day: string, trailer: { id: string; unit_number: string }): string[] {
   return shopHolds((input.trailerShopVisits ?? []).filter((v) => v.trailer_id === trailer.id), day).map((h) =>

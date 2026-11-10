@@ -112,7 +112,9 @@ describe("maintenance-aware dispatch", () => {
       const rows = (await s.query<{ r: Array<Record<string, unknown>> }>("select public.dispatch_shop_schedule($1, $2) as r", [w.today, addDays(w.today, 7)])).rows[0].r;
       const mine = rows.filter((r) => r.truck_id === w.f.t1);
       expect(mine).toHaveLength(1);
-      expect(Object.keys(mine[0]).sort()).toEqual(["number", "safety_critical", "scheduled_for", "status", "title", "trailer_id", "truck_id", "work_order_id"]);
+      // work_started_at and the parts on order (description and expected date only) since 20261120015000 (MD1).
+      expect(Object.keys(mine[0]).sort()).toEqual(["number", "parts", "safety_critical", "scheduled_for", "status", "title", "trailer_id", "truck_id", "work_order_id", "work_started_at"]);
+      expect(mine[0].parts).toEqual([]);
       expect((await pgError(s.query("select public.dispatch_shop_schedule($1, $2)", [w.today, addDays(w.today, 100)]))).message).toMatch(/62 days/);
 
       const driverUser = await s.createUser("driver");

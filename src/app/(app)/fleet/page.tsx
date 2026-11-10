@@ -13,7 +13,8 @@ import { businessToday } from "@/server/data/settings";
 import { EXPIRY_WARNING_DAYS, eligibilityMessage } from "@/lib/fleet/eligibility";
 import { qualificationName, TRAILER_TYPE_LABELS, TRUCK_TYPE_LABELS } from "@/lib/fleet/labels";
 import { requirePagePermission } from "@/server/auth";
-import { driverOptions, fleetContext, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
+import { certificatesToCheck, driverOptions, fleetContext, fleetOverview, trailerOptions, truckOptions } from "@/server/data/fleet";
+import { CheckCertificateButton } from "@/components/fleet/shop-decisions";
 import { documentAttention } from "@/lib/fleet/availability";
 import { driverReadyCaption } from "@/lib/fleet/readiness";
 import { CappedList } from "@/components/ui/capped-list";
@@ -55,7 +56,10 @@ function ReadyRing({ kind, s }: { kind: "truck" | "trailer"; s: { active: number
 
 export default async function FleetPage() {
   const access = await requirePagePermission("fleet.view");
-  const [o, trucks, trailers, drivers, ctx, { timezone }] = await Promise.all([fleetOverview({ shop: can(access, "maintenance.view") ? "maintenance" : can(access, "dispatch.view") ? "dispatch" : null }), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") }), businessToday()]);
+  const [o, trucks, trailers, drivers, ctx, { timezone }, toCheck] = await Promise.all([fleetOverview({ shop: can(access, "maintenance.view") ? "maintenance" : can(access, "dispatch.view") ? "dispatch" : null }), truckOptions(), trailerOptions(), driverOptions(), fleetContext({ maintenance: can(access, "maintenance.view") }), businessToday(),
+    // The office's to-do (MD1): inspection certificates the shop recorded that nobody has checked yet.
+    certificatesToCheck()]);
+  const canCheck = can(access, "fleet.edit");
   const activeTrucks = trucks.filter((t) => t.active);
   const restricted = activeTrucks.filter((t) => (ctx.maintenance.openByTruck.get(t.id) ?? []).some((w) => w.safety_critical));
   const pmOverdue = activeTrucks.filter((t) => (ctx.maintenance.pmByTruck.get(t.id)?.overdue ?? 0) > 0);
@@ -118,6 +122,30 @@ export default async function FleetPage() {
           {ctx.maintenance.available && <Stat icon={<CalendarClock className="size-5" />} label="Shop visits, next 7 days" value={scheduled.length} sub="Scheduled work orders" href="/maintenance/work-orders?status=scheduled" />}
           {ctx.documents.available && <Stat icon={<FileWarning className="size-5" />} label="Documents expiring" value={docAttention.length} sub="Vehicles with an expired document or one due within 30 days" href="/fleet/trucks?documents=attention" warn={docAttention.some((x) => x.att.expired.length > 0)} />}
         </div>
+      )}
+
+      {toCheck.rows.length > 0 && (
+        <div data-testid="certificates-to-check" className="mt-5"><Card>
+          <CardHeader
+            title="Inspection certificates to check"
+            description={canCheck
+              ? "The shop recorded these from the inspection work order. They count already. Compare each with the paper certificate, then mark it checked."
+              : "The shop recorded these from the inspection work order. They count already; the office checks each one against the paper certificate."}
+          />
+          <CappedList
+            label="Inspection certificates to check"
+            items={toCheck.rows.map((c) => (
+              <li key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-5 py-2.5 text-sm sm:px-6">
+                <Link href={`/fleet/${c.kind}s/${c.vehicle_id}`} className="font-medium text-ink hover:underline">{c.kind === "truck" ? "Truck" : "Trailer"} {c.unit_number}</Link>
+                <Badge tone="amber">Not checked yet</Badge>
+                <span className="min-w-0 flex-1 text-muted">
+                  {[c.issued_on && `Inspected ${formatDate(c.issued_on)}`, c.expires_on && `expires ${formatDate(c.expires_on)}`, c.issuing_authority && `by ${c.issuing_authority}`, c.reference_number && `No. ${c.reference_number}`].filter(Boolean).join(" · ")}
+                </span>
+                {canCheck && <CheckCertificateButton vehicle={{ kind: c.kind, id: c.vehicle_id }} documentId={c.id} unit={`${c.kind === "truck" ? "truck" : "trailer"} ${c.unit_number}`} expiresOn={c.expires_on} />}
+              </li>
+            ))}
+          />
+        </Card></div>
       )}
 
       {docAttention.length > 0 && (

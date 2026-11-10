@@ -37,6 +37,8 @@ export interface OutlookShopVisit {
   status: string;
   scheduled_for: string | null;
   safety_critical: boolean;
+  /** When work first started (20261120015000); absent before that update (then counted as started). */
+  work_started_at?: string | null;
 }
 
 export interface OutlookTimeOff {

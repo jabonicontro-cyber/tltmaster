@@ -165,6 +165,16 @@ describe("Smart Dispatch and maintenance / hours of service", () => {
     expect(p.proposal!.warnings.join(" ")).not.toMatch(/WO-3/);
   });
 
+  it("proposes a truck whose part is on order for a job not started, with the note; a started job excludes it (MD1)", () => {
+    const parts = [{ description: "Seat cushion", expected_on: "2026-10-15" }];
+    const [p] = recommend(input({ loads: [load("A")], trucks: [truck("101")], shopVisits: [{ truck_id: "t-101", number: "WO-5", status: "awaiting_parts", scheduled_for: null, safety_critical: false, work_started_at: null, parts }] }));
+    expect(p.proposal?.truckLabel).toBe("101");
+    expect(p.proposal!.warnings).toContain("Part on order: Seat cushion, expected Oct 15, 2026.");
+    const [q] = recommend(input({ loads: [load("A")], trucks: [truck("101")], shopVisits: [{ truck_id: "t-101", number: "WO-5", status: "awaiting_parts", scheduled_for: null, safety_critical: false, work_started_at: "2026-10-01T12:00:00Z", parts }] }));
+    expect(q.proposal).toBeNull();
+    expect(q.excludedTrucks[0].reasons.join(" ")).toMatch(/In the shop: WO-5 is waiting for parts/);
+  });
+
   it("a shop visit on another day does not block, and when nothing is safe it says so", () => {
     const visitTomorrow = [{ truck_id: "t-101", number: "WO-9", status: "scheduled", scheduled_for: "2026-10-13", safety_critical: false }];
     expect(recommend(input({ loads: [load("A")], shopVisits: visitTomorrow }))[0].proposal?.truckLabel).toBe("101");
