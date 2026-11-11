@@ -528,6 +528,11 @@ replaced by "Start the demo". Needs migrations `20261106000100_prospect_demo_ten
    the demo welcome appears once (then the "Demo" badge on the account button), their own profile photo shows in the
    header if they added one, and the company menu lists no other company.
 
+**Two-step verification (SEC4, migration `20261120018000`):** a prospect login that also gets money access in a real
+company (billing, accounting, payroll, pricing, costs, audit, settings or user management) needs an authenticator app
+and saved recovery codes, in the demo too, while a login that belongs only to demo companies signs in with its password
+alone.
+
 Do not use `scripts/create-owner.mjs` for a prospect (it sets a password chosen by the operator).
 
 ### 3d. Text-message verification codes (optional, B109)

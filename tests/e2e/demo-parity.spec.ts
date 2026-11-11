@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
-import { closeDemoWelcome, signIn, unique, signInPlatform } from "./helpers";
+import { closeDemoWelcome, closeDemoWelcomeIfShown, signIn, unique, signInPlatform } from "./helpers";
 
 import { PREVIEW_COOKIE, PREVIEW_ROLES } from "@/lib/platform/preview";
 
@@ -287,6 +287,29 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await page.locator("li").filter({ hasText: "Prairie Lantern Freight" }).getByRole("button", { name: "Refresh demo data" }).first().click();
   await page.waitForURL(/saved=refreshed/, { timeout: 240_000 });
 
+  // Records the checks below open (samples.ts; looked up with the service role, outside the app).
+  const one = async (q: PromiseLike<{ data: unknown; error: unknown }>) => { const r = await q; if (r.error) throw r.error; return r.data as { id?: string; truck_id?: string } | null; };
+  const priceOrder = (await one(admin.from("orders").select("id").eq("company_id", co!.id).eq("project_name", "Rush job phoned in, price to check (sample)").maybeSingle()))?.id;
+  const operatorDraft = (await one(admin.from("orders").select("id").eq("company_id", co!.id).eq("project_name", "Phoned-in order, not confirmed yet (sample)").eq("status", "draft").limit(1).maybeSingle()))?.id;
+  const readingTruck = (await one(admin.from("truck_readings").select("truck_id").eq("company_id", co!.id).eq("note", "Demo: one digit typed wrong").limit(1).maybeSingle()))?.truck_id;
+  const sampleDriver = (await one(admin.from("drivers").select("id").eq("company_id", co!.id).eq("active", true).is("hauler_id", null).order("name").limit(1).maybeSingle()))?.id;
+  const limitCustomer = (await one(admin.from("customers").select("id").eq("company_id", co!.id).not("credit_limit_cents", "is", null).limit(1).maybeSingle()))?.id;
+  for (const [what, id] of Object.entries({ priceOrder, operatorDraft, readingTruck, sampleDriver, limitCustomer })) expect(id, `${what} sample exists`).toBeTruthy();
+
+  // Own-order actions (MD1, samples.ts ownDraftSample): the operator ran Refresh, so the draft is theirs; in the
+  // Dispatcher modes (orders.create, no orders.edit) they may still confirm or cancel their own draft.
+  try {
+    for (const role of ["dispatcher", "multi"] as const) {
+      await context.addCookies([{ name: PREVIEW_COOKIE, value: role, url: new URL("/", page.url()).href }]);
+      await visit(page, `/orders/${operatorDraft}`);
+      await closeDemoWelcomeIfShown(page);
+      await expect(page.getByRole("button", { name: "Cancel order" }), `${role} cancels own draft`).toBeVisible();
+      await expect(page.getByRole("button", { name: "Confirm order" }), `${role} confirms own draft`).toBeVisible();
+    }
+  } finally {
+    await context.clearCookies({ name: PREVIEW_COOKIE });
+  }
+
   const owner = await browser.newPage();
   await owner.goto("/login");
   await owner.getByLabel("Email or username").fill(email);
@@ -373,6 +396,42 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
         await expect(owner.getByText(/^Pick up at /).first(), `${role} My Day shows the pickup`).toBeVisible();
         await expect(owner.getByRole("link", { name: "Navigate to pickup" }).first()).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\//);
         await expect(owner.getByRole("link", { name: "Navigate to site" }).first()).toHaveAttribute("href", /destination=/);
+      }
+      // Price to be checked (M1, samples.ts priceCheckSample): the phoned-in order is marked; Owner and Office confirm
+      // the price, Dispatcher sees who decides.
+      if (role === "owner" || role === "office" || role === "dispatcher") {
+        await visit(owner, `/orders/${priceOrder}`);
+        await expect(owner.getByText("Price to be checked", { exact: true }), `${role} price to be checked`).toBeVisible();
+        await expect(owner.getByRole("button", { name: "Confirm price" }), `${role} confirm price`).toHaveCount(role === "dispatcher" ? 0 : 1);
+      }
+      // Own-order actions: the operator's draft is not Colby's, so Dispatcher mode offers him no cancel on it.
+      if (role === "dispatcher") {
+        await visit(owner, `/orders/${operatorDraft}`);
+        await expect(owner.getByRole("heading", { level: 1 }).first()).toBeVisible();
+        await expect(owner.getByRole("button", { name: "Cancel order" }), "dispatcher cannot cancel someone else's draft").toHaveCount(0);
+      }
+      // Customer money fields (L1, samples.ts creditLimitSample): the fictional credit limit for billing roles only.
+      if (role === "owner" || role === "office" || role === "dispatcher") {
+        await visit(owner, `/customers/${limitCustomer}`);
+        await expect(owner.getByRole("heading", { level: 1 }).first()).toBeVisible();
+        if (role === "dispatcher") await expect(owner.getByText(/Credit limit/), "dispatcher sees no credit limit").toHaveCount(0);
+        else await expect(owner.getByLabel("Credit limit ($)"), `${role} credit limit`).toHaveValue("25000.00");
+      }
+      // Shop decisions (MD1): the truck with the wrong reading lists the reading the feed did not use, with Mark as wrong.
+      if (role === "owner" || role === "office" || role === "mechanic") {
+        await visit(owner, `/fleet/trucks/${readingTruck}`);
+        await expect(owner.getByTestId("readings-not-used"), `${role} readings not used`).toContainText("Readings not used");
+        await expect(owner.getByTestId("truck-readings").getByRole("button", { name: /^Mark the reading .+ as wrong$/ }).first(), `${role} mark as wrong`).toBeVisible();
+      }
+      // Driver QR sign-in (DS1): in a demo the code is a labelled sample that signs nothing in.
+      if (role === "owner") {
+        await visit(owner, `/fleet/drivers/${sampleDriver}`);
+        await owner.getByTestId("show-sign-in-qr").click();
+        const qr = owner.getByRole("dialog");
+        await expect(qr.getByText("Demo: a sample code. Nothing signs in.")).toBeVisible();
+        await expect(qr.getByTestId("sign-in-qr")).toBeVisible();
+        await qr.getByRole("button", { name: "Close", exact: true }).last().click();
+        await expect(qr).toHaveCount(0);
       }
     }
   } finally {

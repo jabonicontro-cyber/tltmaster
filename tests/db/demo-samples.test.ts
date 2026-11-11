@@ -11,7 +11,8 @@ import { planningSpeed, reviewPace, billingReadySpeed } from "@/lib/command-cent
 import { todayIn } from "@/lib/dates";
 import { seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
-import { ensureFeatureSamples, PORTAL_NOT_OPENED } from "@/server/demo/samples";
+import { DEMO_CREDIT_REASON, demoAssign } from "@/server/demo/assign";
+import { DEMO_CREDIT_LIMIT_CENTS, ensureFeatureSamples, OWN_DRAFT_PROJECT, PORTAL_NOT_OPENED, PRICE_CHECK_PROJECT } from "@/server/demo/samples";
 
 const env: Record<string, string> = { ...(process.env as Record<string, string>) };
 if (existsSync(".dev-stack/keys.env")) {
@@ -300,15 +301,29 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(Number(est.rows[0].estimated)).toBeGreaterThan(0);
     expect(Number(est.rows[0].unestimated)).toBe(1);
     // Shop decisions (MD1, 20261120015500): a part on order for a job not started, a correct reading the feed did not use,
-    // a certificate the shop recorded and nobody checked yet, and a truck parked by hand whose shop work is all done.
+    // a certificate the shop recorded and nobody checked yet, and a truck (or trailer) parked by hand whose shop work is all done.
     const md1 = await q<{ waiting: string; ignored: string; unchecked: string; parked: string }>(`select
         (select count(*) from public.work_orders where company_id = $1 and status = 'awaiting_parts' and work_started_at is null and not safety_critical) waiting,
         (select count(*) from public.audit_events where company_id = $1 and action = 'truck.reading_ignored') ignored,
         (select count(*) from public.vehicle_documents where company_id = $1 and work_order_id is not null and verified_at is null and archived_at is null) unchecked,
         (select count(*) from public.trucks t where t.company_id = $1 and t.service_status = 'out_of_service'
            and not exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
-           and exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since)) parked`, [w.company]);
-    expect(md1.rows.map((r) => [Number(r.waiting), Number(r.ignored) >= 1, Number(r.unchecked), Number(r.parked)])).toEqual([[1, true, 1, 1]]);
+           and exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since))
+        -- A trailer when no truck is free (20261120019500: in the morning the demo's free trucks are booked for the day).
+        + (select count(*) from public.trailers t where t.company_id = $1 and t.service_status = 'out_of_service'
+           and not exists (select 1 from public.work_orders o where o.trailer_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and exists (select 1 from public.work_orders o where o.trailer_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since)) parked`, [w.company]);
+    // The parked unit needs a truck or trailer with nothing booked from now on (the sample never parks booked equipment):
+    // when every unit is booked (the prospect demo, early in the day) there is none, and it is added at a later Refresh.
+    const free = await q<{ n: string }>(`select
+        (select count(*) from public.trucks t where t.company_id = $1 and t.active and t.hauler_id is null
+           and not exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and not exists (select 1 from public.dispatch_assignments a where a.truck_id = t.id and a.status = 'active' and a.ends_at > now()))
+      + (select count(*) from public.trailers t where t.company_id = $1 and t.active
+           and not exists (select 1 from public.work_orders o where o.trailer_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and not exists (select 1 from public.dispatch_assignments a where a.trailer_id = t.id and a.status = 'active' and a.ends_at > now())) n`, [w.company]);
+    const parkedExpected = Number(md1.rows[0].parked) === 1 || Number(free.rows[0].n) > 0 ? 1 : 0;
+    expect(md1.rows.map((r) => [Number(r.waiting), Number(r.ignored) >= 1, Number(r.unchecked), Number(r.parked)])).toEqual([[1, true, 1, parkedExpected]]);
     // Planned work in the next two weeks, with one day holding more jobs than the shop has bays.
     const plan = await q<{ d: string; n: string }>("select scheduled_for::text as d, count(*) as n from public.work_orders where company_id = $1 and estimated_hours is not null and status not in ('completed', 'closed', 'canceled') and scheduled_for between current_date and current_date + 14 group by 1", [w.company]);
     expect(plan.rows.length).toBeGreaterThan(0);
@@ -411,6 +426,35 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Credit holds (B128): one customer on a manual hold, not the priority customer.
     const held = await q<{ n: string; priority: string }>("select count(*) n, count(*) filter (where is_priority) priority from public.customers where company_id = $1 and credit_hold", [w.company]);
     expect([Number(held.rows[0].n), Number(held.rows[0].priority)]).toEqual([1, 0]);
+    // Any sample load that went ahead for a customer on hold carries the demo's recorded reason (20261120016300); the
+    // path itself is exercised in the next test.
+    const overrides = await q<{ reason: string; created_by: string }>("select reason, created_by from public.credit_hold_overrides where company_id = $1", [w.company]);
+    expect(overrides.rows.every((r) => r.reason === DEMO_CREDIT_REASON && r.created_by === w.owner)).toBe(true);
+    // The inspection certificate the shop recorded and nobody checked raises the office's alert (20261120015700).
+    const certAlert = await q<{ status: string; doc_unchecked: boolean }>(
+      `select a.status, exists (select 1 from public.vehicle_documents d where d.id::text = a.source_key and d.verified_at is null and d.work_order_id is not null) doc_unchecked
+         from public.alerts a where a.company_id = $1 and a.event_type = 'documents.certificate_check'`, [w.company]);
+    expect(certAlert.rows).toEqual([{ status: "open", doc_unchecked: true }]);
+    // Price to be checked (M1, 20261120016100): the phoned-in order is marked while a draft, then confirmed and
+    // scheduled; the typed hauling line names who typed it (the demo owner: the test demo has no dispatcher login).
+    const priceCheck = await q<{ id: string; status: string; requested_by: string | null; checked: boolean; typed: string; quote: boolean }>(
+      `select o.id, o.status, o.price_check_requested_by requested_by, o.price_checked_at is not null checked, o.source_quote_id is not null quote,
+              (select count(*) from public.order_lines l where l.order_id = o.id and l.price_entered_by is not null) typed
+         from public.orders o where o.company_id = $1 and o.project_name = $2`, [w.company, PRICE_CHECK_PROJECT]);
+    expect(priceCheck.rows).toEqual([{ id: expect.any(String), status: "scheduled", requested_by: w.owner, checked: false, quote: false, typed: expect.any(String) }]);
+    expect(Number(priceCheck.rows[0].typed)).toBeGreaterThanOrEqual(1);
+    const pending = ((await as(w.owner).from("billing_order_status").select("price_check_pending").eq("order_id", priceCheck.rows[0].id)).data ?? []) as Array<{ price_check_pending: boolean }>;
+    expect(pending.map((r) => r.price_check_pending)).toEqual([true]);
+    // Own-order actions (MD1, 20261120016000): a direct draft the demo owner started, for a customer not on hold.
+    const ownDraft = await q<{ status: string; created_by: string; quote: boolean; held: boolean; lines: string }>(
+      `select o.status, o.created_by, o.source_quote_id is not null quote, c.credit_hold held, (select count(*) from public.order_lines l where l.order_id = o.id) lines
+         from public.orders o join public.customers c on c.id = o.customer_id where o.company_id = $1 and o.project_name = $2`, [w.company, OWN_DRAFT_PROJECT]);
+    expect(ownDraft.rows).toEqual([{ status: "draft", created_by: w.owner, quote: false, held: false, lines: "1" }]);
+    // Customer money fields (L1, 20261120016200): a fictional credit limit on one customer, which puts nobody on hold.
+    const limits = await q<{ cents: string; held: boolean }>("select credit_limit_cents cents, credit_hold held from public.customers where company_id = $1 and credit_limit_cents is not null", [w.company]);
+    expect(limits.rows).toEqual([{ cents: String(DEMO_CREDIT_LIMIT_CENTS), held: false }]);
+    const limitHolds = ((await as(w.owner).rpc("customer_credit_holds", { p_customers: null })).data ?? []) as Array<{ reasons: string[] }>;
+    expect(limitHolds.some((h) => h.reasons.includes("over_limit"))).toBe(false);
 
     // Proof of delivery (B98): confirmed tickets at a located job site get a position (up to five).
     const pod = await q<{ located: string; placed: string }>(
@@ -431,6 +475,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const partCostAgain = await q<{ n: string }>("select count(*) n from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
     expect(Number(partCostAgain.rows[0].n)).toBe(1);
+    const onceEach = await q<{ price: string; drafts: string; limits: string }>(
+      `select (select count(*) from public.orders where company_id = $1 and project_name = $2) price,
+              (select count(*) from public.orders where company_id = $1 and project_name = $3) drafts,
+              (select count(*) from public.customers where company_id = $1 and credit_limit_cents is not null) limits`, [w.company, PRICE_CHECK_PROJECT, OWN_DRAFT_PROJECT]);
+    expect(onceEach.rows[0]).toEqual({ price: "1", drafts: "1", limits: "1" });
     // Compliance calendar (CC1): one sample credential and one sample permit, coming due (never overdue), added once.
     const cal = await q<{ creds: string; permits: string; soonest: string }>(
       `select (select count(*) from public.driver_qualifications where company_id = $1 and description = 'Safety training refresher (sample)') creds,
@@ -456,6 +505,65 @@ describe.skipIf(!available)("demo feature samples", () => {
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     const baseYard = await q<{ base_id: string; located: boolean }>("select base_id, latitude is not null located from public.company_locations where company_id = $1 and name = 'East Yard yard (demo)'", [w.company]);
     expect(baseYard.rows).toEqual([{ base_id: base, located: true }]);
+  }, 180_000);
+
+  it("a sample load for a customer on credit hold goes ahead with the demo's reason, which is recorded", async () => {
+    // Whether a sample load of the held customer gets assigned depends on the hour the seed runs (since 20261120014200
+    // the hold avoids the coming days' planned loads), so the path the samples use (demoAssign) is exercised directly:
+    // one of tomorrow's open loads (the latest first: the fewest bookings overlap it), its customer put on hold by billing
+    // for the test and released afterwards.
+    const db = as(w.owner);
+    const loads = (await q<{ id: string; customer_id: string }>(
+      `select l.id, o.customer_id from public.order_loads l join public.orders o on o.id = l.order_id
+          join public.customers c on c.id = o.customer_id and not c.credit_hold
+        where l.company_id = $1 and l.status = 'planned' and l.load_date = $2::date + 1
+          and not exists (select 1 from public.dispatch_assignments a where a.load_id = l.id and a.status = 'active')
+        order by l.starts_at desc`, [w.company, todayIn(TZ)])).rows;
+    expect(loads.length).toBeGreaterThan(0);
+    const trucks = ((await db.from("trucks").select("id").eq("active", true).eq("service_status", "in_service").is("hauler_id", null).order("unit_number")).data ?? []) as Array<{ id: string }>;
+    const drivers = ((await db.from("drivers").select("id").eq("active", true).is("hauler_id", null).order("name")).data ?? []) as Array<{ id: string }>;
+    const trailers = [null, ...(((await db.from("trailers").select("id").eq("active", true).eq("service_status", "in_service").order("unit_number")).data ?? []) as Array<{ id: string }>).map((x) => x.id)];
+    let held: string | null = null;
+    try {
+      for (const load of loads) {
+        expect((await db.rpc("set_customer_credit_hold", { p_customer: load.customer_id, p_hold: true, p_reason: "Test hold (demo test)" })).error).toBeNull();
+        held = load.customer_id;
+        for (const trailer of trailers) {
+          for (const tr of trucks) {
+            for (const d of drivers) {
+              if (!(await demoAssign(db, { p_load_id: load.id, p_truck_id: tr.id, p_trailer_id: trailer, p_driver_id: d.id, p_note: "" })).error) {
+                const overrides = await q<{ context: string; reason: string; created_by: string; hold_reasons: string[] }>(
+                  "select context, reason, created_by, hold_reasons from public.credit_hold_overrides where company_id = $1 and customer_id = $2", [w.company, load.customer_id]);
+                expect(overrides.rows).toEqual([{ context: "assignment", reason: DEMO_CREDIT_REASON, created_by: w.owner, hold_reasons: expect.arrayContaining(["manual"]) }]);
+                return;
+              }
+            }
+          }
+        }
+        await db.rpc("set_customer_credit_hold", { p_customer: load.customer_id, p_hold: false, p_reason: "" });
+        held = null;
+      }
+      expect.fail("no truck and driver could take any of tomorrow's open loads");
+    } finally {
+      if (held) await db.rpc("set_customer_credit_hold", { p_customer: held, p_hold: false, p_reason: "" });
+    }
+  }, 300_000);
+
+  it("a demo with the first, unmarked price-check sample gets a marked one at its next Refresh, once", async () => {
+    // As an existing demo has it: the first version's order ("Rush job phoned in (sample)") confirmed and scheduled
+    // without the mark (marking a confirmed order was refused by the order guard).
+    const first = (await q<{ id: string }>("select id from public.orders where company_id = $1 and project_name = $2", [w.company, PRICE_CHECK_PROJECT])).rows[0].id;
+    await q(`update public.orders set project_name = 'Rush job phoned in (sample)', price_check_requested_at = null, price_check_requested_by = null,
+               price_check_fingerprint = null where id = $1`, [first]);
+    await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    const marked = await q<{ id: string; status: string; requested: boolean }>(
+      "select id, status, price_check_requested_at is not null requested from public.orders where company_id = $1 and project_name = $2", [w.company, PRICE_CHECK_PROJECT]);
+    expect(marked.rows).toEqual([{ id: expect.any(String), status: "scheduled", requested: true }]);
+    expect(marked.rows[0].id).not.toBe(first);
+    // The earlier order is left as it is (an ordinary scheduled order), and another run adds nothing.
+    expect((await q("select 1 from public.orders where id = $1 and price_check_requested_at is null and status = 'scheduled'", [first])).rowCount).toBe(1);
+    await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    expect((await q("select 1 from public.orders where company_id = $1 and project_name = $2", [w.company, PRICE_CHECK_PROJECT])).rowCount).toBe(1);
   }, 180_000);
 
   it("the owner's driver day appears once their employee record is linked, and every repeat adds nothing", async () => {
@@ -581,6 +689,20 @@ describe.skipIf(!available)("demo feature samples", () => {
     } finally {
       await q("update public.company_settings set industry = 'aggregate' where company_id = $1", [w.company]);
     }
+  }, 180_000);
+
+  it("each demo owner gets one draft order of their own, so Dispatcher mode can cancel it", async () => {
+    // A prospect owner added beside the operator (as platform_prospect_demo_add_owner does).
+    const prospect = await newUser("prospect-owner");
+    await q("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, 'owner', true)", [w.company, prospect]);
+    await q("update public.profiles set active_company_id = $1 where id = $2", [w.company, prospect]);
+    const r = await ensureFeatureSamples(as(prospect), todayIn(TZ));
+    expect(r.features).toContain("own draft order");
+    const drafts = async () => (await q<{ created_by: string }>(
+      "select created_by from public.orders where company_id = $1 and project_name = $2 and status = 'draft' and source_quote_id is null order by created_by", [w.company, OWN_DRAFT_PROJECT])).rows.map((x) => x.created_by);
+    expect(await drafts()).toEqual([w.owner, prospect].sort());
+    expect((await ensureFeatureSamples(as(prospect), todayIn(TZ))).features).not.toContain("own draft order");
+    await q("update public.company_memberships set active = false where company_id = $1 and user_id = $2", [w.company, prospect]);
   }, 180_000);
 
   it("is refused for a real company, which is left untouched", async () => {
