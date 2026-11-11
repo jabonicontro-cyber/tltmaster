@@ -408,12 +408,12 @@
       "id": "credit-holds",
       "file": "credit-holds.png",
       "feature": "credit-holds",
-      "path": "/customers?q=Harlow",
+      "path": "/customers?q=Kestrel",
       "viewport": "desktop",
-      "ready": "On credit hold",
-      "alt": "A customer on credit hold in a demo company: the hold, its reason and credit limit, shown wherever orders are dispatched",
+      "ready": "Two invoices more than 60 days late",
+      "alt": "A customer on credit hold in a demo company: the hold and its reason, shown wherever orders are dispatched",
       "caption": "Credit holds. Demo company, fictional data.",
-      "open": "^Harlow Homes \\(demo\\)$"
+      "open": "^Kestrel Paving Co\\. \\(demo\\)$"
     },
     {
       "id": "customer-booking",
@@ -424,6 +424,16 @@
       "ready": "Booking",
       "alt": "Booking requests in a demo company: dispatch approves or declines each one and sets how many loads are open per day",
       "caption": "Customer self-booking. Demo company, fictional data."
+    },
+    {
+      "id": "customer-portal",
+      "file": "customer-portal.png",
+      "feature": "customer-portal",
+      "path": "/portal",
+      "viewport": "desktop",
+      "ready": "Welcome,",
+      "alt": "A customer's own portal in a demo company: account balance, today's deliveries, open orders with planned loads, and menus for booking loads, tickets, quotes, invoices and support",
+      "caption": "Customer portal, as the customer sees it. Demo company, fictional data."
     }
   ]
 }

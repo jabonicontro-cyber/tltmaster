@@ -27,6 +27,13 @@ project credentials. Read it together with:
   acknowledged 2026-11-11). To turn on face or fingerprint sign-in: enable passkeys in Supabase Auth (RP ID
   `tltmaster.vercel.app`, origin `https://tltmaster.vercel.app`), then first confirm the assurance level a passkey
   sign-in gets (master plan DS1) and try it on a real phone.
+- **Website images re-shot 2026-11-11 (local, not committed):** all 42 catalog screenshots captured from a local
+  production build of a fresh presenter demo (fictional data, presentation mode, quality gate passed for every shot);
+  link preview re-rendered. New shot `customer-portal` (the customer's own portal home, signed in as a portal account of
+  a demo customer; catalog `customer-portal` now lists it). `customer-booking` now shows the working Booking tab (portal
+  entitled and open), no "not included in your plan" notice. `credit-holds` follows the demo's held customer (the sample
+  picks it from the data: Kestrel Paving this time) and its ready text is the hold reason, so a shot of a customer without
+  a hold fails the gate instead of passing on the "Put on credit hold" button.
 
 ## 00000000000000000000000000. 2026-11-09 (evening) — released `111d934`: drivers ready, shop round 2, money owed, portal tickets, dispatcher orders
 
