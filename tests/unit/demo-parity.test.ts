@@ -47,6 +47,9 @@ const ALLOWED = new Set([
   "src/app/(app)/customer-portal/page.tsx",
   // QR sign-in (DS1): a demo shows a labelled sample code that signs nothing in; the database refuses real codes there.
   "src/app/(app)/fleet/drivers/[id]/page.tsx",
+  "src/server/people/driver-qr.ts", // the same rule for People → person (2026-11-11)
+  // Settings → Security (SEC4): says money roles are exempt from two-step in a demo (fictional data).
+  "src/components/security/mfa-who.tsx",
   // QuickBooks Online (B82): demos never connect to or send to QuickBooks; sends are recorded as simulated.
   "src/server/accounting/send.ts",
   "src/app/api/accounting/qbo/connect/route.ts",

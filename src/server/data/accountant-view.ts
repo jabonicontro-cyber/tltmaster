@@ -27,13 +27,15 @@ type TicketPaymentRow = { id: string; amount_cents: number | string; received_on
  * Payments recorded by ticket (Billing → Payments by ticket, 20261120009400) received in the year, read in pages so a
  * busy year is never cut short. billing.view (RLS); none before that update is installed.
  */
-async function ticketPayments(year: number): Promise<YearTicketPayment[]> {
+async function ticketPayments(year: number): Promise<YearTicketPayment[] | null> {
   const supabase = await createClient();
   const out: YearTicketPayment[] = [];
   for (let page = 0; page < 50; page++) {
     const { data, error } = await supabase.from("customer_payments").select("id, amount_cents, received_on, method, reference, voided_at, customers(name)")
       .gte("received_on", `${year}-01-01`).lte("received_on", `${year}-12-31`).order("received_on").order("id").range(page * 1000, page * 1000 + 999);
-    if (error) return [];
+    // Not installed yet (before 20261120009400): nothing to count. Any other failure: null, so Collected says what is
+    // missing instead of quietly leaving those payments out (honest data).
+    if (error) return ["PGRST205", "42P01"].includes(error.code ?? "") ? [] : null;
     const rows = (data ?? []) as unknown as TicketPaymentRow[];
     out.push(...rows.map((p) => ({ id: p.id, amount_cents: Number(p.amount_cents), received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at, customer_name: p.customers?.name ?? "Customer" })));
     if (rows.length < 1000) break;

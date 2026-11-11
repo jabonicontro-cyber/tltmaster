@@ -45,6 +45,20 @@ describe("accountant year summary", () => {
     expect(lines[2]).toBe("2025-06-03,B,Acme,ach,,10.00,On the invoice,0.00");
   });
 
+  it("when payments by ticket could not be read, the invoice side still counts and the summary and file say what is missing", () => {
+    const s = yearSummary([
+      inv({ number: "A", total_cents: 10000, payments: [{ amount_cents: 7320, received_on: "2025-06-02", method: "check", reference: "9", voided_at: null, customer_payment_id: "cp1" }] }),
+      inv({ number: "B", total_cents: 5000, payments: [{ amount_cents: 1000, received_on: "2025-06-03", method: "ach", reference: "", voided_at: null, customer_payment_id: null }] }),
+    ], 2025, "2025-07-01", null);
+    // The $73.20 that payment by ticket put on invoice A is counted from the invoice; the $0.25 credit cannot be known.
+    expect(s.receivedCents).toBe(7320 + 1000);
+    expect(s.ticketPaymentsMissing).toBe(true);
+    const lines = paymentsCsv(s).split("\r\n");
+    expect(lines.some((l) => l.startsWith("Payments by ticket could not be read"))).toBe(true);
+    // Read normally: nothing is said missing.
+    expect(yearSummary([], 2025, "2025-07-01", []).ticketPaymentsMissing).toBe(false);
+  });
+
   it("neutralizes spreadsheet formulas in names", () => {
     const s = yearSummary([inv({ customer_name: "=HYPERLINK(1)" })], 2025, "2025-05-01");
     expect(invoicesCsv(s)).toContain("'=HYPERLINK(1)");

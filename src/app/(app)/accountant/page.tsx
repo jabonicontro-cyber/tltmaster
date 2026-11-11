@@ -65,6 +65,11 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
                 {s.received.length} payment{s.received.length === 1 ? "" : "s"} received
                 {s.notOnInvoiceCents > 0 ? `, ${formatCents(s.notOnInvoiceCents)} of it not on an invoice yet` : ""}
               </span>
+              {s.ticketPaymentsMissing ? (
+                <span className="mt-1 block text-amber-800" role="status" data-testid="collected-missing">
+                  Payments by ticket could not be read right now: money received by ticket and not on an invoice yet is missing. Reload the page.
+                </span>
+              ) : null}
             </StatTile>
             <StatTile icon={<Hourglass />} label="Still owed today" value={formatCents(s.outstandingCents)} muted={!s.outstandingCents}>All open invoices, any year</StatTile>
           </div>

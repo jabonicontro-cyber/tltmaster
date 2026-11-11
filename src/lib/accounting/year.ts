@@ -48,15 +48,16 @@ const live = (p: { voided_at: string | null }) => !p.voided_at;
 const paidOf = (i: YearInvoice, until?: string) => i.payments.filter((p) => live(p) && (!until || p.received_on <= until)).reduce((n, p) => n + p.amount_cents, 0);
 const days = (from: string, to: string) => Math.round((Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
 
-export function yearSummary(invoices: YearInvoice[], year: number, today: string, byTicket: YearTicketPayment[] = []) {
+export function yearSummary(invoices: YearInvoice[], year: number, today: string, byTicket: YearTicketPayment[] | null = []) {
   const inYear = (d: string | null) => Boolean(d && d.startsWith(`${year}-`));
   const liveInvoices = invoices.filter((i) => i.status !== "void" && i.issue_date);
   const issued = liveInvoices.filter((i) => inYear(i.issue_date));
   // Received in the year, each payment once.
   const direct: ReceivedPayment[] = liveInvoices.flatMap((i) => i.payments
-    .filter((p) => live(p) && !p.customer_payment_id && inYear(p.received_on))
+    // Payments by ticket are counted once below; when they could not be read, their invoice side still counts here.
+    .filter((p) => live(p) && (!p.customer_payment_id || byTicket === null) && inYear(p.received_on))
     .map((p) => ({ received_on: p.received_on, invoices: i.number ?? "", customer_name: i.customer_name, method: p.method, reference: p.reference, amount_cents: p.amount_cents, source: "invoice" as const, not_on_invoice_cents: 0 })));
-  const ticketPayments: ReceivedPayment[] = byTicket.filter((p) => live(p) && inYear(p.received_on)).map((p) => {
+  const ticketPayments: ReceivedPayment[] = (byTicket ?? []).filter((p) => live(p) && inYear(p.received_on)).map((p) => {
     const applied = liveInvoices.flatMap((i) => i.payments.filter((x) => live(x) && x.customer_payment_id === p.id).map((x) => ({ number: i.number ?? "", cents: x.amount_cents })));
     const onInvoices = applied.reduce((n, a) => n + a.cents, 0);
     return {
@@ -84,6 +85,8 @@ export function yearSummary(invoices: YearInvoice[], year: number, today: string
     receivedCents: received.reduce((n, p) => n + p.amount_cents, 0),
     /** Of that, money received by ticket that is not on an invoice yet (credit, or tickets not invoiced). */
     notOnInvoiceCents: received.reduce((n, p) => n + p.not_on_invoice_cents, 0),
+    /** Payments by ticket could not be read: money received by ticket and not on an invoice yet may be missing. */
+    ticketPaymentsMissing: byTicket === null,
     outstandingCents: aging.reduce((n, a) => n + a.cents, 0),
     aging,
   };
@@ -100,7 +103,9 @@ export function invoicesCsv(s: ReturnType<typeof yearSummary>): string {
 /** Payments received in the year: the rows behind "Collected", each payment once. */
 export function paymentsCsv(s: ReturnType<typeof yearSummary>): string {
   return csv([["Received", "Invoice", "Customer", "Method", "Reference", "Amount", "Recorded", "Not on an invoice yet"],
-    ...s.received.map((p) => [p.received_on, p.invoices, p.customer_name, p.method, p.reference, money(p.amount_cents), p.source === "by_ticket" ? "By ticket" : "On the invoice", money(p.not_on_invoice_cents)])]);
+    ...s.received.map((p) => [p.received_on, p.invoices, p.customer_name, p.method, p.reference, money(p.amount_cents), p.source === "by_ticket" ? "By ticket" : "On the invoice", money(p.not_on_invoice_cents)]),
+    // Said in the file too, so a download never looks complete when it is not.
+    ...(s.ticketPaymentsMissing ? [["Payments by ticket could not be read: money received by ticket and not on an invoice yet is missing from this file. Download again.", "", "", "", "", "", "", ""]] : [])]);
 }
 
 /** Tax season default: until the end of April the accountant usually works on last year. */
