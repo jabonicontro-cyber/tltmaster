@@ -47,7 +47,7 @@ const compactMoney = (cents: number) => {
 
 /** Change against the previous period of the same length, as a chip (owner's references 2026-10-27); honest about
  * having nothing to compare with. */
-function Delta({ now, before, period }: { now: number; before: number | null; period: string }) {
+function Delta({ now, before, period, format = (n: number) => n.toLocaleString("en-US") }: { now: number; before: number | null; period: string; format?: (n: number) => string }) {
   if (before === null) return <p className="mt-1.5 text-xs text-muted">No earlier period to compare</p>;
   if (before === 0) {
     return (
@@ -58,6 +58,15 @@ function Delta({ now, before, period }: { now: number; before: number | null; pe
     );
   }
   const change = Math.round(((now - before) / before) * 100);
+  // A very small earlier period makes the percentage meaningless (+2000% after a quiet month): say what it was instead.
+  if (change > 300) {
+    return (
+      <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+        <span className="inline-flex h-[22px] items-center gap-0.5 rounded-md bg-green-50 px-1.5 font-semibold text-green-700"><ArrowUpRight className="size-3.5" aria-hidden /><span className="pill-text">Up</span></span>
+        from {format(before)} in the previous {period}
+      </p>
+    );
+  }
   return (
     <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
       <span className={cn("inline-flex h-[22px] items-center gap-0.5 rounded-md px-1.5 font-semibold tabular", change > 0 ? "bg-green-50 text-green-700" : change < 0 ? "bg-amber-50 text-amber-800" : "bg-ink/[0.05] text-muted")}>
@@ -196,7 +205,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <section aria-label="Key figures" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {r.value ? (
               <Kpi icon={<CircleDollarSign className="size-4" aria-hidden />} label="Verified delivered value" value={formatCents(r.value.verified_value_cents)} spark={trend.map((t) => t.value)} sparkLabel="Verified value trend over the period">
-                <Delta now={r.value.verified_value_cents} before={prev?.value?.verified_value_cents ?? null} period={periodLabel} />
+                <Delta now={r.value.verified_value_cents} before={prev?.value?.verified_value_cents ?? null} period={periodLabel} format={compactMoney} />
               </Kpi>
             ) : null}
             <Kpi icon={<Ticket className="size-4" aria-hidden />} label={say("Delivery tickets")} value={r.deliveries ? String(r.deliveries.tickets) : "–"} spark={trend.map((t) => t.tickets)} sparkLabel="Delivery tickets over the period">

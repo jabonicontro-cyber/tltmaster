@@ -104,8 +104,8 @@
       "feature": "reports",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-11-11T13:38:37.224Z",
-      "source": "localhost:3112",
+      "capturedAt": "2026-11-11T13:50:18.523Z",
+      "source": "localhost:3114",
       "checks": "passed"
     },
     "setup": {
@@ -167,8 +167,8 @@
       "feature": "site-notes",
       "path": "/customers/site-notes",
       "viewport": "desktop",
-      "capturedAt": "2026-11-11T13:39:04.993Z",
-      "source": "localhost:3112",
+      "capturedAt": "2026-11-11T13:50:20.589Z",
+      "source": "localhost:3114",
       "checks": "passed"
     },
     "accountant-view": {

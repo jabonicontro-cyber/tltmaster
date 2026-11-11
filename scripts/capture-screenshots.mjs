@@ -103,6 +103,11 @@ async function siteStyle() {
       if (tag.test(n.nodeValue ?? "")) n.nodeValue = (n.nodeValue ?? "").replace(tag, "");
       tag.lastIndex = 0;
     }
+    // Form fields show their values outside the text nodes (a filled text box): the same tags come off there too.
+    for (const el of document.querySelectorAll("input, textarea")) {
+      if (tag.test(el.value)) el.value = el.value.replace(tag, "");
+      tag.lastIndex = 0;
+    }
     // Drop the company's own colours (src/lib/branding.ts sets them inline), so the app's defaults, Taviron blue and
     // navy, apply everywhere: buttons, selected tabs, badges and the navigation.
     for (const el of document.querySelectorAll("[style*='--color-']")) {
