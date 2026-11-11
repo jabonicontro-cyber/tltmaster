@@ -111,7 +111,10 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("past-due order to invoice", await pastDueOrder(db, today));
   // Price to be checked (financial review M1, owner 2026-11-10): a phoned-in order whose typed price the office checks
   // before billing, so the order and billing pages show the check and its Confirm price action. Once per demo.
-  note("price to be checked", await priceCheckSample(db, today));
+  note("price to be checked", await priceCheckSample(db, today, result.notes));
+  // Own-order actions (MD1, 20261120016000): a direct draft order the person running the samples started, so the
+  // Dispatcher and "Dispatcher who also drives" modes show Cancel (and Confirm) on their own draft. Once per demo owner.
+  note("own draft order", await ownDraftSample(db, today, userId));
   // After the driver day, so the owner's own load can carry the flagged site.
   note("site directions verification", await siteDirections(db, today, userId));
   note("payroll period", await payrollPeriod(db, today));
@@ -170,6 +173,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("combined invoice", await rpcCount(db, "demo_combined_invoice_sample"));
   // Payments by ticket (TP1): a check paying one ticket in full and one in part, with a little kept as credit.
   note("payments by ticket", await rpcCount(db, "demo_ticket_payment_samples"));
+  // Customer money fields (financial review L1, 20261120016200): a fictional credit limit on one customer, so Owner and
+  // Office see it on the customer page and Dispatcher does not. After the invoice samples; once per demo.
+  note("credit limit", await creditLimitSample(db));
   // GPS and hours (B101): hand-entered sample positions (one stale) and drivers' hours (one nearly out of drive time).
   note("GPS and hours", await rpcCount(db, "demo_telematics_samples"));
   // Wait times (B111): finished pickup and site stops on recent delivered loads, one site clearly slow, 45 free minutes.
@@ -568,36 +574,108 @@ async function pastDueOrder(db: Db, today: string): Promise<number> {
   return o.delivered + 1;
 }
 
-/** The project name of the price-check sample, found again by it so Refresh never adds a second one. */
-const PRICE_CHECK_PROJECT = "Rush job phoned in (sample)";
+/**
+ * The project name of the price-check sample, found again by it so Refresh never adds a second one. The first version
+ * ("Rush job phoned in (sample)") marked its order after confirming it, which the order guard refuses (a confirmed
+ * order's lines are fixed), so no demo got a flagged order: those orders stay as ordinary scheduled orders, and the next
+ * Refresh adds this one, flagged.
+ */
+export const PRICE_CHECK_PROJECT = "Rush job phoned in, price to check (sample)";
 
 /**
- * A direct order with a typed hauling price (a line without any price-list rate), confirmed and scheduled for tomorrow,
- * marked as typed by the demo's dispatcher through public.demo_price_check_sample (the same flag a dispatcher's own save
- * sets). The office (or owner) confirms it on the order or billing page. Nothing before 20261120016100 is installed.
+ * A direct order with a typed hauling price (a line without any price-list rate), marked as typed through
+ * public.demo_price_check_sample while it is still a draft (the same flag a dispatcher's own save sets; demos have no
+ * dispatcher login, so it names the demo's first dispatcher login if there is one, else the person running the samples),
+ * then confirmed and scheduled for tomorrow: the check holds up only handoff and invoicing. The office (or owner)
+ * confirms the price on the order or billing page. A draft left behind by a refusal is marked on the next run. Nothing
+ * before 20261120016100 is installed.
  */
-async function priceCheckSample(db: Db, today: string): Promise<number> {
+async function priceCheckSample(db: Db, today: string, notes: string[]): Promise<number> {
   const probe = await db.from("orders").select("id").not("price_check_requested_at", "is", null).limit(1);
   if (probe.error || (probe.data ?? []).length) return 0;
-  const done = await db.from("orders").select("id").eq("project_name", PRICE_CHECK_PROJECT).limit(1);
+  const done = await db.from("orders").select("id, status").eq("project_name", PRICE_CHECK_PROJECT).limit(1);
+  if (done.error) return 0;
+  const found = ((done.data ?? []) as Array<{ id: string; status: string }>)[0];
+  if (found && found.status !== "draft") return 0; // added already; a confirmed order's lines can no longer be marked
+  const day = addDays(today, 1);
+  let orderId = found?.id;
+  let n = 0;
+  if (!orderId) {
+    const tmpl = await billingTemplate(db);
+    if (!tmpl) return 0;
+    const { src } = tmpl;
+    orderId = ((await must("price-check order", db.rpc("save_order_draft", { p_payload: {
+      customer_id: tmpl.customer_id, order_date: today, requested_date: day, project_name: PRICE_CHECK_PROJECT,
+      job_instructions: "Demo: the customer phoned this in; dispatch typed the rush price.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+      lines: [
+        { kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "24", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable },
+        { kind: "hauling", calc_method: "per_unit", description: "Rush haul, same day", unit_code: src.unit_code, quantity: "24", unit_rate_cents: 650, taxable: false },
+      ],
+    } }))) as { order_id: string }).order_id;
+    n = 1;
+  }
+  // Marked while a draft: the lines of a confirmed order cannot change (private.guard_order_lines).
+  const flagged = await db.rpc("demo_price_check_sample", { p_order_id: orderId });
+  if (flagged.error || Number(flagged.data ?? 0) !== 1) {
+    notes.push(`Price to be checked sample not marked yet (${flagged.error?.message ?? "no typed price on the order"}); the next refresh tries again`);
+    return 0;
+  }
+  await must("confirm", db.rpc("set_order_status", { p_order_id: orderId, p_status: "confirmed", p_note: "" }));
+  await must("schedule", db.rpc("update_order_schedule", { p_order_id: orderId, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
+  await must("scheduled", db.rpc("set_order_status", { p_order_id: orderId, p_status: "scheduled", p_note: "" }));
+  return n + 1;
+}
+
+/** The project name of each demo owner's own draft order (ownDraftSample). */
+export const OWN_DRAFT_PROJECT = "Phoned-in order, not confirmed yet (sample)";
+
+/**
+ * A direct order the person running the samples started and left as a draft (MD1 own-order actions, 20261120016000):
+ * with orders.create a person may confirm or cancel their own draft, so the Dispatcher modes show Cancel on it. Saved
+ * through save_order_draft by the demo owner (who prices lines as before: nothing to check), for a customer not on
+ * credit hold, copying a per-unit line and its rate from the demo's own orders. Once per demo owner (the operator and a
+ * prospect owner each get their own when they refresh), found again by its project name and its creator.
+ */
+async function ownDraftSample(db: Db, today: string, userId: string): Promise<number> {
+  const done = await db.from("orders").select("id").eq("project_name", OWN_DRAFT_PROJECT).eq("created_by", userId).limit(1);
   if (done.error || (done.data ?? []).length) return 0;
-  const tmpl = await billingTemplate(db);
+  const holds = await db.rpc("customer_credit_holds", { p_customers: null });
+  const held = new Set(((holds.error ? [] : holds.data ?? []) as Array<{ customer_id: string }>).map((h) => h.customer_id));
+  const tmpl = await billingTemplate(db, held);
   if (!tmpl) return 0;
   const { src } = tmpl;
-  const day = addDays(today, 1);
-  const o = (await must("price-check order", db.rpc("save_order_draft", { p_payload: {
-    customer_id: tmpl.customer_id, order_date: today, requested_date: day, project_name: PRICE_CHECK_PROJECT,
-    job_instructions: "Demo: the customer phoned this in; dispatch typed the rush price.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
-    lines: [
-      { kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "24", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable },
-      { kind: "hauling", calc_method: "per_unit", description: "Rush haul, same day", unit_code: src.unit_code, quantity: "24", unit_rate_cents: 650, taxable: false },
-    ],
-  } }))) as { order_id: string };
-  await must("confirm", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "confirmed", p_note: "" }));
-  await must("schedule", db.rpc("update_order_schedule", { p_order_id: o.order_id, p_expected_edit_seq: null, p_payload: { scheduled_start: day, scheduled_end: day } }));
-  await must("scheduled", db.rpc("set_order_status", { p_order_id: o.order_id, p_status: "scheduled", p_note: "" }));
-  const flagged = await db.rpc("demo_price_check_sample", { p_order_id: o.order_id });
-  return flagged.error ? 1 : 1 + Number(flagged.data ?? 0);
+  await must("own draft order", db.rpc("save_order_draft", { p_payload: {
+    customer_id: tmpl.customer_id, order_date: today, requested_date: weekdayOnOrAfter(addDays(today, 3)), project_name: OWN_DRAFT_PROJECT,
+    job_instructions: "Demo: taken by phone; not confirmed with the customer yet.", site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city,
+    lines: [{ kind: src.kind, calc_method: "per_unit", material_id: src.material_id, description: src.description, unit_code: src.unit_code, quantity: "36", unit_rate_cents: Number(src.unit_rate_cents), taxable: src.taxable }],
+  } }));
+  return 1;
+}
+
+/** The fictional credit limit of the demo samples (customer money fields). */
+export const DEMO_CREDIT_LIMIT_CENTS = 2_500_000;
+
+/**
+ * One demo customer gets a fictional $25,000 credit limit through the app's own path (set_customer_credit_limit, which
+ * needs billing.manage), so the customer page shows it to Owner and Office and hides it from Dispatcher. Only while no
+ * customer has a limit (a value set in the demo is never changed), and only on a customer with orders, not on hold and
+ * without open issued invoices, so the limit puts nobody on hold. Nothing before 20261120016200 is installed.
+ */
+async function creditLimitSample(db: Db): Promise<number> {
+  const terms = await db.rpc("customer_money_terms", { p_customers: null });
+  if (terms.error) return 0;
+  if (((terms.data ?? []) as Array<{ credit_limit_cents: number | null }>).some((t) => t.credit_limit_cents !== null)) return 0;
+  const holds = await db.rpc("customer_credit_holds", { p_customers: null });
+  if (holds.error) return 0;
+  const skip = new Set(((holds.data ?? []) as Array<{ customer_id: string }>).map((h) => h.customer_id));
+  const issued = await db.from("invoices").select("customer_id").eq("status", "issued");
+  if (issued.error && !missing(issued.error)) return 0;
+  for (const i of (issued.data ?? []) as Array<{ customer_id: string }>) skip.add(i.customer_id);
+  const orders = ((await db.from("orders").select("customer_id").order("order_number").limit(200)).data ?? []) as Array<{ customer_id: string }>;
+  const customer = orders.map((o) => o.customer_id).find((id) => !skip.has(id));
+  if (!customer) return 0;
+  const set = await db.rpc("set_customer_credit_limit", { p_customer: customer, p_limit_cents: DEMO_CREDIT_LIMIT_CENTS });
+  return set.error ? 0 : 1;
 }
 
 /** The weekday on or before a date. */
@@ -607,17 +685,27 @@ function weekdayOnOrBefore(day: string): string {
   return d;
 }
 
+/** The weekday on or after a date. */
+function weekdayOnOrAfter(day: string): string {
+  let d = day;
+  while ([0, 6].includes(new Date(`${d}T12:00:00Z`).getUTCDay())) d = addDays(d, 1);
+  return d;
+}
+
 type BillingLine = { kind: string; calc_method: string; material_id: string | null; description: string; unit_code: string | null; unit_rate_cents: number; taxable: boolean };
 type BillingTemplate = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; src: BillingLine };
 
-/** A per-unit line (rate included) of the demo's own orders, for a customer that needs no PO and a site with an address. */
-async function billingTemplate(db: Db): Promise<BillingTemplate | null> {
+/**
+ * A per-unit line (rate included) of the demo's own orders, for a customer that needs no PO and a site with an address
+ * (and not one of `exclude`, e.g. customers on credit hold).
+ */
+async function billingTemplate(db: Db, exclude: Set<string> = new Set()): Promise<BillingTemplate | null> {
   type Tmpl = { customer_id: string; site_label: string | null; site_line1: string | null; site_city: string | null; customers: { po_required: boolean } | null; order_lines: BillingLine[] };
   const candidates = ((await must("billing template", db.from("orders")
     .select("customer_id, site_label, site_line1, site_city, customers(po_required), order_lines(kind, calc_method, material_id, description, unit_code, unit_rate_cents, taxable)")
     .not("site_line1", "is", null).order("order_number").limit(40))) as unknown as Tmpl[]);
   const usable = (l: BillingLine) => l.calc_method === "per_unit" && Boolean(l.unit_code) && Number(l.unit_rate_cents) > 0;
-  const tmpl = candidates.find((o) => o.customers && !o.customers.po_required && o.order_lines.some(usable));
+  const tmpl = candidates.find((o) => o.customers && !o.customers.po_required && !exclude.has(o.customer_id) && o.order_lines.some(usable));
   if (!tmpl) return null;
   return { customer_id: tmpl.customer_id, site_label: tmpl.site_label, site_line1: tmpl.site_line1, site_city: tmpl.site_city, src: tmpl.order_lines.find(usable)! };
 }

@@ -5,6 +5,7 @@
 import { randomUUID } from "node:crypto";
 import { afterAll, describe, expect, it } from "vitest";
 import { MONEY_MFA_REASON, MONEY_PERMISSIONS } from "@/lib/mfa-policy";
+import { handedOff } from "./fixtures";
 import { pgError, pool, TOP_LINE, withSession, type Session } from "./helpers";
 
 afterAll(() => pool.end());
@@ -293,6 +294,29 @@ describe("QuickBooks and support visits (L3)", () => {
       expect(history.find((h) => h.action === "accounting.named")?.summary).toBe("QuickBooks company recorded: Haul Co Books");
       expect(history.find((h) => h.action === "accounting.disconnected")?.summary).toBe("QuickBooks disconnected: Haul Co Books");
       expect(new Set(history.map((h) => h.actor_id))).toEqual(new Set([owner]));
+    });
+  });
+
+  it("a visit to a demo company can still record a simulated send (nothing leaves Taviron); connecting stays refused", async () => {
+    await withSession(async (s) => {
+      const office = await s.createUser("office");
+      await s.as(office);
+      const { handoffOrder } = await handedOff(s, office);
+      // Top Line becomes a demo inside this rolled-back transaction (the fixtures build on its sample records).
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'prospect' where id = $1", [TOP_LINE]);
+      const sup = await staff(s);
+      await s.as(sup);
+      await s.query("select public.platform_support_enter($1, '')", [TOP_LINE]);
+      expect(await company(s)).toBe(TOP_LINE);
+      const send = (await s.query<{ r: { go: boolean; id: string } }>("select public.accounting_begin_send($1, null, true) r", [handoffOrder])).rows[0].r;
+      expect(send).toMatchObject({ go: true });
+      await s.query("select public.accounting_finish_send($1, true, 'QBO-DEMO', 'DEMO-1', 1000, 1000, '')", [send.id]);
+      expect((await s.query("select simulated, status from public.accounting_invoice_sends where id = $1", [send.id])).rows[0]).toEqual({ simulated: true, status: "sent" });
+      // Connecting QuickBooks is refused during every visit, a demo's included.
+      const e = await pgError(s.query("select public.accounting_save_connection(null, 'sandbox', 'realm-visit', 'Visit Books')"));
+      expect(e).toEqual({ code: "42501", message: "Taviron support cannot connect, change or disconnect QuickBooks. Ask an owner of the company." });
+      await s.query("select public.platform_support_leave()");
     });
   });
 
