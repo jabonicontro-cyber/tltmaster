@@ -2,7 +2,7 @@ import "server-only";
 import { correctableLines, typedPriceLines, type PriceCheckLine } from "@/lib/orders/price-check";
 import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/billing/invoice-draft";
 import { uuid } from "@/lib/schemas/common";
-import type { ExceptionKind, FulfillmentGap, HandoffSnapshot, LoadDocumentationState, QuantityCheck, Readiness, ReadinessCounts } from "@/lib/billing/rules";
+import { missingTicketKind, type ExceptionKind, type FulfillmentGap, type HandoffSnapshot, type LoadDocumentationState, type QuantityCheck, type Readiness, type ReadinessCounts } from "@/lib/billing/rules";
 import type { TicketStatus } from "@/lib/tickets/rules";
 import { createClient } from "@/server/supabase/server";
 import { getUserNames } from "./quotes";
@@ -167,18 +167,25 @@ export async function getBillingBoard(view: BillingView, f: BillingFilters) {
   ]);
   if (orders.error) throw new Error(`Could not load billing status: ${orders.error.message}`);
   const all = (orders.data ?? []) as BillingOrderRow[];
-  const filtered = all.filter((o) => matches(o, view === "orders" ? f : { ...f, readiness: undefined }));
+  // The readiness filter applies to All orders and, since WK1, to Exceptions ("Orders blocked from billing" opens the
+  // exceptions of blocked orders only: BILLING_BLOCKED_HREF). Other views ignore it.
+  const filtered = all.filter((o) => matches(o, view === "orders" || view === "exceptions" ? f : { ...f, readiness: undefined }));
   const orderIds = new Set(filtered.map((o) => o.order_id));
   const byId = new Map(all.map((o) => [o.order_id, o]));
 
-  const [missingCount, pendingCount, customers] = await Promise.all([
-    supabase.from("billing_load_status").select("load_id", { count: "exact", head: true }).eq("documentation_state", "missing"),
+  // Missing tickets are counted like the Command Center (missingTicketKind): loads a truck ran (or whose ticket was
+  // voided) without a live ticket; past loads that never got a truck are counted apart, as Dispatch's.
+  const [missingCount, noTruckCount, pendingCount, customers] = await Promise.all([
+    supabase.from("billing_load_status").select("load_id", { count: "exact", head: true }).eq("documentation_state", "missing").or("assignment_id.not.is.null,voided_numbers.not.is.null"),
+    supabase.from("billing_load_status").select("load_id", { count: "exact", head: true }).eq("documentation_state", "missing").is("assignment_id", null).is("voided_numbers", null),
     supabase.from("billing_load_status").select("pending_count").gt("pending_count", 0),
     supabase.from("customers").select("id, name").order("name"),
   ]);
-  const counts: Record<BillingView, number> = {
+  const counts: Record<BillingView, number> & { missingNoTruck: number; blocked: number } = {
     orders: all.length,
     missing: missingCount.count ?? 0,
+    missingNoTruck: noTruckCount.count ?? 0,
+    blocked: all.filter((o) => o.readiness === "blocked").length,
     review: ((pendingCount.data ?? []) as Array<{ pending_count: number }>).reduce((n, r) => n + r.pending_count, 0),
     exceptions: all.filter((o) => o.exceptions_count > 0 && !o.acknowledgment_id).length,
     ready: all.filter((o) => o.readiness === "ready").length,
@@ -197,7 +204,9 @@ export async function getBillingBoard(view: BillingView, f: BillingFilters) {
         truck: l.truck_id ? names.trucks.get(l.truck_id) ?? "–" : null,
         trailer: l.trailer_id ? names.trailers.get(l.trailer_id) ?? "–" : null,
         driver: l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : null,
-      }));
+      }))
+      // Loads that ran without a ticket first; loads that ended without a truck (Dispatch's) after them. Stable sort.
+      .sort((a, b) => Number(missingTicketKind(a) === "no_truck") - Number(missingTicketKind(b) === "no_truck"));
     return { ...base, view, loads };
   }
 

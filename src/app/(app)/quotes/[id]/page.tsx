@@ -16,6 +16,7 @@ import { formatBp, formatCents } from "@/lib/money";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { can } from "@/lib/permissions";
 import { isPastExpiration, QUOTE_STATUS_LABELS } from "@/lib/quotes/status";
+import { quoteHistory } from "@/lib/quotes/history";
 import { requirePagePermission } from "@/server/auth";
 import { getQuoteDetail } from "@/server/data/quotes";
 import { getOrderForQuote } from "@/server/data/orders";
@@ -36,7 +37,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const detail = await getQuoteDetail(id);
   if (!detail) notFound();
-  const { quote, customer, versions, current, lines, events, deliveries, names } = detail;
+  const { quote, customer, versions, current, lines, events, deliveries, names, audit } = detail;
   const [{ today, timezone }, order] = await Promise.all([businessToday(), can(access, "orders.view") ? getOrderForQuote(quote.id) : Promise.resolve(null)]);
   // Pricing help (B114) while the price can still change: drafts and quotes waiting on the customer.
   const pricing = quote.status === "draft" || quote.status === "sent"
@@ -227,18 +228,16 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           </Card>
 
           <Card>
+            {/* Status changes and edits together, newest first (WK1: edits were missing). */}
             <CardHeader title="History" />
-            <ol className="space-y-0 px-5 py-3 sm:px-6">
-              {events.map((e) => (
-                <li key={e.id} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
+            <ol className="space-y-0 px-5 py-3 sm:px-6" aria-label="Quote history">
+              {quoteHistory(events, audit, versions).map((e) => (
+                <li key={e.key} className="relative border-l-2 border-line pb-4 pl-4 last:pb-0">
                   <span className="absolute top-1 -left-[5px] size-2 rounded-full bg-strong" aria-hidden />
-                  <p className="text-sm font-semibold">
-                    {e.from_status ? `${QUOTE_STATUS_LABELS[e.from_status]} → ` : ""}
-                    {QUOTE_STATUS_LABELS[e.to_status]}
-                  </p>
+                  <p className="text-sm font-semibold">{e.title}</p>
                   {e.note && <p className="text-sm">{e.note}</p>}
                   <p className="text-xs text-muted">
-                    {formatDateTime(e.occurred_at, timezone)} · {who(e.actor_id)}
+                    {formatDateTime(e.at, timezone)} · {who(e.actorId)}
                   </p>
                 </li>
               ))}

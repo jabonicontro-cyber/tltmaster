@@ -51,7 +51,8 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
         // Cancel asks why, reopening asks for an optional note, and "Waiting for parts" asks which part.
         if (to === "awaiting_parts") {
           setWaiting(true);
-        } else if (to === "canceled" || to === "in_progress" && status === "completed") {
+        } else if (to === "canceled" || to === "awaiting_inspection" || to === "in_progress" && status === "completed") {
+          // Send for inspection asks for an optional note for the inspector (WK1).
           setNote("");
           setConfirm(to);
         } else {
@@ -77,11 +78,15 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       <ConfirmDialog
         open={Boolean(confirm)}
         onOpenChange={(o) => !o && setConfirm(null)}
-        title={confirm === "canceled" ? "Cancel the work order" : "Reopen the work order"}
+        title={confirm === "canceled" ? "Cancel the work order" : confirm === "awaiting_inspection" ? "Send for inspection" : "Reopen the work order"}
         description={confirm === "canceled"
           ? (unit === "trailer" ? "The driver whose truck usually pulls this trailer sees the cancellation on My Day if it was scheduled." : "The driver of this truck sees the cancellation on My Day if it was scheduled.")
-          : safetyCritical ? `The ${unit} goes out of service again until a new inspection clears it.` : "The work order goes back to in progress."}
-        confirmLabel={confirm === "canceled" ? "Cancel work order" : "Reopen"}
+          : confirm === "awaiting_inspection"
+            ? safetyCritical
+              ? `The repair is done. Someone allowed to clear vehicles for service inspects it; the ${unit} stays out of service until it passes.`
+              : "The work is done. Someone allowed to clear vehicles for service checks it before the job is completed."
+            : safetyCritical ? `The ${unit} goes out of service again until a new inspection clears it.` : "The work order goes back to in progress."}
+        confirmLabel={confirm === "canceled" ? "Cancel work order" : confirm === "awaiting_inspection" ? "Send for inspection" : "Reopen"}
         tone={confirm === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!confirm) return;
@@ -89,7 +94,8 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
           return go(confirm, note);
         }}
       >
-        <Field label={confirm === "canceled" ? "Reason" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled"}>
+        <Field label={confirm === "canceled" ? "Reason" : confirm === "awaiting_inspection" ? "Note for the inspector (optional)" : "Note (optional)"} htmlFor="status-note" required={confirm === "canceled"}
+          hint={confirm === "awaiting_inspection" ? "What was fixed and what to check. It shows in the job's Activity." : undefined}>
           <Textarea id="status-note" rows={3} maxLength={2000} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </ConfirmDialog>

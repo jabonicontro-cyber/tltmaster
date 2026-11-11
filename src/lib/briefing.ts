@@ -4,6 +4,9 @@
  * viewer may not see is null and produces nothing.
  */
 
+import { BILLING_BLOCKED_HREF } from "@/lib/billing/rules";
+import { UNRESOLVED_REPORTS_HREF } from "@/lib/driver/rules";
+
 export interface BriefingSignals {
   urgentOrders: number | null;
   loadsTodayUnassigned: number | null;
@@ -46,11 +49,11 @@ export function briefingActions(s: BriefingSignals): BriefingAction[] {
   if (n(s.overdueInvoices?.count)) out.push({ key: "overdue", tone: "warn", weight: 70 + Math.min(15, Math.floor(s.overdueInvoices!.cents / 500000)), title: `${money(s.overdueInvoices!.cents)} overdue on ${plural(s.overdueInvoices!.count, "invoice")}`, detail: "Customers past their payment terms.", href: "/billing/invoices?view=overdue", cta: "See who owes" });
   if (n(s.revenueToCheck?.count)) out.push({ key: "revenue", tone: "warn", weight: 65 + Math.min(15, Math.floor(s.revenueToCheck!.cents / 500000)), title: s.revenueToCheck!.cents > 0 ? `About ${money(s.revenueToCheck!.cents)} possibly not billed` : `About ${money(s.revenueToCheck!.heldCents ?? 0)} of billing held up`, detail: `${plural(s.revenueToCheck!.count, "finding")}: delivered work not handed off, short billing or voided invoices.`, href: "/billing/leaks", cta: "Check revenue" });
   if (n(s.billingReady)) out.push({ key: "ready", tone: "info", weight: 60, title: `${plural(s.billingReady!, "order")} ready to bill`, detail: "Delivered, documented and reviewed.", href: "/billing?view=ready", cta: "Hand off for billing" });
-  if (n(s.missingTickets)) out.push({ key: "missing", tone: "warn", weight: 55, title: `${plural(s.missingTickets!, "delivered load")} without a ticket`, detail: "Billing waits until each load has its ticket.", href: "/command-center?kind=missing_ticket#attention", cta: "Chase tickets" });
+  if (n(s.missingTickets)) out.push({ key: "missing", tone: "warn", weight: 55, title: `${plural(s.missingTickets!, "load")} that ran without a ticket`, detail: "Billing waits until each load has its ticket.", href: "/command-center?kind=missing_ticket#attention", cta: "Chase tickets" });
   if (n(s.ticketsToReview)) out.push({ key: "review", tone: "info", weight: 50, title: `${plural(s.ticketsToReview!, "ticket")} to review`, detail: "Accepted tickets move orders toward billing.", href: "/tickets", cta: "Review tickets" });
   if (n(s.trucksDown)) out.push({ key: "down", tone: "warn", weight: 45, title: `${plural(s.trucksDown!, "truck")} out of service`, detail: "Check expected return dates before promising loads.", href: "/fleet/trucks?status=out_of_service", cta: "See trucks" });
-  if (n(s.driverReports)) out.push({ key: "reports", tone: "warn", weight: 44, title: `${plural(s.driverReports!, "driver report")} open`, detail: "Delays, breakdowns or inspection problems from drivers.", href: "/field-reports", cta: "Read reports" });
-  if (n(s.billingBlocked)) out.push({ key: "blocked", tone: "info", weight: 40, title: `${plural(s.billingBlocked!, "order")} blocked from billing`, detail: "Differences between ordered and delivered to resolve or acknowledge.", href: "/billing?view=exceptions", cta: "Resolve" });
+  if (n(s.driverReports)) out.push({ key: "reports", tone: "warn", weight: 44, title: `${plural(s.driverReports!, "driver report")} not resolved`, detail: "Delays, breakdowns or inspection problems from drivers.", href: UNRESOLVED_REPORTS_HREF, cta: "Read reports" });
+  if (n(s.billingBlocked)) out.push({ key: "blocked", tone: "info", weight: 40, title: `${plural(s.billingBlocked!, "order")} blocked from billing`, detail: "Differences between ordered and delivered to resolve or acknowledge.", href: BILLING_BLOCKED_HREF, cta: "Resolve" });
   if (n(s.tomorrowUnassigned)) out.push({ key: "tomorrow", tone: "info", weight: 35, title: `${plural(s.tomorrowUnassigned!, "load")} tomorrow without a truck`, detail: "Plan them today while trucks and drivers are free.", href: "/dispatch/plan", cta: "Plan tomorrow" });
   if (n(s.longWaitsYesterday)) out.push({ key: "waits", tone: "info", weight: 30, title: `${plural(s.longWaitsYesterday!, "long wait")} yesterday`, detail: "Trucks waited past your free time at pickups or job sites.", href: "/reports/wait-times?days=7", cta: "See where" });
   return out.sort((a, b) => b.weight - a.weight);

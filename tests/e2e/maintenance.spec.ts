@@ -41,8 +41,14 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
   await page.getByRole("button", { name: "Start work" }).click();
   await expectToast(page, "Job started. You are the lead mechanic. Your timer is running.");
   await expect(page.getByRole("button", { name: "Mark completed" })).toHaveCount(0); // never directly for safety work
+  // Send for inspection asks for an optional note for the inspector (WK1); it shows in the job's Activity.
   await page.getByRole("button", { name: "Send for inspection" }).click();
+  const send = page.getByRole("dialog", { name: "Send for inspection" });
+  await send.getByLabel("Note for the inspector (optional)").fill(`New chamber fitted, check the pushrod stroke ${tag}`);
+  await send.getByRole("button", { name: "Send for inspection" }).click();
   await expectToast(page, "Status: Awaiting inspection. Your timer is stopped.");
+  await page.goto(`${woUrl.split("?")[0]}?tab=activity`);
+  await expect(page.getByRole("list", { name: "History" })).toContainText(`New chamber fitted, check the pushrod stroke ${tag}`);
   await expect(page.getByText(/Only people your company allows to clear vehicles for service can record it/)).toBeVisible();
   await expect(page.getByRole("button", { name: /Passed/ })).toHaveCount(0);
 
@@ -60,6 +66,8 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
 
   await page.goto(woUrl);
   await page.getByRole("button", { name: "Send for inspection" }).click();
+  // The note is optional: sending without one works.
+  await page.getByRole("dialog", { name: "Send for inspection" }).getByRole("button", { name: "Send for inspection" }).click();
   await expectToast(page, "Status: Awaiting inspection.");
 
   await owner.reload();

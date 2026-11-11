@@ -6,7 +6,7 @@ import { REPORT_KIND_LABELS } from "@/lib/driver/rules";
 import { workOrderFromReport } from "@/lib/maintenance-triage";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { getFieldReport } from "@/server/data/field-reports";
+import { fieldReportPhotos, getFieldReport } from "@/server/data/field-reports";
 import { listAssignees, listDriverOptions, listTrailers, listTrucks, trailerWorkOrdersAvailable } from "@/server/data/maintenance";
 import { createWorkOrder } from "../../actions";
 
@@ -24,6 +24,8 @@ export default async function NewWorkOrderPage({ searchParams }: { searchParams:
     // From a driver report: its words become the title and description, and its kind and words suggest the rest.
     reportId && can(access, "field_reports.view") ? getFieldReport(reportId).catch(() => null) : Promise.resolve(null)]);
   const draft = report ? workOrderFromReport(report, REPORT_KIND_LABELS[report.kind] ?? "Driver report") : null;
+  // The report's photos come with it: shown here, and on the work order once it is created (WK1).
+  const reportPhotos = report ? (await fieldReportPhotos(report.id)) ?? [] : [];
   const active = trucks.filter((t) => t.active);
   // Trailers are offered only once trailer work orders are installed (migration 20261115000100).
   const trailers = trailersOk ? (await listTrailers()).filter((t) => t.active) : null;
@@ -34,6 +36,22 @@ export default async function NewWorkOrderPage({ searchParams }: { searchParams:
         <Notice tone="warning" title="No trucks or trailers">Add trucks or trailers in Fleet first; a work order belongs to one of them.</Notice>
       ) : (
         <Card>
+          {report && reportPhotos.length > 0 && (
+            <CardBody className="border-b border-line/70">
+              <p className="text-sm font-semibold text-ink">Photos from the driver&apos;s report</p>
+              <p className="text-sm text-muted">They stay with the report and show on the work order once it is created.</p>
+              <ul className="mt-2 flex flex-wrap gap-2" aria-label="Photos from the driver's report">
+                {reportPhotos.map((p, i) => (
+                  <li key={p.id}>
+                    <a href={`/field-reports/photos/${p.id}`} target="_blank" rel="noopener noreferrer" className="block size-20 overflow-hidden rounded-lg ring-1 ring-line">
+                      {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed link */}
+                      <img src={`/field-reports/photos/${p.id}`} alt={`Photo ${i + 1} from the driver's report`} loading="lazy" className="size-full object-cover" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </CardBody>
+          )}
           <CardBody>
             <WorkOrderForm
               mode="create"

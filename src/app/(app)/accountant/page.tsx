@@ -57,9 +57,15 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
       {!data.invoicesInstalled ? <Notice title="Not available yet">Invoices need a database update that has not been installed yet.</Notice> : (
         <>
           <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatTile icon={<FileText />} label={`Invoiced in ${year}`} value={formatCents(s.invoicedCents)} muted={!s.invoicedCents}>{s.issued.length} invoice{s.issued.length === 1 ? "" : "s"} issued</StatTile>
+            {/* Billed vs paid, each named for what it counts (WK1): invoiced is what was billed, collected is the money received. */}
+            <StatTile icon={<FileText />} label={`Invoiced in ${year}`} value={formatCents(s.invoicedCents)} muted={!s.invoicedCents}>{s.issued.length} invoice{s.issued.length === 1 ? "" : "s"} issued, paid or not</StatTile>
             <StatTile icon={<Receipt />} label="Sales tax invoiced" value={formatCents(s.taxCents)} muted={!s.taxCents}>On those invoices</StatTile>
-            <StatTile icon={<Banknote />} label={`Received in ${year}`} value={formatCents(s.receivedCents)} muted={!s.receivedCents}>{s.payments.length} payment{s.payments.length === 1 ? "" : "s"}</StatTile>
+            <StatTile icon={<Banknote />} label={`Collected in ${year}`} value={formatCents(s.receivedCents)} muted={!s.receivedCents}>
+              <span data-testid="collected-detail">
+                {s.received.length} payment{s.received.length === 1 ? "" : "s"} received
+                {s.notOnInvoiceCents > 0 ? `, ${formatCents(s.notOnInvoiceCents)} of it not on an invoice yet` : ""}
+              </span>
+            </StatTile>
             <StatTile icon={<Hourglass />} label="Still owed today" value={formatCents(s.outstandingCents)} muted={!s.outstandingCents}>All open invoices, any year</StatTile>
           </div>
 

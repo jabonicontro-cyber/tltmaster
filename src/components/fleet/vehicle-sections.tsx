@@ -6,6 +6,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { DOCUMENT_KINDS, documentAttention, documentState, type Availability, type DocumentKind } from "@/lib/fleet/availability";
+import type { TruckFuelSummary } from "@/lib/fuel/truck-fuel";
 import type { VehicleDocumentRow, VehicleRecords } from "@/server/data/fleet";
 import { AvailabilityBadge, DocumentStateBadge } from "./fleet-status";
 import { AssignDriverForm, DocumentForm, DocumentRowActions, OwnershipForm } from "./vehicle-panels";
@@ -305,8 +306,20 @@ function ReadingsSection({ truckId, records, canMarkWrong, timezone }: { truckId
   );
 }
 
+/** Fuel bought for the truck over the last 12 months, from the receipts in Fuel and IFTA; null = not readable. */
+export interface CostsCardFuel { installed: boolean; summary: TruckFuelSummary; since: string }
+
+/** The fuel line: gallons for everyone who sees the truck, the amount with cost access (like the other costs). */
+function fuelValue(fuel: CostsCardFuel | null | undefined, canSeeCosts: boolean): string {
+  if (!fuel || !fuel.installed) return "Not available yet";
+  const s = fuel.summary;
+  if (!s.receipts) return `No fuel receipts recorded since ${formatDate(fuel.since)}`;
+  const amount = `${num(s.gallons)} gal on ${s.receipts} receipt${s.receipts === 1 ? "" : "s"}`;
+  return canSeeCosts ? `${money(s.cents)} for ${amount}` : amount;
+}
+
 /** Recorded costs, recorded mileage and recorded downtime — no estimates. */
-export function CostsCard({ records, downtime90, canSeeCosts }: { records: VehicleRecords; downtime90: number; canSeeCosts: boolean }) {
+export function CostsCard({ records, downtime90, canSeeCosts, fuel }: { records: VehicleRecords; downtime90: number; canSeeCosts: boolean; fuel?: CostsCardFuel | null }) {
   // Readings marked wrong (20261120015100) are left out of the recorded miles.
   const odo = records.readings.rows.filter((r) => r.odometer_miles !== null && !r.set_aside_at);
   const latest = odo[0];
@@ -318,11 +331,15 @@ export function CostsCard({ records, downtime90, canSeeCosts }: { records: Vehic
   const spanCost = records.costs.rows.filter((c) => inSpan.has(c.work_order_id)).reduce((s, c) => s + Math.round(c.quantity * c.unit_cost_cents), 0);
   return (
     <Card>
-      <CardHeader title="Costs and utilization" description="Only recorded values. Fuel, insurance premiums and lease payments are not tracked in Taviron yet." />
+      <CardHeader title="Costs and utilization" description={fuel === undefined
+        ? "Only recorded values. Fuel, insurance premiums and lease payments are not tracked in Taviron yet."
+        : "Only recorded values. Fuel comes from the receipts in Fuel and IFTA. Insurance premiums and lease payments are not tracked in Taviron yet."} />
       <CardBody>
         <DescriptionList items={[
           { label: "Downtime, last 90 days", value: `${num(downtime90)} days out of service` },
           { label: "Recorded miles", value: miles !== null ? `${num(miles)} mi between ${formatDate(earliest.read_at.slice(0, 10))} and ${formatDate(latest.read_at.slice(0, 10))}` : "Needs two odometer readings" },
+          // Trucks only (fuel receipts belong to a truck); trailers pass no fuel and keep the line out.
+          ...(fuel !== undefined ? [{ label: "Fuel bought, last 12 months", value: <span data-testid="truck-fuel">{fuelValue(fuel, canSeeCosts)}{fuel?.installed && <> · <Link href="/fleet/fuel" className="underline">Fuel and IFTA</Link></>}</span> }] : []),
           ...(canSeeCosts ? [
             { label: "Maintenance costs recorded", value: records.costs.available ? money(total) : "Not available" },
             { label: "Maintenance cost per mile", value: miles && miles > 0 && records.costs.available ? `${money(Math.round((spanCost / miles) * 100) / 100)} / mi (actual: costs on work orders opened in that span ÷ recorded miles)` : "Not enough recorded data" },

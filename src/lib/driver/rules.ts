@@ -17,6 +17,22 @@ export const REPORT_KIND_LABELS: Record<ReportKind, string> = {
   inspection_issue: "Inspection problem",
 };
 
+/**
+ * Driver Reports views (WK1: one count per number). "Not resolved" is open plus acknowledged: the same reports the
+ * Command Center counts (private.operational_exceptions lists field reports in status open or acknowledged until they
+ * are resolved), so its tile, the briefing and this page show the same figure. It is the page's default view.
+ */
+export const REPORT_VIEWS = { unresolved: "Not resolved", open: "Open", acknowledged: "Acknowledged", resolved: "Resolved", all: "All" } as const;
+export type ReportView = keyof typeof REPORT_VIEWS;
+export const DEFAULT_REPORT_VIEW: ReportView = "unresolved";
+/** Report statuses a view lists; null = every status. */
+export function reportViewStatuses(view: ReportView): Array<"open" | "acknowledged" | "resolved"> | null {
+  if (view === "all") return null;
+  return view === "unresolved" ? ["open", "acknowledged"] : [view];
+}
+/** Where a "driver reports not resolved" figure leads: the page's matching view. */
+export const UNRESOLVED_REPORTS_HREF = "/field-reports?view=unresolved";
+
 export const REPORT_KIND_HELP: Record<ReportKind, string> = {
   delay: "Traffic, waiting at the pit or the site, weather.",
   cannot_complete: "Site closed, refused, wrong material, unsafe.",

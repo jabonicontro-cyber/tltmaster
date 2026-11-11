@@ -120,12 +120,12 @@ describe("overview cards", () => {
       ["out_of_service", "/command-center?kind=equipment_out_of_service#attention"],
       ["missing_tickets", "/command-center?kind=missing_ticket#attention"],
       ["tickets_to_review", "/command-center?kind=ticket_review#attention"],
-      ["billing_blocked", "/billing?view=exceptions"],
+      ["billing_blocked", "/billing?view=exceptions&readiness=blocked"],
       ["billing_ready", "/billing?view=ready"],
     ]);
     expect(cards.find((c) => c.key === "unassigned_loads")?.tone).toBe("bad");
     expect(cards.find((c) => c.key === "assignment_problems")?.tone).toBe("default");
     expect(EXCEPTION_KINDS).toHaveLength(10); // incl. urgent_order (N10), order_unscheduled (N14)
-    expect(metricCards(summary({ driver_reports: 2 })).map((c) => [c.key, c.href, c.tone])).toEqual([["driver_reports", "/field-reports", "bad"]]);
+    expect(metricCards(summary({ driver_reports: 2 })).map((c) => [c.key, c.href, c.tone])).toEqual([["driver_reports", "/field-reports?view=unresolved", "bad"]]);
   });
 });

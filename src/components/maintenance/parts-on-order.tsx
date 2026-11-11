@@ -27,10 +27,13 @@ export function PartOnOrderDialog({ workOrderId, open, onOpenChange, setWaiting,
 }) {
   const router = useRouter();
   const [formKey, setFormKey] = useState(0);
-  const [key] = useState(() => crypto.randomUUID());
+  // One key per part: a retry of the same form is not saved twice, and the next part gets a new key (the dialog stays
+  // mounted, so a key kept from the last part would make the database return that part instead of adding the new one).
+  const [key, setKey] = useState(() => crypto.randomUUID());
   const { pending, onSubmit, fieldError, formError } = useFormAction(addPartWait.bind(null, workOrderId, setWaiting), {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved.");
+      setKey(crypto.randomUUID());
       setFormKey((k) => k + 1);
       onOpenChange(false);
       router.refresh();
@@ -75,6 +78,12 @@ export function PartOnOrderDialog({ workOrderId, open, onOpenChange, setWaiting,
             )}
           </div>
         </details>
+        {setWaiting && (
+          // A note with the status change (WK1): it shows in the job's Activity next to "Waiting for parts".
+          <Field label="Note (optional)" htmlFor="wait-note" hint="For the shop: what is waiting, who ordered it.">
+            <Textarea id="wait-note" name="note" rows={2} maxLength={2000} />
+          </Field>
+        )}
         <FormError message={formError} />
         <div className="flex flex-wrap justify-end gap-2 pt-1">
           <Button type="button" variant="secondary" className="min-h-12 sm:min-h-0" onClick={() => onOpenChange(false)} disabled={pending}>Cancel</Button>

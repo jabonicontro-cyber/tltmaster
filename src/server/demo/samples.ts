@@ -383,7 +383,8 @@ async function samplePayStatements(db: Db, today: string): Promise<number> {
   if (approved.error) return skip("period check", approved.error.message);
   if (((approved.data ?? []) as Array<{ totals: { total_cents?: number } | null }>).some((p) => Number(p.totals?.total_cents ?? 0) > 0)) return 0;
   let rules: Awaited<ReturnType<typeof loadActiveRules>>;
-  try { rules = await loadActiveRules(); } catch (e) { return skip("rules", e instanceof Error ? e.message : ""); }
+  // The refresh's own client: it can run inside after() (auto-refresh), where cookies cannot be read.
+  try { rules = await loadActiveRules(db); } catch (e) { return skip("rules", e instanceof Error ? e.message : ""); }
   let added = 0;
   if (!rules.length) {
     const draft = await db.rpc("payroll_rule_draft", { p: {
@@ -409,7 +410,7 @@ async function samplePayStatements(db: Db, today: string): Promise<number> {
     period = ((await db.from("payroll_periods").select("id").eq("status", "open").order("starts_on", { ascending: false }).limit(1).maybeSingle()).data as { id: string } | null)?.id ?? null;
     if (!period) return added;
   }
-  try { await calculatePeriod(period, true); } catch (e) { return skip("calculate", e instanceof Error ? e.message : "", added); }
+  try { await calculatePeriod(period, true, db); } catch (e) { return skip("calculate", e instanceof Error ? e.message : "", added); }
   // Never approve an empty period: without paid tickets there is nothing to show on a statement.
   const paid = ((await db.from("payroll_entries").select("id").eq("period_id", period).eq("status", "calculated").limit(1)).data ?? []).length;
   if (!paid) return skip("no paid tickets in the period", "", added);

@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 import { vocabulary } from "@/lib/industry";
 import { getSettings } from "@/server/data/settings";
@@ -19,7 +20,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import {
-  EXCEPTION_KINDS, EXCEPTION_LABELS, QUANTITY_POLICY, READINESS, READINESS_LABELS, readinessExplanation, sayExplanation,
+  EXCEPTION_KINDS, EXCEPTION_LABELS, missingTicketKind, QUANTITY_POLICY, READINESS, READINESS_LABELS, readinessExplanation, sayExplanation,
 } from "@/lib/billing/rules";
 import { QBO_SUPPORT_SEND_MESSAGE } from "@/lib/accounting/qbo";
 import { cn } from "@/lib/cn";
@@ -121,7 +122,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
             <FilterSelect name="readiness" label="Status" value={filters.readiness} options={[{ value: "", label: "Any status" }, ...READINESS.filter((r) => r !== "handed_off").map((r) => ({ value: r, label: say(READINESS_LABELS[r]) }))]} />
           )}
           {view === "exceptions" && (
-            <FilterSelect name="kind" label="Exception" value={filters.kind} options={[{ value: "", label: "All exceptions" }, ...EXCEPTION_KINDS.map((k) => ({ value: k, label: say(EXCEPTION_LABELS[k]) }))]} />
+            <>
+              <FilterSelect name="kind" label="Exception" value={filters.kind} options={[{ value: "", label: "All exceptions" }, ...EXCEPTION_KINDS.map((k) => ({ value: k, label: say(EXCEPTION_LABELS[k]) }))]} />
+              {/* "Orders blocked from billing" (Command Center, briefing) opens this view with readiness=blocked (WK1). */}
+              <FilterSelect name="readiness" label="Orders" value={filters.readiness === "blocked" ? "blocked" : ""} options={[{ value: "", label: "All with exceptions" }, { value: "blocked", label: say("Blocked from billing only") }]} />
+            </>
           )}
         </FilterBar>
 
@@ -178,7 +183,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "missing" ? (
           board.loads.length === 0 ? (
-            <EmptyState icon={<CheckCircle2 className="size-6" />} title={say("No delivered loads are missing a ticket")} description={say("A load appears here once its planned end time has passed (or its order is completed) and it has no live ticket. Future loads are not listed.")} />
+            <EmptyState icon={<CheckCircle2 className="size-6" />} title={say("No loads are missing a ticket")} description={say("A load appears here once its planned end time has passed (or its order is completed) and it has no live ticket. Future loads are not listed.")} />
           ) : (
             <TableWrap>
               <Table>
@@ -191,8 +196,22 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   </tr>
                 </thead>
                 <tbody>
-                  {board.loads.map((l) => (
-                    <Tr key={l.load_id}>
+                  {board.loads.map((l, i) => {
+                    // Loads that never got a truck come last, under their own heading (missingTicketKind, WK1).
+                    const noTruck = missingTicketKind(l) === "no_truck";
+                    const firstNoTruck = noTruck && (i === 0 || missingTicketKind(board.loads[i - 1]) !== "no_truck");
+                    const noTruckCount = board.loads.filter((x) => missingTicketKind(x) === "no_truck").length;
+                    return (
+                    <Fragment key={l.load_id}>
+                    {firstNoTruck && (
+                      <tr>
+                        <td colSpan={4} className="border-t border-line bg-surface px-5 py-2.5 text-sm sm:px-6" data-testid="ended-without-truck">
+                          <span className="font-semibold text-ink">Ended without a truck ({noTruckCount})</span>
+                          <span className="text-muted"> · {say("Nothing was delivered, so there is no ticket to enter. Dispatch assigns or cancels these loads; they are not counted as missing tickets.")}</span>
+                        </td>
+                      </tr>
+                    )}
+                    <Tr>
                       <Td>
                         <Link href={`/billing/orders/${l.order_id}`} className="font-semibold tabular hover:underline">{l.order_number}</Link> · load {l.load_number}
                         <div className="text-sm text-muted">{l.customer_name}</div>
@@ -215,7 +234,9 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                         )}
                       </Td>
                     </Tr>
-                  ))}
+                    </Fragment>
+                    );
+                  })}
                 </tbody>
               </Table>
             </TableWrap>
@@ -264,9 +285,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
           )
         ) : board.view === "exceptions" ? (
           <>
+            {filters.readiness === "blocked" && (
+              // The figure the Command Center shows as "Orders blocked from billing" (WK1): say what this list counts.
+              <p className="border-b border-line bg-surface px-5 py-3 text-sm sm:px-6" data-testid="blocked-only">
+                <span className="font-semibold text-ink">{board.counts.blocked} {board.counts.blocked === 1 ? "order is" : "orders are"} blocked from billing:</span>{" "}
+                {say("every ticket is in and reviewed, and only the differences below wait to be acknowledged.")}{" "}
+                <Link href={`/billing?view=exceptions${filters.customer ? `&customer=${filters.customer}` : ""}`} className="font-semibold text-brand-fg underline-offset-2 hover:underline">Show all {board.counts.exceptions} orders with exceptions</Link>
+              </p>
+            )}
             <p className="border-b border-line px-5 py-3 text-sm text-muted sm:px-6">{say(QUANTITY_POLICY)}</p>
             {board.groups.length === 0 ? (
-              <EmptyState icon={<CheckCircle2 className="size-6" />} title="No exceptions" description={say("Quantity differences, units that cannot be compared, lines without tickets, missing POs and zero rates appear here.")} />
+              <EmptyState icon={<CheckCircle2 className="size-6" />} title={filters.readiness === "blocked" ? "No orders blocked from billing" : "No exceptions"} description={say("Quantity differences, units that cannot be compared, lines without tickets, missing POs and zero rates appear here.")} />
             ) : (
               <ul className="divide-y divide-line" aria-label="Orders with exceptions">
                 {board.groups.map(({ order: o, exceptions }) => (
@@ -404,7 +433,7 @@ async function HandedOff({ board, canManage, highlight, qb: qbAll, issuer, invoi
  * stages counted in orders show a bar out of all orders on the board (an order can sit in more than one stage, so the
  * bars are not meant to add up). Loads and tickets get no bar against orders. Each opens its view.
  */
-async function BillingPipeline({ counts, href, current }: { counts: Partial<Record<BillingView, number>>; href: (k: BillingView) => string; current: BillingView }) {
+async function BillingPipeline({ counts, href, current }: { counts: Partial<Record<BillingView | "missingNoTruck", number>>; href: (k: BillingView) => string; current: BillingView }) {
   const say = await getSay();
   const total = counts.orders ?? 0;
   if (!total) return null;
@@ -438,7 +467,11 @@ async function BillingPipeline({ counts, href, current }: { counts: Partial<Reco
                     <span className={cn("block h-full rounded-full transition-[width] duration-700 ease-out motion-reduce:transition-none", st.bar)} style={{ width: `${n ? Math.max(3, Math.round((n / total) * 100)) : 0}%` }} />
                   </span>
                 ) : (
-                  <span className="mt-1.5 block text-xs text-muted">{st.key === "handed_off" ? "already handed to billing" : st.unit === "load" ? say("delivered loads without a ticket") : "waiting for review"}</span>
+                  <span className="mt-1.5 block text-xs text-muted">
+                    {st.key === "handed_off" ? "already handed to billing" : st.unit === "load" ? say("loads that ran without a ticket") : "waiting for review"}
+                    {/* Counted like the Command Center (WK1): loads that never got a truck are Dispatch's, named apart. */}
+                    {st.key === "missing" && (counts.missingNoTruck ?? 0) > 0 && <span className="block" data-testid="missing-no-truck">+ {counts.missingNoTruck} ended without a truck (Dispatch)</span>}
+                  </span>
                 )}
               </Link>
             </li>

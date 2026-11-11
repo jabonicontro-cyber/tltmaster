@@ -21,6 +21,30 @@ describe("accountant year summary", () => {
     expect(paymentsCsv(s).split("\r\n").length).toBe(4); // header, two payments, trailing newline
   });
 
+  it("collected counts every payment received in the year once, including payments by ticket not on an invoice yet", () => {
+    // A payment by ticket of $73.45 applied $73.20 to invoice A (the invoice payment it created carries its id) and
+    // left $0.25 as credit; a direct payment of $10 on B; a voided payment by ticket and one from another year.
+    const s = yearSummary([
+      inv({ number: "A", total_cents: 10000, payments: [{ amount_cents: 7320, received_on: "2025-06-02", method: "check", reference: "9", voided_at: null, customer_payment_id: "cp1" }] }),
+      inv({ number: "B", total_cents: 5000, payments: [{ amount_cents: 1000, received_on: "2025-06-03", method: "ach", reference: "", voided_at: null, customer_payment_id: null }] }),
+    ], 2025, "2025-07-01", [
+      { id: "cp1", customer_name: "Acme", amount_cents: 7345, received_on: "2025-06-02", method: "check", reference: "9", voided_at: null },
+      { id: "cp2", customer_name: "Acme", amount_cents: 5000, received_on: "2025-06-04", method: "check", reference: "10", voided_at: "2025-06-05" },
+      { id: "cp3", customer_name: "Acme", amount_cents: 2000, received_on: "2024-12-30", method: "cash", reference: "", voided_at: null },
+    ]);
+    // Collected = $73.45 (whole payment by ticket, its invoice part not counted again) + $10.00 direct.
+    expect(s.receivedCents).toBe(8345);
+    expect(s.received).toHaveLength(2);
+    expect(s.notOnInvoiceCents).toBe(25);
+    expect(s.received.find((p) => p.source === "by_ticket")).toMatchObject({ invoices: "A", amount_cents: 7345, not_on_invoice_cents: 25 });
+    // What is still owed follows the invoices only: A has $26.80 open, B $40.00.
+    expect(s.outstandingCents).toBe(2680 + 4000);
+    const lines = paymentsCsv(s).split("\r\n");
+    expect(lines[0]).toBe("Received,Invoice,Customer,Method,Reference,Amount,Recorded,Not on an invoice yet");
+    expect(lines[1]).toBe("2025-06-02,A,Acme,check,9,73.45,By ticket,0.25");
+    expect(lines[2]).toBe("2025-06-03,B,Acme,ach,,10.00,On the invoice,0.00");
+  });
+
   it("neutralizes spreadsheet formulas in names", () => {
     const s = yearSummary([inv({ customer_name: "=HYPERLINK(1)" })], 2025, "2025-05-01");
     expect(invoicesCsv(s)).toContain("'=HYPERLINK(1)");

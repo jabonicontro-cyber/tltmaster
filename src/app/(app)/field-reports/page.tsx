@@ -5,7 +5,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
-import { REPORT_KIND_LABELS } from "@/lib/driver/rules";
+import { DEFAULT_REPORT_VIEW, REPORT_KIND_LABELS } from "@/lib/driver/rules";
 import { requirePagePermission } from "@/server/auth";
 import { REPORT_VIEWS, listFieldReports, type ReportView } from "@/server/data/field-reports";
 import { businessToday } from "@/server/data/settings";
@@ -17,7 +17,8 @@ const statusTone = { open: "amber", acknowledged: "blue", resolved: "green" } as
 export default async function FieldReportsPage({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   await requirePagePermission("field_reports.view");
   const sp = await searchParams;
-  const view: ReportView = sp.view && sp.view in REPORT_VIEWS ? (sp.view as ReportView) : "open";
+  // Default: every report not resolved yet (open and acknowledged), the figure the Command Center shows.
+  const view: ReportView = sp.view && sp.view in REPORT_VIEWS ? (sp.view as ReportView) : DEFAULT_REPORT_VIEW;
   const [{ rows, counts }, { timezone }] = await Promise.all([listFieldReports(view), businessToday()]);
   return (
     <>
@@ -27,13 +28,13 @@ export default async function FieldReportsPage({ searchParams }: { searchParams:
           <Link key={k} href={`/field-reports?view=${k}`} aria-current={k === view ? "page" : undefined}
             className={cn("flex h-8 items-center gap-1.5 rounded-full px-4 text-sm font-semibold whitespace-nowrap transition-colors duration-150", k === view ? "bg-card text-ink shadow-xs" : "text-muted hover:text-ink")}>
             <span className="pill-text">{REPORT_VIEWS[k]}</span>
-            {k === "open" && counts.open ? <Badge tone="amber">{counts.open}</Badge> : k === "acknowledged" && counts.acknowledged ? <Badge tone="blue">{counts.acknowledged}</Badge> : null}
+            {k === "unresolved" && counts.open + counts.acknowledged ? <Badge tone="amber">{counts.open + counts.acknowledged}</Badge> : k === "open" && counts.open ? <Badge tone="amber">{counts.open}</Badge> : k === "acknowledged" && counts.acknowledged ? <Badge tone="blue">{counts.acknowledged}</Badge> : null}
           </Link>
         ))}
       </nav>
       <Card>
         {rows.length === 0 ? (
-          <EmptyState title={`No ${view === "all" ? "" : REPORT_VIEWS[view].toLowerCase() + " "}reports`} description="Reports sent by drivers appear here and in the Command Center." />
+          <EmptyState title={view === "unresolved" ? "No reports to resolve" : `No ${view === "all" ? "" : REPORT_VIEWS[view].toLowerCase() + " "}reports`} description="Reports sent by drivers appear here and in the Command Center." />
         ) : (
           <ul className="divide-y divide-line" aria-label="Driver reports">
             {rows.map((r) => (

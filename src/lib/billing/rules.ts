@@ -143,6 +143,30 @@ export const QUANTITY_POLICY =
 export const LOAD_STATES = ["missing", "not_due", "needs_review", "documented"] as const;
 export type LoadDocumentationState = (typeof LOAD_STATES)[number];
 
+// ---------------------------------------------------------------------------------------------------------------------
+// One count per number (owner walkthrough WK1): the billing board and the Command Center count these the same way.
+// ---------------------------------------------------------------------------------------------------------------------
+
+/**
+ * A past load with no live ticket (billing_load_status.documentation_state = 'missing') is one of two things, by the
+ * same rule as the Command Center (private.operational_exceptions_all, 20261120011600):
+ *   - "no_ticket": a truck ran it (it has an assignment) or its ticket was voided: the office enters the ticket. This is
+ *     the figure "Missing delivery tickets" everywhere.
+ *   - "no_truck": it ended without a truck and no ticket was ever voided: nothing was delivered, so there is no ticket to
+ *     enter. Dispatch assigns or cancels it (the Command Center lists it as a past "Load without a truck").
+ */
+export function missingTicketKind(l: { assignment_id: string | null; voided_numbers: readonly string[] | null }): "no_ticket" | "no_truck" {
+  // Exactly the database's test (assignment_id is null and voided_numbers is null).
+  return l.assignment_id === null && l.voided_numbers === null ? "no_truck" : "no_ticket";
+}
+
+/**
+ * Where "Orders blocked from billing" leads: the Exceptions view limited to orders whose tickets are all in and reviewed
+ * and that wait only for their differences to be acknowledged (billing_order_status.readiness = 'blocked'), the orders
+ * the Command Center counts. The Exceptions view without the filter also lists orders still missing tickets.
+ */
+export const BILLING_BLOCKED_HREF = "/billing?view=exceptions&readiness=blocked";
+
 export const QUANTITY_CHECKS = ["no_tickets", "not_planned", "units_differ", "match", "over", "under", "in_progress"] as const;
 export type QuantityCheck = (typeof QUANTITY_CHECKS)[number];
 
