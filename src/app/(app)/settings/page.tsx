@@ -17,7 +17,7 @@ import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
-import { can, type Access } from "@/lib/permissions";
+import { can, type Access, type AppRole } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { emailStatusSummary } from "@/server/email/provider";
 import { getUserNames } from "@/server/data/quotes";
@@ -40,6 +40,8 @@ import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
 import { BasesPanel } from "@/components/settings/bases-panel";
 import { CompanyMfaPolicyForm } from "@/components/security/company-mfa-policy";
+import { MfaWho } from "@/components/security/mfa-who";
+import { moneyRoles } from "@/lib/mfa-policy";
 import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
 import { listSignIns } from "@/server/data/people";
 import { ImportUploader } from "@/components/admin/import-uploader";
@@ -259,15 +261,26 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       </>
     );
   } else if (tab === "security") {
-    const { data, error } = await supabase.from("company_settings").select("require_mfa").maybeSingle();
+    // Who must use it (walkthrough 2026-11-11): the roles holding a money permission here, and their people for those
+    // who manage users (the same rule as the database, private.money_mfa_required).
+    const peopleShown = can(access, "users.manage") && Boolean(access.companyId);
+    const [{ data, error }, { data: grants }, people] = await Promise.all([
+      supabase.from("company_settings").select("require_mfa").maybeSingle(),
+      supabase.from("role_permissions").select("role, permission"),
+      peopleShown ? listSignIns(access.companyId!) : Promise.resolve([]),
+    ]);
+    const roles = moneyRoles((grants ?? []) as Array<{ role: AppRole; permission: string }>, people.map((p) => ({ id: p.id, name: p.full_name || p.email, role: p.role as AppRole | null, active: p.active })));
     content = (
       <>
-        <CardHeader title="Two-step verification" description="A code from an authenticator app after the password, for everyone in this company." />
-        <CardBody>
+        <CardHeader title="Two-step verification" description="A code from an authenticator app after the password. Some people must always use it; you can require it for everyone." />
+        <CardBody className="space-y-5">
           {error ? (
             <p className="text-sm text-muted">Two-step verification needs a database update that has not been installed yet (20261120000900). Until then nobody is asked for a code.</p>
           ) : (
-            <CompanyMfaPolicyForm required={Boolean((data as { require_mfa?: boolean } | null)?.require_mfa)} canEdit={can(access, "settings.manage")} />
+            <>
+              <MfaWho roles={roles} demo={Boolean(access.isDemo)} peopleShown={peopleShown} />
+              <CompanyMfaPolicyForm required={Boolean((data as { require_mfa?: boolean } | null)?.require_mfa)} canEdit={can(access, "settings.manage")} />
+            </>
           )}
         </CardBody>
       </>

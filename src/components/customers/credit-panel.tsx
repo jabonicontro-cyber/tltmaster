@@ -43,7 +43,7 @@ export function CreditPanel({ customerId, hold, limitCents, canManage }: { custo
     <Card>
       <CardHeader
         title={<span className="inline-flex items-center gap-2">Credit{hold ? <Badge tone="red">On credit hold</Badge> : <Badge tone="green">In good standing</Badge>}</span>}
-        description="Orders and dispatch for a customer on hold are not blocked; whoever goes ahead records why."
+        description="While on hold, a new order needs someone who can change orders, and each load dispatched needs a reason. Both reasons are recorded. Billing releases the hold."
       />
       <CardBody className="space-y-4">
         {hold && (

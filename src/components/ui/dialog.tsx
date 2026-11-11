@@ -59,13 +59,15 @@ interface ConfirmDialogProps {
   title: ReactNode;
   description?: ReactNode;
   confirmLabel: string;
+  /** The button that closes without doing anything ("Keep order" when the action is "Cancel order"). */
+  cancelLabel?: string;
   tone?: "primary" | "danger";
   /** Return an error message to keep the dialog open and show it. */
   onConfirm: () => Promise<string | null | void>;
   children?: ReactNode;
 }
 
-export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, tone = "primary", onConfirm, children }: ConfirmDialogProps) {
+export function ConfirmDialog({ open, onOpenChange, title, description, confirmLabel, cancelLabel = "Cancel", tone = "primary", onConfirm, children }: ConfirmDialogProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,7 +100,7 @@ export function ConfirmDialog({ open, onOpenChange, title, description, confirmL
       footer={
         <>
           <Button variant="secondary" onClick={() => onOpenChange(false)} disabled={pending}>
-            Cancel
+            {cancelLabel}
           </Button>
           <Button variant={tone === "danger" ? "danger" : "primary"} onClick={handleConfirm} loading={pending}>
             {confirmLabel}

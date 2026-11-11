@@ -11,6 +11,8 @@ import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { myShiftOffers } from "@/server/data/shift-offers";
 import { MyShiftOffers } from "@/components/schedule/shift-offers";
 import { GettingStarted } from "@/components/getting-started/getting-started";
+import { BackFromShopPrompt } from "@/components/fleet/shop-decisions";
+import { unitsBackFromShop } from "@/server/data/fleet";
 
 export const metadata = { title: "My jobs" };
 
@@ -21,7 +23,12 @@ export const metadata = { title: "My jobs" };
 export default async function MyJobsPage() {
   const access = await requirePagePermission("maintenance.view");
   const manage = can(access, "maintenance.manage");
-  const [jobs, shiftOffers] = await Promise.all([listMyJobs(access.userId), myShiftOffers("shop").catch(() => null)]);
+  const [jobs, shiftOffers, backFromShop] = await Promise.all([
+    listMyJobs(access.userId),
+    myShiftOffers("shop").catch(() => null),
+    // A unit parked by hand whose shop work is all done (20261120015300): the same prompt as Maintenance and Dispatch.
+    can(access, "fleet.view") ? unitsBackFromShop() : Promise.resolve([]),
+  ]);
   // Parts used on each of my jobs (UX20); the cost only for people who see maintenance costs.
   const parts = await partsSummaryFor(jobs.mine.map((j) => j.id), can(access, "maintenance.costs")).catch(() => new Map());
 
@@ -35,6 +42,7 @@ export default async function MyJobsPage() {
         <div className="mx-auto max-w-2xl">
           <GettingStarted access={access} place="my-jobs" />
           {jobs.myTimer && <RunningTimer timer={jobs.myTimer} />}
+          <BackFromShopPrompt units={backFromShop} wording="parked" canReturn={can(access, "fleet.service") || can(access, "fleet.edit") || can(access, "maintenance.manage")} />
           {/* Shift offers (B102): extra shop shifts this person can take. */}
           {shiftOffers && shiftOffers.length > 0 && (
             <section aria-label="Open shifts" className="mb-5 rounded-2xl border border-line bg-card px-4 pt-3 pb-1">

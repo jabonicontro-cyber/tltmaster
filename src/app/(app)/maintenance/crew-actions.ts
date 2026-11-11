@@ -4,7 +4,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isIsoDate, zonedTimeToUtc } from "@/lib/dates";
-import { appendFindings, finishesJob, finishTarget, startJobMessage, WO_URGENCIES, type WoCategory, type WoUrgency } from "@/lib/maintenance";
+import { appendFindings, finishesJob, finishTarget, parkedAfterJobMessage, startJobMessage, WO_URGENCIES, type WoCategory, type WoUrgency } from "@/lib/maintenance";
+import { can } from "@/lib/permissions";
 import { acceptTriage, type TriageSuggestion } from "@/lib/maintenance-triage";
 import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
@@ -154,7 +155,10 @@ const finishInput = woId.extend({
  * other job is completed. A helper only marks their own part done; the message names who finishes the job.
  * Each step is the existing database function, which checks the permission, the state and running timers again.
  */
-export async function finishJob(input: z.input<typeof finishInput>): Promise<ActionResult<{ outcome: "inspection" | "completed" | "part_done" }>> {
+/** A unit a person parked by hand whose shop work is now all done (units_back_from_shop, 20261120015300). */
+export interface ParkedUnit { kind: "truck" | "trailer"; id: string; unitNumber: string }
+
+export async function finishJob(input: z.input<typeof finishInput>): Promise<ActionResult<{ outcome: "inspection" | "completed" | "part_done"; parked?: ParkedUnit | null; canReturn?: boolean }>> {
   return guard(async () => {
     const p = finishInput.safeParse(input);
     if (!p.success) return fail(p.error.issues[0]?.message ?? "Check what you wrote.");
@@ -214,9 +218,17 @@ export async function finishJob(input: z.input<typeof finishInput>): Promise<Act
     await supabase.rpc("maintenance_set_my_status", { p_wo: id, p_status: "done" });
     refresh(id);
     revalidatePath("/fleet", "layout");
-    return target === "awaiting_inspection"
-      ? ok({ outcome: "inspection" as const }, `Sent for inspection. The ${w.trailer_id ? "trailer" : "truck"} stays out of service until someone authorized records a passed inspection.`)
-      : ok({ outcome: "completed" as const }, "Job completed.");
+    if (target === "awaiting_inspection") {
+      return ok({ outcome: "inspection" as const }, `Sent for inspection. The ${w.trailer_id ? "trailer" : "truck"} stays out of service until someone authorized records a passed inspection.`);
+    }
+    // The last open job on a unit someone parked by hand: it does not come back by itself (walkthrough 2026-11-11).
+    // Same list and same rule as the Maintenance and Dispatch prompt; nothing is changed here.
+    const unitId = w.truck_id ?? w.trailer_id ?? null;
+    const back = unitId ? await supabase.rpc("units_back_from_shop") : null;
+    const row = ((back?.error ? [] : back?.data ?? []) as Array<{ kind: "truck" | "trailer"; id: string; unit_number: string }>).find((u) => u.id === unitId);
+    const parked: ParkedUnit | null = row ? { kind: row.kind, id: row.id, unitNumber: row.unit_number } : null;
+    const canReturn = can(access, "fleet.service") || can(access, "fleet.edit") || can(access, "maintenance.manage");
+    return ok({ outcome: "completed" as const, parked, canReturn }, parked ? `Job completed. ${parkedAfterJobMessage(parked.kind, parked.unitNumber, canReturn)}` : "Job completed.");
   });
 }
 

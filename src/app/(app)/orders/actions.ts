@@ -17,9 +17,10 @@ import {
   type OrderScheduleInput,
   type OrderStatusInput,
 } from "@/lib/schemas/order";
-import { ORDER_STATUS_LABELS, orderTransitionPermissions } from "@/lib/orders/status";
+import { ORDER_STATUS_LABELS, orderReasonMissing, orderTransitionPermissions } from "@/lib/orders/status";
 import { NOTE_REQUIRED, URGENCY_LABELS, URGENCY_STATES } from "@/lib/orders/urgency";
 import { zonedTimeToUtc } from "@/lib/dates";
+import { priceConfirmedMessage } from "@/lib/orders/price-check";
 import { businessToday } from "@/server/data/settings";
 import { can } from "@/lib/permissions";
 import { rolesPhrase } from "@/lib/permission-words";
@@ -74,7 +75,7 @@ export async function convertQuoteToOrder(quoteId: string, creditReason?: string
  * a customer on hold (orders.create without orders.edit).
  */
 async function creditHoldDecider(): Promise<string> {
-  return `Going ahead is up to ${rolesPhrase(await rolesWith("orders.edit"))}: ask one of them to enter this order (they record why), or ask billing to release the hold.`;
+  return `A new order for a customer on hold needs someone in ${rolesPhrase(await rolesWith("orders.edit"))}: ask one of them to enter it (they record why), or ask billing to release the hold. Loads of existing orders can still be dispatched with a reason.`;
 }
 
 /**
@@ -159,7 +160,12 @@ export async function confirmOrderPrice(orderId: string, note: string, correctio
     revalidatePath("/billing");
     revalidatePath(`/billing/orders/${orderId}`);
     const corrected = r.corrected ?? 0;
-    return ok({ confirmed: r.confirmed, corrected }, !r.confirmed ? "The price was already confirmed." : corrected ? "Price corrected and confirmed. The order can be billed." : "Price confirmed. The order can be billed.");
+    // Say what billing still waits for; readiness is read with the person's own rights (null if they cannot see it).
+    const [{ data: billing }, { data: o }] = await Promise.all([
+      supabase.from("billing_order_status").select("readiness, tickets_accepted").eq("order_id", orderId).maybeSingle(),
+      supabase.from("orders").select("status").eq("id", orderId).maybeSingle(),
+    ]);
+    return ok({ confirmed: r.confirmed, corrected }, priceConfirmedMessage({ confirmed: r.confirmed, corrected }, (billing as { readiness: string; tickets_accepted: number } | null) ?? null, (o as { status: string } | null)?.status));
   });
 }
 
@@ -210,6 +216,8 @@ export async function setOrderStatus(input: OrderStatusInput & { from: OrderStat
     const parsed = orderStatusInput.safeParse(input);
     if (!parsed.success) return validationFailure(parsed.error);
     const to = parsed.data.status as OrderStatus;
+    const missing = orderReasonMissing(to, parsed.data.note ?? "");
+    if (missing) return fail(missing, { note: missing });
     // Confirming or canceling a draft also takes orders.create, for the person's own new order only (the database
     // checks whose).
     const access = await assertAnyPermission(...orderTransitionPermissions(input.from, to));

@@ -419,6 +419,12 @@ export interface VehicleRecords {
    * history and never the current reading. Absent before those updates.
    */
   readings: Optional<{ id: string; odometer_miles: number | null; engine_hours: number | null; read_at: string; recorded_by: string | null; source?: string; note?: string; set_aside_at?: string | null; set_aside_by?: string | null; set_aside_reason?: string }>;
+  /**
+   * The readings that set the truck's current reading (the highest odometer and the highest engine hours not set aside,
+   * over every reading: the database's rule, 20261120015600), read apart from the newest 20 so an old high reading is
+   * never hidden. Null before 20261120015100 (no set-aside column); the page then works from the loaded rows.
+   */
+  highestReading: { odometer: VehicleRecords["readings"]["rows"][number] | null; hours: VehicleRecords["readings"]["rows"][number] | null } | null;
   /** Readings the feed did not use (audit 'truck.reading_ignored', 20261120012200), newest first. */
   ignoredReadings: Optional<{ id: string; occurred_at: string; summary: string; details: { value?: number; current?: number; kind?: string; why?: string; source?: string } }>;
   costs: Optional<{ work_order_id: string; quantity: number; unit_cost_cents: number }>;
@@ -439,6 +445,7 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["schedules"]["rows"][number]>(() => supabase.rpc("maintenance_pm_status")) : none,
     isTruck && opts.maintenance ? optionalRows<VehicleRecords["readings"]["rows"][number]>(() => supabase.from("truck_readings").select("*").eq("truck_id", id).order("read_at", { ascending: false }).limit(20)) : none,
   ]);
+  const highestReading = isTruck && opts.maintenance && readings.available ? await readHighest(supabase, id) : null;
   const ignoredReadings = isTruck && opts.maintenance
     ? await optionalRows<VehicleRecords["ignoredReadings"]["rows"][number]>(() => supabase.from("audit_events").select("id, occurred_at, summary, details")
         .eq("entity_type", "truck").eq("entity_id", id).eq("action", "truck.reading_ignored").order("occurred_at", { ascending: false }).limit(10))
@@ -454,11 +461,24 @@ export async function vehicleRecords(kind: "truck" | "trailer", id: string, opts
     assignments,
     workOrders,
     schedules: { available: schedules.available, rows: schedules.rows.filter((r) => r.truck_id === id) },
-    readings: { available: readings.available, rows: readings.rows.map((r) => ({ ...r, odometer_miles: r.odometer_miles === null ? null : Number(r.odometer_miles), engine_hours: r.engine_hours === null ? null : Number(r.engine_hours) })) },
+    readings: { available: readings.available, rows: readings.rows.map(readingNumbers) },
+    highestReading,
     ignoredReadings,
     costs: { available: costs.available, rows: costs.rows.map((c) => ({ ...c, quantity: Number(c.quantity), unit_cost_cents: Number(c.unit_cost_cents) })) },
     driverNames: new Map(((names.data ?? []) as Array<{ id: string; name: string }>).map((d) => [d.id, d.name])),
   };
+}
+
+type ReadingRow = VehicleRecords["readings"]["rows"][number];
+const readingNumbers = (r: ReadingRow): ReadingRow => ({ ...r, odometer_miles: r.odometer_miles === null ? null : Number(r.odometer_miles), engine_hours: r.engine_hours === null ? null : Number(r.engine_hours) });
+
+/** The highest odometer and engine-hour readings not set aside (latest among equal values), or null if unreadable. */
+async function readHighest(supabase: Awaited<ReturnType<typeof createClient>>, truckId: string): Promise<VehicleRecords["highestReading"]> {
+  const top = (k: "odometer_miles" | "engine_hours") => optionalRows<ReadingRow>(() => supabase.from("truck_readings").select("*").eq("truck_id", truckId)
+    .is("set_aside_at", null).not(k, "is", null).order(k, { ascending: false }).order("read_at", { ascending: false }).limit(1));
+  const [m, h] = await Promise.all([top("odometer_miles"), top("engine_hours")]);
+  if (!m.available || !h.available) return null;
+  return { odometer: m.rows[0] ? readingNumbers(m.rows[0]) : null, hours: h.rows[0] ? readingNumbers(h.rows[0]) : null };
 }
 
 /** Directory rows with assignment, availability, maintenance and document flags; filtered and sorted. */

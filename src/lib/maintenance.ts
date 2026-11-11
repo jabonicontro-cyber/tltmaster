@@ -423,3 +423,13 @@ export function currentRestrictionReason(stored: string, openSafety: ReadonlyArr
     ? `Safety-critical defect, work order ${openSafety[0].number}: ${openSafety[0].title}`
     : `Safety-critical defects, work orders ${openSafety.map((w) => w.number).join(", ")}`;
 }
+
+/**
+ * After the last open job on a unit a person took out of service by hand (walkthrough 2026-11-11): it stays parked
+ * until someone puts it back. People who may (fleet.service, fleet.edit or maintenance.manage; return_unit_after_shop)
+ * are asked; everyone else is told who does it.
+ */
+export function parkedAfterJobMessage(kind: "truck" | "trailer", unitNumber: string, canReturn: boolean): string {
+  const name = `${kind === "truck" ? "Truck" : "Trailer"} ${unitNumber}`;
+  return canReturn ? `${name} is still parked. Put it back in service?` : `${name} is still parked. Ask the office or shop to put it back in service.`;
+}

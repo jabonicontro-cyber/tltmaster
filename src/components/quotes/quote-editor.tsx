@@ -16,6 +16,7 @@ import { Dialog } from "@/components/ui/dialog";
 import { Checkbox, Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
 import { cn } from "@/lib/cn";
+import { unitSingular } from "@/lib/units";
 import { addDays } from "@/lib/dates";
 import { bpToInput, centsToInput, formatBp, formatCents, parseMoneyToCents, parsePercentToBp, parseQuantityToMilli } from "@/lib/money";
 import { calculateQuote, type CalcLine, type CalcMethod, type ChargeKind } from "@/lib/quotes/calc";
@@ -113,6 +114,10 @@ interface Props {
    */
   taxLocked?: boolean;
   typedPriceChecked?: boolean;
+  /** settings.manage: may set the company's default tax rate in Settings (otherwise they are told who does). */
+  canSetTaxDefault?: boolean;
+  /** Customers on credit hold: marked in the customer picker (orders). */
+  heldCustomers?: string[];
 }
 
 let keySeq = 0;
@@ -133,7 +138,7 @@ function toCalcLine(l: EditorLine): CalcLine {
   };
 }
 
-export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote", taxLocked = false, typedPriceChecked = false }: Props) {
+export function QuoteEditor({ industry, initial, initialContext, customers: initialCustomers, materials, charges, units, defaultTaxRateBp, validityDays, canOverride, canEditCustomers, priceLists, revisionReason, mode = "quote", taxLocked = false, typedPriceChecked = false, canSetTaxDefault = false, heldCustomers = [] }: Props) {
   const router = useRouter();
   const isOrder = mode === "order";
   const words = vocabulary(industry);
@@ -156,7 +161,11 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
 
   const activeMaterials = materials.filter((m) => m.active);
   const activeCharges = charges.filter((c) => c.active);
-  const unitLabel = (code: string | null) => units.find((u) => u.code === code)?.label ?? code ?? "";
+  // "$/load", not "$/loads" (walkthrough 2026-11-11): the unit in the singular.
+  const unitPer = (code: string | null) => {
+    const u = units.find((x) => x.code === code);
+    return u ? unitSingular(u.label, u.abbreviation) : code || "unit";
+  };
 
   // Warn before leaving with unsaved changes.
   useEffect(() => {
@@ -447,7 +456,8 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
   }
 
   const lineError = (index: number, field: string) => fieldErrors[`lines.${index}.${field}`];
-  const customerOptions = customers.map((c) => ({ value: c.id, label: c.name, detail: c.customer_number + (c.is_sample ? " · sample" : "") }));
+  const held = new Set(heldCustomers);
+  const customerOptions = customers.map((c) => ({ value: c.id, label: c.name, detail: c.customer_number + (c.is_sample ? " · sample" : "") + (held.has(c.id) ? " · on credit hold" : "") }));
   const selectedCustomer = context?.customer;
   const contacts = context?.contacts ?? [];
   const sites = context?.sites ?? [];
@@ -733,7 +743,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                         </div>
                         <div className="col-span-6 sm:col-span-3 lg:col-span-2">
                           <label htmlFor={`line-${l.key}-rate`} className="mb-1 block text-xs font-medium text-muted">
-                            {l.kind === "discount" ? "Discount" : "Rate"} ($/{unitLabel(l.unitCode).toLowerCase() || "unit"})
+                            {l.kind === "discount" ? "Discount" : "Rate"} ($/{unitPer(l.unitCode)})
                           </label>
                           <Input
                             id={`line-${l.key}-rate`}
@@ -771,6 +781,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
 
                     <div className="col-span-12 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                       <Checkbox checked={l.taxable} disabled={taxLocked} onChange={(e) => updateLine(l.key, { taxable: e.target.checked })} label="Taxable" />
+                      {taxLocked && <span className="text-xs text-muted">Tax comes from the customer&apos;s setting; the office changes it.</span>}
                       {isCharge && l.isCustom && (
                         <label className="inline-flex items-center gap-2">
                           <span className="text-muted">Calculated</span>
@@ -874,7 +885,9 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
             </dl>
             {defaultTaxRateBp === 0 && !selectedCustomer?.tax_exempt && (
               <p className="mt-3 flex gap-1.5 text-sm text-muted">
-                <Info className="mt-0.5 size-4 shrink-0" aria-hidden /> No default tax rate is configured. Set one in Settings once confirmed with your accountant.
+                <Info className="mt-0.5 size-4 shrink-0" aria-hidden /> {canSetTaxDefault
+                  ? "No default tax rate is configured. Set one in Settings once confirmed with your accountant."
+                  : "No default tax rate is configured yet. The owner sets it in Settings."}
               </p>
             )}
           </CardBody>

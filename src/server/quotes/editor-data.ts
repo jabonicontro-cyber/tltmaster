@@ -5,19 +5,22 @@ import type { CustomerContext, EditorState } from "@/components/quotes/quote-edi
 import { listChargeItems, listMaterials, listPriceLists, listUnits } from "@/server/data/catalog";
 import { getCustomerQuoteContext, listCustomerOptions } from "@/server/data/customers";
 import { businessToday, getSettings } from "@/server/data/settings";
+import { creditHolds } from "@/server/credit";
 import { createClient } from "@/server/supabase/server";
 import type { EffectivePrice, OrderLineRow, OrderRow, QuoteLineRow, QuoteVersionRow } from "@/server/data/types";
 
 export async function loadEditorReferenceData() {
-  const [customers, materials, charges, units, settings, priceLists] = await Promise.all([
+  const [customers, materials, charges, units, settings, priceLists, holds] = await Promise.all([
     listCustomerOptions(),
     listMaterials({ includeInactive: true }),
     listChargeItems({ includeInactive: true }),
     listUnits(),
     getSettings(),
     listPriceLists(),
+    // Customers on credit hold (B128), marked in the order form's customer picker; none when it cannot be read.
+    creditHolds().catch(() => new Map()),
   ]);
-  return { customers, materials, charges, units, settings, priceLists: priceLists.filter((p) => !p.is_standard) };
+  return { customers, materials, charges, units, settings, priceLists: priceLists.filter((p) => !p.is_standard), heldCustomers: [...holds.keys()] as string[] };
 }
 
 export async function loadCustomerContextFor(customerId: string, onDate: string): Promise<CustomerContext | null> {

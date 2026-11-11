@@ -641,8 +641,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       { problem: "“Owner approval needed” appears in the editor.", fix: "A rate differs from the configured price or a line has a discount, and your role cannot override pricing. Ask an owner." },
       {
-        problem: "“… is on credit hold. Going ahead is up to …”",
-        fix: "Your role can create orders but not go ahead for a customer on credit hold. Ask one of the people named to enter the order (they record why), or ask billing to release the hold.",
+        problem: "“… is on credit hold. A new order for a customer on hold needs someone in …”",
+        fix: "Your role can create orders but not enter a new one for a customer on credit hold. Ask one of the people named to enter the order (they record why), or ask billing to release the hold. Loads of existing orders can still be dispatched with a reason.",
       },
     ],
     next: ["order-detail"],
@@ -2048,7 +2048,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "**Credit** on the customer page: **On credit hold** or **In good standing**, and why (put on hold by billing, invoices past due, over the credit limit).",
       "A **Credit hold** badge on the customer's orders on the dispatch board.",
-      "When you create an order or assign a load for them, the hold and a **Reason for going ahead** box. Nothing is blocked; the reason is recorded.",
+      "The order form's customer list marks customers **on credit hold**.",
+      "When you create an order or assign a load for them, the hold and a **Reason for going ahead** box; the reason is recorded. A new order for a held customer needs someone who can change orders; dispatching their loads needs only the reason.",
     ],
     tasks: [
       { title: "Put a customer on hold", steps: ["Open the customer and select **Put on credit hold…**.", "Say why and select **Put on hold**.", "Select **Release hold** when they are caught up."] },

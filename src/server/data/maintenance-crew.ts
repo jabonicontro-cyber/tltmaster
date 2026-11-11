@@ -193,6 +193,8 @@ export interface MyJob {
   createdAt: string;
   /** The job is on a truck (not a trailer): finishing offers the odometer and engine hours. */
   hasTruck: boolean;
+  /** An inspection job: finishing asks what was inspected or fixed. */
+  inspection?: boolean;
   /** Notes the person kept with their own time on this job, oldest first (they start "What did you fix?"). */
   myNotes: string[];
 }
@@ -215,7 +217,7 @@ export async function listMyJobs(userId: string): Promise<{ installed: boolean; 
   if (crew.error && MISSING.has(crew.error.code ?? "")) return { installed: false, mine: [], unled: [], unledMore: 0, myTimer: null };
   const rows = (crew.data ?? []) as Array<{ work_order_id: string; role: "lead" | "assist"; status: CrewMember["status"] }>;
   const ids = rows.map((r) => r.work_order_id);
-  const cols = "id, number, title, status, urgency, safety_critical, scheduled_for, due_on, edit_seq, truck_id, trailer_id, created_at";
+  const cols = "id, number, title, status, urgency, safety_critical, scheduled_for, due_on, edit_seq, truck_id, trailer_id, created_at, category";
   const [wos, tasks, unled, timer, crewAll, partNotes, people, myTime] = await Promise.all([
     ids.length ? supabase.from("work_orders").select(cols).in("id", ids).in("status", OPEN_STATUSES) : Promise.resolve({ data: [] }),
     ids.length ? supabase.from("work_order_tasks").select("work_order_id, status").in("work_order_id", ids) : Promise.resolve({ data: [] }),
@@ -235,7 +237,7 @@ export async function listMyJobs(userId: string): Promise<{ installed: boolean; 
       ? supabase.from("work_order_time_entries").select("work_order_id, note, started_at").eq("user_id", userId).in("work_order_id", ids).is("voided_at", null).neq("note", "").order("started_at").limit(500)
       : Promise.resolve({ data: [] }),
   ]);
-  type Wo = { id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; due_on: string | null; edit_seq: number; truck_id: string | null; trailer_id?: string | null; created_at: string };
+  type Wo = { id: string; number: string; title: string; status: string; urgency: string; safety_critical: boolean; scheduled_for: string | null; due_on: string | null; edit_seq: number; truck_id: string | null; trailer_id?: string | null; created_at: string; category?: string };
   const noteRowsMine = (myTime.data ?? []) as Array<{ work_order_id: string; note: string | null }>;
   const all = [...((wos.data ?? []) as Wo[]), ...((unled.data ?? []) as Wo[])];
   const truckIds = [...new Set(all.map((w) => w.truck_id).filter((x): x is string => Boolean(x)))];
@@ -264,7 +266,7 @@ export async function listMyJobs(userId: string): Promise<{ installed: boolean; 
       tasksDone: t.filter((x) => x.status !== "open").length, tasksTotal: t.length,
       crewSize, finisher: finishesJob(me.role, crewSize, Boolean(leadId)), leadName: leadId ? people[leadId] ?? null : null,
       missingPart: w.status === "awaiting_parts" ? noteRows.find((n) => n.work_order_id === w.id)?.note?.trim() || null : null,
-      createdAt: w.created_at, hasTruck: Boolean(w.truck_id) && !w.trailer_id,
+      createdAt: w.created_at, hasTruck: Boolean(w.truck_id) && !w.trailer_id, inspection: w.category === "inspection",
       myNotes: noteRowsMine.filter((n) => n.work_order_id === w.id).map((n) => (n.note ?? "").trim()).filter(Boolean),
     };
   })

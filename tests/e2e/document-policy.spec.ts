@@ -34,8 +34,11 @@ test("a verified expired insurance blocks assignment; the rules are shown in Set
   const row = page.getByRole("listitem").filter({ hasText: "POL-1" });
   await expect(row.getByText("Not verified", { exact: true })).toBeVisible();
   await expect(page.getByText(/Blocks dispatch once verified/)).toBeVisible();
-  page.once("dialog", (d) => d.accept());
+  // The app's own confirm dialog (walkthrough 2026-11-11), with the document words.
   await page.getByRole("button", { name: "Mark verified" }).click();
+  const confirm = page.getByRole("dialog");
+  await expect(confirm.getByText("Mark this document verified?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Mark verified" }).click();
   await expectToast(page, "Document marked verified.");
   await expect(row.getByText("Verified", { exact: true })).toBeVisible();
   await expect(page.getByText(/Blocks dispatch until the renewed document is recorded/)).toBeVisible();

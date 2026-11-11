@@ -134,6 +134,12 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             <span className="text-sm font-semibold text-ink">Next step</span>
             <StatusActions id={wo.id} status={wo.status} safetyCritical={wo.safety_critical} editSeq={wo.edit_seq} canClear={canClear} unit={trailer ? "trailer" : "truck"} canCosts={canCosts} />
           </div>
+          {/* An inspection in progress: the certificate is recorded from the finished job (20261120012400). */}
+          {wo.category === "inspection" && wo.status === "in_progress" && (
+            <p className="border-t border-line/70 px-5 py-3 text-sm text-muted sm:px-6" data-testid="inspection-hint">
+              When it passes, finish the job to record the certificate.
+            </p>
+          )}
         </Card>
       )}
       {/* Annual (DOT) inspection: recorded onto the unit's inspection certificate from the completed work order (20261120012400). */}
@@ -173,7 +179,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 ["Scheduled for", wo.scheduled_for ? formatDate(wo.scheduled_for) : "Not scheduled"],
                 ["Due by", wo.due_on ? formatDate(wo.due_on) : "–"],
                 ["Estimate", <EstimateValue key="e" shop={estimate} learned={learned} />],
-                [unitWord, <span key="u">{unit?.unit_number ?? "–"} · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}{can(access, "fleet.view") && unitHref ? <> · <Link href={unitHref} className="underline">Record</Link></> : null}</span>],
+                [unitWord, <span key="u">{unit?.unit_number ?? "–"} · {unit?.service_status === "out_of_service" ? <span className="font-medium text-critical">Out of service</span> : "In service"}{can(access, "fleet.view") && unitHref ? <> · <Link href={unitHref} className="underline">{unitWord} {unit?.unit_number}</Link></> : null}</span>],
                 [crew.installed ? "Lead mechanic" : "Mechanic", wo.assigned_to ? who(wo.assigned_to) : "Unassigned"],
                 ...(driver ? [["Driver", driver.name] as const] : []),
                 ["Odometer at service", fmtNum(wo.odometer_at_service, " mi")],
@@ -200,7 +206,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
             <dl className={cn("grid border-t border-line/70 text-center", canCosts && costs ? "grid-cols-4" : "grid-cols-3")} aria-label="Work order totals">
               {[
                 ["Checklist", crew.installed ? `${doneTasks}/${crew.tasks.length}` : "–"],
-                ["Parts", partsCount !== null ? String(partsCount) : "–"],
+                ["Parts used", partsCount !== null ? String(partsCount) : "–"],
                 ["Time", crew.installed ? `${Math.floor(crew.totalMinutes / 60)}:${String(crew.totalMinutes % 60).padStart(2, "0")}` : fmtNum(wo.labor_hours, " h")],
                 // Only for people who see maintenance costs; no cost lines yet is said plainly, never shown as $0.
                 ...(canCosts && costs ? [["Total cost", costs.length ? fmtMoney(total) : "Not counted yet"]] : []),
@@ -235,7 +241,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
                 {"estimated_hours" in wo && (manage && editable
                   ? <EstimateForm workOrderId={wo.id} hours={estimate} />
                   : <p className="text-sm text-muted">Estimate: {estimate ?? "not set"}{estimate ? " h" : ""}</p>)}
-                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} safetyCritical={wo.safety_critical} unit={trailer ? "trailer" : "truck"} hasTruck={Boolean(truck) && !trailer} />
+                <CrewPanel workOrderId={wo.id} status={wo.status} data={crew} faces={await facesForUsers(crew.crew.map((c) => c.userId))} me={access.userId} canManage={manage} today={today} timeZone={timezone} safetyCritical={wo.safety_critical} unit={trailer ? "trailer" : "truck"} hasTruck={Boolean(truck) && !trailer} inspection={wo.category === "inspection"} />
               </div>
             ) : <p className="text-sm text-muted">Labor hours: {fmtNum(wo.labor_hours, " h")}</p>)}
             {tab === "costs" && canCosts && costs && (

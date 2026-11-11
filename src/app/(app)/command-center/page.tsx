@@ -27,7 +27,9 @@ import { urgentSummary } from "@/lib/command-center/urgent";
 import { cn } from "@/lib/cn";
 import { addDays, formatDate, formatDateTime, isIsoDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
-import { can, type Permission } from "@/lib/permissions";
+import { can, canConfirmPrices, type Permission } from "@/lib/permissions";
+import { pendingPriceChecks } from "@/server/data/orders";
+import { priceCheckRow } from "@/lib/orders/price-check";
 import { requireAccess } from "@/server/auth";
 import { ACTIVITY_PAGE_SIZE, QUEUE_PAGE_SIZE, loadActivity, loadAssigneeOptions, loadLayout, loadOverview, type Loaded, type QueuePage } from "@/server/data/command-center";
 import { listCustomerOptions } from "@/server/data/customers";
@@ -110,6 +112,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
   const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
   const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
+  // "Price to check" (financial review M1): typed prices the office confirms. Listed here from the orders themselves
+  // (the database queue has no such kind), only for people who confirm prices; nothing shown if it cannot be read.
+  const priceChecksP = ops && canConfirmPrices(access) ? pendingPriceChecks() : Promise.resolve(null);
   const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks, support, money] = await Promise.all([
     ops ? loadOverview({ kind, mine, page, hidden, mineLimit: 5 }) : Promise.resolve(null),
     loadActivity(access, activityPage),
@@ -253,13 +258,15 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   }
 
   if (ops) {
+    const priceRow = priceCheckRow(await priceChecksP);
     const kindRows: AttentionKindRow[] = s
       ? EXCEPTION_KINDS.filter((k) => (s.by_kind[k] ?? 0) > 0)
-          .map((k) => {
+          .map((k): AttentionKindRow => {
             const ex = queue?.ok ? queue.data.items.find((i) => i.kind === k) : undefined;
             return { kind: k, label: say(KIND_LABELS[k]), count: s.by_kind[k] ?? 0, urgent: s.urgent_by_kind?.[k] ?? 0, owner: say(KIND_OWNERS[k]), example: ex ? say(exceptionTitle(ex)) : undefined, href: href({ kind: k }) };
           })
           .sort((a, b) => b.urgent - a.urgent || b.count - a.count)
+          .concat(priceRow ? [priceRow] : [])
       : [];
     const urgentItems = queue?.ok ? queue.data.items.filter((i) => i.priority === 1).slice(0, 2) : [];
     const visibleKinds = s ? EXCEPTION_KINDS.filter((k) => (s.by_kind[k] ?? 0) > 0 || kind === k) : [];
@@ -276,6 +283,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
             {visibleKinds.map((k) => (
               <Chip key={k} href={href({ kind: k })} active={kind === k && !mine && !hidden} label={say(KIND_LABELS[k])} count={s?.by_kind[k] ?? 0} />
             ))}
+            {priceRow && <Chip href={priceRow.href} active={false} label={priceRow.label} count={priceRow.count} />}
             {s && s.exceptions.mine > 0 && <Chip href={href({ mine: true })} active={mine && !hidden} label="Assigned to me" count={s.exceptions.mine} />}
             {s && (s.exceptions.hidden ?? 0) > 0 && <Chip href={href({ hidden: true })} active={hidden} label="Hidden by you" count={s.exceptions.hidden} />}
           </nav>
@@ -316,7 +324,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
       ) : (
         !s || !queue?.ok ? (
           <ErrorState title="The attention queue could not be loaded" description="This does not mean nothing needs attention. Open the modules directly or try again." action={<Link href={back} className={buttonClasses("secondary")}>Try again</Link>} />
-        ) : s.exceptions.total - (s.exceptions.hidden ?? 0) === 0 ? (
+        ) : s.exceptions.total - (s.exceptions.hidden ?? 0) === 0 && !priceRow ? (
           <Card>
             <EmptyState icon={<CheckCircle2 className="size-6" />} title="Nothing needs attention" description={say("Checked: urgent orders, loads today without a truck, assignment problems, missing tickets, tickets to review, billing blocks, equipment out of service and driver reports.")} />
           </Card>

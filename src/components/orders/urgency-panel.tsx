@@ -12,7 +12,7 @@ import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { flagOrderUrgent, updateOrderUrgency } from "@/app/(app)/orders/actions";
 import { formatDateTime } from "@/lib/dates";
-import { NOTE_REQUIRED, URGENCY_LABELS, URGENCY_NEXT_OWNER, urgencyActions, type UrgencyState } from "@/lib/orders/urgency";
+import { NOTE_REQUIRED, URGENCY_LABELS, urgencyActions, urgencyNextStep, type UrgencyState } from "@/lib/orders/urgency";
 import type { Permission } from "@/lib/permissions";
 import type { UrgencyEventRow, UrgencyRow } from "@/server/data/urgency";
 
@@ -29,12 +29,14 @@ interface Props {
   today: string;
   /** Server time of this render (ISO), for "past needed-by". */
   now: string;
+  /** The signed-in person, so the one who flagged it reads the next step for themselves. */
+  viewerId?: string;
 }
 
 const stateTone = (s: UrgencyState) => (s === "awaiting_acknowledgement" || s === "blocked" ? "red" : s === "assigned" ? "green" : "amber");
 
 /** The order's urgent flag: what, why, by when, its state, who acts next, and the allowed next steps. */
-export function UrgencyPanel({ orderId, orderClosed, canFlag, open, events, permissions, names, timezone, today, now }: Props) {
+export function UrgencyPanel({ orderId, orderClosed, canFlag, open, events, permissions, names, timezone, today, now, viewerId }: Props) {
   const router = useRouter();
   const can = (p: Permission) => permissions.includes(p);
   const [flagOpen, setFlagOpen] = useState(false);
@@ -78,7 +80,7 @@ export function UrgencyPanel({ orderId, orderClosed, canFlag, open, events, perm
           <dl className="grid grid-cols-1 gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
             <div><dt className="inline text-muted">Flagged: </dt><dd className="inline">{who(open.flagged_by)}, {formatDateTime(open.flagged_at, timezone)}</dd></div>
             <div><dt className="inline text-muted">Acknowledged: </dt><dd className="inline">{open.acknowledged_at ? `${who(open.acknowledged_by)}, ${formatDateTime(open.acknowledged_at, timezone)}` : "Not yet"}</dd></div>
-            <div className="sm:col-span-2"><dt className="inline text-muted">Next step: </dt><dd className="inline font-semibold">{URGENCY_NEXT_OWNER[open.state]}</dd></div>
+            <div className="sm:col-span-2"><dt className="inline text-muted">Next step: </dt><dd className="inline font-semibold">{urgencyNextStep(open.state, { flaggedIt: Boolean(viewerId) && open.flagged_by === viewerId, canAcknowledge: can("dispatch.edit") })}</dd></div>
           </dl>
           {actions.length > 0 && (
             <div className="flex flex-wrap gap-2" aria-label="Urgent order actions">

@@ -72,3 +72,49 @@ export function priceCorrections(lines: CorrectableLine[], typed: Record<string,
   }
   return out;
 }
+
+/**
+ * The Command Center's "Price to check" row (financial review M1): typed prices waiting for the office, oldest first,
+ * opening the Orders list filtered to them. Null when there are none or they cannot be read.
+ */
+export function priceCheckRow(pending: Array<{ order_number: string; customer_name: string | null }> | null): {
+  kind: string; label: string; count: number; urgent: number; owner: string; example?: string; href: string;
+} | null {
+  if (!pending?.length) return null;
+  const first = pending[0];
+  return {
+    kind: "price_check",
+    label: "Price to check",
+    count: pending.length,
+    urgent: 0,
+    owner: "Office (pricing or billing): confirm the typed price before billing",
+    example: `${first.order_number}${first.customer_name ? `, ${first.customer_name}` : ""}`,
+    href: "/orders?price=check",
+  };
+}
+
+/** The latest correction of a typed price in the order's history (audit 'order.price_corrected', 20261120016400). */
+export function lastPriceCorrection(audit: Array<{ action: string; occurred_at: string; actor_id: string | null }>): { at: string; actorId: string | null } | null {
+  let last: { at: string; actorId: string | null } | null = null;
+  for (const e of audit) if (e.action === "order.price_corrected" && (!last || e.occurred_at > last.at)) last = { at: e.occurred_at, actorId: e.actor_id };
+  return last;
+}
+
+/** Order statuses before any load runs. */
+const NOT_RUN = ["draft", "confirmed", "scheduled", "on_hold"];
+
+/**
+ * What the person who confirmed a typed price is told next (walkthrough 2026-11-11): "can be billed" only when billing
+ * readiness says so; "once the loads are delivered" when no delivery ticket is accepted yet. `billing` is null when the
+ * readiness could not be read (the person may not see billing): then only that the price is checked.
+ */
+export function priceConfirmedMessage(r: { confirmed: boolean; corrected: number }, billing: { readiness: string; tickets_accepted: number } | null, orderStatus?: string | null): string {
+  if (!r.confirmed) return "The price was already confirmed.";
+  const done = r.corrected ? "Price corrected and confirmed." : "Price checked.";
+  // No billing row yet (a draft, or nothing to bill): an order that has not run yet has nothing delivered.
+  if (!billing && orderStatus && NOT_RUN.includes(orderStatus)) return `${done} Billing can go ahead once the loads are delivered.`;
+  if (!billing) return done;
+  if (billing.readiness === "ready") return `${done} The order can be billed.`;
+  if (!Number(billing.tickets_accepted)) return `${done} Billing can go ahead once the loads are delivered.`;
+  return `${done} Billing can go ahead once its other billing checks pass.`;
+}

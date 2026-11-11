@@ -14,6 +14,7 @@ import {
   canEditOrderDetails,
   canEditOrderLines,
   orderTransitionLabel,
+  orderReasonMissing,
   orderTransitionNeedsReason,
   orderTransitionNeedsSchedule,
   orderTransitionPermission,
@@ -122,7 +123,8 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
           <Pencil className="size-4" aria-hidden /> {editLabel}
         </Link>
       )}
-      {permissions.schedule && canEditOrderDetails(status) && (
+      {/* Without a date, the main "Mark scheduled" already opens the schedule form: one action, not two side by side. */}
+      {permissions.schedule && canEditOrderDetails(status) && !(primaryStep === "scheduled" && !hasSchedule) && (
         <Button variant="secondary" icon={<CalendarDays className="size-4" />} onClick={() => { setScheduleThen(null); setScheduleOpen(true); }}>
           {hasSchedule ? "Change schedule" : "Set schedule"}
         </Button>
@@ -136,9 +138,12 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
         title={target ? `${orderTransitionLabel(status, target)} · ${orderNumber}` : ""}
         description={target ? describe(status, target, sourceQuoteId) : undefined}
         confirmLabel={target ? orderTransitionLabel(status, target) : "Confirm"}
+        cancelLabel={target === "canceled" ? "Keep order" : undefined}
         tone={target === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!target) return;
+          const missing = orderReasonMissing(target, note);
+          if (missing) return missing;
           const r = await setOrderStatus({ orderId, from: status, status: target, note, expectedEditSeq: editSeq });
           if (!r.ok) return r.error;
           setLatest(r.data);

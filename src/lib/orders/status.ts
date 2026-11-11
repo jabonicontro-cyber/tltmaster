@@ -84,6 +84,12 @@ export function orderTransitionNeedsReason(to: OrderStatus): boolean {
   return to === "on_hold" || to === "canceled";
 }
 
+/** The plain message when a move that needs a reason has none (the database refuses it as well); null when fine. */
+export function orderReasonMissing(to: OrderStatus, note: string): string | null {
+  if (!orderTransitionNeedsReason(to) || note.trim()) return null;
+  return to === "canceled" ? "Say why the order is canceled." : "Say why the order is put on hold.";
+}
+
 export function orderTransitionNeedsSchedule(to: OrderStatus): boolean {
   return NEEDS_SCHEDULE.includes(to);
 }

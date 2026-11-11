@@ -62,6 +62,7 @@ test("billing holds a customer; dispatch sees it and gives a reason to assign; b
   await choose(dialog.getByLabel("Driver"), driver);
   await expect(dialog.getByText("This combination can be assigned.")).toHaveCount(0);
   await expect(dialog.getByText(/The credit hold above still needs a reason/)).toBeVisible();
+  await expect(dialog.getByLabel("Note (optional)")).toHaveCount(0);
   const anyway = dialog.getByRole("button", { name: "Assign anyway" });
   await expect(anyway).toBeDisabled();
   await dialog.getByLabel("Reason for going ahead").fill("Owner approved by phone (test)");

@@ -58,6 +58,7 @@ test("set up an authenticator, be asked for it at sign-in, refuse a wrong code, 
   await page.getByRole("button", { name: "Set Up Authenticator App" }).click();
   await expect(page.getByRole("img", { name: "QR code for your authenticator app" })).toBeVisible();
   const secret = await page.getByLabel("Or type this key").inputValue();
+  expect(secret).toMatch(/^([A-Z2-7]{4} )+[A-Z2-7]{1,4}$/);
   await page.getByLabel("6-digit code from the app").fill(totp(secret));
   await page.getByRole("button", { name: "Turn On Two-Step Verification" }).click();
   await page.getByRole("button", { name: "Create Recovery Codes" }).click();
@@ -65,6 +66,14 @@ test("set up an authenticator, be asked for it at sign-in, refuse a wrong code, 
   await expect(list.getByRole("listitem")).toHaveCount(10);
   const codes = await list.getByRole("listitem").allTextContents();
   expect(codes).toHaveLength(10);
+  await expect(page.getByRole("button", { name: "Print Codes" })).toBeVisible();
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download (.txt)" }).click();
+  const file = await download;
+  expect(file.suggestedFilename()).toBe("taviron-recovery-codes.txt");
+  const { readFile } = await import("node:fs/promises");
+  const text = await readFile((await file.path())!, "utf8");
+  for (const c of codes) expect(text).toContain(c);
   await page.getByRole("button", { name: "I Saved Them, Continue" }).click();
   await expect(page).toHaveURL(/\/profile/);
   await expect(page.getByText("Two-step on")).toBeVisible();
@@ -128,6 +137,8 @@ test("an office person is asked to set up two-step verification at first sign-in
     await expect(page.getByText(/Someone who learns your password still cannot get in/)).toBeVisible();
     await expect(page.getByText(/Google Authenticator, Microsoft Authenticator, 1Password or Authy/)).toBeVisible();
     await expect(page.getByRole("list", { name: "Steps" })).toContainText("Save your recovery codes");
+    // No phone at hand: what to do, in one line (walkthrough 2026-11-11).
+    await expect(page.getByTestId("mfa-no-phone")).toHaveText("No phone with you? Sign out below and come back when you have it. The office cannot skip this step for you.");
     // Nothing in the workspace opens first.
     await page.goto("/billing");
     await expect(page).toHaveURL(/\/mfa/);

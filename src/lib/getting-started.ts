@@ -92,7 +92,8 @@ export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts,
       add(can("driver.portal"), { key: "ticket", label: "Send the ticket for a delivered load", href: "/driver#today-loads", done: tick(f.myTicket) });
       break;
     case "mechanic":
-      add(can("maintenance.view"), { key: "job", label: "Open a job", href: "/maintenance/my-jobs", done: null });
+      // A timer started on a job means a job was opened (walkthrough 2026-11-11: it stayed unticked); else this device.
+      add(can("maintenance.view"), { key: "job", label: "Open a job", href: "/maintenance/my-jobs", done: f.myTimerStarted || f.myTimerStopped ? true : null });
       add(can("maintenance.view"), { key: "start", label: "Start the timer on it", hint: "Your time goes on the job; you can fix a time later.", href: "/maintenance/my-jobs", done: tick(f.myTimerStarted) });
       add(can("maintenance.view"), { key: "stop", label: "Stop the timer when you finish", href: "/maintenance/my-jobs", done: tick(f.myTimerStopped) });
       break;

@@ -4,6 +4,8 @@ import { AlertActions } from "@/components/communications/alert-actions";
 import { Poller } from "@/components/communications/poller";
 import { CommunicationsUnavailable } from "@/components/communications/unavailable";
 import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { alertMainAction } from "@/lib/communications";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
 import { PageHeader } from "@/components/ui/page-header";
@@ -46,6 +48,8 @@ export default async function AlertPage({ params }: { params: Promise<{ id: stri
     : activeResp.filter((r) => (r.reason === "designated" || r.reason === "reassigned") && !acked.has(r.user_id));
   const meResponsible = activeResp.some((r) => r.user_id === access.userId);
   const canAcknowledge = a.status === "open" && a.priority !== "informational" && meResponsible && !acked.has(access.userId);
+  // Acknowledging is not resolving: where the alert has a fix of its own, that leads (walkthrough 2026-11-11).
+  const main = a.status === "open" ? alertMainAction(a) : null;
 
   return (
     <>
@@ -67,6 +71,7 @@ export default async function AlertPage({ params }: { params: Promise<{ id: stri
           canManage={can(access, "comms.alerts")}
           recipients={activeResp.map((r) => ({ user_id: r.user_id, name: name(r.user_id) }))}
           people={(directory ?? []).map((p) => ({ user_id: p.user_id, name: p.name }))}
+          mainAction={main ? <ButtonLink href={main.href}>{main.label}</ButtonLink> : undefined}
         />}
       />
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">

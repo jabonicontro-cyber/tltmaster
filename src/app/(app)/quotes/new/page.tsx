@@ -35,6 +35,7 @@ export default async function NewQuotePage({ searchParams }: { searchParams: Pro
         defaultTaxRateBp={ref.settings.default_tax_rate_bp}
         validityDays={ref.settings.quote_validity_days}
         canOverride={can(access, "pricing.override")}
+        canSetTaxDefault={can(access, "settings.manage")}
         canEditCustomers={can(access, "customers.edit")}
         priceLists={ref.priceLists}
       />
