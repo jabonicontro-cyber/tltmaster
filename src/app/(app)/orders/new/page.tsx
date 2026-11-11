@@ -46,9 +46,11 @@ export default async function NewOrderPage({ searchParams }: { searchParams: Pro
         validityDays={ref.settings.quote_validity_days}
         canOverride={can(access, "pricing.override")}
         taxLocked={!can(access, "orders.edit")}
+        canSetTaxDefault={can(access, "settings.manage")}
         typedPriceChecked={typedPriceChecked(access)}
         canEditCustomers={can(access, "customers.edit")}
         priceLists={ref.priceLists}
+        heldCustomers={ref.heldCustomers}
       />
     </>
   );

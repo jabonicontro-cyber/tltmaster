@@ -26,6 +26,8 @@ import { listSignIns } from "@/server/data/people";
 import { accountStates, emailServerStatus } from "@/server/accounts";
 import { SignInManager } from "@/components/accounts/sign-in-manager";
 import { isUsernameEmail } from "@/lib/usernames";
+import { PhoneSignInQr } from "@/components/accounts/phone-sign-in-qr";
+import { driverQrAccess } from "@/server/people/driver-qr";
 
 export const metadata = { title: "Person" };
 
@@ -62,6 +64,11 @@ export default async function EmployeePage({ params, searchParams }: { params: P
   // Work schedule (migration 20261114000300); read separately so the page works before that update is installed.
   const sched = await (await createClient()).from("employee_work_schedules").select("mon_hours, tue_hours, wed_hours, thu_hours, fri_hours, sat_hours, sun_hours").eq("employee_id", id).maybeSingle();
   const scheduleInstalled = !sched.error;
+  // "Show sign-in QR code" for a driver, here as on their Fleet page: the same component and rules (driver-qr.ts).
+  const qr = driver && manageUsers
+    ? await driverQrAccess(access, { demo: Boolean(access.isDemo), driverActive: driver.active, userId: e.user_id, accountRole: role, accountActive: member?.active })
+    : { mode: null, passkeys: null };
+  const demoOff = Boolean(access.isDemo) && manageUsers && can(access, "employees.edit");
 
   return (
     <>
@@ -158,6 +165,8 @@ export default async function EmployeePage({ params, searchParams }: { params: P
                 <p className="text-muted">No sign-in. {manageUsers ? "Create a username sign-in (print or copy the instructions), send one to their work email, or link a sign-in they already have." : "Someone who manages users can give them one."}</p>
                 {manageUsers && can(access, "employees.edit") && !access.isDemo ? (
                   <ButtonLink href={`/employees/new-sign-in?employee=${e.id}`} size="sm">Create Username Sign-in</ButtonLink>
+                ) : demoOff ? (
+                  <p className="text-muted" data-testid="demo-off-username">Create a username sign-in: not in a demo company.</p>
                 ) : null}
                 {manageUsers && can(access, "employees.edit") && (e.work_email
                   ? <SendSignIn employeeId={e.id} email={e.work_email} isOwner={access.role === "owner"} initialRole={chosenRole && (ROLES as readonly string[]).includes(chosenRole) && (chosenRole !== "owner" || access.role === "owner") ? chosenRole : ""} />
@@ -183,6 +192,19 @@ export default async function EmployeePage({ params, searchParams }: { params: P
                 )}
                 {canLink && <EmployeeLoginLink employeeId={e.id} linked candidates={[]} />}
               </>
+            )}
+            {driver && qr.mode && (
+              <div className="border-t border-line pt-3" data-testid="person-signin-qr">
+                {qr.mode === "live" || qr.mode === "demo" ? (
+                  <PhoneSignInQr driverId={driver.id} userId={qr.mode === "live" ? e.user_id : null} driverName={driver.name} demo={qr.mode === "demo"} passkeys={qr.passkeys} supportVisit={Boolean(access.support)} />
+                ) : qr.mode === "money" ? (
+                  <p className="text-muted">QR sign-in is off for drivers here: the driver role can see or change money, so drivers sign in with their username, password and two-step verification.</p>
+                ) : qr.mode === "login_off" ? (
+                  <p className="text-muted">QR sign-in: this sign-in is turned off. Turn it on first; then you can show a QR code.</p>
+                ) : (
+                  <p className="text-muted">QR sign-in is for driver sign-ins only; this login signs in with a username or email and password.</p>
+                )}
+              </div>
             )}
           </div>
         </Card>

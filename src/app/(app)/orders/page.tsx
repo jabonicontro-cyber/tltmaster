@@ -14,9 +14,10 @@ import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { formatScheduleDates, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { ORDER_STATUS_LABELS, ORDER_STATUSES } from "@/lib/orders/status";
-import { canCreateOrders } from "@/lib/permissions";
+import { canConfirmPrices, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
-import { listOrders, ORDER_SCHEDULE_FILTERS } from "@/server/data/orders";
+import { listOrders, ORDER_SCHEDULE_FILTERS, pendingPriceChecks } from "@/server/data/orders";
+import { Notice } from "@/components/ui/states";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
 import { businessToday } from "@/server/data/settings";
@@ -26,7 +27,7 @@ import { BaseFilter } from "@/components/bases/base-filter";
 import { getSay } from "@/server/industry";
 export const metadata = { title: "Orders" };
 
-type Search = { q?: string; status?: string; customer?: string; source?: string; when?: string; base?: string; page?: string };
+type Search = { q?: string; status?: string; customer?: string; source?: string; when?: string; base?: string; price?: string; page?: string };
 
 export default async function OrdersPage({ searchParams }: { searchParams: Promise<Search> }) {
   const say = await getSay();
@@ -45,15 +46,21 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     { label: "Drafts", params: { status: "draft" }, icon: FilePen },
     { label: "On hold", params: { status: "on_hold" }, icon: CirclePause, attention: true },
   ] as const;
+  // "Price to check" (financial review M1): orders with a price typed without a price-list rate, for the people who
+  // confirm it (pricing.edit, pricing.override or billing.manage). Null when it cannot be read: no filter, no badge.
+  const checker = canConfirmPrices(access);
+  const priceChecks = checker ? await pendingPriceChecks() : null;
+  const priceCheckIds = new Set((priceChecks ?? []).map((o) => o.id));
+  const priceFilter = sp.price === "check" && priceChecks ? [...priceCheckIds] : undefined;
   const [{ rows, total }, { today }, urgencies, counts] = await Promise.all([
-    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base, page }),
+    listOrders({ q: sp.q, status: sp.status, customer: sp.customer, source: sp.source, when: sp.when, base, page, priceCheckIds: priceFilter }),
     businessToday(),
     listOpenUrgencies(),
     Promise.all(VIEWS.map((v) => listOrders({ ...v.params, base, page: 1, countOnly: true }).then((r) => r.total).catch(() => null))),
   ]);
   // Orders with an open urgent flag get the red edge (owner 2026-10-26); if flags cannot be read, rows stay plain.
   const urgentIds = new Set((urgencies ?? []).map((u) => u.order_id));
-  const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base);
+  const filtered = Boolean(sp.q || sp.status || sp.customer || sp.source || sp.when || sp.base || priceFilter);
   const canCreate = canCreateOrders(access);
   const hrefFor = (p: number) => {
     const params = new URLSearchParams();
@@ -98,9 +105,26 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           );
         })}
       </nav>
+      {priceChecks && (priceChecks.length > 0 || priceFilter) && (
+        <div className="mb-5" data-testid="orders-price-check">
+          <Notice tone={priceChecks.length ? "warning" : "info"} title={priceChecks.length ? `Price to check: ${priceChecks.length} order${priceChecks.length === 1 ? "" : "s"}` : "No price to check"}>
+            {priceChecks.length ? (
+              <>
+                A dispatcher typed a price without a price-list rate. These orders are not billed until you confirm the price on the order.{" "}
+                {priceFilter
+                  ? <Link href="/orders" className="font-semibold underline">Show all orders</Link>
+                  : <Link href="/orders?price=check" className="font-semibold underline">Show {priceChecks.length === 1 ? "it" : "them"}</Link>}
+              </>
+            ) : (
+              <>Every typed price has been checked. <Link href="/orders" className="font-semibold underline">Show all orders</Link></>
+            )}
+          </Notice>
+        </div>
+      )}
       <Card>
         <FilterBar action="/orders" query={sp.q} placeholder="Search order #, quote #, customer, contact, project, site, PO, material…" clearHref="/orders">
           {sp.customer && <input type="hidden" name="customer" value={sp.customer} />}
+          {priceFilter && <input type="hidden" name="price" value="check" />}
           <FilterSelect
             name="status"
             label="Status"
@@ -144,6 +168,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                       <div className="min-w-0">
                         <Link href={`/orders/${o.id}`} className="font-semibold tabular text-ink after:absolute after:inset-0">{o.order_number}</Link>
                         {urgent && <span className="ml-2 align-[1px]"><UrgentPill /></span>}
+                        {priceCheckIds.has(o.id) && <span className="ml-2 align-[1px]"><Badge tone="amber">Price to check</Badge></span>}
                         <p className="truncate text-sm text-ink">{o.customer_name}</p>
                       </div>
                       <OrderStatusBadge status={o.status} />
@@ -183,6 +208,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                             {o.order_number}
                           </Link>
                           {urgent && <span className="ml-2 align-[1px]"><UrgentPill /></span>}
+                          {priceCheckIds.has(o.id) && <span className="ml-2 align-[1px]"><Badge tone="amber">Price to check</Badge></span>}
                           <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-sm text-muted">
                             <span className="whitespace-nowrap">{formatDate(o.order_date)}</span>
                             {o.customer_po && <span>PO {o.customer_po}</span>}

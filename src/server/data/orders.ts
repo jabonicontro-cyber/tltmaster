@@ -32,6 +32,35 @@ export interface OrderFilters {
   page: number;
   /** Only the number of matching orders (the Orders page's view tiles). */
   countOnly?: boolean;
+  /** Only orders with a typed price waiting to be checked (ids from pendingPriceChecks). */
+  priceCheckIds?: string[];
+}
+
+export interface PendingPriceCheck {
+  id: string;
+  order_number: string;
+  customer_name: string | null;
+  price_check_requested_at: string;
+}
+
+/**
+ * Orders with a typed price waiting to be checked ("Price to be checked", 20261120016100): requested, not yet checked,
+ * not canceled; oldest first. Null when it cannot be read (before that update), so callers show nothing rather than
+ * "none". The office's lists only (pricing.edit, pricing.override or billing.manage; the caller checks).
+ */
+export async function pendingPriceChecks(): Promise<PendingPriceCheck[] | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("orders")
+    .select("id, order_number, price_check_requested_at, customers(name)")
+    .not("price_check_requested_at", "is", null).is("price_checked_at", null).neq("status", "canceled")
+    .order("price_check_requested_at", { ascending: true }).limit(200);
+  if (error) return null;
+  return ((data ?? []) as unknown as Array<{ id: string; order_number: string; price_check_requested_at: string; customers: { name: string } | Array<{ name: string }> | null }>).map((o) => ({
+    id: o.id,
+    order_number: o.order_number,
+    price_check_requested_at: o.price_check_requested_at,
+    customer_name: (Array.isArray(o.customers) ? o.customers[0]?.name : o.customers?.name) ?? null,
+  }));
 }
 
 export async function listOrders(filters: OrderFilters) {
@@ -55,6 +84,8 @@ export async function listOrders(filters: OrderFilters) {
   if (filters.customer && uuid.safeParse(filters.customer).success) query = query.eq("customer_id", filters.customer);
   const base = parseBaseFilter(filters.base);
   if (base) query = query.eq("base_id", base);
+  // No order has the nil id: an empty list matches nothing.
+  if (filters.priceCheckIds) query = query.in("id", filters.priceCheckIds.length ? filters.priceCheckIds : ["00000000-0000-0000-0000-000000000000"]);
   if (filters.source === "quote") query = query.not("source_quote_id", "is", null);
   else if (filters.source === "direct") query = query.is("source_quote_id", null);
   if (when) {

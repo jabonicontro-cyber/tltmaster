@@ -60,7 +60,8 @@ export function Textarea({ className, ...props }: ComponentProps<"textarea">) {
 
 export function Checkbox({ label, className, ...props }: ComponentProps<"input"> & { label: ReactNode }) {
   return (
-    <label className={cn("inline-flex cursor-pointer items-center gap-2 text-sm text-ink", className)}>
+    // A disabled box has no pointer and reads as unavailable (walkthrough 2026-11-11).
+    <label className={cn("inline-flex items-center gap-2 text-sm", props.disabled ? "cursor-default text-muted" : "cursor-pointer text-ink", className)}>
       <input type="checkbox" className="size-4 rounded border-line accent-brand" {...props} />
       <span>{label}</span>
     </label>

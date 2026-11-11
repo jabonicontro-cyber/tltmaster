@@ -10,6 +10,7 @@ import type { TruckFuelSummary } from "@/lib/fuel/truck-fuel";
 import type { VehicleDocumentRow, VehicleRecords } from "@/server/data/fleet";
 import { AvailabilityBadge, DocumentStateBadge } from "./fleet-status";
 import { AssignDriverForm, DocumentForm, DocumentRowActions, OwnershipForm } from "./vehicle-panels";
+import { currentReading, ignoredReadingText, readingsToList } from "@/lib/fleet/readings";
 import { MarkReadingWrong } from "./shop-decisions";
 
 const money = (cents: number) => (cents / 100).toLocaleString("en-US", { style: "currency", currency: "USD" });
@@ -141,7 +142,7 @@ export function DocumentsCard({ vehicle, docs, today, canEdit, timezone, rules =
                         </p>
                         {d.notes && <p className="text-sm whitespace-pre-line">{d.notes}</p>}
                       </div>
-                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} canVerify={Boolean(((rules && d.kind in rules) || d.work_order_id) && !d.verified_at)} verifyLabel={d.work_order_id ? "Mark checked" : undefined} />}
+                      {canEdit && <DocumentRowActions vehicle={vehicle} doc={d} canVerify={Boolean(((rules && d.kind in rules) || d.work_order_id) && !d.verified_at)} certificate={Boolean(d.work_order_id)} />}
                     </div>
                   </li>
                 ))}
@@ -263,23 +264,25 @@ const readingText = (r: { odometer_miles: number | null; engine_hours: number | 
  */
 function ReadingsSection({ truckId, records, canMarkWrong, timezone }: { truckId: string; records: VehicleRecords; canMarkWrong: boolean; timezone: string }) {
   const rows = records.readings.rows;
-  const good = rows.filter((r) => !r.set_aside_at);
-  const maxOf = (k: "odometer_miles" | "engine_hours") => good.reduce<number | null>((m, r) => (r[k] !== null && (m === null || r[k]! > m) ? r[k] : m), null);
-  const current = { odometer_miles: maxOf("odometer_miles"), engine_hours: maxOf("engine_hours") };
+  // The database's rule over every reading, not only the newest 20 loaded here (src/lib/fleet/readings.ts).
+  const current = currentReading(rows, records.highestReading);
+  const listed = readingsToList(rows, current);
   const ignored = records.ignoredReadings.rows;
   return (
     <div data-testid="truck-readings">
       <p className="flex items-center gap-1.5 text-sm font-semibold"><Gauge className="size-4 text-muted" aria-hidden />Readings</p>
-      {rows.length === 0 ? <p className="text-sm text-muted">No odometer or engine-hour readings recorded. <Link href="/maintenance/preventive" className="underline">Record one</Link>.</p> : (
+      {listed.length === 0 ? <p className="text-sm text-muted">No odometer or engine-hour readings recorded. <Link href="/maintenance/preventive" className="underline">Record one</Link>.</p> : (
         <>
-          <p className="mt-1 text-sm">
+          <p className="mt-1 text-sm" data-testid="current-reading">
             <span className="text-muted">Current: </span>
             <span className="font-semibold tabular">{current.odometer_miles === null && current.engine_hours === null ? "no good reading" : readingText(current)}</span>
+            <span className="text-muted"> (the highest reading still counted)</span>
           </p>
           <ul className="mt-1 divide-y divide-line/70 text-sm">
-            {rows.slice(0, 8).map((r) => (
-              <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1">
+            {listed.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-1 py-1" data-current={r.isCurrent || undefined}>
                 <span className={r.set_aside_at ? "tabular text-muted line-through" : "tabular"}>{readingText(r)}</span>
+                {r.isCurrent && <Badge tone="blue">Sets the current reading</Badge>}
                 <span className="text-muted">· {formatDateTime(r.read_at, timezone)}{r.source && READING_SOURCES[r.source] ? ` · ${READING_SOURCES[r.source]}` : ""}</span>
                 {r.set_aside_at ? (
                   <span className="flex flex-wrap items-center gap-1.5"><Badge tone="gray">Marked wrong</Badge><span className="text-xs text-muted">{r.set_aside_reason} ({formatDateTime(r.set_aside_at, timezone)})</span></span>
@@ -297,7 +300,7 @@ function ReadingsSection({ truckId, records, canMarkWrong, timezone }: { truckId
           <p className="text-xs text-muted">A reading lower than the current one, or too far above it to be possible, is not used. If the current reading is wrong, mark it as wrong above: the next correct reading then counts.</p>
           <ul className="mt-1 space-y-0.5 text-sm">
             {ignored.map((e) => (
-              <li key={e.id}>{e.summary} <span className="text-muted">· {formatDateTime(e.occurred_at, timezone)}</span></li>
+              <li key={e.id}>{ignoredReadingText(e)} <span className="text-muted">· {formatDateTime(e.occurred_at, timezone)}</span></li>
             ))}
           </ul>
         </div>

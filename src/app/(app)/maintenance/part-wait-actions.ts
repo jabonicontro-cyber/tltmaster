@@ -15,6 +15,8 @@ import { createClient } from "@/server/supabase/server";
 // and cost lines, inside those functions.
 
 const MISSING = new Set(["42883", "PGRST202"]);
+/** A job nobody started yet: the unit is still in service (a part on order does not park it). */
+const NOT_STARTED = ["reported", "triaged", "scheduled"];
 
 function refresh(workOrderId: string) {
   revalidatePath("/maintenance", "layout");
@@ -70,7 +72,17 @@ export async function addPartWait(workOrderId: string, setWaiting: boolean, form
       return fail(stopped ? `Your timer is stopped. ${dbErrorMessage(error)}` : dbErrorMessage(error));
     }
     refresh(workOrderId);
-    return ok(undefined, `${setWaiting ? "Waiting for parts. " : ""}Part on order saved.${stopped ? " Your timer is stopped." : ""}`);
+    // A part for a job not started: the unit keeps working until the job starts (owner 2026-11-09, MD1), said here.
+    let running = "";
+    if (!setWaiting) {
+      const { data: w } = await supabase.from("work_orders").select("status, trucks(unit_number), trailers(unit_number)").eq("id", workOrderId).maybeSingle();
+      const row = w as { status: string; trucks: { unit_number: string } | null; trailers: { unit_number: string } | null } | null;
+      if (row && NOT_STARTED.includes(row.status)) {
+        const unit = row.trucks?.unit_number ? `Truck ${row.trucks.unit_number}` : row.trailers?.unit_number ? `Trailer ${row.trailers.unit_number}` : null;
+        if (unit) running = ` ${unit} keeps running until you start the job.`;
+      }
+    }
+    return ok(undefined, `${setWaiting ? "Waiting for parts. " : ""}Part on order saved.${running}${stopped ? " Your timer is stopped." : ""}`);
   });
 }
 

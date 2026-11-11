@@ -5,6 +5,8 @@ import { useState, useTransition } from "react";
 import { Archive, Pencil, UserMinus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
+import { formatDate } from "@/lib/dates";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select, Textarea, describedBy } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
@@ -136,23 +138,55 @@ export function DocumentForm({ vehicle, doc, onDone }: { vehicle: Vehicle; doc?:
   );
 }
 
-export function DocumentRowActions({ vehicle, doc, canVerify = false, verifyLabel = "Mark verified" }: { vehicle: Vehicle; doc: DocumentValues; canVerify?: boolean; /** "Mark checked" on a certificate the shop recorded. */ verifyLabel?: string }) {
+/**
+ * "Mark verified" on a vehicle document, or "Mark checked" on an inspection certificate the shop recorded (the same
+ * verify step, fleet.edit): the app's own confirm dialog with wording for what is being checked, never the browser's.
+ */
+export function VerifyDocumentButton({ vehicle, documentId, certificate, expiresOn, unit, variant = "ghost", onDone }: {
+  vehicle: Vehicle;
+  documentId: string;
+  /** A certificate the shop recorded from an inspection work order (vehicle_documents.work_order_id). */
+  certificate: boolean;
+  expiresOn: string | null;
+  /** "truck 109", for the button's accessible name. */
+  unit?: string;
+  variant?: "ghost" | "secondary";
+  onDone?: () => void;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const label = certificate ? "Mark checked" : "Mark verified";
+  return (
+    <>
+      <Button size="sm" variant={variant} onClick={() => setOpen(true)} aria-label={certificate && unit ? `Mark the inspection certificate of ${unit} checked` : undefined}>{label}</Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={certificate ? "Mark the inspection certificate checked?" : "Mark this document verified?"}
+        description={certificate
+          ? `Compare it with the paper certificate first: the inspection date${expiresOn ? ` and the expiry date (${formatDate(expiresOn)})` : ""} must match. Checking it closes the office's to-do.`
+          : "Confirm the kind and dates match the paper document. A verified expired insurance or registration blocks dispatch under the company rule."}
+        confirmLabel={label}
+        onConfirm={async () => {
+          const r = await verifyVehicleDocument(vehicle, documentId);
+          if (!r.ok) return r.error;
+          toast.success(certificate ? "Certificate checked." : r.message ?? "Verified.");
+          onDone?.();
+          router.refresh();
+        }}
+      />
+    </>
+  );
+}
+
+export function DocumentRowActions({ vehicle, doc, canVerify = false, certificate = false }: { vehicle: Vehicle; doc: DocumentValues; canVerify?: boolean; /** A certificate the shop recorded: "Mark checked". */ certificate?: boolean }) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [pending, start] = useTransition();
   if (editing) return <div className="mt-3 rounded-xl border border-line p-3"><DocumentForm vehicle={vehicle} doc={doc} onDone={() => setEditing(false)} /></div>;
   return (
     <div className="flex gap-1">
-      {canVerify && (
-        <Button size="sm" variant="ghost" disabled={pending} onClick={() => {
-          if (!window.confirm("Mark this document verified? Confirm the kind and dates match the paper document. A verified expired insurance or registration blocks dispatch under the company rule.")) return;
-          start(async () => {
-            const r = await verifyVehicleDocument(vehicle, doc.id);
-            if (!r.ok) toast.error(r.error);
-            else { toast.success(r.message ?? "Verified."); router.refresh(); }
-          });
-        }}>{verifyLabel}</Button>
-      )}
+      {canVerify && <VerifyDocumentButton vehicle={vehicle} documentId={doc.id} certificate={certificate} expiresOn={doc.expires_on} />}
       <Button size="sm" variant="ghost" icon={<Pencil className="size-3.5" />} onClick={() => setEditing(true)} aria-label={`Edit ${DOCUMENT_KINDS[doc.kind as keyof typeof DOCUMENT_KINDS] ?? "document"}`}>Edit</Button>
       <Button size="sm" variant="ghost" disabled={pending} icon={<Archive className="size-3.5" />} onClick={() => {
         if (!window.confirm("Archive this document? It stays in the history but no longer counts as current.")) return;

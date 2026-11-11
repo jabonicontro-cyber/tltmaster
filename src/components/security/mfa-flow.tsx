@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { groupKey, recoveryCodesText } from "@/lib/mfa-policy";
 import { Button } from "@/components/ui/button";
 import { Checkbox, Field, FormError, Input } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
@@ -113,6 +114,42 @@ function PhoneEnroll({ next, onBack }: { next: string; onBack: () => void }) {
   );
 }
 
+function downloadCodes(codes: string[]) {
+  const url = URL.createObjectURL(new Blob([recoveryCodesText(codes)], { type: "text/plain" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "taviron-recovery-codes.txt";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/** Print only the codes: a plain page in a new window, built as text (no markup from anywhere else). */
+function printCodes(codes: string[]): boolean {
+  const w = window.open("", "_blank", "width=520,height=640");
+  if (!w) return false;
+  const d = w.document;
+  d.title = "Taviron recovery codes";
+  d.body.style.fontFamily = "system-ui, sans-serif";
+  const h = d.createElement("h1");
+  h.textContent = "Taviron recovery codes";
+  const p = d.createElement("p");
+  p.textContent = "Each code works once. Keep them somewhere safe, away from your phone.";
+  const ol = d.createElement("ol");
+  ol.style.fontFamily = "ui-monospace, monospace";
+  ol.style.fontSize = "14pt";
+  for (const c of codes) {
+    const li = d.createElement("li");
+    li.textContent = c;
+    ol.appendChild(li);
+  }
+  d.body.append(h, p, ol);
+  w.focus();
+  w.print();
+  return true;
+}
+
 /** Set up an authenticator: QR code (or secret), confirm with a code, then save recovery codes. With text messages
  * allowed on this server (B109), a phone can be chosen instead. */
 export function MfaEnroll({ next, smsAllowed = false }: { next: string; smsAllowed?: boolean }) {
@@ -178,7 +215,8 @@ function AppEnroll({ next, onPhone }: { next: string; onPhone?: () => void }) {
         <img src={setup.qr} alt="QR code for your authenticator app" className="size-44" />
       </div>
       <Field label="Or type this key" htmlFor="secret" hint="Cannot scan? In the app, choose to enter a setup key and type this one.">
-        <Input id="secret" readOnly value={setup.secret} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
+        {/* In groups of four for reading and typing (authenticator apps ignore the spaces). */}
+        <Input id="secret" readOnly value={groupKey(setup.secret)} className="font-mono text-xs" onFocus={(e) => e.currentTarget.select()} />
       </Field>
       <Field label="6-digit code from the app" htmlFor="code" hint="The code changes every 30 seconds. Type the one showing now." error={verify.fieldError("code")}>
         <Input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" pattern="\d{6}" maxLength={6} required className="tabular text-lg tracking-[0.3em]" />
@@ -240,7 +278,7 @@ export function RecoveryCodesStep({ next, required = false, replacing = false }:
   return (
     <div className="space-y-4">
       <p className="text-sm font-semibold text-ink">Save these recovery codes now.</p>
-      <p className="text-sm text-muted">Each code works once. Keep them somewhere safe away from your phone: print them, or save them in a password manager. They are not shown again; you can create new ones from My profile.</p>
+      <p className="text-sm text-muted">Each code works once. Keep them somewhere safe away from your phone: print them, download them, or save them in a password manager. They are not shown again; you can create new ones from My profile.</p>
       <ol className="grid grid-cols-2 gap-2 rounded-xl border border-line bg-surface p-3 font-mono text-sm" aria-label="Recovery codes">
         {codes.map((c) => (
           <li key={c}>{c}</li>
@@ -249,6 +287,8 @@ export function RecoveryCodesStep({ next, required = false, replacing = false }:
       {required ? <Checkbox name="saved" checked={saved} onChange={(e) => setSaved(e.currentTarget.checked)} label="I saved these codes somewhere safe" /> : null}
       <FormError message={error} />
       <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" onClick={() => { if (!printCodes(codes)) setError("The print window was blocked. Download or copy the codes instead."); }}>Print Codes</Button>
+        <Button variant="secondary" onClick={() => downloadCodes(codes)}>Download (.txt)</Button>
         <Button variant="secondary" onClick={() => navigator.clipboard.writeText(codes.join("\n"))}>Copy Codes</Button>
         <Button onClick={finish} loading={busy} disabled={required && !saved}>I Saved Them, Continue</Button>
       </div>

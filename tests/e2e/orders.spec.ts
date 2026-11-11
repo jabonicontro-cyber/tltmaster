@@ -269,7 +269,8 @@ test("a price a dispatcher types is shown as to be checked, and the office confi
     await expect(d.getByText("Say why the price is corrected.")).toBeVisible();
     await d.getByLabel("Why is the price corrected?").fill(`Customer agreed $88 for the rush haul (e2e ${id})`);
     await d.getByRole("button", { name: "Correct and confirm" }).click();
-    await expectToast(office, "Price corrected and confirmed. The order can be billed.");
+    await expectToast(office, "Price corrected and confirmed. Billing can go ahead once the loads are delivered.");
+    await expect(office.getByText(/corrected and confirmed the typed price on/)).toBeVisible();
     await expect(office.getByText("Price checked", { exact: true })).toBeVisible();
     await expect(office.getByText("Price to be checked", { exact: true })).toHaveCount(0);
     const history = office.getByRole("list", { name: "Order history" });

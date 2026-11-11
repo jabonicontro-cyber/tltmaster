@@ -1036,7 +1036,8 @@ function AssignDialog({
   async function submit() {
     setPending(true);
     setError(null);
-    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note, replaceAssignmentId: current?.id ?? null, offShiftReason: offShift ? offShiftReason : undefined, creditReason: creditHold ? creditReason : undefined });
+    // One reason field (walkthrough 2026-11-11): with a credit hold, the reason for going ahead is also the assignment's note.
+    const r = await assignLoad({ loadId: load.id, orderId: load.order_id, truckId, trailerId: trailerId || null, driverId, note: creditHold && !note.trim() ? creditReason : note, replaceAssignmentId: current?.id ?? null, offShiftReason: offShift ? offShiftReason : undefined, creditReason: creditHold ? creditReason : undefined });
     setPending(false);
     if (!r.ok) {
       // The customer is on credit hold: show it and ask for a reason; the next Assign sends it.
@@ -1077,7 +1078,7 @@ function AssignDialog({
         {creditHold && (
           <div role="alert" className="space-y-2 rounded-xl border border-critical/40 bg-critical/5 p-3">
             <p className="text-sm font-semibold text-critical">{creditHold}</p>
-            <p className="text-sm text-ink">Billing decides on credit holds and can release this one on the customer&apos;s page. To assign now anyway, give a reason; it is recorded with the assignment.</p>
+            <p className="text-sm text-ink">Billing decides on credit holds and can release this one on the customer&apos;s page. To {current ? "reassign" : "assign"} now anyway, give a reason; it is recorded with the assignment.</p>
             <Field label="Reason for going ahead" htmlFor="assign-credit-reason" required>
               <Input id="assign-credit-reason" value={creditReason} maxLength={500} onChange={(e) => setCreditReason(e.target.value)} placeholder="e.g. Owner approved; payment promised Friday" />
             </Field>
@@ -1112,9 +1113,12 @@ function AssignDialog({
             </Select>
           </Field>
         </div>
-        <Field label="Note (optional)" htmlFor="assign-note" hint={current ? "Recorded as the reason for the reassignment." : undefined}>
-          <Input id="assign-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
-        </Field>
+        {/* With a credit hold the reason above is the one note; no second reason box. */}
+        {!creditHold && (
+          <Field label="Note (optional)" htmlFor="assign-note" hint={current ? "Recorded as the reason for the reassignment." : undefined}>
+            <Input id="assign-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} />
+          </Field>
+        )}
 
         {/* The board's pre-check; hidden once the server answered with an error or a shift question: its answer counts. */}
         {check && !error && !offShift && (

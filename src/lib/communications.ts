@@ -212,3 +212,14 @@ export const SCOPE_LABELS = {
   destination: "Destination on a date",
   loads: "Selected loads",
 } as const;
+
+/**
+ * The alert's own fix as its main action (walkthrough 2026-11-11), where it has one: acknowledging says "seen", it does
+ * not resolve the alert ("Proactive visibility"). An inspection certificate from the shop is resolved by checking it on
+ * the vehicle's page (documents.certificate_check, 20261120015700). Null when there is none.
+ */
+export function alertMainAction(a: { event_type: string; title: string; link: string }): { label: string; href: string } | null {
+  if (a.event_type !== "documents.certificate_check" || !a.link?.startsWith("/fleet/")) return null;
+  const unit = /\bof (truck|trailer) (.+)$/i.exec(a.title);
+  return { label: unit ? `Open ${unit[1].toLowerCase()} ${unit[2]} to check it` : "Open the vehicle to check it", href: a.link };
+}

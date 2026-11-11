@@ -40,6 +40,19 @@ export const URGENCY_NEXT_OWNER: Record<UrgencyState, string> = {
   canceled: "Nobody: closed",
 };
 
+/**
+ * "Next step" as the viewer reads it (walkthrough 2026-11-11): the person who flagged the order is not told to wait
+ * for "Dispatch: acknowledge it" as if someone else must act; a flagger who can acknowledge is told they may.
+ */
+export function urgencyNextStep(state: UrgencyState, viewer: { flaggedIt: boolean; canAcknowledge: boolean }): string {
+  if (state === "awaiting_acknowledgement" && viewer.flaggedIt) {
+    return viewer.canAcknowledge
+      ? "You flagged this; it is on the board for dispatch. Acknowledge it when you take it on."
+      : "You flagged this; it is on the board for dispatch to acknowledge.";
+  }
+  return URGENCY_NEXT_OWNER[state];
+}
+
 export const OPEN_URGENCY_STATES: UrgencyState[] = ["awaiting_acknowledgement", "acknowledged", "evaluating", "waiting_for_information", "blocked", "assigned"];
 
 /** States that need a note (what is blocking, missing, or how it ended). */

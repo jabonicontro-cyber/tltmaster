@@ -12,10 +12,10 @@ import { FlashToast } from "@/components/ui/flash-toast";
 import { PageHeader } from "@/components/ui/page-header";
 import { addDays, formatDate, formatDateTime } from "@/lib/dates";
 import { EXPIRY_WARNING_DAYS, eligibilityMessage } from "@/lib/fleet/eligibility";
-import { can, isMoneyPermission, ROLE_LABELS, type AppRole } from "@/lib/permissions";
+import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { getDriver } from "@/server/data/fleet";
-import { managedPasskeys } from "@/server/passkeys";
+import { driverQrAccess } from "@/server/people/driver-qr";
 import { businessToday } from "@/server/data/settings";
 import { createClient } from "@/server/supabase/server";
 import Link from "next/link";
@@ -50,16 +50,15 @@ export default async function DriverPage({ params }: { params: Promise<{ id: str
   // Sign in without typing (DS1): a one-time QR code for a driver sign-in, and face or fingerprint sign-in to remove
   // for a lost phone. users.manage, as for resetting a sign-in; the database checks every rule again. In a demo company
   // the code is a labelled sample for any driver (nothing real signs in from a demo; docs/DEMO_TENANTS.md §2).
-  const canManageSignIns = d.active && can(access, "users.manage");
-  const demoQr = canManageSignIns && Boolean(access.isDemo);
-  const driverLogin = canManageSignIns && !access.isDemo && Boolean(d.user_id) && d.account_role === "driver" && d.account_active !== false;
   // Two-step verification is for anyone who can see or change money (SEC4): when this company gave the driver role a
   // money permission, drivers sign in with a password and two-step verification, not a code (the database refuses too).
-  const moneyRole = driverLogin
-    ? ((await supabase.from("role_permissions").select("permission").eq("role", "driver")).data ?? []).some((r) => isMoneyPermission(String((r as { permission: string }).permission)))
-    : false;
-  const liveQr = driverLogin && !moneyRole;
-  const passkeys = liveQr && d.user_id ? await managedPasskeys(d.user_id) : null;
+  // The same rules on the person's People page (src/server/people/driver-qr.ts).
+  const canManageSignIns = d.active && can(access, "users.manage");
+  const qr = await driverQrAccess(access, { demo: Boolean(access.isDemo), driverActive: d.active, userId: d.user_id, accountRole: d.account_role, accountActive: d.account_active });
+  const demoQr = qr.mode === "demo";
+  const moneyRole = qr.mode === "money";
+  const liveQr = qr.mode === "live";
+  const passkeys = qr.passkeys;
 
   return (
     <>

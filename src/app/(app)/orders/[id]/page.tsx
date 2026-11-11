@@ -14,7 +14,7 @@ import { buildOrderTimeline } from "@/lib/orders/history";
 import { formatScheduleDates, formatTime, formatWindow, isPastRequested } from "@/lib/orders/schedule";
 import { canEditOrderLines, ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import { can, canChangeOrderUrgencyAndStops, canConfirmPrices, isOwnDirectOrder } from "@/lib/permissions";
-import { correctableLines, priceCheckPending, typedPriceLines } from "@/lib/orders/price-check";
+import { correctableLines, lastPriceCorrection, priceCheckPending, typedPriceLines } from "@/lib/orders/price-check";
 import { PriceCheckNotice } from "@/components/orders/price-check";
 import { requirePagePermission } from "@/server/auth";
 import { getOrderDispatch } from "@/server/data/dispatch";
@@ -75,6 +75,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   };
   const canDispatch = can(access, "dispatch.view");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
+  // A typed price corrected while it was confirmed (20261120016400): said on the notice and next to the locked prices.
+  const priceCorrection = lastPriceCorrection(audit);
   const billTo = order.bill_to_snapshot;
   const billing = billTo
     ? [billTo.name, billTo.line1, billTo.line2, [billTo.city, billTo.state, billTo.postal_code].filter(Boolean).join(" ")].filter(Boolean).join("\n")
@@ -177,7 +179,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         )}
         {order.price_checked_at && (
           <Notice title="Price checked">
-            {who(order.price_checked_by ?? null)} confirmed the typed price on {formatDateTime(order.price_checked_at, timezone)}{order.price_check_note ? `: ${order.price_check_note}` : "."}
+            {who(order.price_checked_by ?? null)} {priceCorrection ? "corrected and confirmed" : "confirmed"} the typed price on {formatDateTime(order.price_checked_at, timezone)}{order.price_check_note ? `: ${order.price_check_note}` : "."}
           </Notice>
         )}
         {order.status === "draft" && (
@@ -218,6 +220,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             timezone={timezone}
             today={today}
             now={new Date().toISOString()}
+            viewerId={access.userId}
           />
         )}
         {order.status !== "draft" && <OrderProgress steps={progress} />}
@@ -386,7 +389,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                   ? "Prices are as accepted on the quote, including any owner-approved overrides and discounts."
                   : linesEditable
                     ? "Draft prices: can be changed until the order is confirmed."
-                    : "Prices locked when the order was confirmed."
+                    : priceCorrection
+                      ? `Prices locked when the order was confirmed (corrected on ${formatDateTime(priceCorrection.at, timezone)} by ${who(priceCorrection.actorId)}).`
+                      : "Prices locked when the order was confirmed."
               }
             />
             {lines.length === 0 ? (

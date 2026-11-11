@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { OrderDetailsForm } from "@/components/orders/order-details-form";
+import { CancelDraftButton } from "@/components/orders/cancel-draft-button";
 import { QuoteEditor } from "@/components/quotes/quote-editor";
 import { Badge, OrderStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
@@ -29,6 +30,8 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
     <PageHeader
       title={`Edit ${order.order_number}`}
       crumbs={[{ label: "Orders", href: "/orders" }, { label: order.order_number, href: `/orders/${id}` }, { label: "Edit" }]}
+      // A draft entered by mistake is canceled from here too (the page already limits who may edit it).
+      actions={order.status === "draft" && !order.source_quote_id ? <CancelDraftButton orderId={order.id} orderNumber={order.order_number} editSeq={order.edit_seq} /> : undefined}
       badges={
         <>
           <OrderStatusBadge status={order.status} />
@@ -61,9 +64,11 @@ export default async function EditOrderPage({ params }: { params: Promise<{ id: 
           validityDays={ref.settings.quote_validity_days}
           canOverride={can(access, "pricing.override")}
           taxLocked={!can(access, "orders.edit")}
+          canSetTaxDefault={can(access, "settings.manage")}
           typedPriceChecked={typedPriceChecked(access)}
           canEditCustomers={can(access, "customers.edit")}
           priceLists={ref.priceLists}
+          heldCustomers={ref.heldCustomers}
         />
       </>
     );

@@ -72,6 +72,10 @@ export default async function MfaPage({ searchParams }: { searchParams: Promise<
         ) : (
           <MfaEnroll next={next} smsAllowed={smsAllowed} />
         )}
+        {/* Required and not set up yet: what to do without a phone at hand (walkthrough 2026-11-11). */}
+        {!verified && state.reason ? (
+          <p className="mt-5 text-sm text-muted" data-testid="mfa-no-phone">No phone with you? Sign out below and come back when you have it. The office cannot skip this step for you.</p>
+        ) : null}
         <form action={signOut} className="mt-6 border-t border-line pt-4 text-center">
           <button type="submit" className="text-sm text-muted hover:text-ink hover:underline">Sign out</button>
         </form>

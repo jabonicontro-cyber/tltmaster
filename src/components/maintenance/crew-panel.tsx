@@ -48,11 +48,12 @@ function Elapsed({ since }: { since: string }) {
 }
 
 /** Crew and labor time on one work order. */
-export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {}, safetyCritical = false, unit = "truck", hasTruck = false }: {
+export function CrewPanel({ workOrderId, status, data, me, canManage, today, timeZone, faces = {}, safetyCritical = false, unit = "truck", hasTruck = false, inspection = false }: {
   workOrderId: string; status: string; data: WorkOrderCrew; me: string; canManage: boolean; today: string; timeZone: string;
   /** Mechanic pictures by user id. */ faces?: Record<string, Face>;
   /** A safety-critical job finishes through an authorized inspection. */ safetyCritical?: boolean; unit?: "truck" | "trailer";
   /** A truck job: finishing offers the odometer and engine hours. */ hasTruck?: boolean;
+  /** An inspection job: finishing asks what was inspected or fixed. */ inspection?: boolean;
 }) {
   const { pending, run } = useRun();
   const [adding, setAdding] = useState("");
@@ -90,7 +91,7 @@ export function CrewPanel({ workOrderId, status, data, me, canManage, today, tim
           )}
           {/* The lead (or the only mechanic) finishes the job in one step; a helper marks their own part done. */}
           {mine && status === "in_progress" && (finisher || (!myTimerHere && mine.status !== "done")) && (
-            <FinishJob workOrderId={workOrderId} finisher={finisher} safetyCritical={safetyCritical} unit={unit} leadName={lead?.name ?? null} size="sm" suggested={myNotes} hasTruck={hasTruck} />
+            <FinishJob workOrderId={workOrderId} finisher={finisher} safetyCritical={safetyCritical} unit={unit} leadName={lead?.name ?? null} size="sm" suggested={myNotes} hasTruck={hasTruck} inspection={inspection} />
           )}
         </div>
       )}

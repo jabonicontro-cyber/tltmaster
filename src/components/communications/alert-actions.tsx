@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
@@ -20,6 +20,8 @@ export function AlertActions(props: {
   canManage: boolean;
   recipients: Array<{ user_id: string; name: string }>;
   people: Array<{ user_id: string; name: string }>;
+  /** Another action leads (the fix itself, such as "Open truck 109 to check it"): Acknowledge is secondary. */
+  mainAction?: ReactNode;
 }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>(null);
@@ -27,13 +29,14 @@ export function AlertActions(props: {
   const [priority, setPriority] = useState<Priority>(props.priority);
   const [from, setFrom] = useState(props.recipients[0]?.user_id ?? "");
   const [to, setTo] = useState("");
-  if (!props.open || (!props.canAcknowledge && !props.canManage)) return null;
+  if (!props.open || (!props.canAcknowledge && !props.canManage)) return props.open && props.mainAction ? <div className="flex flex-wrap gap-2">{props.mainAction}</div> : null;
   const start = (m: Mode) => { setNote(""); setPriority(props.priority); setTo(""); setMode(m); };
   const options = allowedPriorities(props.minPriority);
 
   return (
     <div className="flex flex-wrap gap-2">
-      {props.canAcknowledge && <Button onClick={() => start("ack")}>Acknowledge</Button>}
+      {props.mainAction}
+      {props.canAcknowledge && <Button variant={props.mainAction ? "secondary" : "primary"} onClick={() => start("ack")}>Acknowledge</Button>}
       {props.canManage && <Button variant="secondary" onClick={() => start("priority")}>Change priority</Button>}
       {props.canManage && props.recipients.length > 0 && <Button variant="secondary" onClick={() => start("reassign")}>Reassign</Button>}
       {props.canManage && <Button variant="secondary" onClick={() => start("resolve")}>Resolve</Button>}

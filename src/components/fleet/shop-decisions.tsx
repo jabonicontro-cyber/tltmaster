@@ -11,8 +11,9 @@ import { CheckCircle2, Truck } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Field, Input } from "@/components/ui/form";
-import { formatDate } from "@/lib/dates";
-import { markReadingWrong, returnUnitAfterShop, verifyVehicleDocument } from "@/app/(app)/fleet/actions";
+import { VerifyDocumentButton } from "./vehicle-panels";
+import { parkedAfterJobMessage } from "@/lib/maintenance";
+import { markReadingWrong, returnUnitAfterShop } from "@/app/(app)/fleet/actions";
 
 export interface BackFromShopUnit {
   kind: "truck" | "trailer";
@@ -27,7 +28,7 @@ export interface BackFromShopUnit {
  * "All shop work on truck 104 is done. Put it back in service?" with one tap (fleet.service, fleet.edit or
  * maintenance.manage). Never returns a unit by itself. People who cannot return it are told who can.
  */
-export function BackFromShopPrompt({ units, canReturn }: { units: BackFromShopUnit[]; canReturn: boolean }) {
+export function BackFromShopPrompt({ units, canReturn, wording = "done" }: { units: BackFromShopUnit[]; canReturn: boolean; /** "parked": the mechanic's My jobs, after their last job on it. */ wording?: "done" | "parked" }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
@@ -49,11 +50,13 @@ export function BackFromShopPrompt({ units, canReturn }: { units: BackFromShopUn
           <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-card px-4 py-3.5 text-sm text-ink shadow-card ring-1 ring-line/60">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand-fg" aria-hidden><Truck className="size-4" /></span>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold">All shop work on {name} is done. Put it back in service?</p>
+              <p className="font-semibold">{wording === "parked"
+                ? parkedAfterJobMessage(u.kind, u.unit_number, canReturn)
+                : `All shop work on ${name} is done. Put it back in service?`}</p>
               <p className="text-muted">
                 A person took it out of service{u.out_of_service_reason ? ` (${u.out_of_service_reason})` : ""}, so it does not come back by itself.
                 {u.work_order_id && u.work_order_number ? <> Last job: <Link href={`/maintenance/work-orders/${u.work_order_id}`} className="underline">{u.work_order_number}</Link>.</> : null}
-                {!canReturn ? " Ask the office or the shop to put it back in service." : ""}
+                {!canReturn && wording !== "parked" ? " Ask the office or the shop to put it back in service." : ""}
               </p>
             </div>
             {canReturn && (
@@ -105,18 +108,6 @@ export function MarkReadingWrong({ truckId, readingId, label }: { truckId: strin
 
 /** "Mark checked" on a certificate the shop recorded (fleet.edit, the existing verify step). */
 export function CheckCertificateButton({ vehicle, documentId, unit, expiresOn }: { vehicle: { kind: "truck" | "trailer"; id: string }; documentId: string; unit: string; expiresOn: string | null }) {
-  const router = useRouter();
-  const [pending, start] = useTransition();
-  return (
-    <Button size="sm" variant="secondary" loading={pending} icon={<CheckCircle2 className="size-4" />} aria-label={`Mark the inspection certificate of ${unit} checked`} onClick={() => {
-      if (!window.confirm(`Check the paper certificate first: the inspection date${expiresOn ? ` and the expiry date (${formatDate(expiresOn)})` : ""} must match. Mark it checked?`)) return;
-      start(async () => {
-        const r = await verifyVehicleDocument(vehicle, documentId);
-        if (!r.ok) toast.error(r.error);
-        else { toast.success("Certificate checked."); router.refresh(); }
-      });
-    }}>
-      Mark checked
-    </Button>
-  );
+  // The same dialog and words as on the vehicle's Documents card (walkthrough 2026-11-11: no browser confirm()).
+  return <VerifyDocumentButton vehicle={vehicle} documentId={documentId} certificate expiresOn={expiresOn} unit={unit} variant="secondary" />;
 }

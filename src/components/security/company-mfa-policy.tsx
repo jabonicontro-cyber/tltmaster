@@ -13,8 +13,8 @@ export function CompanyMfaPolicyForm({ required, canEdit }: { required: boolean;
   return (
     <form onSubmit={onSubmit} className="space-y-3">
       <FormError message={formError} />
-      <p className="text-sm text-ink">People who can see or change money (invoices, payments, prices, pay or costs) and the people who manage settings and users always use two-step verification, whatever this setting.</p>
-      <Checkbox name="required" defaultChecked={required} disabled={!canEdit} label="Require two-step verification for everyone in this company" />
+      <p className="text-sm font-semibold text-ink">Everyone else</p>
+      <Checkbox name="required" defaultChecked={required} disabled={!canEdit} label="Also require two-step verification for everyone else in this company" />
       <p className="text-sm text-muted">People without an authenticator app are asked to set one up the next time they open Taviron; nobody can use the workspace until they do. Turn it on only after you have set up your own (My profile → Security).</p>
       {canEdit ? <Button type="submit" variant="secondary" loading={pending}>Save</Button> : null}
     </form>

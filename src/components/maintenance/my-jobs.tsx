@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Check, ChevronRight, Hand, PackageX, Play, Square } from "lucide-react";
 import { toast } from "sonner";
 import { addMechanic, finishJob, startJob, startTimer, stopTimer, waitForPart } from "@/app/(app)/maintenance/crew-actions";
+import { returnUnitAfterShop } from "@/app/(app)/fleet/actions";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form";
@@ -29,7 +30,7 @@ function useRun() {
         router.refresh();
       } else toast.error(r.error);
     });
-  return { pending, run };
+  return { pending, run, start, router };
 }
 
 const minutesSince = (iso: string, now: number) => Math.max(0, Math.floor((now - Date.parse(iso)) / 60000));
@@ -88,7 +89,7 @@ function CardLink({ href, label }: { href: string; label: string }) {
  * same step the job goes for inspection (safety-critical: the truck stays out of service until someone authorized
  * records a passed inspection) or is completed. A helper marks their own part done and is told who finishes the job.
  */
-export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck", leadName, size = "lg", onOpenChange, suggested = "", timerNote = "", hasTruck = false }: {
+export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck", leadName, size = "lg", onOpenChange, suggested = "", timerNote = "", hasTruck = false, inspection = false }: {
   workOrderId: string; finisher: boolean; safetyCritical: boolean; unit?: "truck" | "trailer"; leadName: string | null;
   size?: "sm" | "lg"; onOpenChange?: (open: boolean) => void;
   /** What the person already wrote beside their timer on this job: it starts "What did you fix?" (I8). */
@@ -97,8 +98,10 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
   timerNote?: string;
   /** A truck job: the odometer and engine hours can be recorded in the same step. */
   hasTruck?: boolean;
+  /** An inspection job (category inspection): "What did you inspect or fix?". */
+  inspection?: boolean;
 }) {
-  const { pending, run } = useRun();
+  const { pending, run, start, router } = useRun();
   const [open, setOpen] = useState(false);
   const [fixed, setFixed] = useState("");
   const [odometer, setOdometer] = useState("");
@@ -123,14 +126,28 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
     return <Button size={size} className={big} disabled={pending} onClick={() => show(true)} icon={<Check className="size-4" aria-hidden />}>Finish the job</Button>;
   }
   const id = `fixed-${workOrderId}`;
+  // A unit parked by hand whose last job this was: the toast asks to put it back in service, with the button there.
+  const finish = () => start(async () => {
+    const r = await finishJob({ workOrderId, findings: fixed, timerNote, odometer, engineHours: hours });
+    if (!r.ok) { toast.error(r.error); return; }
+    const parked = r.data?.parked;
+    if (parked && r.data?.canReturn) {
+      toast.success(r.message ?? "Job completed.", {
+        duration: 15000,
+        action: { label: "Put back in service", onClick: () => { void returnUnitAfterShop({ kind: parked.kind, id: parked.id }).then((x) => { if (x.ok) toast.success(x.message ?? "Back in service."); else toast.error(x.error); router.refresh(); }); } },
+      });
+    } else toast.success(r.message ?? "Saved.");
+    show(false);
+    router.refresh();
+  });
   return (
     <form
       aria-label="Finish the job"
       className="basis-full space-y-3 rounded-xl bg-surface p-3 ring-1 ring-line/60"
-      onSubmit={(e) => { e.preventDefault(); run(() => finishJob({ workOrderId, findings: fixed, timerNote, odometer, engineHours: hours }), () => show(false)); }}
+      onSubmit={(e) => { e.preventDefault(); finish(); }}
     >
-      <Field label="What did you fix?" htmlFor={id} required hint={suggested.trim() && fixed.trim() === suggested.trim() ? "Filled in from your timer notes. Change it if needed. Saved in the work order's Findings." : "Saved in the work order's Findings."}>
-        <Textarea id={id} rows={3} maxLength={2000} value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder="e.g. Replaced the leaking rear brake chamber, checked for air leaks" autoFocus />
+      <Field label={inspection ? "What did you inspect or fix?" : "What did you fix?"} htmlFor={id} required hint={suggested.trim() && fixed.trim() === suggested.trim() ? "Filled in from your timer notes. Change it if needed. Saved in the work order's Findings." : "Saved in the work order's Findings."}>
+        <Textarea id={id} rows={3} maxLength={2000} value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={inspection ? "e.g. Annual inspection passed: brakes, lights, tires OK; replaced a marker light" : "e.g. Replaced the leaking rear brake chamber, checked for air leaks"} autoFocus />
       </Field>
       {hasTruck && (
         <div className="grid grid-cols-2 gap-3">
@@ -224,7 +241,7 @@ export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: 
         {timerHere && !asking && <Button size="lg" variant="dark" className="min-h-12" disabled={pending} onClick={() => run(() => stopTimer({ note }))} icon={<Square className="size-4" aria-hidden />}>Stop timer</Button>}
         {working && job.finisher && asking !== "parts" && (
           <FinishJob workOrderId={job.id} finisher safetyCritical={job.safetyCritical} unit={job.unit.startsWith("Trailer") ? "trailer" : "truck"} leadName={job.leadName} onOpenChange={(o) => setAsking(o ? "finish" : null)}
-            suggested={fixedFromNotes([...(job.myNotes ?? []), timerHere ? note : ""])} timerNote={timerHere ? note : ""} hasTruck={job.hasTruck} />
+            suggested={fixedFromNotes([...(job.myNotes ?? []), timerHere ? note : ""])} timerNote={timerHere ? note : ""} hasTruck={job.hasTruck} inspection={job.inspection} />
         )}
         {showHelperDone && !timerHere && !asking && <FinishJob workOrderId={job.id} finisher={false} safetyCritical={job.safetyCritical} leadName={job.leadName} />}
       </div>

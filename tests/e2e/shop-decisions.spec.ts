@@ -84,7 +84,7 @@ test("a wrong reading is marked wrong on the truck's page; the readings not used
   await page.goto(`/fleet/trucks/${truck}`);
   const readings = page.getByTestId("truck-readings");
   await expect(readings).toContainText("Current: 101,900 mi");
-  await expect(readings.getByTestId("readings-not-used")).toContainText(new RegExp(`Odometer 100250(\\.0)? mi from a fuel entry on truck ${unit} was not used`));
+  await expect(readings.getByTestId("readings-not-used")).toContainText("Odometer 100,250 mi from a fuel entry was not used: lower than the current reading at the time, 101,900 mi.");
   await readings.getByRole("button", { name: "Mark the reading 101,900 mi as wrong" }).click();
   await readings.getByLabel("Why is it wrong?").fill("Typo on the fuel slip");
   await readings.getByRole("button", { name: "Set it aside" }).click();
@@ -118,8 +118,10 @@ test("the office checks an inspection certificate the shop recorded", async ({ p
   const item = card.getByRole("listitem").filter({ hasText: unit });
   await expect(item).toContainText("Not checked yet");
   await expect(item).toContainText("by Pat Inspector (e2e)");
-  page.once("dialog", (d) => d.accept());
   await item.getByRole("button", { name: `Mark the inspection certificate of truck ${unit} checked` }).click();
+  const confirm = page.getByRole("dialog");
+  await expect(confirm.getByText("Mark the inspection certificate checked?")).toBeVisible();
+  await confirm.getByRole("button", { name: "Mark checked" }).click();
   await expectToast(page, "Certificate checked.");
   await expect(page.getByTestId("certificates-to-check").getByRole("listitem").filter({ hasText: unit })).toHaveCount(0);
   // Checked: the to-do is resolved.
