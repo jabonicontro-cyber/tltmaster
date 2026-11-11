@@ -1,5 +1,6 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { DISPATCHABLE } from "./smart-dispatch";
 
@@ -54,8 +55,8 @@ export async function getMyShifts(userId: string, from: string, days = 2): Promi
 /** Planned loads per day in a range (for the staffing forecast); null when they could not be read. */
 export async function plannedLoadsByDay(from: string, to: string): Promise<Record<string, number> | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("order_loads").select("load_date, orders!inner(status)").eq("status", "planned")
-    .gte("load_date", from).lte("load_date", to).in("orders.status", DISPATCHABLE).limit(5000);
+  const { data, error } = await allRows(() => supabase.from("order_loads").select("load_date, orders!inner(status)").eq("status", "planned")
+    .gte("load_date", from).lte("load_date", to).in("orders.status", DISPATCHABLE).order("id"));
   if (error) return null;
   const out: Record<string, number> = {};
   for (const r of (data ?? []) as Array<{ load_date: string }>) out[r.load_date] = (out[r.load_date] ?? 0) + 1;

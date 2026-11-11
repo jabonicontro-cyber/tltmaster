@@ -3,6 +3,7 @@ import { customerBalance, type BalanceSummary } from "@/lib/billing/balance";
 import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/billing/invoice-draft";
 import type { InvoiceLite } from "@/lib/billing/invoices";
 import { payableCents } from "@/lib/billing/ticket-payments";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { invoicesByHandoff, invoicingSettings, type Issuer } from "./invoices";
 import { customerTicketBalances } from "./ticket-payments";
@@ -96,9 +97,10 @@ export async function getCustomerBalance(customerId: string, today: string): Pro
 /** What each listed customer owes on issued invoices (and how much is overdue), for the customer list. One query. */
 export async function owedByCustomer(customerIds: string[], today: string): Promise<Map<string, { owed: number; overdue: number }> | null> {
   if (!customerIds.length) return new Map();
-  const { data, error } = await (await createClient()).from("invoices")
+  const supabase = await createClient();
+  const { data, error } = await allRows(() => supabase.from("invoices")
     .select("customer_id, status, total_cents, due_date, payments:invoice_payments(amount_cents, voided_at)")
-    .in("customer_id", customerIds).eq("status", "issued").limit(5000);
+    .in("customer_id", customerIds).eq("status", "issued").order("id"));
   if (error) return null;
   const out = new Map<string, { owed: number; overdue: number }>();
   for (const r of (data ?? []) as unknown as Array<{ customer_id: string; status: "issued"; total_cents: number; due_date: string | null; payments: Array<{ amount_cents: number; voided_at: string | null }> }>) {

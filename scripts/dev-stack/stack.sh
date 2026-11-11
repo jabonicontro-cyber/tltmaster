@@ -129,6 +129,9 @@ jwt-secret = "$DEV_JWT_SECRET"
 server-host = "127.0.0.1"
 server-port = $REST_PORT
 db-pool = 10
+# Same as the hosted project (API max rows, supabase/config.toml): at most 1000 rows per request, so a read that needs
+# more must page (src/server/data/all-rows.ts) and the tests see what production does.
+db-max-rows = 1000
 EOF
 }
 

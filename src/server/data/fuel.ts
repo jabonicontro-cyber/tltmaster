@@ -1,5 +1,6 @@
 import "server-only";
 import { iftaSummary, type IftaSummary } from "@/lib/fuel/ifta";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Fuel and IFTA (B130), read with the person's own session (RLS: fleet.view sees the company's, a driver their own).
@@ -9,13 +10,16 @@ export type TripSheetRow = { id: string; truck_id: string; driver_id: string | n
 
 export async function loadFuel(from: string, to: string, truckId?: string | null): Promise<{ installed: boolean; purchases: FuelPurchaseRow[]; sheets: TripSheetRow[]; summary: IftaSummary }> {
   const supabase = await createClient();
-  let p = supabase.from("fuel_purchases").select("id, truck_id, driver_id, purchased_on, jurisdiction, gallons, total_cents, odometer, vendor, receipt_ref, voided, void_reason").gte("purchased_on", from).lte("purchased_on", to).order("purchased_on", { ascending: false }).limit(2000);
-  let t = supabase.from("trip_sheets").select("id, truck_id, driver_id, sheet_date, start_odometer, end_odometer, legs, voided, void_reason").gte("sheet_date", from).lte("sheet_date", to).order("sheet_date", { ascending: false }).limit(4000);
-  if (truckId) {
-    p = p.eq("truck_id", truckId);
-    t = t.eq("truck_id", truckId);
-  }
-  const [purchases, sheets] = await Promise.all([p, t]);
+  // Every row of the period (allRows): IFTA miles and gallons are totals for a tax return, never the first 1000 rows.
+  const p = () => {
+    const q = supabase.from("fuel_purchases").select("id, truck_id, driver_id, purchased_on, jurisdiction, gallons, total_cents, odometer, vendor, receipt_ref, voided, void_reason").gte("purchased_on", from).lte("purchased_on", to);
+    return (truckId ? q.eq("truck_id", truckId) : q).order("purchased_on", { ascending: false }).order("id");
+  };
+  const t = () => {
+    const q = supabase.from("trip_sheets").select("id, truck_id, driver_id, sheet_date, start_odometer, end_odometer, legs, voided, void_reason").gte("sheet_date", from).lte("sheet_date", to);
+    return (truckId ? q.eq("truck_id", truckId) : q).order("sheet_date", { ascending: false }).order("id");
+  };
+  const [purchases, sheets] = await Promise.all([allRows<FuelPurchaseRow>(p), allRows<TripSheetRow>(t)]);
   if (purchases.error || sheets.error) return { installed: false, purchases: [], sheets: [], summary: iftaSummary([], []) };
   const pRows = ((purchases.data ?? []) as FuelPurchaseRow[]).map((r) => ({ ...r, gallons: Number(r.gallons) }));
   const tRows = (sheets.data ?? []) as TripSheetRow[];

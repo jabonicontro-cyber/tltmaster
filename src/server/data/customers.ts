@@ -1,4 +1,5 @@
 import "server-only";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { referenceKey } from "@/lib/search";
 import { rankRows } from "@/lib/search/rank";
@@ -122,12 +123,12 @@ export async function getCustomerDetail(id: string) {
 
 export async function listCustomerOptions() {
   const supabase = await createClient();
-  const { data, error } = await supabase
+  const { data, error } = await allRows(() => supabase
     .from("customers")
     .select("id, name, customer_number, customer_type, is_sample, tax_exempt, active")
     .eq("active", true)
     .order("name")
-    .limit(2000);
+    .order("id"));
   if (error) throw new Error(`Could not load customers: ${error.message}`);
   return (data ?? []) as Array<Pick<CustomerRow, "id" | "name" | "customer_number" | "customer_type" | "is_sample" | "tax_exempt" | "active">>;
 }

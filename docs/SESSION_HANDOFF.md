@@ -1,11 +1,32 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-11 workday (release candidate `a1d294c`, then the row-cap fix RC1). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 0000000000000000000000000000. 2026-11-11 (workday) — `a1d294c` and complete lists past 1000 rows (RC1)
+
+- **Owner at work until about 5pm ("tie up loose ends", "if you notice something needs improved, improve it").**
+- **`a1d294c` (code only, on the Preview branch):** 42 website screenshots re-shot, reports wording for very large
+  changes, demo-parity fixes (price-check sample, credit-limit sample, own draft per demo owner), open items (headline
+  counts, accountant Collected, truck fuel on the cost card, quote history from audit, report photos on work orders,
+  notes on inspection and parts, portal withdraw confirm, payroll calculate inside the demo refresh), first-day
+  walkthrough fixes (WK3), and the security review's low findings (Collected says when payments by ticket could not be
+  read). Security review of `4912577..e8b2fbe`: nothing high or medium. Two GitHub runs failed before any test ran
+  (GitHub's machine could not resolve `security.ubuntu.com` while installing the browser, 15:42 to 15:50 UTC); re-run.
+- **RC1, found while checking the accountant figures:** the database API returns at most 1000 rows per request on the
+  hosted project, whatever the code asks for, and the local stack did not enforce it. Money owed, aging, the
+  accountant year, IFTA quarters, billing queues, customer balances, detention waits and each truck's current reading
+  could quietly leave records out past 1000. Fixed with one paged reader (`src/server/data/all-rows.ts`); the local
+  stack and CI now enforce the same 1000-row limit. Master plan §12 RC1.
+- **Held for the owner (migrations, asked one at a time):** `owner-approval/quote-history` (`20261120019000`, quote
+  history readable without audit.view) and `owner-approval/demo-shop-fallback` (`20261120019500`, shop samples when a
+  demo has no free truck). Also open: reassigning a delivered, ticketed load; fuel receipt dollars on `/fleet/fuel` for
+  fleet.view without a money permission; mechanics' Close button; per-person two-step status on Settings → Security;
+  sample driver reports for demos; email sending, QuickBooks sandbox and the GitHub connector on the daily check.
 
 ## 000000000000000000000000000. 2026-11-11 — released `4912577`: owner decisions, financial security, two-step for money access
 

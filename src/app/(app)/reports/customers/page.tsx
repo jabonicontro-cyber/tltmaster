@@ -16,6 +16,7 @@ import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { listInvoices } from "@/server/data/invoices";
 import { businessToday } from "@/server/data/settings";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Customer insights" };
@@ -34,7 +35,7 @@ export default async function CustomerInsightsPage() {
   const supabase = await createClient();
   const [orderRows, invoices] = await Promise.all([
     orders
-      ? supabase.from("orders").select("customer_id, order_date, total_cents, customers(name)").not("status", "in", "(draft,canceled)").gte("order_date", addDays(today, -119)).limit(10000)
+      ? allRows(() => supabase.from("orders").select("customer_id, order_date, total_cents, customers(name)").not("status", "in", "(draft,canceled)").gte("order_date", addDays(today, -119)).order("id"))
         .then((r) => (r.error ? [] : ((r.data ?? []) as unknown as Array<{ customer_id: string; order_date: string; total_cents: number | string; customers: { name: string } | null }>)))
       : Promise.resolve([]),
     billing ? listInvoices().catch(() => null) : Promise.resolve(null),

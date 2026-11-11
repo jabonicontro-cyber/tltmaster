@@ -1,5 +1,6 @@
 import "server-only";
 import { CUSTOMER_COLUMNS } from "./customers";
+import { allRows as readAllRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { referenceKey } from "@/lib/search";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
@@ -84,7 +85,7 @@ export async function listQuotes(filters: QuoteFilters) {
  */
 export async function quotePipeline(today: string, weekEnd: string) {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("quote_list").select("status, total_cents, valid_until").in("status", ["draft", "sent"]).limit(5000);
+  const { data, error } = await readAllRows(() => supabase.from("quote_list").select("status, total_cents, valid_until").in("status", ["draft", "sent"]).order("id"));
   if (error) return null;
   const rows = (data ?? []) as Array<{ status: string; total_cents: number; valid_until: string }>;
   const sent = rows.filter((r) => r.status === "sent");

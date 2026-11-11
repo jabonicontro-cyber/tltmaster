@@ -1,6 +1,7 @@
 import "server-only";
 import { zonedTimeToUtc } from "@/lib/dates";
 import { shopWeek, type ShopWeek, type WeekCostLine, type WeekTimeEntry, type WeekWorkOrder } from "@/lib/maintenance/shop-week";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { listPmStatus } from "@/server/data/maintenance";
 
@@ -15,15 +16,15 @@ export async function loadShopWeek(start: string, end: string, timezone: string,
   const to = zonedTimeToUtc(end, "00:00", timezone) ?? `${end}T00:00:00Z`;
   const inWeek = (col: string) => `and(${col}.gte.${from},${col}.lt.${to})`;
   const [wos, time, costs, trucks, trailers, events, pm] = await Promise.all([
-    supabase.from("work_orders").select("id, number, title, truck_id, trailer_id, category, schedule_id, created_at, completed_at, closed_at")
-      .or([inWeek("created_at"), inWeek("completed_at"), inWeek("closed_at")].join(",")).order("created_at").limit(2000),
-    supabase.from("work_order_time_entries").select("work_order_id, started_at, ended_at").is("voided_at", null).gte("started_at", from).lt("started_at", to).limit(5000),
+    allRows(() => supabase.from("work_orders").select("id, number, title, truck_id, trailer_id, category, schedule_id, created_at, completed_at, closed_at")
+      .or([inWeek("created_at"), inWeek("completed_at"), inWeek("closed_at")].join(",")).order("created_at").order("id")),
+    allRows(() => supabase.from("work_order_time_entries").select("work_order_id, started_at, ended_at").is("voided_at", null).gte("started_at", from).lt("started_at", to).order("id")),
     withCosts
-      ? supabase.from("work_order_costs").select("work_order_id, quantity, unit_cost_cents").eq("kind", "part").gte("created_at", from).lt("created_at", to).limit(5000)
+      ? allRows(() => supabase.from("work_order_costs").select("work_order_id, quantity, unit_cost_cents").eq("kind", "part").gte("created_at", from).lt("created_at", to).order("id"))
       : Promise.resolve(null),
     supabase.from("trucks").select("id, unit_number, service_status, out_of_service_since").eq("active", true).order("unit_number"),
     supabase.from("trailers").select("id, unit_number"),
-    supabase.from("equipment_status_events").select("truck_id, from_status, to_status, occurred_at").not("truck_id", "is", null).lt("occurred_at", to).order("occurred_at").limit(10000),
+    allRows(() => supabase.from("equipment_status_events").select("truck_id, from_status, to_status, occurred_at").not("truck_id", "is", null).lt("occurred_at", to).order("occurred_at").order("id")),
     listPmStatus().catch(() => []),
   ]);
   if (wos.error) throw new Error(`Could not load work orders: ${wos.error.message}`);

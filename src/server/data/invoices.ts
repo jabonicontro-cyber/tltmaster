@@ -1,5 +1,6 @@
 import "server-only";
 import type { InvoiceLite, InvoiceStatus, PaymentMethod } from "@/lib/billing/invoices";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Invoices and receivables (B99, migration 20261120004800), read through the person's session (billing.view, RLS).
@@ -62,12 +63,15 @@ const shape = (r: Raw): Invoice => ({
 
 /** Every invoice of the company (newest first), with payments. Null before the migration is installed. */
 export async function listInvoices(): Promise<Invoice[] | null> {
-  const { data, error } = await (await createClient()).from("invoices").select(COLUMNS).order("created_at", { ascending: false }).limit(1000);
+  // Read in pages: the API returns at most 1000 rows per request, and money owed, aging and the accountant's year must
+  // count every invoice (an old unpaid invoice is the one that matters most), not only the newest 1000.
+  const supabase = await createClient();
+  const { data, error } = await allRows<Raw>(() => supabase.from("invoices").select(COLUMNS).order("created_at", { ascending: false }).order("id"));
   if (error) {
     if (MISSING.has(error.code ?? "")) return null;
     throw new Error(`Invoices: ${error.message}`);
   }
-  return ((data ?? []) as unknown as Raw[]).map(shape);
+  return (data ?? []).map(shape);
 }
 
 export async function getInvoice(id: string): Promise<Invoice | null> {

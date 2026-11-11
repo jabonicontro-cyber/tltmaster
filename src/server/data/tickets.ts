@@ -1,6 +1,7 @@
 import "server-only";
 import type { TicketStatus } from "@/lib/tickets/rules";
 import { uuid } from "@/lib/schemas/common";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import type { AssignmentRow, OrderLoadRow } from "./dispatch";
 import { getUserNames } from "./quotes";
@@ -346,11 +347,11 @@ export async function getTicketContext(t: TicketRow): Promise<TicketContext> {
 export async function orderLineTickets(orderId: string) {
   if (!uuid.safeParse(orderId).success) return [];
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data } = await allRows(() => supabase
     .from("delivery_tickets")
     .select("id, order_line_id, status, quantity, unit_code")
     .eq("order_id", orderId)
     .in("status", ["submitted", "needs_review", "accepted"])
-    .limit(2000);
+    .order("id"));
   return (data ?? []) as Array<Pick<TicketRow, "id" | "order_line_id" | "status" | "quantity" | "unit_code">>;
 }

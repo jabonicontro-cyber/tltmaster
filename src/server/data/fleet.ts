@@ -6,6 +6,7 @@ import type { EquipmentRowExtra } from "@/components/fleet/equipment-views";
 import { driverReadiness, EXPIRY_WARNING_DAYS } from "@/lib/fleet/eligibility";
 import { TRAILER_TYPES, TRUCK_TYPES } from "@/lib/fleet/labels";
 import { uuid } from "@/lib/schemas/common";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { parseBaseFilter } from "@/server/data/bases";
 import { hiredIds } from "./hired-trucks";
@@ -374,7 +375,7 @@ export async function fleetContext(opts: { maintenance: boolean }): Promise<Flee
     opts.maintenance
       ? optionalRows<{ truck_id: string; state: string; readings_stale: boolean }>(() => supabase.rpc("maintenance_pm_status"))
       : Promise.resolve({ available: false, rows: [] }),
-    optionalRows<VehicleDocumentRow>(() => supabase.from("vehicle_documents").select("*").is("archived_at", null).order("expires_on", { ascending: true, nullsFirst: false }).limit(2000)),
+    optionalRows<VehicleDocumentRow>(() => allRows(() => supabase.from("vehicle_documents").select("*").is("archived_at", null).order("expires_on", { ascending: true, nullsFirst: false }).order("id"))),
   ]);
   // Parts still on order (20261120012300), for the "Part on order: …, expected …" note; none when it cannot be read.
   const waiting = opts.maintenance && open.rows.some((w) => w.status === "awaiting_parts")

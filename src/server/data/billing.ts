@@ -4,6 +4,7 @@ import { buildInvoiceDraft, type DraftOrderLine, type DraftTicket } from "@/lib/
 import { uuid } from "@/lib/schemas/common";
 import { missingTicketKind, type ExceptionKind, type FulfillmentGap, type HandoffSnapshot, type LoadDocumentationState, type QuantityCheck, type Readiness, type ReadinessCounts } from "@/lib/billing/rules";
 import type { TicketStatus } from "@/lib/tickets/rules";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { getUserNames } from "./quotes";
 import { businessToday } from "./settings";
@@ -161,7 +162,7 @@ function matches(o: BillingOrderRow, f: BillingFilters) {
 export async function getBillingBoard(view: BillingView, f: BillingFilters) {
   const supabase = await createClient();
   const [orders, handedOffCount, { timezone }] = await Promise.all([
-    supabase.from("billing_order_status").select("*").neq("readiness", "handed_off").order("service_start", { ascending: false, nullsFirst: false }).limit(2000),
+    allRows(() => supabase.from("billing_order_status").select("*").neq("readiness", "handed_off").order("service_start", { ascending: false, nullsFirst: false }).order("order_id")),
     supabase.from("billing_handoff_orders").select("id", { count: "exact", head: true }).is("reverted_at", null),
     businessToday(),
   ]);
@@ -194,7 +195,7 @@ export async function getBillingBoard(view: BillingView, f: BillingFilters) {
   const base = { counts, customers: (customers.data ?? []) as Array<{ id: string; name: string }>, timezone };
 
   if (view === "missing") {
-    const { data, error } = await supabase.from("billing_load_status").select("*").eq("documentation_state", "missing").order("load_date").order("start_time").limit(1000);
+    const { data, error } = await allRows(() => supabase.from("billing_load_status").select("*").eq("documentation_state", "missing").order("load_date").order("start_time").order("load_id"));
     if (error) throw new Error(`Could not load loads: ${error.message}`);
     const names = await resourceNames();
     const loads = ((data ?? []) as BillingLoadRow[])
@@ -211,14 +212,14 @@ export async function getBillingBoard(view: BillingView, f: BillingFilters) {
   }
 
   if (view === "review") {
-    const { data, error } = await supabase.from("delivery_tickets").select("*").in("status", ["submitted", "needs_review"]).order("delivered_at").limit(1000);
+    const { data, error } = await allRows(() => supabase.from("delivery_tickets").select("*").in("status", ["submitted", "needs_review"]).order("delivered_at").order("id"));
     if (error) throw new Error(`Could not load tickets: ${error.message}`);
     const tickets = ((data ?? []) as TicketRow[]).filter((t) => orderIds.has(t.order_id));
     return { ...base, view, tickets, orders: byId };
   }
 
   if (view === "exceptions") {
-    const { data, error } = await supabase.from("billing_exceptions").select("*").limit(2000);
+    const { data, error } = await allRows(() => supabase.from("billing_exceptions").select("*").order("key"));
     if (error) throw new Error(`Could not load exceptions: ${error.message}`);
     const rows = ((data ?? []) as BillingExceptionRow[]).filter((e) => orderIds.has(e.order_id) && (!f.kind || e.kind === f.kind));
     const groups = filtered

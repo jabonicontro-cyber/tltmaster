@@ -1,5 +1,6 @@
 import "server-only";
 import type { OrderRow } from "@/lib/order-to-cash";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Order-to-Cash Control Center (B42 increment 1): every open order's position, read from billing_order_status (the
@@ -11,7 +12,7 @@ const n = (v: unknown) => Number(v ?? 0);
 export async function orderToCashRows(): Promise<OrderRow[]> {
   const supabase = await createClient();
   const [billing, unscheduled] = await Promise.all([
-    supabase.from("billing_order_status").select(COLUMNS).order("order_date", { ascending: false }).limit(3000),
+    allRows(() => supabase.from("billing_order_status").select(COLUMNS).order("order_date", { ascending: false }).order("order_id")),
     supabase.from("orders").select("id, order_number, status, project_name, order_date, total_cents, customers(name)").eq("status", "confirmed").is("scheduled_start", null).limit(500),
   ]);
   if (billing.error) throw new Error(`Order-to-cash could not be read: ${billing.error.message}`);

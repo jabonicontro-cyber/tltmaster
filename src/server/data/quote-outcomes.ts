@@ -2,6 +2,7 @@ import "server-only";
 import { quoteOutcomes, type DecidedQuote, type QuoteOutcomes } from "@/lib/quotes/outcomes";
 import { straightLineMiles } from "@/lib/routing/route";
 import { getSettings } from "@/server/data/settings";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { addDays, todayIn, zonedTimeToUtc } from "@/lib/dates";
 
@@ -19,12 +20,12 @@ export async function loadDecidedQuotes(from: string, to: string, timeZone: stri
   // The period's days are the company's own calendar days, not UTC ones (an evening decision belongs to that day).
   const start = zonedTimeToUtc(from, "00:00", timeZone)!;
   const end = zonedTimeToUtc(addDays(to, 1), "00:00", timeZone)!;
-  const quotes = await supabase
+  const quotes = await allRows(() => supabase
     .from("quotes")
     .select("id, quote_number, status, customer_id, current_version_id, accepted_version_id, first_sent_at, accepted_at, closed_at, status_note")
     .in("status", ["accepted", "declined", "expired"])
     .or(`and(accepted_at.gte.${start},accepted_at.lt.${end}),and(closed_at.gte.${start},closed_at.lt.${end})`)
-    .limit(2000);
+    .order("id"));
   if (quotes.error) throw new Error(`Could not load quotes: ${quotes.error.message}`);
   type Row = { id: string; quote_number: string; status: string; customer_id: string; current_version_id: string | null; accepted_version_id: string | null; first_sent_at: string | null; accepted_at: string | null; closed_at: string | null; status_note: string };
   const rows = ((quotes.data ?? []) as Row[]).filter((q) => (q.status === "accepted" ? q.accepted_at : q.closed_at));

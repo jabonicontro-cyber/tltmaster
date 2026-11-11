@@ -1,6 +1,7 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import { freeDays, partsUsuallyNeeded, repeatFailures, type PartHint, type PartStock, type PartUse, type PastJob, type RepeatFailure } from "@/lib/maintenance/insights";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Shop insights (B120): from completed work orders (last 12 months), parts used on them, stock, and the trucks' planned
@@ -14,7 +15,7 @@ type WoRow = { id: string; number: string; truck_id: string | null; trailer_id: 
 export async function loadShopInsights(today: string, openIds: string[]): Promise<ShopInsights | null> {
   const supabase = await createClient();
   const [done, open, stock] = await Promise.all([
-    supabase.from("work_orders").select("id, number, truck_id, trailer_id, category, status, completed_at, trucks(unit_number), trailers(unit_number)").eq("status", "completed").gte("completed_at", `${addDays(today, -365)}T00:00:00Z`).limit(5000),
+    allRows(() => supabase.from("work_orders").select("id, number, truck_id, trailer_id, category, status, completed_at, trucks(unit_number), trailers(unit_number)").eq("status", "completed").gte("completed_at", `${addDays(today, -365)}T00:00:00Z`).order("id")),
     openIds.length ? supabase.from("work_orders").select("id, number, truck_id, trailer_id, category, status, completed_at, trucks(unit_number), trailers(unit_number)").in("id", openIds) : Promise.resolve({ data: [], error: null }),
     supabase.from("parts").select("id, name, unit, on_hand, reorder_point").eq("active", true),
   ]);

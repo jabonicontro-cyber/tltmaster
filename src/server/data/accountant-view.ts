@@ -1,6 +1,7 @@
 import "server-only";
 import { yearSummary, type YearInvoice, type YearTicketPayment } from "@/lib/accounting/year";
 import { quarterRange } from "@/lib/fuel/ifta";
+import { allRows } from "@/server/data/all-rows";
 import { listInvoices } from "@/server/data/invoices";
 import { loadFuel } from "@/server/data/fuel";
 import { createClient } from "@/server/supabase/server";
@@ -29,18 +30,12 @@ type TicketPaymentRow = { id: string; amount_cents: number | string; received_on
  */
 async function ticketPayments(year: number): Promise<YearTicketPayment[] | null> {
   const supabase = await createClient();
-  const out: YearTicketPayment[] = [];
-  for (let page = 0; page < 50; page++) {
-    const { data, error } = await supabase.from("customer_payments").select("id, amount_cents, received_on, method, reference, voided_at, customers(name)")
-      .gte("received_on", `${year}-01-01`).lte("received_on", `${year}-12-31`).order("received_on").order("id").range(page * 1000, page * 1000 + 999);
-    // Not installed yet (before 20261120009400): nothing to count. Any other failure: null, so Collected says what is
-    // missing instead of quietly leaving those payments out (honest data).
-    if (error) return ["PGRST205", "42P01"].includes(error.code ?? "") ? [] : null;
-    const rows = (data ?? []) as unknown as TicketPaymentRow[];
-    out.push(...rows.map((p) => ({ id: p.id, amount_cents: Number(p.amount_cents), received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at, customer_name: p.customers?.name ?? "Customer" })));
-    if (rows.length < 1000) break;
-  }
-  return out;
+  const { data, error } = await allRows<TicketPaymentRow>(() => supabase.from("customer_payments").select("id, amount_cents, received_on, method, reference, voided_at, customers(name)")
+    .gte("received_on", `${year}-01-01`).lte("received_on", `${year}-12-31`).order("received_on").order("id"));
+  // Not installed yet (before 20261120009400): nothing to count. Any other failure: null, so Collected says what is
+  // missing instead of quietly leaving those payments out (honest data).
+  if (error) return ["PGRST205", "42P01"].includes(error.code ?? "") ? [] : null;
+  return (data ?? []).map((p) => ({ id: p.id, amount_cents: Number(p.amount_cents), received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at, customer_name: p.customers?.name ?? "Customer" }));
 }
 
 export async function loadAccountingYear(year: number, today: string, withPayroll: boolean) {

@@ -1,4 +1,5 @@
 import "server-only";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { referenceKey } from "@/lib/search";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "@/server/data/search";
@@ -301,7 +302,8 @@ export async function getSchedule(id: string) {
  */
 export async function latestReadings(): Promise<Map<string, { miles: number | null; milesAt: string | null; hours: number | null; hoursAt: string | null }>> {
   const supabase = await createClient();
-  const { data } = await supabase.from("truck_readings").select("*").order("read_at", { ascending: false }).limit(2000);
+  // Every reading (allRows): with only the newest 1000, a truck parked for a while lost all its readings and showed none.
+  const { data } = await allRows(() => supabase.from("truck_readings").select("*").order("read_at", { ascending: false }).order("id"));
   const out = new Map<string, { miles: number | null; milesAt: string | null; hours: number | null; hoursAt: string | null }>();
   for (const r of (data ?? []) as Array<{ truck_id: string; odometer_miles: unknown; engine_hours: unknown; read_at: string; set_aside_at?: string | null }>) {
     if (r.set_aside_at) continue;

@@ -3,6 +3,7 @@ import { addDays } from "@/lib/dates";
 import { buildOutlook, type OutlookDay, type OutlookLoad, type OutlookShopVisit, type OutlookTimeOff, type OutlookTruck } from "@/lib/live/outlook";
 import type { EligibilityQualification } from "@/lib/fleet/eligibility";
 import { estimateLoadRevenueCents, type RateLine } from "@/lib/orders/load-revenue";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 import { hiredIds } from "./hired-trucks";
 import { DISPATCHABLE } from "./smart-dispatch";
@@ -28,14 +29,14 @@ export async function loadOutlook(today: string, withValue: boolean, dayCount: n
   const supabase = await createClient();
   const to = addDays(today, dayCount - 1);
   const [loads, trucks, trailers, drivers, quals, hired, shop, leave] = await Promise.all([
-    supabase
+    allRows(() => supabase
       .from("order_loads")
       .select("id, order_id, load_date, ends_at, planned_quantity, unit_code, orders!inner(status), dispatch_assignments(truck_id, trailer_id, status)")
       .eq("status", "planned")
       .gte("load_date", today)
       .lte("load_date", to)
       .in("orders.status", DISPATCHABLE)
-      .limit(5000),
+      .order("id")),
     supabase.from("trucks").select("id, service_status, expected_return_date").eq("active", true),
     supabase.from("trailers").select("id, service_status, expected_return_date").eq("active", true),
     supabase.from("driver_list").select("id, active").eq("active", true),

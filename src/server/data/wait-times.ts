@@ -1,6 +1,7 @@
 import "server-only";
 import { addDays } from "@/lib/dates";
 import type { Stop, StopTime } from "@/lib/dispatch/wait-times";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Wait times (B111, migration 20261120005200), read through the person's session (dispatch.view, billing.view, or a
@@ -41,8 +42,9 @@ export async function waitTimeSettings(): Promise<{ installed: boolean; freeMinu
 /** Stops whose arrival falls on [from, to] in the company's time zone (ISO dates, inclusive), newest first. */
 export async function listStopTimes(fromIso: string, toIso: string, timeZone: string): Promise<StopTime[] | null> {
   // Fetch a day either side in UTC, then keep the stops whose local arrival date is in range.
-  const { data, error } = await (await createClient()).from("load_stop_times").select(SELECT)
-    .gte("arrived_at", `${addDays(fromIso, -1)}T00:00:00Z`).lt("arrived_at", `${addDays(toIso, 2)}T00:00:00Z`).order("arrived_at", { ascending: false }).limit(5000);
+  const supabase = await createClient();
+  const { data, error } = await allRows(() => supabase.from("load_stop_times").select(SELECT)
+    .gte("arrived_at", `${addDays(fromIso, -1)}T00:00:00Z`).lt("arrived_at", `${addDays(toIso, 2)}T00:00:00Z`).order("arrived_at", { ascending: false }).order("id"));
   if (error) {
     if (MISSING.has(error.code ?? "")) return null;
     throw new Error(`Could not load wait times: ${error.message}`);

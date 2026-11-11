@@ -1,6 +1,7 @@
 import "server-only";
 import { summarizeParts, type PartCostLine, type PartsSummary, type UsedMovement } from "@/lib/maintenance/parts-summary";
 import { uuid } from "@/lib/schemas/common";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Shop parts inventory (B105, migration 20261120004500), read with the person's session: parts and movements with
@@ -15,7 +16,7 @@ export interface PartMovement { id: number; part_id: string; kind: "received" | 
 
 export async function listParts(): Promise<{ installed: boolean; parts: PartRow[] }> {
   const supabase = await createClient();
-  const { data, error } = await supabase.from("parts").select("id, part_number, name, unit, location, on_hand, reorder_point, active").order("name").limit(1000);
+  const { data, error } = await allRows(() => supabase.from("parts").select("id, part_number, name, unit, location, on_hand, reorder_point, active").order("name").order("id"));
   if (error) {
     if (MISSING.has(error.code ?? "")) return { installed: false, parts: [] };
     throw new Error(`Could not load parts: ${error.message}`);
@@ -62,8 +63,8 @@ export async function partsSummaryFor(workOrderIds: string[], withCosts: boolean
   if (!ids.length) return new Map();
   const supabase = await createClient();
   const [moves, costs] = await Promise.all([
-    supabase.from("part_movements").select("work_order_id, part_id, kind, quantity, parts(unit)").in("kind", ["used", "returned"]).in("work_order_id", ids).limit(5000),
-    withCosts ? supabase.from("work_order_costs").select("work_order_id, kind, quantity, unit_cost_cents").eq("kind", "part").in("work_order_id", ids).limit(5000) : Promise.resolve(null),
+    allRows(() => supabase.from("part_movements").select("work_order_id, part_id, kind, quantity, parts(unit)").in("kind", ["used", "returned"]).in("work_order_id", ids).order("id")),
+    withCosts ? allRows(() => supabase.from("work_order_costs").select("work_order_id, kind, quantity, unit_cost_cents").eq("kind", "part").in("work_order_id", ids).order("id")) : Promise.resolve(null),
   ]);
   type Row = Omit<UsedMovement, "unit"> & { parts: { unit: string } | null };
   const used: UsedMovement[] = moves.error ? [] : ((moves.data ?? []) as unknown as Row[]).map((m) => ({ ...m, unit: m.parts?.unit ?? null }));

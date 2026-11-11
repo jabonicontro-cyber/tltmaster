@@ -1,5 +1,6 @@
 import "server-only";
 import type { TicketBalances } from "@/lib/billing/ticket-payments";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Payments by delivery ticket (TP1, migration 20261120009400), read through the person's session (billing.view, RLS).
@@ -13,8 +14,8 @@ export interface TicketCustomer { id: string; name: string }
 export async function ticketPaymentCustomers(): Promise<TicketCustomer[] | null> {
   const supabase = await createClient();
   const [handoffs, payments] = await Promise.all([
-    supabase.from("billing_handoff_orders").select("order:orders!billing_handoff_orders_order_fk(customer_id)").is("reverted_at", null).limit(5000),
-    supabase.from("customer_payments").select("customer_id").limit(5000),
+    allRows(() => supabase.from("billing_handoff_orders").select("order:orders!billing_handoff_orders_order_fk(customer_id)").is("reverted_at", null).order("id")),
+    allRows(() => supabase.from("customer_payments").select("customer_id").order("id")),
   ]);
   if (payments.error && MISSING.has(payments.error.code ?? "")) return null;
   const ids = new Set<string>();
