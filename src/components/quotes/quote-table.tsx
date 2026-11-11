@@ -2,13 +2,19 @@ import Link from "next/link";
 import { QuoteStatusBadge, SampleBadge } from "@/components/ui/badge";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatCents } from "@/lib/money";
-import { formatDate } from "@/lib/dates";
+import { formatDate, todayIn } from "@/lib/dates";
+import { activityLabel, type QuoteActivity } from "@/lib/quotes/activity";
 import { isPastExpiration } from "@/lib/quotes/status";
 import type { QuoteListRow } from "@/server/data/types";
 import { getSay } from "@/server/industry";
 
-export async function QuoteTable({ rows, today, showCustomer = true }: { rows: QuoteListRow[]; today: string; showCustomer?: boolean }) {
+/**
+ * Quotes as a table. Rows sorted by activity (the Quotes list, WK1) carry it, and the table then shows a "Last activity"
+ * column so the order explains itself.
+ */
+export async function QuoteTable({ rows, today, showCustomer = true, timezone }: { rows: Array<QuoteListRow & { activity?: QuoteActivity }>; today: string; showCustomer?: boolean; timezone?: string }) {
   const say = await getSay();
+  const showActivity = rows.some((r) => r.activity);
   return (
     <TableWrap>
       <Table>
@@ -18,6 +24,7 @@ export async function QuoteTable({ rows, today, showCustomer = true }: { rows: Q
             {showCustomer && <Th>Customer</Th>}
             <Th className="hidden md:table-cell">{say("Job site / project")}</Th>
             <Th className="hidden sm:table-cell">Expires</Th>
+            {showActivity && <Th className="hidden lg:table-cell">Last activity</Th>}
             <Th>Status</Th>
             <Th align="right">Total</Th>
           </tr>
@@ -53,6 +60,11 @@ export async function QuoteTable({ rows, today, showCustomer = true }: { rows: Q
                   {formatDate(q.valid_until)}
                   {overdue && <div className="text-xs">Past expiration</div>}
                 </Td>
+                {showActivity && (
+                  <Td className="hidden whitespace-nowrap lg:table-cell">
+                    {q.activity ? <><span className="text-ink">{activityLabel(q.activity, q.status)}</span> <span className="text-muted">{formatDate(todayIn(timezone, new Date(q.activity.at)))}</span></> : <span className="text-muted">–</span>}
+                  </Td>
+                )}
                 <Td>
                   <QuoteStatusBadge status={q.status} />
                 </Td>

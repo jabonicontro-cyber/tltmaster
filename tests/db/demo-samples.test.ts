@@ -162,11 +162,16 @@ describe.skipIf(!available)("demo feature samples", () => {
     // Dispatch's "Needs scheduling" queue has a confirmed order without a date.
     const waiting = await q<{ n: string }>("select count(*) n from public.orders where company_id = $1 and status = 'confirmed' and scheduled_start is null", [w.company]);
     expect(Number(waiting.rows[0].n)).toBeGreaterThanOrEqual(1);
-    // Payroll: one open period over the last two weeks, and no pay rule (rules are never invented, docs/PAYROLL.md).
+    // Payroll (owner 2026-11-04, docs/DEMO_TENANTS.md "Driver pay statements"): the demo's one period over the last two
+    // weeks is calculated with the clearly labelled fictional sample rule (the only rule; no real formula is invented)
+    // and approved, so statements exist. The seed runs outside a request: the calculation must not need cookies (WK1,
+    // "cookies() inside after()"); before that fix this sample was silently skipped here and in the automatic refresh.
     const periods = await q<{ status: string }>("select status from public.payroll_periods where company_id = $1", [w.company]);
-    expect(periods.rows).toEqual([{ status: "open" }]);
-    const rules = await q<{ n: string }>("select count(*) n from public.pay_rules where company_id = $1", [w.company]);
-    expect(Number(rules.rows[0].n)).toBe(0);
+    expect(periods.rows).toEqual([{ status: "approved" }]);
+    const rules = await q<{ name: string }>("select name from public.pay_rules where company_id = $1", [w.company]);
+    expect(rules.rows).toEqual([{ name: "Sample pay rule (demo, fictional)" }]);
+    const paid = await q<{ n: string }>("select count(*) n from public.payroll_entries e join public.payroll_periods p on p.id = e.period_id where p.company_id = $1 and e.status = 'calculated'", [w.company]);
+    expect(Number(paid.rows[0].n)).toBeGreaterThan(0);
     // CRM: two opportunities (one valued from the customer's own latest order, one without a value) and an overdue
     // follow-up; all on real demo customers.
     const opps = await q<{ stage: string; valued: boolean }>("select stage, value_cents is not null valued from public.crm_opportunities where company_id = $1 order by stage", [w.company]);

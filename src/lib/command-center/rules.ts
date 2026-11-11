@@ -3,7 +3,9 @@
 // who may see them (private.operational_exceptions); this file only explains
 // them. tests/db/command-center.test.ts checks the codes agree.
 
+import { BILLING_BLOCKED_HREF } from "@/lib/billing/rules";
 import { formatDate } from "@/lib/dates";
+import { UNRESOLVED_REPORTS_HREF } from "@/lib/driver/rules";
 import { eligibilityMessage } from "@/lib/fleet/eligibility";
 import { reviewReasonLabel } from "@/lib/tickets/rules";
 import { URGENCY_LABELS, URGENCY_NEXT_OWNER, URGENCY_REASONS, type UrgencyState } from "@/lib/orders/urgency";
@@ -313,16 +315,18 @@ export function metricCards(s: CommandSummary): MetricCard[] {
     });
   }
   if (s.driver_reports !== undefined && s.driver_reports !== null) {
-    cards.push({ key: "driver_reports", label: "Driver reports open", value: s.driver_reports, sub: "Delays, breakdowns, inspection problems", href: "/field-reports", tone: warnIf(s.driver_reports, "bad") });
+    // Open or acknowledged, until resolved: the same reports as Driver Reports → Not resolved (WK1).
+    cards.push({ key: "driver_reports", label: "Driver reports not resolved", value: s.driver_reports, sub: "Delays, breakdowns, inspection problems", href: UNRESOLVED_REPORTS_HREF, tone: warnIf(s.driver_reports, "bad") });
   }
   if (s.missing_tickets !== null) {
-    cards.push({ key: "missing_tickets", label: "Missing delivery tickets", value: s.missing_tickets, sub: "Delivered loads without a ticket", href: queue("missing_ticket"), tone: warnIf(s.missing_tickets) });
+    cards.push({ key: "missing_tickets", label: "Missing delivery tickets", value: s.missing_tickets, sub: "Loads that ran without a ticket", href: queue("missing_ticket"), tone: warnIf(s.missing_tickets) });
   }
   if (s.tickets_to_review !== null) {
     cards.push({ key: "tickets_to_review", label: "Tickets to review", value: s.tickets_to_review, sub: "Submitted or flagged", href: queue("ticket_review"), tone: warnIf(s.tickets_to_review) });
   }
   if (s.billing_blocked !== null) {
-    cards.push({ key: "billing_blocked", label: "Orders blocked from billing", value: s.billing_blocked, sub: "Differences to acknowledge", href: "/billing?view=exceptions", tone: warnIf(s.billing_blocked) });
+    // Tickets in and reviewed, waiting only for differences to be acknowledged: Billing → Exceptions, filtered to them (WK1).
+    cards.push({ key: "billing_blocked", label: "Orders blocked from billing", value: s.billing_blocked, sub: "Differences to acknowledge", href: BILLING_BLOCKED_HREF, tone: warnIf(s.billing_blocked) });
   }
   if (s.billing_ready !== null) {
     cards.push({ key: "billing_ready", label: "Orders ready to bill", value: s.billing_ready, sub: "Hand off for invoicing", href: "/billing?view=ready", tone: warnIf(s.billing_ready, "good") });

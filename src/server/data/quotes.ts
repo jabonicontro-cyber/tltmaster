@@ -13,6 +13,8 @@ import type {
   StatusEventRow,
 } from "./types";
 import { QUOTE_STATUSES } from "@/lib/quotes/status";
+import { sortByActivity, type QuoteActivity } from "@/lib/quotes/activity";
+import { QUOTE_HISTORY_ACTIONS, type QuoteAuditEntry } from "@/lib/quotes/history";
 
 export interface QuoteFilters {
   q?: string;
@@ -23,23 +25,57 @@ export interface QuoteFilters {
   page: number;
 }
 
+/** Rows per request when the list reads every matching quote's dates (the API returns at most 1000 at a time). */
+const CHUNK = 1000;
+/** Read every row of a query in chunks of CHUNK (bounded: 50 000 rows). */
+async function allRows<T>(read: (from: number, to: number) => PromiseLike<{ data: unknown; error: { message: string } | null }>): Promise<T[]> {
+  const out: T[] = [];
+  for (let from = 0; from < 50 * CHUNK; from += CHUNK) {
+    const { data, error } = await read(from, from + CHUNK - 1);
+    if (error) throw new Error(`Could not load quotes: ${error.message}`);
+    const rows = (data ?? []) as T[];
+    out.push(...rows);
+    if (rows.length < CHUNK) break;
+  }
+  return out;
+}
+
+/**
+ * The Quotes list, most recent activity first (WK1; src/lib/quotes/activity.ts). The activity of a quote comes from
+ * three places (its dates in quote_list, its closed date, and the last save of an unsent revision), so the matching
+ * quotes' dates are read first, sorted here, and only the page's rows are then read in full.
+ */
 export async function listQuotes(filters: QuoteFilters) {
   const supabase = await createClient();
-  let query = supabase.from("quote_list").select("*", { count: "exact" }).order("created_at", { ascending: false });
   const pattern = ilikePattern(filters.q);
-  if (pattern) {
-    const refIds = await referenceMatches(supabase, REF_KEYS.quotes, referenceKey(filters.q));
-    query = query.or(`quote_number.ilike.${pattern},customer_name.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern}${idsClause(refIds)}`);
-  }
-  if (filters.status && (QUOTE_STATUSES as readonly string[]).includes(filters.status)) query = query.eq("status", filters.status);
-  if (filters.status === "open") query = query.in("status", ["draft", "sent"]);
-  if (filters.customer) query = query.eq("customer_id", filters.customer);
-  if (filters.from && /^\d{4}-\d{2}-\d{2}$/.test(filters.from)) query = query.gte("quote_date", filters.from);
-  if (filters.to && /^\d{4}-\d{2}-\d{2}$/.test(filters.to)) query = query.lte("quote_date", filters.to);
+  const refIds = pattern ? await referenceMatches(supabase, REF_KEYS.quotes, referenceKey(filters.q)) : [];
+  type Light = Pick<QuoteListRow, "id" | "quote_number" | "status" | "created_at" | "last_sent_at" | "accepted_at">;
+  const light = await allRows<Light>((a, b) => {
+    let query = supabase.from("quote_list").select("id, quote_number, status, created_at, last_sent_at, accepted_at").order("id").range(a, b);
+    if (pattern) query = query.or(`quote_number.ilike.${pattern},customer_name.ilike.${pattern},project_name.ilike.${pattern},site_label.ilike.${pattern},site_line1.ilike.${pattern},site_city.ilike.${pattern}${idsClause(refIds)}`);
+    if (filters.status && (QUOTE_STATUSES as readonly string[]).includes(filters.status)) query = query.eq("status", filters.status);
+    if (filters.status === "open") query = query.in("status", ["draft", "sent"]);
+    if (filters.customer) query = query.eq("customer_id", filters.customer);
+    if (filters.from && /^\d{4}-\d{2}-\d{2}$/.test(filters.from)) query = query.gte("quote_date", filters.from);
+    if (filters.to && /^\d{4}-\d{2}-\d{2}$/.test(filters.to)) query = query.lte("quote_date", filters.to);
+    return query;
+  });
+  const [closed, edited] = await Promise.all([
+    allRows<{ id: string; closed_at: string }>((a, b) => supabase.from("quotes").select("id, closed_at").not("closed_at", "is", null).order("id").range(a, b)),
+    allRows<{ quote_id: string; updated_at: string }>((a, b) => supabase.from("quote_versions").select("quote_id, updated_at").is("locked_at", null).order("id").range(a, b)),
+  ]);
+  const closedAt = new Map(closed.map((c) => [c.id, c.closed_at]));
+  const editedAt = new Map<string, string>();
+  for (const v of edited) if (!editedAt.has(v.quote_id) || editedAt.get(v.quote_id)! < v.updated_at) editedAt.set(v.quote_id, v.updated_at);
+  const sorted = sortByActivity(light.map((q) => ({ ...q, closed_at: closedAt.get(q.id) ?? null, edited_at: editedAt.get(q.id) ?? null })));
   const from = (filters.page - 1) * PAGE_SIZE;
-  const { data, error, count } = await query.range(from, from + PAGE_SIZE - 1);
+  const page = sorted.slice(from, from + PAGE_SIZE);
+  if (!page.length) return { rows: [] as Array<QuoteListRow & { activity: QuoteActivity }>, total: sorted.length };
+  const { data, error } = await supabase.from("quote_list").select("*").in("id", page.map((q) => q.id));
   if (error) throw new Error(`Could not load quotes: ${error.message}`);
-  return { rows: (data ?? []) as QuoteListRow[], total: count ?? 0 };
+  const full = new Map(((data ?? []) as QuoteListRow[]).map((r) => [r.id, r]));
+  const rows = page.flatMap((q) => (full.has(q.id) ? [{ ...full.get(q.id)!, activity: q.activity }] : []));
+  return { rows, total: sorted.length };
 }
 
 /**
@@ -89,13 +125,17 @@ export async function getQuoteDetail(id: string) {
   if (!quote) return null;
   const q = quote as QuoteRow;
 
-  const [customer, versions, lines, events, deliveries, names] = await Promise.all([
+  const [customer, versions, lines, events, deliveries, names, audit] = await Promise.all([
     supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", q.customer_id).single(),
     supabase.from("quote_versions").select("*").eq("quote_id", id).order("version_no", { ascending: false }),
     supabase.from("quote_lines").select("*").eq("quote_version_id", q.current_version_id).order("line_no"),
     supabase.from("quote_status_events").select("*").eq("quote_id", id).order("occurred_at", { ascending: false }),
     supabase.from("email_deliveries").select("*, documents(filename, sha256, byte_size)").eq("quote_id", id).order("created_at", { ascending: false }),
     getUserNames(),
+    // Edits and new revisions for the History (WK1), from the audit log with the person's own session: owners
+    // (audit.view), and everyone with quotes.view once 20261120019000 is installed. Nothing (not an error) otherwise.
+    supabase.from("audit_events").select("id, occurred_at, actor_id, action, summary, details").eq("entity_type", "quote").eq("entity_id", id)
+      .in("action", [...QUOTE_HISTORY_ACTIONS]).order("occurred_at", { ascending: false }).limit(200),
   ]);
   for (const r of [customer, versions, lines, events, deliveries]) {
     if (r.error) throw new Error(`Could not load quote: ${r.error.message}`);
@@ -110,6 +150,7 @@ export async function getQuoteDetail(id: string) {
     events: (events.data ?? []) as StatusEventRow[],
     deliveries: (deliveries.data ?? []) as DeliveryRow[],
     names,
+    audit: (audit.error ? [] : audit.data ?? []) as QuoteAuditEntry[],
   };
 }
 

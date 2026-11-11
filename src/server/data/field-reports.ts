@@ -1,5 +1,5 @@
 import "server-only";
-import type { ReportKind } from "@/lib/driver/rules";
+import { reportViewStatuses, type ReportKind, type ReportView } from "@/lib/driver/rules";
 import { uuid } from "@/lib/schemas/common";
 import { createClient } from "@/server/supabase/server";
 
@@ -25,14 +25,14 @@ export interface FieldReportRow {
   resolution_note: string;
 }
 
-export const REPORT_VIEWS = { open: "Open", acknowledged: "Acknowledged", resolved: "Resolved", all: "All" } as const;
-export type ReportView = keyof typeof REPORT_VIEWS;
+export { REPORT_VIEWS, type ReportView } from "@/lib/driver/rules";
 
 /** Reports the caller may see (RLS: equipment reports with field_reports.view, delay reports also need dispatch.view). */
 export async function listFieldReports(view: ReportView) {
   const supabase = await createClient();
   let q = supabase.from("field_reports").select("*").order("created_at", { ascending: false }).limit(200);
-  if (view !== "all") q = q.eq("status", view);
+  const statuses = reportViewStatuses(view);
+  if (statuses) q = q.in("status", statuses);
   const [rows, open, ack] = await Promise.all([
     q,
     supabase.from("field_reports").select("id", { count: "exact", head: true }).eq("status", "open"),

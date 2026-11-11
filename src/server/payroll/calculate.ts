@@ -1,4 +1,5 @@
 import "server-only";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { evaluateFormula, selectRule, validateFormula, type PayInputs, type PayRuleVersion, type TicketFacts } from "@/lib/payroll/formula";
 import { createClient } from "@/server/supabase/server";
 
@@ -58,8 +59,15 @@ export function calculateTicket(t: PayableTicket, rules: readonly PayRuleVersion
   return { ticket: t, status: "calculated", rule: sel.rule, inputs, cents: Number(ev.cents), breakdown: ev.breakdown };
 }
 
-export async function loadActiveRules(): Promise<PayRuleVersion[]> {
-  const supabase = await createClient();
+/**
+ * The session client to read with. Pages and actions use the signed-in person's session (cookies). Work that runs after
+ * the response is sent (the demo's automatic refresh inside `after()`) passes the client it created during the request,
+ * because cookies cannot be read inside `after()`. Either way it is the same person's session and row-level security.
+ */
+type Db = SupabaseClient;
+
+export async function loadActiveRules(db?: Db): Promise<PayRuleVersion[]> {
+  const supabase = db ?? (await createClient());
   const { data, error } = await supabase
     .from("pay_rule_versions")
     .select("id, rule_id, status, effective_from, effective_to, formula, rate, unit_code, scope, pay_rules(name)")
@@ -73,12 +81,12 @@ export async function loadActiveRules(): Promise<PayRuleVersion[]> {
 }
 
 /** Preview (nothing saved) or record the period's payable tickets. */
-export async function calculatePeriod(periodId: string, persist: boolean): Promise<{ results: TicketResult[]; recorded?: { added: number; already_recorded: number } }> {
-  const supabase = await createClient();
+export async function calculatePeriod(periodId: string, persist: boolean, db?: Db): Promise<{ results: TicketResult[]; recorded?: { added: number; already_recorded: number } }> {
+  const supabase = db ?? (await createClient());
   const { data, error } = await supabase.rpc("payroll_period_work", { p_period: periodId });
   if (error) throw new Error(error.message);
   const payable = ((data as { payable: PayableTicket[] }).payable ?? []);
-  const rules = await loadActiveRules();
+  const rules = await loadActiveRules(supabase);
   // Billing amounts only for formulas that name billed_amount.
   const lineIds = rules.some((r) => validateFormula(r.formula).usesBilling) ? [...new Set(payable.map((t) => t.order_line_id).filter((x): x is string => Boolean(x)))] : [];
   const rates = new Map<string, number>();

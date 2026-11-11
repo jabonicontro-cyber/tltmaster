@@ -44,12 +44,23 @@ export async function addPartWait(workOrderId: string, setWaiting: boolean, form
       }
     }
     const key = String(formData.get("submission_key") ?? "");
+    // An optional note with "Waiting for parts" (WK1) goes on the status change in the job's history. With a note the
+    // part is saved first and the job then moves with that note; the same submission key makes a retry safe (the part
+    // is not added twice). Without a note the database does both in one step, as before.
+    const note = setWaiting ? String(formData.get("note") ?? "").trim().slice(0, 2000) : "";
     const { error } = await supabase.rpc("part_wait_add", {
       p_work_order: workOrderId,
-      p: { ...p, unit_cost_cents: unit_cost, set_waiting: setWaiting, submission_key: uuid.safeParse(key).success ? key : null },
+      p: { ...p, unit_cost_cents: unit_cost, set_waiting: setWaiting && !note, submission_key: uuid.safeParse(key).success ? key : null },
     });
+    if (!error && note) {
+      const moved = await supabase.rpc("maintenance_set_status", { p_id: workOrderId, p_status: "awaiting_parts", p_note: note, p_expected_seq: null });
+      if (moved.error) {
+        refresh(workOrderId);
+        return fail(`The part on order is saved, but the job could not be set to Waiting for parts: ${dbErrorMessage(moved.error)}`);
+      }
+    }
     if (error && MISSING.has(error.code ?? "") && setWaiting) {
-      const old = await supabase.rpc("maintenance_set_status", { p_id: workOrderId, p_status: "awaiting_parts", p_note: p.description, p_expected_seq: null });
+      const old = await supabase.rpc("maintenance_set_status", { p_id: workOrderId, p_status: "awaiting_parts", p_note: note ? `${p.description}: ${note}` : p.description, p_expected_seq: null });
       if (old.error) return fail(dbErrorMessage(old.error));
       refresh(workOrderId);
       return ok(undefined, `Waiting for parts.${stopped ? " Your timer is stopped." : ""}`);

@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, FormError, Input, Select, Textarea } from "@/components/ui/form";
 import { useFormAction } from "@/components/ui/use-form-action";
 import { formatDate } from "@/lib/dates";
@@ -67,15 +68,33 @@ export function BookingRequestForm({ slug, days, sites }: { slug: string; days: 
   );
 }
 
-export function CancelBookingButton({ slug, request }: { slug: string; request: string }) {
+/**
+ * Withdraw a request still waiting for an answer. It asks first (portal walkthrough WK1: one tap withdrew it): the
+ * request cannot be brought back, only sent again.
+ */
+export function CancelBookingButton({ slug, request, summary }: { slug: string; request: string; summary?: string }) {
   const router = useRouter();
-  const { pending, onSubmit, formError } = useFormAction(cancelBooking, { onSuccess: (r) => { toast.success(r.message ?? "Withdrawn."); router.refresh(); } });
+  const [open, setOpen] = useState(false);
   return (
-    <form onSubmit={onSubmit}>
-      <FormError message={formError} />
-      <input type="hidden" name="slug" value={slug} />
-      <input type="hidden" name="request" value={request} />
-      <Button type="submit" size="sm" variant="secondary" loading={pending}>Withdraw</Button>
-    </form>
+    <>
+      <Button type="button" size="sm" variant="secondary" onClick={() => setOpen(true)}>Withdraw</Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="Withdraw this request?"
+        description={`${summary ? `${summary}. ` : ""}The company will not schedule it. To ask again later, send a new request.`}
+        confirmLabel="Withdraw request"
+        tone="danger"
+        onConfirm={async () => {
+          const data = new FormData();
+          data.set("slug", slug);
+          data.set("request", request);
+          const r = await cancelBooking(data);
+          if (!r.ok) return r.error;
+          toast.success(r.message ?? "Withdrawn.");
+          router.refresh();
+        }}
+      />
+    </>
   );
 }

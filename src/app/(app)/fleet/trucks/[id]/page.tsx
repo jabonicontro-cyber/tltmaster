@@ -18,6 +18,9 @@ import { downtimeDays, vehicleAvailability } from "@/lib/fleet/availability";
 import { AssignmentCard, AvailabilityCard, CostsCard, DocumentsCard, MaintenanceCard, OwnershipCard } from "@/components/fleet/vehicle-sections";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "@/server/data/settings";
+import { loadFuel } from "@/server/data/fuel";
+import { truckFuelSummary } from "@/lib/fuel/truck-fuel";
+import { addDays } from "@/lib/dates";
 
 export const metadata = { title: "Truck" };
 
@@ -31,7 +34,9 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
   const { timezone, today } = await businessToday();
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   const seeMaintenance = can(access, "maintenance.view");
-  const [ctx, records, trucks, driverRows, rules, backFromShop] = await Promise.all([
+  // Fuel bought for this truck over the last 12 months (Fuel and IFTA receipts, read with the person's session).
+  const fuelSince = addDays(today, -364);
+  const [ctx, records, trucks, driverRows, rules, backFromShop, fuel] = await Promise.all([
     fleetContext({ maintenance: seeMaintenance }),
     vehicleRecords("truck", t.id, { maintenance: seeMaintenance, costs: can(access, "maintenance.costs") }),
     truckOptions(),
@@ -39,6 +44,7 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
     documentRules(),
     // "All shop work is done. Put it back in service?" (MD1): only for this truck, only when it applies.
     t.service_status === "out_of_service" ? unitsBackFromShop() : Promise.resolve([]),
+    loadFuel(fuelSince, today, t.id).then((f) => ({ installed: f.installed, summary: truckFuelSummary(f.purchases), since: fuelSince }), () => null),
   ]);
   const availability = vehicleAvailability(t, ctx.maintenance.openByTruck.get(t.id) ?? [], today);
   const restricted = availability.state === "restricted" || availability.state === "awaiting_clearance";
@@ -83,7 +89,7 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
           <AssignmentCard truckId={t.id} current={ctx.driverByTruck.get(t.id) ?? null} drivers={drivers} history={records.assignments} names={records.driverNames} canAssign={can(access, "fleet.assign") && t.active} restricted={restricted} timezone={timezone} who={who} />
           <MaintenanceCard vehicleId={t.id} records={records} canSee={seeMaintenance} canCreate={can(access, "maintenance.manage")} canMarkWrong={can(access, "maintenance.manage") || can(access, "fleet.edit")} timezone={timezone} />
           <DocumentsCard vehicle={{ kind: "truck", id: t.id }} docs={records.documents} today={today} canEdit={can(access, "fleet.edit")} timezone={timezone} rules={rules} />
-          <CostsCard records={records} downtime90={downtimeDays(events, t, new Date(), 90)} canSeeCosts={can(access, "maintenance.costs")} />
+          <CostsCard records={records} downtime90={downtimeDays(events, t, new Date(), 90)} canSeeCosts={can(access, "maintenance.costs")} fuel={fuel} />
         </div>
         {/* Reference facts beside the day-to-day cards, so both columns carry weight (redesign 2026-10-26). */}
         <div className="space-y-5">

@@ -54,7 +54,7 @@ export default async function PortalBook({ params }: { params: Promise<{ slug: s
                 </div>
                 <Badge tone={BOOKING_STATUS[r.status].tone}>{BOOKING_STATUS[r.status].label}</Badge>
                 {r.order_id && c.features.orders && <Link href={`/portal/${slug}/orders/${r.order_id}`} className="text-sm font-semibold text-brand-fg hover:underline">Order {r.order_number}</Link>}
-                {r.status === "pending" && <CancelBookingButton slug={slug} request={r.id} />}
+                {r.status === "pending" && <CancelBookingButton slug={slug} request={r.id} summary={`${formatDate(r.day)}, ${r.loads} load${r.loads === 1 ? "" : "s"} of ${r.material}`} />}
               </li>
             ))}
           </ul>

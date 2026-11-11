@@ -1,5 +1,5 @@
 import "server-only";
-import { yearSummary, type YearInvoice } from "@/lib/accounting/year";
+import { yearSummary, type YearInvoice, type YearTicketPayment } from "@/lib/accounting/year";
 import { quarterRange } from "@/lib/fuel/ifta";
 import { listInvoices } from "@/server/data/invoices";
 import { loadFuel } from "@/server/data/fuel";
@@ -21,10 +21,33 @@ export async function recordAccountantVisit(section: string): Promise<void> {
   await (await createClient()).rpc("accountant_record_visit", { p_section: section });
 }
 
+type TicketPaymentRow = { id: string; amount_cents: number | string; received_on: string; method: string; reference: string; voided_at: string | null; customers: { name: string } | null };
+
+/**
+ * Payments recorded by ticket (Billing → Payments by ticket, 20261120009400) received in the year, read in pages so a
+ * busy year is never cut short. billing.view (RLS); none before that update is installed.
+ */
+async function ticketPayments(year: number): Promise<YearTicketPayment[]> {
+  const supabase = await createClient();
+  const out: YearTicketPayment[] = [];
+  for (let page = 0; page < 50; page++) {
+    const { data, error } = await supabase.from("customer_payments").select("id, amount_cents, received_on, method, reference, voided_at, customers(name)")
+      .gte("received_on", `${year}-01-01`).lte("received_on", `${year}-12-31`).order("received_on").order("id").range(page * 1000, page * 1000 + 999);
+    if (error) return [];
+    const rows = (data ?? []) as unknown as TicketPaymentRow[];
+    out.push(...rows.map((p) => ({ id: p.id, amount_cents: Number(p.amount_cents), received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at, customer_name: p.customers?.name ?? "Customer" })));
+    if (rows.length < 1000) break;
+  }
+  return out;
+}
+
 export async function loadAccountingYear(year: number, today: string, withPayroll: boolean) {
   const supabase = await createClient();
-  const [invoices, settlements, quarters, payroll] = await Promise.all([
+  const [invoices, byTicket, settlements, quarters, payroll] = await Promise.all([
     listInvoices(),
+    // Payments recorded by ticket (Billing → Payments by ticket, 20261120009400), received in the year: money collected
+    // even where it is not on an invoice yet. billing.view (RLS); none before that update is installed.
+    ticketPayments(year),
     supabase.from("hauler_settlements").select("id, number, status, period_start, period_end, gross_cents, commission_cents, deductions_cents, net_cents, paid_on, haulers(name)")
       .gte("period_end", `${year}-01-01`).lte("period_start", `${year}-12-31`).neq("status", "void").order("period_start").limit(500),
     Promise.all([1, 2, 3, 4].map(async (q) => {
@@ -37,11 +60,11 @@ export async function loadAccountingYear(year: number, today: string, withPayrol
   const shaped: YearInvoice[] = (invoices ?? []).map((i) => ({
     id: i.id, number: i.number, status: i.status, customer_name: i.customer_name, order_number: i.order_number, issue_date: i.issue_date,
     due_date: i.due_date, total_cents: i.total_cents, tax_cents: Number(i.tax_cents ?? 0),
-    payments: i.payments.map((p) => ({ amount_cents: p.amount_cents, received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at })),
+    payments: i.payments.map((p) => ({ amount_cents: p.amount_cents, received_on: p.received_on, method: p.method, reference: p.reference, voided_at: p.voided_at, customer_payment_id: p.customer_payment_id ?? null })),
   }));
   return {
     invoicesInstalled: invoices !== null,
-    summary: yearSummary(shaped, year, today),
+    summary: yearSummary(shaped, year, today, byTicket),
     settlements: settlements.error ? null : ((settlements.data ?? []) as unknown as Array<{ id: string; number: string; status: string; period_start: string; period_end: string; gross_cents: number; commission_cents: number; deductions_cents: number; net_cents: number; paid_on: string | null; haulers: { name: string } | null }>),
     quarters,
     payroll: payroll?.filter((p) => p.starts_on <= `${year}-12-31` && p.ends_on >= `${year}-01-01`) ?? null,

@@ -15,6 +15,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { EmptyState } from "@/components/ui/states";
 import { can } from "@/lib/permissions";
 import { QUOTE_STATUS_LABELS, QUOTE_STATUSES } from "@/lib/quotes/status";
+import { QUOTE_SORT_LABEL } from "@/lib/quotes/activity";
 import { requirePagePermission } from "@/server/auth";
 import { listQuotes, quotePipeline } from "@/server/data/quotes";
 import { pageParam, PAGE_SIZE } from "@/server/data/search";
@@ -94,7 +95,9 @@ export default async function QuotesPage({ searchParams }: { searchParams: Promi
           />
         ) : (
           <>
-            <QuoteTable rows={rows} today={today} />
+            {/* The order, said where the list starts (WK1). */}
+            <p className="border-b border-line/70 px-5 py-2.5 text-sm text-muted sm:px-6" data-testid="quote-sort">{QUOTE_SORT_LABEL}</p>
+            <QuoteTable rows={rows} today={today} timezone={timezone} />
             <Pagination page={page} pageSize={PAGE_SIZE} total={total} hrefFor={hrefFor} />
           </>
         )}

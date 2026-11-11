@@ -30,6 +30,7 @@ import { learnedEstimate, type LearnedEstimate } from "@/lib/maintenance-estimat
 import { getLatestTriage, getWorkOrderCrew } from "@/server/data/maintenance-crew";
 import { facesForUsers } from "@/server/data/faces";
 import { getUserNames } from "@/server/data/quotes";
+import { fieldReportPhotos } from "@/server/data/field-reports";
 import { businessToday } from "@/server/data/settings";
 
 export const metadata = { title: "Work order" };
@@ -65,6 +66,9 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
     workOrderPhotoIds(id),
     // Parts on order for this job (20261120012300); none before the update is installed.
     partWaits(id).catch(() => ({ installed: false, rows: [] }))]);
+  // A work order made from a driver report shows the report's photos with its own (WK1), for people who may see the
+  // report; the report's row-level security decides (field_report_photos), and each opens through the report's photo link.
+  const reportPhotos = wo.field_report_id && can(access, "field_reports.view") ? ((await fieldReportPhotos(wo.field_report_id)) ?? []).map((p) => p.id) : [];
   // B91: what comparable completed jobs took, from the company's own recorded labor. Shown beside the shop's estimate,
   // never written over it.
   const equipment = trailer ? (trailer as { trailer_type?: string }).trailer_type ?? null : truck ? (truck as { truck_type?: string }).truck_type ?? null : null;
@@ -212,7 +216,7 @@ export default async function WorkOrderPage({ params, searchParams }: { params: 
               ))}
             </dl>
           </Card>
-          <WorkOrderPhotos workOrderId={wo.id} photos={photos} canAdd={editable} />
+          <WorkOrderPhotos workOrderId={wo.id} photos={photos} reportPhotos={reportPhotos} canAdd={editable} />
         </div>
 
         {/* Right: the work, by tab. */}
