@@ -114,6 +114,29 @@ describe.skipIf(!available)("freight demo company", () => {
       `select (select count(*) from public.customers where company_id = $1 and detention_rate_cents is not null) customers,
               (select count(*) from public.charge_items where company_id = $1 and code in ('DET-HR', 'LUMPER', 'TONU') and not ticket_required) ticketless`, [w.company])).rows[0];
     expect([Number(det.customers), Number(det.ticketless)]).toEqual([1, 3]);
+    // Shop decisions (MD1, demo_shop_decision_samples): every truck of the freight demo already has open shop work, so
+    // the certificate and the unit parked by hand fall back to a trailer, or to a truck without safety-critical open
+    // work for the certificate (20261120019500). All four samples are there, each once.
+    const md1 = (await q<{ waiting: string; ignored: string; unchecked: string; parked: string; unsafe: string }>(`select
+        (select count(*) from public.work_orders where company_id = $1 and status = 'awaiting_parts' and work_started_at is null and not safety_critical and title = 'Replace torn driver seat cushion (demo)') waiting,
+        (select count(*) from public.audit_events where company_id = $1 and action = 'truck.reading_ignored') ignored,
+        (select count(*) from public.vehicle_documents where company_id = $1 and work_order_id is not null and verified_at is null and archived_at is null) unchecked,
+        (select count(*) from public.trucks t where t.company_id = $1 and t.service_status = 'out_of_service'
+           and not exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and exists (select 1 from public.work_orders o where o.truck_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since))
+        + (select count(*) from public.trailers t where t.company_id = $1 and t.service_status = 'out_of_service'
+           and not exists (select 1 from public.work_orders o where o.trailer_id = t.id and o.status not in ('completed', 'closed', 'canceled'))
+           and exists (select 1 from public.work_orders o where o.trailer_id = t.id and o.status in ('completed', 'closed') and o.completed_at >= t.out_of_service_since)) parked,
+        -- The certificate never lands on a vehicle with an open safety-critical job.
+        (select count(*) from public.vehicle_documents d join public.work_orders o on o.company_id = d.company_id and o.safety_critical
+            and o.status not in ('completed', 'closed', 'canceled') and (o.truck_id = d.truck_id or o.trailer_id = d.trailer_id)
+          where d.company_id = $1 and d.work_order_id is not null and d.verified_at is null and d.archived_at is null) unsafe`, [w.company])).rows[0];
+    expect([md1.waiting, md1.unchecked, md1.parked, md1.unsafe].map(Number)).toEqual([1, 1, 1, 0]);
+    expect(Number(md1.ignored)).toBeGreaterThanOrEqual(1);
+    // The office's lists read them through the app's own functions.
+    const back = await as(w.owner).rpc("units_back_from_shop");
+    expect(back.error).toBeNull();
+    expect((back.data as unknown[]).length).toBe(1);
   }, 300_000);
 
   it("a second Refresh adds no loads or records, and keeps the stops", async () => {
