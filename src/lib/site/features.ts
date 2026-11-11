@@ -800,7 +800,7 @@ export const FEATURES: Feature[] = [
     status: "available",
     published: true, // owner 2026-11-09 (with self-booking, which lives in it)
     routes: ["/customer-portal"],
-    screenshots: [],
+    screenshots: ["customer-portal"],
     related: ["help-center"],
     verified: "2026-11-06",
   },

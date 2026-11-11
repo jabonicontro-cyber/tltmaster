@@ -5,8 +5,8 @@
       "feature": "plan-the-day",
       "path": "/dispatch/plan",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:54.626Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:03.444Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "dispatch": {
@@ -14,8 +14,8 @@
       "feature": "smart-dispatch",
       "path": "/dispatch",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:57.353Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:07.017Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "order": {
@@ -23,8 +23,8 @@
       "feature": "orders",
       "path": "/orders",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:00.821Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:10.907Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "maintenance": {
@@ -32,8 +32,8 @@
       "feature": "maintenance",
       "path": "/maintenance",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:07.272Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:18.995Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "command-center": {
@@ -41,8 +41,8 @@
       "feature": "command-center",
       "path": "/command-center",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T04:18:04.531Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:00.785Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "tickets": {
@@ -50,8 +50,8 @@
       "feature": "delivery-tickets",
       "path": "/tickets?view=review",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:02.781Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:13.243Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "driver": {
@@ -59,8 +59,8 @@
       "feature": "driver-portal",
       "path": "/driver",
       "viewport": "phone",
-      "capturedAt": "2026-11-09T04:18:06.542Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:15.900Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "fleet": {
@@ -68,8 +68,8 @@
       "feature": "fleet",
       "path": "/fleet",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:09.315Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:21.829Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "billing": {
@@ -77,8 +77,8 @@
       "feature": "billing",
       "path": "/billing",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T04:18:09.353Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:24.902Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "communications": {
@@ -86,8 +86,8 @@
       "feature": "communications",
       "path": "/communications",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:14.155Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:27.511Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "employees": {
@@ -95,8 +95,8 @@
       "feature": "people",
       "path": "/employees",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:16.142Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:30.103Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "reports": {
@@ -104,8 +104,8 @@
       "feature": "reports",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:21.874Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:37.224Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "setup": {
@@ -113,8 +113,8 @@
       "feature": "company-controls",
       "path": "/setup",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:23.870Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:39.989Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "speed-metrics": {
@@ -122,8 +122,8 @@
       "feature": "speed-metrics",
       "path": "/command-center",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:29.829Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:46.588Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "maintenance-estimates": {
@@ -131,8 +131,8 @@
       "feature": "maintenance-estimates",
       "path": "/maintenance/estimates",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:25.746Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:42.185Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "truck-health": {
@@ -140,8 +140,8 @@
       "feature": "truck-health",
       "path": "/maintenance",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:32.086Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:49.133Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "driver-scorecard": {
@@ -149,8 +149,8 @@
       "feature": "driver-scorecard",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:38.322Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:38:55.815Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "quote-outcomes": {
@@ -158,8 +158,8 @@
       "feature": "quote-outcomes",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:44.301Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:03.097Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "site-notes": {
@@ -167,8 +167,8 @@
       "feature": "site-notes",
       "path": "/customers/site-notes",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:45.973Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:04.993Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "accountant-view": {
@@ -176,8 +176,8 @@
       "feature": "accountant-view",
       "path": "/accountant",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:47.925Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:07.009Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "hired-trucks": {
@@ -185,8 +185,8 @@
       "feature": "hired-trucks",
       "path": "/hired-trucks",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:02:49.803Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:09.348Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "hauler-settlements": {
@@ -194,8 +194,8 @@
       "feature": "hauler-settlements",
       "path": "/hired-trucks",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:18.240Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:11.476Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "safety-incidents": {
@@ -203,8 +203,8 @@
       "feature": "safety-incidents",
       "path": "/safety",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:20.174Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:13.570Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "load-profit": {
@@ -212,8 +212,8 @@
       "feature": "load-profit",
       "path": "/reports",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:26.308Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:20.243Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "parts-inventory": {
@@ -221,8 +221,8 @@
       "feature": "parts-inventory",
       "path": "/maintenance/parts",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:28.262Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:22.756Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "pricing-help": {
@@ -230,8 +230,8 @@
       "feature": "pricing-help",
       "path": "/quotes?status=draft",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:30.518Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:26.003Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "order-to-cash": {
@@ -239,8 +239,8 @@
       "feature": "order-to-cash",
       "path": "/order-to-cash",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:32.897Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:28.667Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "schedules": {
@@ -248,8 +248,8 @@
       "feature": "schedules",
       "path": "/schedule",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:36.735Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:32.944Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "route-planner": {
@@ -257,8 +257,8 @@
       "feature": "route-planner",
       "path": "/dispatch?view=routes",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:39.007Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:35.854Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "company-import": {
@@ -266,8 +266,8 @@
       "feature": "company-import",
       "path": "/settings?tab=import",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:40.856Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:37.958Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "invoicing": {
@@ -275,8 +275,8 @@
       "feature": "invoicing",
       "path": "/billing/invoices",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:42.592Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:39.948Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "morning-briefing": {
@@ -284,8 +284,8 @@
       "feature": "morning-briefing",
       "path": "/briefing",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:46.733Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:44.367Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "customer-insights": {
@@ -293,8 +293,8 @@
       "feature": "customer-insights",
       "path": "/reports/customers",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:48.750Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:47.474Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "wait-times": {
@@ -302,8 +302,8 @@
       "feature": "wait-times",
       "path": "/reports/wait-times",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:50.457Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:49.866Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "revenue-check": {
@@ -311,8 +311,8 @@
       "feature": "revenue-check",
       "path": "/billing/leaks",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:54.156Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:54.686Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "gps-hours": {
@@ -320,8 +320,8 @@
       "feature": "gps-hours",
       "path": "/fleet/locations",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:56.076Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:56.996Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "fuel-ifta": {
@@ -329,8 +329,8 @@
       "feature": "fuel-ifta",
       "path": "/fleet/fuel",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:00:57.915Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:39:59.087Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "offline-driver": {
@@ -338,8 +338,8 @@
       "feature": "offline-driver",
       "path": "/driver",
       "viewport": "phone",
-      "capturedAt": "2026-11-09T03:00:59.964Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:40:01.461Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "inspections": {
@@ -347,17 +347,17 @@
       "feature": "inspections",
       "path": "/fleet/inspections",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:02.279Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:40:03.707Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "credit-holds": {
       "file": "credit-holds.png",
       "feature": "credit-holds",
-      "path": "/customers?q=Harlow",
+      "path": "/customers?q=Kestrel",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:23.340Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:44:01.311Z",
+      "source": "localhost:3112",
       "checks": "passed"
     },
     "customer-booking": {
@@ -365,8 +365,17 @@
       "feature": "customer-booking",
       "path": "/customer-portal?tab=booking",
       "viewport": "desktop",
-      "capturedAt": "2026-11-09T03:01:25.609Z",
-      "source": "localhost:3000",
+      "capturedAt": "2026-11-11T13:40:26.841Z",
+      "source": "localhost:3112",
+      "checks": "passed"
+    },
+    "customer-portal": {
+      "file": "customer-portal.png",
+      "feature": "customer-portal",
+      "path": "/portal",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-11T13:40:28.628Z",
+      "source": "localhost:3112",
       "checks": "passed"
     }
   }
