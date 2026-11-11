@@ -89,7 +89,8 @@ test("the office flags an urgent order, dispatch acknowledges it on the board, a
     await d.getByRole("button", { name: "Flag as urgent" }).click();
     await expectToast(page, "Flagged urgent.");
     await expect(page.getByText("Awaiting acknowledgement").first()).toBeVisible();
-    await expect(page.getByText("Dispatch: acknowledge it")).toBeVisible();
+    // The person who flagged it is told it is on dispatch's board (walkthrough 2026-11-11), not "Dispatch: acknowledge it".
+    await expect(page.getByText(/You flagged this; it is on the board for dispatch/)).toBeVisible();
 
     // Dispatch sees it before planning the day, and acknowledges it there.
     const dctx = await browser.newContext();
