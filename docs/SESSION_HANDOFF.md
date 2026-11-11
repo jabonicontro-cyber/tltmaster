@@ -1,6 +1,6 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-11 workday (release candidate `a1d294c`, then the row-cap fix RC1). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-11 workday (released `00e08e5`: workday fixes and the row-cap fix RC1). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
@@ -8,6 +8,13 @@ project credentials. Read it together with:
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
 ## 0000000000000000000000000000. 2026-11-11 (workday) — `a1d294c` and complete lists past 1000 rows (RC1)
+
+- **Production = `00e08e5`** (fast-forward from `4912577`, code only, auto-promotion rule): full CI green on the Preview
+  branch (run 43076380704, full browser suite), Production CI green (43082999233), migration workflow success with
+  nothing to apply (43083949086), Production deploy success. Live `/api/health` ok (app, sign-in, database), `/auth/qr`
+  200, `/login` gated (401). Signed-in pages: **not verified live**. Risk tier: review (no approval-tier changes).
+  The first full run on `a1d294c` failed one browser test that still expected the flagger to read "Dispatch:
+  acknowledge it" (the walkthrough fix changed that wording on purpose); the spec was updated.
 
 - **Owner at work until about 5pm ("tie up loose ends", "if you notice something needs improved, improve it").**
 - **`a1d294c` (code only, on the Preview branch):** 42 website screenshots re-shot, reports wording for very large
