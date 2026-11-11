@@ -20,6 +20,9 @@ project credentials. Read it together with:
   access, support visits always two-step, QuickBooks locked during support visits (SEC4).
 - **Security review of the combined release** found nothing high; its four findings were fixed before release. CI found
   a real QR bug (a closed window's code could still sign in for a moment), fixed.
+- **Owner answers 2026-11-11 (question by question):** the owner sends Top Line's spreadsheets (customers, materials,
+  trucks, drivers) this week for the checked import (every row shown before anything is created); the owner upgrades
+  Supabase to Pro before Dec 1 for daily backups (Claude confirms the backups appear afterwards).
 - **Owner steps:** tell Top Line's owner, office and accountant users about the authenticator app at next sign-in (owner
   acknowledged 2026-11-11). To turn on face or fingerprint sign-in: enable passkeys in Supabase Auth (RP ID
   `tltmaster.vercel.app`, origin `https://tltmaster.vercel.app`), then first confirm the assurance level a passkey
