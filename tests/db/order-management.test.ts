@@ -563,8 +563,9 @@ describe("own direct orders (orders.create)", () => {
       expect((await order(s, mine.order_id))).toMatchObject({ status: "canceled", status_note: "Customer called back: entered twice" });
       expect((await order(s, mine.order_id)).canceled_at).not.toBeNull();
       await s.asAdmin();
-      const history = (await s.query<{ from_status: string; to_status: string; note: string; actor_id: string }>("select from_status::text, to_status::text, note, actor_id from public.order_status_events where order_id = $1 order by occurred_at", [mine.order_id])).rows;
-      expect(history.at(-1)).toEqual({ from_status: "draft", to_status: "canceled", note: "Customer called back: entered twice", actor_id: dispatcher });
+      // The test runs in one transaction, where every event has the same time: read the cancel event itself.
+      const history = (await s.query<{ from_status: string; to_status: string; note: string; actor_id: string }>("select from_status::text, to_status::text, note, actor_id from public.order_status_events where order_id = $1 and to_status = 'canceled'", [mine.order_id])).rows;
+      expect(history).toEqual([{ from_status: "draft", to_status: "canceled", note: "Customer called back: entered twice", actor_id: dispatcher }]);
       expect((await s.query("select 1 from public.audit_events where action = 'order.status_changed' and entity_id = $1 and actor_id = $2", [mine.order_id, dispatcher])).rowCount).toBe(1);
 
       // Someone else's draft (the office's, another dispatcher's): refused, and left as it was.
