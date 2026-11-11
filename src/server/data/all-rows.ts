@@ -3,7 +3,9 @@ import "server-only";
 // The database API returns at most 1000 rows per request (max_rows, supabase/config.toml; the same on the hosted
 // project), whatever .limit() asks for. A list that is totalled (money owed, IFTA miles and gallons, billing queues,
 // costs) must read every page, or past 1000 rows it quietly leaves records out. allRows reads page after page until a
-// short one, and fails (never returns part of the list) if there are more than maxPages pages.
+// short one, and fails if there are more than maxPages pages. Pages are separate requests, not one snapshot: a record
+// saved or removed between two of them can shift the rows (a repeated row is dropped below; a row that moves back
+// across a page boundary in those milliseconds is missed for that one read).
 
 export const PAGE_ROWS = 1000;
 

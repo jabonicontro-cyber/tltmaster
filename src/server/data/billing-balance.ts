@@ -27,15 +27,16 @@ export interface CustomerBalanceView {
 export async function getCustomerBalance(customerId: string, today: string): Promise<CustomerBalanceView> {
   const supabase = await createClient();
   const [inv, open, handoffs, settings] = await Promise.all([
-    supabase.from("invoices")
+    // Every invoice (allRows): Owed and Overdue are totals, and the oldest unpaid invoice is the one that matters most.
+    allRows(() => supabase.from("invoices")
       .select("id, number, status, total_cents, due_date, issue_date, sent_at, payments:invoice_payments(amount_cents, voided_at)")
-      .eq("customer_id", customerId).neq("status", "draft").order("issue_date", { ascending: false }).limit(200),
+      .eq("customer_id", customerId).neq("status", "draft").order("issue_date", { ascending: false }).order("id")),
     supabase.from("billing_order_status")
       .select("order_id, order_number, readiness, tickets_pending, tickets_accepted")
       .eq("customer_id", customerId).neq("readiness", "handed_off").order("order_number").limit(200),
-    supabase.from("billing_handoff_orders")
+    allRows(() => supabase.from("billing_handoff_orders")
       .select("id, order_id, number:snapshot->order->>order_number, total:snapshot->order->total_cents, orders!billing_handoff_orders_order_fk!inner(customer_id)")
-      .is("reverted_at", null).eq("orders.customer_id", customerId).limit(500),
+      .is("reverted_at", null).eq("orders.customer_id", customerId).order("id")),
     invoicingSettings(),
   ]);
 
@@ -57,7 +58,7 @@ export async function getCustomerBalance(customerId: string, today: string): Pro
   const [lines, tickets, orders] = priced.length
     ? await Promise.all([
         supabase.from("order_lines").select("id, order_id, line_no, kind, calc_method, description, unit_code, quantity, unit_rate_cents, percent_bp, taxable, amount_cents").in("order_id", priced),
-        supabase.from("delivery_tickets").select("order_id, order_line_id, status, quantity, unit_code").in("order_id", priced).in("status", ["submitted", "needs_review", "accepted"]),
+        allRows(() => supabase.from("delivery_tickets").select("order_id, order_line_id, status, quantity, unit_code").in("order_id", priced).in("status", ["submitted", "needs_review", "accepted"]).order("id")),
         supabase.from("orders").select("id, tax_rate_bp, total_cents").in("id", priced),
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];

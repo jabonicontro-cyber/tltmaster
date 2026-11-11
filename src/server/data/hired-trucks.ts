@@ -1,5 +1,6 @@
 import "server-only";
 import type { HaulerDoc, PayTicket, RateUnit } from "@/lib/hired-trucks";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Hired trucks (B83), read with the person's own session: RLS limits everything to their company (dispatch or fleet
@@ -99,7 +100,7 @@ export async function loadHiredTrucks(today: string, horizonDays = 14): Promise<
   const assignmentIds = offerRows.filter((o) => o.status === "confirmed" && o.assignment_id).map((o) => o.assignment_id!);
   const pay = new Map<string, PayTicket[]>();
   if (assignmentIds.length) {
-    const tickets = await supabase.from("delivery_tickets").select("assignment_id, quantity, unit_code").in("assignment_id", assignmentIds).eq("status", "accepted");
+    const tickets = await allRows(() => supabase.from("delivery_tickets").select("assignment_id, quantity, unit_code").in("assignment_id", assignmentIds).eq("status", "accepted").order("id"));
     for (const t of (tickets.data ?? []) as Array<{ assignment_id: string; quantity: number | string; unit_code: string }>) {
       pay.set(t.assignment_id, [...(pay.get(t.assignment_id) ?? []), { quantity: Number(t.quantity), unit_code: t.unit_code }]);
     }

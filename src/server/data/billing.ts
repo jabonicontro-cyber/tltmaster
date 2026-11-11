@@ -303,12 +303,12 @@ export async function getOrderBilling(orderId: string) {
   const { data: status } = await supabase.from("billing_order_status").select("*").eq("order_id", orderId).maybeSingle();
   if (!status) return null;
   const [loads, lines, exceptions, reviews, handoffs, tickets, names, people, { timezone }, orderLines, order] = await Promise.all([
-    supabase.from("billing_load_status").select("*").eq("order_id", orderId).order("load_number"),
+    allRows(() => supabase.from("billing_load_status").select("*").eq("order_id", orderId).order("load_number").order("load_id")),
     supabase.from("billing_line_status").select("*").eq("order_id", orderId).order("line_no"),
-    supabase.from("billing_exceptions").select("*").eq("order_id", orderId),
+    allRows(() => supabase.from("billing_exceptions").select("*").eq("order_id", orderId).order("key")),
     supabase.from("billing_reviews").select("*").eq("order_id", orderId).order("decided_at", { ascending: false }),
     supabase.from("billing_handoff_orders").select("id, handoff_id, reverted_at, reverted_by, revert_reason, batch:billing_handoffs(batch_number, reference, created_at, created_by)").eq("order_id", orderId),
-    supabase.from("delivery_tickets").select("id, load_id, order_line_id, ticket_number, revision, status, quantity, unit_code, external_reference").eq("order_id", orderId).neq("status", "superseded").order("ticket_number"),
+    allRows(() => supabase.from("delivery_tickets").select("id, load_id, order_line_id, ticket_number, revision, status, quantity, unit_code, external_reference").eq("order_id", orderId).neq("status", "superseded").order("ticket_number").order("id")),
     resourceNames(),
     getUserNames(),
     businessToday(),

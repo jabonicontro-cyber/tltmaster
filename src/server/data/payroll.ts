@@ -1,4 +1,5 @@
 import "server-only";
+import { allRows } from "@/server/data/all-rows";
 import { createClient } from "@/server/supabase/server";
 
 // Payroll reads (20261118000200). Every table is readable only with payroll.manage in the caller's company (RLS);
@@ -55,8 +56,9 @@ export async function loadPeriod(id: string) {
   if (error) throw new Error("The payroll period could not be loaded.");
   if (!period) return null;
   const [entries, adjustments, exports, work, drivers, versions] = await Promise.all([
-    supabase.from("payroll_entries").select("id, ticket_id, driver_id, status, amount_cents, breakdown, exception, note, rule_version_id, calculated_at, delivery_tickets(ticket_number, delivered_at, quantity, unit_code, status)").eq("period_id", id).order("calculated_at"),
-    supabase.from("payroll_adjustments").select("id, driver_id, entry_id, amount_cents, reason, created_at").eq("period_id", id).order("created_at"),
+    // Every entry and adjustment (allRows): the totals a person approves must count all of them, not the first 1000.
+    allRows(() => supabase.from("payroll_entries").select("id, ticket_id, driver_id, status, amount_cents, breakdown, exception, note, rule_version_id, calculated_at, delivery_tickets(ticket_number, delivered_at, quantity, unit_code, status)").eq("period_id", id).order("calculated_at").order("id")),
+    allRows(() => supabase.from("payroll_adjustments").select("id, driver_id, entry_id, amount_cents, reason, created_at").eq("period_id", id).order("created_at").order("id")),
     supabase.from("payroll_exports").select("id, format, status, row_count, total_cents, reference, note, created_at, content_hash").eq("period_id", id).order("created_at", { ascending: false }),
     supabase.rpc("payroll_period_work", { p_period: id }),
     supabase.from("drivers").select("id, name, employee_number"),
