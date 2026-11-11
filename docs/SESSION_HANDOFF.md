@@ -23,8 +23,10 @@ project credentials. Read it together with:
   could quietly leave records out past 1000. Fixed with one paged reader (`src/server/data/all-rows.ts`); the local
   stack and CI now enforce the same 1000-row limit. Master plan §12 RC1.
 - **Held for the owner (migrations, asked one at a time):** `owner-approval/quote-history` (`20261120019000`, quote
-  history readable without audit.view) and `owner-approval/demo-shop-fallback` (`20261120019500`, shop samples when a
-  demo has no free truck). Also open: reassigning a delivered, ticketed load; fuel receipt dollars on `/fleet/fuel` for
+  history readable without audit.view) `owner-approval/demo-shop-fallback` (`20261120019500`, shop samples when a
+  demo has no free truck) and `owner-approval/sample-report-work-order` (`20261120019600`: Remove sample data failed
+  when a work order was opened from a driver report on a sample load; the work order now stays and only its report link
+  is cleared; found because a local database kept such a work order and seven sample-removal tests failed). Also open: reassigning a delivered, ticketed load; fuel receipt dollars on `/fleet/fuel` for
   fleet.view without a money permission; mechanics' Close button; per-person two-step status on Settings → Security;
   sample driver reports for demos; email sending, QuickBooks sandbox and the GitHub connector on the daily check.
 
