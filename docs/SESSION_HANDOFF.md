@@ -1,11 +1,29 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
+
+## 000000000000000000000000000. 2026-11-11 — released `4912577`: owner decisions, financial security, two-step for money access
+
+- **Production = `4912577`** (fast-forward from `111d934`, owner approved 2026-11-10): full CI green (run 42757410131,
+  full browser suite), Production CI green (42933901983), Preview and Production deploys success. Migration workflow
+  (42934556158) backed up first (`backup-20261111T005135Z.dump.gpg`) and applied 17 migrations, `20261120015000`
+  through `20261120018100`. Live `/api/health` ok; `/auth/qr` public (200), `/login` gated (401), the QR redeem refuses
+  a request without the site's origin (403). Signed-in pages: **not verified live** beyond that.
+- **In it:** shop decisions (MD1), dispatcher own-order actions and the price check with office correction (MD1, SEC4
+  M1), financial review fixes L1 to L4, portal question picker and parts by base (SEC3), driver QR sign-in with
+  passkeys hidden until Supabase offers them (DS1), two-step verification and saved recovery codes for anyone with money
+  access, support visits always two-step, QuickBooks locked during support visits (SEC4).
+- **Security review of the combined release** found nothing high; its four findings were fixed before release. CI found
+  a real QR bug (a closed window's code could still sign in for a moment), fixed.
+- **Owner steps:** tell Top Line's owner, office and accountant users about the authenticator app at next sign-in (owner
+  acknowledged 2026-11-11). To turn on face or fingerprint sign-in: enable passkeys in Supabase Auth (RP ID
+  `tltmaster.vercel.app`, origin `https://tltmaster.vercel.app`), then first confirm the assurance level a passkey
+  sign-in gets (master plan DS1) and try it on a real phone.
 
 ## 00000000000000000000000000. 2026-11-09 (evening) — released `111d934`: drivers ready, shop round 2, money owed, portal tickets, dispatcher orders
 
