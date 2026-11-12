@@ -175,13 +175,20 @@ test("console search: Admins find companies and leads; Support finds companies a
 });
 
 test("Support can go into a company with a reason on a phone; the Admin console stays closed to them", async ({ browser }) => {
+  // A customer company still being set up (no owner yet) is open to Support without a grant; a fresh database has only
+  // live companies, which wait for their owner.
+  const name = `Phone Haul ${unique()} (test)`;
+  const db = new pg.Client({ connectionString: process.env.TEST_DATABASE_URL });
+  await db.connect();
+  await db.query("insert into public.companies (name, slug) values ($1, $2)", [name, name.toLowerCase().replace(/[^a-z0-9]+/g, "-")]);
+  await db.end();
   const { ctx, page: sp } = await supportPage(browser, 390);
   await expect(sp).toHaveURL(/\/staff$/);
   const list = sp.getByRole("table", { name: "Customer companies" });
-  const reason = list.getByRole("textbox", { name: /What are you helping/ }).first();
+  const reason = list.getByRole("textbox", { name: `What are you helping ${name} with?` });
   await expect(reason).toBeVisible();
   // Scrolled to, the button sits fully on the screen (not off its right edge).
-  const goIn = list.getByRole("button", { name: "Go in" }).first();
+  const goIn = list.getByRole("form", { name: `Go into ${name}` }).getByRole("button", { name: "Go in" });
   await goIn.scrollIntoViewIfNeeded();
   await expect(goIn).toBeInViewport({ ratio: 1 });
   expect(await sp.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
