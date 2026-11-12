@@ -146,8 +146,10 @@ describe("driver tickets", () => {
       expect((await pgError(s.query("select public.review_delivery_ticket($1, 'accept', '')", [mine.ticket_id]))).code).toBe("42501");
       expect((await pgError(s.query("select public.submit_delivery_ticket($1::jsonb)", [JSON.stringify({ load_id: w.other.load_id })]))).code).toBe("42501");
 
-      // Reassigning the load away from the driver ends their access to it.
+      // Reassigning the load away from the driver ends their access to it. A load with a live ticket keeps its truck
+      // and driver (RL1, 20261120019700), so the office voids the ticket first.
       await s.as(w.office);
+      await s.query("select public.review_delivery_ticket($1, 'void', 'Entered on the wrong truck (test)')", [mine.ticket_id]);
       await assign(s, w.past.load_id, w.f.t2, null, w.f.d3, w.a1);
       await s.as(w.driver1);
       expect((await pgError(submit(s, w.ticket()))).code).toBe("42501");
