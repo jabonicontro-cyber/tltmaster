@@ -222,6 +222,15 @@ test("every demo mode opens its pages and each feature shows sample data", async
       if (nav.includes("/fleet")) {
         await visit(page, "/fleet");
         await expect(page.getByTestId("certificates-to-check"), `${role} certificates to check`).toContainText("Not checked yet");
+        // Fuel and IFTA (B130, samples.ts demo_fuel_samples): the sample receipts; what fuel cost only in the modes with
+        // billing access (SEC5, owner 2026-11-12), never in the Dispatcher or Mechanic modes.
+        await visit(page, "/fleet/fuel");
+        const receipts = page.getByRole("list", { name: "Fuel purchases" }).locator("li");
+        // Early in a quarter the samples may all be in the previous one.
+        if (!(await receipts.count())) await page.getByRole("link", { name: "Previous quarter" }).click();
+        await expect(receipts.first(), `${role} fuel receipts`).toBeVisible();
+        if (role === "owner" || role === "office") await expect(page.getByTestId("fuel-amount").first(), `${role} fuel amounts`).toBeVisible();
+        else await expect(page.getByTestId("fuel-amount"), `${role} no fuel amounts`).toHaveCount(0);
       }
       // Modes that drive see a day with loads on My Day.
       if (role === "driver" || role === "multi") {

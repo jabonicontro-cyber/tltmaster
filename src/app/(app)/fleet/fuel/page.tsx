@@ -35,7 +35,10 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
   const year = m ? Number(m[1]) : current.year;
   const quarter = m ? Number(m[2]) : current.quarter;
   const { from, to } = quarterRange(year, quarter);
-  const [data, trucks, home] = await Promise.all([loadFuel(from, to), truckOptions(), homeState()]);
+  // What fuel cost is money (owner 2026-11-12, SEC5): only with billing.view (owner, office, accountant). Dispatchers and
+  // mechanics see the same receipts without the amounts; the database refuses the amounts to them as well.
+  const money = can(access, "billing.view");
+  const [data, trucks, home] = await Promise.all([loadFuel(from, to, null, { amounts: money }), truckOptions(), homeState()]);
   const header = (
     <>
       <PageHeader title="Fleet" description="Trucks, trailers and drivers, with what makes each one ready (or not ready) for work." />
@@ -111,14 +114,20 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
           )}
         </Card>
         <Card>
-          <CardHeader title="Fuel purchases" />
+          <CardHeader title="Fuel purchases" description={!money ? "Amounts paid are shown to people who can see billing." : !data.amountsShown ? "Amounts paid could not be loaded right now. Reload the page to try again." : undefined} />
           {data.purchases.length === 0 ? <CardBody><EmptyState title="None this quarter" /></CardBody> : (
             <ul className="divide-y divide-line border-t border-line" aria-label="Fuel purchases">
               {data.purchases.slice(0, 60).map((p) => (
                 <li key={p.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-5 py-2.5 text-sm sm:px-6">
                   <span className="w-24 text-muted">{formatDate(p.purchased_on)}</span>
                   <span className="font-semibold">{truckName.get(p.truck_id) ?? "Truck"}</span>
-                  <span className="min-w-0 flex-1 tabular text-muted">{p.jurisdiction} · {fmt(p.gallons)} gal · {formatCents(p.total_cents)}{p.vendor ? ` · ${p.vendor}` : ""}</span>
+                  <span className="min-w-0 flex-1 tabular text-muted">
+                    {p.jurisdiction} · {fmt(p.gallons)} gal
+                    {p.total_cents !== null && <> · <span data-testid="fuel-amount">{formatCents(p.total_cents)}</span></>}
+                    {p.odometer !== null ? ` · ${p.odometer.toLocaleString("en-US")} mi` : ""}
+                    {p.vendor ? ` · ${p.vendor}` : ""}
+                    {p.receipt_ref ? ` · Receipt ${p.receipt_ref}` : ""}
+                  </span>
                   {p.voided ? <Badge tone="gray">Void: {p.void_reason}</Badge> : edit && <VoidFuelButton kind="purchase" id={p.id} />}
                 </li>
               ))}

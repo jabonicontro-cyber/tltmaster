@@ -44,7 +44,8 @@ export default async function TruckPage({ params, searchParams }: { params: Prom
     documentRules(),
     // "All shop work is done. Put it back in service?" (MD1): only for this truck, only when it applies.
     t.service_status === "out_of_service" ? unitsBackFromShop() : Promise.resolve([]),
-    loadFuel(fuelSince, today, t.id).then((f) => ({ installed: f.installed, summary: truckFuelSummary(f.purchases), since: fuelSince }), () => null),
+    // What the fuel cost only with billing.view (owner 2026-11-12, SEC5); everyone else sees the gallons.
+    loadFuel(fuelSince, today, t.id, { amounts: can(access, "billing.view") }).then((f) => ({ installed: f.installed, summary: truckFuelSummary(f.purchases), since: fuelSince }), () => null),
   ]);
   const availability = vehicleAvailability(t, ctx.maintenance.openByTruck.get(t.id) ?? [], today);
   const restricted = availability.state === "restricted" || availability.state === "awaiting_clearance";
