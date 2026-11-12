@@ -40,10 +40,10 @@ import { ApprovalChainForm } from "@/components/settings/approval-chain-form";
 import { approvalChain } from "@/server/data/time-off";
 import { BasesPanel } from "@/components/settings/bases-panel";
 import { CompanyMfaPolicyForm } from "@/components/security/company-mfa-policy";
-import { MfaWho } from "@/components/security/mfa-who";
-import { moneyRoles } from "@/lib/mfa-policy";
+import { MfaSetUp, MfaWho } from "@/components/security/mfa-who";
+import { memberMfaStatuses, moneyRoles } from "@/lib/mfa-policy";
 import { baseAllowance, baseMembers, baseSummary, listBases } from "@/server/data/bases";
-import { listSignIns } from "@/server/data/people";
+import { companyMfaStatus, listSignIns } from "@/server/data/people";
 import { ImportUploader } from "@/components/admin/import-uploader";
 import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
 import { stageCompanyImport } from "./import/actions";
@@ -263,13 +263,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   } else if (tab === "security") {
     // Who must use it (walkthrough 2026-11-11): the roles holding a money permission here, and their people for those
     // who manage users (the same rule as the database, private.money_mfa_required).
+    // Who has set it up (SEC4b, owner 2026-11-12): the same people, with each one's state from the database.
     const peopleShown = can(access, "users.manage") && Boolean(access.companyId);
-    const [{ data, error }, { data: grants }, people] = await Promise.all([
+    const [{ data, error }, { data: grants }, people, mfa] = await Promise.all([
       supabase.from("company_settings").select("require_mfa").maybeSingle(),
       supabase.from("role_permissions").select("role, permission"),
       peopleShown ? listSignIns(access.companyId!) : Promise.resolve([]),
+      peopleShown ? companyMfaStatus() : Promise.resolve(null),
     ]);
-    const roles = moneyRoles((grants ?? []) as Array<{ role: AppRole; permission: string }>, people.map((p) => ({ id: p.id, name: p.full_name || p.email, role: p.role as AppRole | null, active: p.active })));
+    const named = people.map((p) => ({ id: p.id, name: p.full_name || p.email, role: p.role as AppRole | null, active: p.active }));
+    const roles = moneyRoles((grants ?? []) as Array<{ role: AppRole; permission: string }>, named);
+    const requireMfa = Boolean((data as { require_mfa?: boolean } | null)?.require_mfa);
+    const statuses = mfa?.rows ? memberMfaStatuses(named, mfa.rows, { companyRule: requireMfa, demo: Boolean(access.isDemo), moneyRoles: roles.map((r) => r.role) }) : null;
     content = (
       <>
         <CardHeader title="Two-step verification" description="A code from an authenticator app after the password. Some people must always use it; you can require it for everyone." />
@@ -278,8 +283,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <p className="text-sm text-muted">Two-step verification needs a database update that has not been installed yet (20261120000900). Until then nobody is asked for a code.</p>
           ) : (
             <>
-              <MfaWho roles={roles} demo={Boolean(access.isDemo)} peopleShown={peopleShown} />
-              <CompanyMfaPolicyForm required={Boolean((data as { require_mfa?: boolean } | null)?.require_mfa)} canEdit={can(access, "settings.manage")} />
+              <MfaWho roles={roles} demo={Boolean(access.isDemo)} peopleShown={peopleShown} names={!statuses} />
+              {peopleShown && <MfaSetUp statuses={statuses} installed={mfa?.installed ?? false} />}
+              <CompanyMfaPolicyForm required={requireMfa} canEdit={can(access, "settings.manage")} />
             </>
           )}
         </CardBody>

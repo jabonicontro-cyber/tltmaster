@@ -328,8 +328,10 @@ test("Settings → Security names who must use two-step verification: the roles 
   await signIn(page, "owner");
   await page.goto("/settings?tab=security");
   const who = page.getByTestId("mfa-who");
-  await expect(who.getByRole("listitem", { name: "Office staff" })).toContainText(USERS.office.name);
+  // The roles with their head count; the people themselves are listed below with their state (SEC4b, mfa-status.spec.ts).
+  await expect(who.getByRole("listitem", { name: "Office staff" })).toContainText(/\d+ (person|people)/);
   await expect(who.getByRole("listitem", { name: "Owner / Administrator" })).toBeVisible();
+  await expect(page.getByTestId("mfa-set-up").getByRole("listitem", { name: USERS.office.name })).toContainText("Must use it: money access");
   await expect(page.getByText("for everyone in this company", { exact: false })).toHaveCount(0);
   await expect(page.getByRole("checkbox", { name: "Also require two-step verification for everyone else in this company" })).toBeVisible();
 });

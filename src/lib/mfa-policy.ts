@@ -40,6 +40,65 @@ export function moneyRoles<R extends string>(
   }));
 }
 
+/** One person's two-step state from public.company_mfa_status() (20261120019900): nothing else is ever returned. */
+export type MemberMfaRow = { user_id: string; money: boolean; set_up: boolean; recovery_ready: boolean | null };
+
+export type MemberMfaStatus = {
+  id: string;
+  name: string;
+  role: string | null;
+  /** Why they must use it, in plain words; null when nothing requires it. */
+  reason: "Money access" | "Company rule" | null;
+  /** Counted as done: set up, with recovery codes saved when money access needs them. */
+  done: boolean;
+  label: string;
+  detail: string | null;
+  tone: "green" | "amber" | "gray";
+};
+
+/**
+ * Settings → Security (SEC4b, owner 2026-11-12): each active person's two-step state in plain words. The database
+ * decides money access and set-up (company_mfa_status); the company rule is the company's own setting. In a demo
+ * company money access never counts, so a person whose role holds a money permission is "Not needed in a demo".
+ */
+export function memberMfaStatuses(
+  people: Array<{ id: string; name: string; role: string | null; active: boolean }>,
+  rows: MemberMfaRow[],
+  opts: { companyRule: boolean; demo: boolean; moneyRoles: string[] },
+): MemberMfaStatus[] {
+  const byId = new Map(rows.map((r) => [r.user_id, r]));
+  return people
+    .filter((p) => p.active && byId.has(p.id))
+    .map((p): MemberMfaStatus => {
+      const r = byId.get(p.id)!;
+      const reason: MemberMfaStatus["reason"] = r.money ? "Money access" : opts.companyRule ? "Company rule" : null;
+      const base = { id: p.id, name: p.name, role: p.role, reason };
+      if (reason) {
+        if (!r.set_up) return { ...base, done: false, label: "Not set up yet", detail: "Will be asked at next sign-in", tone: "amber" as const };
+        if (r.money && r.recovery_ready === false) {
+          return { ...base, done: false, label: "Recovery codes not saved", detail: "Will be asked to save them the next time they open Taviron", tone: "amber" as const };
+        }
+        return { ...base, done: true, label: "Set up", detail: null, tone: "green" as const };
+      }
+      if (r.set_up) return { ...base, done: true, label: "Set up", detail: "Not required here", tone: "green" as const };
+      if (opts.demo && p.role && opts.moneyRoles.includes(p.role)) {
+        return { ...base, done: false, label: "Not needed in a demo", detail: "In a real company this role always needs it", tone: "gray" as const };
+      }
+      return { ...base, done: false, label: "Not required", detail: null, tone: "gray" as const };
+    })
+    .sort((a, b) => Number(Boolean(b.reason)) - Number(Boolean(a.reason)) || Number(a.done) - Number(b.done) || a.name.localeCompare(b.name));
+}
+
+/** "2 of 3 people who must use two-step have set it up"; null when nobody must. */
+export function mfaSetUpSummary(statuses: MemberMfaStatus[]): string | null {
+  const must = statuses.filter((s) => s.reason);
+  if (must.length === 0) return null;
+  const done = must.filter((s) => s.done).length;
+  return must.length === 1
+    ? `${done} of 1 person who must use two-step has set it up`
+    : `${done} of ${must.length} people who must use two-step have set it up`;
+}
+
 /** Why two-step verification is required for this person, most specific first; null when nothing requires it. */
 export function mfaReason(policy: { platform: boolean; money?: boolean; current_company: boolean }): string | null {
   if (policy.platform) return "Platform administrators must use two-step verification.";

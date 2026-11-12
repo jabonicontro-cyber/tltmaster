@@ -145,6 +145,9 @@ test("every demo mode opens its pages and each feature shows sample data", async
     "/schedule": /No people yet/,
     "/safety": /No open incidents/,
     "/maintenance/parts": /No parts yet/,
+    // Driver reports (DP1, samples.ts demo_field_report_samples): "Not resolved" has the sample breakdown in every mode
+    // that opens it (the shop sees equipment reports only, and the breakdown is one).
+    "/field-reports": /No reports to resolve/,
   };
   try {
     for (const role of PREVIEW_ROLES) {
@@ -168,6 +171,18 @@ test("every demo mode opens its pages and each feature shows sample data", async
         await expect(page.getByText(/No assigned loads on this day/), `${role} routes view has routes`).toHaveCount(0);
         await visit(page, "/dispatch?view=timeline");
         await expect(page.getByRole("table", { name: "Trucks by hour" }).getByRole("button").first(), `${role} timeline has loads`).toBeVisible();
+      }
+      // Driver reports (DP1): every view has a report: resolved for every mode that opens the page (an equipment
+      // problem), acknowledged for the modes that see delays (dispatch roles; the shop sees equipment reports only).
+      if (nav.includes("/field-reports")) {
+        await visit(page, "/field-reports?view=resolved");
+        await expect(page.getByRole("list", { name: "Driver reports" }).getByText("resolved", { exact: true }).first(), `${role} resolved report`).toBeVisible();
+        if (role !== "mechanic") {
+          await visit(page, "/field-reports?view=acknowledged");
+          await expect(page.getByRole("list", { name: "Driver reports" }).getByText("acknowledged", { exact: true }).first(), `${role} acknowledged report`).toBeVisible();
+        }
+        await visit(page, "/field-reports");
+        await expect(page.getByRole("list", { name: "Driver reports" }).getByRole("link", { name: "Breakdown" }).first(), `${role} breakdown not resolved`).toBeVisible();
       }
       // Compliance calendar (CC1): the fleet roles see sample dates coming due.
       if (nav.includes("/fleet")) {
@@ -236,6 +251,8 @@ test("every demo mode opens its pages and each feature shows sample data", async
       if (role === "driver" || role === "multi") {
         await visit(page, "/driver");
         await expect(page.getByText(/\bload \d/i).first(), `${role} My Day has loads`).toBeVisible();
+        // The presenter's own driver report (the seed's delay; demo_field_report_samples gives an owner without one theirs).
+        await expect(page.getByRole("list", { name: "My reports" }).getByRole("listitem").first(), `${role} My reports`).toBeVisible();
       }
       // Money owed (Command Center, billing permission): the demo's issued sample invoices (one 45 days past due,
       // samples.ts demo_invoice_samples) show as owed and overdue; roles without billing never see the tile.
@@ -373,7 +390,7 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
   await expect(owner.getByText("Southfield Crossing Distribution").filter({ visible: true }).first()).toBeVisible();
   await visit(owner, "/employees?q=Cam");
   await expect(owner.getByText("Cam Webster").first()).toBeVisible();
-  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/ };
+  const filled: Record<string, RegExp> = { "/maintenance": /No open work orders/, "/time-off": /No requests yet/, "/quotes": /No quotes yet/, "/communications": /No conversations yet/, "/field-reports": /No reports to resolve/ };
   const ownerContext = owner.context();
   try {
     for (const role of PREVIEW_ROLES) {
@@ -405,6 +422,8 @@ test("a prospect demo's owner sees sample data in every demo mode after Refresh"
         await expect(owner.getByText(/^Pick up at /).first(), `${role} My Day shows the pickup`).toBeVisible();
         await expect(owner.getByRole("link", { name: "Navigate to pickup" }).first()).toHaveAttribute("href", /^https:\/\/www\.google\.com\/maps\/dir\//);
         await expect(owner.getByRole("link", { name: "Navigate to site" }).first()).toHaveAttribute("href", /destination=/);
+        // Colby's own driver report (DP1, demo_field_report_samples: each demo owner who drives relief gets one).
+        await expect(owner.getByRole("list", { name: "My reports" }).getByText("Equipment problem").first(), `${role} My reports`).toBeVisible();
       }
       // Price to be checked (M1, samples.ts priceCheckSample): the phoned-in order is marked; Owner and Office confirm
       // the price, Dispatcher sees who decides.
