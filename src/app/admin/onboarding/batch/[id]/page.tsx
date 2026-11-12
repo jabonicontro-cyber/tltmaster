@@ -1,9 +1,7 @@
 import { notFound } from "next/navigation";
 import { AdminFlash } from "@/components/admin/flash";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { formatDateTime } from "@/lib/dates";
 import { ENTITY_LABELS } from "@/lib/platform/imports";
@@ -11,6 +9,7 @@ import type { ImportBatch } from "@/lib/platform/types";
 import { createClient } from "@/server/supabase/server";
 import { approveImport, decideImportRow, discardImport, revertImport } from "../../../actions";
 import { ImportReview } from "@/components/imports/import-review";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Review import" };
 
@@ -33,7 +32,7 @@ export default async function ImportBatchPage({ params, searchParams }: { params
   const review = batch.status === "review";
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/onboarding")}
         title={`${ENTITY_LABELS[batch.entity]} · ${batch.file_name || "Spreadsheet"}`}
         description={`${batch.company_name} · staged ${formatDateTime(batch.created_at)} · ${batch.rows.length} rows: ${counts.valid} ready, ${counts.duplicate} possible duplicates, ${counts.error} need fixing`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding", href: "/admin/onboarding" }, { label: batch.company_name, href: `/admin/onboarding/${batch.company_id}` }, { label: "Review import" }]}
@@ -46,9 +45,9 @@ export default async function ImportBatchPage({ params, searchParams }: { params
         companyName={batch.company_name}
         actions={{ decide: decideImportRow, approve: approveImport, discard: discardImport }}
         afterApproved={
-          <Card>
-            <CardHeader title="Revert this import" description="Removes the records this import created, only while they are unchanged and unused. Anything edited or used since is kept and deactivated. Nothing else is touched." />
-            <CardBody>
+          <Panel>
+            <PanelHeader title="Revert this import" description="Removes the records this import created, only while they are unchanged and unused. Anything edited or used since is kept and deactivated. Nothing else is touched." />
+            <PanelBody>
               <form action={revertImport} className="space-y-3">
                 <input type="hidden" name="batch" value={batch.id} />
                 <Field label="Reason" htmlFor="reason">
@@ -56,8 +55,8 @@ export default async function ImportBatchPage({ params, searchParams }: { params
                 </Field>
                 <SubmitButton variant="danger" pendingLabel="Reverting…">Revert import</SubmitButton>
               </form>
-            </CardBody>
-          </Card>
+            </PanelBody>
+          </Panel>
         }
       />
     </>

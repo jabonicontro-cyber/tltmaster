@@ -21,14 +21,15 @@ const topLink = "console-press inline-flex h-9 items-center gap-1 rounded-full p
 export function AdminNav({ level = "admin" }: { level?: "admin" | "support" }) {
   const path = usePathname();
   if (level !== "admin") {
+    // The desk's pages as tabs in the row under the header (it reserves the height), so they fit a phone too.
     const here = currentLink(path, SUPPORT_LINKS);
     return (
       <nav aria-label="Platform" className="flex min-w-0 items-center">
-        {SUPPORT_LINKS.map((l) => (
-          <Link key={l.href} href={l.href} aria-current={here === l ? "page" : undefined} className={cn(topLink, "font-semibold", here === l ? "bg-ink/[0.06] text-ink" : "text-muted hover:text-ink")}>
-            <span className="pill-text">{l.label}</span>
-          </Link>
-        ))}
+        <div className="absolute inset-x-0 top-16 h-12">
+          <div className={cn(APP_CONTAINER, "flex h-full items-center gap-3")}>
+            <ConsoleTabs items={SUPPORT_LINKS.map((l) => ({ href: l.href, label: l.label, current: l === here }))} />
+          </div>
+        </div>
       </nav>
     );
   }

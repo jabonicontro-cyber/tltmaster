@@ -8,7 +8,7 @@ import { ConsolePageHeader, Panel, PanelBody, PanelHeader, PanelLink, StatGrid, 
 import { TERMS } from "@/lib/terminology";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FlashToast } from "@/components/ui/flash-toast";
-import { AUDIENCE_LABELS, CHECK_LABELS, IMPLEMENTATION_LABELS, LAB_VIEWS, latestCheck, type LabAudience, type LabCheck, type LabView } from "@/lib/platform/testing-lab";
+import { AUDIENCE_LABELS, CHECK_LABELS, IMPLEMENTATION_LABELS, LAB_VIEWS, demoPlanLabel, latestCheck, viewUpdateNote, type LabAudience, type LabCheck, type LabView } from "@/lib/platform/testing-lab";
 import { formatDateTime } from "@/lib/dates";
 import { requirePlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
@@ -23,7 +23,6 @@ type Demo = {
 };
 type Check = { view_key: string; company_id: string | null; status: LabCheck; note: string; checked_at: string; checked_by: string | null };
 
-const PLAN_LABEL: Record<string, string> = { essential: "Essential", growth: "Growth", professional: "Professional" };
 const AUDIENCES = Object.keys(AUDIENCE_LABELS) as LabAudience[];
 
 /**
@@ -71,7 +70,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
                 <Field label="Demo company" htmlFor="demo">
                   <Select id="demo" name="demo" defaultValue={selectedId ?? ""}>
                     {demos.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.demo_kind === "presenter" ? "presenter demo" : "prospect demo"}{d.demo_plan ? `, ${PLAN_LABEL[d.demo_plan]}` : ""})</option>
+                      <option key={d.id} value={d.id}>{d.name} ({d.demo_kind === "presenter" ? "presenter demo" : "prospect demo"}, {demoPlanLabel(d.demo_plan)})</option>
                     ))}
                   </Select>
                 </Field>
@@ -84,7 +83,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
                   compact
                   stats={[
                     { label: "Environment", value: "Demo (fictional data)" },
-                    { label: "Plan", value: demo.plan ? PLAN_LABEL[demo.plan] : "Not set" },
+                    { label: "Plan", value: demoPlanLabel(demo.plan) },
                     { label: "Dispatch bases", value: String(demo.bases) },
                     { label: "Customer portal", value: demo.portal.open ? "Open" : demo.portal.entitled ? "Entitled, off" : "Off", sub: demo.portal.open ? (demo.portal.public_page ? "Public page on" : "Public page off") : undefined },
                   ]}
@@ -132,7 +131,7 @@ function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; 
         </p>
         <p className="max-w-2xl text-sm leading-relaxed text-muted">{view.what}</p>
         {view.note ? <p className="max-w-2xl text-sm leading-relaxed text-muted">{view.note}</p> : null}
-        {view.migration ? <p className="text-xs text-muted">Needs a database update that may not be installed on this server yet.</p> : null}
+        {viewUpdateNote(view, !labMissing) ? <p className="text-xs text-muted">{viewUpdateNote(view, !labMissing)}</p> : null}
         {check ? <p className="text-xs text-muted">{CHECK_LABELS[check.status]} {formatDateTime(check.checked_at)}{check.checked_by ? ` by ${check.checked_by}` : ""}{check.note ? `: ${check.note}` : ""}</p> : null}
       </div>
       <div className="flex flex-col items-start gap-2 lg:items-end">

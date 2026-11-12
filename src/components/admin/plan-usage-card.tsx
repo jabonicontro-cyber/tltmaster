@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -7,6 +6,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import type { PlanVersion } from "@/lib/platform/lifecycle";
 import { usd } from "@/lib/site/pricing";
 import { cancelTierChange, scheduleTierChange, setRenewal } from "@/app/admin/lifecycle-actions";
+import { Panel, PanelBody, PanelHeader } from "@/components/admin/ui";
 
 // Subscription notices (SUB1, 20261120008800) for the platform team: usage against the plan, renewal, the grace period,
 // a proposed plan change waiting for a person's decision, and the notices recorded for the customer.
@@ -40,13 +40,13 @@ export function PlanUsageCard({ companyId, state, plans, terms }: { companyId: s
   const tc = state.tier_change;
   return (
     <section aria-label="Plan usage and notices" className="mt-5">
-      <Card>
-        <CardHeader
+      <Panel>
+        <PanelHeader
           title="Plan usage and notices"
           description="Checked every day. Renewal reminders 30, 7 and 1 day before; a 30-day grace when over the plan; a plan change only after you schedule it and the customer is told."
           actions={over ? <Badge tone="amber">Over the plan</Badge> : <Badge tone="green">Within the plan</Badge>}
         />
-        <CardBody className="space-y-5">
+        <PanelBody className="space-y-5">
           <dl className="grid grid-cols-2 gap-4 text-sm sm:grid-cols-4">
             <div><dt className="text-muted">Trucks</dt><dd className="tabular font-semibold">{state.trucks}{state.limit_trucks !== null ? ` of ${state.limit_trucks}` : ""}</dd></div>
             <div><dt className="text-muted">Dispatch bases</dt><dd className="tabular font-semibold">{state.bases}{state.limit_bases !== null ? ` of ${state.limit_bases}` : ""}</dd></div>
@@ -108,8 +108,8 @@ export function PlanUsageCard({ companyId, state, plans, terms }: { companyId: s
               </ul>
             )}
           </div>
-        </CardBody>
-      </Card>
+        </PanelBody>
+      </Panel>
     </section>
   );
 }

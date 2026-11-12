@@ -76,5 +76,5 @@ test("a support request is reviewed before it is sent, and only the sender sees 
   await signInPlatform(admin);
   await expect(admin).toHaveURL(/\/admin$|\/command-center/);
   await admin.goto("/admin/support");
-  await expect(admin.getByRole("table", { name: "Support requests" }).getByRole("row").filter({ hasText: text })).toContainText("/dispatch");
+  await expect(admin.getByRole("list", { name: "Support requests" }).getByRole("link").filter({ hasText: text })).toContainText("/dispatch");
 });

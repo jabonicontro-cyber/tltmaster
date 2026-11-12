@@ -6,6 +6,7 @@ import { EmptyState, ErrorState } from "@/components/ui/states";
 import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, FilterBar, FilterField, groupOf } from "@/components/admin/ui";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONES, isLeadStatus, type LeadStatus } from "@/lib/platform/leads";
+import { LeadViews } from "@/components/admin/lead-pipeline";
 import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Leads" };
@@ -38,7 +39,7 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const today = new Date().toISOString().slice(0, 10);
   return (
     <>
-      <ConsolePageHeader eyebrow={groupOf("/admin/leads")} title="Leads" description="Demo requests and contact messages from the public website. Leads flagged as spam are hidden unless you filter for them." />
+      <ConsolePageHeader eyebrow={groupOf("/admin/leads")} title="Leads" description="Demo requests and contact messages from the public website. Leads flagged as spam are hidden unless you filter for them." actions={<LeadViews current="list" />} />
       <FilterBar aria-label="Filter leads">
         <FilterField label="Search" grow>
           <Input name="q" defaultValue={q} placeholder="Name, email, company or message" />

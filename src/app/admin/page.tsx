@@ -12,7 +12,7 @@ import { ConsoleBand, ConsolePageHeader, Panel, PanelHeader, PanelLink, StatGrid
 import { ackFor, type Console } from "@/lib/platform/lifecycle";
 import { usd } from "@/lib/site/pricing";
 import { acknowledgeAttention } from "./lifecycle-actions";
-import { ATTENTION_ACTIONS, ATTENTION_LABELS, activityHref, activityText, ageText, attentionHref, type Launchpad } from "@/lib/platform/launchpad";
+import { ATTENTION_ACTIONS, ATTENTION_LABELS, activityHref, activityText, ageText, attentionHref, customersSub, demoScheduledSub, type Launchpad } from "@/lib/platform/launchpad";
 import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Launchpad" };
@@ -55,7 +55,7 @@ export default async function LaunchpadPage() {
   const kpiNote = consoleRes.error?.code === "PGRST202" ? "Needs a database update" : "Could not be read";
   const now = Date.parse(p.as_of); // ages are measured at the moment the figures were read
   const kpis: Stat[] = [
-    { label: "Customer companies", value: k ? String(k.customers.live) : "–", sub: k ? `live · ${k.customers.total} active in all` : kpiNote, href: "/admin/companies" },
+    { label: "Customer companies", value: k ? String(k.customers.live) : "–", sub: k ? customersSub(k.customers) : kpiNote, href: "/admin/companies" },
     { label: "Monthly recurring revenue", value: k ? usd(k.mrr.cents) : "–", sub: k ? `agreed amounts of ${k.mrr.live} live compan${k.mrr.live === 1 ? "y" : "ies"}${k.mrr.free ? ` (${k.mrr.free} free beta)` : ""}` : kpiNote, href: "/admin/companies" },
     { label: "Pipeline", value: k ? String(k.pipeline.open) : "–", sub: k ? `open leads · ${k.pipeline.demo_scheduled} demo scheduled · ${k.pipeline.overdue} overdue` : kpiNote, href: "/admin/leads" },
     { label: "Onboarding", value: k ? String(k.customers.onboarding + k.customers.fee_due) : "–", sub: k ? `${k.customers.fee_due} fee due · ${k.customers.go_live_14d} going live within 14 days` : kpiNote, href: "/admin/companies" },
@@ -65,7 +65,7 @@ export default async function LaunchpadPage() {
     { label: "Setup not complete", value: p.companies.setup_incomplete, sub: "Missing an owner login, customers, trucks or drivers", href: "/admin/companies?setup=open", tone: p.companies.setup_incomplete > 0 ? "attention" : "default" },
     { label: "New leads", value: p.leads.new, sub: `${p.leads.due_today} follow-up${p.leads.due_today === 1 ? "" : "s"} due today`, href: "/admin/leads?status=new", tone: p.leads.new > 0 ? "attention" : "default" },
     { label: "Follow-ups overdue", value: p.leads.overdue, sub: "Past the follow-up date you set", href: "/admin/leads?due=1", tone: p.leads.overdue > 0 ? "critical" : "default" },
-    { label: "Demos scheduled", value: p.leads.demo_scheduled, sub: "Leads marked Demo Scheduled", href: "/admin/leads?status=demo_scheduled" },
+    { label: "Demos scheduled", value: p.leads.demo_scheduled, sub: demoScheduledSub(p.leads, formatDate), href: "/admin/leads?status=demo_scheduled" },
     { label: "Imports to review", value: p.imports.in_review, sub: p.imports.oldest_review_at ? `Oldest waiting ${ageText(p.imports.oldest_review_at, now)}` : `${p.imports.approved_30d} approved in 30 days`, href: "/admin/onboarding", tone: p.imports.in_review > 0 ? "attention" : "default" },
   ];
   return (

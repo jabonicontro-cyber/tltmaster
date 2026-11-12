@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { PREVIEW_COOKIE, parsePreviewRole } from "@/lib/platform/preview";
+import { labDestination } from "@/lib/platform/testing-lab";
 import { assertPlatformAdmin } from "@/server/platform";
 import { requestIsHttps } from "@/server/site-access-request";
 import { createClient } from "@/server/supabase/server";
@@ -38,7 +39,7 @@ export async function openDemoAs(formData: FormData) {
   if (role) jar.set(PREVIEW_COOKIE, role, { httpOnly: true, sameSite: "lax", secure: await requestIsHttps(), path: "/", maxAge: 60 * 60 * 8 });
   else jar.delete(PREVIEW_COOKIE);
   revalidatePath("/", "layout");
-  redirect(role === "driver" ? "/driver" : String(formData.get("to") ?? "") === "help" ? "/help" : "/command-center");
+  redirect(role === "driver" ? "/driver" : labDestination(formData.get("to")) ?? "/command-center");
 }
 
 /** See a demo company's customer portal as one of its demo customers, for one hour (audited; demo companies only). */

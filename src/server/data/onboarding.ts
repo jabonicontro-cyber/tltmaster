@@ -11,7 +11,7 @@ export type Loaded<T> = { ok: true; data: T } | { ok: false; reason: "not_instal
 const MISSING = ["PGRST202", "42883", "42P01"];
 
 function failed(error: { code?: string; message: string }): Loaded<never> {
-  if (MISSING.includes(error.code ?? "")) return { ok: false, reason: "not_installed", message: "Guided onboarding needs the database update 20261120001000, which is not installed yet." };
+  if (MISSING.includes(error.code ?? "")) return { ok: false, reason: "not_installed", message: "The onboarding checklist is not available on this database yet." };
   console.error("Onboarding read failed", { code: error.code });
   return { ok: false, reason: "error", message: "The onboarding checklist could not be loaded right now. Nothing was changed; try again in a moment." };
 }

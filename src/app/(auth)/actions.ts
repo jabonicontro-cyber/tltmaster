@@ -62,6 +62,12 @@ export async function signIn(formData: FormData): Promise<ActionResult> {
   // No page to return to: a mechanic-only login starts on My jobs (B2); everyone else on the usual landing. Read with
   // the session just created; any failure keeps the usual landing (each page checks access again).
   if (!parsed.data.next) {
+    // The Taviron team starts on its own workspace (PC1): Admins on the Launchpad, Support on Company access, even
+    // when they have opened a demo company before (that membership would otherwise land them in its Command Center).
+    const staff = await supabase.rpc("platform_staff_whoami");
+    const level = staff.error ? null : (staff.data as string | null);
+    if (level === "admin") redirect("/admin");
+    if (level === "support") redirect("/staff");
     const { data } = await supabase.rpc("my_access");
     const home = signInHome(((data as { permissions?: string[] } | null)?.permissions) ?? []);
     if (home) redirect(home);

@@ -107,7 +107,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByRole("navigation", { name: "Platform" }).getByRole("button", { name: "Sales" }).click();
   await page.getByRole("menuitem", { name: /^Leads/ }).click();
   await expect(page).toHaveURL(/\/admin\/leads$/);
-  await page.getByLabel("Search").fill(id);
+  await page.getByLabel("Search", { exact: true }).fill(id);
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("link", { name: `Pat Example ${id}` }).click();
   await expect(page.getByText(`Example Hauling ${id} (test)`).first()).toBeVisible();
@@ -319,7 +319,8 @@ test("team-led onboarding: map a spreadsheet, review, approve, then revert witho
 
   // Every step is in the audit log.
   await page.goto("/admin/platform");
-  for (const a of ["Company created", "Import staged", "Import approved", "Import reverted"]) await expect(page.getByText(a).first()).toBeVisible();
+  const log = page.getByRole("table", { name: "Audit log" });
+  for (const a of ["Company created", "Import uploaded for review", "Import approved", "Import reverted"]) await expect(log.getByText(a).first()).toBeVisible();
 });
 
 test("the Launchpad shows live platform work, links each item to its record, and the company directory filters and opens a company", async ({ page }) => {
@@ -352,7 +353,8 @@ test("the Launchpad shows live platform work, links each item to its record, and
   await expect(page.getByRole("heading", { name })).toBeVisible();
   await expect(page.getByRole("list", { name: "Setup steps" }).getByRole("listitem")).toHaveCount(4);
   await expect(page.getByText("Nobody can sign in to this company yet.")).toBeVisible();
-  await expect(page.getByText(/Company created: Created company/)).toBeVisible();
+  // The customer timeline (PC1) holds the platform action, with what it recorded.
+  await expect(page.getByRole("list", { name: "Customer timeline" }).getByRole("listitem").filter({ hasText: "Company created" }).filter({ hasText: /Created company/ })).toBeVisible();
   // The same name is refused instead of creating a duplicate company.
   await page.goto("/admin/onboarding");
   await page.getByLabel("Company name").fill(name);

@@ -4,7 +4,7 @@ import { Dialog as D } from "radix-ui";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { AppWindow, Menu, X } from "lucide-react";
+import { AppWindow, Menu, Search, X } from "lucide-react";
 import { BrandMark } from "@/components/layout/brand";
 import { cn } from "@/lib/cn";
 import { APP_CONTAINER } from "@/lib/layout";
@@ -27,7 +27,7 @@ export interface ConsoleUser {
  */
 export function ConsoleHeader({ level, user }: { level: "admin" | "support"; user: ConsoleUser }) {
   const path = usePathname();
-  const tabsRow = level === "admin" && currentGroup(path) !== null;
+  const tabsRow = level === "support" || currentGroup(path) !== null;
   const home = level === "admin" ? "/admin" : "/staff";
   return (
     <header className={cn("console-header sticky top-0 z-40 bg-surface/85 backdrop-blur-xl backdrop-saturate-150", tabsRow && "pb-12")}>
@@ -41,6 +41,9 @@ export function ConsoleHeader({ level, user }: { level: "admin" | "support"; use
         </Link>
         <AdminNav level={level} />
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Link href="/staff/search" aria-label="Search the console" className="console-press flex size-11 items-center justify-center rounded-xl text-muted hover:bg-ink/[0.05] hover:text-ink">
+            <Search className="size-5" aria-hidden />
+          </Link>
           <AdminUserMenu {...user} />
           {level === "admin" ? <ConsoleMobileMenu path={path} /> : null}
         </div>

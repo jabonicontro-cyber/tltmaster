@@ -6,6 +6,8 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
 import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, FilterBar, FilterField, groupOf } from "@/components/admin/ui";
 import { formatDate } from "@/lib/dates";
+import { HealthBadge } from "@/components/admin/company-insights";
+import { companyHealth } from "@/server/data/console";
 import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Companies" };
@@ -42,7 +44,9 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
   const type = sp.type === "production" || sp.type === "practice" ? sp.type : "";
   const archived = sp.archived === "include" || sp.archived === "only" ? sp.archived : "";
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("platform_company_directory");
+  const [{ data, error }, health] = await Promise.all([supabase.rpc("platform_company_directory"), companyHealth()]);
+  // Health at a glance (PC1); the column is left out before that update is installed.
+  const healthById = health.ok ? new Map(health.data.rows.map((h) => [h.company_id, h])) : null;
   const all = (data ?? []) as DirectoryRow[];
   const rows = all
     .filter((c) => !q || c.name.toLowerCase().includes(q) || c.slug.includes(q))
@@ -88,7 +92,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
       ) : rows.length === 0 ? (
         <EmptyState title={all.length ? "No company matches" : "No customer companies yet"} description={all.length ? "Change the filters to see more." : "Create the first one in Onboarding."} className="rounded-xl border border-line bg-card" />
       ) : (
-        <DataTable aria-label="Customer companies" head={<><DataHead>Company</DataHead><DataHead>Setup</DataHead><DataHead align="right">Users</DataHead><DataHead align="right">Customers</DataHead><DataHead align="right">Trucks</DataHead><DataHead align="right">Drivers</DataHead><DataHead>Created</DataHead></>}>
+        <DataTable aria-label="Customer companies" head={<><DataHead>Company</DataHead>{healthById ? <DataHead>Health</DataHead> : null}<DataHead>Setup</DataHead><DataHead align="right">Users</DataHead><DataHead align="right">Customers</DataHead><DataHead align="right">Trucks</DataHead><DataHead align="right">Drivers</DataHead><DataHead>Created</DataHead></>}>
           {rows.map((c) => (
             <DataRow key={c.id}>
               <DataCell primary>
@@ -99,6 +103,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
                   {c.imports_in_review > 0 ? <Badge tone="amber">{c.imports_in_review} import{c.imports_in_review === 1 ? "" : "s"} to review</Badge> : null}
                 </span>
               </DataCell>
+              {healthById && health.ok ? <DataCell label="Health" empty={!healthById.get(c.id)}>{healthById.get(c.id) ? <HealthBadge health={healthById.get(c.id)!} now={health.data.now} /> : null}</DataCell> : null}
               <DataCell label="Setup"><SetupBadge status={statusOf(c)} detail={c.missing.length ? `Missing ${c.missing.join(", ")}` : ""} /></DataCell>
               <DataCell label="Users" align="right">{c.members}</DataCell>
               <DataCell label="Customers" align="right">{c.customers}</DataCell>

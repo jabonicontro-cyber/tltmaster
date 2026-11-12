@@ -1,5 +1,4 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { Checkbox, Field, Input, Select, Textarea } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
@@ -8,6 +7,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { OFFER_LABELS, STAGE_LABELS, STAGE_TONES, TERMS_LABELS, type Lifecycle, type PlanVersion } from "@/lib/platform/lifecycle";
 import { usd } from "@/lib/site/pricing";
 import { cancelSubscription, goLiveNow, recordOnboardingFee, setGoLiveDate, setLifecycleTerms } from "@/app/admin/lifecycle-actions";
+import { Panel, PanelBody, PanelHeader } from "@/components/admin/ui";
 
 const money = (c: number | null | undefined) => (c === null || c === undefined ? "–" : usd(c));
 
@@ -22,13 +22,13 @@ export function SubscriptionCard({ companyId, life, plans }: { companyId: string
   const balance = life?.stage === "live" && life.terms === "annual" && life.commitment_months_left !== null ? life.commitment_months_left * (life.agreed_monthly_cents ?? 0) : 0;
   return (
     <section aria-label="Subscription" className="mt-5">
-    <Card>
-      <CardHeader
+    <Panel>
+      <PanelHeader
         title="Subscription"
         description="Plan, onboarding fee and go-live. No payment provider is connected: nothing is charged or invoiced from here."
         actions={<Badge tone={life ? STAGE_TONES[stage] : "gray"}>{life ? STAGE_LABELS[stage] : "Not set up"}</Badge>}
       />
-      <CardBody className="space-y-5 text-sm">
+      <PanelBody className="space-y-5 text-sm">
         {life && (
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
             <div><dt className="text-xs text-muted">Plan</dt><dd className="font-semibold">{life.plan ? `${life.plan.name} (v${life.plan.version})` : "Not chosen"}</dd></div>
@@ -124,8 +124,8 @@ export function SubscriptionCard({ companyId, life, plans }: { companyId: string
             </form>
           </details>
         )}
-      </CardBody>
-    </Card>
+      </PanelBody>
+    </Panel>
     </section>
   );
 }
