@@ -208,7 +208,8 @@ export function exceptionAction(e: ExceptionItem, can: { ticketsEdit: boolean; d
     case "equipment_out_of_service":
       return { label: "Open the service record", href: `/fleet/${e.equipment_kind === "trailer" ? "trailers" : "trucks"}/${e.equipment_id}` };
     case "assignment_problem":
-      return { label: "Reassign the load", href: board(e.load_date, e.load_id) };
+      // The board shows Reassign, or, once a delivery ticket is entered, why it is locked and what to do (RL1).
+      return { label: "Open the load", href: board(e.load_date, e.load_id) };
     case "delay_report":
     case "equipment_report":
       return { label: "Open the report", href: `/field-reports/${String(e.details.report_id)}` };

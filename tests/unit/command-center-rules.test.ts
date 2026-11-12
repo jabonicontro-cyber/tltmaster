@@ -36,7 +36,7 @@ describe("links into the existing workflows", () => {
     expect(exceptionAction({ ...base, assignment_id: null }, all)).toEqual({ label: "Assign or cancel the load", href: "/dispatch?date=2026-10-09&load=l1" });
     expect(exceptionAction(base, { ticketsEdit: false, dispatch: false }).href).toBe("/billing/orders/o1");
     expect(exceptionAction({ ...base, kind: "unassigned_load" }, all).href).toBe("/dispatch?date=2026-10-09&load=l1");
-    expect(exceptionAction({ ...base, kind: "assignment_problem" }, all).label).toBe("Reassign the load");
+    expect(exceptionAction({ ...base, kind: "assignment_problem" }, all).label).toBe("Open the load");
     expect(exceptionAction({ ...base, kind: "ticket_review", ticket_id: "t1" }, all).href).toBe("/tickets/t1?queue=review"); // opens in the review queue
     expect(exceptionAction({ ...base, kind: "billing_blocked" }, all).href).toBe("/billing/orders/o1");
     expect(exceptionAction({ ...base, kind: "equipment_out_of_service", equipment_kind: "trailer", equipment_id: "e1" }, all).href).toBe("/fleet/trailers/e1");
