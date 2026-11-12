@@ -9,7 +9,7 @@
 --   2. a delay, acknowledged by the person running the samples, with the note the office added;
 --   3. an equipment problem (on the trailer when the load has one), resolved with how it was fixed;
 --   4. an edge case: "can't finish the load" from an earlier day, still not acknowledged.
--- and, for each demo owner who drives relief (their own driver record, src/server/demo/samples.ts ownerDriverDay) and
+-- and, for each demo member who drives (their own driver record; in practice the owner who drives relief, src/server/demo/samples.ts ownerDriverDay) and
 -- has never sent a report, one open equipment problem on their own load from two days ago to tomorrow, so the Driver
 -- and "Dispatcher who also drives" modes show it under My reports (a prospect owner added later gets theirs at the next
 -- Refresh, whoever runs it).
@@ -168,7 +168,8 @@ begin
     end if;
   end if;
 
-  -- Each demo owner who drives relief and has never sent a report: one open equipment problem on their own load.
+  -- Each demo member with their own driver record (in practice the demo owner who drives relief) who has never sent a
+  -- report: one open equipment problem on their own load (demo company only).
   for v_d in
     select d.id from public.drivers d
     where d.company_id = v_demo and d.active and d.user_id is not null and d.hauler_id is null
