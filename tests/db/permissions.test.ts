@@ -85,8 +85,9 @@ describe("row level security and permissions", () => {
       expect((await pgError(s.query("select public.set_user_access($1, 'owner', true, 'Me')", [office]))).code).toBe("42501");
       expect((await pgError(s.query("select public.set_role_permission('office', 'pricing.override', true)"))).code).toBe("42501");
       expect((await pgError(s.query("select public.remove_sample_data()"))).code).toBe("42501");
-      // Only order and fleet history are visible without audit.view (order_management and fleet_registry migrations).
-      expect((await s.query("select * from public.audit_events where entity_type not in ('order', 'truck', 'trailer', 'driver', 'driver_qualification')")).rowCount).toBe(0);
+      // Only order, fleet and quote history are visible without audit.view (order_management, fleet_registry and
+      // quote_history_read migrations).
+      expect((await s.query("select * from public.audit_events where entity_type not in ('order', 'truck', 'trailer', 'driver', 'driver_qualification', 'quote')")).rowCount).toBe(0);
     });
   });
 
