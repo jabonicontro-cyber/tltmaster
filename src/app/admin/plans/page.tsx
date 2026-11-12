@@ -1,12 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { Checkbox, Field, Input, Select } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState, Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 import { formatDate } from "@/lib/dates";
 import type { PlanVersion } from "@/lib/platform/lifecycle";
 import { usd } from "@/lib/site/pricing";
@@ -27,8 +25,8 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
   if (error) {
     return (
       <>
-        <PageHeader title="Plans and prices" />
-        <ErrorState title={error.code === "PGRST202" ? "Plans need a database update" : "Plans could not be loaded"} description={error.code === "PGRST202" ? "Apply migration 20261118000300 (owner step)." : "Nothing is shown rather than guessed."} />
+        <ConsolePageHeader eyebrow={groupOf("/admin/plans")} title="Plans and prices" />
+        <ErrorState title={error.code === "PGRST202" ? "Plans need a database update" : "Plans could not be loaded"} description={error.code === "PGRST202" ? "A Taviron Admin installs it. Nothing is shown rather than guessed." : "Nothing is shown rather than guessed."} />
       </>
     );
   }
@@ -37,31 +35,27 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
   return (
     <>
       <FlashToast messages={{ saved: { text: "New price version saved." } }} />
-      <PageHeader title="Plans and prices" description="Every price version, newest first. Companies keep the version they signed; a new price applies to companies that choose it afterwards." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Plans and prices" }]} />
-      {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
-      <div className="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_360px]">
-        <Card>
-          <TableWrap className="rounded-none border-0">
-            <Table>
-              <thead><tr><Th>Plan</Th><Th align="right">Monthly</Th><Th align="right">Onboarding</Th><Th>Limits</Th><Th>From</Th><Th align="right">Companies</Th></tr></thead>
-              <tbody>
-                {plans.map((p) => (
-                  <Tr key={p.id}>
-                    <Td><span className="font-semibold">{p.name}</span> <span className="text-muted">v{p.version}</span> {p.current && <Badge tone="green">Current</Badge>}{p.note && <span className="block text-xs text-muted">{p.note}</span>}</Td>
-                    <Td align="right" className="tabular">{p.monthly_cents === null ? "Quoted" : `${p.from_price ? "from " : ""}${usd(p.monthly_cents)}`}</Td>
-                    <Td align="right" className="tabular">{p.onboarding_cents === null ? "Quoted" : usd(p.onboarding_cents)}</Td>
-                    <Td className="text-xs text-muted">{p.trucks ? `${p.trucks} trucks · ${p.bases} base${p.bases === 1 ? "" : "s"}` : "–"}</Td>
-                    <Td className="whitespace-nowrap">{formatDate(p.effective_from)}</Td>
-                    <Td align="right">{p.companies}</Td>
-                  </Tr>
-                ))}
-              </tbody>
-            </Table>
-          </TableWrap>
-        </Card>
-        <Card>
-          <CardHeader title="New price version" description="From today or a later day. Earlier versions never change." />
-          <CardBody>
+      <ConsolePageHeader eyebrow={groupOf("/admin/plans")} title="Plans and prices" description="Every price version, newest first. Companies keep the version they signed; a new price applies to companies that choose it afterwards." />
+      {sp.error && <div className="mb-5"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+        <DataTable aria-label="Price versions" className="self-start" head={<><DataHead>Plan</DataHead><DataHead align="right">Monthly</DataHead><DataHead align="right">Onboarding</DataHead><DataHead>Limits</DataHead><DataHead>From</DataHead><DataHead align="right">Companies</DataHead></>}>
+          {plans.map((p) => (
+            <DataRow key={p.id}>
+              <DataCell primary>
+                <span className="flex flex-wrap items-center gap-2"><span className="font-semibold text-ink">{p.name}</span> <span className="text-sm text-muted">Version {p.version}</span> {p.current && <Badge tone="green">Current</Badge>}</span>
+                {p.note && <span className="mt-0.5 block text-xs text-muted">{p.note}</span>}
+              </DataCell>
+              <DataCell label="Monthly" align="right" className="whitespace-nowrap">{p.monthly_cents === null ? "Quoted" : `${p.from_price ? "from " : ""}${usd(p.monthly_cents)}`}</DataCell>
+              <DataCell label="Onboarding" align="right" className="whitespace-nowrap">{p.onboarding_cents === null ? "Quoted" : usd(p.onboarding_cents)}</DataCell>
+              <DataCell label="Limits" className="text-sm text-muted">{p.trucks ? `${p.trucks} trucks · ${p.bases} base${p.bases === 1 ? "" : "s"}` : "–"}</DataCell>
+              <DataCell label="From" className="whitespace-nowrap tabular">{formatDate(p.effective_from)}</DataCell>
+              <DataCell label="Companies" align="right">{p.companies}</DataCell>
+            </DataRow>
+          ))}
+        </DataTable>
+        <Panel className="self-start">
+          <PanelHeader title="New price version" description="From today or a later day. Earlier versions never change." />
+          <PanelBody>
             <form action={createPlanVersion} className="space-y-3">
               <Field label="Plan" htmlFor="plan_key">
                 <Select id="plan_key" name="plan_key" required defaultValue="">
@@ -76,11 +70,11 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
               <Field label="First day" htmlFor="effective_from"><DateInput id="effective_from" name="effective_from" required /></Field>
               <Field label="Note" htmlFor="note"><Input id="note" name="note" maxLength={500} placeholder="Why the price changes" /></Field>
               <Checkbox name="confirm" label="Save this new price version" />
-              <p className="text-xs text-muted">The public pricing page is not changed by this; update it separately.</p>
+              <p className="text-xs text-muted">The public pricing page does not change with this; it is updated separately.</p>
               <SubmitButton pendingLabel="Saving…">Save version</SubmitButton>
             </form>
-          </CardBody>
-        </Card>
+          </PanelBody>
+        </Panel>
       </div>
     </>
   );

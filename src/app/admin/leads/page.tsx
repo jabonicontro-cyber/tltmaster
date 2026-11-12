@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { buttonClasses } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Input, Select } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
-import { EmptyState } from "@/components/ui/states";
-import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
+import { EmptyState, ErrorState } from "@/components/ui/states";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, FilterBar, FilterField, groupOf } from "@/components/admin/ui";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONES, isLeadStatus, type LeadStatus } from "@/lib/platform/leads";
 import { createClient } from "@/server/supabase/server";
@@ -39,15 +38,13 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
   const today = new Date().toISOString().slice(0, 10);
   return (
     <>
-      <PageHeader title="Leads" description="Demo requests and contact messages from the public website. Leads flagged as spam are hidden unless you filter for them." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Leads" }]} />
-      <form className="mb-4 flex flex-wrap items-end gap-2" role="search">
-        <label className="min-w-56 flex-1 text-sm font-semibold">
-          Search
-          <Input name="q" defaultValue={q} placeholder="Name, email, company or message" className="mt-1" />
-        </label>
-        <label className="text-sm font-semibold">
-          Status
-          <Select name="status" defaultValue={status} className="mt-1">
+      <ConsolePageHeader eyebrow={groupOf("/admin/leads")} title="Leads" description="Demo requests and contact messages from the public website. Leads flagged as spam are hidden unless you filter for them." />
+      <FilterBar aria-label="Filter leads">
+        <FilterField label="Search" grow>
+          <Input name="q" defaultValue={q} placeholder="Name, email, company or message" />
+        </FilterField>
+        <FilterField label="Status" width="sm:w-64">
+          <Select name="status" defaultValue={status}>
             <option value="">All statuses (not spam)</option>
             {LEAD_STATUSES.map((s) => (
               <option key={s} value={s}>
@@ -56,61 +53,59 @@ export default async function LeadsPage({ searchParams }: { searchParams: Promis
             ))}
             <option value="spam">Flagged as spam</option>
           </Select>
-        </label>
-        <label className="flex h-10 items-center gap-2 text-sm font-semibold">
+        </FilterField>
+        <label className="flex h-10 items-center gap-2 text-sm font-medium text-ink">
           <input type="checkbox" name="due" value="1" defaultChecked={due} className="size-4 accent-brand" /> Follow-up due
         </label>
-        <button className={buttonClasses("dark")}>Search</button>
-      </form>
-      {error ? <p className="text-sm text-red-700">The leads could not be loaded.</p> : null}
-      {leads.length === 0 ? (
-        <EmptyState title={q || status || due ? "No leads match" : "No leads yet"} description="Leads appear here when someone sends the demo request or contact form on the website." />
+        <Button type="submit" variant="secondary">Search</Button>
+      </FilterBar>
+      {error ? (
+        <ErrorState title="The leads could not be loaded" description="Nothing is shown rather than guessed. Try again in a moment." />
+      ) : leads.length === 0 ? (
+        <EmptyState title={q || status || due ? "No leads match" : "No leads yet"} description={q || status || due ? "Change the search or the filters to see more." : "Leads appear here when someone sends the demo request or contact form on the website."} className="rounded-xl border border-line bg-card" />
       ) : (
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <Th>Name</Th>
-                <Th>Company</Th>
-                <Th>Type</Th>
-                <Th>Status</Th>
-                <Th>Owner</Th>
-                <Th>Follow-up</Th>
-                <Th>Last message</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((l) => (
-                <Tr key={l.id}>
-                  <Td>
-                    <Link href={`/admin/leads/${l.id}`} className="font-semibold hover:underline">
+        <>
+          <DataTable aria-label="Leads" head={<><DataHead>Name</DataHead><DataHead>Company</DataHead><DataHead>Type</DataHead><DataHead>Status</DataHead><DataHead>Owner</DataHead><DataHead>Follow-up</DataHead><DataHead>Last message</DataHead></>}>
+            {leads.map((l) => {
+              const overdue = Boolean(l.follow_up_on && l.follow_up_on <= today);
+              return (
+                <DataRow key={l.id}>
+                  <DataCell primary>
+                    <Link href={`/admin/leads/${l.id}`} className="font-semibold text-ink hover:text-brand-fg hover:underline">
                       {l.name}
                     </Link>
-                    <div className="text-xs text-muted">{l.email}</div>
-                  </Td>
-                  <Td>
-                    {l.company_name || <span className="text-muted">–</span>}
-                    {l.truck_count !== null || l.base_count !== null ? (
-                      <div className="text-xs text-muted">
-                        {l.truck_count ?? "–"} truck{l.truck_count === 1 ? "" : "s"} · {l.base_count ?? "–"} base{l.base_count === 1 ? "" : "s"}
-                      </div>
-                    ) : l.fleet_size ? (
-                      <div className="text-xs text-muted">{l.fleet_size}</div>
-                    ) : null}
-                  </Td>
-                  <Td>{l.kind === "demo" ? "Demo request" : "Contact"}{l.submission_count > 1 ? <span className="text-xs text-muted"> · {l.submission_count}×</span> : null}</Td>
-                  <Td>
-                    <Badge tone={LEAD_STATUS_TONES[l.status]}>{LEAD_STATUS_LABELS[l.status]}</Badge>
-                    {l.disposition === "spam" ? <Badge tone="gray">Spam</Badge> : null}
-                  </Td>
-                  <Td>{l.owner_name ?? <span className="text-muted">Unassigned</span>}</Td>
-                  <Td className={l.follow_up_on && l.follow_up_on <= today ? "font-semibold text-red-700" : undefined}>{l.follow_up_on ? formatDate(l.follow_up_on) : "–"}</Td>
-                  <Td className="whitespace-nowrap">{formatDateTime(l.last_submitted_at)}</Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+                    <div className="text-xs break-all text-muted">{l.email}</div>
+                  </DataCell>
+                  <DataCell label="Company" empty={!l.company_name}>
+                    <span>
+                      {l.company_name || <span className="text-muted">–</span>}
+                      {l.truck_count !== null || l.base_count !== null ? (
+                        <span className="block text-xs text-muted">
+                          {l.truck_count ?? "–"} truck{l.truck_count === 1 ? "" : "s"} · {l.base_count ?? "–"} base{l.base_count === 1 ? "" : "s"}
+                        </span>
+                      ) : l.fleet_size ? (
+                        <span className="block text-xs text-muted">{l.fleet_size}</span>
+                      ) : null}
+                    </span>
+                  </DataCell>
+                  <DataCell label="Type" className="whitespace-nowrap">{l.kind === "demo" ? "Demo request" : "Contact"}{l.submission_count > 1 ? <span className="text-xs text-muted"> · {l.submission_count}×</span> : null}</DataCell>
+                  <DataCell label="Status">
+                    <span className="inline-flex flex-wrap gap-1">
+                      <Badge tone={LEAD_STATUS_TONES[l.status]}>{LEAD_STATUS_LABELS[l.status]}</Badge>
+                      {l.disposition === "spam" ? <Badge tone="gray">Spam</Badge> : null}
+                    </span>
+                  </DataCell>
+                  <DataCell label="Owner">{l.owner_name ?? <span className="text-muted">Unassigned</span>}</DataCell>
+                  <DataCell label="Follow-up" empty={!l.follow_up_on} className={overdue ? "font-semibold whitespace-nowrap text-critical" : "whitespace-nowrap"}>
+                    {l.follow_up_on ? <span>{formatDate(l.follow_up_on)}{overdue ? <span className="sr-only"> (due)</span> : null}</span> : "–"}
+                  </DataCell>
+                  <DataCell label="Last message" className="whitespace-nowrap text-muted tabular">{formatDateTime(l.last_submitted_at)}</DataCell>
+                </DataRow>
+              );
+            })}
+          </DataTable>
+          <p className="mt-3 text-xs text-muted">{leads.length} lead{leads.length === 1 ? "" : "s"}{q || status || due ? (leads.length === 1 ? " matches" : " match") : ""}.</p>
+        </>
       )}
     </>
   );

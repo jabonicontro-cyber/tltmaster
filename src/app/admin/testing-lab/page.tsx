@@ -2,10 +2,10 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, Notice } from "@/components/ui/states";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, PanelLink, StatGrid, groupOf } from "@/components/admin/ui";
+import { TERMS } from "@/lib/terminology";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { AUDIENCE_LABELS, CHECK_LABELS, IMPLEMENTATION_LABELS, LAB_VIEWS, latestCheck, type LabAudience, type LabCheck, type LabView } from "@/lib/platform/testing-lab";
@@ -48,24 +48,25 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
 
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader
+        eyebrow={groupOf("/admin/testing-lab")}
         title="Testing Lab"
         description="Open each Taviron experience as its real audience would see it, inside an isolated demo company, and record what you checked. Previews never use a real customer's data, and nothing is emailed, charged or sent."
-        crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Testing Lab" }]}
+        actions={demos.length > 0 ? <PanelLink href="/admin/demo">Plans and refresh in {TERMS.demoManagement}</PanelLink> : undefined}
       />
       <FlashToast messages={{ saved: { text: sp.saved === "portal" ? "Demo portal turned on (public page and tracking links on)." : "Saved." } }} />
-      {sp.error ? <div className="mb-4"><Notice tone="warning" title="Not done">{sp.error}</Notice></div> : null}
+      {sp.error ? <div className="mb-5"><Notice tone="warning" title="Not done">{sp.error}</Notice></div> : null}
       {labMissing ? (
-        <div className="mb-4"><Notice tone="warning" title="Needs a database update">The Testing Lab needs migrations 20261120000700 and 20261120000800 (owner step). Role views below still work.</Notice></div>
+        <div className="mb-5"><Notice tone="warning" title="Recording results is not available yet">It needs a database update that a Taviron Admin installs. Opening the views below still works.</Notice></div>
       ) : null}
 
       {demos.length === 0 ? (
-        <EmptyState title="No demo company yet" description="Create one in Demo Management first; the Testing Lab only ever works inside demo companies." action={<Link href="/admin/demo" className={buttonClasses("primary")}>Demo Management</Link>} />
+        <EmptyState title="No demo company yet" description={`Create one in ${TERMS.demoManagement} first; the Testing Lab only ever works inside demo companies.`} action={<Link href="/admin/demo" className={buttonClasses("primary")}>{TERMS.demoManagement}</Link>} className="rounded-xl border border-line bg-card" />
       ) : (
-        <div className="space-y-5">
-          <Card>
-            <CardHeader title="Test Environment" description="Every view below opens inside this demo company. Change its plan or refresh its sample data in Demo Management." />
-            <CardBody className="space-y-4">
+        <div className="space-y-6">
+          <Panel aria-label="Test environment">
+            <PanelHeader title="Test environment" description={`Every view below opens inside this demo company. Change its plan or refresh its sample data in ${TERMS.demoManagement}.`} />
+            <PanelBody className="space-y-4">
               <form className="flex flex-wrap items-end gap-3" method="get">
                 <Field label="Demo company" htmlFor="demo">
                   <Select id="demo" name="demo" defaultValue={selectedId ?? ""}>
@@ -75,77 +76,70 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
                   </Select>
                 </Field>
                 <button type="submit" className={buttonClasses("secondary")}>Choose</button>
-                <Link href="/admin/demo" className="pb-2 text-sm font-semibold text-brand-fg hover:underline">Plans and refresh in Demo Management</Link>
               </form>
               {demo ? (
-                <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-4">
-                  <Fact label="Environment" value="Demo (fictional data)" />
-                  <Fact label="Plan" value={demo.plan ? PLAN_LABEL[demo.plan] : "Not set"} />
-                  <Fact label="Dispatch bases" value={String(demo.bases)} />
-                  <Fact label="Customer portal" value={demo.portal.open ? `Open${demo.portal.public_page ? ", public page" : ""}` : demo.portal.entitled ? "Entitled, off" : "Off"} />
-                </dl>
+                <StatGrid
+                  label="This demo"
+                  columns={4}
+                  compact
+                  stats={[
+                    { label: "Environment", value: "Demo (fictional data)" },
+                    { label: "Plan", value: demo.plan ? PLAN_LABEL[demo.plan] : "Not set" },
+                    { label: "Dispatch bases", value: String(demo.bases) },
+                    { label: "Customer portal", value: demo.portal.open ? "Open" : demo.portal.entitled ? "Entitled, off" : "Off", sub: demo.portal.open ? (demo.portal.public_page ? "Public page on" : "Public page off") : undefined },
+                  ]}
+                />
               ) : selectedId && !labMissing ? (
                 <p className="text-sm text-muted">This demo&apos;s details could not be loaded.</p>
               ) : null}
-              {demo && !demo.member ? <Notice tone="warning" title="You are not a member of this demo">Role views need membership: open the demo once from Demo Management, or use a demo you created.</Notice> : null}
-            </CardBody>
-          </Card>
+              {demo && !demo.member ? <Notice tone="warning" title="You are not a member of this demo">Role views need membership: open the demo once from {TERMS.demoManagement}, or use a demo you created.</Notice> : null}
+            </PanelBody>
+          </Panel>
 
           {AUDIENCES.map((aud) => (
-            <Card key={aud}>
-              <CardHeader title={AUDIENCE_LABELS[aud]} />
-              <CardBody>
-                <ul className="divide-y divide-line">
-                  {LAB_VIEWS.filter((v) => v.audience === aud).map((v) => (
-                    <ViewRow key={v.key} view={v} demo={demo} companyId={selectedId} check={latestCheck(checks, v.key, selectedId)} labMissing={labMissing} />
-                  ))}
-                </ul>
-              </CardBody>
-            </Card>
+            <Panel key={aud}>
+              <PanelHeader title={AUDIENCE_LABELS[aud]} />
+              <ul className="border-t border-line">
+                {LAB_VIEWS.filter((v) => v.audience === aud).map((v) => (
+                  <ViewRow key={v.key} view={v} demo={demo} companyId={selectedId} check={latestCheck(checks, v.key, selectedId)} labMissing={labMissing} />
+                ))}
+              </ul>
+            </Panel>
           ))}
 
-          <Card>
-            <CardHeader title="Safety" />
-            <CardBody className="space-y-2 text-sm text-muted">
-              <p>Role views only narrow your own permissions inside the demo (the server and database keep enforcing the real ones). Customer previews are allowed by the database for demo companies only, last one hour and are recorded in the platform audit.</p>
-              <p>Resetting test data is Demo Management → Refresh demo data: additive, demo companies only, never touches a real company. Emails from demos are shown, never sent; no payment provider is connected.</p>
-            </CardBody>
-          </Card>
+          <Panel>
+            <PanelHeader title="Safety" />
+            <PanelBody className="space-y-2 text-sm leading-relaxed text-muted">
+              <p>Role views only narrow your own permissions inside the demo (the server and database keep enforcing the real ones). Customer previews are allowed by the database for demo companies only, last one hour and are recorded in the audit log.</p>
+              <p>To reset test data, use Refresh demo data in {TERMS.demoManagement}: it only adds, works on demo companies only and never touches a real company. Emails from demos are shown, never sent; no payment provider is connected.</p>
+            </PanelBody>
+          </Panel>
         </div>
       )}
     </>
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-muted">{label}</dt>
-      <dd className="font-semibold text-ink">{value}</dd>
-    </div>
-  );
-}
-
 function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; demo: Demo | null; companyId: string | null; check: Check | null; labMissing: boolean }) {
   const impl = view.implementation;
   return (
-    <li id={`check-${view.key}`} className="grid grid-cols-1 gap-3 py-4 lg:grid-cols-[1fr_auto]">
-      <div className="space-y-1">
+    <li id={`check-${view.key}`} className="grid scroll-mt-32 grid-cols-1 gap-x-6 gap-y-3 border-b border-line/70 px-5 py-4 last:border-b-0 sm:px-6 lg:grid-cols-[minmax(0,1fr)_auto]">
+      <div className="min-w-0 space-y-1">
         <p className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-ink">{view.title}</span>
           <Badge tone={impl === "available" ? "blue" : impl === "not_implemented" ? "gray" : "amber"}>{IMPLEMENTATION_LABELS[impl]}</Badge>
           {check ? <Badge tone={check.status === "tested" ? "green" : check.status === "failing" ? "critical-soft" : "amber"}>{CHECK_LABELS[check.status]}</Badge> : <Badge tone="gray">Not tested yet</Badge>}
         </p>
-        <p className="text-sm text-muted">{view.what}</p>
-        {view.note ? <p className="text-sm text-muted">{view.note}</p> : null}
-        {view.migration ? <p className="text-xs text-muted">Needs migration {view.migration} on the database you are using.</p> : null}
+        <p className="max-w-2xl text-sm leading-relaxed text-muted">{view.what}</p>
+        {view.note ? <p className="max-w-2xl text-sm leading-relaxed text-muted">{view.note}</p> : null}
+        {view.migration ? <p className="text-xs text-muted">Needs a database update that may not be installed on this server yet.</p> : null}
         {check ? <p className="text-xs text-muted">{CHECK_LABELS[check.status]} {formatDateTime(check.checked_at)}{check.checked_by ? ` by ${check.checked_by}` : ""}{check.note ? `: ${check.note}` : ""}</p> : null}
       </div>
       <div className="flex flex-col items-start gap-2 lg:items-end">
         <OpenControl view={view} demo={demo} companyId={companyId} />
         {!labMissing && impl !== "not_implemented" ? (
           <details className="w-full text-sm lg:w-auto">
-            <summary className="cursor-pointer text-right font-semibold text-brand-fg">Record a result</summary>
+            <summary className="cursor-pointer font-semibold text-brand-fg hover:underline lg:text-right">Record a result</summary>
             <form action={recordCheck} className="mt-2 flex flex-wrap items-end gap-2 lg:justify-end">
               <input type="hidden" name="view" value={view.key} />
               {companyId ? <input type="hidden" name="company" value={companyId} /> : null}
