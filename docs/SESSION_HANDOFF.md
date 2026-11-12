@@ -7,6 +7,23 @@ project credentials. Read it together with:
 - `docs/RELEASE_CHECKLIST.md`: what to check before calling a release done.
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
+## 00000000000000000000000000000. 2026-11-12 — owner decisions (question by question) and the next release
+
+- **Owner answers 2026-11-12 (all the recommended option):** release the held migrations `20261120019000` (quote
+  history), `019500` (demo shop samples), `019600` (Remove sample data keeps work orders); block reassigning a load that
+  has a delivery ticket (RL1, `019700`); fuel receipt dollars only with billing.view (SEC5, `019800`); mechanics keep
+  closing finished jobs (a closed job cannot be reopened: corrected before the owner's final answer); Settings →
+  Security shows who has set up two-step (`019900`); email sending before Dec 1 (owner signs up, walked through step by
+  step); Top Line uses QuickBooks Online (owner creates the free Intuit sandbox); GitHub on the daily check (owner
+  connects it at claude.ai connectors, then the scheduled task is re-created with it).
+- **Owner approval 2026-11-12 ("ill give approval now, just notify me when complete"):** the database updates of this
+  release: the three above, RL1, SEC5, two-step status, demo driver report samples and the platform console's new
+  functions. Destructive migrations still stop in the workflow for the owner.
+- **Owner request 2026-11-12:** the platform console "fully complete", same look and feel as the Taviron site,
+  professional and polished, full of features useful for Taviron staff. Audit done (agent walkthrough as Admin and
+  Support); redesign and features in progress. Not built (owner decision needed): inviting a company's owner from the
+  console; revenue views beyond today's.
+
 ## 0000000000000000000000000000. 2026-11-11 (workday) — `a1d294c` and complete lists past 1000 rows (RC1)
 
 - **Production = `00e08e5`** (fast-forward from `4912577`, code only, auto-promotion rule): full CI green on the Preview
