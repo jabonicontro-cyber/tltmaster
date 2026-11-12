@@ -96,9 +96,14 @@ describe("dispatch base access on attached records", () => {
       expect(refusal(await pgError(s.query("select public.cancel_order_load($1, 'test')", [w.lMain.load_id])))).toEqual(BASE_REFUSAL);
       expect(refusal(await pgError(s.query("select public.cancel_assignment($1, 'test')", [w.aMain])))).toEqual(BASE_REFUSAL);
       expect(refusal(await pgError(assign(s, w.lMain.load_id, w.f.t2, null, w.f.d2, w.aMain)))).toEqual(BASE_REFUSAL);
-      // Their own load with another base's truck or driver, picked by id.
-      expect(refusal(await pgError(assign(s, w.lNorth.load_id, w.f.t1, null, w.f.d2, w.aNorth)))).toEqual(BASE_REFUSAL);
-      expect(refusal(await pgError(assign(s, w.lNorth.load_id, w.f.t2, null, w.f.d1, w.aNorth)))).toEqual(BASE_REFUSAL);
+      // Their own load with another base's truck or driver, picked by id. A load without a ticket: a ticketed load keeps
+      // its truck and driver whatever the base (RL1, 20261120019700).
+      await s.as(w.owner);
+      const lNorth2 = await planLoad(s, w.oNorth.id, w.day, "13:00", "14:00", { planned_quantity: "20", unit_code: "ton" });
+      const aNorth2 = await assign(s, lNorth2.load_id, w.f.t2, null, w.f.d2);
+      await s.as(w.dispatcher);
+      expect(refusal(await pgError(assign(s, lNorth2.load_id, w.f.t1, null, w.f.d2, aNorth2)))).toEqual(BASE_REFUSAL);
+      expect(refusal(await pgError(assign(s, lNorth2.load_id, w.f.t2, null, w.f.d1, aNorth2)))).toEqual(BASE_REFUSAL);
       // A ticket against another base's load (duplicate confirmed, so the call reaches the insert).
       expect(refusal(await pgError(s.query("select public.submit_delivery_ticket($1::jsonb)", [JSON.stringify({
         load_id: w.lMain.load_id, order_line_id: w.oMain.materialLine, delivered_date: w.day, delivered_time: "11:00", quantity: "5", unit_code: "ton",

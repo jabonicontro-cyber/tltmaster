@@ -226,24 +226,25 @@ describe("review, correction and void", () => {
     });
   });
 
-  it("keeps the delivery record when the load is reassigned later", async () => {
+  it("keeps the delivery record: a ticketed load is not reassigned (RL1), and a correction keeps the original assignment", async () => {
     await withSession(async (s) => {
       const w = await world(s);
       await s.as(w.office);
       const r = await submit(s, w.payload);
       const before = await ticket(s, r.ticket_id);
+      // Owner decision 2026-11-12 (20261120019700): the truck and driver of a ticketed load no longer change.
       await s.as(w.office);
-      await assign(s, w.load.load_id, w.f.t2, null, w.f.d2, w.assignment);
+      expect((await pgError(assign(s, w.load.load_id, w.f.t2, null, w.f.d2, w.assignment))).message).toMatch(/already has delivery ticket/);
       const after = await ticket(s, r.ticket_id);
       expect(after).toEqual(before);
       expect(after.snapshot.truck_unit).toMatch(/^K1-/);
-      const a = (await s.query("select status, cancel_reason from public.dispatch_assignments where id = $1", [before.assignment_id])).rows[0];
-      expect(a).toEqual({ status: "canceled", cancel_reason: "Reassigned" });
+      const a = (await s.query("select status from public.dispatch_assignments where id = $1", [before.assignment_id])).rows[0];
+      expect(a).toEqual({ status: "active" });
 
-      // With no active assignment left, a correction still refers to the original one.
+      // With no active assignment left (an assignment ended before that rule), a correction still refers to the original one.
+      await s.asAdmin();
+      await s.query("update public.dispatch_assignments set status = 'canceled', canceled_at = now(), cancel_reason = 'Truck broke down' where id = $1", [before.assignment_id]);
       await s.as(w.office);
-      const current = (await s.query<{ id: string }>("select id from public.dispatch_assignments where load_id = $1 and status = 'active'", [w.load.load_id])).rows[0].id;
-      await s.query("select public.cancel_assignment($1, 'Truck broke down')", [current]);
       const c = await s.query<{ r: { ticket_id: string } }>("select public.correct_delivery_ticket($1, $2::jsonb, 'Scale reading') as r", [r.ticket_id, JSON.stringify({ ...w.payload, quantity: "21.5" })]);
       const corrected = await ticket(s, c.rows[0].r.ticket_id);
       expect(corrected).toMatchObject({ revision: 2, assignment_id: before.assignment_id, truck_id: w.f.t1, qty: "21.500", review_reasons: [] });

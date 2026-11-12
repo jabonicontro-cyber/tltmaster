@@ -5,7 +5,7 @@ import type { BaseOption } from "@/components/bases/base-field";
 import { DateInput } from "@/components/ui/date-input";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, CopyCheck, GripVertical, Keyboard, MapPin, Navigation, Pencil, Plus, Truck, XCircle } from "lucide-react";
+import { AlertTriangle, CalendarDays, ChevronLeft, ChevronRight, Clock, CopyCheck, GripVertical, Keyboard, Lock, MapPin, Navigation, Pencil, Plus, Truck, XCircle } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import type { Face } from "@/server/data/faces";
 import { toast } from "sonner";
@@ -103,12 +103,17 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
   const activeByLoad = new Map(active.map((a) => [a.load_id, a]));
   const plannedLoads = day.loads.filter((l) => l.status === "planned");
   const unassigned = plannedLoads.filter((l) => !activeByLoad.has(l.id)).length;
+  // Loads with a live delivery ticket keep their truck and driver (RL1, owner 2026-11-12): the database refuses to
+  // change them, so the board offers no reassigning, drop or batch for them and says why on the load.
+  const ticketed = new Set(day.tickets.map((t) => t.load_id));
   // Loads still to run whose truck or trailer cannot run that day (the shared readiness rule, as the Command Center's
   // Assignment problems): marked on the load in critical red instead of a green "Assigned".
   const problems = new Map<string, EquipmentProblem>();
   for (const l of plannedLoads) {
     const a = activeByLoad.get(l.id);
     if (!a || l.load_date < day.today) continue;
+    // A delivered, ticketed load is not moved; a truck-for-the-day slot still runs, so its problem stays shown.
+    if (ticketed.has(l.id) && !truckDay.has(l.order_id)) continue;
     const p = assignmentProblem(a, lk, l.load_date, day.today, lk.restrictions);
     if (p) problems.set(l.id, p);
   }
@@ -129,7 +134,7 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
   const dayHref = (date: string) => `/dispatch?date=${date}${day.base ? `&base=${day.base}` : ""}`;
 
   // Open loads (planned, no active assignment, on an order that can be dispatched): what batches work on.
-  const openLoads = plannedLoads.filter((l) => !activeByLoad.has(l.id) && DISPATCHABLE.includes(lk.orders.get(l.order_id)?.status ?? ""));
+  const openLoads = plannedLoads.filter((l) => !activeByLoad.has(l.id) && !ticketed.has(l.id) && DISPATCHABLE.includes(lk.orders.get(l.order_id)?.status ?? ""));
   /** After a load is assigned: offer the same crew for the order's other open loads that day (nothing is assigned until confirmed). */
   const assignedToast = (message: string, load: OrderLoadRow, crew: { truckId: string; trailerId: string | null; driverId: string }) => {
     const others = openLoads.filter((l) => l.order_id === load.order_id && l.id !== load.id);
@@ -301,7 +306,7 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
             <OrderRoutePanel orderId={routeOrder} date={day.date} onClose={closeRoute} inline />
           </div>
         ) : (
-          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} health={health} problems={problems}
+          <ResourcePanel day={day} active={active} lk={lk} canEdit={canEdit} health={health} problems={problems} ticketed={ticketed}
             onMove={(truck, loadIds) => openMove({ truck, loadIds, total: loadIds.length })} />
         )}
       </div>
@@ -596,7 +601,10 @@ function OrderCard({
             const current = assignments.find((a) => a.load_id === l.id && a.status === "active") ?? null;
             const previous = assignments.filter((a) => a.load_id === l.id && a.status === "canceled");
             const canceled = l.status === "canceled";
-            const droppable = canEdit && dispatchable && !canceled;
+            const loadTickets = tickets.filter((t) => t.load_id === l.id);
+            // A live delivery ticket keeps the load's truck and driver (RL1): no reassigning, dropping or selecting.
+            const ticketed = loadTickets.length > 0;
+            const droppable = canEdit && dispatchable && !canceled && !ticketed;
             const selectable = droppable && !current && l.status === "planned";
             return (
               <li
@@ -665,7 +673,7 @@ function OrderCard({
                   {l.notes && <p className="mt-1 text-sm text-muted">{l.notes}</p>}
                   <LoadTickets
                     enterLabel={enterLabel}
-                    tickets={tickets.filter((t) => t.load_id === l.id)}
+                    tickets={loadTickets}
                     canEnter={canEnterTickets && Boolean(current) && !canceled && l.load_date <= today}
                     loadId={l.id}
                   />
@@ -684,14 +692,15 @@ function OrderCard({
                 </div>
                 {canEdit && !canceled && (
                   <div className="flex flex-wrap items-start gap-1.5 sm:col-span-3 sm:justify-end">
-                    {dispatchable && !current && suggestions[l.id] && (
+                    {dispatchable && !current && !ticketed && suggestions[l.id] && (
                       <Button size="sm" icon={<Truck className="size-4" />} onClick={() => onSuggest(l, suggestions[l.id])}
                         aria-label={`Assign load ${l.load_number} to truck ${suggestions[l.id].truckLabel} and ${suggestions[l.id].driverLabel}`}
                         title="Suggested by Smart Dispatch; you confirm hours before it is assigned">
                         <span className="max-w-[16rem] truncate">{suggestions[l.id].truckLabel} · {suggestions[l.id].driverLabel}</span>
                       </Button>
                     )}
-                    {dispatchable && (
+                    {dispatchable && ticketed && <TicketedLoadNote tickets={loadTickets} truckDay={truckDay} />}
+                    {dispatchable && !ticketed && (
                       <Button size="sm" variant={(current && !problems.has(l.id)) || (!current && suggestions[l.id]) ? "secondary" : "primary"} icon={current || !suggestions[l.id] ? <Truck className="size-4" /> : undefined} onClick={() => onAssign(l)} title={!current && suggestions[l.id] ? "Pick a different truck, trailer or driver" : undefined}>
                         {current ? "Reassign" : "Assign"}
                       </Button>
@@ -699,7 +708,7 @@ function OrderCard({
                     {truckDay && current && !l.released_at && l.load_date <= today && (
                       <ReleaseTruckButton loadId={l.id} orderId={o.id} label="Release" />
                     )}
-                    {current && (
+                    {current && !ticketed && (
                       <Button size="sm" variant="ghost" aria-label={`Remove assignment from load ${l.load_number}`} onClick={() => onUnassign(current, l)}>
                         <XCircle className="size-4 text-red-700" />
                       </Button>
@@ -759,7 +768,7 @@ function stateLabel(s: ResourceState, lk: Lookup) {
   return s.warnings.length ? `Available · ${eligibilityMessage(s.warnings[0])}` : "Available";
 }
 
-function ResourcePanel({ day, active, lk, canEdit, health, problems, onMove }: { day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; /** Loads whose truck or trailer cannot run that day. */ problems: ReadonlyMap<string, EquipmentProblem>; /** Reassign these loads of the truck, one at a time. */ onMove: (truck: string, loadIds: string[]) => void }) {
+function ResourcePanel({ day, active, lk, canEdit, health, problems, ticketed, onMove }: { /** Loads with a live delivery ticket: never moved (RL1). */ ticketed: ReadonlySet<string>; day: DispatchDay; active: AssignmentRow[]; lk: Lookup; canEdit: boolean; health: Record<string, { level: "watch" | "at_risk"; reasons: string[] }>; /** Loads whose truck or trailer cannot run that day. */ problems: ReadonlyMap<string, EquipmentProblem>; /** Reassign these loads of the truck, one at a time. */ onMove: (truck: string, loadIds: string[]) => void }) {
   // Drivers and trucks can be dragged onto a load to assign them (B85); the Assign button stays the keyboard way.
   const drag = (kind: "driver" | "truck", id: string) =>
     canEdit
@@ -789,7 +798,7 @@ function ResourcePanel({ day, active, lk, canEdit, health, problems, onMove }: {
               // A part on order for a job that has not started: the truck can run; the note says what is coming (MD1).
               const partNotes = shop ? [] : partNotesOf("truck", t.id, lk.restrictions);
               // Its loads still to run while it cannot run that day: moved one at a time in the assign window.
-              const stuck = bookings.filter((b) => problems.get(b.load_id)?.kind === "truck").map((b) => b.load_id);
+              const stuck = bookings.filter((b) => problems.get(b.load_id)?.kind === "truck" && !ticketed.has(b.load_id)).map((b) => b.load_id);
               return (
                 <li key={t.id} className={cn("group/drag relative px-5 py-2 sm:px-6", canEdit && t.service_status !== "out_of_service" && "cursor-grab active:cursor-grabbing")} {...(t.service_status !== "out_of_service" ? drag("truck", t.id) : {})}>
                   <div className="flex items-center justify-between gap-2">
@@ -1155,6 +1164,30 @@ function AssignDialog({
         <p className="text-xs text-muted">The server checks eligibility and conflicts again when you save; another dispatcher may have booked a resource since this page loaded.</p>
       </div>
     </Dialog>
+  );
+}
+
+/**
+ * Why a load with a live delivery ticket shows no Reassign (RL1, owner 2026-11-12): its truck and driver stay as the
+ * ticket records them. The next step is the ticket: correct it, or void it and then reassign.
+ */
+function TicketedLoadNote({ tickets, truckDay }: { tickets: DispatchDay["tickets"]; truckDay: boolean }) {
+  const one = tickets.length === 1;
+  return (
+    <div role="note" className="w-full text-sm sm:max-w-[17rem] sm:text-right">
+      <p className="flex items-center gap-1.5 font-semibold text-ink sm:justify-end">
+        <Lock className="size-3.5 shrink-0" aria-hidden /> Can&apos;t reassign
+      </p>
+      <p className="text-muted">
+        {one ? "A delivery ticket is entered for this load. " : "Delivery tickets are entered for this load. "}
+        {truckDay ? "To swap the truck, release it and add another truck for the day. " : null}
+        Wrong truck or driver?{" "}
+        <Link href={`/tickets/${tickets[0].id}`} className="font-semibold text-brand-fg underline">
+          Correct the ticket in Tickets first
+        </Link>
+        , or void it there, then reassign.
+      </p>
+    </div>
   );
 }
 
