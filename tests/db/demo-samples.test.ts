@@ -476,8 +476,34 @@ describe.skipIf(!available)("demo feature samples", () => {
     const partCost = await q<{ n: string; cents: string }>("select count(*) n, coalesce(sum(round(quantity * unit_cost_cents)), 0) cents from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
     expect([Number(partCost.rows[0].n), Number(partCost.rows[0].cents)]).toEqual([1, 12800]);
 
+    // Driver reports (DP1, 20261120020000): four reports from fictional drivers on their own recent loads, one of each
+    // state and the edge case, visible to the owner through the app's own read (RLS), the breakdown raising its alert.
+    type Report = { kind: string; status: string; equipment: string; fictional: boolean; own_load: boolean; recent: boolean; acked: boolean; note: string };
+    const sampleReports = async () => (await q<Report>(
+      `select r.kind, r.status, r.equipment, d.user_id is null and d.hauler_id is null fictional,
+              a.driver_id = r.driver_id and a.load_id = r.load_id own_load, l.load_date >= (now() at time zone $2)::date - 2 recent,
+              r.acknowledged_at is not null acked, r.acknowledge_note || r.resolution_note note
+         from public.field_reports r join public.drivers d on d.id = r.driver_id join public.dispatch_assignments a on a.id = r.assignment_id
+         join public.order_loads l on l.id = r.load_id
+        where r.company_id = $1 and r.snapshot ? 'sample' order by r.kind`, [w.company, TZ])).rows;
+    const reports = await sampleReports();
+    expect(reports.map((r) => [r.kind, r.status, r.equipment === "" ? "" : "unit", r.acked])).toEqual([
+      ["breakdown", "open", "unit", false],
+      ["cannot_complete", "open", "", false],
+      ["delay", "acknowledged", "", true],
+      ["equipment_issue", "resolved", "unit", true],
+    ]);
+    expect(reports.find((r) => r.kind === "breakdown")?.equipment).toBe("truck");
+    expect(reports.every((r) => r.fictional && r.own_load && r.recent)).toBe(true);
+    expect(reports.filter((r) => r.status !== "open").every((r) => r.note.length > 0)).toBe(true);
+    const visible = ((await as(w.owner).from("field_reports").select("id, status")).data ?? []) as Array<{ status: string }>;
+    expect(visible.filter((r) => r.status !== "resolved").length).toBeGreaterThanOrEqual(3); // "Not resolved" has data
+    const breakdownAlert = await q<{ n: string }>("select count(*) n from public.alerts where company_id = $1 and event_type = 'dispatch.breakdown_report' and status = 'open'", [w.company]);
+    expect(Number(breakdownAlert.rows[0].n)).toBeGreaterThanOrEqual(1);
+
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
+    expect(await sampleReports()).toHaveLength(4); // and no second set of driver reports
     const partCostAgain = await q<{ n: string }>("select count(*) n from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
     expect(Number(partCostAgain.rows[0].n)).toBe(1);
     const onceEach = await q<{ price: string; drafts: string; limits: string }>(
@@ -580,6 +606,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     expect(driver).toHaveLength(1);
     const linked = (await q("select 1 from public.employees where company_id = $1 and user_id = $2 and driver_id = $3", [w.company, w.owner, driver[0].id])).rowCount;
     expect(linked).toBe(1);
+    // The owner's own driver report (DP1, demo_field_report_samples), so My reports has it in the driver modes; once.
+    expect(first.features).toContain("driver reports");
+    const own = await q<{ kind: string; status: string; equipment: string; sample: boolean }>(
+      "select kind, status, equipment, snapshot ? 'sample' sample from public.field_reports where company_id = $1 and driver_id = $2", [w.company, driver[0].id]);
+    expect(own.rows).toEqual([{ kind: "equipment_issue", status: "open", equipment: "truck", sample: true }]);
+    const myReports = ((await as(w.owner).rpc("driver_portal_home")).data as { reports?: Array<{ kind: string }> } | null)?.reports ?? [];
+    expect(myReports.map((r) => r.kind)).toEqual(["equipment_issue"]);
     // The owner's relief day has one earlier load still waiting for its ticket (owner 2026-11-09), never more.
     const toEnter = await q<{ n: string }>("select count(*) n from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id join public.drivers d on d.id = a.driver_id where a.company_id = $1 and a.status = 'active' and d.user_id is not null and l.load_date < (now() at time zone $2)::date and not exists (select 1 from public.delivery_tickets t where t.load_id = l.id)", [w.company, TZ]);
     expect(Number(toEnter.rows[0].n)).toBe(1);
@@ -716,5 +749,11 @@ describe.skipIf(!available)("demo feature samples", () => {
     const after = await counts(TOP_LINE);
     expect(after.workOrders).toBe(before.workOrders);
     expect(after.quotes).toBe(before.quotes);
+    // Driver report samples (DP1): the database refuses a real company too, and adds nothing there.
+    const reports = async () => Number((await q<{ n: string }>("select count(*) n from public.field_reports where company_id = $1", [TOP_LINE])).rows[0].n);
+    const n = await reports();
+    const refused = await as(w.realOwner).rpc("demo_field_report_samples");
+    expect(refused.error?.code).toBe("42501");
+    expect(await reports()).toBe(n);
   }, 60_000);
 });

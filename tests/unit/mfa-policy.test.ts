@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MONEY_MFA_REASON, MONEY_PERMISSIONS, mfaReason, recoveryCodesPending } from "@/lib/mfa-policy";
+import { MONEY_MFA_REASON, MONEY_PERMISSIONS, memberMfaStatuses, mfaReason, mfaSetUpSummary, recoveryCodesPending, type MemberMfaRow } from "@/lib/mfa-policy";
 import { PERMISSIONS } from "@/lib/permissions";
 
 // Two-step verification is always required for money access (20261120018000). The database decides; these words and
@@ -40,5 +40,54 @@ describe("recovery codes for money access (owner 2026-11-10)", () => {
     // Without the readiness field, unused codes decide.
     expect(recoveryCodesPending({ money: true, recovery_codes: 0 }, "aal2")).toBe(true);
     expect(recoveryCodesPending({ money: true, recovery_codes: 3 }, "aal2")).toBe(false);
+  });
+});
+
+describe("who has set up two-step verification (SEC4b, owner 2026-11-12)", () => {
+  const people = [
+    { id: "a", name: "Avery Owner", role: "owner", active: true },
+    { id: "b", name: "Blake Office", role: "office", active: true },
+    { id: "c", name: "Casey Office", role: "office", active: true },
+    { id: "d", name: "Drew Driver", role: "driver", active: true },
+    { id: "e", name: "Eli Former", role: "office", active: false },
+  ];
+  const rows: MemberMfaRow[] = [
+    { user_id: "a", money: true, set_up: true, recovery_ready: true },
+    { user_id: "b", money: true, set_up: false, recovery_ready: false },
+    { user_id: "c", money: true, set_up: true, recovery_ready: false },
+    { user_id: "d", money: false, set_up: false, recovery_ready: null },
+    { user_id: "e", money: true, set_up: false, recovery_ready: false },
+  ];
+
+  it("says each person's state in plain words, those who must first, the ones still to do on top", () => {
+    const s = memberMfaStatuses(people, rows, { companyRule: false, demo: false, moneyRoles: ["owner", "office"] });
+    expect(s.map((x) => [x.name, x.label, x.detail])).toEqual([
+      ["Blake Office", "Not set up yet", "Will be asked at next sign-in"],
+      ["Casey Office", "Recovery codes not saved", "Will be asked to save them the next time they open Taviron"],
+      ["Avery Owner", "Set up", null],
+      ["Drew Driver", "Not required", null],
+    ]);
+    // People who left are not listed; nothing in the words is a code or an internal term.
+    expect(s.map((x) => x.id)).not.toContain("e");
+    for (const x of s) expect(`${x.label} ${x.detail ?? ""}`).not.toMatch(/[a-z]+[._][a-z]+|aal|factor|mfa/i);
+    expect(mfaSetUpSummary(s)).toBe("1 of 3 people who must use two-step have set it up");
+  });
+
+  it("the company rule makes everyone a must; someone who chose it is set up without being counted", () => {
+    const ruled = memberMfaStatuses(people, rows, { companyRule: true, demo: false, moneyRoles: [] });
+    expect(ruled.find((x) => x.id === "d")).toMatchObject({ reason: "Company rule", label: "Not set up yet" });
+    expect(mfaSetUpSummary(ruled)).toBe("1 of 4 people who must use two-step have set it up");
+    const chose = memberMfaStatuses(people, [{ user_id: "d", money: false, set_up: true, recovery_ready: null }], { companyRule: false, demo: false, moneyRoles: [] });
+    expect(chose).toEqual([expect.objectContaining({ label: "Set up", detail: "Not required here", reason: null })]);
+    expect(mfaSetUpSummary(chose)).toBeNull();
+    expect(mfaSetUpSummary(memberMfaStatuses(people.slice(0, 1), rows.slice(0, 1), { companyRule: false, demo: false, moneyRoles: [] }))).toBe("1 of 1 person who must use two-step has set it up");
+  });
+
+  it("in a demo company money roles are not needed (the database reports no money access there)", () => {
+    const demoRows = rows.map((r) => ({ ...r, money: false, set_up: false, recovery_ready: null }));
+    const s = memberMfaStatuses(people, demoRows, { companyRule: false, demo: true, moneyRoles: ["owner", "office"] });
+    expect(s.find((x) => x.id === "a")).toMatchObject({ label: "Not needed in a demo", reason: null });
+    expect(s.find((x) => x.id === "d")).toMatchObject({ label: "Not required" });
+    expect(mfaSetUpSummary(s)).toBeNull();
   });
 });

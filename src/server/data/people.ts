@@ -1,5 +1,6 @@
 import "server-only";
 import type { UserRow } from "@/components/settings/settings-client";
+import type { MemberMfaRow } from "@/lib/mfa-policy";
 import { displayLogin } from "@/lib/usernames";
 import { photoUrl } from "@/server/data/profile";
 import { createClient } from "@/server/supabase/server";
@@ -35,4 +36,20 @@ export async function listSignIns(companyId: string): Promise<UserRow[]> {
     }
   }
   return users;
+}
+
+/**
+ * Who has set up two-step verification (20261120019900, users.manage): per active member, money access here, a
+ * verified second factor and, for money access, saved recovery codes. `rows` is null before that database update is
+ * installed (installed: false) or when the read failed (installed: true); the page then says so, never "not set up".
+ */
+export async function companyMfaStatus(): Promise<{ rows: MemberMfaRow[]; installed: true } | { rows: null; installed: boolean }> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("company_mfa_status");
+  if (error) {
+    const installed = !["PGRST202", "42883"].includes(error.code ?? "");
+    if (installed) console.error("Two-step status could not be read", { code: error.code });
+    return { rows: null, installed };
+  }
+  return { rows: (data ?? []) as MemberMfaRow[], installed: true };
 }

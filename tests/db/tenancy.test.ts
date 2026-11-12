@@ -216,6 +216,11 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // own confirmation only (aal2, codes must exist); the send refusal reads only the visit's company.
   "public.mfa_recovery_confirm", "private.mfa_recovery_ready", "private.forbid_accounting_send_during_support_visit",
   "public.mfa_recovery_generate", "public.mfa_recovery_redeem", "public.mfa_record_event", "public.my_security_events",
+  // Who has set up two-step verification (20261120019900, SEC4b): users.manage in the caller's own company
+  // (require_company); per member only money access here, a verified factor yes/no and recovery codes confirmed yes/no.
+  "public.company_mfa_status",
+  // Sample driver reports (20261120020000, DP1): the demo owner's own demo company only (demo_owner_company), once.
+  "public.demo_field_report_samples",
   // Guided onboarding (20261120001000): company side needs settings.manage in the task's own company (current
   // company); Taviron side needs require_platform_admin (aal2); generation reads only the target company; documents
   // at database-chosen paths; demo samples is_demo only.

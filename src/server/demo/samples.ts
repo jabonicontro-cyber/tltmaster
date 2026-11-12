@@ -184,6 +184,11 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("route planner", await routePlanner(db, today));
   // After the routes: one truck delivers twice today, so its second drive starts where the first delivery left it.
   note("second delivery for one truck", await secondDelivery(db, today));
+  // Driver reports (DP1, 20261120020000): after the day's assignments, four reports from the fictional drivers on their
+  // own recent loads (a breakdown not resolved, a delay acknowledged, an equipment problem resolved, and a "can't finish
+  // the load" from an earlier day still open), once per demo; and one open equipment problem for each demo owner who
+  // drives relief and has none, so the driver modes see it under My reports.
+  note("driver reports", await rpcCount(db, "demo_field_report_samples"));
   // Truck-day job (UX11): one of today's orders runs as trucks for the day, billed by truck-hours; two trucks from
   // 06:30, the first released. Aggregate demos only; once per demo (any truck-day order counts).
   note("truck-day job", await truckDaySample(db, today));
