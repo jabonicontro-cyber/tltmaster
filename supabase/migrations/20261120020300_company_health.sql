@@ -8,8 +8,21 @@
 --     time zone).
 --   * the last recorded change by a company person, support visits in the last 30 days and the last one, and the stage
 --     (private.company_stage, 20261120020200).
--- Both staff levels (Admin and Support) may read it; anyone else is refused. The company id is only the one the staff
+-- Both staff levels may read it (Support only for companies they could enter, private.platform_staff_may_see); anyone
+-- else is refused. The company id is only the one the staff
 -- member picked; nothing is written. Reversible: supabase/rollbacks/20261120020300_company_health.down.sql.
+
+-- Which companies a staff member may see in these reads (security review 2026-11-12, M1): Admins every company; Support
+-- only the companies they could enter (no owner grant needed, or the owner's grant is open), the same rule as support
+-- visits (private.support_needs_grant, private.support_open_grant, 20261120008900). A live customer's activity is not
+-- visible to Support without the owner's grant.
+create or replace function private.platform_staff_may_see(p_company uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select coalesce((select a.level = 'admin' from private.platform_admins a where a.user_id = auth.uid() and a.revoked_at is null), false)
+      or not private.support_needs_grant(p_company)
+      or private.support_open_grant(p_company) is not null
+$$;
+revoke all on function private.platform_staff_may_see(uuid) from public, anon, authenticated;
 
 create or replace function public.platform_company_health(p_company uuid default null)
 returns table (company_id uuid, name text, is_demo boolean, active boolean, stage text, created_at timestamptz,
@@ -26,7 +39,8 @@ begin
              date_trunc('week', (now() at time zone coalesce((select s.timezone from public.company_settings s where s.company_id = c.id), 'America/Chicago'))::date)::date as wk,
              coalesce((select s.timezone from public.company_settings s where s.company_id = c.id), 'America/Chicago') as tz
       from public.companies c
-      where (p_company is null and c.active and c.archived_at is null) or c.id = p_company
+      where ((p_company is null and c.active and c.archived_at is null) or c.id = p_company)
+        and private.platform_staff_may_see(c.id)
     ), staff as (
       select a.user_id from private.platform_admins a
     ), people as (

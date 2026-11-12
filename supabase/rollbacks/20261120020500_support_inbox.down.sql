@@ -7,6 +7,8 @@ drop function if exists public.platform_support_request_update(uuid, text, text,
 drop function if exists public.platform_support_request(uuid);
 drop function if exists public.platform_support_inbox(text);
 drop table if exists private.help_support_notes;
+revoke select, insert on public.help_support_requests from authenticated;
+grant select, insert on public.help_support_requests to authenticated;
 alter table public.help_support_requests drop column if exists handled_by;
 alter table public.help_support_requests drop column if exists updated_at;
 

@@ -25,7 +25,7 @@ export type LabView = {
 export const LAB_DESTINATIONS = { help: "/help", setup: "/setup" } as const;
 export type LabDestination = keyof typeof LAB_DESTINATIONS;
 export function labDestination(to: unknown): string | null {
-  return typeof to === "string" && to in LAB_DESTINATIONS ? LAB_DESTINATIONS[to as LabDestination] : null;
+  return typeof to === "string" && Object.hasOwn(LAB_DESTINATIONS, to) ? LAB_DESTINATIONS[to as LabDestination] : null;
 }
 
 export const AUDIENCE_LABELS: Record<LabAudience, string> = {

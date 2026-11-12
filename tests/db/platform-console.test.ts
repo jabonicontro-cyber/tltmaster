@@ -89,6 +89,28 @@ describe("company health, usage and timeline", () => {
     });
   });
 
+  it("Support sees health and usage only for companies they could enter; Admins see every company (review M1)", async () => {
+    await withSession(async (s) => {
+      const adm = await staff(s, "admin");
+      const sup = await staff(s, "support");
+      const c = await company(s); // in use: its owner must grant support access
+
+      await s.as(sup);
+      expect((await s.query("select * from public.platform_company_health($1)", [c.id])).rows).toHaveLength(0);
+      expect((await s.query("select company_id from public.platform_company_health()")).rows.map((r) => r.company_id)).not.toContain(c.id);
+      expect((await pgError(s.query("select * from public.platform_company_usage($1, 26)", [c.id]))).code).toBe("42501");
+
+      await s.as(adm);
+      expect((await s.query("select * from public.platform_company_health($1)", [c.id])).rows).toHaveLength(1);
+      expect((await s.query("select * from public.platform_company_usage($1, 4)", [c.id])).rows.length).toBeGreaterThan(0);
+
+      await allowSupport(s, c);
+      await s.as(sup);
+      expect((await s.query("select * from public.platform_company_health($1)", [c.id])).rows).toHaveLength(1);
+      expect((await s.query("select * from public.platform_company_usage($1, 4)", [c.id])).rows.length).toBeGreaterThan(0);
+    });
+  });
+
   it("marks demo companies, and counts loads in the company's own week", async () => {
     await withSession(async (s) => {
       const adm = await staff(s, "admin");
@@ -138,6 +160,20 @@ describe("support inbox", () => {
         expect((await pgError(s.query("select public.platform_support_request_update($1, 'closed', 'note', '')", [req]))).code).toBe("42501");
         expect((await pgError(s.query("select * from private.help_support_notes"))).code).toBe("42501");
       }
+    });
+  });
+
+  it("customers cannot set or read who at Taviron handled their request (review L1)", async () => {
+    await withSession(async (s) => {
+      const adm = await staff(s, "admin");
+      const c = await company(s);
+      await s.as(c.dispatcher);
+      expect((await pgError(s.query("insert into public.help_support_requests (page, message, handled_by) values ('/dispatch', 'Pretending someone handled this.', $1)", [adm]))).code).toBe("42501");
+      expect((await pgError(s.query("insert into public.help_support_requests (page, message, updated_at) values ('/dispatch', 'Pretending it was updated.', now())"))).code).toBe("42501");
+      await s.query("insert into public.help_support_requests (page, message) values ('/dispatch', 'The board does not show my trucks today.')");
+      expect((await s.query("select id, message, status from public.help_support_requests")).rows).toHaveLength(1);
+      expect((await pgError(s.query("select handled_by from public.help_support_requests"))).code).toBe("42501");
+      expect((await pgError(s.query("select * from public.help_support_requests"))).code).toBe("42501");
     });
   });
 

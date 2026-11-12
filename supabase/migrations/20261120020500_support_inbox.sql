@@ -14,6 +14,12 @@
 alter table public.help_support_requests add column updated_at timestamptz;
 alter table public.help_support_requests add column handled_by uuid references auth.users (id) on delete set null;
 
+-- Customers write and read their own requests by column (security review 2026-11-12, L1): they cannot set or read who
+-- at Taviron handled a request or when it was last updated; those are written by the inbox functions below only.
+revoke select, insert on public.help_support_requests from authenticated;
+grant select (id, company_id, user_id, page, article_id, message, status, created_at) on public.help_support_requests to authenticated;
+grant insert (company_id, user_id, page, article_id, message, status) on public.help_support_requests to authenticated;
+
 create table private.help_support_notes (
   id         uuid primary key default gen_random_uuid(),
   company_id uuid not null references public.companies (id) on delete cascade,

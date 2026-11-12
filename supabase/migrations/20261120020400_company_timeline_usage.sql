@@ -81,6 +81,10 @@ begin
   if not exists (select 1 from public.companies c where c.id = p_company) then
     raise exception 'Company not found.' using errcode = 'P0002';
   end if;
+  -- Support only for companies they could enter (private.platform_staff_may_see, 20261120020300; review 2026-11-12 M1).
+  if not private.platform_staff_may_see(p_company) then
+    raise exception 'Not available.' using errcode = '42501';
+  end if;
   v_tz := coalesce((select s.timezone from public.company_settings s where s.company_id = p_company), 'America/Chicago');
   v_wk := date_trunc('week', (now() at time zone v_tz)::date)::date;
   return query

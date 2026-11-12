@@ -2,5 +2,7 @@
 begin;
 
 drop function if exists public.platform_company_health(uuid);
+-- After 20261120020400 is rolled back (platform_company_usage uses it).
+drop function if exists private.platform_staff_may_see(uuid);
 
 commit;
