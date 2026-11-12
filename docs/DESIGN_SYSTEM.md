@@ -50,3 +50,15 @@ driver/mechanic phone views and the platform console (`/admin`). The public webs
   the same way. Not on truncated text (trimming clips the line); those keep a fixed height and `items-center`.
   Checked from layout: the trimmed text box's centre equals the pill's centre (`off-centre 0.00`).
 - Dates and figures in lists: `whitespace-nowrap tabular`; numbers right-aligned in their column.
+
+## Platform console (owner 2026-11-12: "the same look and feel as the Taviron site")
+
+- The console (`/admin`, `/staff`) is Taviron's own workspace: `ConsoleShell` (`src/components/admin/ui/shell.tsx`) sets the
+  `.console` scope (globals.css), where `brand` is the Taviron action blue and selected states are navy, whatever company
+  the person last worked in. Light and dark mode use the normal theme tokens.
+- Header: sticky and translucent like the website's, grouped navigation (Sales, Customers, Demos, Support, Admin; one list
+  in `src/components/admin/ui/nav.ts`), the current group's pages as tabs under it (always on screen, phones included), and a
+  phone menu.
+- Pages build from `src/components/admin/ui/` (documented in its `index.ts`): `ConsolePageHeader` (group label, display
+  title, intro, one main action), `Panel` (hairline cards), `StatGrid` (figures in the website's hairline grid; `onNavy` in
+  the navy `ConsoleBand`), `ConsoleTabs` (the one tab style), `DataTable` (rows become cards on phones), `FilterBar`.
