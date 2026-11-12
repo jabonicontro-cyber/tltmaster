@@ -1,6 +1,6 @@
 # Session handoff — Taviron
 
-Last updated: 2026-11-11 workday (released `00e08e5`: workday fixes and the row-cap fix RC1). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
+Last updated: 2026-11-12 (released `0c22b47`: owner decisions, platform console). Earlier: 2026-11-11 workday (released `00e08e5`). Earlier: 2026-11-11 (release `4912577`). Earlier: 2026-11-09 evening (release `111d934`). Earlier: 2026-11-06 (staff and support access, security audit). Earlier: 2026-11-05 day (launch walkthrough round 1, freight stops, freight demo company, freight mode tailored). Earlier: 2026-11-05 (launch plan, both markets, outreach, overnight builds). Earlier: 2026-11-04 (owner walkthrough fixes). Earlier: 2026-10-26 (redesign rounds, B91, B86, B84). Earlier: 2026-10-23 clean verification and base-level security audit; Phase B is 17 migrations. Contains **no secrets**: no codes, keys, passwords or
 project credentials. Read it together with:
 - `CLAUDE.md` and `docs/TAVIRON_MASTER_PLAN.md`: rules, decisions and open business questions.
 - `docs/IMPLEMENTATION_PLAN.md`: §5m (N13), §5n (N14), §5o (N15: Smart Dispatch algorithm, hard blocks vs warnings, branding, fulfillment), "Recommended next task", and roadmap §8 A–H.
@@ -8,6 +8,24 @@ project credentials. Read it together with:
 - `docs/DEPLOYMENT.md`: hosting steps, including §2a (database updates) and §3a (platform access).
 
 ## 00000000000000000000000000000. 2026-11-12 — owner decisions (question by question) and the next release
+
+- **Production = `0c22b47`** (fast-forward from `00e08e5`, owner approval 2026-11-12): full CI green on the Preview
+  branch (run 43149114506, full browser suite), Production CI green (43152718198), migration workflow (43153292716)
+  backed up first (`backup-20261112T041308Z.dump.gpg`) and applied 14 migrations, `20261120019000` through
+  `20261120020700`; Production deploy success. Live `/api/health` ok (app, sign-in, database); `/auth/qr` 200;
+  `/login`, `/admin`, `/staff` gated (401). Signed-in pages: **not verified live**.
+- **In it:** quote history readable with the quote; demo shop samples fallback; Remove sample data keeps work orders;
+  RL1 (a ticketed load keeps its truck and driver; Command Center says "Open the load"); SEC5 (fuel receipt dollars
+  only with billing.view); SEC4b (who has set up two-step, Settings → Security); DP1 (sample driver reports in demos);
+  the platform console redesign (site look, grouped menus, phone layouts) and PC1 (all 12 audit fixes, company health,
+  usage and timeline, support inbox for Admin and Support, my visits, console search, audit filters, security overview,
+  lead demo dates and pipeline, landing pages).
+- **Security reviews:** SEC5 none; SEC4b/DP1 nothing high or medium; PC1 one medium (Support could read activity counts
+  of companies without the owner's grant: now limited to companies they could enter) and one low (customers could set
+  "handled by" on their requests: column grants), both fixed before release with tests.
+- **Still open (owner decisions, one at a time):** inviting a company's owner from the console; revenue views beyond
+  today's. Owner steps: GitHub connector for the daily check, Intuit sandbox, email sending signup, Top Line
+  spreadsheets, Supabase Pro, telling Top Line's money users about the authenticator app.
 
 - **Owner answers 2026-11-12 (all the recommended option):** release the held migrations `20261120019000` (quote
   history), `019500` (demo shop samples), `019600` (Remove sample data keeps work orders); block reassigning a load that
