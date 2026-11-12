@@ -7,10 +7,10 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { formatDateTime } from "@/lib/dates";
+import { formatDate, formatDateTime } from "@/lib/dates";
 import {
   EMAIL_KIND_LABELS, EMAIL_STATUS_LABELS, LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONES, ONBOARDING_LABELS, ONBOARDING_STAGES,
-  leadEventText, statusLabel, type LeadStatus, type OnboardingStage,
+  leadEventDetail, leadEventText, type LeadStatus, type OnboardingStage,
 } from "@/lib/platform/leads";
 import { createClient } from "@/server/supabase/server";
 import { addLeadNote, createCompany, updateLead } from "../../actions";
@@ -50,35 +50,12 @@ interface Lead {
   message: string;
   owner_id: string | null;
   follow_up_on: string | null;
+  /** 20261120020100; absent before that update. */
+  demo_on?: string | null;
   submission_count: number;
   created_at: string;
   events: LeadEvent[];
   emails: LeadEmail[];
-}
-
-function eventDetail(e: LeadEvent, team: Map<string, string>): string {
-  const d = e.detail ?? {};
-  const name = (v: unknown) => (typeof v === "string" ? team.get(v) ?? "someone no longer on the team" : "nobody");
-  switch (e.action) {
-    case "status_changed":
-    case "status_consolidated":
-      return `${statusLabel(d.from)} → ${statusLabel(d.to)}${d.disposition === "spam" ? " (flagged as spam)" : ""}`;
-    case "disposition_changed":
-      return d.to === "spam" ? "Flagged as spam" : "Spam flag removed";
-    case "onboarding_changed":
-      return `${ONBOARDING_LABELS[d.from as OnboardingStage] ?? d.from} → ${ONBOARDING_LABELS[d.to as OnboardingStage] ?? d.to}`;
-    case "owner_changed":
-      return `${name(d.from)} → ${name(d.to)}`;
-    case "follow_up_changed":
-      return `${d.from ?? "none"} → ${d.to ?? "none"}`;
-    case "submitted":
-    case "resubmitted":
-      return d.kind === "demo" ? "Demo request" : "Contact form";
-    case "company_created":
-      return String(d.company_name ?? "");
-    default:
-      return "";
-  }
 }
 
 export default async function LeadPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }) {
@@ -102,6 +79,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
             <Badge tone={LEAD_STATUS_TONES[lead.status]}>{LEAD_STATUS_LABELS[lead.status]}</Badge>
             {lead.disposition === "spam" ? <Badge tone="gray">Spam</Badge> : null}
             {lead.onboarding_stage ? <Badge tone="amber">Onboarding: {ONBOARDING_LABELS[lead.onboarding_stage]}</Badge> : null}
+            {lead.demo_on ? <Badge tone="blue">Demo {formatDate(lead.demo_on)}</Badge> : null}
           </>
         }
       />
@@ -160,7 +138,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                   <li key={i} className="border-l-2 border-line pl-3 text-sm">
                     <p>
                       <span className="font-semibold">{e.actor}</span> · {leadEventText(e.action)}
-                      {eventDetail(e, teamNames) ? <span className="text-muted"> · {eventDetail(e, teamNames)}</span> : null}
+                      {leadEventDetail(e, teamNames) ? <span className="text-muted"> · {leadEventDetail(e, teamNames)}</span> : null}
                     </p>
                     <p className="text-xs text-muted">{formatDateTime(e.occurred_at)}</p>
                     {e.note ? <p className="mt-1 whitespace-pre-wrap">{e.note}</p> : null}
@@ -194,13 +172,17 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                   <input type="checkbox" name="spam" defaultChecked={lead.disposition === "spam"} className="mt-0.5 size-4 accent-brand" />
                   <span>Spam <span className="block text-xs text-muted">Only with Not Proceeding. Hidden from the active queue.</span></span>
                 </label>
-                <Field label="Onboarding" htmlFor="onboarding_stage" hint="Only for Converted leads.">
-                  <Select id="onboarding_stage" name="onboarding_stage" defaultValue={lead.onboarding_stage}>
-                    {ONBOARDING_STAGES.map((s) => (
-                      <option key={s} value={s}>{ONBOARDING_LABELS[s]}</option>
-                    ))}
-                  </Select>
-                </Field>
+                {lead.status === "converted" ? (
+                  <Field label="Onboarding" htmlFor="onboarding_stage" hint="How far this customer's onboarding has come.">
+                    <Select id="onboarding_stage" name="onboarding_stage" defaultValue={lead.onboarding_stage}>
+                      {ONBOARDING_STAGES.map((s) => (
+                        <option key={s} value={s}>{ONBOARDING_LABELS[s]}</option>
+                      ))}
+                    </Select>
+                  </Field>
+                ) : (
+                  <input type="hidden" name="onboarding_stage" value={lead.onboarding_stage} />
+                )}
                 <Field label="Owner" htmlFor="owner">
                   <Select id="owner" name="owner" defaultValue={lead.owner_id ?? ""}>
                     <option value="">Unassigned</option>
@@ -212,6 +194,12 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                 <Field label="Follow up on" htmlFor="follow_up_on">
                   <DateInput id="follow_up_on" name="follow_up_on" defaultValue={lead.follow_up_on ?? ""} />
                 </Field>
+                {lead.demo_on !== undefined && (
+                  <Field label="Demo date" htmlFor="demo_on" hint="The day the demo is booked. Leave empty when none is booked.">
+                    <input type="hidden" name="demo_on_was" value={lead.demo_on ?? ""} />
+                    <DateInput id="demo_on" name="demo_on" defaultValue={lead.demo_on ?? ""} />
+                  </Field>
+                )}
                 <SubmitButton pendingLabel="Saving…">Save</SubmitButton>
               </form>
             </CardBody>

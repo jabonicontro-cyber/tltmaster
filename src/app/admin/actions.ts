@@ -6,6 +6,7 @@ import { cookies } from "next/headers";
 import { z } from "zod";
 import { PREVIEW_COOKIE } from "@/lib/platform/preview";
 import { isLeadStatus, isOnboardingStage } from "@/lib/platform/leads";
+import { isOperationalDate } from "@/lib/dates";
 import { PRAIRIE_LANTERN, seedPrairieLantern } from "@/server/demo/prairie-lantern";
 import { refreshPrairieLantern } from "@/server/demo/prairie-lantern-refresh";
 import { FREIGHT_DEMO, refreshFreightDemo, seedFreightDemo } from "@/server/demo/freight-demo";
@@ -50,12 +51,21 @@ export async function updateLead(formData: FormData) {
   if (!isLeadStatus(status)) back(path, "Choose a status.");
   if (!isOnboardingStage(onboarding)) back(path, "Choose the onboarding progress.");
   if (owner && !uuid.safeParse(owner).success) back(path, "Choose an owner.");
-  if (followUp && !/^\d{4}-\d{2}-\d{2}$/.test(followUp)) back(path, "Enter the follow-up date as YYYY-MM-DD.");
+  if (followUp && !isOperationalDate(followUp)) back(path, "Enter the follow-up date as a day, for example Nov 14, 2026.");
+  // The demo date (20261120020100): only sent when it changed, so the form keeps working before that update.
+  const demoOn = String(formData.get("demo_on") ?? "");
+  const demoWas = String(formData.get("demo_on_was") ?? "");
+  const demoChanged = formData.has("demo_on") && demoOn !== demoWas;
+  if (demoChanged && demoOn && !isOperationalDate(demoOn)) back(path, "Enter the demo date as a day, for example Nov 14, 2026.");
   const supabase = await db();
   const { error } = await supabase.rpc("platform_lead_update", {
     p_id: id, p_status: status, p_owner: owner || null, p_follow_up: followUp || null, p_spam: spam, p_onboarding: onboarding,
   });
   if (error) back(path, dbErrorMessage(error));
+  if (demoChanged) {
+    const demo = await supabase.rpc("platform_lead_demo_date", { p_id: id, p_demo_on: demoOn || null });
+    if (demo.error) back(path, `The other changes were saved; the demo date was not: ${dbErrorMessage(demo.error)}`);
+  }
   revalidatePath("/admin/leads");
   revalidatePath(path);
   redirect(`${path}?saved=1`);
@@ -179,7 +189,7 @@ export async function createProspectDemo() {
   const { error } = await supabase.rpc("platform_prospect_demo_create", {
     p_name: PRAIRIE_LANTERN.name, p_city: PRAIRIE_LANTERN.city, p_state: PRAIRIE_LANTERN.state, p_timezone: PRAIRIE_LANTERN.timeZone,
   });
-  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos need the database update 20261106000100, which is not installed yet." : dbErrorMessage(error));
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos are not available on this database yet. Nothing was changed." : dbErrorMessage(error));
   try {
     await seedPrairieLantern(supabase);
   } catch (e) {
@@ -199,7 +209,7 @@ export async function createFreightDemo() {
   const { error } = await supabase.rpc("platform_prospect_demo_create", {
     p_name: FREIGHT_DEMO.name, p_city: FREIGHT_DEMO.city, p_state: FREIGHT_DEMO.state, p_timezone: FREIGHT_DEMO.timeZone,
   });
-  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos need the database update 20261106000100, which is not installed yet." : dbErrorMessage(error));
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos are not available on this database yet. Nothing was changed." : dbErrorMessage(error));
   try {
     await seedFreightDemo(supabase);
   } catch (e) {
@@ -268,7 +278,7 @@ export async function retireProspectDemo(formData: FormData) {
   if (formData.get("confirm") !== "on") back("/admin/demo", "Tick the box to confirm retiring the demo.");
   const supabase = await db();
   const { error } = await supabase.rpc("platform_prospect_demo_retire", { p_company: id.data });
-  if (error) back("/admin/demo", error.code === "PGRST202" ? "Retiring needs the database update 20261107000100, which is not installed yet." : dbErrorMessage(error));
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Retiring a demo is not available on this database yet. Nothing was changed." : dbErrorMessage(error));
   revalidatePath("/", "layout");
   redirect("/admin/demo?saved=retired");
 }
@@ -291,7 +301,7 @@ export async function setDemoPlan(formData: FormData) {
   if (!id.success || !["essential", "growth", "professional"].includes(plan)) back("/admin/demo", "Choose a demo and a plan.");
   const supabase = await db();
   const { error } = await supabase.rpc("platform_demo_set_plan", { p_company: id.data!, p_plan: plan });
-  if (error) back("/admin/demo", error.code === "PGRST202" ? "Plan demos need the database update 20261120000300." : error.message);
+  if (error) back("/admin/demo", error.code === "PGRST202" ? "Choosing a demo plan is not available on this database yet. Nothing was changed." : error.message);
   revalidatePath("/", "layout");
   redirect(`/admin/demo?saved=plan&plan=${plan}`);
 }

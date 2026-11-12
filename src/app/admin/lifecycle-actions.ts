@@ -5,7 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { isOperationalDate } from "@/lib/dates";
 import { dollarsToCents } from "@/lib/platform/lifecycle";
-import { dbErrorMessage } from "@/server/errors";
+import { fail, ok, type ActionResult } from "@/lib/action-result";
+import { dbErrorMessage, guard } from "@/server/errors";
 import { assertPlatformAdmin, requirePlatformAdmin } from "@/server/platform";
 import { confirmPassword } from "@/server/reauth";
 import { createClient } from "@/server/supabase/server";
@@ -123,6 +124,36 @@ export async function createPlanVersion(formData: FormData) {
   if (error) go("/admin/plans", "error", dbErrorMessage(error));
   revalidatePath("/admin/plans");
   go("/admin/plans", "saved", "version");
+}
+
+/**
+ * A new plan price version from the Plans form, with each error shown next to its field (PC1; no browser pop-ups).
+ * The same checks as createPlanVersion: Admins only (here and in platform_plan_version_create), prices in dollars, a
+ * first day from today on, and an explicit confirmation. Nothing is charged; the public pricing page is not changed.
+ */
+export async function savePlanVersion(formData: FormData): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPlatformAdmin();
+    const key = String(formData.get("plan_key") ?? "");
+    const monthly = dollarsToCents(String(formData.get("monthly") ?? ""));
+    const onboarding = dollarsToCents(String(formData.get("onboarding") ?? ""));
+    const from = String(formData.get("effective_from") ?? "");
+    const errors: Record<string, string> = {};
+    if (!key) errors.plan_key = "Choose the plan.";
+    if (key && key !== "custom" && monthly === null) errors.monthly = "Enter the monthly price in dollars, for example 499.";
+    if (key && key !== "custom" && onboarding === null) errors.onboarding = "Enter the onboarding fee in dollars, for example 199.";
+    if (!isOperationalDate(from)) errors.effective_from = "Enter the first day the new price applies.";
+    if (formData.get("confirm") !== "on") errors.confirm = "Tick the box to confirm the new price.";
+    const first = Object.values(errors)[0];
+    if (first) return fail(Object.keys(errors).length > 1 ? "Check the fields marked below." : first, errors);
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("platform_plan_version_create", {
+      p: { plan_key: key, monthly_cents: monthly === null ? "" : String(monthly), onboarding_cents: onboarding === null ? "" : String(onboarding), effective_from: from, note: String(formData.get("note") ?? "").slice(0, 500) },
+    });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/admin/plans");
+    return ok(undefined, "New price version saved.");
+  });
 }
 
 // Subscription notices (SUB1, 20261120008800): renewal on/off, and a person's decision on a proposed plan change.

@@ -32,6 +32,11 @@ const ALLOWED = new Set([
   "src/app/admin/demo/page.tsx",
   // Company access desk (SA1): demo companies are listed apart from customers and need no grant.
   "src/app/staff/page.tsx",
+  // Platform console (PC1): the support inbox, search, "My visits" and the audit filter list label demo companies.
+  "src/components/admin/support-inbox.tsx",
+  "src/lib/platform/console.ts",
+  "src/app/staff/work/page.tsx",
+  "src/app/admin/platform/page.tsx",
   "src/lib/ai/capabilities.ts",
   "src/server/ai/gates.ts",
   "src/server/routing/service.ts",

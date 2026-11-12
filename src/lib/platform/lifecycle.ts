@@ -51,7 +51,8 @@ export interface Ack {
 
 export interface Console {
   as_of: string;
-  customers: { total: number; live: number; onboarding: number; fee_due: number; no_plan: number; canceled: number; go_live_14d: number };
+  /** not_set_up: 20261120020200 (absent before it): active companies without a subscription record. */
+  customers: { total: number; live: number; onboarding: number; fee_due: number; no_plan: number; canceled: number; go_live_14d: number; not_set_up?: number };
   mrr: { cents: number; live: number; free: number; contracted_not_live_cents: number };
   pipeline: { open: number; new: number; demo_scheduled: number; overdue: number };
   acks: Record<string, Ack>;

@@ -16,7 +16,7 @@ import { createClient } from "@/server/supabase/server";
 // database checks all of it again (platform_staff_*) and records every change in the platform audit log.
 
 const MISSING = new Set(["PGRST202", "42883"]);
-const NOT_INSTALLED = "The Taviron team needs the database update 20261120008900, which is not installed yet.";
+const NOT_INSTALLED = "Managing the Taviron team from here is not available on this database yet. Nothing was changed.";
 const LEVEL_LABEL = { admin: "Admin", support: "Support" } as const;
 
 const inviteSchema = z.object({

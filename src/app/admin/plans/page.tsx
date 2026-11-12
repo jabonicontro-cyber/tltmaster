@@ -1,17 +1,14 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { DateInput } from "@/components/ui/date-input";
 import { FlashToast } from "@/components/ui/flash-toast";
-import { Checkbox, Field, Input, Select } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { ErrorState, Notice } from "@/components/ui/states";
-import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import type { PlanVersion } from "@/lib/platform/lifecycle";
 import { usd } from "@/lib/site/pricing";
 import { createClient } from "@/server/supabase/server";
-import { createPlanVersion } from "../lifecycle-actions";
+import { PlanVersionForm } from "@/components/admin/plan-version-form";
 
 export const metadata = { title: "Plans and prices" };
 
@@ -28,7 +25,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
     return (
       <>
         <PageHeader title="Plans and prices" />
-        <ErrorState title={error.code === "PGRST202" ? "Plans need a database update" : "Plans could not be loaded"} description={error.code === "PGRST202" ? "Apply migration 20261118000300 (owner step)." : "Nothing is shown rather than guessed."} />
+        <ErrorState title={error.code === "PGRST202" ? "Plans need a database update" : "Plans could not be loaded"} description={error.code === "PGRST202" ? "Plans and prices are not available on this database yet." : "Nothing is shown rather than guessed."} />
       </>
     );
   }
@@ -62,23 +59,7 @@ export default async function PlansPage({ searchParams }: { searchParams: Promis
         <Card>
           <CardHeader title="New price version" description="From today or a later day. Earlier versions never change." />
           <CardBody>
-            <form action={createPlanVersion} className="space-y-3">
-              <Field label="Plan" htmlFor="plan_key">
-                <Select id="plan_key" name="plan_key" required defaultValue="">
-                  <option value="" disabled>Choose a plan</option>
-                  {keys.map(([k, n]) => <option key={k} value={k}>{n}</option>)}
-                </Select>
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Monthly ($)" htmlFor="monthly"><Input id="monthly" name="monthly" inputMode="decimal" placeholder="499" /></Field>
-                <Field label="Onboarding ($)" htmlFor="onboarding"><Input id="onboarding" name="onboarding" inputMode="decimal" placeholder="199" /></Field>
-              </div>
-              <Field label="First day" htmlFor="effective_from"><DateInput id="effective_from" name="effective_from" required /></Field>
-              <Field label="Note" htmlFor="note"><Input id="note" name="note" maxLength={500} placeholder="Why the price changes" /></Field>
-              <Checkbox name="confirm" label="Save this new price version" />
-              <p className="text-xs text-muted">The public pricing page is not changed by this; update it separately.</p>
-              <SubmitButton pendingLabel="Saving…">Save version</SubmitButton>
-            </form>
+            <PlanVersionForm plans={keys} />
           </CardBody>
         </Card>
       </div>

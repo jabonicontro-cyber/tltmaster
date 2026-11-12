@@ -71,7 +71,7 @@ export function CompanyLifecycleControls({
           <div className="space-y-3 border-t border-line pt-5">
             <h3 className="text-base font-semibold text-ink">Permanent Delete</h3>
             {!preview.delete_enabled ? (
-              <p className="text-sm text-muted">Permanent delete is turned off until the platform owner enables it on this database (docs/runbooks/2026-10-14-hosted-db.md §11). Archive keeps the company out of every count in the meantime.</p>
+              <p className="text-sm text-muted">Permanent delete is turned off on this database. Archive keeps the company out of every count in the meantime; ask the platform owner if it must be deleted for good.</p>
             ) : !preview.eligible ? (
               <p className="text-sm text-muted">Only an archived company classified as Practice / test can be deleted. {preview.blockers.join(" ")}</p>
             ) : (

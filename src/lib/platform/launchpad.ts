@@ -35,7 +35,11 @@ export interface LaunchpadActivity {
 export interface Launchpad {
   as_of: string;
   companies: { total: number; active: number; inactive: number; created_30d: number; setup_incomplete: number };
-  leads: { by_status: Record<string, number>; new: number; overdue: number; due_today: number; demo_scheduled: number; onboarding: number };
+  leads: {
+    by_status: Record<string, number>; new: number; overdue: number; due_today: number; demo_scheduled: number; onboarding: number;
+    /** 20261120020200: open leads with a demo booked from today, and the next demo day (absent before that update). */
+    demo_dated?: number; next_demo_on?: string | null;
+  };
   imports: { in_review: number; oldest_review_at: string | null; approved_30d: number };
   email_failures_7d: number;
   demos: LaunchpadDemo[];
@@ -76,28 +80,56 @@ export function attentionHref(i: Pick<LaunchpadAttentionItem, "ref_type" | "ref_
   }
 }
 
-const ACTIVITY_TEXT: Record<string, string> = {
+/**
+ * Every action the database writes to the platform audit log (private.platform_log and the operator's direct inserts)
+ * and to a lead's history (private.lead_events), in plain words. One map for the whole console: the Launchpad, the
+ * audit log, the company page and its timeline. tests/unit/console-labels.test.ts fails when a migration writes an
+ * action that has no label here.
+ */
+export const ACTIVITY_TEXT: Record<string, string> = {
+  // Taviron team and access
   admin_granted: "Platform access granted",
-  admin_revoked: "Platform access revoked",
+  admin_revoked: "Platform access removed",
+  staff_invited: "Team invitation sent",
+  staff_invite_revoked: "Team invitation withdrawn",
+  staff_joined: "Joined the Taviron team",
+  staff_level_changed: "Team level changed",
+  staff_removed: "Removed from the Taviron team",
+  // Support
+  support_entered: "Went into a company as support",
+  support_left: "Left a company",
+  support_request: "Asked an owner to approve a change",
+  support_request_status: "Support request status changed",
+  support_request_note: "Note added to a support request",
+  support_request_reply: "Reply written to a support request",
+  // Demos and the Testing Lab
   demo_started: "Demo started",
   demo_entered: "Demo opened",
-  demo_refreshed: "Demo refreshed",
+  demo_refreshed: "Demo data refreshed",
   demo_refresh_failed: "Demo refresh failed",
+  demo_plan_set: "Demo plan changed",
+  prospect_demo_created: "Prospect demo created",
+  prospect_demo_retired: "Prospect demo retired",
+  "testing_lab.check": "Testing Lab result recorded",
+  "testing_lab.portal_preview": "Customer portal preview opened",
+  // Companies
   company_created: "Company created",
+  company_classified: "Company classification changed",
+  company_archived: "Company archived",
+  company_restored: "Company restored",
+  company_deleted: "Company permanently deleted",
+  "portal.entitlement": "Customer portal entitlement changed",
+  "hired_trucks.entitlement": "Hired trucks switched on or off",
+  // Imports and onboarding
   import_staged: "Import uploaded for review",
   import_approved: "Import approved",
   import_discarded: "Import discarded",
   import_reverted: "Import reverted",
-  prospect_demo_created: "Prospect demo created",
-  prospect_demo_retired: "Prospect demo retired",
-  submitted: "Lead submitted the form",
-  resubmitted: "Lead sent the form again",
-  status_changed: "Lead status changed",
-  owner_changed: "Lead owner changed",
-  follow_up_changed: "Lead follow-up date changed",
-  note_added: "Note added to a lead",
-  disposition_changed: "Lead spam flag changed",
-  onboarding_changed: "Lead onboarding progress changed",
+  "onboarding.generate": "Onboarding checklist updated",
+  "onboarding.status": "Onboarding task status changed",
+  go_live_signed: "Go-live signed off",
+  go_live_signoff_voided: "Go-live sign-off withdrawn",
+  // Subscriptions and plans
   lifecycle_terms_set: "Subscription terms set",
   onboarding_fee_paid: "Onboarding fee recorded as received",
   onboarding_fee_waived: "Onboarding fee waived",
@@ -106,18 +138,59 @@ const ACTIVITY_TEXT: Record<string, string> = {
   subscription_canceled: "Subscription canceled",
   plan_version_created: "New plan price version",
   attention_acknowledged: "Attention item acknowledged",
+  // A lead's history
+  submitted: "Lead sent the website form",
+  resubmitted: "Lead sent the form again",
+  status_changed: "Lead status changed",
+  owner_changed: "Lead owner changed",
+  follow_up_changed: "Lead follow-up date changed",
+  demo_date_changed: "Lead demo date changed",
+  note_added: "Note added to a lead",
+  disposition_changed: "Lead spam flag changed",
+  onboarding_changed: "Lead onboarding progress changed",
+  status_consolidated: "Lead statuses consolidated",
 };
 
-export function activityText(a: Pick<LaunchpadActivity, "source" | "action">): string {
-  return ACTIVITY_TEXT[a.action] ?? a.action.replaceAll("_", " ");
+/** Lead-history actions that read differently in a mixed activity feed. */
+const LEAD_ACTIVITY_TEXT: Record<string, string> = { company_created: "Company created from a lead" };
+
+/** A readable label for any action; one without a label still reads as words ("some.new_thing" → "Some new thing"). */
+export function activityText(a: Pick<LaunchpadActivity, "source" | "action"> | string): string {
+  const action = typeof a === "string" ? a : a.action;
+  if (typeof a !== "string" && a.source === "lead" && LEAD_ACTIVITY_TEXT[action]) return LEAD_ACTIVITY_TEXT[action];
+  const known = ACTIVITY_TEXT[action];
+  if (known) return known;
+  const words = action.replace(/[._]+/g, " ").trim();
+  return words ? words.charAt(0).toUpperCase() + words.slice(1) : "Something changed";
 }
+
+/** Acknowledged attention items record their kind as the target type; they point at the record behind the item. */
+const ATTENTION_REF: Record<string, string> = {
+  lead_overdue: "lead", lead_due_today: "lead", lead_new: "lead", lead_email_failed: "lead", import_review: "import", company_setup: "company", demo_refresh_failed: "company",
+};
 
 export function activityHref(a: Pick<LaunchpadActivity, "ref_type" | "ref_id">): string | null {
   if (!a.ref_id) return null;
-  if (a.ref_type === "lead") return `/admin/leads/${a.ref_id}`;
-  if (a.ref_type === "company") return `/admin/companies/${a.ref_id}`;
-  if (a.ref_type === "import") return `/admin/onboarding/batch/${a.ref_id}`;
+  const ref = ATTENTION_REF[a.ref_type] ?? a.ref_type;
+  if (ref === "lead") return `/admin/leads/${a.ref_id}`;
+  if (ref === "company") return `/admin/companies/${a.ref_id}`;
+  if (ref === "import") return `/admin/onboarding/batch/${a.ref_id}`;
+  if (ref === "support_request") return `/admin/support/${a.ref_id}`;
+  if (ref === "testing_lab") return "/admin/testing-lab";
+  if (ref === "user") return "/admin/platform";
   return null;
+}
+
+/** The line under "Demos scheduled": how many have a demo date booked and the next one (20261120020200). */
+export function demoScheduledSub(leads: Launchpad["leads"], formatDay: (d: string) => string): string {
+  if (leads.demo_dated === undefined) return "Leads in Demo Scheduled";
+  if (!leads.demo_dated) return "No demo date booked yet: add one on the lead";
+  return `${leads.demo_dated} with a demo date${leads.next_demo_on ? ` · next ${formatDay(leads.next_demo_on)}` : ""}`;
+}
+
+/** The line under "Customer companies": live, active in all, and those without a subscription record yet. */
+export function customersSub(c: { live: number; total: number; not_set_up?: number }): string {
+  return `live · ${c.total} active in all${c.not_set_up ? ` · ${c.not_set_up} subscription not set up` : ""}`;
 }
 
 /** "3 days" / "5 hours" / "just now" since an instant. */

@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/dates";
+
 // The six lead statuses (founder's decision, 2026-10-11). Earlier statuses were
 // folded into these by migration 20261028000100; spam is an internal flag on a
 // Not Proceeding lead, and onboarding progress is tracked separately.
@@ -50,6 +52,7 @@ const EVENT_TEXT: Record<string, string> = {
   status_changed: "Changed the status",
   owner_changed: "Changed the owner",
   follow_up_changed: "Changed the follow-up date",
+  demo_date_changed: "Changed the demo date",
   note_added: "Added a note",
   company_created: "Created the company for onboarding",
   status_consolidated: "Status list consolidated",
@@ -57,5 +60,37 @@ const EVENT_TEXT: Record<string, string> = {
   onboarding_changed: "Changed onboarding progress",
 };
 export function leadEventText(action: string): string {
-  return EVENT_TEXT[action] ?? action;
+  return EVENT_TEXT[action] ?? action.replace(/[._]+/g, " ");
+}
+
+/** A recorded day ("2026-11-14") as people read it ("Nov 14, 2026"); nothing recorded reads as "none". */
+export function dayOrNone(v: unknown): string {
+  return typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v) ? formatDate(v) : "none";
+}
+
+/** What a history entry changed, in words: "New → Contacted", "none → Nov 14, 2026", "Pia → nobody". */
+export function leadEventDetail(e: { action: string; detail: Record<string, unknown> | null }, team: Map<string, string>): string {
+  const d = e.detail ?? {};
+  const name = (v: unknown) => (typeof v === "string" ? team.get(v) ?? "someone no longer on the team" : "nobody");
+  switch (e.action) {
+    case "status_changed":
+    case "status_consolidated":
+      return `${statusLabel(d.from)} → ${statusLabel(d.to)}${d.disposition === "spam" ? " (flagged as spam)" : ""}`;
+    case "disposition_changed":
+      return d.to === "spam" ? "Flagged as spam" : "Spam flag removed";
+    case "onboarding_changed":
+      return `${ONBOARDING_LABELS[d.from as OnboardingStage] ?? String(d.from ?? "")} → ${ONBOARDING_LABELS[d.to as OnboardingStage] ?? String(d.to ?? "")}`;
+    case "owner_changed":
+      return `${name(d.from)} → ${name(d.to)}`;
+    case "follow_up_changed":
+    case "demo_date_changed":
+      return `${dayOrNone(d.from)} → ${dayOrNone(d.to)}`;
+    case "submitted":
+    case "resubmitted":
+      return d.kind === "demo" ? "Demo request" : "Contact form";
+    case "company_created":
+      return String(d.company_name ?? "");
+    default:
+      return "";
+  }
 }

@@ -43,7 +43,8 @@ export default async function OutreachProspectPage({ params }: { params: Promise
   const problems = settingsProblems(settings);
   const blocked = p.status === "do_not_contact" || p.suppressed
     ? "This company asked not to be contacted. No email can be prepared."
-    : problems.length ? `${problems.join(" ")} (Outreach → Email and FAQ)` : null;
+    : problems.length ? problems.join(" ") : null;
+  const setupNeeded = !(p.status === "do_not_contact" || p.suppressed) && problems.length > 0;
   const email = blocked ? null : renderEmail(p, settings);
   const facts = [
     ["Email", p.email], ["Contact", p.contact_name], ["Phone", p.phone], ["Where", [p.city, p.state].filter(Boolean).join(", ")],
@@ -61,7 +62,7 @@ export default async function OutreachProspectPage({ params }: { params: Promise
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <Card>
           <CardHeader title="Email" description="Filled in for this company from your saved email. Edit it in your mail program before sending if you like." />
-          <CardBody><ProspectEmail id={p.id} email={email} blocked={blocked} /></CardBody>
+          <CardBody><ProspectEmail id={p.id} email={email} blocked={blocked} setupNeeded={setupNeeded} /></CardBody>
         </Card>
         <div className="space-y-5">
           <Card>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition, type ChangeEvent } from "react";
 import { toast } from "sonner";
@@ -269,10 +270,17 @@ export function OutreachSettingsForm({ initial }: { initial: OutreachSettings })
 }
 
 /** The prepared email for one company: open it in Gmail or the mail app, or copy it; then record that it was sent. */
-export function ProspectEmail({ id, email, blocked }: { id: string; email: { to: string; subject: string; body: string } | null; blocked: string | null }) {
+export function ProspectEmail({ id, email, blocked, setupNeeded = false }: { id: string; email: { to: string; subject: string; body: string } | null; blocked: string | null; setupNeeded?: boolean }) {
   const { pending, run } = useRun();
   const [copied, setCopied] = useState(false);
-  if (blocked || !email) return <p className="text-sm text-muted">{blocked}</p>;
+  if (blocked || !email) {
+    return (
+      <p className="text-sm text-muted">
+        {blocked}
+        {setupNeeded ? <> <Link href="/admin/outreach?tab=email" className="font-semibold text-brand-fg underline">Finish the email in Outreach, Email and FAQ</Link></> : null}
+      </p>
+    );
+  }
   const links = composeLinks(email);
   const prepared = () => void recordOutreach(id, "prepared");
   return (

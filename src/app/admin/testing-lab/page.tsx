@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { FlashToast } from "@/components/ui/flash-toast";
-import { AUDIENCE_LABELS, CHECK_LABELS, IMPLEMENTATION_LABELS, LAB_VIEWS, latestCheck, type LabAudience, type LabCheck, type LabView } from "@/lib/platform/testing-lab";
+import { AUDIENCE_LABELS, CHECK_LABELS, IMPLEMENTATION_LABELS, LAB_VIEWS, demoPlanLabel, latestCheck, viewUpdateNote, type LabAudience, type LabCheck, type LabView } from "@/lib/platform/testing-lab";
 import { formatDateTime } from "@/lib/dates";
 import { requirePlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
@@ -23,7 +23,6 @@ type Demo = {
 };
 type Check = { view_key: string; company_id: string | null; status: LabCheck; note: string; checked_at: string; checked_by: string | null };
 
-const PLAN_LABEL: Record<string, string> = { essential: "Essential", growth: "Growth", professional: "Professional" };
 const AUDIENCES = Object.keys(AUDIENCE_LABELS) as LabAudience[];
 
 /**
@@ -56,7 +55,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
       <FlashToast messages={{ saved: { text: sp.saved === "portal" ? "Demo portal turned on (public page and tracking links on)." : "Saved." } }} />
       {sp.error ? <div className="mb-4"><Notice tone="warning" title="Not done">{sp.error}</Notice></div> : null}
       {labMissing ? (
-        <div className="mb-4"><Notice tone="warning" title="Needs a database update">The Testing Lab needs migrations 20261120000700 and 20261120000800 (owner step). Role views below still work.</Notice></div>
+        <div className="mb-4"><Notice tone="warning" title="Recording results is not available yet">This database does not have the Testing Lab&apos;s update yet, so results cannot be recorded. Role views below still work.</Notice></div>
       ) : null}
 
       {demos.length === 0 ? (
@@ -70,7 +69,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
                 <Field label="Demo company" htmlFor="demo">
                   <Select id="demo" name="demo" defaultValue={selectedId ?? ""}>
                     {demos.map((d) => (
-                      <option key={d.id} value={d.id}>{d.name} ({d.demo_kind === "presenter" ? "presenter demo" : "prospect demo"}{d.demo_plan ? `, ${PLAN_LABEL[d.demo_plan]}` : ""})</option>
+                      <option key={d.id} value={d.id}>{d.name} ({d.demo_kind === "presenter" ? "presenter demo" : "prospect demo"}, {demoPlanLabel(d.demo_plan)})</option>
                     ))}
                   </Select>
                 </Field>
@@ -80,7 +79,7 @@ export default async function TestingLab({ searchParams }: { searchParams: Promi
               {demo ? (
                 <dl className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-4">
                   <Fact label="Environment" value="Demo (fictional data)" />
-                  <Fact label="Plan" value={demo.plan ? PLAN_LABEL[demo.plan] : "Not set"} />
+                  <Fact label="Plan" value={demoPlanLabel(demo.plan)} />
                   <Fact label="Dispatch bases" value={String(demo.bases)} />
                   <Fact label="Customer portal" value={demo.portal.open ? `Open${demo.portal.public_page ? ", public page" : ""}` : demo.portal.entitled ? "Entitled, off" : "Off"} />
                 </dl>
@@ -138,7 +137,7 @@ function ViewRow({ view, demo, companyId, check, labMissing }: { view: LabView; 
         </p>
         <p className="text-sm text-muted">{view.what}</p>
         {view.note ? <p className="text-sm text-muted">{view.note}</p> : null}
-        {view.migration ? <p className="text-xs text-muted">Needs migration {view.migration} on the database you are using.</p> : null}
+        {viewUpdateNote(view, !labMissing) ? <p className="text-xs text-muted">{viewUpdateNote(view, !labMissing)}</p> : null}
         {check ? <p className="text-xs text-muted">{CHECK_LABELS[check.status]} {formatDateTime(check.checked_at)}{check.checked_by ? ` by ${check.checked_by}` : ""}{check.note ? `: ${check.note}` : ""}</p> : null}
       </div>
       <div className="flex flex-col items-start gap-2 lg:items-end">

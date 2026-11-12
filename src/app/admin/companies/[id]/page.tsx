@@ -16,6 +16,8 @@ import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { activityText } from "@/lib/platform/launchpad";
 import { LEAD_STATUS_LABELS, ONBOARDING_LABELS, type LeadStatus, type OnboardingStage } from "@/lib/platform/leads";
+import { CompanyHealthCard, CompanyTimeline, UsageTrends } from "@/components/admin/company-insights";
+import { companyHealth, companyTimeline, companyUsage } from "@/server/data/console";
 import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Company" };
@@ -52,7 +54,7 @@ const SAVED: Record<string, string> = {
   portal_off: "Customer portal entitlement removed. The portal is off; accounts and records are kept.",
 };
 
-export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string }> }) {
+export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string; before?: string }> }) {
   const { id } = await params;
   const sp = await searchParams;
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
@@ -67,7 +69,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         <PageHeader title="Company" crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: "Company" }]} />
         <ErrorState
           title={missing ? "Not available yet" : "The company could not be loaded"}
-          description={missing ? "The company page needs the database update 20261118000100, which is not installed yet." : "Nothing was changed. Try again in a moment."}
+          description={missing ? "The company page is not available on this database yet. The company directory and Onboarding still work." : "Nothing was changed. Try again in a moment."}
         />
       </>
     );
@@ -89,8 +91,14 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const lifeData = (life?.data ?? null) as Lifecycle | null;
   const subRes = !c.is_demo && lifeData?.stage === "live" ? await supabase.rpc("platform_subscription_state", { p_company: id }) : null;
   const subState = subRes && !subRes.error ? (subRes.data as SubscriptionState | null) : null;
+  // Health, usage and the customer timeline (PC1, 20261120020300 and 20261120020400): counts and history only.
+  const before = sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : undefined;
+  const [health, usage, timeline] = await Promise.all([companyHealth(id), companyUsage(id), companyTimeline(id, before)]);
+
+  const timelineItems = timeline.ok ? timeline.data : [];
+  const olderHref = timeline.ok && timelineItems.length >= 60 ? `/admin/companies/${id}?before=${encodeURIComponent(timelineItems[timelineItems.length - 1].at)}#timeline` : null;
   const steps = [
-    { label: "Owner login", done: c.setup.owner_login, hint: "Added by an operator (docs/DEPLOYMENT.md §3) or by invitation." },
+    { label: "Owner login", done: c.setup.owner_login, hint: "The Taviron operator adds the owner's sign-in; the owner then invites their team from People." },
     { label: "Customers", done: c.setup.customers > 0, hint: `${c.setup.customers} active` },
     { label: "Trucks", done: c.setup.trucks > 0, hint: `${c.setup.trucks} active` },
     { label: "Drivers", done: c.setup.drivers > 0, hint: `${c.setup.drivers} active` },
@@ -101,10 +109,21 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         title={c.name}
         description={`${c.active ? "Active" : "Inactive"} · created ${formatDate(c.created_at.slice(0, 10))}${c.timezone ? ` · ${c.timezone}` : ""}`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: c.name }]}
-        actions={<Link href={`/admin/onboarding/${c.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Imports for this company</Link>}
+        actions={
+          <span className="flex flex-wrap gap-x-4 gap-y-1">
+            <Link href={`/admin/onboarding/${c.id}`} className="text-sm font-semibold text-brand-fg hover:underline">Imports for this company</Link>
+            <Link href={`/staff?q=${encodeURIComponent(c.name)}`} className="text-sm font-semibold text-brand-fg hover:underline">Company access</Link>
+            <Link href={`/admin/platform?company=${c.id}#audit`} className="text-sm font-semibold text-brand-fg hover:underline">Audit log</Link>
+          </span>
+        }
       />
       <FlashToast messages={{ saved: { text: SAVED[sp.saved ?? ""] ?? "Saved." } }} />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
+      {health.ok && health.data.rows[0] ? (
+        <Card className="mb-5"><CompanyHealthCard health={health.data.rows[0]} now={health.data.now} /></Card>
+      ) : !health.ok && health.reason === "error" ? (
+        <div className="mb-5"><Notice tone="warning" title="Health could not be loaded">{health.message}</Notice></div>
+      ) : null}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card>
           <CardHeader title="Setup" description={c.missing.length ? `Missing: ${c.missing.join(", ")}.` : "Every setup step is done."} />
@@ -142,7 +161,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       </div>
 
       {!c.is_demo && (lifecycleMissing ? (
-        <div className="mt-5"><Notice title="Subscription needs a database update">Apply migration 20261118000300 (owner step) to record plans, onboarding fees and go-live dates.</Notice></div>
+        <div className="mt-5"><Notice title="Subscriptions are not available yet">Plans, onboarding fees and go-live dates cannot be recorded on this database yet.</Notice></div>
       ) : life?.error || plans?.error ? (
         <div className="mt-5"><Notice tone="warning" title="The subscription could not be loaded">Nothing is shown rather than guessed. Reload to try again.</Notice></div>
       ) : (
@@ -191,21 +210,27 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
         </Card>
       ) : null}
 
-      <Card className="mt-5">
-        <CardHeader title="Platform actions on this company" description="From the append-only platform audit." />
-        {c.audit.length === 0 ? (
-          <p className="px-5 py-4 text-sm text-muted sm:px-6">Nothing recorded.</p>
-        ) : (
-          <ul className="divide-y divide-line">
-            {c.audit.map((a, i) => (
-              <li key={`${a.at}:${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 px-5 py-2 text-sm sm:px-6">
-                <span>{activityText({ source: "platform", action: a.action })}{a.summary ? `: ${a.summary}` : ""}</span>
-                <span className="text-xs text-muted">{formatDateTime(a.at)} · {a.actor}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Card>
+      {usage.ok ? <Card className="mt-5"><UsageTrends weeks={usage.data} /></Card> : null}
+
+      {timeline.ok ? (
+        <div id="timeline" className="mt-5"><Card><CompanyTimeline items={timelineItems} olderHref={olderHref} /></Card></div>
+      ) : (
+        <Card className="mt-5">
+          <CardHeader title="Platform actions on this company" description="From the append-only platform audit." />
+          {c.audit.length === 0 ? (
+            <p className="px-5 py-4 text-sm text-muted sm:px-6">Nothing recorded.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {c.audit.map((a, i) => (
+                <li key={`${a.at}:${i}`} className="flex flex-wrap items-baseline justify-between gap-x-4 px-5 py-2 text-sm sm:px-6">
+                  <span>{activityText({ source: "platform", action: a.action })}{a.summary ? `: ${a.summary}` : ""}</span>
+                  <span className="text-xs text-muted">{formatDateTime(a.at)} · {a.actor}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      )}
     </>
   );
 }
