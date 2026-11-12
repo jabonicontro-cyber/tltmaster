@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { CardBody, CardHeader } from "@/components/ui/card";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { TIMELINE_SOURCES, healthVerdict, stageLabel, timelineText, weekCompare, type CompanyHealth, type TimelineItem, type UsageWeek } from "@/lib/platform/console";
 import { cn } from "@/lib/cn";
+import { PanelBody, PanelHeader } from "@/components/admin/ui";
 
 // The company page's health, usage and timeline (PC1). Counts only, from the platform_company_* reads; nothing here
 // shows a company's business records. Each part says when its data is missing instead of showing zero.
@@ -29,12 +29,12 @@ export function CompanyHealthCard({ health, now }: { health: CompanyHealth; now:
   const alerts = health.alerts_critical + health.alerts_action;
   return (
     <>
-      <CardHeader
+      <PanelHeader
         title="Health at a glance"
         description="How much this company is using Taviron, from counts only. Taviron staff are never counted."
         actions={<Badge tone={v.tone}>{v.label}</Badge>}
       />
-      <CardBody className="space-y-4">
+      <PanelBody className="space-y-4">
         <p className="text-sm text-ink" data-testid="health-verdict">{v.detail}</p>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-3 sm:grid-cols-3">
           <Fact label="Last sign-in" value={health.last_sign_in_at ? formatDateTime(health.last_sign_in_at) : "Nobody yet"} />
@@ -47,7 +47,7 @@ export function CompanyHealthCard({ health, now }: { health: CompanyHealth; now:
           <Fact label="Stage" value={stageLabel(health.stage)} />
           <Fact label="Week" value={`From ${formatDate(health.week_start)}`} sub="Monday first, the company's time zone" />
         </dl>
-      </CardBody>
+      </PanelBody>
     </>
   );
 }
@@ -69,9 +69,9 @@ export function UsageTrends({ weeks }: { weeks: UsageWeek[] }) {
   const empty = weeks.every((w) => !w.loads && !w.tickets && !w.active_people && !w.ai_requests);
   return (
     <>
-      <CardHeader title="Usage by week" description="The last 8 weeks, oldest first. Counts only: loads planned, tickets delivered, people who made a recorded change, and AI requests." />
+      <PanelHeader title="Usage by week" description="The last 8 weeks, oldest first. Counts only: loads planned, tickets delivered, people who made a recorded change, and AI requests." />
       {empty ? (
-        <CardBody><p className="text-sm text-muted">Nothing recorded in the last 8 weeks.</p></CardBody>
+        <PanelBody><p className="text-sm text-muted">Nothing recorded in the last 8 weeks.</p></PanelBody>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm" aria-label="Usage by week">
@@ -113,9 +113,9 @@ const SOURCE_TONE: Record<TimelineItem["source"], "blue" | "gray" | "amber" | "g
 export function CompanyTimeline({ items, olderHref }: { items: TimelineItem[]; olderHref: string | null }) {
   return (
     <>
-      <CardHeader title="Customer timeline" description="Everything that happened with this customer, newest first: the lead, Taviron's actions, onboarding, support visits and subscription events." />
+      <PanelHeader title="Customer timeline" description="Everything that happened with this customer, newest first: the lead, Taviron's actions, onboarding, support visits and subscription events." />
       {items.length === 0 ? (
-        <CardBody><p className="text-sm text-muted">Nothing recorded yet.</p></CardBody>
+        <PanelBody><p className="text-sm text-muted">Nothing recorded yet.</p></PanelBody>
       ) : (
         <ol className="divide-y divide-line" aria-label="Customer timeline">
           {items.map((i, n) => {
@@ -136,7 +136,7 @@ export function CompanyTimeline({ items, olderHref }: { items: TimelineItem[]; o
           })}
         </ol>
       )}
-      {olderHref ? <CardBody className="border-t border-line"><Link href={olderHref} className="text-sm font-semibold text-brand-fg hover:underline">Show older entries</Link></CardBody> : null}
+      {olderHref ? <PanelBody className="border-t border-line"><Link href={olderHref} className="text-sm font-semibold text-brand-fg hover:underline">Show older entries</Link></PanelBody> : null}
     </>
   );
 }

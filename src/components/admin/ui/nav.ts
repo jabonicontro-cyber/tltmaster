@@ -48,19 +48,26 @@ export const CONSOLE_GROUPS: ConsoleGroup[] = [
     links: [
       { href: "/staff", label: "Company access", text: "Go into a customer's company with the owner's permission." },
       { href: "/admin/support", label: "Support", text: "Help requests from customers and gaps in the Help Center." },
+      { href: "/staff/work", label: "My visits", text: "Your visits and the changes waiting for an owner's approval." },
     ],
   },
   {
     label: "Admin",
     links: [
-      { href: "/admin/platform", label: "Administration", text: "The Taviron team and the record of sensitive actions." },
+      { href: "/admin/platform", label: "Administration", text: "The Taviron team, security and the record of sensitive actions." },
+      { href: "/staff/search", label: "Search", text: "Find a company, lead, outreach company, request or team member." },
       { href: "/admin/profile", label: "My profile", text: "Your name and photo as customers see them.", also: ["/staff/profile"] },
     ],
   },
 ];
 
-/** Support staff (SA1) have the company access desk only; their profile is in the account menu. */
-export const SUPPORT_LINKS: ConsoleLink[] = [{ href: "/staff", label: "Company access", text: "Go into a customer's company with the owner's permission." }];
+/** Support staff (SA1): the company access desk, the support inbox, their own visits and search (PC1); profile in the account menu. */
+export const SUPPORT_LINKS: ConsoleLink[] = [
+  { href: "/staff", label: "Company access", text: "Go into a customer's company with the owner's permission." },
+  { href: "/staff/support", label: "Support inbox", text: "Help requests from customers." },
+  { href: "/staff/work", label: "My visits", text: "Your visits and the changes waiting for an owner's approval." },
+  { href: "/staff/search", label: "Search", text: "Find a company or a support request." },
+];
 
 const ALL = [LAUNCHPAD, ...CONSOLE_GROUPS.flatMap((g) => g.links)];
 

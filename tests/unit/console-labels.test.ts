@@ -112,6 +112,7 @@ describe("customer timeline wording", () => {
     expect(timelineText({ ...item, source: "support", kind: "visit_ended", summary: "access_ended" }).detail).toBe("Ended: the owner ended access");
     expect(timelineText({ ...item, source: "onboarding", kind: "status", summary: "Send your customer list", detail: { from: "submitted", to: "approved", internal: false } }).detail).toBe("Send your customer list · Submitted for review → Approved");
     expect(timelineText({ ...item, source: "subscription", kind: "tier_change_scheduled", summary: "2026-12" }).title).toBe("Plan change scheduled");
+    expect(timelineText({ ...item, source: "platform", kind: "onboarding.status", summary: "Onboarding task set to changes_requested" }).detail).toBe("Onboarding task set to Changes requested");
     expect(timelineText({ ...item, source: "lead", kind: "demo_date_changed", summary: "Dana", detail: { from: null, to: "2026-11-20" } }).detail).toBe("Lead Dana · none → Nov 20, 2026");
   });
 });

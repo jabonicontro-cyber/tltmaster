@@ -3,9 +3,7 @@ import { notFound } from "next/navigation";
 import { DateInput } from "@/components/ui/date-input";
 import { AdminFlash } from "@/components/admin/flash";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import {
@@ -14,6 +12,7 @@ import {
 } from "@/lib/platform/leads";
 import { createClient } from "@/server/supabase/server";
 import { addLeadNote, createCompany, updateLead } from "../../actions";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Lead" };
 
@@ -70,7 +69,7 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
   const teamNames = new Map(team.map((t) => [t.user_id, t.full_name || t.email]));
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/leads")}
         title={lead.name}
         description={`${lead.kind === "demo" ? "Demo request" : "Contact message"} · received ${formatDateTime(lead.created_at)}${lead.submission_count > 1 ? ` · sent ${lead.submission_count} times` : ""}`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Leads", href: "/admin/leads" }, { label: lead.name }]}
@@ -86,9 +85,9 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
       <AdminFlash error={sp.error} saved={sp.saved} />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_380px]">
         <div className="space-y-5">
-          <Card>
-            <CardHeader title="Details" />
-            <CardBody>
+          <Panel>
+            <PanelHeader title="Details" />
+            <PanelBody>
               <dl className="grid grid-cols-1 gap-x-6 gap-y-3 text-sm sm:grid-cols-2">
                 <div><dt className="text-muted">Email</dt><dd><a href={`mailto:${lead.email}`} className="font-semibold underline">{lead.email}</a></dd></div>
                 <div><dt className="text-muted">Phone</dt><dd>{lead.phone || "–"}</dd></div>
@@ -108,11 +107,11 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                   <p className="mt-1 rounded-xl bg-surface p-3 text-sm whitespace-pre-wrap">{lead.message}</p>
                 </div>
               ) : null}
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Emails" description="Every confirmation and notification attempt for this lead. Nothing is sent while email is in preview mode." />
-            <CardBody>
+            </PanelBody>
+          </Panel>
+          <Panel>
+            <PanelHeader title="Emails" description="Every confirmation and notification attempt for this lead. Nothing is sent while email is in preview mode." />
+            <PanelBody>
               {lead.emails.length === 0 ? (
                 <p className="text-sm text-muted">No email attempts recorded.</p>
               ) : (
@@ -128,11 +127,11 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                   ))}
                 </ul>
               )}
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="History" />
-            <CardBody>
+            </PanelBody>
+          </Panel>
+          <Panel>
+            <PanelHeader title="History" />
+            <PanelBody>
               <ol id="history" className="space-y-3">
                 {lead.events.map((e, i) => (
                   <li key={i} className="border-l-2 border-line pl-3 text-sm">
@@ -152,13 +151,13 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                 </Field>
                 <SubmitButton variant="secondary" pendingLabel="Saving…">Add note</SubmitButton>
               </form>
-            </CardBody>
-          </Card>
+            </PanelBody>
+          </Panel>
         </div>
         <div className="space-y-5">
-          <Card>
-            <CardHeader title="Work this lead" />
-            <CardBody>
+          <Panel>
+            <PanelHeader title="Work this lead" />
+            <PanelBody>
               <form action={updateLead} className="space-y-3">
                 <input type="hidden" name="id" value={lead.id} />
                 <Field label="Status" htmlFor="status">
@@ -202,11 +201,11 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                 )}
                 <SubmitButton pendingLabel="Saving…">Save</SubmitButton>
               </form>
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title={TERMS.startOnboarding} description="Creates the company (no users yet) and opens its import page. The lead becomes Converted, with onboarding in progress." />
-            <CardBody>
+            </PanelBody>
+          </Panel>
+          <Panel>
+            <PanelHeader title={TERMS.startOnboarding} description="Creates the company (no users yet) and opens its import page. The lead becomes Converted, with onboarding in progress." />
+            <PanelBody>
               <form action={createCompany} className="space-y-3">
                 <input type="hidden" name="lead" value={lead.id} />
                 <Field label="Company name" htmlFor="company-name">
@@ -217,8 +216,8 @@ export default async function LeadPage({ params, searchParams }: { params: Promi
                 </Field>
                 <SubmitButton variant="dark" pendingLabel="Creating…">Create company</SubmitButton>
               </form>
-            </CardBody>
-          </Card>
+            </PanelBody>
+          </Panel>
         </div>
       </div>
     </>

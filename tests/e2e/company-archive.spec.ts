@@ -47,7 +47,8 @@ test("a practice company is archived (hidden by default), restored, archived aga
   await box.getByLabel("Reason").fill("Training company");
   await box.getByLabel(/I understand its people lose access/).check();
   await box.getByRole("button", { name: "Archive Company" }).click();
-  await expect(page.getByText(/Company archived/)).toBeVisible();
+  // The confirmation (the customer timeline below also lists "Company archived").
+  await expect(page.getByText(/Company archived\. Its people cannot open it/)).toBeVisible();
 
   // Hidden from the default directory, listed under Only archived.
   await page.goto(`/admin/companies?q=${encodeURIComponent(name)}`);
@@ -62,7 +63,8 @@ test("a practice company is archived (hidden by default), restored, archived aga
   await box.getByLabel("Reason").fill("Training company");
   await box.getByLabel(/I understand its people lose access/).check();
   await box.getByRole("button", { name: "Archive Company" }).click();
-  await expect(page.getByText(/Company archived/)).toBeVisible();
+  // The confirmation (the customer timeline below also lists "Company archived").
+  await expect(page.getByText(/Company archived\. Its people cannot open it/)).toBeVisible();
 
   // Permanent delete is off until the platform owner enables it with SQL: no delete form.
   await expect(box.getByText(/Permanent delete is turned off/)).toBeVisible();

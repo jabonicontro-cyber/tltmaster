@@ -2,9 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight, History, Inbox, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { HealthBadge } from "@/components/admin/company-insights";
@@ -14,6 +12,7 @@ import { companyHealth, supportInbox } from "@/server/data/console";
 import { requirePlatformStaff } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
 import { enterCompany, leaveCompany } from "./actions";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Company access" };
 
@@ -48,7 +47,7 @@ export default async function StaffDeskPage({ searchParams }: { searchParams: Pr
   const newRequests = inbox.ok ? inbox.data.counts.new : null;
   return (
     <>
-      <PageHeader title="Company access" description="Go into a customer's company to help or make a quick change. Live companies need their owner's permission first; companies still being set up are open." />
+      <ConsolePageHeader eyebrow={groupOf("/staff")} title="Company access" description="Go into a customer's company to help or make a quick change. Live companies need their owner's permission first; companies still being set up are open." />
       {sp.error ? <div className="mb-4"><Notice tone="warning" title="Could not go in">{sp.error}</Notice></div> : null}
       {sp.left ? <div className="mb-4"><Notice title="You left the company">Your visit has ended.</Notice></div> : null}
       <nav aria-label="Support desk" className="mb-5 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -61,16 +60,16 @@ export default async function StaffDeskPage({ searchParams }: { searchParams: Pr
       ) : (
         <div className="space-y-5">
           {inside && (
-            <Card>
-              <CardBody className="flex flex-wrap items-center gap-3">
+            <Panel>
+              <PanelBody className="flex flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-ink">You are in {inside.name}</p>
                   <p className="text-sm text-muted">Until {formatDateTime(inside.my_visit_ends_at!)}. Its owners see that Taviron support is in their account.</p>
                 </div>
                 <a href="/command-center" className="text-sm font-semibold text-brand-fg hover:underline">Open it</a>
                 <form action={leaveCompany}><SubmitButton variant="secondary" size="sm">Leave</SubmitButton></form>
-              </CardBody>
-            </Card>
+              </PanelBody>
+            </Panel>
           )}
           <form method="get" className="flex items-center gap-2" role="search" aria-label="Find a company">
             <div className="w-full max-w-sm"><Input name="q" defaultValue={sp.q ?? ""} placeholder="Find a company by name" aria-label="Company name" maxLength={80} /></div>
@@ -87,7 +86,7 @@ export default async function StaffDeskPage({ searchParams }: { searchParams: Pr
 
 function DeskLink({ href, icon, label, sub }: { href: string; icon: ReactNode; label: string; sub: string }) {
   return (
-    <Link href={href} className="flex items-center gap-3 rounded-panel border border-line bg-card px-4 py-3 shadow-card transition-colors hover:border-strong/40">
+    <Link href={href} className="console-press flex items-center gap-3 rounded-xl border border-line bg-card px-4 py-3 shadow-[0_1px_2px_rgb(12_26_43/0.04)] transition-colors hover:border-strong/40">
       <span className="text-brand-fg">{icon}</span>
       <span className="min-w-0 flex-1">
         <span className="block text-sm font-semibold text-ink">{label}</span>
@@ -99,54 +98,50 @@ function DeskLink({ href, icon, label, sub }: { href: string; icon: ReactNode; l
 }
 
 /**
- * One row per company. On a phone each row stacks (name, then the facts, then the reason box and Go in at full
- * width); from medium screens up it is a four-column grid.
+ * One row per company in the console's DataTable: a table from 768px, a card per company below (the reason box and
+ * Go in at full width, nothing off the right edge of a phone).
  */
 function CompanyList({ title, rows, health, now, empty }: { title: string; rows: Row[]; health: Map<string, CompanyHealth>; now: number; empty: string }) {
   return (
-    <Card>
-      <CardHeader title={title} description={title.startsWith("Customer") ? "Say briefly what you are helping with: the company sees it in its visit history." : "Fictional data; nothing real is sent from a demo."} />
+    <Panel>
+      <PanelHeader title={title} description={title.startsWith("Customer") ? "Say briefly what you are helping with: the company sees it in its visit history." : "Fictional data; nothing real is sent from a demo."} />
       {rows.length === 0 ? (
-        <CardBody><p className="text-sm text-muted">{empty}</p></CardBody>
+        <PanelBody><p className="text-sm text-muted">{empty}</p></PanelBody>
       ) : (
-        <>
-          <div className="hidden grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)] gap-4 border-b border-line px-5 py-2 text-xs font-medium text-muted sm:px-6 md:grid" aria-hidden>
-            <span>Company</span><span>Taviron access</span><span>Last visit</span><span className="text-right">Go in</span>
-          </div>
-          <ul className="divide-y divide-line" aria-label={title}>
-            {rows.map((r) => {
-              const a = access(r);
-              const h = health.get(r.id);
-              return (
-                <li key={r.id} className="grid grid-cols-1 gap-2 px-5 py-3 sm:px-6 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.6fr)] md:items-center md:gap-4" aria-label={r.name}>
-                  <div className="min-w-0">
-                    <p className="font-semibold break-words text-ink">{r.name}</p>
-                    <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
-                      <span>{stageLabel(r.stage)}</span>
-                      {h ? <HealthBadge health={h} now={now} /> : null}
-                    </p>
-                  </div>
-                  <div><Badge tone={a.tone}>{a.label}</Badge></div>
-                  <div className="text-sm text-muted"><span className="md:hidden">Last visit: </span>{r.last_visit_at ? formatDateTime(r.last_visit_at) : "Never"}</div>
-                  <div className="md:text-right">
-                    {r.my_visit_ends_at ? (
-                      <a href="/command-center" className="text-sm font-semibold text-brand-fg hover:underline">Open (you are in)</a>
-                    ) : r.can_enter ? (
-                      <form action={enterCompany} className="flex flex-col gap-2 sm:flex-row sm:items-center md:justify-end" aria-label={`Go into ${r.name}`}>
-                        <input type="hidden" name="company" value={r.id} />
-                        <Input name="reason" placeholder="What are you helping with?" aria-label={`What are you helping ${r.name} with?`} maxLength={300} className="w-full sm:flex-1 md:max-w-56" />
-                        <SubmitButton size="sm">Go in</SubmitButton>
-                      </form>
-                    ) : (
-                      <span className="text-xs text-muted">Waiting for the owner</span>
-                    )}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </>
+        <DataTable frame={false} aria-label={title} head={<><DataHead>Company</DataHead><DataHead>Taviron access</DataHead><DataHead>Last visit</DataHead><DataHead align="right">Go in</DataHead></>}>
+          {rows.map((r) => {
+            const a = access(r);
+            const h = health.get(r.id);
+            return (
+              <DataRow key={r.id}>
+                <DataCell primary>
+                  <span className="block font-semibold break-words text-ink">{r.name}</span>
+                  <span className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                    <span>{stageLabel(r.stage)}</span>
+                    {h ? <HealthBadge health={h} now={now} /> : null}
+                  </span>
+                </DataCell>
+                <DataCell label="Taviron access"><Badge tone={a.tone}>{a.label}</Badge></DataCell>
+                <DataCell label="Last visit" className="text-sm whitespace-nowrap text-muted">{r.last_visit_at ? formatDateTime(r.last_visit_at) : "Never"}</DataCell>
+                {/* No phone label: the reason box and Go in take the card's full width. */}
+                <DataCell align="right" className="max-md:pt-2">
+                  {r.my_visit_ends_at ? (
+                    <a href="/command-center" className="text-sm font-semibold text-brand-fg hover:underline">Open (you are in)</a>
+                  ) : r.can_enter ? (
+                    <form action={enterCompany} className="flex flex-col gap-2 sm:flex-row sm:items-center md:justify-end" aria-label={`Go into ${r.name}`}>
+                      <input type="hidden" name="company" value={r.id} />
+                      <Input name="reason" placeholder="What are you helping with?" aria-label={`What are you helping ${r.name} with?`} maxLength={300} className="w-full sm:flex-1 md:w-56 md:flex-none" />
+                      <SubmitButton size="sm">Go in</SubmitButton>
+                    </form>
+                  ) : (
+                    <span className="text-xs text-muted">Waiting for the owner</span>
+                  )}
+                </DataCell>
+              </DataRow>
+            );
+          })}
+        </DataTable>
       )}
-    </Card>
+    </Panel>
   );
 }

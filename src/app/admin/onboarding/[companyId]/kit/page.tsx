@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { KitNav, kitSection } from "@/components/onboarding/kit-nav";
 import { KitWorkspace } from "@/components/onboarding/kit-workspace";
@@ -8,6 +7,7 @@ import { getAccess } from "@/server/auth";
 import { requirePlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
 import { staffSaveKitForm, staffSignGoLive } from "../../kit-actions";
+import { ConsolePageHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Onboarding kit" };
 
@@ -30,7 +30,7 @@ export default async function PlatformKitPage({ params, searchParams }: { params
   const primary = kit.ok ? String((kit.data.forms.questionnaire?.data as { primary_contact?: string } | undefined)?.primary_contact ?? "") : "";
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/onboarding")}
         title={`${company.name}: onboarding kit`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding", href: "/admin/onboarding" }, { label: company.name, href: `/admin/onboarding/${companyId}` }, { label: "Kit" }]}
       />

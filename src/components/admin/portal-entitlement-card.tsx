@@ -1,8 +1,8 @@
 import { Badge } from "@/components/ui/badge";
-import { CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { setPortalEntitlement } from "@/app/admin/companies/lifecycle-actions";
+import { PanelBody, PanelHeader } from "@/components/admin/ui";
 
 export type PortalEntitlement = { entitled: boolean; enabled: boolean; accounts: number; note: string };
 
@@ -13,12 +13,12 @@ export type PortalEntitlement = { entitled: boolean; enabled: boolean; accounts:
 export function PortalEntitlementCard({ companyId, state }: { companyId: string; state: PortalEntitlement }) {
   return (
     <section aria-label="Customer portal entitlement">
-      <CardHeader
+      <PanelHeader
         title="Customer Portal"
         description="Lets this company offer its own customers a portal. Granting it does not turn the portal on or change billing; the company does that in its Customer Portal settings."
         actions={<Badge tone={state.entitled ? "green" : "gray"}>{state.entitled ? (state.enabled ? "Entitled · on" : "Entitled · off") : "Not entitled"}</Badge>}
       />
-      <CardBody>
+      <PanelBody>
         <p className="mb-3 text-sm text-muted">{state.accounts} active customer {state.accounts === 1 ? "account" : "accounts"}.{state.note ? ` Note: ${state.note}` : ""}</p>
         <form action={setPortalEntitlement} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="id" value={companyId} />
@@ -29,7 +29,7 @@ export function PortalEntitlementCard({ companyId, state }: { companyId: string;
           <SubmitButton variant="secondary" pendingLabel="Saving…">{state.entitled ? "Remove Entitlement" : "Grant Entitlement"}</SubmitButton>
         </form>
         {state.entitled ? <p className="mt-2 text-xs text-muted">Removing it also turns the company&apos;s portal off; accounts and records are kept.</p> : null}
-      </CardBody>
+      </PanelBody>
     </section>
   );
 }

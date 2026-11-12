@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { Card, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { ConsoleSearchBox } from "@/components/admin/console-search";
 import { searchHits } from "@/lib/platform/console";
 import { consoleSearch } from "@/server/data/console";
 import { requirePlatformStaff } from "@/server/platform";
+import { ConsolePageHeader, Panel, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Search" };
 
@@ -21,7 +20,7 @@ export default async function ConsoleSearchPage({ searchParams }: { searchParams
   const groups = [...new Set(hits.map((h) => h.group))];
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/staff/search")}
         title="Search"
         description={me.level === "admin" ? "Find a company, a lead, an outreach company, a support request or someone on the team." : "Find a company or a support request."}
         crumbs={[{ label: me.level === "admin" ? "Launchpad" : "Company access", href: me.level === "admin" ? "/admin" : "/staff" }, { label: "Search" }]}
@@ -36,8 +35,8 @@ export default async function ConsoleSearchPage({ searchParams }: { searchParams
       ) : (
         <div className="space-y-5" aria-live="polite">
           {groups.map((g) => (
-            <Card key={g}>
-              <CardHeader title={g} />
+            <Panel key={g}>
+              <PanelHeader title={g} />
               <ul className="divide-y divide-line" aria-label={g}>
                 {hits.filter((h) => h.group === g).map((h) => (
                   <li key={h.href + h.title}>
@@ -48,7 +47,7 @@ export default async function ConsoleSearchPage({ searchParams }: { searchParams
                   </li>
                 ))}
               </ul>
-            </Card>
+            </Panel>
           ))}
         </div>
       )}

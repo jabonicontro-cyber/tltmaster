@@ -1,7 +1,21 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ConsoleTabs } from "@/components/admin/ui";
 import { LEAD_STATUSES, LEAD_STATUS_LABELS, LEAD_STATUS_TONES } from "@/lib/platform/leads";
 import { pipelineColumn, pipelineDates, type PipelineLead } from "@/lib/platform/console";
+
+/** The two views of Leads (PC1): the filtered list and the pipeline columns. */
+export function LeadViews({ current }: { current: "list" | "pipeline" }) {
+  return (
+    <ConsoleTabs
+      label="Leads view"
+      items={[
+        { href: "/admin/leads", label: "List", current: current === "list" },
+        { href: "/admin/leads/pipeline", label: "Pipeline", current: current === "pipeline" },
+      ]}
+    />
+  );
+}
 
 /**
  * The lead pipeline (PC1): one column per status with each lead's demo date and follow-up. A second view of Leads;
@@ -9,13 +23,13 @@ import { pipelineColumn, pipelineDates, type PipelineLead } from "@/lib/platform
  */
 export function LeadPipeline({ leads, today }: { leads: PipelineLead[]; today: string }) {
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:px-0">
+    <div className="overflow-x-auto pb-2">
       <ol className="grid grid-cols-1 gap-3 md:min-w-[72rem] md:grid-cols-6" aria-label="Lead pipeline">
         {LEAD_STATUSES.map((s) => {
           const col = pipelineColumn(leads, s);
           return (
-            <li key={s} className="flex min-w-0 flex-col rounded-panel border border-line bg-surface/60" aria-label={`${LEAD_STATUS_LABELS[s]}: ${col.length}`}>
-              <h2 className="flex items-center justify-between gap-2 border-b border-line px-3 py-2 text-sm font-semibold text-ink">
+            <li key={s} className="flex min-w-0 flex-col rounded-xl border border-line bg-surface/60" aria-label={`${LEAD_STATUS_LABELS[s]}: ${col.length}`}>
+              <h2 className="flex items-center justify-between gap-2 border-b border-line px-3 py-2.5 text-sm font-semibold text-ink">
                 <span>{LEAD_STATUS_LABELS[s]}</span>
                 <span className="tabular text-muted">{col.length}</span>
               </h2>
@@ -25,7 +39,7 @@ export function LeadPipeline({ leads, today }: { leads: PipelineLead[]; today: s
                 <ul className="space-y-2 p-2">
                   {col.map((l) => (
                     <li key={l.id}>
-                      <Link href={`/admin/leads/${l.id}`} className="block rounded-xl border border-line bg-card p-3 shadow-xs transition-colors hover:border-strong/40">
+                      <Link href={`/admin/leads/${l.id}`} className="console-press block rounded-xl border border-line bg-card p-3 shadow-[0_1px_2px_rgb(12_26_43/0.04)] transition-colors hover:border-strong/40">
                         <span className="block font-semibold break-words text-ink">{l.name}</span>
                         {l.company_name ? <span className="block text-sm break-words text-muted">{l.company_name}</span> : null}
                         <span className="mt-1.5 flex flex-wrap gap-1">

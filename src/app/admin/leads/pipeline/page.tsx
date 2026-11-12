@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
-import { LeadPipeline } from "@/components/admin/lead-pipeline";
+import { ConsolePageHeader, groupOf } from "@/components/admin/ui";
+import { LeadPipeline, LeadViews } from "@/components/admin/lead-pipeline";
 import { todayIn } from "@/lib/dates";
 import { leadPipeline } from "@/server/data/console";
 import { requirePlatformAdmin } from "@/server/platform";
@@ -14,11 +13,11 @@ export default async function LeadPipelinePage() {
   const leads = await leadPipeline();
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader
+        eyebrow={groupOf("/admin/leads")}
         title="Lead pipeline"
         description="Every open lead by status, with its demo date and follow-up. Open a card to change the lead. Spam is left out; converted and not proceeding show the last 90 days."
-        crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Leads", href: "/admin/leads" }, { label: "Pipeline" }]}
-        actions={<Link href="/admin/leads" className="text-sm font-semibold text-brand-fg hover:underline">List view</Link>}
+        actions={<LeadViews current="pipeline" />}
       />
       {leads.ok ? <LeadPipeline leads={leads.data} today={todayIn()} /> : <Notice tone={leads.reason === "error" ? "warning" : "info"} title="Lead pipeline">{leads.message}</Notice>}
     </>

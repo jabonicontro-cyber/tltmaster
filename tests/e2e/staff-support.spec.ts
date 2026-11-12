@@ -65,13 +65,13 @@ test("invite a Support team member, the owner lets Taviron in, staff go in and t
   // 2. The invitee joins: password, authenticator app, join. Support sees the company access desk only.
   const staff = await joinWithLink(browser, link.replace(/^https?:\/\/[^/]+/, ""));
   const sp = staff.page;
-  await expect(sp.getByRole("navigation", { name: "Platform" }).getByRole("link")).toHaveText(["Company access"]);
+  await expect(sp.getByRole("navigation", { name: "Platform" }).getByRole("link")).toHaveText(["Company access", "Support inbox", "My visits", "Search"]);
   await sp.goto("/admin");
   await sp.waitForURL((u) => u.pathname === "/staff");
   await sp.getByLabel("Company name").fill("Top Line");
   await sp.getByRole("button", { name: "Find" }).click();
   await sp.waitForURL((u) => u.search.includes("q=Top"));
-  const row = sp.getByRole("list", { name: "Customer companies" }).getByRole("listitem", { name: /Top Line Trucking/ });
+  const row = sp.getByRole("table", { name: "Customer companies" }).getByRole("row", { name: /Top Line Trucking/ });
   await expect(row).toContainText("Not allowed");
   await expect(row).toContainText("Waiting for the owner");
 

@@ -1,12 +1,11 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { formatDateTime } from "@/lib/dates";
 import { CHANGE_REQUEST_LABELS, visitEndText } from "@/lib/platform/console";
 import { mySupportWork } from "@/server/data/console";
 import { requirePlatformStaff } from "@/server/platform";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "My visits and requests" };
 
@@ -16,15 +15,15 @@ export default async function MyWorkPage() {
   const work = await mySupportWork();
   return (
     <>
-      <PageHeader title="My visits and requests" description="The companies you went into, why, and how each visit ended; and the changes you asked an owner to approve." crumbs={[{ label: "Company access", href: "/staff" }, { label: "My visits and requests" }]} />
+      <ConsolePageHeader eyebrow={groupOf("/staff/work")} title="My visits and requests" description="The companies you went into, why, and how each visit ended; and the changes you asked an owner to approve." crumbs={[{ label: "Company access", href: "/staff" }, { label: "My visits and requests" }]} />
       {!work.ok ? (
         <Notice tone={work.reason === "error" ? "warning" : "info"} title="Not available">{work.message}</Notice>
       ) : (
         <div className="space-y-5">
-          <Card>
-            <CardHeader title="Changes waiting for an owner" description="During a visit, changes to people, roles and sign-ins are sent to an owner of the company to approve in Settings, Taviron support. They expire after 3 days." />
+          <Panel>
+            <PanelHeader title="Changes waiting for an owner" description="During a visit, changes to people, roles and sign-ins are sent to an owner of the company to approve in Settings, Taviron support. They expire after 3 days." />
             {work.data.requests.length === 0 ? (
-              <CardBody><p className="text-sm text-muted">You have not asked for any change yet.</p></CardBody>
+              <PanelBody><p className="text-sm text-muted">You have not asked for any change yet.</p></PanelBody>
             ) : (
               <ul className="divide-y divide-line" aria-label="My change requests">
                 {work.data.requests.map((q) => {
@@ -46,11 +45,11 @@ export default async function MyWorkPage() {
                 })}
               </ul>
             )}
-          </Card>
-          <Card>
-            <CardHeader title="My visits" description="Your last 50 visits, newest first. The company sees the same history in its own audit log." />
+          </Panel>
+          <Panel>
+            <PanelHeader title="My visits" description="Your last 50 visits, newest first. The company sees the same history in its own audit log." />
             {work.data.visits.length === 0 ? (
-              <CardBody><p className="text-sm text-muted">No visits yet. Go into a company from <Link href="/staff" className="font-semibold underline">Company access</Link>.</p></CardBody>
+              <PanelBody><p className="text-sm text-muted">No visits yet. Go into a company from <Link href="/staff" className="font-semibold underline">Company access</Link>.</p></PanelBody>
             ) : (
               <ul className="divide-y divide-line" aria-label="My visits">
                 {work.data.visits.map((v) => (
@@ -66,7 +65,7 @@ export default async function MyWorkPage() {
                 ))}
               </ul>
             )}
-          </Card>
+          </Panel>
         </div>
       )}
     </>

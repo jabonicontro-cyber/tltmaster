@@ -1,19 +1,16 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, Select } from "@/components/ui/form";
-import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
-import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/dates";
 import { StaffTeam, type StaffInvite, type StaffMember } from "@/components/admin/staff-team";
-import { accessScopeText, auditHref, parseAuditFilters, securityEventText, type AuditRow, type SecurityOverview } from "@/lib/platform/console";
+import { accessScopeText, auditHref, parseAuditFilters, plainSummary, securityEventText, type AuditRow, type SecurityOverview } from "@/lib/platform/console";
 import { activityHref, activityText } from "@/lib/platform/launchpad";
 import { auditFacets, auditLog, securityOverview } from "@/server/data/console";
 import { requirePlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, Panel, PanelBody, PanelHeader, StatGrid, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Administration" };
 
@@ -49,18 +46,18 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
   const last = rows[rows.length - 1];
   return (
     <>
-      <PageHeader title="Platform administration" description="Who is on the Taviron team, how sign-ins and two-step codes are going, and every sensitive platform action." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Administration" }]} />
+      <ConsolePageHeader eyebrow={groupOf("/admin/platform")} title="Platform administration" description="Who is on the Taviron team, how sign-ins and two-step codes are going, and every sensitive platform action." crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Administration" }]} />
       <div className="space-y-5">
-        <Card>
+        <Panel>
           {staffInstalled ? (
             <>
-              <CardHeader title="Taviron team" description="Invite people from here: they get a link, choose a password and set up an authenticator app. Support goes into customer companies to help; Admin also manages plans, prices, subscriptions and the team. Every change is in the audit log below." />
-              <CardBody><StaffTeam members={(staff.data ?? []) as StaffMember[]} invites={(invites.data ?? []) as StaffInvite[]} /></CardBody>
+              <PanelHeader title="Taviron team" description="Invite people from here: they get a link, choose a password and set up an authenticator app. Support goes into customer companies to help; Admin also manages plans, prices, subscriptions and the team. Every change is in the audit log below." />
+              <PanelBody><StaffTeam members={(staff.data ?? []) as StaffMember[]} invites={(invites.data ?? []) as StaffInvite[]} /></PanelBody>
             </>
           ) : (
             <>
-              <CardHeader title="Platform team" description="Inviting from here is not available on this database yet. Until then, ask the platform owner to add or remove team members." />
-              <CardBody>
+              <PanelHeader title="Platform team" description="Inviting from here is not available on this database yet. Until then, ask the platform owner to add or remove team members." />
+              <PanelBody>
                 <ul className="space-y-2 text-sm">
                   {members.map((m) => (
                     <li key={m.user_id}>
@@ -69,18 +66,18 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
                     </li>
                   ))}
                 </ul>
-              </CardBody>
+              </PanelBody>
             </>
           )}
-        </Card>
+        </Panel>
 
         {security.ok ? <SecurityCard s={security.data} /> : security.reason === "error" ? <Notice tone="warning" title="Security overview">{security.message}</Notice> : null}
 
-        <Card>
+        <Panel>
           <div id="audit" className="scroll-mt-24" />
-          <CardHeader title="Audit log" description={log.ok ? "Append-only, newest first. Filter by who, what, which company or which days (Central time)." : "Append-only, newest first (the latest 200). Filters are not available on this database yet."} />
+          <PanelHeader title="Audit log" description={log.ok ? "Append-only, newest first. Filter by who, what, which company or which days (Central time)." : "Append-only, newest first (the latest 200). Filters are not available on this database yet."} />
           {log.ok && facets.ok ? (
-            <CardBody className="border-b border-line">
+            <PanelBody className="border-b border-line">
               <form method="get" action="/admin/platform#audit" className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(5,minmax(0,1fr))_auto] lg:items-end" aria-label="Filter the audit log">
                 <Field label="Who" htmlFor="f-actor">
                   <Select id="f-actor" name="actor" defaultValue={filters.actor}>
@@ -107,60 +104,38 @@ export default async function PlatformAdminPage({ searchParams }: { searchParams
                   {filtered ? <Link href="/admin/platform#audit" className="text-sm font-semibold text-brand-fg hover:underline">Clear</Link> : null}
                 </div>
               </form>
-            </CardBody>
+            </PanelBody>
           ) : null}
-          {!log.ok && log.reason === "error" ? <CardBody><Notice tone="warning" title="Not filtered">{log.message}</Notice></CardBody> : null}
+          {!log.ok && log.reason === "error" ? <PanelBody><Notice tone="warning" title="Not filtered">{log.message}</Notice></PanelBody> : null}
           {rows.length === 0 ? (
-            <CardBody><p className="text-sm text-muted">{filtered ? "No entries match these filters." : "Nothing recorded yet."}</p></CardBody>
+            <PanelBody><p className="text-sm text-muted">{filtered ? "No entries match these filters." : "Nothing recorded yet."}</p></PanelBody>
           ) : (
-            <TableWrap className="rounded-none border-0">
-              <Table aria-label="Audit log">
-                <thead>
-                  <tr>
-                    <Th>When</Th>
-                    <Th>Who</Th>
-                    <Th>What</Th>
-                  </tr>
-                </thead>
-                <tbody>
+            <DataTable frame={false} aria-label="Audit log" head={<><DataHead>What</DataHead><DataHead>Who</DataHead><DataHead>When</DataHead></>}>
                   {rows.map((l) => {
                     const href = activityHref({ ref_type: l.target_type, ref_id: l.target_id });
                     return (
-                      <Tr key={l.id}>
-                        <Td className="whitespace-nowrap">{formatDateTime(l.occurred_at)}</Td>
-                        <Td>{l.actor}</Td>
-                        <Td>
+                      <DataRow key={l.id}>
+                        <DataCell primary>
                           <span className="font-semibold">{href ? <Link href={href} className="hover:underline">{activityText(l.action)}</Link> : activityText(l.action)}</span>
                           {l.company ? <span className="ml-2 text-xs text-muted">{l.company}</span> : null}
-                          {l.summary ? <span className="block text-xs text-muted">{l.summary}</span> : null}
-                        </Td>
-                      </Tr>
+                          {l.summary ? <span className="block text-xs text-muted">{plainSummary(l.action, l.summary)}</span> : null}
+                        </DataCell>
+                        <DataCell label="Who">{l.actor}</DataCell>
+                        <DataCell label="When" className="whitespace-nowrap tabular">{formatDateTime(l.occurred_at)}</DataCell>
+                      </DataRow>
                     );
                   })}
-                </tbody>
-              </Table>
-            </TableWrap>
+            </DataTable>
           )}
           {log.ok && (log.data.more || filters.before) ? (
-            <CardBody className="flex flex-wrap gap-4 border-t border-line text-sm">
+            <PanelBody className="flex flex-wrap gap-4 border-t border-line text-sm">
               {filters.before ? <Link href={auditHref(filters)} className="font-semibold text-brand-fg hover:underline">Newest entries</Link> : null}
               {log.data.more && last ? <Link href={auditHref(filters, String(last.id))} className="font-semibold text-brand-fg hover:underline">Older entries</Link> : null}
-            </CardBody>
+            </PanelBody>
           ) : null}
-        </Card>
+        </Panel>
       </div>
     </>
-  );
-}
-
-function Count({ label, value, sub, warn }: { label: string; value: number; sub: string; warn?: boolean }) {
-  return (
-    <li className="rounded-xl border border-line bg-card p-3">
-      <p className="text-xs font-medium text-muted">{label}</p>
-      <p className="mt-0.5 text-2xl font-semibold tabular text-ink">{value}</p>
-      <p className="text-xs text-muted">{sub}</p>
-      {warn ? <Badge tone="amber" className="mt-1">Worth a look</Badge> : null}
-    </li>
   );
 }
 
@@ -168,15 +143,19 @@ function Count({ label, value, sub, warn }: { label: string; value: number; sub:
 function SecurityCard({ s }: { s: SecurityOverview }) {
   const accessFailed = s.access.reduce((n, a) => n + a.failed_week, 0);
   return (
-    <Card>
-      <CardHeader title="Security overview" description={`Sign-in and two-step verification attempts across Taviron, counted. As of ${formatDateTime(s.as_of)}.`} />
-      <CardBody className="space-y-4">
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Security counts">
-          <Count label="Failed sign-ins" value={s.signin_failures.day} sub={`last 24 hours · ${s.signin_failures.week} in 7 days, ${s.signin_failures.logins_week} different sign-in names`} warn={s.signin_failures.day >= 20} />
-          <Count label="Wrong authenticator codes" value={s.mfa.failed_day} sub={`last 24 hours · ${s.mfa.failed_week} in 7 days, ${s.mfa.people_failed_week} people`} warn={s.mfa.failed_day >= 10} />
-          <Count label="Correct authenticator codes" value={s.mfa.ok_week} sub="in 7 days" />
-          <Count label="Wrong access codes" value={accessFailed} sub="website and sign-up access codes, 7 days" />
-        </ul>
+    <Panel>
+      <PanelHeader title="Security overview" description={`Sign-in and two-step verification attempts across Taviron, counted. As of ${formatDateTime(s.as_of)}.`} />
+      <PanelBody className="space-y-4">
+        <StatGrid
+          label="Security counts"
+          columns={4}
+          stats={[
+            { label: "Failed sign-ins", value: s.signin_failures.day, sub: `last 24 hours · ${s.signin_failures.week} in 7 days, ${s.signin_failures.logins_week} different sign-in names`, tone: s.signin_failures.day >= 20 ? "attention" : "default" },
+            { label: "Wrong authenticator codes", value: s.mfa.failed_day, sub: `last 24 hours · ${s.mfa.failed_week} in 7 days, ${s.mfa.people_failed_week} people`, tone: s.mfa.failed_day >= 10 ? "attention" : "default" },
+            { label: "Correct authenticator codes", value: s.mfa.ok_week, sub: "in 7 days" },
+            { label: "Wrong access codes", value: accessFailed, sub: "website and sign-up access codes, 7 days" },
+          ]}
+        />
         {s.access.length > 0 && (
           <ul className="space-y-1 text-sm" aria-label="Access code attempts">
             {s.access.map((a) => <li key={a.scope} className="flex justify-between gap-3"><span>{accessScopeText(a.scope)}</span><span className="tabular text-muted">{a.failed_week} wrong · {a.ok_week} right</span></li>)}
@@ -205,7 +184,7 @@ function SecurityCard({ s }: { s: SecurityOverview }) {
             ) : <p className="text-sm text-muted">None recorded.</p>}
           </div>
         </div>
-      </CardBody>
-    </Card>
+      </PanelBody>
+    </Panel>
   );
 }

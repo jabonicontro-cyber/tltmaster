@@ -177,7 +177,7 @@ test("console search: Admins find companies and leads; Support finds companies a
 test("Support can go into a company with a reason on a phone; the Admin console stays closed to them", async ({ browser }) => {
   const { ctx, page: sp } = await supportPage(browser, 390);
   await expect(sp).toHaveURL(/\/staff$/);
-  const list = sp.getByRole("list", { name: "Customer companies" });
+  const list = sp.getByRole("table", { name: "Customer companies" });
   const reason = list.getByRole("textbox", { name: /What are you helping/ }).first();
   await expect(reason).toBeVisible();
   // Scrolled to, the button sits fully on the screen (not off its right edge).

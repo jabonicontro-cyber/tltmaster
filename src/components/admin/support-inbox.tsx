@@ -1,10 +1,8 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Select, Textarea } from "@/components/ui/form";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
-import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/dates";
 import { HELP_ARTICLES } from "@/lib/help/articles";
 import {
@@ -12,6 +10,7 @@ import {
   type Inbox, type InboxFilter, type SupportRequestDetail,
 } from "@/lib/platform/console";
 import { updateSupportRequest } from "@/app/staff/support-actions";
+import { ConsoleTabs, Panel, PanelBody, PanelHeader } from "@/components/admin/ui";
 
 // The support inbox (PC1): the same view for Admins (/admin/support) and Support staff (/staff/support). Requests are
 // what customers sent from Help; staff set the status and record notes and replies. Nothing is emailed from here.
@@ -21,22 +20,11 @@ const articleTitle = new Map(HELP_ARTICLES.map((a) => [a.id, a.title]));
 export function SupportInboxList({ inbox, filter, base }: { inbox: Inbox; filter: InboxFilter; base: string }) {
   const count = (k: InboxFilter) => (k === "open" ? inbox.counts.new + inbox.counts.answered : inbox.counts[k]);
   return (
-    <Card>
-      <CardHeader title="Support requests" description="Sent by people in customer companies from Help. Open one to answer it, add a note or close it. Nothing is emailed from Taviron: you send the answer from your own email." />
-      <CardBody className="border-b border-line">
-        <nav aria-label="Filter support requests" className="flex flex-wrap gap-2">
-          {INBOX_FILTERS.map((f) => (
-            <Link
-              key={f.key}
-              href={f.key === "open" ? base : `${base}?status=${f.key}`}
-              aria-current={filter === f.key ? "page" : undefined}
-              className={cn("inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-sm font-semibold", filter === f.key ? "border-strong bg-strong text-white" : "border-line bg-card text-ink hover:bg-surface")}
-            >
-              {f.label} <span className="tabular opacity-75">{count(f.key)}</span>
-            </Link>
-          ))}
-        </nav>
-      </CardBody>
+    <Panel>
+      <PanelHeader title="Support requests" description="Sent by people in customer companies from Help. Open one to answer it, add a note or close it. Nothing is emailed from Taviron: you send the answer from your own email." />
+      <PanelBody className="border-b border-line">
+        <ConsoleTabs label="Filter support requests" items={INBOX_FILTERS.map((f) => ({ href: f.key === "open" ? base : `${base}?status=${f.key}`, label: f.label, count: count(f.key), current: filter === f.key }))} />
+      </PanelBody>
       {inbox.items.length === 0 ? (
         <EmptyState title={filter === "open" ? "No open requests" : "No requests here"} description={filter === "open" ? "Every request is answered or closed. New ones appear here as soon as someone sends one from Help." : "Try another filter."} className="py-8" />
       ) : (
@@ -62,7 +50,7 @@ export function SupportInboxList({ inbox, filter, base }: { inbox: Inbox; filter
           ))}
         </ul>
       )}
-    </Card>
+    </Panel>
   );
 }
 
@@ -79,14 +67,14 @@ export function SupportRequestView({ r, base, level, saved, error }: { r: Suppor
       <div className="space-y-5">
         {error ? <Notice tone="warning" title="Not saved">{error}</Notice> : null}
         {saved && SAVED[saved] ? <p role="status" className="rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink">{SAVED[saved]}</p> : null}
-        <Card>
-          <CardHeader title="Their message" description={`Sent ${formatDateTime(r.created_at)}${r.page ? ` from ${r.page}` : ""}${r.article_id ? `, while reading “${articleTitle.get(r.article_id) ?? "a help article"}”` : ""}.`} />
-          <CardBody><p className="text-sm whitespace-pre-wrap text-ink" data-testid="request-message">{r.message}</p></CardBody>
-        </Card>
-        <Card>
-          <CardHeader title="Notes and replies" description="Notes are for the Taviron team only. Replies are the answer you wrote for the customer, kept here once you send it from your email." />
+        <Panel>
+          <PanelHeader title="Their message" description={`Sent ${formatDateTime(r.created_at)}${r.page ? ` from ${r.page}` : ""}${r.article_id ? `, while reading “${articleTitle.get(r.article_id) ?? "a help article"}”` : ""}.`} />
+          <PanelBody><p className="text-sm whitespace-pre-wrap text-ink" data-testid="request-message">{r.message}</p></PanelBody>
+        </Panel>
+        <Panel>
+          <PanelHeader title="Notes and replies" description="Notes are for the Taviron team only. Replies are the answer you wrote for the customer, kept here once you send it from your email." />
           {r.notes.length === 0 ? (
-            <CardBody><p className="text-sm text-muted">Nothing recorded yet.</p></CardBody>
+            <PanelBody><p className="text-sm text-muted">Nothing recorded yet.</p></PanelBody>
           ) : (
             <ol className="divide-y divide-line" aria-label="Notes and replies">
               {r.notes.map((n, i) => (
@@ -102,17 +90,17 @@ export function SupportRequestView({ r, base, level, saved, error }: { r: Suppor
             </ol>
           )}
           {lastReply && r.from_email ? (
-            <CardBody className="border-t border-line">
+            <PanelBody className="border-t border-line">
               <a href={replyMailto(r.from_email, r.company, lastReply.body)} className="text-sm font-semibold text-brand-fg hover:underline">Open the latest reply in your email</a>
               <p className="mt-1 text-xs text-muted">Opens a new email to {r.from_email} in your own email program. Taviron does not send it.</p>
-            </CardBody>
+            </PanelBody>
           ) : null}
-        </Card>
+        </Panel>
       </div>
       <div className="space-y-5">
-        <Card>
-          <CardHeader title="From" />
-          <CardBody>
+        <Panel>
+          <PanelHeader title="From" />
+          <PanelBody>
             <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
               <dt className="text-muted">Person</dt><dd className="break-words text-ink">{r.from_name}{r.from_role ? ` (${r.from_role})` : ""}</dd>
               <dt className="text-muted">Email</dt><dd className="break-words text-ink">{r.from_email ? <a href={`mailto:${r.from_email}`} className="underline">{r.from_email}</a> : "Not known"}</dd>
@@ -123,11 +111,11 @@ export function SupportRequestView({ r, base, level, saved, error }: { r: Suppor
               {level === "admin" && !r.is_demo ? <Link href={`/admin/companies/${r.company_id}`} className="font-semibold text-brand-fg hover:underline">Open the company</Link> : null}
               <Link href={`/staff?q=${encodeURIComponent(r.company)}`} className="font-semibold text-brand-fg hover:underline">Go in through Company access</Link>
             </p>
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title="Answer or update" description="Change the status, write a note, or both." />
-          <CardBody>
+          </PanelBody>
+        </Panel>
+        <Panel>
+          <PanelHeader title="Answer or update" description="Change the status, write a note, or both." />
+          <PanelBody>
             <form action={updateSupportRequest} className="space-y-3" aria-label="Update this request">
               <input type="hidden" name="id" value={r.id} />
               <input type="hidden" name="base" value={base} />
@@ -146,8 +134,8 @@ export function SupportRequestView({ r, base, level, saved, error }: { r: Suppor
               </Field>
               <SubmitButton pendingLabel="Saving…">Save</SubmitButton>
             </form>
-          </CardBody>
-        </Card>
+          </PanelBody>
+        </Panel>
         <p className="text-sm"><Link href={base} className="font-semibold text-brand-fg hover:underline">Back to all requests</Link></p>
       </div>
     </div>

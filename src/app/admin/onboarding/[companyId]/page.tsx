@@ -4,8 +4,6 @@ import { notFound } from "next/navigation";
 import { AdminFlash } from "@/components/admin/flash";
 import { ImportUploader } from "@/components/admin/import-uploader";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDateTime } from "@/lib/dates";
 import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
@@ -16,6 +14,7 @@ import { todayIn } from "@/lib/dates";
 import { platformOnboarding } from "@/server/data/onboarding";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
 import { GenerateChecklistButton } from "@/components/onboarding/task-forms";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 /** A CSV the company uploaded to its checklist, read with the platform admin's own access (database + storage RLS). */
 async function documentForImport(documentId: string | undefined, entity: string | undefined) {
@@ -52,7 +51,7 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
   const [checklist, fromDocument] = await Promise.all([platformOnboarding(company.id), documentForImport(sp.document, sp.entity)]);
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/onboarding")}
         title={company.name}
         description={`${company.members} users · ${company.customers} customers · ${company.materials} materials · ${company.trucks} trucks · ${company.drivers} drivers`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Onboarding", href: "/admin/onboarding" }, { label: company.name }]}
@@ -60,13 +59,13 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
       />
       <AdminFlash error={sp.error} saved={sp.created} savedText="Company created. Import its records below." />
       <div className="space-y-5">
-        <Card>
-          <CardHeader
+        <Panel>
+          <PanelHeader
             title="Onboarding checklist"
             description="Generated from the company's plan, fleet, bases, portal entitlement and configured integrations. The company works on its tasks under Company setup; you approve, request changes and remind (in-app only). Approving never changes the go-live date, the lifecycle stage or billing."
             actions={checklist.ok ? <GenerateChecklistButton companyId={company.id} hasTasks={checklist.data.tasks.length > 0} /> : null}
           />
-          <CardBody>
+          <PanelBody>
             {!checklist.ok ? (
               <p className="text-sm text-muted">{checklist.message}</p>
             ) : checklist.data.tasks.length === 0 ? (
@@ -74,12 +73,12 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
             ) : (
               <OnboardingChecklist state={checklist.data} side="staff" companyId={company.id} today={todayIn("America/Chicago")} />
             )}
-          </CardBody>
-        </Card>
-        <Card>
+          </PanelBody>
+        </Panel>
+        <Panel>
           <div id="import" className="scroll-mt-24" />
-          <CardHeader title="Import from a spreadsheet" description="Records are created only after you review and approve the batch. An approved batch can be reverted." />
-          <CardBody>
+          <PanelHeader title="Import from a spreadsheet" description="Records are created only after you review and approve the batch. An approved batch can be reverted." />
+          <PanelBody>
             {fromDocument && "error" in fromDocument ? <p role="alert" className="mb-3 text-sm text-critical">{fromDocument.error}</p> : null}
             {fromDocument && !("error" in fromDocument) ? (
               <p className="mb-3 rounded-xl border border-line bg-surface p-3 text-sm text-ink">
@@ -87,14 +86,14 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
               </p>
             ) : null}
             <ImportUploader key={fromDocument && !("error" in fromDocument) ? fromDocument.documentId : "upload"} companyId={company.id} initial={fromDocument && !("error" in fromDocument) ? fromDocument : undefined} />
-          </CardBody>
-        </Card>
-        <Card>
-          <CardHeader title="Imports" />
+          </PanelBody>
+        </Panel>
+        <Panel>
+          <PanelHeader title="Imports" />
           {list.length === 0 ? (
-            <CardBody>
+            <PanelBody>
               <p className="text-sm text-muted">No imports yet.</p>
-            </CardBody>
+            </PanelBody>
           ) : (
             <TableWrap className="rounded-none border-0">
               <Table>
@@ -125,7 +124,7 @@ export default async function CompanyOnboardingPage({ params, searchParams }: { 
               </Table>
             </TableWrap>
           )}
-        </Card>
+        </Panel>
       </div>
     </>
   );

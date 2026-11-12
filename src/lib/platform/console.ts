@@ -126,6 +126,15 @@ const SUBSCRIPTION_KIND: Record<string, string> = {
 };
 const VISIT_END: Record<string, string> = { left: "left", switched: "went to another company", access_ended: "the owner ended access", staff_removed: "removed from the team", "": "the visit time ran out" };
 
+/**
+ * An audit summary in plain words. The database writes onboarding task states as keys ("Onboarding task set to
+ * changes_requested"); those read as the checklist shows them ("Changes requested").
+ */
+export function plainSummary(action: string, summary: string): string {
+  if (!summary || !action.startsWith("onboarding")) return summary;
+  return summary.replace(/\b(not_started|in_progress|awaiting_customer|submitted|changes_requested|approved|blocked|not_applicable)\b/g, (k) => TASK_STATUS[k] ?? k);
+}
+
 /** The title and the line under it for one timeline entry. */
 export function timelineText(i: TimelineItem): { title: string; detail: string } {
   const d = i.detail ?? {};
@@ -135,7 +144,7 @@ export function timelineText(i: TimelineItem): { title: string; detail: string }
       return { title: leadEventText(i.kind), detail: [i.summary ? `Lead ${i.summary}` : "", change, i.note].filter(Boolean).join(" · ") };
     }
     case "platform":
-      return { title: activityText({ source: "platform", action: i.kind }), detail: i.summary };
+      return { title: activityText({ source: "platform", action: i.kind }), detail: plainSummary(i.kind, i.summary) };
     case "onboarding": {
       const from = typeof d.from === "string" && d.from ? TASK_STATUS[d.from] ?? d.from : "";
       const to = typeof d.to === "string" && d.to ? TASK_STATUS[d.to] ?? d.to : "";

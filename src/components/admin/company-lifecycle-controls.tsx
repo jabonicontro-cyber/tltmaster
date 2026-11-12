@@ -1,10 +1,10 @@
 import { Badge } from "@/components/ui/badge";
-import { CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
 import { Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { archiveCompany, classifyCompany, deleteCompany, restoreCompany } from "@/app/admin/companies/lifecycle-actions";
 import { COMPANY_CLASS_LABELS, type CompanyClass } from "@/lib/terminology";
+import { PanelBody, PanelHeader } from "@/components/admin/ui";
 
 export type DeletePreview = { name: string; delete_enabled?: boolean; classification: CompanyClass; archived_at: string | null; archive_reason: string; eligible: boolean; blockers: string[]; counts: Record<string, number>; members: number };
 
@@ -25,11 +25,11 @@ export function CompanyLifecycleControls({
   const total = preview ? Object.values(preview.counts).reduce((a, b) => a + b, 0) : 0;
   return (
     <section aria-label="Classification and archive">
-      <CardHeader
+      <PanelHeader
         title="Classification and Archive"
         description="Mark practice or test companies yourself; nothing is classified automatically. Archived companies are hidden from the directory, customer counts, onboarding metrics and MRR, and their people cannot open them. Archiving keeps every record and can be undone."
       />
-      <CardBody className="space-y-6">
+      <PanelBody className="space-y-6">
         <form action={classifyCompany} className="flex flex-wrap items-end gap-3">
           <input type="hidden" name="id" value={company.id} />
           <Field label="Classification" htmlFor="classification">
@@ -93,7 +93,7 @@ export function CompanyLifecycleControls({
             )}
           </div>
         ) : null}
-      </CardBody>
+      </PanelBody>
     </section>
   );
 }

@@ -2,8 +2,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ProspectEmail, ProspectManage } from "@/components/admin/outreach";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
 import { formatDateTime } from "@/lib/dates";
 import {
   OUTREACH_STATUS_LABELS, SEGMENT_LABELS, renderEmail, settingsProblems, withDefaults,
@@ -11,6 +9,7 @@ import {
 } from "@/lib/platform/outreach";
 import { requirePlatformAdmin } from "@/server/platform";
 import { createClient } from "@/server/supabase/server";
+import { ConsolePageHeader, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Outreach company" };
 
@@ -54,41 +53,41 @@ export default async function OutreachProspectPage({ params }: { params: Promise
 
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/outreach")}
         title={p.company_name}
         description={<Badge tone={p.status === "interested" ? "green" : "gray"}>{OUTREACH_STATUS_LABELS[p.status]}</Badge>}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Outreach", href: "/admin/outreach" }, { label: p.company_name }]}
       />
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Card>
-          <CardHeader title="Email" description="Filled in for this company from your saved email. Edit it in your mail program before sending if you like." />
-          <CardBody><ProspectEmail id={p.id} email={email} blocked={blocked} setupNeeded={setupNeeded} /></CardBody>
-        </Card>
+        <Panel>
+          <PanelHeader title="Email" description="Filled in for this company from your saved email. Edit it in your mail program before sending if you like." />
+          <PanelBody><ProspectEmail id={p.id} email={email} blocked={blocked} setupNeeded={setupNeeded} /></PanelBody>
+        </Panel>
         <div className="space-y-5">
-          <Card>
-            <CardHeader title="Company" />
-            <CardBody>
+          <Panel>
+            <PanelHeader title="Company" />
+            <PanelBody>
               <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
                 {facts.map(([k, v]) => (<div key={k} className="contents"><dt className="text-muted">{k}</dt><dd className="break-words text-ink">{v}</dd></div>))}
               </dl>
               {p.dot_number && <p className="mt-3 text-sm"><a className="font-semibold text-brand-fg underline" href={`https://safer.fmcsa.dot.gov/query.asp?searchtype=ANY&query_type=queryCarrierSnapshot&query_param=USDOT&query_string=${p.dot_number}`} target="_blank" rel="noreferrer">FMCSA record</a></p>}
-            </CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="Follow-up" />
-            <CardBody><ProspectManage id={p.id} status={p.status} notes={p.notes} leadId={p.lead_id} /></CardBody>
-          </Card>
-          <Card>
-            <CardHeader title="History" />
-            <CardBody>
+            </PanelBody>
+          </Panel>
+          <Panel>
+            <PanelHeader title="Follow-up" />
+            <PanelBody><ProspectManage id={p.id} status={p.status} notes={p.notes} leadId={p.lead_id} /></PanelBody>
+          </Panel>
+          <Panel>
+            <PanelHeader title="History" />
+            <PanelBody>
               <ol className="space-y-2 text-sm" aria-label="History">
                 {p.events.map((e, i) => (
                   <li key={i}><span className="text-ink">{EVENT_TEXT[e.action]?.(e.detail ?? {}) ?? e.action}</span> <span className="text-xs text-muted">{e.actor ? `${e.actor} · ` : ""}{formatDateTime(e.occurred_at)}</span></li>
                 ))}
               </ol>
               {p.lead_id && <p className="mt-3 text-sm"><Link className="font-semibold underline" href={`/admin/leads/${p.lead_id}`}>Open the lead</Link></p>}
-            </CardBody>
-          </Card>
+            </PanelBody>
+          </Panel>
         </div>
       </div>
     </>

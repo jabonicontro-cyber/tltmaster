@@ -3,9 +3,6 @@ import { CompanyLifecycleControls, type DeletePreview } from "@/components/admin
 import { notFound } from "next/navigation";
 import { CheckCircle2, Circle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { PageHeader } from "@/components/ui/page-header";
-import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { FlashToast } from "@/components/ui/flash-toast";
 import { ErrorState, Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
@@ -19,6 +16,7 @@ import { LEAD_STATUS_LABELS, ONBOARDING_LABELS, type LeadStatus, type Onboarding
 import { CompanyHealthCard, CompanyTimeline, UsageTrends } from "@/components/admin/company-insights";
 import { companyHealth, companyTimeline, companyUsage } from "@/server/data/console";
 import { createClient } from "@/server/supabase/server";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, Panel, PanelBody, PanelHeader, groupOf } from "@/components/admin/ui";
 
 export const metadata = { title: "Company" };
 
@@ -66,7 +64,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
     const missing = ["PGRST202", "42883"].includes(error.code ?? "");
     return (
       <>
-        <PageHeader title="Company" crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: "Company" }]} />
+        <ConsolePageHeader eyebrow={groupOf("/admin/companies")} title="Company" crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: "Company" }]} />
         <ErrorState
           title={missing ? "Not available yet" : "The company could not be loaded"}
           description={missing ? "The company page is not available on this database yet. The company directory and Onboarding still work." : "Nothing was changed. Try again in a moment."}
@@ -105,7 +103,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   ];
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader eyebrow={groupOf("/admin/companies")}
         title={c.name}
         description={`${c.active ? "Active" : "Inactive"} · created ${formatDate(c.created_at.slice(0, 10))}${c.timezone ? ` · ${c.timezone}` : ""}`}
         crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies", href: "/admin/companies" }, { label: c.name }]}
@@ -120,13 +118,13 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       <FlashToast messages={{ saved: { text: SAVED[sp.saved ?? ""] ?? "Saved." } }} />
       {sp.error && <div className="mb-4"><Notice tone="warning" title="Not saved">{sp.error}</Notice></div>}
       {health.ok && health.data.rows[0] ? (
-        <Card className="mb-5"><CompanyHealthCard health={health.data.rows[0]} now={health.data.now} /></Card>
+        <Panel className="mb-5"><CompanyHealthCard health={health.data.rows[0]} now={health.data.now} /></Panel>
       ) : !health.ok && health.reason === "error" ? (
         <div className="mb-5"><Notice tone="warning" title="Health could not be loaded">{health.message}</Notice></div>
       ) : null}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader title="Setup" description={c.missing.length ? `Missing: ${c.missing.join(", ")}.` : "Every setup step is done."} />
+        <Panel>
+          <PanelHeader title="Setup" description={c.missing.length ? `Missing: ${c.missing.join(", ")}.` : "Every setup step is done."} />
           <ul className="divide-y divide-line" aria-label="Setup steps">
             {steps.map((s) => (
               <li key={s.label} className="flex items-center gap-3 px-5 py-2.5 text-sm sm:px-6">
@@ -137,13 +135,13 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
             ))}
           </ul>
           {c.lead && (
-            <CardBody className="border-t border-line text-sm">
+            <PanelBody className="border-t border-line text-sm">
               From lead <Link href={`/admin/leads/${c.lead.id}`} className="font-semibold hover:underline">{c.lead.name}</Link> · {LEAD_STATUS_LABELS[c.lead.status] ?? c.lead.status} · onboarding {ONBOARDING_LABELS[c.lead.onboarding_stage] ?? c.lead.onboarding_stage}
-            </CardBody>
+            </PanelBody>
           )}
-        </Card>
-        <Card>
-          <CardHeader title="People who can sign in" description="Names and roles only. Roles are managed by the company's owner in People." />
+        </Panel>
+        <Panel>
+          <PanelHeader title="People who can sign in" description="Names and roles only. Roles are managed by the company's owner in People." />
           {c.members.length === 0 ? (
             <p className="px-5 py-4 text-sm text-muted sm:px-6">Nobody can sign in to this company yet.</p>
           ) : (
@@ -157,7 +155,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
               ))}
             </ul>
           )}
-        </Card>
+        </Panel>
       </div>
 
       {!c.is_demo && (lifecycleMissing ? (
@@ -169,54 +167,49 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
       ))}
       {subState && lifeData && <PlanUsageCard companyId={c.id} state={subState} plans={(plans?.data ?? []) as PlanVersion[]} terms={lifeData.terms} />}
 
-      <Card className="mt-5">
-        <CardHeader title="Imports" />
+      <Panel className="mt-5">
+        <PanelHeader title="Imports" />
         {c.imports.length === 0 ? (
           <p className="px-5 py-4 text-sm text-muted sm:px-6">No imports yet.</p>
         ) : (
-          <TableWrap className="rounded-none border-0">
-            <Table>
-              <thead><tr><Th>Records</Th><Th>Status</Th><Th align="right">Rows</Th><Th align="right">With problems</Th><Th>Uploaded</Th></tr></thead>
-              <tbody>
+          <DataTable frame={false} aria-label="Imports" head={<><DataHead>Records</DataHead><DataHead>Status</DataHead><DataHead align="right">Rows</DataHead><DataHead align="right">With problems</DataHead><DataHead>Uploaded</DataHead></>}>
                 {c.imports.map((b) => (
-                  <Tr key={b.id}>
-                    <Td><Link href={`/admin/onboarding/batch/${b.id}`} className="font-semibold capitalize hover:underline">{b.entity}</Link>{b.file_name ? <span className="block text-xs text-muted">{b.file_name}</span> : null}</Td>
-                    <Td>{b.status === "review" ? <Badge tone="amber">{IMPORT_STATUS[b.status]}</Badge> : IMPORT_STATUS[b.status] ?? b.status}</Td>
-                    <Td align="right">{b.rows}</Td>
-                    <Td align="right">{b.errors}</Td>
-                    <Td className="whitespace-nowrap">{formatDateTime(b.created_at)}</Td>
-                  </Tr>
+                  <DataRow key={b.id}>
+                    <DataCell primary><Link href={`/admin/onboarding/batch/${b.id}`} className="font-semibold capitalize hover:underline">{b.entity}</Link>{b.file_name ? <span className="block text-xs text-muted">{b.file_name}</span> : null}</DataCell>
+                    <DataCell label="Status">{b.status === "review" ? <Badge tone="amber">{IMPORT_STATUS[b.status]}</Badge> : IMPORT_STATUS[b.status] ?? b.status}</DataCell>
+                    <DataCell label="Rows" align="right">{b.rows}</DataCell>
+                    <DataCell label="With problems" align="right">{b.errors}</DataCell>
+                    <DataCell label="Uploaded" className="whitespace-nowrap">{formatDateTime(b.created_at)}</DataCell>
+                  </DataRow>
                 ))}
-              </tbody>
-            </Table>
-          </TableWrap>
+          </DataTable>
         )}
-      </Card>
+      </Panel>
 
       {portal ? (
-        <Card className="mt-5">
+        <Panel className="mt-5">
           <PortalEntitlementCard companyId={c.id} state={portal} />
-        </Card>
+        </Panel>
       ) : null}
 
       {hired ? (
-        <Card className="mt-5">
+        <Panel className="mt-5">
           <HiredTrucksCard companyId={c.id} state={hired} />
-        </Card>
+        </Panel>
       ) : null}
       {preview ? (
-        <Card className="mt-5">
+        <Panel className="mt-5">
           <CompanyLifecycleControls company={{ id: c.id, name: c.name, classification: preview.classification, archived_at: preview.archived_at, archive_reason: preview.archive_reason, is_demo: c.is_demo }} preview={preview} />
-        </Card>
+        </Panel>
       ) : null}
 
-      {usage.ok ? <Card className="mt-5"><UsageTrends weeks={usage.data} /></Card> : null}
+      {usage.ok ? <Panel className="mt-5"><UsageTrends weeks={usage.data} /></Panel> : null}
 
       {timeline.ok ? (
-        <div id="timeline" className="mt-5"><Card><CompanyTimeline items={timelineItems} olderHref={olderHref} /></Card></div>
+        <div id="timeline" className="mt-5"><Panel><CompanyTimeline items={timelineItems} olderHref={olderHref} /></Panel></div>
       ) : (
-        <Card className="mt-5">
-          <CardHeader title="Platform actions on this company" description="From the append-only platform audit." />
+        <Panel className="mt-5">
+          <PanelHeader title="Platform actions on this company" description="From the append-only platform audit." />
           {c.audit.length === 0 ? (
             <p className="px-5 py-4 text-sm text-muted sm:px-6">Nothing recorded.</p>
           ) : (
@@ -229,7 +222,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
               ))}
             </ul>
           )}
-        </Card>
+        </Panel>
       )}
     </>
   );

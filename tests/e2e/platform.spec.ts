@@ -107,7 +107,7 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await page.getByRole("navigation", { name: "Platform" }).getByRole("button", { name: "Sales" }).click();
   await page.getByRole("menuitem", { name: /^Leads/ }).click();
   await expect(page).toHaveURL(/\/admin\/leads$/);
-  await page.getByLabel("Search").fill(id);
+  await page.getByLabel("Search", { exact: true }).fill(id);
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("link", { name: `Pat Example ${id}` }).click();
   await expect(page.getByText(`Example Hauling ${id} (test)`).first()).toBeVisible();
