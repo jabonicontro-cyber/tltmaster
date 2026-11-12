@@ -1891,6 +1891,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "On **My Day**, drivers see **Trip sheet and fuel** for the truck they drive today.",
       "**Fuel and IFTA** (Fleet): the quarter's miles, gallons and fleet MPG, the **IFTA summary** per state (miles, gallons bought, taxable and net taxable gallons), and every trip sheet and fuel purchase.",
+      "What each fuel receipt cost shows only to people who can see billing (owners, office staff and the outside accountant). Dispatchers and mechanics see the same receipts with the gallons, odometer, state, vendor and receipt number, without the amount.",
     ],
     tasks: [
       { title: "Record a trip sheet (driver)", steps: ["At the end of the day, on My Day, type the odometer at the start and at the end.", "If you crossed a state line, select **Crossed into another state** and type the miles in each state; they must add up.", "Select **Save trip sheet**."] },

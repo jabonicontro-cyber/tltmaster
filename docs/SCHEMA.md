@@ -632,6 +632,13 @@ per truck and day; void + reason). Fleet staff read all; a driver reads their ow
 `fuel_record_trip_sheet` (fleet.edit, or a driver for a truck they drove that day or their own truck); `fuel_void`
 (fleet.edit); `fuel_my_trucks(day)` for My Day. The quarter's IFTA summary is computed in `src/lib/fuel/ifta.ts`.
 
+**Fuel dollars (20261120019800, SEC5):** `fuel_purchases` is readable **column by column**: every column except
+`total_cents`, which comes only from `fuel_purchase_amounts(from, to, truck)` (`billing.view`: owner, office, outside
+accountant). Never `select("*")` on fuel_purchases (the database refuses it); use `PURCHASE_COLUMNS`
+(`src/server/data/fuel.ts`). **A column added to `fuel_purchases` later needs its own
+`grant select (column) on public.fuel_purchases to authenticated`** (`tests/db/fuel-dollars.test.ts` lists the columns
+signed-in people cannot read).
+
 ## Vehicle inspections (20261120006000)
 
 `vehicle_inspections` (truck, driver, kind `pre_trip`/`post_trip`, day, odometer, `items` = every DVIR item with OK and

@@ -310,6 +310,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // demo_owner_company() only. L1 (20261120016200): customer_money_terms needs billing.view, require_company().
   "private.order_price_check_after_save", "private.require_prices_checked", "public.order_confirm_price",
   "public.demo_price_check_sample", "public.customer_money_terms",
+  // SEC5 (20261120019800): fuel_purchase_amounts needs billing.view, require_company(), and only receipts the person
+  // reads anyway (fleet.view / accounting.view, or a driver's own); no company id argument.
+  "public.fuel_purchase_amounts",
   "private.qualification_check", "private.member_summary", "public.set_equipment_service_status", "public.check_assignment_eligibility",
   "private.assignment_eligibility", "private.local_time_label", "private.resource_conflict", "private.check_assignment",
   "private.assignment_label", "private.release_order_assignments",
