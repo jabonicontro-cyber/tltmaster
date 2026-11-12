@@ -639,3 +639,148 @@ html[data-motion="reduce"]:not(:has(.site)) *::after {
   transition-duration: 0.01ms !important;
   scroll-behavior: auto !important;
 }
+
+/* Platform console (/admin, /staff; owner 2026-11-12: "the same look and feel as the Taviron site") ---------------
+   The console is Taviron's own workspace, never a company's: inside .console the "brand" utilities resolve to the
+   Taviron action blue (filled buttons, links, focus rings) and selected states to navy, whatever company the person
+   last worked in. Light and dark mode still follow data-theme (cards, text and lines are the normal theme tokens).
+   Shared pieces and how to use them: src/components/admin/ui/index.ts. */
+.console {
+  --color-brand: var(--color-action);
+  --color-brand-dark: var(--color-action-hover);
+  --color-brand-light: color-mix(in srgb, var(--color-action) 9%, white);
+  --color-brand-fg: color-mix(in srgb, var(--color-action) 88%, black);
+  --color-strong: var(--color-navy);
+  --color-nav-active: var(--color-action);
+  -webkit-tap-highlight-color: transparent;
+}
+@media screen {
+  html[data-theme="dark"] .console {
+    --color-brand-light: color-mix(in srgb, var(--color-action) 24%, #18191c);
+    --color-brand-fg: color-mix(in srgb, var(--color-electric) 55%, white);
+    --color-strong: var(--color-action);
+  }
+}
+/* The sticky header: translucent like the website's, with a soft edge only once content scrolls under it. */
+.console-header {
+  border-bottom: 1px solid transparent;
+}
+@supports (animation-timeline: scroll()) {
+  .console-header {
+    animation: console-header-edge linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 48px;
+  }
+  @keyframes console-header-edge {
+    to {
+      border-bottom-color: color-mix(in srgb, var(--color-ink) 8%, transparent);
+      box-shadow: 0 10px 28px -20px rgb(12 26 43 / 0.3);
+    }
+  }
+}
+@supports not (animation-timeline: scroll()) {
+  .console-header {
+    border-bottom-color: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .console-header {
+    background-color: var(--color-surface) !important;
+    backdrop-filter: none !important;
+  }
+}
+/* Page titles: the website's display tracking at console sizes. */
+.console-title {
+  letter-spacing: -0.03em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+/* Pressable things answer at once; linked cards rise a little under a mouse (hover devices only). */
+.console-press {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1), background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.console-press:active {
+  transform: scale(0.97);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .console-lift {
+    transition: transform 200ms cubic-bezier(0.22, 1, 0.36, 1), box-shadow 200ms cubic-bezier(0.22, 1, 0.36, 1), border-color 160ms ease;
+  }
+  .console-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px -22px rgb(12 26 43 / 0.35);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .console-press:active {
+    transform: none;
+  }
+}
+/* The navy band (Launchpad summary): the website's dark sections, the same in both themes. */
+.console-band {
+  background-color: var(--color-navy);
+  background-image:
+    radial-gradient(42rem 18rem at 85% -6rem, color-mix(in srgb, var(--color-electric) 22%, transparent), transparent 70%),
+    linear-gradient(rgb(199 209 222 / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(199 209 222 / 0.04) 1px, transparent 1px);
+  background-size: auto, 48px 48px, 48px 48px;
+  color: var(--color-cloud);
+  --color-brand-fg: #7cbcff; /* links on navy: 7.9:1 */
+}
+.console-band :focus-visible {
+  outline-color: var(--color-electric);
+}
+/* Responsive data tables (src/components/admin/ui/data-table.tsx): below 768px each row becomes a card and every cell
+   shows its column name (data-label) in front of the value; the first ("primary") cell is the card's title. */
+@media (max-width: 767.98px) {
+  .console-table,
+  .console-table tbody,
+  .console-table tr,
+  .console-table td {
+    display: block;
+    width: 100%;
+  }
+  .console-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .console-table tr {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--color-line);
+  }
+  .console-table tr:last-child {
+    border-bottom: 0;
+  }
+  /* The label sits in a fixed left column; the value keeps its own flow (text, badges, small lines) on the right. */
+  .console-table td {
+    position: relative;
+    padding: 0.25rem 0 0.25rem min(38%, 9rem) !important;
+    border: 0 !important;
+    text-align: left !important;
+    white-space: normal !important;
+  }
+  .console-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    top: 0.25rem;
+    left: 0;
+    width: calc(min(38%, 9rem) - 0.75rem);
+    font-size: 13px;
+    line-height: 1.5rem;
+    color: var(--color-muted);
+  }
+  .console-table td[data-primary],
+  .console-table td:not([data-label]) {
+    padding: 0 0 0.375rem !important;
+  }
+  .console-table td[data-primary]::before,
+  .console-table td:not([data-label])::before {
+    content: none;
+  }
+  .console-table td[data-empty] {
+    display: none;
+  }
+}

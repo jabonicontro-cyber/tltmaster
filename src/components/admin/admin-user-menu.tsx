@@ -13,17 +13,17 @@ export function AdminUserMenu({ name, email, photo, roleTitle, profileHref = "/a
   const shown = name || email;
   return (
     <M.Root>
-      <M.Trigger className="flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-white hover:bg-white/10">
+      <M.Trigger className="console-press flex items-center gap-2 rounded-full py-1 pr-2 pl-1 text-left text-ink outline-none hover:bg-ink/[0.05] focus-visible:outline-2 focus-visible:outline-brand-fg data-[state=open]:bg-ink/[0.05]">
         <span className="sr-only">Account menu: {shown}</span>
         <span aria-hidden><Avatar key={photo} name={shown} src={photo} size={32} /></span>
-        <span className="hidden min-w-0 sm:block" aria-hidden>
+        <span className="hidden min-w-0 xl:block" aria-hidden>
           <span className="block max-w-[14rem] truncate text-sm font-semibold">{shown}</span>
-          <span className="block max-w-[14rem] truncate text-xs text-white/70">{roleTitle}</span>
+          <span className="block max-w-[14rem] truncate text-xs text-muted">{roleTitle}</span>
         </span>
-        <ChevronDown className="size-4 text-white/70" aria-hidden />
+        <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden />
       </M.Trigger>
       <M.Portal>
-        <M.Content align="end" sideOffset={6} className="ui-pop z-50 min-w-56 origin-top-right rounded-2xl border border-line/70 bg-card p-1.5 text-ink shadow-float">
+        <M.Content align="end" sideOffset={6} className="console ui-pop z-50 min-w-56 origin-top-right rounded-2xl border border-line/70 bg-card p-1.5 text-ink shadow-float">
           <div className="px-3 py-2">
             <p className="truncate text-sm font-semibold">{shown}</p>
             <p className="truncate text-xs text-muted">{roleTitle}</p>

@@ -2,10 +2,9 @@ import { COMPANY_CLASS_LABELS, SETUP_STATUS_LABELS, TERMS, setupStatus, type Com
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Input, Select } from "@/components/ui/form";
-import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { EmptyState, ErrorState, Notice } from "@/components/ui/states";
-import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
+import { ConsolePageHeader, DataCell, DataHead, DataRow, DataTable, FilterBar, FilterField, groupOf } from "@/components/admin/ui";
 import { formatDate } from "@/lib/dates";
 import { createClient } from "@/server/supabase/server";
 
@@ -55,73 +54,60 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Pr
     .sort((a, b) => (sort === "name" ? a.name.localeCompare(b.name) : b.created_at.localeCompare(a.created_at)));
   return (
     <>
-      <PageHeader
+      <ConsolePageHeader
+        eyebrow={groupOf("/admin/companies")}
         title="Companies"
-        description="Customer companies on Taviron and how far their setup has got. Demo companies are under Demo Management."
-        crumbs={[{ label: "Launchpad", href: "/admin" }, { label: "Companies" }]}
-        actions={<Link href="/admin/onboarding" className="text-sm font-semibold text-brand-fg hover:underline">{TERMS.startOnboarding}</Link>}
+        description={`Customer companies on Taviron and how far their setup has got. Demo companies are under ${TERMS.demoManagement}.`}
+        actions={<ButtonLink href="/admin/onboarding">{TERMS.startOnboarding}</ButtonLink>}
       />
-      {sp.deleted ? <div className="mb-4"><Notice title="Company permanently deleted">{Number(sp.deleted) || 0} records were removed. The deletion and its counts are kept in the platform audit.</Notice></div> : null}
-      <form className="mb-4 flex flex-wrap items-end gap-2" role="search" aria-label="Filter companies">
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Search</span><Input name="q" defaultValue={sp.q ?? ""} placeholder="Name" className="w-56" /></label>
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Status</span>
+      {sp.deleted ? <div className="mb-5"><Notice title="Company permanently deleted">{Number(sp.deleted) || 0} records were removed. The deletion and its counts are kept in the platform audit.</Notice></div> : null}
+      <FilterBar aria-label="Filter companies">
+        <FilterField label="Search" grow><Input name="q" defaultValue={sp.q ?? ""} placeholder="Company name" /></FilterField>
+        <FilterField label="Status">
           <Select name="status" defaultValue={status}><option value="">All</option><option value="active">Active</option><option value="inactive">Inactive</option></Select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Setup</span>
+        </FilterField>
+        <FilterField label="Setup">
           <Select name="setup" defaultValue={setup}><option value="">All</option><option value="open">Not Yet Complete</option>{(Object.entries(SETUP_STATUS_LABELS) as [SetupStatus, string][]).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Type</span>
+        </FilterField>
+        <FilterField label="Type">
           <Select name="type" defaultValue={type}><option value="">All</option>{(Object.entries(COMPANY_CLASS_LABELS) as Array<[CompanyClass, string]>).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Archived</span>
+        </FilterField>
+        <FilterField label="Archived">
           <Select name="archived" defaultValue={archived}><option value="">Hidden</option><option value="include">Shown</option><option value="only">Only archived</option></Select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm"><span className="font-medium">Sort</span>
+        </FilterField>
+        <FilterField label="Sort">
           <Select name="sort" defaultValue={sort}><option value="newest">Newest first</option><option value="name">Name</option></Select>
-        </label>
+        </FilterField>
         <Button type="submit" variant="secondary">Apply</Button>
-      </form>
+      </FilterBar>
       {error ? (
         <ErrorState
           title={error.code === "PGRST202" ? "The company directory needs a database update" : "Companies could not be loaded"}
-          description={error.code === "PGRST202" ? "Apply migration 20261118000100 (owner step). Onboarding still lists companies." : "Try again in a moment."}
+          description={error.code === "PGRST202" ? "A Taviron Admin installs it. Onboarding still lists companies." : "Try again in a moment."}
         />
       ) : rows.length === 0 ? (
-        <EmptyState title={all.length ? "No company matches" : "No customer companies yet"} description={all.length ? "Change the filters to see more." : "Create the first one in Onboarding."} />
+        <EmptyState title={all.length ? "No company matches" : "No customer companies yet"} description={all.length ? "Change the filters to see more." : "Create the first one in Onboarding."} className="rounded-xl border border-line bg-card" />
       ) : (
-        <TableWrap>
-          <Table>
-            <thead>
-              <tr>
-                <Th>Company</Th>
-                <Th>Setup</Th>
-                <Th align="right">Users</Th>
-                <Th align="right">Customers</Th>
-                <Th align="right">Trucks</Th>
-                <Th align="right">Drivers</Th>
-                <Th>Created</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((c) => (
-                <Tr key={c.id}>
-                  <Td>
-                    <Link href={`/admin/companies/${c.id}`} className="font-semibold hover:underline">{c.name}</Link>
-                    {c.archived_at ? <Badge className="ml-2">Archived</Badge> : !c.active ? <Badge className="ml-2">Inactive</Badge> : null}
-                    {c.classification === "practice" ? <Badge tone="blue" className="ml-2">{COMPANY_CLASS_LABELS.practice}</Badge> : null}
-                    {c.imports_in_review > 0 ? <Badge tone="amber" className="ml-2">{c.imports_in_review} import{c.imports_in_review === 1 ? "" : "s"} to review</Badge> : null}
-                  </Td>
-                  <Td><SetupBadge status={statusOf(c)} detail={c.missing.length ? `Missing ${c.missing.join(", ")}` : ""} /></Td>
-                  <Td align="right">{c.members}</Td>
-                  <Td align="right">{c.customers}</Td>
-                  <Td align="right">{c.trucks}</Td>
-                  <Td align="right">{c.drivers}</Td>
-                  <Td className="whitespace-nowrap">{formatDate(c.created_at.slice(0, 10))}</Td>
-                </Tr>
-              ))}
-            </tbody>
-          </Table>
-        </TableWrap>
+        <DataTable aria-label="Customer companies" head={<><DataHead>Company</DataHead><DataHead>Setup</DataHead><DataHead align="right">Users</DataHead><DataHead align="right">Customers</DataHead><DataHead align="right">Trucks</DataHead><DataHead align="right">Drivers</DataHead><DataHead>Created</DataHead></>}>
+          {rows.map((c) => (
+            <DataRow key={c.id}>
+              <DataCell primary>
+                <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                  <Link href={`/admin/companies/${c.id}`} className="font-semibold text-ink hover:text-brand-fg hover:underline">{c.name}</Link>
+                  {c.archived_at ? <Badge>Archived</Badge> : !c.active ? <Badge>Inactive</Badge> : null}
+                  {c.classification === "practice" ? <Badge tone="blue">{COMPANY_CLASS_LABELS.practice}</Badge> : null}
+                  {c.imports_in_review > 0 ? <Badge tone="amber">{c.imports_in_review} import{c.imports_in_review === 1 ? "" : "s"} to review</Badge> : null}
+                </span>
+              </DataCell>
+              <DataCell label="Setup"><SetupBadge status={statusOf(c)} detail={c.missing.length ? `Missing ${c.missing.join(", ")}` : ""} /></DataCell>
+              <DataCell label="Users" align="right">{c.members}</DataCell>
+              <DataCell label="Customers" align="right">{c.customers}</DataCell>
+              <DataCell label="Trucks" align="right">{c.trucks}</DataCell>
+              <DataCell label="Drivers" align="right">{c.drivers}</DataCell>
+              <DataCell label="Created" className="whitespace-nowrap text-muted tabular">{formatDate(c.created_at.slice(0, 10))}</DataCell>
+            </DataRow>
+          ))}
+        </DataTable>
       )}
       <p className="mt-3 text-xs text-muted">{rows.length} of {all.length} companies. Setup is complete when the company has an owner login, customers, trucks and drivers.</p>
     </>

@@ -103,7 +103,10 @@ test("a demo request reaches the lead workspace, where the team works it with a 
   await other.close();
 
   await signInPlatformHome(page);
-  await page.getByRole("link", { name: /Leads/ }).first().click();
+  // The console's grouped navigation (2026-11-12): Leads is in the Sales menu.
+  await page.getByRole("navigation", { name: "Platform" }).getByRole("button", { name: "Sales" }).click();
+  await page.getByRole("menuitem", { name: /^Leads/ }).click();
+  await expect(page).toHaveURL(/\/admin\/leads$/);
   await page.getByLabel("Search").fill(id);
   await page.getByRole("button", { name: "Search" }).click();
   await page.getByRole("link", { name: `Pat Example ${id}` }).click();
