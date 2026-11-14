@@ -22,7 +22,7 @@ export const DOCUMENT_KINDS = {
 } as const;
 type Kind = keyof typeof DOCUMENT_KINDS;
 
-export interface DocumentRow { id: string; kind: Kind; stop_id: string | null; file_name: string; size_bytes: number; created_at: string; uploaded_by: string | null }
+export interface DocumentRow { id: string; kind: Kind; stop_id: string | null; file_name: string; size_bytes: number; created_at: string; uploaded_by: string | null; /** Added by the driver of this load from My Day (MK2). */ load_number?: number | null }
 export interface StopOption { id: string; label: string }
 
 const size = (n: number) => (n >= 1_048_576 ? `${(n / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
@@ -61,7 +61,7 @@ export function OrderDocuments({ orderId, documents, stops, names, canEdit }: { 
   return (
     <div className="space-y-4 px-5 pb-5">
       {documents.length === 0 ? (
-        <p className="text-sm text-muted">No documents yet.{canEdit ? " Add the rate confirmation when the load is booked, and the signed bill of lading or proof of delivery after each stop." : ""}</p>
+        <p className="text-sm text-muted">No documents yet.{canEdit ? " Add the rate confirmation when the load is booked, and the signed bill of lading or proof of delivery after each stop." : ""} Drivers can add proof of delivery from their phone at each delivery stop.</p>
       ) : (
         <ul className="divide-y divide-line rounded-xl border border-line" aria-label="Order documents">
           {documents.map((d) => (
@@ -69,7 +69,8 @@ export function OrderDocuments({ orderId, documents, stops, names, canEdit }: { 
               <FileText className="size-4 shrink-0 text-muted" aria-hidden />
               <div className="min-w-0 flex-1">
                 <a href={`/order-documents/${d.id}`} target="_blank" rel="noreferrer" className="font-medium text-brand-fg underline-offset-2 hover:underline">{DOCUMENT_KINDS[d.kind]}{stopLabel(d.stop_id) ? ` · ${stopLabel(d.stop_id)}` : ""}</a>
-                <p className="truncate text-muted">{d.file_name} · {size(d.size_bytes)} · added {formatDateTime(d.created_at)}{d.uploaded_by && names[d.uploaded_by] ? ` by ${names[d.uploaded_by]}` : ""}</p>
+                {d.load_number ? <p className="font-medium text-ink">Load {d.load_number}, from the driver&apos;s phone{d.uploaded_by && names[d.uploaded_by] ? ` (${names[d.uploaded_by]})` : ""}</p> : null}
+                <p className="truncate text-muted">{d.file_name} · {size(d.size_bytes)} · added {formatDateTime(d.created_at)}{!d.load_number && d.uploaded_by && names[d.uploaded_by] ? ` by ${names[d.uploaded_by]}` : ""}</p>
               </div>
               {canEdit && <RemoveDocument orderId={orderId} documentId={d.id} name={DOCUMENT_KINDS[d.kind]} />}
             </li>

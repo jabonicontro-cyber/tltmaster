@@ -875,14 +875,14 @@ export const FEATURES: Feature[] = [
     problem: "A freight load picks up at one shipper and drops at two receivers, each with its own appointment and reference number, and the driver gets it all over the phone.",
     how: "An order lists its stops in order: pickups and deliveries with the address, appointment date and window, pickup number, PO or BOL, and notes. The dispatch board shows the route; the driver's load card lists each stop with directions.",
     value: "Multi-stop loads are planned once and the driver sees every stop, in order, on the phone.",
-    points: ["Pickups and deliveries in order", "Appointment windows and reference numbers", "Route on the dispatch board", "Directions and Arrived / Left at each stop on the driver's phone", "Rate confirmation, bills of lading and proof of delivery kept on the load and its stops", "Freight brokers as customers, with their load number on the invoice"],
-    limitations: ["Drivers cannot add proof of delivery from the phone yet; the office adds it"],
+    points: ["Pickups and deliveries in order", "Appointment windows and reference numbers", "Route on the dispatch board", "Directions and Arrived / Left at each stop on the driver's phone", "Rate confirmation, bills of lading and proof of delivery kept on the load and its stops", "Drivers add proof of delivery from the phone at each delivery stop", "Freight brokers as customers, with their load number on the invoice"],
+    limitations: ["Proof of delivery from the phone needs signal: without it the photo waits on that screen to be sent and is not saved on the phone"],
     status: "available",
     published: false, // publishing is the owner's decision
     routes: ["/orders"],
     screenshots: [],
     related: ["compliance-calendar"],
-    verified: "2026-11-09",
+    verified: "2026-11-14",
   },
   {
     id: "accountant-view",

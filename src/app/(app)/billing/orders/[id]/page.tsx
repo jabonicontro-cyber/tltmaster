@@ -38,6 +38,9 @@ import { createInvoice } from "@/app/(app)/billing/invoices/actions";
 import type { OrderStatus } from "@/server/data/types";
 import { ConfirmPriceButton } from "@/components/orders/price-check";
 import { canConfirmPrices } from "@/lib/permissions";
+import { OrderDocuments } from "@/components/orders/order-documents";
+import { getOrderDocuments, getOrderStops } from "@/server/data/orders";
+import { getUserNames } from "@/server/data/quotes";
 
 export const metadata = { title: "Order billing" };
 
@@ -94,6 +97,11 @@ export default async function OrderBillingPage({ params, searchParams }: { param
     ? await (await createClient()).from("charge_items").select("id, name, default_unit_code").eq("active", true).eq("ticket_required", false).eq("calc_method", "per_unit").order("name")
     : null;
   const extraOptions = ((extras && !extras.error ? extras.data : []) ?? []).map((c) => ({ id: c.id as string, name: c.name as string, unit: String(c.default_unit_code ?? "") }));
+  // Delivery documents (MK2): proof of delivery from the office or the driver's phone, to check before billing. Read with
+  // the person's own session, so only someone who also sees orders (orders.view) gets them; opening and removing stay on
+  // the order page.
+  const [docs, docStops] = await Promise.all([getOrderDocuments(id), getOrderStops(id)]);
+  const docNames = docs.documents.length ? await getUserNames() : {};
 
   return (
     <>
@@ -240,6 +248,19 @@ export default async function OrderBillingPage({ params, searchParams }: { param
         {extraOptions.length > 0 && <ExtraChargeForm orderId={id} options={extraOptions} />}
         {truckHours?.job_type === "truck_day" && <TruckHoursCard data={truckHours} timeZone={timezone} orderId={id} canManage={canManage} locked={o.readiness === "handed_off"} />}
         {detentionRows.length > 0 && <DetentionCard orderId={id} rows={detentionRows} canManage={canManage} locked={o.readiness === "handed_off"} />}
+
+        {docs.documents.length > 0 && (
+          <Card>
+            <CardHeader title="Delivery documents" description="Proof of delivery, bills of lading and the rate confirmation on this order, from the office or the driver's phone. Open one to check it before billing." />
+            <OrderDocuments
+              orderId={o.order_id}
+              documents={docs.documents}
+              stops={docStops.stops.map((st) => ({ id: st.id, label: `${st.kind === "pickup" ? "Pickup" : "Delivery"} ${st.seq}: ${st.name}` }))}
+              names={docNames}
+              canEdit={false}
+            />
+          </Card>
+        )}
 
         <Card>
           <CardHeader title="Order lines" description={say("Prices are the order's accepted prices and are never recalculated here. Delivered = live tickets for the line in the line's unit.")} />

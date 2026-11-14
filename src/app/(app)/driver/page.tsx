@@ -34,6 +34,7 @@ import { loadDispatchUpdates, loadDriverHome, loadMaintenanceNotices, type Drive
 import { listStopTimes, stopTimesForLoads } from "@/server/data/wait-times";
 import { median, minutesLabel, waitMinutes } from "@/lib/dispatch/wait-times";
 import { StopButtons, type StopState } from "@/components/driver/stop-buttons";
+import { StopProof, type SentProof } from "@/components/driver/stop-proof";
 import { ReleaseTruckButton, releasedText } from "@/components/dispatch/truck-day";
 import { DispatchUpdates } from "@/components/companion/dispatch-updates";
 import { directionsNeedAttention } from "@/lib/sites";
@@ -61,28 +62,35 @@ const readTime = () => Date.now();
 
 const big = "min-h-12 w-full justify-center text-base sm:w-auto";
 
+/** Proof of delivery at each delivery stop (MK2, 20261120020800): the driver's own load, today or the two days before. */
+type ProofState = { assignmentId: string; sent: Record<string, SentProof[]>; timeZone: string };
+
 /** The order's stops in order (MK2): what to pick up and drop where, with appointments and a way to navigate to each. */
-function RouteStops({ route }: { route: DriverStop[] }) {
+function RouteStops({ route, proof }: { route: DriverStop[]; proof?: ProofState }) {
   return (
     <ol className="space-y-2" aria-label="Stops">
       {route.map((s) => {
         const to = directionsUrl({ address: s.address || s.name });
         const when = appointmentText(s);
         return (
-          <li key={s.seq} className="flex gap-3 rounded-xl bg-surface px-3 py-2.5">
-            <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular", s.kind === "pickup" ? "bg-strong text-white" : "bg-ink/[0.08] text-ink")} aria-hidden>{s.seq}</span>
-            <div className="min-w-0 flex-1">
-              <p><span className="text-sm font-semibold text-muted">{STOP_KIND_LABELS[s.kind]}</span> <strong>{s.name}</strong></p>
-              {s.address ? <p className="text-sm text-muted">{s.address}</p> : null}
-              {when ? <p className="text-sm font-semibold tabular">{when}</p> : null}
-              {s.reference ? <p className="text-sm">Ref <strong>{s.reference}</strong></p> : null}
-              {s.notes ? <p className="whitespace-pre-line text-sm text-muted">{s.notes}</p> : null}
+          <li key={s.seq} className="rounded-xl bg-surface px-3 py-2.5">
+            <div className="flex gap-3">
+              <span className={cn("mt-0.5 grid size-6 shrink-0 place-items-center rounded-full text-xs font-bold tabular", s.kind === "pickup" ? "bg-strong text-white" : "bg-ink/[0.08] text-ink")} aria-hidden>{s.seq}</span>
+              <div className="min-w-0 flex-1">
+                <p><span className="text-sm font-semibold text-muted">{STOP_KIND_LABELS[s.kind]}</span> <strong>{s.name}</strong></p>
+                {s.address ? <p className="text-sm text-muted">{s.address}</p> : null}
+                {when ? <p className="text-sm font-semibold tabular">{when}</p> : null}
+                {s.reference ? <p className="text-sm">Ref <strong>{s.reference}</strong></p> : null}
+                {s.notes ? <p className="whitespace-pre-line text-sm text-muted">{s.notes}</p> : null}
+              </div>
+              {to && (
+                <a href={to} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "sm", "min-h-11 shrink-0 self-center")}>
+                  <Navigation className="size-4" aria-hidden /> Go<span className="sr-only"> to stop {s.seq}, {s.name}</span>
+                </a>
+              )}
             </div>
-            {to && (
-              <a href={to} target="_blank" rel="noopener noreferrer" className={buttonClasses("secondary", "sm", "min-h-11 shrink-0 self-center")}>
-                <Navigation className="size-4" aria-hidden /> Go<span className="sr-only"> to stop {s.seq}, {s.name}</span>
-              </a>
-            )}
+            {/* Proof of delivery (MK2): under the stop, full width, so the photo button is easy to hit. */}
+            {proof && s.kind === "delivery" && s.id ? <StopProof assignmentId={proof.assignmentId} stopId={s.id} stopName={`stop ${s.seq}, ${s.name}`} sent={proof.sent[s.id] ?? []} timeZone={proof.timeZone} /> : null}
           </li>
         );
       })}
@@ -118,7 +126,7 @@ function TellOffice({ assignmentId, ticket }: { assignmentId: string; ticket: st
   );
 }
 
-function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, truckDay, words = vocabulary("aggregate"), restricted = false, contact = { tel: null, canMessage: false } }: { a: DriverAssignment; /** The load's truck is out of service (safety defect or open safety-critical shop work). */ restricted?: boolean; contact?: DispatchContact; /** Truck-day job (UX11): the truck works until released; one ticket per trip. */ truckDay?: TruckDayState; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
+function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWait, userId, pickup, route, proofs, truckDay, words = vocabulary("aggregate"), restricted = false, contact = { tel: null, canMessage: false } }: { a: DriverAssignment; /** The driver's own proofs of delivery per stop (MK2); undefined before 20261120020800. */ proofs?: Record<string, SentProof[]>; /** The load's truck is out of service (safety defect or open safety-critical shop work). */ restricted?: boolean; contact?: DispatchContact; /** Truck-day job (UX11): the truck works until released; one ticket per trip. */ truckDay?: TruckDayState; /** Ticket or BOL wording (MK1). */ words?: Vocabulary; today: string; timeZone: string; past?: boolean; /** Where to load (UX7); absent when the order names none. */ pickup?: LoadPickup; /** The order's stops in order (MK2); when present they replace the pickup and job-site lines. */ route?: DriverStop[]; /** Offline taps wait on the phone for this person (B133). */ userId?: string; /** Job-site photos the office applied (B94). */ photos?: string[]; /** Arrival and departure (B111); undefined for later days. */ stops?: StopState[]; /** Their usual wait at this site in minutes (B121), from their own recorded stops. */ usualWait?: number | null }) {
   const site = siteAddress(a.site);
   const hasTicket = a.tickets.length > 0;
   const risk = a.site.directions_risk ?? "standard";
@@ -142,7 +150,7 @@ function AssignmentCard({ a, today, timeZone, past, photos = [], stops, usualWai
       <div className="space-y-2 px-4 py-3 text-[15px]">
         {restricted && a.truck && <RestrictedTruck truck={a.truck} contact={contact} />}
         <p className="font-bold">{a.order.customer_name}{a.order.project_name ? <span className="font-normal text-muted"> · {a.order.project_name}</span> : null}</p>
-        {hasRoute && <RouteStops route={route!} />}
+        {hasRoute && <RouteStops route={route!} proof={proofs && stops && a.load.date <= today && a.load.date >= addDays(today, -2) ? { assignmentId: a.assignment_id, sent: proofs, timeZone } : undefined} />}
         {pickup && !hasRoute && (
           <p className="flex gap-2"><Package className="mt-0.5 size-4 shrink-0 text-muted" aria-hidden /><span>Pick up at <strong>{pickup.name}</strong>{pickup.address ? <span className="text-muted"> · {pickup.address}</span> : null}</span></p>
         )}
@@ -285,7 +293,10 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
   const reminders = qualificationReminders(h.qualifications, h.today);
   // These three are independent: read them together. Each is empty before its update is installed.
   const sb = await createClient();
-  const [fuelTrucksRes, inspRes, payRes, pickupRes, routeRes, truckDayRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups"), sb.rpc("driver_load_stops"), sb.rpc("driver_truck_days")]);
+  const [fuelTrucksRes, inspRes, payRes, pickupRes, routeRes, truckDayRes, proofRes] = await Promise.all([sb.rpc("fuel_my_trucks", { p_day: h.today }), sb.rpc("inspection_my_trucks"), sb.rpc("my_pay_statements"), sb.rpc("driver_load_pickups"), sb.rpc("driver_load_stops"), sb.rpc("driver_truck_days"), sb.rpc("driver_stop_proofs")]);
+  // Proof of delivery at a stop (MK2): the driver's own, keyed by load then stop; no button before 20261120020800.
+  const proofsByLoad = proofRes.error ? null : ((proofRes.data ?? {}) as Record<string, Record<string, SentProof[]>>);
+  const proofsFor = (loadId: string) => (proofsByLoad ? proofsByLoad[loadId] ?? {} : undefined);
   // Truck-day jobs (UX11): the driver's own slots, keyed by load; empty before 20261120008600 is installed.
   const truckDays = Object.fromEntries(((truckDayRes.error ? [] : truckDayRes.data ?? []) as TruckDayState[]).map((t) => [t.load_id, t]));
   // Where each load is picked up (UX7), keyed by load; empty before that update is installed.
@@ -429,7 +440,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {today.length === 0 ? (
           <Card><EmptyState title="No loads assigned to you today" description="New assignments appear here as soon as dispatch makes them. Pull down or reopen to refresh." /></Card>
         ) : (
-          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
+          <ul className="space-y-3">{today.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} proofs={proofsFor(a.load.id)} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
         )}
       </section>
       <DispatchUpdates items={updates} timeZone={h.timezone} />
@@ -500,7 +511,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {earlier.length > 0 && (
         <section aria-label={`${capitalize(words.many)} still needed`} id="tickets-needed" className="scroll-mt-20">
           <h2 className="mb-2 text-lg font-bold text-brand-fg">{capitalize(words.many)} still needed</h2>
-          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
+          <ul className="space-y-3">{earlier.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} past photos={sitePhotos[a.load.id]} stops={stopsFor(a.load.id)} usualWait={usualWait(a)} userId={access.userId} pickup={pickups[a.load.id]} route={routes[a.load.id]} proofs={proofsFor(a.load.id)} truckDay={truckDays[a.load.id]} words={words} restricted={isRestricted(a)} contact={contact} />)}</ul>
         </section>
       )}
 
@@ -528,7 +539,7 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
       {later.length > 0 && (
         <section aria-label="Tomorrow">
           <h2 className="mb-2 text-lg font-bold">Tomorrow</h2>
-          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
+          <ul className="space-y-3">{later.map((a) => <AssignmentCard key={a.assignment_id} a={a} today={h.today} timeZone={h.timezone} photos={sitePhotos[a.load.id]} usualWait={usualWait(a)} pickup={pickups[a.load.id]} route={routes[a.load.id]} proofs={proofsFor(a.load.id)} truckDay={truckDays[a.load.id]} words={words} />)}</ul>
         </section>
       )}
 
