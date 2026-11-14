@@ -123,20 +123,24 @@ major UI change is not done until every applicable demo mode shows it working on
 
 ## 4. Known gaps (to close as features are touched)
 
-- Communications samples need migration `20261108000100`; until it is applied the seed, Refresh and the shared
-  samples skip them (the workspace and channel), and Communications shows its normal empty state in demos.
-- Communications samples are system notes and an operation workspace; fictional people do not chat (they would need
-  logins). Sample notes expire after 14 days like all message content; Refresh adds them again. A prospect owner
+- Communications samples (migration `20261108000100`, applied on the hosted database like every migration through
+  `20261120020700`, checked 2026-11-14) are system notes and an operation workspace; fictional people do not chat (they
+  would need logins). Sample notes expire after 14 days like all message content; Refresh adds them again. A prospect owner
   added with `demo-owner` joins the sample channel and the operation workspaces at once.
-- Driver Reports (field reports) samples (closed 2026-11-12, DP1): fictional drivers have no login, so their sample
-  reports are written by `demo_field_report_samples` (`20261120020000`) on their own recent loads; until that migration
-  is applied the page shows its normal empty state in demos (only the presenter's own seeded delay report exists).
+- Driver Reports (field reports) samples (closed 2026-11-12, DP1, released in `0c22b47` with its migration): fictional
+  drivers have no login, so their sample reports are written by `demo_field_report_samples` (`20261120020000`) on
+  their own recent loads.
 - Prairie Lantern Freight prices with charge items rather than materials, so Materials & Pricing is empty there by
   design of its data; the presenter demo has materials.
-- Refresh exists for Prairie Lantern Freight; the shared samples (`samples.ts`) work for any demo company, but a new
-  prospect demo with different base data needs its own seed and Refresh. The presenter demo is rebuilt by
-  **Start the demo / Reset** instead.
-- No scheduler: Refresh is a button (`/admin/demo`), not a nightly job.
+- Refresh has its own version for the presenter demo (`northfield-refresh.ts`), Prairie Lantern Freight and the
+  freight demo (Cobalt Plains Freight); any other demo company gets the shared samples (`samples.ts`). A new prospect
+  demo with different base data still needs its own seed. The presenter demo can also be rebuilt from scratch with
+  **Start the demo / Reset**.
+- **Demos refresh themselves** (owner 2026-10-25, migration `20261120002800`): when a demo owner opens a demo company,
+  the same additive refresh as **Refresh demo data** runs after the page is sent, at most once per deployed version and
+  six-hour window (`src/server/demo/auto-refresh.ts`; a failure is retried an hour later; real companies are never
+  refreshed). The button on `/admin/demo` still runs it on demand. There is no nightly job: a demo nobody opens is
+  refreshed the next time it is opened.
 
 ## 5. Demo modes and the sample data behind each feature
 

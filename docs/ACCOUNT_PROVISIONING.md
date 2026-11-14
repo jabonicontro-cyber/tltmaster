@@ -100,8 +100,9 @@ Customer Access tab shows that notice, `/welcome` says first-time setup is not a
 
 Owner decision (master plan §12 DS1): QR first, then Face ID. Migrations `20261120017000_driver_qr_sign_in.sql` and
 `20261120017100_signin_qr_money_rule.sql` (rollbacks in `supabase/rollbacks/`, both tested: applied, rolled back,
-applied again). Status: **implemented and tested
-locally; not applied to any hosted database; QR not verified live; passkeys not tested against a real passkey server.**
+applied again). Status (updated 2026-11-14): **released 2026-11-11 in `4912577`, both migrations applied on the hosted
+database; `/auth/qr` answers live; passkeys are off (not turned on in Supabase Auth) and not tested against a real
+passkey server.**
 
 **QR code (Fleet → Drivers → a driver → Phone sign-in → Show sign-in QR code).**
 - Who: `users.manage` (the permission that creates and resets sign-ins). Checked by the server action and again by
@@ -160,13 +161,14 @@ locally; not applied to any hosted database; QR not verified live; passkeys not 
   hidden state is tested in the browser.
 
 **Owner steps.**
-1. Apply `20261120017000` and `20261120017100` together (they ship with the code through the normal migration
+1. **Done 2026-11-11** (applied by the migration workflow with release `4912577`). Apply `20261120017000` and `20261120017100` together (they ship with the code through the normal migration
    workflow; both additive, no destructive statement). Before them, the button answers "QR sign-in needs the database
    update 20261120017000", and without `017100` face or fingerprint setup and sign-in are refused (fails closed).
 2. Passkeys: in Supabase, Authentication → turn on passkeys (WebAuthn) and set the relying party to the site's address:
-   RP ID `tltmaster.vercel.app` (the host name only) and allowed origin `https://tltmaster.vercel.app` (add the custom
-   domain too once it is used; a passkey belongs to one address, so moving to a new domain means drivers set it up again
-   once). Then sign in on a phone, set it up from My Day, sign out and use **Sign in with face or fingerprint**.
+   RP ID `www.mytaviron.com` (the host name only) and allowed origin `https://www.mytaviron.com` (owner decision
+   2026-11-14: Top Line uses `https://www.mytaviron.com` from Dec 1; this replaces the earlier `tltmaster.vercel.app`).
+   A passkey belongs to one address: drivers who open `tltmaster.vercel.app` cannot use it there. Check the assurance
+   level first (docs/SWITCH_ON.md item 7). Then sign in on a phone, set it up from My Day, sign out and use **Sign in with face or fingerprint**.
 3. While the early-access gate is on, a phone that signed out needs the site password or a new QR code before it can
    reach the sign-in page (the gate is unchanged); signed-in phones stay signed in for 30 days of use.
 
