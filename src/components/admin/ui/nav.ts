@@ -34,6 +34,7 @@ export const CONSOLE_GROUPS: ConsoleGroup[] = [
       { href: "/admin/companies", label: "Companies", text: "Every customer company and how far its setup has got." },
       { href: "/admin/onboarding", label: "Onboarding", text: "Create a company and import its records." },
       { href: "/admin/plans", label: TERMS.plans, text: "Plan prices, kept as dated versions." },
+      { href: "/admin/revenue", label: "Revenue over time", text: "Agreed monthly revenue by month, new and lost customers, renewals (agreed, not collected)." },
     ],
   },
   {

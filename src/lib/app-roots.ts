@@ -26,6 +26,7 @@ export const APP_ROOTS: readonly string[] = [
   "help",
   "hired-trucks",
   "invitations",
+  "join-company",
   "join-team",
   "login",
   "maintenance",
