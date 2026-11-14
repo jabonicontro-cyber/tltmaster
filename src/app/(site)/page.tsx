@@ -1,8 +1,9 @@
 import { siteOpenGraph } from "@/lib/site/og";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Check, ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
+import { ClipboardCheck, FileText, Gauge, Receipt, Route, ShieldCheck, Smartphone, Truck, UserCheck, Wrench } from "lucide-react";
 import { CatalogShot } from "@/components/site/feature-story";
+import { LoadStory } from "@/components/site/load-story";
 import { ProductShowcase } from "@/components/site/product-showcase";
 import { Container, CtaLink, FinalCta, SectionHeading, delay, order } from "@/components/site/ui";
 import { SEGMENTS } from "@/lib/site/areas";
@@ -100,19 +101,6 @@ const TRUST = [
   { title: "People decide", text: "Suggestions never act on their own. Assignments, ticket acceptance and handoffs need an authorized person." },
 ];
 
-function Points({ items }: { items: string[] }) {
-  return (
-    <ul className="mt-6 space-y-3">
-      {items.map((t, i) => (
-        <li key={t} style={order(i)} className="site-reveal flex gap-3 text-[15px] leading-relaxed text-silver">
-          <Check className="mt-1 size-4 shrink-0 text-electric" aria-hidden />
-          <span>{t}</span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export default function HomePage() {
   return (
     <>
@@ -179,44 +167,9 @@ export default function HomePage() {
         </Container>
       </section>
 
-      {/* Dispatch */}
-      <section>
-        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[0.85fr_1.15fr]">
-          <div>
-            <SectionHeading title="Assign with the rules already checked.">
-              <p>Loads are planned against each order and checked before a truck or driver is committed. When something does not fit, Taviron says why.</p>
-            </SectionHeading>
-            <Points
-              items={[
-                "Service status, open safety reports, recorded capacity, driver qualifications and time conflicts are checked on every assignment.",
-                "Smart Dispatch suggests a truck and driver for each open load, with its reasons and alternatives. Nothing is assigned until a dispatcher approves.",
-                "Confirmed orders without a delivery date wait in a queue instead of disappearing.",
-              ]}
-            />
-          </div>
-          <CatalogShot id="dispatch" />
-        </Container>
-      </section>
-
-      {/* Tickets and drivers */}
-      <section className="border-t border-silver/10 bg-navy-2">
-        <Container className="grid items-center gap-12 py-20 sm:py-24 lg:grid-cols-[1.15fr_0.85fr]">
-          <CatalogShot id="tickets" className="lg:order-first" />
-          <div>
-            <SectionHeading title="Quantities you can stand behind.">
-              <p>The ticket starts in the truck, not in a shoebox, and an order reaches billing only when its deliveries are verified.</p>
-            </SectionHeading>
-            <Points
-              items={[
-                "Drivers see their assignments on the phone and submit tickets with photos; the office enters paper tickets and scans.",
-                "Each ticket is reviewed beside its order. Corrections become new revisions with a reason. Nothing is overwritten.",
-                "Partly delivered orders stay out of billing; invoice drafts are prepared for review, not sent.",
-                "Bill your way: Taviron issues the invoice once someone approves it, or ready orders are handed off to your own accounting. QuickBooks Online sync is coming soon, not available yet.",
-              ]}
-            />
-          </div>
-        </Container>
-      </section>
+      {/* One load, start to finish (master plan UX16, owner 2026-11-04): the core day above, followed through the real
+          screens. It carries what the separate Dispatch and Tickets sections said, so no screen shows twice. */}
+      <LoadStory />
 
       {/* What it does today: each statement matches an available capability; what is still being built says so. */}
       <section aria-labelledby="story-title" className="border-t border-silver/10">

@@ -98,6 +98,12 @@ export function FeatureBrief({ feature }: { feature: Feature }) {
   );
 }
 
+/** A catalogued screenshot by id in its own frame: a window for desktop screens, a phone for phone screens. */
+export function CatalogMedia({ id }: { id: string }) {
+  const shot = screenshotById(id);
+  return shot ? <Media shot={shot} /> : null;
+}
+
 /** A catalogued screenshot by id (src/lib/site/screenshots.json), so alt text and caption always match the image. */
 export function CatalogShot({ id, className, priority }: { id: string; className?: string; priority?: boolean }) {
   const shot = screenshotById(id);

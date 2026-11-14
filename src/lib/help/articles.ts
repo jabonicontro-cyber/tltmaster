@@ -991,7 +991,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     reviewed: REVIEWED,
     limitations: [
       "Routes are read from the dispatch board; they change only when the board does.",
-      "Road routing uses a standard truck profile because truck dimensions are not recorded yet. A route without notices is not a guarantee the road is clear.",
+      "Each truck's day here uses a standard truck profile; Plan a route uses the truck's recorded height, width, length, weight and axles. A route without notices is not a guarantee the road is clear.",
       "The yard location needs a database update; until it is installed, routes begin at the first delivery.",
     ],
   },
@@ -1853,7 +1853,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["dispatch-board"],
     related: ["dispatch-board"],
     reviewed: "2026-11-01",
-    limitations: ["Nothing is billed: detention charges are not part of this yet.", "Times come from taps, not GPS."],
+    limitations: ["Nothing is billed from this page. Long waits become detention charges only when billing adds them on the order's billing page, for customers with a detention free time and rate.", "Times come from taps, not GPS."],
   },
   {
     id: "pay-statements",
