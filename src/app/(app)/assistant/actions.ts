@@ -1,9 +1,11 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { Pseudonyms, SHOWN_FOLLOW_UPS, SHOWN_SOURCES, type AssistantKind } from "@/lib/ai/assistant";
 import { capability } from "@/lib/ai/capabilities";
+import { AI_NOTICE_VERSION } from "@/lib/ai/notice";
 import { can } from "@/lib/permissions";
 import { assistantRequest } from "@/server/ai/assistant";
 import { aiConfig, runSettings } from "@/server/ai/config";
@@ -13,7 +15,8 @@ import { AiError, publicMessage } from "@/server/ai/types";
 import { assertPermission, getAccess } from "@/server/auth";
 import { sessionAssistantSource } from "@/server/data/assistant";
 import { businessToday } from "@/server/data/settings";
-import { guard } from "@/server/errors";
+import { dbErrorMessage, guard } from "@/server/errors";
+import { createClient } from "@/server/supabase/server";
 
 export interface AssistantView {
   kind: AssistantKind;
@@ -72,5 +75,25 @@ export async function askAssistant(input: z.input<typeof askInput>): Promise<Act
       if (e instanceof AiError) return fail(`No answer: ${publicMessage(e)}`);
       throw e;
     }
+  });
+}
+
+/**
+ * The person read Ask Taviron's first-use notice (20261120022000): recorded for them in the current company only, with
+ * the notice version, so a changed notice is shown again. Only people who may use Ask Taviron; never a support visit.
+ */
+export async function acknowledgeAiNotice(): Promise<ActionResult> {
+  return guard(async () => {
+    const c = capability("ops_assistant");
+    const first = await getAccess();
+    const permission = c.anyPermission?.find((p) => can(first, p));
+    if (!permission) return fail("You do not have permission to use Ask Taviron.");
+    const access = await assertPermission(permission);
+    if (access.support) return fail("Only people of this company can use Ask Taviron, not a Taviron support visit.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("acknowledge_ai_notice", { p_version: AI_NOTICE_VERSION });
+    if (error) return fail(error.code === "PGRST202" || error.code === "42883" ? "This needs a database update that has not been installed yet." : dbErrorMessage(error));
+    revalidatePath("/assistant");
+    return ok(undefined, "Thanks. You can ask your question now.");
   });
 }

@@ -714,7 +714,21 @@ them.
 bills of lading), never rules. Updated through the existing company settings policy (settings.manage).
 
 `company_settings.hidden_areas` (20261120007700, simple mode): optional menu areas the company hid; a check allows only
-the nine optional areas, so safety areas can't be hidden. Menu only.
+the nine optional areas, so safety areas can't be hidden. Menu only. A new company whose first plan is Starter starts
+with eight of them hidden (all but Maintenance): trigger `z_starter_default_hidden_areas` on `private.company_lifecycle`
+(20261120022200; only companies created from 2026-11-14, not live, menu still empty).
+
+## Ask Taviron opt-in (20261120022000)
+
+`company_settings.ai_assistant_allowed` (default false), `ai_assistant_changed_at`, `ai_assistant_changed_by`: written
+only by `public.set_ai_assistant_allowed(boolean)` (settings.manage, own company, refused during a support visit; no
+column grant). The first-use notice is `user_preferences` key `ai_notice` (`{"version", "acknowledged_at"}`), written
+only by `public.acknowledge_ai_notice(integer)` for the caller in the current company (members only).
+
+## Truck-day start times (20261120022100)
+
+`public.truck_day_slots(order, date, time[], end, note)`: one truck-day slot per start time, all or none (dispatch.edit,
+own company, a truck-day order, 1 to 50), each through `save_order_load`.
 
 ## Stops on an order (20261120007800, MK2 slice 1)
 

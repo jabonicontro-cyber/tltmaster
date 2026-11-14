@@ -91,7 +91,7 @@ the setup page.
 
 | State | Meaning | When |
 | --- | --- | --- |
-| **Blocked** | Never calls a model | Any of: no permission, no provider or key, malformed AI settings, capability not switched on, no model, provider lacks structured output, no monthly token limit (company or per person), usage ledger or per-person limits unavailable (migration `20261120002400` not applied), platform pause switch on, demo company without `AI_IN_DEMOS=on`, real company not on `AI_COMPANY_ALLOWLIST`, company or personal monthly limit used up, cost limit reached or set for an unpriced model. |
+| **Blocked** | Never calls a model | Any of: no permission, no provider or key, malformed AI settings, capability not switched on, no model, provider lacks structured output, no monthly token limit (company or per person), usage ledger or per-person limits unavailable (migration `20261120002400` not applied), platform pause switch on, demo company without `AI_IN_DEMOS=on`, real company not on `AI_COMPANY_ALLOWLIST`, company or personal monthly limit used up, cost limit reached or set for an unpriced model. Ask Taviron also: the company has not turned it on, the person has not read the first-use notice, or that choice cannot be read (§15b). |
 | **Needs review** | Never calls a model | Configured, but the model's latest evaluation is missing, failing (pass rate under 90% or any critical failure), older than 90 days, or from an older test set. |
 | **Limited** | Runs, with a stated limitation | No price for the model (cost not estimated), at least 80% of the monthly limit used, or a configured fallback without evidence (it will not be used). |
 | **Ready** | Runs | Everything above is in place. |
@@ -324,6 +324,40 @@ steps, with the assistant's variables below), then **Needs review** until `npm r
 - **Demo companies:** same page and code; Blocked unless `AI_IN_DEMOS=on` (DEMO_TENANTS §2, existing difference), so a
   demo shows the honest "not available" state. When allowed, it reads the demo's own sample records.
 
+## 15b. Ask Taviron: the company's choice and the first-use notice (2026-11-14)
+
+**Status:** code written and tested locally (unit, DB, browser); migration `20261120022000_ai_company_optin.sql` (rollback
+in `supabase/rollbacks/`) applied to the local database only. Needed before Ask Taviron is switched on for anyone
+(master plan §11a).
+
+- **The company's choice.** Settings → Company and branding → **Ask Taviron**: off for every company until someone with
+  `settings.manage` turns it on (a confirmation says what is sent). Stored on `company_settings.ai_assistant_allowed`
+  with who and when; changed only through `public.set_ai_assistant_allowed(boolean)` (settings.manage of the caller's
+  own company; no column grant, so nobody writes it directly). A **Taviron support visit is refused** (in the action
+  and the database): sending questions to an AI provider is the company's own decision. Every change is in the
+  company's audit log (the `company_settings` audit trigger). Turning it off stops every question at once.
+- **The first-use notice** (`src/lib/ai/notice.ts`, shown by `src/components/assistant/ai-notice.tsx`): what it does
+  (reads only), what is sent (the question and figures to OpenAI, names and order numbers replaced by codes, emails and
+  phone numbers removed), what Taviron keeps (usage counts, never questions or answers), that answers are labelled
+  AI-generated and can be wrong, and a link to the privacy notice (`/privacy#ai`). Each person accepts it once per
+  company; `public.acknowledge_ai_notice(version)` records it in `user_preferences` (key `ai_notice`) for the caller in
+  the current company only, members only (a support visitor is not a member and is refused). Raising
+  `AI_NOTICE_VERSION` shows a changed notice to everyone again.
+- **Server gate.** `ops_assistant` has `needsOptIn`; `capabilityGate` reads both with the person's own session on every
+  page load and every question (`sessionOptIn`, `src/server/ai/gates.ts`), and `evaluateGate` blocks while either is
+  missing, or when they cannot be read (migration not applied: fail closed). This is in addition to every switch,
+  limit, the allowlist and the evaluation evidence above; on its own it enables nothing. The other capabilities (Explain
+  this plan, Read a ticket photo) are unchanged; whether they should need the same company choice is an owner decision.
+- **The page.** `/assistant` shows, in order: "turned off for your company" (owners get the Settings link, others are told
+  an owner turns it on), then the notice once, then the usual Ready / Blocked state.
+- **Demo companies:** the same code and rule, no demo branch: off until the demo's owner turns it on in Settings, then
+  each person (the presenter in every role preview) sees the notice once. `AI_IN_DEMOS` still decides whether a demo may
+  call the model at all (§11).
+- **Tests:** `tests/unit/ai-optin.test.ts` (gate states, fail closed, demos, other capabilities unchanged, notice
+  version and content), `tests/db/ai-optin.test.ts` (off by default, settings.manage only, own company only, no direct
+  write, audited, support visit refused, the notice per person and company), `tests/e2e/ai-assistant.spec.ts` (off state
+  for owner and dispatcher, Settings toggle, notice once per person, read-only for a dispatcher, turning off, phone).
+
 ## 16. Ask Taviron activation, evaluation and immediate disable (2026-10-24)
 
 **Update 2026-10-25:** evaluation version 3 passed on `gpt-5-mini` (6/6, no critical failure; GitHub Actions run
@@ -393,8 +427,8 @@ Taviron stores no prompts or answers; the ledger keeps counts only.
    list before general availability).
 2. **Customer terms / order form or DPA:** name OpenAI as a sub-processor for the optional AI features, and record the
    customer company's choice to enable them (the `AI_COMPANY_ALLOWLIST` entry should follow that written choice).
-3. **In-app notice:** the Ask Taviron page already labels answers as AI-generated and checked; add one line on first
-   use saying questions are processed by OpenAI and not stored by Taviron (code change, small; not done yet).
+3. **In-app notice:** built 2026-11-14 (§15b): a first-use notice each person accepts once, and the company's own
+   choice in Settings, before any question is answered.
 4. **OpenAI account settings:** confirm data-sharing for training is off for the project, set a spending limit, and
    decide whether to apply for Zero Data Retention.
 

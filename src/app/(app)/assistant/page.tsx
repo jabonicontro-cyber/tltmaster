@@ -1,12 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AiNotice } from "@/components/assistant/ai-notice";
 import { AssistantPanel } from "@/components/assistant/assistant-panel";
 import { Card, CardBody } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { EXAMPLE_QUESTIONS } from "@/lib/ai/assistant";
 import { GATE_LABELS, capability, mayUse } from "@/lib/ai/capabilities";
 import { can } from "@/lib/permissions";
-import { capabilityGate } from "@/server/ai/gates";
+import { capabilityGate, sessionOptIn } from "@/server/ai/gates";
 import { requireAccess } from "@/server/auth";
 
 export const metadata = { title: "Ask Taviron" };
@@ -14,18 +15,43 @@ export const metadata = { title: "Ask Taviron" };
 /**
  * Ask Taviron (docs/AI.md §12). The page always opens for people who may use it; when the capability's gate is closed
  * it says why (the reasons in full for people who manage settings) and points to the pages with the same records.
+ * Once the company has allowed it (Settings), each person first reads the first-use notice, once (master plan §11a).
  */
 export default async function AssistantPage() {
   const access = await requireAccess();
   const c = capability("ops_assistant");
   if (!mayUse(c, access.permissions)) redirect(`/no-access?missing=${encodeURIComponent(c.permission)}`);
-  const gate = await capabilityGate("ops_assistant", access);
+  const [gate, optIn] = await Promise.all([capabilityGate("ops_assistant", access), sessionOptIn(access).catch(() => null)]);
   const admin = can(access, "settings.manage");
+  const showNotice = Boolean(optIn?.companyAllowed && !optIn.noticeAccepted && !access.support);
+  const companyOff = optIn !== null && !optIn.companyAllowed;
 
   return (
     <>
       <PageHeader title="Ask Taviron" description="Questions about your company's operations, answered from the records you may see, with links to them. It reads; it never assigns, sends, bills or changes anything." />
-      {gate.canRun ? (
+      {showNotice ? (
+        <AiNotice />
+      ) : companyOff ? (
+        <Card className="max-w-3xl">
+          <CardBody className="space-y-3 text-sm text-ink">
+            <p className="font-semibold">Ask Taviron is turned off for your company.</p>
+            <p className="text-muted">
+              When it is on, people can ask questions about orders, the attention queue, maintenance and the week ahead, and get answers with links to the records. Questions go to an AI provider with names replaced by codes.
+            </p>
+            {admin ? (
+              <p className="text-muted">You can turn it on in <Link href="/settings?tab=company#ask-taviron" className="font-semibold text-brand-fg hover:underline">Settings → Company and branding</Link>.</p>
+            ) : (
+              <p className="text-muted">An owner of your company can turn it on in Settings.</p>
+            )}
+            <p className="text-muted">
+              The same records are on the <Link href="/command-center" className="font-semibold text-brand-fg hover:underline">Command Center</Link>
+              {can(access, "dispatch.view") && <>, <Link href="/dispatch" className="font-semibold text-brand-fg hover:underline">Dispatch</Link></>}
+              {can(access, "maintenance.view") && <>, <Link href="/maintenance" className="font-semibold text-brand-fg hover:underline">Maintenance</Link></>}
+              {" "}and in the <Link href="/help" className="font-semibold text-brand-fg hover:underline">Help Center</Link>.
+            </p>
+          </CardBody>
+        </Card>
+      ) : gate.canRun ? (
         <div className="max-w-3xl">
           {gate.state === "limited" && <p className="mb-4 text-sm text-muted">Limited: {gate.reasons.join(" ")}</p>}
           <AssistantPanel examples={EXAMPLE_QUESTIONS} />

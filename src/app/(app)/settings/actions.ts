@@ -261,6 +261,26 @@ export async function saveIndustry(formData: FormData): Promise<ActionResult> {
   });
 }
 
+/**
+ * Ask Taviron for the company (master plan §11a; 20261120022000): settings.manage here and in the database, never during
+ * a Taviron support visit. Turning it on only allows it: every AI switch, limit and evaluation still applies, and each
+ * person reads the first-use notice before their first question. Audited by the company_settings audit trigger.
+ */
+export async function setAiAssistantAllowed(allowed: boolean): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("settings.manage");
+    if (typeof allowed !== "boolean") return fail("Choose on or off.");
+    if (access.support) return fail("Only an owner of the company can choose whether Ask Taviron is used, not a Taviron support visit.");
+    const supabase = await createClient();
+    const { error } = await supabase.rpc("set_ai_assistant_allowed", { p_allowed: allowed });
+    if (error) return fail(error.code === "PGRST202" || error.code === "42883" ? "This setting needs a database update that has not been installed yet." : dbErrorMessage(error));
+    revalidatePath("/settings");
+    revalidatePath("/assistant");
+    revalidatePath("/setup");
+    return ok(undefined, allowed ? "Ask Taviron is allowed for your company. Each person sees a short notice before their first question." : "Ask Taviron is turned off for your company. Nothing is sent to the AI provider.");
+  });
+}
+
 /** Simple mode (SF1; settings.manage, checked again by RLS): the optional areas hidden from the menu. Menu only. */
 export async function saveMenuAreas(formData: FormData): Promise<ActionResult> {
   return guard(async () => {

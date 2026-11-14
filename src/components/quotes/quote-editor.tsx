@@ -28,6 +28,7 @@ import { quickCreateCustomer } from "@/app/(app)/customers/actions";
 import { loadOrderCustomerContext, saveOrderDraft } from "@/app/(app)/orders/actions";
 import { loadCustomerContext, saveQuoteDraft } from "@/app/(app)/quotes/actions";
 import { haulsAggregate, vocabulary } from "@/lib/industry";
+import { defaultLineUnit } from "@/lib/line-defaults";
 
 export interface EditorLine {
   key: string;
@@ -334,6 +335,14 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
       percent: c.calc_method === "percent_of_subtotal" && p ? bpToInput(p.percent_bp) : "",
       taxable: c.taxable_default,
     });
+  }
+
+  // A custom line (MK1): a hauling line starts in the unit the company's own hauling charges use, else what it hauls
+  // (tons, or miles for a freight carrier); other custom lines in "each". The rate stays empty: no price is guessed.
+  function chooseCustom(l: EditorLine, kind: ChargeKind) {
+    const unitCode = l.unitCode ?? defaultLineUnit({ kind: kind === "hauling" ? "hauling" : "other", industry, units, charges }) ?? "each";
+    const lastMaterial = kind === "hauling" ? [...state.lines].reverse().find((x) => x.kind === "material" && x.unitCode === unitCode && x.quantity) : undefined;
+    updateLine(l.key, { chargeItemId: null, isCustom: true, kind, unitCode, quantity: l.quantity || lastMaterial?.quantity || "1" });
   }
 
   function changeUnit(l: EditorLine, unitCode: string) {
@@ -687,7 +696,7 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                           onChange={(e) => {
                             const v = e.target.value;
                             if (v.startsWith("c:")) chooseCharge(l.key, v.slice(2));
-                            else if (v.startsWith("k:")) updateLine(l.key, { chargeItemId: null, isCustom: true, kind: v.slice(2) as ChargeKind, unitCode: l.unitCode ?? "each", quantity: l.quantity || "1" });
+                            else if (v.startsWith("k:")) chooseCustom(l, v.slice(2) as ChargeKind);
                           }}
                         >
                           {!l.chargeItemId && !l.isCustom && <option value="">Choose a charge…</option>}
