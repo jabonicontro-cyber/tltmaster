@@ -31,6 +31,8 @@ export async function stageCompanyImport(formData: FormData) {
   if (!form.ok) return go(LIST, "error", form.error);
   const supabase = await db(LIST);
   const { data, error } = await supabase.rpc("company_import_stage", { p_entity: form.entity, p_file_name: form.fileName, p_mapping: form.mapping, p_rows: form.rows });
+  // Before migration 20261120021000 the database does not know contact imports yet.
+  if (error && /Unknown import type/.test(error.message)) go(LIST, "error", `Importing ${form.entity === "contacts" ? "customer contacts" : "this kind of record"} needs a database update that has not been installed yet.`);
   if (error) go(LIST, "error", dbErrorMessage(error));
   redirect(`/settings/import/${data as string}`);
 }

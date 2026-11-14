@@ -94,7 +94,7 @@ Tell Claude when done; nothing else needs changing in the code.
 | Health check `/api/health` and Sentry reporting (LR4) | Built (off until `SENTRY_DSN`) |
 | Detention proposals from recorded waits, off until set per customer (DT1) | Built |
 | Freight loads, rest of MK2: accessorial charges on the invoice, rate confirmation file, proof of delivery per stop, brokers as customers | To do |
-| Import ready for Top Line's files (LR3) | Customers, job sites, trucks, trailers, drivers with CDL and medical dates: built. Rates and open orders: built to match the files once they arrive |
+| Import ready for Top Line's files (LR3) | Customers, customer contacts, job sites, materials, trucks, trailers, drivers with CDL (endorsements too) and medical dates: built, dry-run tested 2026-11-14 with realistic fictional files (contacts and endorsements need migration 20261120021000). Rates and open orders: built to match the files once they arrive; options and the import-day steps in `docs/TOPLINE_IMPORT_PLAYBOOK.md` |
 | Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | Built (portal ticket photos for demos still open) |
 | Truck-day dispatching (UX11), by January | Built (slice 1): plan, assign, release, truck-hours for review; adding hours to the invoice is slice 2 |
 

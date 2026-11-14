@@ -131,7 +131,10 @@ describe("spreadsheet import", () => {
     const table = parseCsv(["Unit,Type,Year,Plate", "101,Tri-Axle,2019,ABC1", "102,spaceship,1890,", ",tandem,,"].join("\n"));
     const rows = prepareRows(table, ["unit_number", "truck_type", "model_year", "license_plate"], "trucks", new Date("2026-10-11T00:00:00Z"));
     expect(rows[0]).toEqual({ row: 2, data: { unit_number: "101", truck_type: "tri_axle_dump", model_year: "2019", license_plate: "ABC1" }, errors: [] });
-    expect(rows[1].errors).toEqual(['Truck type "spaceship" is not recognized.', 'Year "1890" is not a valid year.']);
+    expect(rows[1].errors).toEqual([
+      'Truck type "spaceship" is not recognized. Use one of: Single-axle dump, Tandem-axle dump, Tri-axle dump, Quad-axle dump, Tractor (semi), Straight truck (box), Other.',
+      'Year "1890" is not a year between 1950 and 2027.',
+    ]);
     expect(rows[2]).toMatchObject({ row: 4, errors: ["Unit number is required."] });
 
     const people = prepareRows(parseCsv("Name,Hire date\nSam,3/1/2024\nLee,2024-02-30\nAl,yesterday"), ["name", "hire_date"], "drivers");
@@ -143,7 +146,7 @@ describe("spreadsheet import", () => {
 
     const mats = prepareRows(parseCsv("Name,UOM\nStone,Tons\nMulch,bucket"), ["name", "default_unit_code"], "materials");
     expect(mats[0].data.default_unit_code).toBe("ton");
-    expect(mats[1].errors).toEqual(['Unit "bucket" is not recognized.']);
+    expect(mats[1].errors).toEqual(['Unit "bucket" is not recognized. Use one of: Ton, Load, Cubic yard, Hour, Mile, Day, Each.']);
   });
 });
 

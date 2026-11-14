@@ -4,7 +4,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { ENTITY_LABELS, IMPORT_FIELDS } from "@/lib/platform/imports";
+import { ENTITY_LABELS, IMPORT_FIELDS, defaultsForMissing, displayValue } from "@/lib/platform/imports";
 import type { ImportBatch, ImportRow } from "@/lib/platform/types";
 
 // The review of a staged spreadsheet, shared by the platform team's onboarding imports and a company's own imports
@@ -33,15 +33,18 @@ export function ImportReview({ batch, companyName, actions, afterApproved }: {
   /** Shown once the batch is approved (revert or undo). */
   afterApproved?: ReactNode;
 }) {
-  const fields = IMPORT_FIELDS[batch.entity].filter((f) => batch.rows.some((r) => r.data[f.key]));
+  const fields = IMPORT_FIELDS[batch.entity].filter((f) => !f.partOf && batch.rows.some((r) => r.data[f.key]));
   const toImport = batch.rows.filter((r) => r.decision === "import").length;
   const review = batch.status === "review";
+  // Values the records get although the file leaves them blank (fields with a default).
+  const defaults = defaultsForMissing(fields.map((f) => f.key), batch.entity);
   return (
     <>
       {review ? (
         <Notice title="Nothing has been created yet">
           Check each row. Rows that need fixing are never imported: correct them in the spreadsheet and import them again. A possible duplicate is skipped unless you choose to
           import it (only where the records allow two of the same). Approving creates the {toImport} rows marked &ldquo;Import&rdquo;, all at once or not at all.
+          {defaults.length ? ` Not in this file, so every record gets: ${defaults.map((d) => `${d.label}: ${d.value}`).join(" · ")}.` : null}
         </Notice>
       ) : null}
       {(batch.status === "reverted" || batch.status === "deactivated") && batch.revert_reason ? <Notice title={batch.status === "reverted" ? "Reverted" : "Undone"}>{batch.revert_reason}</Notice> : null}
@@ -61,7 +64,11 @@ export function ImportReview({ batch, companyName, actions, afterApproved }: {
               {batch.rows.map((r) => (
                 <Tr key={r.id} id={`row-${r.id}`}>
                   <Td className="text-muted">{r.row}</Td>
-                  {fields.map((f) => <Td key={f.key}>{r.data[f.key] ?? ""}</Td>)}
+                  {fields.map((f) => (
+                    <Td key={f.key}>
+                      {r.data[f.key] ? displayValue(batch.entity, f.key, r.data[f.key]) : f.blankMeans ? <span className="text-muted" title="Blank in the file: this value is used">{f.blankMeans}</span> : ""}
+                    </Td>
+                  ))}
                   <Td>
                     <Badge tone={ROW_STATUS[r.status].tone}>{ROW_STATUS[r.status].label}</Badge>
                     {r.messages.length ? <p className="mt-1 text-xs text-muted">{r.messages.join(" ")}</p> : null}

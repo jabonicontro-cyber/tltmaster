@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, parseCsv, prepareRows, type ImportEntity } from "@/lib/platform/imports";
+import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, MAX_IMPORT_ROWS, mappingProblems, notCsvProblem, prepareRows, readSheet, type ImportEntity } from "@/lib/platform/imports";
 
 /**
  * Reads and re-checks a spreadsheet posted by the import uploader, for the platform team's onboarding imports and a
@@ -15,18 +15,21 @@ export function readImportForm(formData: FormData):
   const fileName = String(formData.get("file_name") ?? "").slice(0, 200);
   if (!csv.trim()) return { ok: false, error: "Choose a spreadsheet file (CSV)." };
   if (csv.length > MAX_IMPORT_BYTES) return { ok: false, error: "The file is too large. Split it into smaller files." };
+  const notCsv = notCsvProblem(csv);
+  if (notCsv) return { ok: false, error: notCsv };
   let mapping: string[];
   try {
     mapping = z.array(z.string().max(40)).max(200).parse(JSON.parse(String(formData.get("mapping") ?? "[]")));
   } catch {
     return { ok: false, error: "The column choices could not be read. Choose the columns again." };
   }
-  const table = parseCsv(csv);
+  // The same reading as the preview: column names found below a title row, row numbers as in the spreadsheet.
+  const { table, rowNumbers } = readSheet(csv);
   if (table.length < 2) return { ok: false, error: "The file has a header row but no data rows." };
   if (table.length - 1 > MAX_IMPORT_ROWS) return { ok: false, error: `Import at most ${MAX_IMPORT_ROWS.toLocaleString()} rows at a time.` };
   const problems = mappingProblems(mapping, entity.data);
   if (problems.length) return { ok: false, error: problems[0] };
-  const rows = prepareRows(table, mapping, entity.data);
+  const rows = prepareRows(table, mapping, entity.data, new Date(), rowNumbers);
   const mapped = Object.fromEntries(table[0].map((h, i) => [h, mapping[i] ?? ""]).filter(([, k]) => k));
   return { ok: true, entity: entity.data, fileName, mapping: mapped, rows };
 }

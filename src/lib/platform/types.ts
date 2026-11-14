@@ -1,3 +1,5 @@
+import type { ImportEntity } from "@/lib/platform/imports";
+
 export interface PlatformCompany {
   id: string;
   name: string;
@@ -34,15 +36,17 @@ export interface ImportRow {
   messages: string[];
   can_override: boolean;
   decision: "import" | "skip";
-  outcome: "" | "created" | "removed" | "kept_changed" | "kept_in_use";
+  outcome: "" | "created" | "removed" | "kept_changed" | "kept_in_use" | "deactivated";
 }
 
 export interface ImportBatch {
   id: string;
   company_id: string;
   company_name: string;
-  entity: "customers" | "materials" | "trucks" | "drivers";
+  entity: ImportEntity;
   status: ImportBatchSummary["status"];
+  /** Column name in the file → field it was imported into. */
+  mapping?: Record<string, string>;
   file_name: string;
   created_at: string;
   decided_at: string | null;
