@@ -31,6 +31,7 @@ import { CostRatesForm } from "@/components/settings/cost-rates-form";
 import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
 import { IndustryForm } from "@/components/settings/industry-form";
+import { AiAssistantForm } from "@/components/settings/ai-assistant-form";
 import { MenuAreasForm } from "@/components/settings/menu-areas-form";
 import { hiddenAreasOf } from "@/lib/menu-areas";
 import { industryOf } from "@/lib/industry";
@@ -148,6 +149,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         <div className="border-t border-line">
           <BrandingForm settings={settings} canEdit={can(access, "settings.manage")} companyId={access.companyId!} />
         </div>
+        {/* Ask Taviron for the company (master plan §11a; 20261120022000): shown once the database update is in. */}
+        {"ai_assistant_allowed" in settings && (
+          <div className="border-t border-line">
+            <AiAssistantForm
+              allowed={settings.ai_assistant_allowed === true}
+              changedAt={typeof settings.ai_assistant_changed_at === "string" ? settings.ai_assistant_changed_at : null}
+              canEdit={can(access, "settings.manage") && !access.support}
+              timeZone={timezone}
+            />
+          </div>
+        )}
       </>
     );
   } else if (tab === "costs") {

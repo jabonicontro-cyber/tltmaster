@@ -28,6 +28,11 @@ export interface AiCapability {
    * the owner's explicit AI_SEND_PHOTOS=on.
    */
   sendsImages?: boolean;
+  /**
+   * Needs the company's own choice (Settings → Company, settings.manage) and the person's acknowledgement of the
+   * first-use notice before it runs (master plan §11a; migration 20261120022000).
+   */
+  needsOptIn?: boolean;
 }
 
 export const AI_CAPABILITIES: AiCapability[] = [
@@ -55,6 +60,7 @@ export const AI_CAPABILITIES: AiCapability[] = [
     minPassRate: 0.9,
     evidenceMaxAgeDays: 90,
     needsStructuredOutput: true,
+    needsOptIn: true,
   },
   {
     id: "ticket_reading",
@@ -131,10 +137,22 @@ export interface GateInput {
    * `paused` is the platform owner's switch (private.ai_controls).
    */
   usage: { tokensThisMonth: number; costThisMonthMicroUsd: number; userTokensThisMonth: number; paused: boolean } | null;
+  /**
+   * For capabilities with needsOptIn: whether the company allowed it and whether this person read the current
+   * first-use notice. null or missing: could not be read (migration not applied), so it is Blocked (fail closed).
+   */
+  optIn?: { companyAllowed: boolean; noticeAccepted: boolean } | null;
   isDemo: boolean;
   permissions: readonly string[];
   now: Date;
 }
+
+/** Gate reasons for the opt-in, so pages can tell them apart from configuration reasons. */
+export const OPT_IN_REASONS = {
+  unavailable: "Ask Taviron needs a database update that has not been installed yet (the company's choice could not be read).",
+  company: "Your company has not turned on Ask Taviron. An owner can turn it on in Settings → Company and branding.",
+  notice: "You have not read the first-use notice yet.",
+} as const;
 
 export interface Gate {
   state: GateState;
@@ -179,6 +197,13 @@ export function evaluateGate(input: GateInput): Gate {
   if (!config.userMonthlyTokenLimit) blocked.push("No monthly token limit per person is set (AI_USER_MONTHLY_TOKEN_LIMIT).");
   if (input.usage === null) blocked.push("The AI usage ledger is not available, so usage could not be tracked.");
   if (input.usage?.paused) blocked.push("AI is paused by the platform owner.");
+  if (c.needsOptIn) {
+    if (!input.optIn) blocked.push(OPT_IN_REASONS.unavailable);
+    else {
+      if (!input.optIn.companyAllowed) blocked.push(OPT_IN_REASONS.company);
+      if (!input.optIn.noticeAccepted) blocked.push(OPT_IN_REASONS.notice);
+    }
+  }
   if (input.isDemo && !config.inDemos) blocked.push("AI is not turned on in demo companies.");
   if (!input.isDemo && !config.companyAllowed) blocked.push("AI is not switched on for this company (AI_COMPANY_ALLOWLIST).");
   if (input.usage && config.monthlyTokenLimit && input.usage.tokensThisMonth >= config.monthlyTokenLimit) blocked.push("This month's AI token limit is used up.");

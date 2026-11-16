@@ -394,6 +394,15 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // 20261120015700: the office's to-do for a certificate the shop recorded (trigger only; the document's own company;
   // recipients are that company's fleet.edit people, as for the expiring-document alerts).
   "private.raise_certificate_check", "private.certificate_check_alert",
+  // 20261120022000: Ask Taviron opt-in. The company's choice (settings.manage of the caller's own company, never during a
+  // support visit) and the caller's own first-use notice (members of the current company only).
+  "public.set_ai_assistant_allowed", "public.acknowledge_ai_notice",
+  // 20261120022100: truck-day slots with their own start times (dispatch.edit, the caller's own company's order; each
+  // slot through save_order_load).
+  "public.truck_day_slots",
+  // 20261120022200: new Starter companies start with the essentials in the menu (trigger on the platform lifecycle only;
+  // the lifecycle row's own company, created on or after 2026-11-14, not live, menu not yet set).
+  "private.starter_default_hidden_areas",
 ];
 
 /**

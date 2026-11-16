@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
+import { defaultLineUnit } from "@/lib/line-defaults";
 import { CHARGE_KIND_LABELS } from "@/lib/schemas/catalog";
 import type { ChargeItemRow, MaterialRow, PriceListRow, UnitRow } from "@/server/data/types";
 import {
@@ -83,8 +84,10 @@ const ctl = (id: string, err?: string) => ({ id, name: id, ...describedBy(id, er
 
 /* Materials ------------------------------------------------------------- */
 
-export function MaterialsTable({ rows, units, canEdit }: { rows: MaterialRow[]; units: UnitRow[]; canEdit: boolean }) {
+export function MaterialsTable({ rows, units, canEdit, industry }: { rows: MaterialRow[]; units: UnitRow[]; canEdit: boolean; industry?: string }) {
   const [editing, setEditing] = useState<MaterialRow | "new" | null>(null);
+  // A new material starts with the unit the company's own materials use most, else what it hauls (MK1).
+  const newUnit = defaultLineUnit({ kind: "material", industry, units, materials: rows }) ?? "";
   const unitLabel = (c: string) => units.find((u) => u.code === c)?.label ?? c;
   const m = editing === "new" ? null : editing;
   return (
@@ -147,7 +150,7 @@ export function MaterialsTable({ rows, units, canEdit }: { rows: MaterialRow[]; 
                 <Input {...ctl("code", fe("code"))} defaultValue={m?.code ?? ""} className="uppercase" />
               </Field>
               <Field label="Default unit" htmlFor="default_unit_code" required error={fe("default_unit_code")} className="sm:col-span-3">
-                <Select {...ctl("default_unit_code", fe("default_unit_code"))} defaultValue={m?.default_unit_code ?? "ton"}>
+                <Select {...ctl("default_unit_code", fe("default_unit_code"))} defaultValue={m?.default_unit_code ?? newUnit}>
                   {units.map((u) => (
                     <option key={u.code} value={u.code}>{u.label}</option>
                   ))}
@@ -169,8 +172,10 @@ export function MaterialsTable({ rows, units, canEdit }: { rows: MaterialRow[]; 
 
 /* Charge items ---------------------------------------------------------- */
 
-export function ChargesTable({ rows, units, canEdit }: { rows: ChargeItemRow[]; units: UnitRow[]; canEdit: boolean }) {
+export function ChargesTable({ rows, units, canEdit, industry }: { rows: ChargeItemRow[]; units: UnitRow[]; canEdit: boolean; industry?: string }) {
   const [editing, setEditing] = useState<ChargeItemRow | "new" | null>(null);
+  // A new charge starts with the unit the company's own hauling charges use most, else what it hauls (MK1).
+  const newUnit = defaultLineUnit({ kind: "hauling", industry, units, charges: rows }) ?? "";
   const [method, setMethod] = useState<string>("per_unit");
   const unitLabel = (c: string | null) => (c ? units.find((u) => u.code === c)?.label ?? c : "");
   const c = editing === "new" ? null : editing;
@@ -254,7 +259,7 @@ export function ChargesTable({ rows, units, canEdit }: { rows: ChargeItemRow[]; 
               </Field>
               {method === "per_unit" && (
                 <Field label="Default unit" htmlFor="default_unit_code" required error={fe("default_unit_code")} className="sm:col-span-3">
-                  <Select {...ctl("default_unit_code", fe("default_unit_code"))} defaultValue={c?.default_unit_code ?? "ton"}>
+                  <Select {...ctl("default_unit_code", fe("default_unit_code"))} defaultValue={c?.default_unit_code ?? newUnit}>
                     {units.map((u) => (
                       <option key={u.code} value={u.code}>{u.label}</option>
                     ))}

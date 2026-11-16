@@ -33,10 +33,10 @@ export default async function MaterialsPage({ searchParams }: { searchParams: Pr
   let content: React.ReactNode;
   if (tab === "materials") {
     const [rows, units] = await Promise.all([listMaterials({ includeInactive: true }), listUnits()]);
-    content = <MaterialsTable rows={rows} units={units} canEdit={canEdit} />;
+    content = <MaterialsTable rows={rows} units={units} canEdit={canEdit} industry={industry} />;
   } else if (tab === "charges") {
     const [rows, units] = await Promise.all([listChargeItems({ includeInactive: true }), listUnits()]);
-    content = <ChargesTable rows={rows} units={units} canEdit={canEdit} />;
+    content = <ChargesTable rows={rows} units={units} canEdit={canEdit} industry={industry} />;
   } else if (tab === "units") {
     content = <UnitsTable rows={await listUnits(true)} canEdit={canEdit} />;
   } else {

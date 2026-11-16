@@ -140,6 +140,7 @@ function gate(config: GateConfig = {}, over: Partial<Omit<GateInput, "config">> 
     capability: C,
     evidence: [{ capability: "ops_assistant", provider: "openai", model: "test-model-2030", evalVersion: C.evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 6, passed: 6, criticalFailures: 0 }],
     usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false },
+    optIn: { companyAllowed: true, noticeAccepted: true },
     isDemo: false,
     permissions: OFFICE,
     now: new Date("2030-04-01T00:00:00Z"),

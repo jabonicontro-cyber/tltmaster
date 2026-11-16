@@ -101,6 +101,7 @@ function gate(over: Partial<GateInput["config"]> = {}, permissions: string[] = D
     capability: C,
     evidence: [{ capability: "ops_assistant", provider: "openai", model: "test-model-2030", evalVersion: C.evalVersion, ranAt: "2030-03-30T00:00:00Z", cases: 4, passed: 4, criticalFailures: 0 }],
     usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false },
+    optIn: { companyAllowed: true, noticeAccepted: true },
     isDemo,
     permissions,
     now: new Date("2030-04-01T00:00:00Z"),
@@ -244,7 +245,7 @@ describe("Ask Taviron: who may use it", () => {
 
   it("without passing evaluation evidence for the model it needs review and never runs", () => {
     const g = evaluateGate({
-      capability: C, evidence: [], usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false }, isDemo: false, permissions: DISPATCHER, now: new Date("2030-04-01T00:00:00Z"),
+      capability: C, evidence: [], usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false }, optIn: { companyAllowed: true, noticeAccepted: true }, isDemo: false, permissions: DISPATCHER, now: new Date("2030-04-01T00:00:00Z"),
       config: { provider: "openai", hasKey: true, providerSupportsStructuredOutput: true, enabled: true, model: "test-model-2030", fallbackModel: null, monthlyTokenLimit: 100_000, priced: () => true, inDemos: false, invalid: [], companyAllowed: true, userMonthlyTokenLimit: 50_000, monthlyCostLimitMicroUsd: null },
     });
     expect(g.state).toBe("needs_review");

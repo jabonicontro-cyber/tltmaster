@@ -134,6 +134,7 @@ export const ACTIVITY_TEXT: Record<string, string> = {
   go_live_signoff_voided: "Go-live sign-off withdrawn",
   // Subscriptions and plans
   lifecycle_terms_set: "Subscription terms set",
+  starter_menu_defaults: "Starter plan: menu starts with the essentials",
   onboarding_fee_paid: "Onboarding fee recorded as received",
   onboarding_fee_waived: "Onboarding fee waived",
   go_live_scheduled: "Go-live date set",

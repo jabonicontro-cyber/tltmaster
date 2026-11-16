@@ -92,6 +92,7 @@ function gateInput(over: Omit<Partial<GateInput>, "config"> & { config?: Partial
     capability: capability("plan_explanation"),
     evidence: [EVIDENCE],
     usage: { tokensThisMonth: 0, costThisMonthMicroUsd: 0, userTokensThisMonth: 0, paused: false },
+    optIn: { companyAllowed: true, noticeAccepted: true },
     isDemo: false,
     permissions: ["dispatch.view"],
     now: new Date("2030-04-01T00:00:00Z"),

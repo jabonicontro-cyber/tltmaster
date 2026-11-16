@@ -7,7 +7,7 @@ import { CircleCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog, Dialog } from "@/components/ui/dialog";
 import { DateInput } from "@/components/ui/date-input";
-import { Field, FormError, Input, Textarea } from "@/components/ui/form";
+import { Checkbox, Field, FormError, Input, Textarea } from "@/components/ui/form";
 import { applyTruckHours, planTruckDay, releaseTruck } from "@/app/(app)/dispatch/truck-day-actions";
 
 // Truck-day jobs (UX11): plan N trucks for a day, and release one truck (dispatch or its own driver; the database
@@ -21,16 +21,26 @@ export function TruckDayDialog({ order, date, onClose, onSaved }: {
 }) {
   const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : "");
   const [values, setValues] = useState({ date, trucks: "3", startTime: hhmm(order.window_start) || "06:30", endTime: hhmm(order.window_end) || "17:00", note: "" });
+  // Different start times per truck (UX11): folded away until wanted; each truck starts at the shared time until changed.
+  const [perTruck, setPerTruck] = useState(false);
+  const [starts, setStarts] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
   const set = (k: keyof typeof values) => (e: { target: { value: string } }) => setValues((v) => ({ ...v, [k]: e.target.value }));
+  const count = Math.min(50, Math.max(0, Math.trunc(Number(values.trucks)) || 0));
+  const startFor = (i: number) => starts[i] ?? values.startTime;
+  const setStart = (i: number, t: string) => setStarts(() => Array.from({ length: count }, (_, j) => (j === i ? t : startFor(j))));
+  const startsError = fieldErrors.startTimes ?? Object.entries(fieldErrors).find(([k]) => k.startsWith("startTimes."))?.[1];
 
   async function submit() {
     setPending(true);
     setError(null);
     setFieldErrors({});
-    const r = await planTruckDay({ orderId: order.id, ...values });
+    // With different start times, the earliest one is the day's start (the shared field is hidden).
+    const startTimes = perTruck ? Array.from({ length: count }, (_, i) => startFor(i)) : undefined;
+    const startTime = startTimes?.length ? [...startTimes].sort()[0] : values.startTime;
+    const r = await planTruckDay({ orderId: order.id, ...values, startTime, startTimes });
     setPending(false);
     if (!r.ok) {
       setError(r.error);
@@ -62,12 +72,43 @@ export function TruckDayDialog({ order, date, onClose, onSaved }: {
           <Field label="Trucks" htmlFor="td-trucks" required error={fieldErrors.trucks}>
             <Input id="td-trucks" type="number" min={1} max={50} inputMode="numeric" value={values.trucks} onChange={set("trucks")} className="text-right tabular" />
           </Field>
-          <Field label="From" htmlFor="td-start" required error={fieldErrors.startTime}>
-            <Input id="td-start" type="time" value={values.startTime} onChange={set("startTime")} />
-          </Field>
+          {!perTruck && (
+            <Field label="From" htmlFor="td-start" required error={fieldErrors.startTime}>
+              <Input id="td-start" type="time" value={values.startTime} onChange={set("startTime")} />
+            </Field>
+          )}
           <Field label="Until (planned)" htmlFor="td-end" required error={fieldErrors.endTime}>
             <Input id="td-end" type="time" value={values.endTime} onChange={set("endTime")} />
           </Field>
+        </div>
+        <div className="space-y-3">
+          <Checkbox
+            id="td-per-truck"
+            label="Different start times"
+            checked={perTruck}
+            onChange={(e) => {
+              setPerTruck(e.target.checked);
+              setStarts(Array.from({ length: count }, () => values.startTime));
+            }}
+          />
+          {perTruck && (
+            count > 0 ? (
+              <fieldset className="space-y-2" aria-describedby={startsError ? "td-starts-error" : undefined}>
+                <legend className="text-sm text-muted">Each truck starts at its own time and works until the planned end.</legend>
+                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {Array.from({ length: count }, (_, i) => (
+                    <li key={i}>
+                      <label htmlFor={`td-start-${i}`} className="mb-1 block text-xs font-medium text-muted">Truck {i + 1} starts</label>
+                      <Input id={`td-start-${i}`} type="time" value={startFor(i)} onChange={(e) => setStart(i, e.target.value)} />
+                    </li>
+                  ))}
+                </ul>
+                {startsError && <p id="td-starts-error" className="text-sm text-critical">{startsError}</p>}
+              </fieldset>
+            ) : (
+              <p className="text-sm text-muted">Enter how many trucks first.</p>
+            )
+          )}
         </div>
         <Field label="Notes for the drivers" htmlFor="td-note" error={fieldErrors.note}>
           <Textarea id="td-note" rows={2} maxLength={1000} value={values.note} onChange={set("note")} />

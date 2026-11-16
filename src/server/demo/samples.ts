@@ -1752,7 +1752,11 @@ async function truckDaySample(db: Db, today: string): Promise<number> {
   const set = await db.rpc("set_order_job_type", { p_order: orderId, p_job_type: "truck_day", p_billing: "hours" });
   if (set.error) return 0;
   const count = Math.min(2, usable(free));
-  const plan = await db.rpc("truck_day_plan", { p_order: orderId, p_date: day, p_trucks: count, p_start: "06:30", p_end: "16:30", p_note: "Demo: trucks for the day. Enter a ticket for every trip." });
+  // Staggered starts (6:30 and 7:30, UX11 "different start times in one step", 20261120022100); before that update, both
+  // trucks start at 6:30 as they always did.
+  const note = "Demo: trucks for the day. Enter a ticket for every trip.";
+  const staggered = await db.rpc("truck_day_slots", { p_order: orderId, p_date: day, p_starts: ["06:30", "07:30"].slice(0, count), p_end: "16:30", p_note: note });
+  const plan = staggered.error ? await db.rpc("truck_day_plan", { p_order: orderId, p_date: day, p_trucks: count, p_start: "06:30", p_end: "16:30", p_note: note }) : staggered;
   if (plan.error) return 1;
   const slots = (plan.data as { load_ids: string[] }).load_ids;
   let assigned = 0;

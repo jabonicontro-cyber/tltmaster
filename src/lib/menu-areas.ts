@@ -27,3 +27,10 @@ export function hiddenAreasOf(value: unknown): OptionalArea[] {
 export function menuShows(href: string, hidden: readonly string[]): boolean {
   return !(HREFS.has(href) && hidden.includes(href));
 }
+
+/**
+ * What a new company on the Starter plan starts with hidden (owner decision 2026-11-14): everything optional except
+ * Maintenance (safety core). Applied once by the database when such a company gets its first plan
+ * (migration 20261120022200, private.starter_default_hidden_areas); owners turn any area back on in Settings.
+ */
+export const STARTER_HIDDEN_AREAS: readonly OptionalArea[] = ["/quotes", "/support", "/customer-portal", "/order-to-cash", "/payroll", "/schedule", "/time-off", "/reports"];

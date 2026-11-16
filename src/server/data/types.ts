@@ -313,6 +313,9 @@ export interface CompanySettings {
   industry?: string;
   /** Optional areas hidden from the menu (20261120007700, SF1); absent until installed (= none). */
   hidden_areas?: string[];
+  /** Ask Taviron allowed for the company (20261120022000, master plan §11a); absent until installed (= off). */
+  ai_assistant_allowed?: boolean;
+  ai_assistant_changed_at?: string | null;
   /** Whether a logo is stored; the image itself is served by /brand/logo, never sent with the settings. */
   has_logo: boolean;
   updated_at: string;

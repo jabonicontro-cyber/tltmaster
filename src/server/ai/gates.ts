@@ -1,6 +1,7 @@
 import "server-only";
 import { AI_CAPABILITIES, capability, evaluateGate, type AiCapabilityId, type Gate } from "@/lib/ai/capabilities";
 import { EVAL_EVIDENCE } from "@/lib/ai/evidence";
+import { noticeAccepted } from "@/lib/ai/notice";
 import type { Access } from "@/lib/permissions";
 import { createClient } from "@/server/supabase/server";
 import { aiConfig, type AiConfig } from "./config";
@@ -57,13 +58,39 @@ export async function sessionLedger(): Promise<UsageLedger> {
   };
 }
 
+export interface OptIn {
+  companyAllowed: boolean;
+  noticeAccepted: boolean;
+}
+
+/**
+ * The company's choice (company_settings.ai_assistant_allowed) and this person's acknowledgement of the current
+ * first-use notice (user_preferences 'ai_notice'), both read with the caller's own session, so row-level security keeps
+ * them to the current company and person (20261120022000). null when they cannot be read: the gate is then Blocked.
+ */
+export async function sessionOptIn(access: Pick<Access, "companyId" | "userId">): Promise<OptIn | null> {
+  if (!access.companyId) return null;
+  const db = await createClient();
+  const [company, notice] = await Promise.all([
+    db.from("company_settings").select("ai_assistant_allowed").eq("company_id", access.companyId).maybeSingle(),
+    db.from("user_preferences").select("value").eq("company_id", access.companyId).eq("user_id", access.userId).eq("key", "ai_notice").maybeSingle(),
+  ]);
+  if (company.error || !company.data || notice.error) return null;
+  return {
+    companyAllowed: (company.data as { ai_assistant_allowed?: unknown }).ai_assistant_allowed === true,
+    noticeAccepted: noticeAccepted((notice.data as { value?: unknown } | null)?.value),
+  };
+}
+
 /**
  * The gate for one capability and person. Demo companies are Blocked unless AI_IN_DEMOS=on (DEMO_TENANTS §2); real
  * companies unless listed in AI_COMPANY_ALLOWLIST (customer activation stays off until the owner lists a company).
+ * Ask Taviron also needs the company's own choice and the person's first-use notice, read fresh on every call.
  */
-export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "permissions" | "isDemo" | "companyId">, ledger?: UsageLedger, config: AiConfig = aiConfig()): Promise<Gate> {
+export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "permissions" | "isDemo" | "companyId" | "userId">, ledger?: UsageLedger, config: AiConfig = aiConfig()): Promise<Gate> {
   const summary = await (ledger ?? (await sessionLedger())).summary().catch(() => null);
   const p = provider(config);
+  const optIn = capability(id).needsOptIn ? await sessionOptIn(access).catch(() => null) : undefined;
   return evaluateGate({
     capability: capability(id),
     config: {
@@ -83,6 +110,7 @@ export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "p
       imagesAllowed: config.sendPhotos,
     },
     evidence: EVAL_EVIDENCE,
+    optIn,
     usage: summary ? { tokensThisMonth: summary.tokensThisMonth, costThisMonthMicroUsd: summary.costThisMonthMicroUsd, userTokensThisMonth: summary.user.tokensThisMonth, paused: summary.paused } : null,
     isDemo: Boolean(access.isDemo),
     permissions: access.permissions,
@@ -90,7 +118,7 @@ export async function capabilityGate(id: AiCapabilityId, access: Pick<Access, "p
   });
 }
 
-export async function allCapabilityGates(access: Pick<Access, "permissions" | "isDemo" | "companyId">) {
+export async function allCapabilityGates(access: Pick<Access, "permissions" | "isDemo" | "companyId" | "userId">) {
   const ledger = await sessionLedger();
   return Promise.all(AI_CAPABILITIES.map(async (c) => ({ capability: c, gate: await capabilityGate(c.id, access, ledger) })));
 }

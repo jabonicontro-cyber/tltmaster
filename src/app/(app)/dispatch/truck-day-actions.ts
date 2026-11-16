@@ -52,9 +52,15 @@ const planInput = z
     startTime: time,
     endTime: time,
     note: z.string().trim().max(1000).default(""),
+    /** Optional: a start time for each truck, in order (UX11: "2 at 6:00, 3 at 7:30"). Empty: every truck starts at startTime. */
+    startTimes: z.array(time).max(50).optional(),
   })
   .superRefine((p, ctx) => {
     if (p.endTime <= p.startTime) ctx.addIssue({ code: "custom", message: "Must be after the start time.", path: ["endTime"] });
+    if (p.startTimes?.length) {
+      if (p.startTimes.length !== p.trucks) ctx.addIssue({ code: "custom", message: "Enter a start time for every truck.", path: ["startTimes"] });
+      else if (p.startTimes.some((t) => t >= p.endTime)) ctx.addIssue({ code: "custom", message: "Every truck must start before the planned end.", path: ["startTimes"] });
+    }
   });
 
 export async function planTruckDay(input: z.input<typeof planInput>): Promise<ActionResult<{ count: number }>> {
@@ -64,8 +70,17 @@ export async function planTruckDay(input: z.input<typeof planInput>): Promise<Ac
     if (!parsed.success) return validationFailure(parsed.error);
     const p = parsed.data;
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc("truck_day_plan", { p_order: p.orderId, p_date: p.date, p_trucks: p.trucks, p_start: p.startTime, p_end: p.endTime, p_note: p.note });
-    if (error) return fail(dbErrorMessage(error));
+    // Different start times go in one step (all trucks or none; 20261120022100). The same time for every truck keeps
+    // the original function.
+    const starts = p.startTimes?.length ? p.startTimes : null;
+    const varied = starts !== null && new Set(starts.map((t) => t.slice(0, 5))).size > 1;
+    const { data, error } = varied
+      ? await supabase.rpc("truck_day_slots", { p_order: p.orderId, p_date: p.date, p_starts: starts, p_end: p.endTime, p_note: p.note })
+      : await supabase.rpc("truck_day_plan", { p_order: p.orderId, p_date: p.date, p_trucks: p.trucks, p_start: starts?.[0] ?? p.startTime, p_end: p.endTime, p_note: p.note });
+    if (error) {
+      if (varied && (error.code === "PGRST202" || error.code === "42883")) return fail("Different start times need a database update that has not been installed yet. Add the trucks with one start time for now.");
+      return fail(dbErrorMessage(error));
+    }
     revalidateJob(p.orderId);
     const count = (data as { count: number }).count;
     return ok({ count }, `${count} ${count === 1 ? "truck" : "trucks"} added for the day. Assign a truck and driver to each.`);
