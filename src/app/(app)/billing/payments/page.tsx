@@ -15,6 +15,7 @@ import { formatCents } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { businessToday } from "@/server/data/settings";
+import { getIndustry, getSay } from "@/server/industry";
 import { customerTicketBalances, ticketPaymentCustomers } from "@/server/data/ticket-payments";
 
 export const metadata = { title: "Payments by ticket" };
@@ -28,13 +29,15 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export default async function TicketPaymentsPage({ searchParams }: { searchParams: Promise<{ customer?: string; apply?: string }> }) {
   const access = await requirePagePermission("billing.view");
   const manage = can(access, "billing.manage");
+  // A freight carrier reads BOL where an aggregate hauler reads ticket (M10: "Scale BOL" and mixed words).
+  const [say, industry] = await Promise.all([getSay(), getIndustry()]);
   const sp = await searchParams;
   const customers = await ticketPaymentCustomers();
 
   const header = (
     <PageHeader
-      title="Payments by ticket"
-      description="For customers who pay against delivery ticket numbers instead of an invoice. Record what came in, match it to the tickets on the stub or remittance, and keep what is left as the customer's credit."
+      title={say("Payments by ticket")}
+      description={say("For customers who pay against delivery ticket numbers instead of an invoice. Record what came in, match it to the tickets on the stub or remittance, and keep what is left as the customer's credit.")}
       actions={<ButtonLink href="/billing" variant="secondary" size="sm">Billing</ButtonLink>}
     />
   );
@@ -63,7 +66,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
     <>
       {header}
       {customers.length === 0 ? (
-        <EmptyState title="No billed tickets yet" description="Tickets show here once their order is handed off to billing." action={<ButtonLink href="/billing" size="sm">Go to billing</ButtonLink>} />
+        <EmptyState title={say("No billed tickets yet")} description={say("Tickets show here once their order is handed off to billing.")} action={<ButtonLink href="/billing" size="sm">Go to billing</ButtonLink>} />
       ) : (
         <div className="space-y-5">
           {/* Choosing a customer loads their tickets at once; Show stays for browsers without JavaScript. */}
@@ -82,15 +85,15 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-3">
-                <Figure label="Open on tickets" value={formatCents(openCents)} />
-                <Figure label="Open tickets" value={String(openCount)} />
+                <Figure label={say("Open on tickets")} value={formatCents(openCents)} />
+                <Figure label={say("Open tickets")} value={String(openCount)} />
                 <Figure label="Credit not applied" value={formatCents(balances.unapplied_cents)} hint={balances.unapplied_cents > 0 ? "Apply it from the payments list below." : undefined} />
               </div>
 
-              <Notice title={balances.issuer === "taviron" ? "Invoices follow the tickets" : "Recorded in Taviron"}>
+              <Notice title={balances.issuer === "taviron" ? say("Invoices follow the tickets") : "Recorded in Taviron"}>
                 {balances.issuer === "taviron"
-                  ? `Money applied to a ticket also pays the issued invoice it is on, so invoice balances, aging and the customer portal stay right. Only tickets on an issued invoice can be paid here${notInvoiced ? `; ${notInvoiced} open ${notInvoiced === 1 ? "ticket is" : "tickets are"} still waiting for theirs` : ""}.`
-                  : "Payments are tracked here by ticket. Sending them to QuickBooks is not built yet, so record the payment in QuickBooks as well for now."}
+                  ? say(`Money applied to a ticket also pays the issued invoice it is on, so invoice balances, aging and the customer portal stay right. Only tickets on an issued invoice can be paid here${notInvoiced ? `; ${notInvoiced} open ${notInvoiced === 1 ? "ticket is" : "tickets are"} still waiting for theirs` : ""}.`)
+                  : say("Payments are tracked here by ticket. Sending them to QuickBooks is not built yet, so record the payment in QuickBooks as well for now.")}
               </Notice>
 
               {manage && (
@@ -99,7 +102,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
                     title={applying ? "Apply credit" : `Record a payment from ${customerName ?? "this customer"}`}
                     description={applying
                       ? `${formatCents(applying.unapplied_cents)} left from the ${PAYMENT_METHODS[applying.method as PaymentMethod] ?? "payment"}${applying.reference ? ` #${applying.reference}` : ""} received ${formatDate(applying.received_on)}.`
-                      : "Choose the tickets it pays. A ticket can be paid in part; anything not applied is kept as credit."}
+                      : say("Choose the tickets it pays. A ticket can be paid in part; anything not applied is kept as credit.")}
                     actions={applying ? <ButtonLink href={`/billing/payments?customer=${customerId}`} variant="ghost" size="sm">Record a new payment instead</ButtonLink> : undefined}
                   />
                   <CardBody>
@@ -108,6 +111,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
                       mode={applying ? { kind: "apply", paymentId: applying.id, creditCents: applying.unapplied_cents } : { kind: "record", customerId: customerId!, today }}
                       tickets={balances.tickets}
                       issuer={balances.issuer}
+                      industry={industry}
                     />
                   </CardBody>
                 </Card>
@@ -115,13 +119,13 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
 
               {!manage && openCount > 0 && (
                 <Card>
-                  <CardHeader title="Open tickets" />
-                  <CardBody className="text-sm text-muted">{openCount} {openCount === 1 ? "ticket is" : "tickets are"} open for {formatCents(openCents)}. Recording payments needs the billing manager permission.</CardBody>
+                  <CardHeader title={say("Open tickets")} />
+                  <CardBody className="text-sm text-muted">{say(`${openCount} ${openCount === 1 ? "ticket is" : "tickets are"} open for ${formatCents(openCents)}. Recording payments needs the billing manager permission.`)}</CardBody>
                 </Card>
               )}
 
               <Card>
-                <CardHeader title="Payments" description="The latest 50, newest first. Voiding a payment (a bounced check, one entered twice) reopens its tickets." />
+                <CardHeader title="Payments" description={say("The latest 50, newest first. Voiding a payment (a bounced check, one entered twice) reopens its tickets.")} />
                 {balances.payments.length === 0 ? (
                   <CardBody className="text-sm text-muted">No payments recorded for this customer yet.</CardBody>
                 ) : (
@@ -136,7 +140,7 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
                             {p.voided ? <Badge tone="gray">Voided</Badge> : p.unapplied_cents > 0 ? <Badge tone="amber">{formatCents(p.unapplied_cents)} credit</Badge> : <Badge tone="green">Applied</Badge>}
                           </p>
                           <p className="mt-1 text-muted">
-                            {p.tickets.length === 0 ? "No tickets yet." : p.tickets.map((a) => `${a.ticket_number} ${formatCents(a.amount_cents)}`).join(" · ")}
+                            {p.tickets.length === 0 ? say("No tickets yet.") : p.tickets.map((a) => `${a.ticket_number} ${formatCents(a.amount_cents)}`).join(" · ")}
                           </p>
                           {p.note && <p className="mt-1 text-muted">{p.note}</p>}
                           {p.voided && p.void_reason && <p className="mt-1 text-muted">Voided: {p.void_reason}</p>}
@@ -157,11 +161,11 @@ export default async function TicketPaymentsPage({ searchParams }: { searchParam
 
               {settled.length > 0 && (
                 <Card>
-                  <CardHeader title="Paid and part-paid tickets" description="Paid counts money applied to the ticket and payments recorded on its invoice itself." />
+                  <CardHeader title={say("Paid and part-paid tickets")} description={say("Paid counts money applied to the ticket and payments recorded on its invoice itself.")} />
                   <TableWrap className="rounded-none border-0">
                     <Table>
                       <thead>
-                        <tr><Th>Ticket</Th><Th>Order</Th><Th>Invoice</Th><Th align="right">Billed</Th><Th align="right">Paid</Th><Th align="right">Open</Th></tr>
+                        <tr><Th>{say("Ticket")}</Th><Th>Order</Th><Th>Invoice</Th><Th align="right">Billed</Th><Th align="right">Paid</Th><Th align="right">Open</Th></tr>
                       </thead>
                       <tbody>
                         {settled.map((t) => (

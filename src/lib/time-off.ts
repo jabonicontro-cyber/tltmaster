@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { isOperationalDate, OPERATIONAL_DATE_MESSAGE } from "@/lib/dates";
+import { isOperationalDate, OPERATIONAL_DATE_ERROR, OPERATIONAL_DATE_MESSAGE } from "@/lib/dates";
 
 export const TIME_OFF_CATEGORIES = {
   vacation: "Vacation",
@@ -17,7 +17,7 @@ export type TimeOffStatus = keyof typeof TIME_OFF_STATUSES;
 
 export const STATUS_TONE: Record<TimeOffStatus, "amber" | "green" | "red" | "gray"> = { pending: "amber", approved: "green", denied: "red", canceled: "gray" };
 
-const date = z.string().trim().refine(isOperationalDate, OPERATIONAL_DATE_MESSAGE);
+const date = z.string().trim().refine(isOperationalDate, OPERATIONAL_DATE_ERROR);
 const time = z.string().trim().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Enter a time like 08:00.");
 
 export const timeOffSchema = z

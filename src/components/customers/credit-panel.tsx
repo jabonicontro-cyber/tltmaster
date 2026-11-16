@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input } from "@/components/ui/form";
+import { useRefresh } from "@/components/ui/use-refresh";
 import { formatCents } from "@/lib/money";
 import { setCustomerCreditHold, setCustomerCreditLimit } from "@/app/(app)/customers/actions";
 
@@ -24,28 +24,48 @@ const REASON = { manual: "Put on hold by billing", overdue: "Invoices past due",
  * Credit hold (B128): billing puts a customer on hold with a reason, releases it, and sets a credit limit. Orders and
  * dispatch for a customer on hold are never blocked; the person going ahead records why.
  */
-export function CreditPanel({ customerId, hold, limitCents, canManage }: { customerId: string; hold: CreditView | null; limitCents: number | null; canManage: boolean }) {
-  const router = useRouter();
-  const [busy, start] = useTransition();
+export function CreditPanel({ customerId, hold, limitCents, overdueCents = null, canManage }: {
+  customerId: string;
+  hold: CreditView | null;
+  limitCents: number | null;
+  /** Past due on issued invoices (people who see billing); null when not known. Shown beside the badge (M7). */
+  overdueCents?: number | null;
+  canManage: boolean;
+}) {
+  const { refresh, refreshing } = useRefresh();
+  const [saving, start] = useTransition();
+  // Busy until the badge and reasons above show the change, not only until the server said yes (M3).
+  const busy = saving || refreshing;
   const [reason, setReason] = useState("");
   const [holding, setHolding] = useState(false);
   const [limit, setLimit] = useState(limitCents === null ? "" : (limitCents / 100).toFixed(2));
   const run = (fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) => start(async () => {
     const r = await fn();
     if (!r.ok) return void toast.error(r.error ?? "Not saved.");
-    toast.success(r.message ?? "Saved.");
     setHolding(false);
     setReason("");
-    router.refresh();
+    // Not awaited inside the transition (React would hold the refresh until it ends); the toast comes with the new state.
+    void refresh().then(() => toast.success(r.message ?? "Saved."));
   });
   const manual = hold?.reasons.includes("manual") ?? false;
   return (
     <Card>
       <CardHeader
-        title={<span className="inline-flex items-center gap-2">Credit{hold ? <Badge tone="red">On credit hold</Badge> : <Badge tone="green">In good standing</Badge>}</span>}
+        title={
+          <span className="inline-flex flex-wrap items-center gap-2">
+            Credit
+            {hold ? <Badge tone="red">On credit hold</Badge> : overdueCents ? <Badge tone="amber">Not on hold</Badge> : <Badge tone="green">In good standing</Badge>}
+            {overdueCents ? <span className="text-sm font-semibold text-amber-700 tabular" data-testid="credit-overdue">{formatCents(overdueCents)} overdue</span> : null}
+          </span>
+        }
         description="While on hold, a new order needs someone who can change orders, and each load dispatched needs a reason. Both reasons are recorded. Billing releases the hold."
       />
       <CardBody className="space-y-4">
+        {!hold && overdueCents ? (
+          <p className="text-sm text-muted">
+            Invoices are past due, but the customer is not on hold: that happens on its own only when Settings → Invoicing sets how many days past due put a customer on hold.{canManage ? " You can also put it on hold here." : ""}
+          </p>
+        ) : null}
         {hold && (
           <ul className="space-y-1 text-sm" aria-label="Why this customer is on hold">
             {hold.reasons.map((r) => (

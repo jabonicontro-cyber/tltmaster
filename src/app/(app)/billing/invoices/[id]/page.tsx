@@ -5,7 +5,6 @@ import { AdminFlash } from "@/components/admin/flash";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
-import { DateInput } from "@/components/ui/date-input";
 import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
@@ -22,6 +21,7 @@ import { getUserNames } from "@/server/data/quotes";
 import { businessToday } from "@/server/data/settings";
 import { addPayment, issueInvoice, markInvoiceSent, sendInvoice, voidInvoice, voidPayment } from "../actions";
 import { IssueInvoiceForm } from "@/components/billing/issue-invoice-form";
+import { InvoicePaymentForm } from "@/components/billing/invoice-payment-form";
 
 export const metadata = { title: "Invoice" };
 
@@ -235,21 +235,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
             <Card>
               <CardHeader title="Record a payment" description={`Still owed: ${formatCents(owed)}. A payment can never be more than that.`} />
               <CardBody>
-                <form action={addPayment} className="space-y-3" aria-label="Record a payment">
-                  <input type="hidden" name="invoice" value={inv.id} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Field label="Amount ($)" htmlFor="amount"><Input id="amount" name="amount" inputMode="decimal" defaultValue={(owed / 100).toFixed(2)} required /></Field>
-                    <Field label="Received" htmlFor="received_on"><DateInput id="received_on" name="received_on" defaultValue={today} max={today} /></Field>
-                  </div>
-                  <Field label="Method" htmlFor="method">
-                    <Select id="method" name="method" defaultValue="check">
-                      {Object.entries(PAYMENT_METHODS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                    </Select>
-                  </Field>
-                  <Field label="Check or reference number" htmlFor="reference"><Input id="reference" name="reference" maxLength={80} /></Field>
-                  <Field label="Note" htmlFor="note"><Input id="note" name="note" maxLength={300} /></Field>
-                  <SubmitButton pendingLabel="Recording…">Record payment</SubmitButton>
-                </form>
+                <InvoicePaymentForm invoiceId={inv.id} owedCents={owed} today={today} action={addPayment} />
               </CardBody>
             </Card>
           )}

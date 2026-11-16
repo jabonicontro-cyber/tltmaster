@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { Field, Input, Select } from "@/components/ui/form";
+import { useRefresh } from "@/components/ui/use-refresh";
 import { addOrderCharge } from "@/app/(app)/billing/actions";
 
 export interface ExtraChargeOption { id: string; name: string; unit: string }
@@ -16,8 +16,10 @@ export interface ExtraChargeOption { id: string; name: string; unit: string }
  * order's invoice.
  */
 export function ExtraChargeForm({ orderId, options }: { orderId: string; options: ExtraChargeOption[] }) {
-  const router = useRouter();
-  const [busy, start] = useTransition();
+  const { refresh, refreshing } = useRefresh();
+  const [saving, start] = useTransition();
+  // Busy until the order lines and totals below show the new charge, not only until the server said yes (M3).
+  const busy = saving || refreshing;
   const [item, setItem] = useState(options[0]?.id ?? "");
   const [quantity, setQuantity] = useState("1");
   const [rate, setRate] = useState("");
@@ -35,10 +37,11 @@ export function ExtraChargeForm({ orderId, options }: { orderId: string; options
             start(async () => {
               const r = await addOrderCharge({ orderId, chargeItemId: item, quantity, rate, note });
               if (!r.ok) return void toast.error(r.error ?? "Not added.");
-              toast.success(r.message ?? "Added.");
               setRate("");
               setNote("");
-              router.refresh();
+              // Not awaited here: React holds a refresh started inside a transition until that transition ends. The
+              // confirmation comes when the page shows the charge.
+              void refresh().then(() => toast.success(r.message ?? "Added."));
             });
           }}
         >
@@ -56,7 +59,7 @@ export function ExtraChargeForm({ orderId, options }: { orderId: string; options
           <Field label="Note (on the invoice)" htmlFor="xc-note" className="sm:col-span-3">
             <Input id="xc-note" value={note} onChange={(e) => setNote(e.target.value)} maxLength={200} placeholder="e.g. Receiver unload fee" />
           </Field>
-          <div className="sm:col-span-1"><Button type="submit" disabled={busy || !item || !rate}>Add</Button></div>
+          <div className="sm:col-span-1"><Button type="submit" loading={busy} disabled={!item || !rate}>Add</Button></div>
         </form>
       </CardBody>
     </Card>

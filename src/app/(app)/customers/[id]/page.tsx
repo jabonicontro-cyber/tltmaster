@@ -19,7 +19,8 @@ import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { customerMoneyTerms, getCustomerDetail } from "@/server/data/customers";
 import { businessToday, getSettings } from "@/server/data/settings";
-import { getUserNames } from "@/server/data/quotes";
+import { getPeopleNames, getUserNames } from "@/server/data/quotes";
+import { owedByCustomer } from "@/server/data/billing-balance";
 import { directionsStatus } from "@/lib/sites";
 import { ActivityCard, HistoryCard, OpportunitiesCard, RelationshipCard, TasksCard } from "@/components/customers/crm-panels";
 import type { Relationship } from "@/lib/crm/labels";
@@ -46,7 +47,14 @@ export default async function CustomerPage({ params, searchParams }: { params: P
   // Credit limit and detention rate are billing data (financial review L1): read only with billing.view.
   const billingView = can(access, "billing.view");
   const money = billingView ? await customerMoneyTerms(id) : null;
+  // What is overdue on issued invoices (M7), beside the credit badge: "In good standing" next to a large overdue amount
+  // read as if nothing was late. Billing data, so only with billing.view (the database checks it again).
+  const owedMap = billingView && creditInstalled ? await owedByCustomer([id], today).catch(() => null) : null;
+  const owed = owedMap ? owedMap.get(id) ?? { owed: 0, overdue: 0 } : null;
   const userNames = crm || (verification && sites.some((s) => s.directions_verified_by)) ? await getUserNames() : {};
+  // People to choose (account owner, opportunity owner, follow-up assignee): the company's own people only, never a
+  // Taviron support visitor (SA1; walkthrough M6). History lines ("logged by") keep getUserNames, which names visitors.
+  const peopleNames = crm ? await getPeopleNames() : {};
   const account = customer as typeof customer & { relationship?: Relationship; account_owner_id?: string | null; tags?: string[] };
   const intervals = { site_review_days_standard: settings.site_review_days_standard ?? null, site_review_days_safety: settings.site_review_days_safety ?? null };
   const siteViews = sites.map((s) => ({
@@ -135,7 +143,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
         <div className="space-y-5 lg:col-span-2">
           {creditInstalled && (billingView || hold) && (
-            <CreditPanel customerId={customer.id} hold={hold} limitCents={money?.creditLimitCents ?? null} canManage={can(access, "billing.manage")} />
+            <CreditPanel customerId={customer.id} hold={hold} limitCents={money?.creditLimitCents ?? null} overdueCents={owed?.overdue ?? null} canManage={can(access, "billing.manage")} />
           )}
           {billingView && <CustomerBalance customerId={customer.id} today={today} />}
           {money && (
@@ -170,7 +178,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           </Card>
 
           {crm && <HistoryCard history={crm.history} timezone={timezone} />}
-          {crm && <OpportunitiesCard customerId={customer.id} opportunities={crm.opportunities} names={userNames} canEdit={canEdit} today={today} />}
+          {crm && <OpportunitiesCard customerId={customer.id} opportunities={crm.opportunities} names={peopleNames} canEdit={canEdit} today={today} />}
 
           <Card>
             <CardHeader title="Quotes" description="Most recent 50 quotes for this customer." />
@@ -198,8 +206,8 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         <div className="space-y-5">
           {crm ? (
             <>
-              <RelationshipCard customerId={customer.id} relationship={account.relationship ?? "customer"} ownerId={account.account_owner_id ?? null} tags={account.tags ?? []} names={userNames} canEdit={canEdit} />
-              <TasksCard customerId={customer.id} tasks={crm.tasks} names={userNames} canEdit={canEdit} today={today} />
+              <RelationshipCard customerId={customer.id} relationship={account.relationship ?? "customer"} ownerId={account.account_owner_id ?? null} tags={account.tags ?? []} names={peopleNames} canEdit={canEdit} />
+              <TasksCard customerId={customer.id} tasks={crm.tasks} names={peopleNames} canEdit={canEdit} today={today} />
             </>
           ) : (
             <Notice title="CRM needs a database update">Activities, follow-ups and opportunities appear once migration 20261119000100 is installed.</Notice>

@@ -19,7 +19,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { QUANTITY_CHECK_LABELS, QUANTITY_POLICY, formatDifference, readinessExplanation, sayExplanation } from "@/lib/billing/rules";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
-import { formatCents } from "@/lib/money";
+import { formatBp, formatCents } from "@/lib/money";
 import { formatTime } from "@/lib/orders/schedule";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
@@ -45,6 +45,13 @@ import { getUserNames } from "@/server/data/quotes";
 export const metadata = { title: "Order billing" };
 
 const qty = (v: number | string | null | undefined) => (v === null || v === undefined ? "–" : trimNumber(v));
+
+/** What a line that is not counted from tickets is, in the Order lines table. */
+const OTHER_LINE_LABEL: Record<string, string> = {
+  ordered_no_tickets: "Charge, not counted from tickets",
+  ordered_fixed: "Discount or fixed amount",
+  percentage: "Percentage of the subtotal",
+};
 
 const LOAD_STATE: Record<string, { label: string; tone: "red" | "amber" | "green" | "gray" }> = {
   missing: { label: "Missing ticket", tone: "red" },
@@ -102,6 +109,11 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   // the order page.
   const [docs, docStops] = await Promise.all([getOrderDocuments(id), getOrderStops(id)]);
   const docNames = docs.documents.length ? await getUserNames() : {};
+  // Order lines that are not compared with tickets (charges billed per occurrence, percentages, discounts) and the tax
+  // the accepted total includes: from the same order lines as the invoice draft, at their accepted amounts.
+  const comparedIds = new Set(lines.map((l) => l.line_id));
+  const otherLines = draft.lines.filter((l) => !comparedIds.has(l.lineId));
+  const orderTaxCents = Math.max(0, o.total_cents - draft.lines.reduce((n, l) => n + l.orderedAmountCents, 0));
 
   return (
     <>
@@ -293,11 +305,33 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                     <Td align="right" className="hidden md:table-cell tabular">{formatCents(l.unit_rate_cents)} · {formatCents(l.amount_cents)}</Td>
                   </Tr>
                 ))}
+                {/* Charges not counted from delivery tickets (lumper, percentages, discounts): listed so the lines add
+                    up to the order total below (walkthrough M4: a $75 lumper fee was in the total but not in the list). */}
+                {otherLines.map((l) => (
+                  <Tr key={l.lineId}>
+                    <Td>
+                      <span className="text-muted">{l.lineNo}.</span> {l.description}
+                    </Td>
+                    <Td align="right" className="tabular">{l.orderedQuantity === null ? "–" : `${qty(l.orderedQuantity)} ${l.unitCode ?? ""}`}</Td>
+                    <Td align="right" className="tabular text-muted">–</Td>
+                    <Td className="hidden sm:table-cell text-sm text-muted">{say(OTHER_LINE_LABEL[l.basis] ?? "Charge")}</Td>
+                    <Td align="right" className="hidden md:table-cell tabular">{l.percentBp !== null && l.basis === "percentage" ? formatBp(l.percentBp) : formatCents(l.rateCents ?? 0)} · {formatCents(l.orderedAmountCents)}</Td>
+                  </Tr>
+                ))}
+                {orderTaxCents > 0 && (
+                  <Tr>
+                    <Td>Tax</Td>
+                    <Td align="right" />
+                    <Td align="right" />
+                    <Td className="hidden sm:table-cell" />
+                    <Td align="right" className="hidden md:table-cell tabular">{formatCents(orderTaxCents)}</Td>
+                  </Tr>
+                )}
               </tbody>
             </Table>
           </TableWrap>
           <CardBody className="border-t border-line text-sm">
-            Order total <span className="font-semibold tabular">{formatCents(o.total_cents)}</span> (as accepted; includes any percentage charges, discounts and tax).
+            Order total <span className="font-semibold tabular">{formatCents(o.total_cents)}</span> (as accepted; the lines above{orderTaxCents > 0 ? " and tax" : ""}).
           </CardBody>
         </Card>
 

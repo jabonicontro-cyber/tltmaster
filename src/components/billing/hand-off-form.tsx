@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/dialog";
 import { Field, Input, Textarea } from "@/components/ui/form";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
+import { useRefresh } from "@/components/ui/use-refresh";
 import { formatDate } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { handOffOrders } from "@/app/(app)/billing/actions";
@@ -32,7 +33,7 @@ const handOffText = (taviron: boolean) => taviron
 
 /** One ready order handed off from its own billing page (same action and batch rules as the list). */
 export function HandOffOne({ orderId, orderNumber, taviron = false }: { orderId: string; orderNumber: string; taviron?: boolean }) {
-  const router = useRouter();
+  const { refresh } = useRefresh();
   const [open, setOpen] = useState(false);
   const [reference, setReference] = useState("");
   const [notes, setNotes] = useState("");
@@ -49,9 +50,10 @@ export function HandOffOne({ orderId, orderNumber, taviron = false }: { orderId:
         onConfirm={async () => {
           const r = await handOffOrders({ orderIds: [orderId], reference, notes, submissionKey: key });
           if (!r.ok) return r.error;
+          // Stay on the order: the dialog keeps its spinner until the page shows Handed off and the next step, then
+          // closes (it used to close at once and leave "Ready to bill" on screen for seconds).
+          await refresh();
           toast.success(`${r.message ?? "Handed off."} ${taviron ? "Next: create the invoice." : "Next: enter the invoice in your accounting system."}`);
-          // Stay on the order: it now shows Handed off and the next step (the dialog closes after this returns).
-          router.refresh();
         }}
       >
         <Field label="Reference (optional)" htmlFor="handoff-one-ref" hint="For example the accounting batch or the person entering the invoices.">
