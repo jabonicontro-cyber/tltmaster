@@ -1,6 +1,8 @@
 # Legal review packet: what Taviron actually does (for the Terms of Service and Privacy Policy)
 
-Prepared 2026-11-06 from the code at commit `9ced69e`; facts, not legal advice.
+Prepared 2026-11-06 from the code at commit `9ced69e`; **refreshed 2026-11-14** against the code at `dab2073` (Production
+runs `0c22b47`, the same code). What changed since 2026-11-06 is in §13; §1, §4.4, §5, §7, §8.4, §11 and §12 were updated
+to match. Facts, not legal advice.
 
 Purpose: master plan item LR5 (docs/TAVIRON_MASTER_PLAN.md §12, rows LR5 and LR6; §8 row W7) and docs/LAUNCH.md step 6.
 The owner's lawyer uses this to write the final Terms of Service and Privacy Policy before outside customers in
@@ -17,10 +19,10 @@ How to read the status words:
 | **Not implemented** | No code exists. |
 
 Two cautions about scope:
-- The local copy of the Production branch (`claude/top-line-trucking-manager-vmw04i`) points at the same commit as this
-  packet. Whether every migration has been applied to the hosted database, and which environment variables are set in
-  Vercel, cannot be read from the code; docs/SESSION_HANDOFF.md (2026-11-05) reports Production deploys and the
-  migration workflow green through `20261120008000`.
+- Production runs `0c22b47`; every migration through `20261120020700` is applied to the hosted database (migration
+  workflow run 43153292716, 2026-11-12, docs/SESSION_HANDOFF.md). Which environment variables are set in Vercel cannot
+  be read from the code; §5 says what is recorded.
+- The live address is `https://www.mytaviron.com` (`mytaviron.com` redirects to it; owner decision 2026-11-14).
 - The website (`mytaviron.com`) is still behind the early-access gate: `PUBLIC_SITE` and `SITE_INDEXING` are not set
   (owner decision 2026-11-05, master plan §12 row UX18). The privacy and terms pages exist but are not yet public to the
   world.
@@ -32,7 +34,7 @@ Two cautions about scope:
 | Party | Who they are | Where in the code |
 | --- | --- | --- |
 | **Taviron (platform operator)** | The business that runs the software. **Legal entity: not formed / not decided.** The owner plans to form an LLC in Indiana (docs/SESSION_HANDOFF.md 2026-11-05: "Form the LLC (INBiz), then send the exact name and address for the legal pages"); master plan §12 UX18 says "legal entity name to come". The site footer says "© <year> Taviron. All rights reserved." (`src/components/site/site-footer.tsx`). Domain: `mytaviron.com` (`src/lib/site/urls.ts`). | master plan §9 Q15, §12 LR5 |
-| **Platform team** | Taviron staff with platform-owner access (`private.platform_admins`), granted only by the operator script `scripts/platform-admin.mjs`. | `supabase/migrations/20261024000100_platform_owner.sql`, `src/server/platform.ts` |
+| **Platform team** | Taviron staff (`private.platform_admins`) at two levels: **Admin** (everything, including plans, prices, subscriptions and the team) and **Support** (enters companies to help, nothing else in the console). Granted only by an Admin's invitation from the console (fresh password and authenticator code; the invitee must set up two-step verification) or the operator script `scripts/platform-admin.mjs` (owner decision 2026-11-06, SA1). | `20261024000100_platform_owner.sql`, `20261120008900_staff_support_access.sql`, `src/server/platform.ts` |
 | **Customer companies (tenants)** | Trucking and aggregate hauling companies that subscribe. Each is a row in `public.companies`; every business record carries its `company_id`. The owner's own company (Top Line Trucking) is on a free beta arrangement (docs/LAUNCH.md step 6; master plan §10). | docs/ARCHITECTURE.md "Companies" |
 | **Staff users of a tenant** | People with a membership in a company and one role: owner, office, dispatcher, mechanic, driver, accountant (time-limited). Logins are by email, or by username for people without email (`<username>@users.mytaviron.com`, never a mailbox). | `company_memberships`; docs/ACCOUNT_PROVISIONING.md; `20261120006200_accountant_role.sql` |
 | **Drivers** | A tenant's drivers. A driver record may exist without a login; with a login they use the phone app ("My Day", `/driver`). | `public.drivers` (`20261013000100_fleet_registry.sql`); docs/COMPANION_APP.md |
@@ -205,7 +207,13 @@ The portal must be granted by the platform team and switched on by the company.
   plans and lifecycle, onboarding forms, help support requests, import batches (which contain the imported rows),
   platform audit. They do not return a company's orders, tickets or other business records
   (`platform_company_directory` in `20261120000500_company_classification.sql`).
-- Writing into a company happens only through the audited import approval.
+- **Support visits (SA1, since 2026-11-06; §13):** a staff member can enter a customer company and then sees and does
+  everything that company's owner can, money included, inside that company only. In a live company this needs the
+  owner's grant (1, 3 or 7 days, ended at any time); companies still onboarding and demo companies need none (a visit
+  without a grant lasts up to 8 hours). A visit is not a membership: changes to people, roles, permissions and
+  sign-ins become requests an owner approves (SA2). Every visit, grant and change is in the company's own history as
+  "Name (Taviron support)", and owners see a banner. Before 2026-11-06 the only way to write into a company was the
+  audited import approval; that is no longer true.
 - Testing Lab and role previews work **only in demo companies**, and previews only narrow permissions
   (`src/lib/platform/preview.ts`; docs/CUSTOMER_PORTAL.md §2).
 - **Technical access outside the app:** whoever holds the Supabase project credentials (the owner) can read the whole
@@ -223,14 +231,14 @@ Environment variable names are from docs/SETUP.md, docs/DEPLOYMENT.md, `.env.exa
 | **Supabase** | All database records, files, sign-in accounts | **On** (project "taviron-staging" serves Production; free plan until the owner upgrades, LAUNCH step 1). Region: "a US region" per DEPLOYMENT §1; **exact region not recorded**. | `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | docs/DEPLOYMENT.md §1 |
 | **Supabase Auth email** | Invitation, password-reset and confirmation emails (recipient address) | **On**, using Supabase's built-in sender until the owner sets custom SMTP through Resend (LAUNCH step 3, waiting on owner) | Supabase dashboard | docs/LAUNCH.md §3 |
 | **Vercel** | Hosting of site and app; request logs; two daily scheduled jobs | **On** (Hobby plan; the owner approved moving to Pro, LAUNCH step 1). Function region not set in `vercel.json`. | `vercel.json` crons need `CRON_SECRET` | docs/DEPLOYMENT.md §2 |
-| **Resend** | App emails: lead confirmations and team notifications, quotes, invoices (PDF), support reply notices, account setup links, owner daily summaries | Domain verified; whether `EMAIL_PROVIDER=resend` is set on Production is **Not verified**. Default is `preview` (nothing sent). Demo companies never send. | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `LEAD_NOTIFY_EMAIL`, `EMAIL_TEST_RECIPIENT` | `src/server/email/provider.ts` |
+| **Resend** | App emails: lead confirmations and team notifications, quotes, invoices (PDF), support reply notices, account setup links, owner daily summaries, subscription notices | Domain verified. **Built, off**: the owner chose to switch it on before 2026-12-01 (docs/LAUNCH.md step 8); until then `preview` (nothing sent). Demo companies never send. One reply-to address (`EMAIL_REPLY_TO`) is used for every company's emails (§13). | `EMAIL_PROVIDER`, `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `LEAD_NOTIFY_EMAIL`, `EMAIL_TEST_RECIPIENT` | `src/server/email/provider.ts` |
 | **National Weather Service** (api.weather.gov, US government) | Map positions of job sites and bases with planned loads; no names | **On** (no key), on Command Center and Dispatch pages; demos get sample data | none | `src/server/weather.ts` |
 | **OpenAI** | Pseudonymized question and operational data (§10); ticket photos only if photo reading is switched on | **Built; gated.** The owner reported the AI variables are set in Vercel (docs/AI.md §16, 2026-10-25); every real company is blocked unless listed in `AI_COMPANY_ALLOWLIST`, demos unless `AI_IN_DEMOS=on`. LR2/LR6 say AI stays off for customers until January. Which companies are allowlisted: **Not verified**. | `AI_PROVIDER`, `OPENAI_API_KEY`, `AI_CAPABILITIES`, `AI_COMPANY_ALLOWLIST`, `AI_SEND_PHOTOS`, limits | `src/server/ai/`; docs/AI.md |
 | **HERE** (routing, geocoding, map tiles) | Coordinates, the address being looked up, truck dimensions; tiles through Taviron's server proxy | **Built, off** unless both variables are set; **Not verified**. Off in demos unless `ROUTING_IN_DEMOS=on`. | `ROUTING_PROVIDER=here`, `HERE_API_KEY` | `src/server/routing/`, `src/app/api/map-tile/`; docs/ROUTING.md |
 | **Intuit QuickBooks Online** | Customers and invoices of handed-off orders, per business; OAuth tokens stored encrypted (key derived from the client secret) | **Built, off** until keys are set; production approval is an LR6 step | `QBO_CLIENT_ID`, `QBO_CLIENT_SECRET`, `QBO_ENVIRONMENT` | `20261120003500_quickbooks.sql`, `src/lib/accounting/qbo.ts`; DEPLOYMENT §2d |
 | **Twilio** (through Supabase) | Phone numbers and one-time codes for SMS two-step verification | **Built, off.** Taviron itself sends no texts; no other SMS feature exists. | `MFA_SMS`, plus Supabase Phone MFA configuration | DEPLOYMENT §3d |
-| **Sentry** | Server error reports with emails, 7+ digit runs, bearer tokens/keys, query strings and record ids removed; no headers, cookies or user ids. Names, short phone formats and non-UUID path tokens (for example `/track/<token>`) are **not** removed. | **Built, off** until `SENTRY_DSN` (LAUNCH step 4) | `SENTRY_DSN` | `src/lib/monitoring/sentry.ts`, `src/instrumentation.ts` |
-| **UptimeRobot** | Calls `/api/health` (returns no data) | **Built, off** (owner creates the monitor) | none | `src/app/api/health/route.ts` |
+| **Sentry** | Server errors only (no browser script): error type, message and stack trace (up to 2,000 characters each) with emails, 7+ digit runs and values after "bearer/token/key/secret/password" replaced; the page path with record ids replaced and the query string dropped; route, method, environment and the release commit. No headers, cookies, user ids or IP addresses of visitors (the report comes from Vercel's server). Names, short phone formats and non-UUID path tokens (for example `/track/<token>`) are **not** removed. Sentry's data region: **not recorded**. | **On** since 2026-11-09 (owner set `SENTRY_DSN` for Production, docs/LAUNCH.md §4) | `SENTRY_DSN` | `src/lib/monitoring/sentry.ts`, `src/instrumentation.ts` |
+| **UptimeRobot** | Calls `/api/health` every 5 minutes (returns only ok/down per part, no data) | **On** since 2026-11-09 (owner) | none | `src/app/api/health/route.ts` |
 | **GitHub** | Source code; CI; **encrypted full database backups** (AES-256, owner's passphrase) kept 14 days as workflow artifacts | **On** when the owner's two secrets are set; the migration workflow is reported green (SESSION_HANDOFF 2026-11-05) | `SUPABASE_DB_URL`, `BACKUP_PASSPHRASE` (GitHub secrets) | `.github/workflows/db-migrate.yml`; DEPLOYMENT §2c |
 | **GPS / ELD providers** | Positions and hours posted by the company's own provider to Taviron's feed endpoint | **Built, off** per company (source "none" by default). No built-in brand integration. | Per company feed key | `20261120004900_telematics.sql` |
 | **FMCSA public data** (data.transportation.gov) | Search filters only (platform outreach) | Platform team only | none | `src/server/fmcsa.ts` |
@@ -302,17 +310,18 @@ notice says locations and retention periods "will be listed here before general 
 | Row-level security on every table | `anon` has no table grants; quote and order tables have no client writes | docs/ARCHITECTURE.md "Security model" |
 | Server-side permission checks | Every page and action, then again in the database | `src/server/auth.ts` |
 | Reviewed elevated functions | `search_path = ''`, on a test-enforced list | `tests/db/tenancy.test.ts` |
-| Two-step verification (TOTP) | Mandatory for platform admins; a company can require it for everyone; 10 hashed one-time recovery codes; 5 failures / 15 min lock; SMS codes optional and off | `20261120000900_mfa.sql`; docs/CUSTOMER_PORTAL.md §3 |
+| Two-step verification (TOTP) | Mandatory for platform staff and, since 2026-11-11, for **anyone who can see or change money** in a real company, whatever the company setting (SEC4; recovery codes required for them); a company can require it for everyone; 10 hashed one-time recovery codes; 5 failures / 15 min lock; SMS codes optional and off | `20261120000900_mfa.sql`, `20261120018000_money_two_step.sql`; docs/CUSTOMER_PORTAL.md §3 |
 | Re-authentication | Platform "Go Live Now" needs a password sign-in in the last 5 minutes | `src/server/reauth.ts` |
 | Early-access gate | In front of everything but the public site; codes stored as SHA-256; shared password as HMAC; 10 wrong codes per network address per 15 min; fails closed without its secret | docs/DEPLOYMENT.md §6 |
-| Rate limits | Lead form 5 per 15 min and 20 per day per hashed address; AI per company and per person per minute/day/month; recovery codes. Sign-in brute-force limits are Supabase Auth's own (not configured in the repository). | as cited |
+| Rate limits | Lead form 5 per 15 min and 20 per day per hashed address; AI per company and per person per minute/day/month; recovery codes; wrong passwords 8 per sign-in per 15 minutes (only a hash of the login stored, `src/server/signin-limit.ts`); QR sign-in codes 5 per driver per 10 minutes and invented codes 8 per network address per 15 minutes. Supabase Auth's own limits were set by the owner 2026-11-09 (docs/LAUNCH.md step 7). | as cited |
 | Audit trails | `audit_events` append-only (row triggers on customers, catalog, prices, settings, users, permissions; explicit events elsewhere); platform audit | `20261010000100_foundation.sql` |
 | Input validation | zod on the server, again in the database | docs/ARCHITECTURE.md |
 | Upload checks | Size, magic bytes vs declared type, same origin; no public file URLs | docs/ARCHITECTURE.md "Storage" |
 | Headers | HSTS (1 year), X-Frame-Options SAMEORIGIN, nosniff, strict referrer policy, Permissions-Policy (camera and microphone off, geolocation self) | `next.config.ts` |
 | Secrets | Service-role key used only in `src/server/supabase/admin.ts`; QuickBooks tokens encrypted; feed keys stored as hashes | as cited |
 | Security review | 2026-10-19: one high and two medium findings fixed (portal account takeover, MFA enforced in the database, platform help check) | docs/SECURITY_REVIEW_2026-10-19.md |
-| Not in place | No certifications or third-party audits; no penetration test; no published incident or breach-notification procedure; LR4 incident handling still to do. Open owner items: rotate `SITE_ACCESS_SECRET` (master plan §8 S2, unverified); hosted MFA checks (SECURITY_REVIEW "Needs hosted verification"). | docs/LAUNCH.md; master plan §8 |
+| Financial data | Every money permission has its own check on the server and in the database (one list, `private.money_permissions()` and `MONEY_PERMISSIONS` in `src/lib/permissions.ts`); fuel receipt dollars only with billing.view (SEC5); credit limits and detention rates only with billing.view; typed prices flagged until someone with pricing or billing rights confirms them (SEC4a) | master plan §12 SEC4, SEC4a, SEC5 |
+| Not in place | No certifications or third-party audits; no penetration test; no published (customer-facing) incident or breach-notification procedure. An internal incident runbook exists since 2026-11-14 (docs/INCIDENTS.md). Open owner items: rotate `SITE_ACCESS_SECRET` (master plan §8 S2, unverified); hosted MFA checks (SECURITY_REVIEW "Needs hosted verification"); the first restore drill (docs/BACKUP_RESTORE.md). | docs/LAUNCH.md; master plan §8 |
 
 ---
 
@@ -370,6 +379,9 @@ agreement (master plan §10 onboarding) is **Not implemented**.
 | "The one-time onboarding fee is paid when you sign up. The monthly subscription starts at go-live." | Fee recording exists in the platform console; payment is by invoice (master plan §9 Q27). No billing code. |
 | Annual commitment renews "unless you turn renewal off, and you are reminded before it renews" | **Built 2026-11-06 (SUB1, migration 20261120008800):** reminders 30, 7 and 1 day before the anniversary of the commitment start, emailed to the company's owners; renewal can be turned off per company by the platform team. Emails go out only once email sending is configured (otherwise recorded as not sent). |
 | Over a tier: "30-day grace period, and we email you … moves to the lowest tier that fits from the next billing date. No plan change happens without notice." | **Built 2026-11-06 (SUB1):** daily count of active non-hired trucks and active bases; a 30-day grace with an email at the start and a week before the end; then the lowest fitting plan is proposed to the platform team, who schedules it (date and agreed price, emailed to the customer); it applies on that date. Not yet: excluding pickups and maintenance vehicles from the count (no vehicle flag), automatic downgrades, and the billing-date convention (§9 Q13). |
+| Switching FAQ (WS1, owner 2026-11-09, on Production since `4912577`): "Standard plans are month to month: cancel any time with 30 days' notice and no cancellation fee. The onboarding fee is not refunded. An annual commitment runs its 12 months." | A policy promise; no code enforces or bills it (no billing code). Master plan §10 said "access to the end of the paid period"; the FAQ now says 30 days' notice. |
+| Switching FAQ: "When you leave, we provide your records (customers, orders, loads, tickets with their photos, invoices, people and trucks) as spreadsheet files within 30 days of your request, and then delete your company's data." | **No full-export tool exists** (§6.4): it would be done by hand by the Taviron team. Deletion of a real customer company is not possible in the app (§6.3), and backups keep data for 14 days (GitHub) and 7 days (Supabase Pro) after deletion. Conflicts with master plan §10 ("data kept 90 days after access ends"). |
+| Switching FAQ: "Plan for about 2 to 4 weeks from sign-up to go-live … You pick the go-live date, and the monthly subscription starts then." | Matches the pricing FAQ (subscription starts at go-live). |
 | "There is no free trial." / "Nothing is charged through this website." | True. |
 | "Prices are per company, in US dollars, before applicable taxes." | Tax treatment **Not decided** (master plan §9 Q15). |
 | "Every tier includes the whole platform" | Hired trucks is an add-on switched on per company (`src/lib/site/features.ts`); its price is **Not decided**. |
@@ -463,6 +475,11 @@ agreement (master plan §10 onboarding) is **Not implemented**.
    companies are blocked unless allowlisted; needs confirming before the wording is kept.
 10. The privacy notice's AI section does not cover ticket photos (off unless `AI_SEND_PHOTOS=on`).
 11. Some published catalog limitations understate built features (§8.5).
+12. The switching FAQ promises a full export "within 30 days" and then deletion; no export tool exists, a real company
+    cannot be deleted in the app, and master plan §10 says 90 days (§8.4).
+13. §4.4 of the first packet said platform functions never return a company's business records and writes happen only
+    through imports; since SA1 a support visit sees and changes what the owner can (with the owner's grant in a live
+    company). No customer-facing page says so yet; the Trust page and terms should.
 
 ---
 
@@ -495,7 +512,8 @@ agreement (master plan §10 onboarding) is **Not implemented**.
 15. Whether ticket photos may be sent to OpenAI (owner decision B84) and how that is disclosed.
 16. Outreach: CAN-SPAM compliance of the template and suppression list; whether using FMCSA registry emails needs anything more.
 17. Real people's names in the prospect demo: consent on record, and the terms' "fictional" statement.
-18. Breach-notification and incident-response commitments (LR4 incident handling is still to do).
+18. Breach-notification and incident-response commitments to customers. An internal runbook exists (docs/INCIDENTS.md,
+    2026-11-14); what customers are promised (who is told, how fast) is not decided.
 19. Should sub-processor changes be notified to customers, and how?
 
 **Commercial**
@@ -512,7 +530,53 @@ agreement (master plan §10 onboarding) is **Not implemented**.
     and who is responsible for content and consent?
 
 **Operational confirmations (owner, not legal)**
-27. Which services are actually configured on Production: `EMAIL_PROVIDER`, `HERE_API_KEY`, `CRON_SECRET`, AI variables
-    and `AI_COMPANY_ALLOWLIST`, `SENTRY_DSN`, `QBO_*`, `MFA_SMS`.
-28. Supabase and Vercel Pro upgrades (backups, commercial use), the first restore drill, and rotation of
-    `SITE_ACCESS_SECRET` (master plan §8 S2).
+27. Which services are actually configured on Production. Recorded: `SENTRY_DSN` and `CRON_SECRET` set (2026-11-09 and
+    before 2026-11-14), AI variables set but no real company in `AI_COMPANY_ALLOWLIST` (docs/AI.md §16),
+    `ROUTING_IN_DEMOS=on`. Not recorded: `HERE_API_KEY`, `QBO_*`, `MFA_SMS`. `EMAIL_PROVIDER=resend` planned before
+    2026-12-01. The January list is docs/SWITCH_ON.md.
+28. Supabase and Vercel Pro upgrades (backups, commercial use), the first restore drill (procedure in
+    docs/BACKUP_RESTORE.md), and rotation of `SITE_ACCESS_SECRET` (master plan §8 S2).
+
+**New since 2026-11-06**
+29. Support visits (§13): should the terms and the Trust page say that Taviron staff, with the owner's grant, can see
+    and change everything an owner can (including money and pay records), and that companies still onboarding need no
+    grant? Is the owner's grant in Settings enough consent, or does the agreement need to say it?
+30. Support inbox notes and replies (§13): retention period for help requests and staff notes (none exists), and
+    whether a reply recorded in the console but sent from a staff member's own email program changes who is the sender
+    of record.
+31. Face or fingerprint sign-in (passkeys, off): the face or fingerprint never leaves the phone and Taviron never
+    receives it (Supabase stores only the passkey's public key). Does any biometric-privacy law (for example Illinois
+    BIPA, near Top Line's Indiana base) still call for a notice before it is switched on?
+32. QR sign-in: while a driver's code works (once, within 10 minutes), whoever scans it is signed in as that driver. Should the
+    terms put the duty to show codes only to the right person on the company?
+33. Exit terms (§8.4): align the published "30 days' notice", "export within 30 days, then delete" with master plan
+    §10's 90 days, with backups that keep data for 7 to 14 days after deletion, and with the fact that the export is a
+    manual process today.
+34. Payments by ticket (TP1): Taviron records payments a company received from its customers (amount, date, method,
+    reference) and never moves money. Any wording needed so customers do not read it as payment processing?
+35. One reply-to address for all companies' emails (`EMAIL_REPLY_TO`, §5): acceptable for Top Line's testing; before
+    outside customers, should each company's emails carry its own reply address and name it as the sender of record
+    (see also Q26)?
+
+---
+
+## 13. What changed since 2026-11-06 (refresh of 2026-11-14)
+
+All of these are on Production (`0c22b47` or earlier) with their migrations applied, unless the row says otherwise.
+
+| Change | What it does, and what data it involves | Where in the code | State |
+| --- | --- | --- | --- |
+| **Taviron support visits with owner grants (SA1)** | Two staff levels (Admin, Support). A staff member enters a live company only with its owner's grant (Settings → Taviron support: 1, 3 or 7 days; can be ended at once; ends by itself); onboarding and demo companies need none (visit up to 8 hours). Inside, staff act with the owner role: they see and change what the owner can, including money, payroll and voids; they are never listed as people or emailed. Visits and grants are recorded in the company's own history ("Name (Taviron support)") and the platform log; owners see a banner. Staff are invited from the console and must use two-step verification; a visit into a real company always needs it (SEC4). QuickBooks connect and sends are blocked during visits; prices typed during a visit are flagged; visits cannot confirm prices or show sign-in QR codes. | `20261120008900_staff_support_access.sql`, `20261120018100_quickbooks_support_visits.sql`; `src/server/platform.ts`; `src/app/staff/`; Settings → Taviron support | On |
+| **Support change requests (SA2)** | During a visit, adding people, changing roles or permissions, creating, resetting, emailing or turning off sign-ins, inviting portal customers and accountant access become **requests**: the exact form is stored (never shown, read back only by the approving owner's own run), a plain summary is shown to the company's owners, who approve or decline; approval replays it as the owner with permissions checked again; one-time passwords or links go to the owner only; requests expire after 3 days; audited. No emails. | `20261120009200_support_change_requests.sql`; `src/server/support/` (`request.ts`, `execute.ts`) | On |
+| **Support inbox and notes (PC1)** | Help requests customers send from the app's Help (name, sign-in email, company, page, message) are read by both staff levels, who set a status (New, Answered, Closed) and add internal notes or a reply. A reply is a record only: nothing is emailed from the console (the console offers to open it in the staff member's own email program). Every change is in the platform log; the sender sees the status in Help but not who handled it. Also: company health and usage **counts**, a customer timeline, console search, audit filters and a security overview (Admins); Support sees counts only for companies it could enter. No retention period for requests or notes. | `20261120020100`–`20261120020700` (notably `20261120020500_support_inbox.sql`); `src/app/admin/support/page.tsx`, `src/components/admin/support-inbox.tsx` | On |
+| **QR sign-in for drivers (DS1)** | Someone who manages sign-ins shows a one-time QR code on the driver's page; the driver's phone scans it and is signed in on My Day. The code holds a random 256-bit token in the address fragment (never sent to a server log); the database stores only its SHA-256, the company, the driver record and the sign-in. Single use, 10 minutes; only for driver-only username sign-ins without money access; never in demos or during support visits; audited (issued, used, expired, refused, cancelled, failed) without the token. Invented codes are counted per hashed network address. | `20261120017000_driver_qr_sign_in.sql`, `20261120017100_signin_qr_money_rule.sql`; `src/server/signin-qr.ts`, `src/app/auth/qr/`, `src/lib/signin-qr.ts`; docs/ACCOUNT_PROVISIONING.md §7 | On |
+| **Face or fingerprint sign-in (passkeys, DS1)** | Through Supabase Auth's passkey support: the face or fingerprint stays on the phone; Supabase stores the passkey (a public key). Offered only to active driver sign-ins without money access, never to Taviron staff or demos. Office can remove a lost phone's passkeys (audited). | `src/server/passkeys.ts`, `src/app/(auth)/passkey-actions.ts`, `src/lib/passkeys.ts` | **Built, off**: passkeys are not turned on in Supabase Auth; every passkey button is hidden (docs/SWITCH_ON.md item 7) |
+| **Payments by ticket (TP1)** | The office records money a customer paid (customer, amount, date, method, reference, note) and applies it to specific delivery tickets; tickets show paid, part paid or open; unapplied money stays as the customer's credit; voids reopen tickets. A remittance CSV or pasted rows fill the form in the browser; the file itself is not stored. Taviron moves no money; QuickBooks companies keep QuickBooks as the record (sending payments there is not built). | `20261120009400_ticket_payments.sql`; `src/app/(app)/billing/payments/page.tsx`, `src/components/billing/ticket-payment-form.tsx`, `src/lib/billing/ticket-payments.ts` | On (catalog entry unpublished) |
+| **Two-step verification required for money access (SEC4)** | Anyone who can see or change money in a real company (every billing and pricing permission, payroll, compensation, accounting, maintenance costs, audit; one list) must use an authenticator app and save recovery codes, whatever the company setting; below it the database gives them no company data. Demo-only accounts are exempt. Settings → Security shows who has set it up (yes/no only; SEC4b). | `20261120018000_money_two_step.sql`, `20261120019900_mfa_status_for_members.sql`; `src/lib/permissions.ts` (`MONEY_PERMISSIONS`) | On |
+| **Fuel receipt dollars limited to billing (SEC5)** | Fuel receipt totals are readable only with billing.view (by default owner, office and the outside accountant); dispatchers, mechanics and drivers still see gallons, odometer, state and vendor, not amounts. | `20261120019800_fuel_dollars_money_only.sql` | On |
+| **Other financial review fixes (SEC4a)** | Credit limits and detention rates only with billing.view; price-affecting customer fields need pricing or billing permissions; a typed price is flagged until confirmed by someone with pricing or billing rights, corrections audited with old and new price; the credit-hold reason is required and recorded when assigning. | `20261120016100`–`20261120016400` | On |
+| **Exit terms on the site (WS1)** | Switching FAQ: month to month, cancel with 30 days' notice, no cancellation fee, onboarding fee not refunded, annual runs its 12 months; full data export as spreadsheet files within 30 days of the request, then the company's data is deleted; go-live in about 2 to 4 weeks. | `src/lib/site/pricing-faq.ts` (`SWITCHING_FAQ`) | On the gated site. The export and the deletion are manual (no tool; §8.4, §11 item 12) |
+| **Sentry error reporting (LR4)** | See §5: server errors with personal details scrubbed (`scrub()` and the path rule in `buildEnvelope()`); names and short phone formats are not scrubbed. | `src/lib/monitoring/sentry.ts`, `src/instrumentation.ts` | **On** since 2026-11-09 |
+| **Live address** | `https://www.mytaviron.com` for Top Line from 2026-12-01 (owner 2026-11-14). | docs/LAUNCH.md step 3 | Decided |
+
+**Open questions added:** §12 Q29 to Q35.

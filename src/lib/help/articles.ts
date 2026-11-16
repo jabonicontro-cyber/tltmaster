@@ -358,7 +358,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { problem: "“Enter the value in dollars, e.g. 12500.”", fix: "Type the value as a number without letters, or leave it empty if unknown." },
       { problem: "“Enter a probability from 0 to 100, or leave it empty.”", fix: "Use a whole number between 0 and 100." },
       { problem: "“Say why it was lost. It helps the next quote.”", fix: "When the stage is Lost, fill in **If lost, why** before saving." },
-      { problem: "“CRM needs a database update”.", fix: "Activities, follow-ups and opportunities appear once the database update is installed by the owner. Customers and quotes work as before." },
     ],
     next: ["customer-pipeline", "quotes"],
     related: ["customers"],
@@ -398,8 +397,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
     prerequisites: [],
     troubleshooting: [
       { problem: "“No open opportunities”.", fix: "Add one from a customer or prospect page (Opportunities → New opportunity)." },
-      { problem: "“The pipeline needs a database update”.", fix: "The owner needs to install the CRM database update. Customers and quotes work as before." },
-      { problem: "The **Pipeline** button is missing on Customers.", fix: "It appears only once the CRM database update is installed." },
     ],
     next: ["customer-crm"],
     related: ["customers", "quotes"],
@@ -829,7 +826,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["smart-dispatch", "route-planner"],
     related: ["plan-the-day", "load-build", "fleet-drivers"],
     reviewed: REVIEWED,
-    limitations: ["Hours of service are not checked by Taviron. Confirm them yourself before assigning.", "Driver time off is not shown on availability until the time-off database update is installed."],
+    limitations: ["Hours of service are not checked by Taviron. Confirm them yourself before assigning."],
   },
   {
     id: "smart-dispatch",
@@ -991,8 +988,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     reviewed: REVIEWED,
     limitations: [
       "Routes are read from the dispatch board; they change only when the board does.",
-      "Road routing uses a standard truck profile because truck dimensions are not recorded yet. A route without notices is not a guarantee the road is clear.",
-      "The yard location needs a database update; until it is installed, routes begin at the first delivery.",
+      "Road routing uses the dimensions recorded on the truck (height, width, length, weight, axles) when they are entered; without them a standard truck profile is used. A route without notices is not a guarantee the road is clear.",
+      "Until the yard location is set, routes begin at the first delivery.",
     ],
   },
   {
@@ -1985,6 +1982,95 @@ export const HELP_ARTICLES: HelpArticle[] = [
     limitations: ["Photos, messages, breakdown reports, fuel and trip sheets still need signal.", "Not tested on every phone yet."],
   },
   {
+    id: "phone-setup",
+    title: "Set up Taviron on your phone",
+    summary: "Sign in on your phone with the code the office shows you, put Taviron on your home screen, and know what to do without signal.",
+    category: "getting-started",
+    routes: ["/driver", "/fleet/drivers/*"],
+    permissions: ["driver.portal", "users.manage"],
+    audience: "Drivers, and the office person who signs drivers in on their phones.",
+    whatYouSee: [
+      "On the office's screen: a QR code made for you. It works once, for 10 minutes.",
+      "On your phone, after you tap the link from the code: **Signing you in…**, then **My Day**.",
+      "The first time, if the office gave you a temporary password, Taviron asks you to create your own password. Remember it: you need it if your phone is ever signed out.",
+      "On My Day, tabs at the bottom: **My Day**, **Messages** (if your role has messaging), **Time off** and **Profile**.",
+      "Only when face or fingerprint sign-in is turned on for the site: **Sign in with your face or fingerprint next time** on My Day, with **Set it up** and **Not now**.",
+    ],
+    tasks: [
+      {
+        title: "Sign in with the office's QR code",
+        steps: [
+          "Ask the office to show your sign-in code. They open **Fleet → Drivers**, select your name and select **Show sign-in QR code**.",
+          "Open your phone's **Camera** and point it at the code on their screen.",
+          "Tap the link that appears. Your phone opens **My Day**, signed in, at **www.mytaviron.com**.",
+          "If Taviron asks you to create your own password, type it twice as the page describes and select **Save My Password**.",
+        ],
+      },
+      {
+        title: "Put Taviron on your home screen (iPhone)",
+        steps: [
+          "Open **www.mytaviron.com** in **Safari** while you are signed in.",
+          "Tap **Share** (the square with an arrow), then **Add to Home Screen**, then **Add**.",
+          "Open Taviron from the new icon. If it shows My Day, you are done.",
+          "If the icon opens a page that says **Taviron is open by invitation** or asks you to sign in, the icon keeps its own sign-in, apart from Safari. Ask the office to help you sign in there, or keep using Taviron in Safari.",
+        ],
+      },
+      {
+        title: "Put Taviron on your home screen (Android)",
+        steps: [
+          "Open **www.mytaviron.com** in **Chrome** while you are signed in.",
+          "Tap the menu (three dots, top right), then **Install app** or **Add to Home screen**, and confirm.",
+          "Open Taviron from the new icon. If it asks you to sign in, ask the office for a new code.",
+        ],
+      },
+      {
+        title: "Allow your location (if your phone asks)",
+        steps: [
+          "When you send a delivery ticket, your phone may ask whether Taviron may use your location.",
+          "**Allow** saves your position once with that ticket, as the customer's proof of delivery. Taviron does not track you.",
+          "If you say no, the ticket still goes through.",
+        ],
+      },
+      {
+        title: "When you have no signal",
+        steps: [
+          "Open My Day once with signal at the start of each day, so today's loads are saved on your phone.",
+          "Without signal you still see today's loads, and you can send tickets (without photos), inspections and Arrived / Left taps. They show **Saved on this phone, not sent yet** and send by themselves when signal returns.",
+          "Keep the paper ticket. Photos, messages and breakdown reports need signal.",
+        ],
+      },
+      {
+        title: "New or lost phone",
+        steps: [
+          "Tell the office. They can show you a new code for the new phone. If you had set up face or fingerprint sign-in, they select **Remove (lost or new phone)** on your driver page so the old phone cannot use it.",
+          "Your username and password keep working.",
+          "Do not sign out while something is under **Waiting to send**: signing out deletes it (you are warned first).",
+        ],
+      },
+    ],
+    prerequisites: [
+      "The office sets up your phone sign-in first: **Fleet → Drivers**, the driver, **Set up phone sign-in** (no email needed). It gives a username and a temporary password to print.",
+      "Showing a QR code needs the permission to manage sign-ins. It works only for driver sign-ins, and only while the driver role has no access to money.",
+    ],
+    troubleshooting: [
+      { problem: "“This code was already used. Each code works once. Ask the office to show a new one.”", fix: "Each code signs in one phone, once. The office shows a new one." },
+      { problem: "“This code has expired (codes work for 10 minutes). Ask the office to show a new one.”", fix: "The office selects **Show a new code**." },
+      { problem: "“No connection. Check the phone's signal, then scan the code again.”", fix: "Move to where you have signal and scan the same code again while it still works." },
+      { problem: "“Too many tries from this network. Wait 15 minutes and try again.”", fix: "Wait 15 minutes, or sign in with your username and password." },
+      { problem: "The phone shows **Taviron is open by invitation** instead of My Day.", fix: "This phone, or its home-screen icon, is not signed in. Ask the office to show you a new sign-in code." },
+      { problem: "The office sees “QR sign-in is off for drivers here”.", fix: "The driver role can see or change money, so drivers sign in with their username, password and two-step verification. An owner can remove the money permissions from the driver role in Settings → Roles and permissions." },
+      { problem: "“Your account is not linked to a driver yet”.", fix: "Ask the office to link your sign-in to your driver record (Fleet → Drivers)." },
+    ],
+    next: ["my-day", "offline"],
+    related: ["fleet-drivers", "inspections"],
+    reviewed: "2026-11-14",
+    limitations: [
+      "Not yet tried on every phone. On iPhone the home-screen icon keeps its own sign-in, apart from Safari: a scanned code signs Safari in.",
+      "Face or fingerprint sign-in appears only once it is turned on for the site.",
+      "No lock-screen notifications yet: open Taviron to see updates.",
+    ],
+  },
+  {
     id: "inspections",
     title: "Pre-trip and post-trip inspections",
     summary: "Drivers check the standard inspection items on My Day before and after their shift; defects go straight to the shop as work orders, and a safety defect takes the truck out of service.",
@@ -2478,7 +2564,6 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["time-off"],
     related: ["settings-time-off-approval", "people"],
     reviewed: REVIEWED,
-    limitations: ["Time-off balances need a database update; until it is installed, requests are not checked against a balance."],
   },
 
   // ---------------------------------------------------------------------------------------------------------------
