@@ -406,6 +406,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // Workflow modules (MOD1, 20261120023000).
   "public.set_company_modules", "public.platform_set_company_modules", "public.platform_company_modules",
   "private.module_on", "private.modules_log", "private.modules_preset_allowed",
+  // Tickets without Dispatch (MOD1, 20261120023100).
+  "public.submit_ticket_without_dispatch", "public.create_ticket_job", "private.prepare_ticket_without_dispatch",
+  "private.refuse_assignment_on_ticket_load", "private.check_ticket_dispatch", "private.ticket_load_on_void", "private.ticket_load_follow",
 ];
 
 /**

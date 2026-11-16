@@ -85,7 +85,8 @@ export async function getDispatchDay(date: string, base: string | null = null) {
   for (const r of [orders, loads, trucks, trailers, drivers, quals, units]) {
     if (r.error) throw new Error(`Could not load the dispatch board: ${r.error.message}`);
   }
-  const loadRows = (loads.data ?? []) as OrderLoadRow[];
+  // A delivery recorded from its ticket while Dispatch was off (MOD1) is not planned work: never on the board.
+  const loadRows = ((loads.data ?? []) as Array<OrderLoadRow & { from_ticket?: boolean }>).filter((l) => !l.from_ticket);
   let orderRows = (orders.data ?? []) as OrderListRow[];
 
   // Loads whose order's schedule was changed after planning still show (flagged on the board).

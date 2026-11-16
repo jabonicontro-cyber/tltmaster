@@ -32,7 +32,7 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
       <PageHeader
         title={`Correct ticket ${t.ticket_number}`}
         crumbs={[{ label: words.documents, href: "/tickets" }, { label: t.ticket_number, href: `/tickets/${id}` }, { label: "Correct" }]}
-        description={`${t.snapshot.order_number} load ${t.snapshot.load_number} · ${t.snapshot.customer_name}`}
+        description={`${t.snapshot.order_number}${t.snapshot.without_dispatch ? "" : ` load ${t.snapshot.load_number}`} · ${t.snapshot.customer_name}`}
       />
       <div className="mb-5">
         <Notice title={`Revision ${t.revision} stays on record`}>
@@ -48,14 +48,14 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
         initial={{
           orderLineId: t.order_line_id,
           deliveredDate: `${part("year")}-${part("month")}-${part("day")}`,
-          deliveredTime: `${part("hour")}:${part("minute")}`,
+          deliveredTime: t.snapshot.time_entered === false ? "" : `${part("hour")}:${part("minute")}`,
           quantity: trimNumber(t.quantity),
           unitCode: t.unit_code,
           externalReference: t.external_reference,
           notes: t.notes,
-          truckId: t.truck_id,
+          truckId: t.truck_id ?? "",
           trailerId: t.trailer_id ?? "",
-          driverId: t.driver_id,
+          driverId: t.driver_id ?? "",
         }}
         lines={ctx.lines}
         units={ctx.units}
@@ -64,6 +64,7 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
         drivers={ctx.drivers}
         assignment={ctx.assignment ? { truckId: ctx.assignment.truck_id, trailerId: ctx.assignment.trailer_id ?? "", driverId: ctx.assignment.driver_id } : null}
         cancelHref={`/tickets/${id}`}
+        withoutDispatch={t.snapshot.without_dispatch === true}
       />
     </>
   );

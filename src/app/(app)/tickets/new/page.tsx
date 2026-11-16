@@ -15,15 +15,35 @@ import { uuid } from "@/lib/schemas/common";
 import { requirePagePermission } from "@/server/auth";
 import { getLoadForTicket } from "@/server/data/tickets";
 import { getSay } from "@/server/industry";
+import { TicketJobForm } from "@/components/tickets/ticket-job-form";
+import { can } from "@/lib/permissions";
+import { getTicketEntryWithoutDispatch } from "@/server/data/ticket-jobs";
+import { moduleIsOn } from "@/server/modules";
 
 export async function generateMetadata() {
   return { title: (await getSay())("Enter delivery ticket") };
 }
 
-export default async function NewTicketPage({ searchParams }: { searchParams: Promise<{ load?: string; back?: string }> }) {
+export default async function NewTicketPage({ searchParams }: { searchParams: Promise<{ load?: string; back?: string; customer?: string }> }) {
   const say = await getSay();
-  await requirePagePermission("tickets.edit");
-  const { load: loadId, back } = await searchParams;
+  const access = await requirePagePermission("tickets.edit");
+  const { load: loadId, back, customer } = await searchParams;
+  // Dispatch switched off (MOD1): the ticket is entered against the customer's job instead of a dispatched load.
+  if (!loadId && !(await moduleIsOn("dispatch"))) {
+    const words = vocabulary((await getSettings().catch(() => null))?.industry);
+    const data = await getTicketEntryWithoutDispatch();
+    return (
+      <>
+        <ReturnLink back={back} />
+        <PageHeader
+          title={say("Enter delivery ticket")}
+          crumbs={[{ label: words.documents, href: "/tickets" }, { label: words.enter }]}
+          description="Pick the customer and their job, copy what the paper ticket says and add its photo. Truck and driver are optional."
+        />
+        <TicketJobForm data={data} canCreateJob={can(access, "orders.edit") || can(access, "orders.create")} initialCustomerId={customer && uuid.safeParse(customer).success ? customer : ""} />
+      </>
+    );
+  }
   if (!loadId || !uuid.safeParse(loadId).success) notFound();
   const ctx = await getLoadForTicket(loadId);
   if (!ctx) notFound();

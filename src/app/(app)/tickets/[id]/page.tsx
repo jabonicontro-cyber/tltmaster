@@ -198,14 +198,19 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               <DescriptionList
                 items={[
                   { label: "Delivered", value: <span className="text-lg font-black tabular">{trimNumber(t.quantity)} {unitLabel(t.unit_code)}</span> },
-                  { label: "Delivered at", value: formatDateTime(t.delivered_at, timezone) },
+                  { label: s.time_entered === false ? "Delivered on" : "Delivered at", value: s.time_entered === false ? `${formatDate(s.load_date)} (time not entered)` : formatDateTime(t.delivered_at, timezone) },
                   { label: "Material / line", value: s.line_description + (s.line_unit_code && s.line_unit_code !== t.unit_code ? ` (order line in ${unitLabel(s.line_unit_code)})` : "") },
                   { label: say("Paper / scale ticket #"), value: t.external_reference },
+                  s.without_dispatch
+                    ? { label: "Job", value: `${s.order_number} · entered without dispatch` }
+                    : {
+                        label: "Planned for this load",
+                        value: `${formatDate(s.load_date)}${s.planned_quantity !== null ? ` · ${trimNumber(s.planned_quantity)} ${unitLabel(s.planned_unit_code)} (plan only)` : ""}`,
+                      },
                   {
-                    label: "Planned for this load",
-                    value: `${formatDate(s.load_date)}${s.planned_quantity !== null ? ` · ${trimNumber(s.planned_quantity)} ${unitLabel(s.planned_unit_code)} (plan only)` : ""}`,
+                    label: "Truck · driver",
+                    value: `${s.truck_unit ? `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""}` : "No truck recorded"} · ${(t.driver_id ? names.drivers.get(t.driver_id) : null) ?? s.driver_name ?? "no driver recorded (not counted for driver pay)"}`,
                   },
-                  { label: "Truck · driver", value: `${s.truck_unit}${s.trailer_unit ? ` + ${s.trailer_unit}` : ""} · ${names.drivers.get(t.driver_id) ?? s.driver_name}` },
                   { label: "Entered", value: `${formatDateTime(t.created_at, timezone)} by ${who(t.created_by)}` },
                   ...(t.reviewed_at ? [{ label: t.status === "needs_review" ? "Flagged" : "Reviewed", value: `${formatDateTime(t.reviewed_at, timezone)} by ${who(t.reviewed_by)}${t.review_note ? `: ${t.review_note}` : ""}` }] : []),
                   ...(t.correction_reason ? [{ label: "Correction reason", value: t.correction_reason, wide: true }] : []),
@@ -237,13 +242,13 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
                 {context.line && <div><dt className="inline text-muted">Order price (as accepted): </dt><dd className="inline tabular">{formatCents(context.line.unit_rate_cents)} per {unitLabel(context.line.unit_code).replace(/s$/, "")}: not changed by tickets</dd></div>}
                 {context.order && <div><dt className="inline text-muted">Customer PO: </dt><dd className="inline">{context.order.customer_po || "none on the order"}</dd></div>}
                 {context.order && <div><dt className="inline text-muted">Site: </dt><dd className="inline">{[context.order.site_label, context.order.site_city].filter(Boolean).join(", ") || "–"}</dd></div>}
-                <div>
+                {!s.without_dispatch && <div>
                   <dt className="inline text-muted">Dispatch assignment: </dt>
                   <dd className="inline">
                     {!a ? "not found" : differs("truck_id") || differs("trailer_id") || differs("driver_id") ? <strong className="text-brand-fg">differs from this ticket ({[differs("truck_id") && "truck", differs("trailer_id") && "trailer", differs("driver_id") && "driver"].filter(Boolean).join(", ")})</strong> : say("matches this ticket")}
                     {a?.status === "canceled" ? " (assignment since removed)" : ""}
                   </dd>
-                </div>
+                </div>}
                 <div className="sm:col-span-2">
                   <dt className="inline text-muted">{say("Other tickets on this load:")}</dt>
                   <dd className="inline">
