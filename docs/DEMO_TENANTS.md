@@ -88,6 +88,7 @@ Each is enforced by `tests/unit/demo-parity.test.ts`: adding any other `isDemo` 
 | Demo speed history (migration `20261120003600`, called from `src/server/demo/samples.ts` `speedHistory`) | Refresh demo data moves the times — only the times — of a demo's past seeded assignments (made the afternoon before) and clean accepted tickets (entered after delivery, accepted in Tuesday/Friday review sittings), with the matching ticket history entries. The guards on assignments, tickets and ticket history allow that time-only change only inside `public.demo_speed_history()` and only for demo companies; real companies are refused. Owner decision 2026-10-26. | Seeded records are written in seconds, so Command Center "Speed" (B86) would have nothing to measure in a demo. Who, what, quantities and statuses never change; a second run moves nothing. |
 | `src/server/weather.ts` (passed `isDemo` from `src/app/(app)/command-center/page.tsx` and `src/app/(app)/dispatch/page.tsx`) | Weather alerts (B92): a demo reads a fictional sample forecast — rain likely tomorrow at its first located job site with loads, strong wind the day after at the second — labelled "Sample forecast (demo)", instead of the National Weather Service; and since 2026-10-28 fictional conditions now at each located base (or the yard) and one sample Wind Advisory at its first delivery site with loads today, labelled "(sample, demo)". Owner decision 2026-10-27 (weather source). | Demo job sites are fictional places (often outside the US), so a real forecast would show nothing or a real place's weather. The alerts, load counts and links are the real feature. |
 | `public.daily_summary_due()` (migration `20261120004200`) and `src/app/(app)/settings/page.tsx` | End-of-day owner summary (B97): a demo company is never returned to the scheduled job, so it never emails; Settings → Email shows today's figures with the switch disabled and says so. Owner decision 2026-10-27. | The demo company never sends anything (CLAUDE.md); prospects still see what the summary says. |
+| Database: `private.modules_preset_allowed` (migration `20261120023000`, used by `public.platform_set_company_modules`) | Workflow modules (MOD1): a Taviron Admin may pick a starting preset for a **demo** company at any time (console → company page → Starting setup), while for a customer company only before it goes live. Demos start and stay **Full operations**; Refresh never changes modules. No `src/` branch: the console shows the card from what the database answers (`can_set`). | So the team can show a prospect "Tickets to billing" or "Quotes only" on the demo's own data and put it back to Full operations; a live customer's choice belongs to its owner. Switching off only hides: Refresh keeps adding the full sample data, which shows again when switched back on. |
 
 Everything else (Communications, Dispatch, Maintenance, Fleet, Employees, Reports, Billing previews, …) behaves
 exactly as for a real company. Features that cannot act for real anyway (e.g. invoices are previews, Smart Dispatch
@@ -217,6 +218,19 @@ driver's page (Owner); `tests/db/demo-samples.test.ts` checks the samples (inclu
 draft per demo owner, the credit limit, the certificate alert and the demo's credit-hold reason), that an existing demo
 with the first price-check sample gets the marked one, that a second run adds nothing and keeps every demo user, and that
 a real company is refused.
+
+### Workflow modules (MOD1, 2026-11-16)
+
+- **Demo modes:** every role preview follows the demo's modules exactly as a real company does (menu, pages, Command
+  Center, getting started, search, help, reports, notifications). Demos stay **Full operations**, so every mode keeps
+  the sample data of the table above.
+- **Preview a preset:** the demo's owner uses Settings → Company → **What you use** (the same page as every company),
+  or a Taviron Admin picks a starting point in the console (the only demo difference, §2). "Full operations" puts it
+  back. Switching off hides; Refresh keeps adding the full samples, so nothing is lost while previewing.
+- **Sample data:** none new. Tickets entered without dispatch exist only while Dispatch is off (the database refuses
+  them otherwise), so a demo previewing "Tickets to billing" enters them live on its own sample customers and jobs;
+  quotes previewed as "Quotes only" use the existing sample quotes (an accepted one shows **Won**).
+- **Tests:** `tests/db/workflow-modules.test.ts` (Admin preset for a demo vs a live company), `tests/e2e/modules.spec.ts`.
 
 ### Hired trucks (B83, 2026-10-26)
 

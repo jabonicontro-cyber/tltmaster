@@ -125,6 +125,17 @@ describe("workflow modules", () => {
       expect(state.can_set).toBe(false);
       expect((await pgError(s.query("select public.platform_set_company_modules($1, 'quotes_only')", [older]))).message).toMatch(/live|owner chooses/);
       expect((await pgError(s.query("select public.platform_set_company_modules($1, 'everything')", [fresh]))).code).toBe("22023");
+      // A demo (any age) can show a preset and go back to Full operations.
+      const demo = await s.createCompany(`Modules Demo ${randomUUID().slice(0, 6)} (test)`);
+      await s.asAdmin();
+      await s.query("update public.companies set is_demo = true, demo_kind = 'prospect', created_at = timestamptz '2026-10-01 12:00:00+00' where id = $1", [demo]);
+      await s.as(admin);
+      await s.query("select public.platform_set_company_modules($1, 'quotes_only')", [demo]);
+      expect((await off(s, demo)).m).toContain("orders");
+      await s.as(admin);
+      await s.query("select public.platform_set_company_modules($1, 'full')", [demo]);
+      expect((await off(s, demo)).m).toEqual([]);
+      await s.as(admin);
       // Top Line (an existing customer) is never changed from the console.
       expect((await pgError(s.query("select public.platform_set_company_modules($1, 'quotes_only')", [TOP_LINE]))).code).toBe("42501");
 
