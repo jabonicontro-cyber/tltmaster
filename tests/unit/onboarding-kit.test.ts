@@ -9,7 +9,7 @@ describe("onboarding kit", () => {
   it("every import template maps back to the importer's fields without manual mapping", () => {
     for (const e of IMPORT_ENTITIES) {
       const headers = templateHeaders(e);
-      expect(guessMapping(headers, e)).toEqual(IMPORT_FIELDS[e].map((f) => f.key));
+      expect(guessMapping(headers, e)).toEqual(IMPORT_FIELDS[e].filter((f) => !f.partOf).map((f) => f.key)); // first/last name columns join into the full name
       const parsed = parseCsv(templateCsv(e));
       expect(parsed).toEqual([headers]); // header only: no example row that could be imported by mistake
     }

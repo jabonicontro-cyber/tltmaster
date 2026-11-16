@@ -9,7 +9,7 @@ import { formatDateTime } from "@/lib/dates";
 import { ENTITY_LABELS, type ImportEntity } from "@/lib/platform/imports";
 import type { ImportBatchSummary, PlatformCompany } from "@/lib/platform/types";
 import { createClient } from "@/server/supabase/server";
-import { IMPORT_ENTITIES, MAX_IMPORT_BYTES } from "@/lib/platform/imports";
+import { IMPORT_ENTITIES, MAX_IMPORT_BYTES, decodeSpreadsheet } from "@/lib/platform/imports";
 import { todayIn } from "@/lib/dates";
 import { platformOnboarding } from "@/server/data/onboarding";
 import { OnboardingChecklist } from "@/components/onboarding/checklist";
@@ -26,7 +26,7 @@ async function documentForImport(documentId: string | undefined, entity: string 
   const file = await supabase.storage.from("onboarding-documents").download(doc.object_path);
   if (file.error || !file.data) return { error: "The file could not be read from storage." };
   if (file.data.size > MAX_IMPORT_BYTES) return { error: "The file is too large to import at once. Ask the company to split it." };
-  return { csv: await file.data.text(), fileName: doc.file_name, entity: entity as (typeof IMPORT_ENTITIES)[number], documentId };
+  return { csv: decodeSpreadsheet(await file.data.arrayBuffer()), fileName: doc.file_name, entity: entity as (typeof IMPORT_ENTITIES)[number], documentId };
 }
 
 export const metadata = { title: "Company onboarding" };

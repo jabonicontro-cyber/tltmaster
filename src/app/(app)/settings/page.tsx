@@ -469,7 +469,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
       <>
         <CardHeader
           title="Import from a spreadsheet"
-          description="Bring in customers, materials, trucks or drivers from a CSV file. Nothing is created until you review every row and approve; rows that need fixing are never imported, and an approved import can be undone (its records become inactive, never deleted)."
+          description="Bring in customers, their contacts and job sites, materials, trucks, trailers or drivers from a CSV file, one kind per file (customers first: contacts and job sites are matched to them by name). Nothing is created until you review every row and approve; rows that need fixing are never imported, and an approved import can be undone (its records become inactive, never deleted)."
         />
         <CardBody>
           {error ? <p className="text-sm text-muted">Importing needs a database update that has not been installed yet.</p> : <ImportUploader action={stageCompanyImport} />}

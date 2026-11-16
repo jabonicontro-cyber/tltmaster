@@ -291,15 +291,20 @@ describe("team-led onboarding imports", () => {
         { row: 2, data: { unit_number: "T-10", truck_type: "tri_axle_dump", model_year: "2019" } },
         { row: 3, data: { unit_number: "t-10 ", truck_type: "tri_axle_dump" } },
         { row: 4, data: { unit_number: "T-11", truck_type: "spaceship" } },
-        { row: 5, data: { unit_number: "T-12", truck_type: "tandem_axle_dump", model_year: "not a year" } },
+        { row: 5, data: { unit_number: "T-12", truck_type: "tandem_axle_dump", model_year: "2020" } },
+        { row: 6, data: { unit_number: "T-13", truck_type: "tandem_axle_dump", model_year: "not a year" } },
       ]);
-      expect(await statuses(trucks)).toEqual(["valid", "duplicate", "error", "valid"]);
-      // Row 5's bad year is caught at approval and nothing is created.
+      // Row 6's bad year is caught when staging (20261120021000), not left for approval to fail on.
+      expect(await statuses(trucks)).toEqual(["valid", "duplicate", "error", "valid", "error"]);
+      // A truck added with row 5's unit number after staging makes approval fail: all or nothing, so row 2 is not created either.
+      await s.asAdmin();
+      await s.query("insert into public.trucks (company_id, unit_number, truck_type) values ($1, 'T-12', 'tandem_axle_dump')", [company]);
+      await s.as(admin.id);
       const err = await pgError(s.query("select public.platform_import_approve($1)", [trucks]));
       expect(err.code).toBe("22023");
       expect(err.message).toMatch(/Row 5 could not be imported.*Nothing was imported/);
       await s.asAdmin();
-      expect((await s.query("select 1 from public.trucks where company_id = $1", [company])).rowCount).toBe(0);
+      expect((await s.query("select 1 from public.trucks where company_id = $1 and unit_number = 'T-10'", [company])).rowCount).toBe(0);
       await s.as(admin.id);
       await s.query("select public.platform_import_discard($1)", [trucks]);
 

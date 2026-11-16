@@ -1,0 +1,2 @@
+# Spreadsheet fixtures keep their exact bytes (BOM, Windows line ends, Windows and UTF-16 encodings).
+* -text

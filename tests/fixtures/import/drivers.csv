@@ -1,0 +1,8 @@
+﻿Last Name,First Name,Emp #,Cell,Hire Date,CDL #,CDL Class,CDL St,CDL Exp Date,Endorsements,DOT Physical Exp,Status
+Testdriver (test),Alex,0042,(219) 555-0121,5/1/98,S1234-5678-9012,Class A CDL,IN,11/3/2026,"N, T",3-Nov-27,Active
+Sample (test),Jordan,0043,219.555.0122,2019-04-15,S2222-3333-4444,A,in,2028-02-29,,46329,Active
+Madeup (test),Casey,0044,2195550123,11/3/2026 0:00,,Non-CDL,,,,N/A,Active
+Placeholder (test),Riley,0042,,,,B,Indiana,13/1/2027,,,Active
+O’Fiction (test),Taylor,0045,,,,C,IN,,H,,Active
+,,,,,,,,,,,
+Nobody (test),,0046,,,,,,12/31/2027,,,Inactive

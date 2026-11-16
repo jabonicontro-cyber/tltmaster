@@ -665,7 +665,7 @@ export const FEATURES: Feature[] = [
     name: "Spreadsheet import",
     category: "platform",
     problem: "Moving to new software means retyping hundreds of customers, trucks and drivers, or waiting for someone else to do it.",
-    how: "The company's administrator uploads a CSV of customers, materials, trucks or drivers, matches the columns, and reviews every row before anything is created. Duplicates and rows that need fixing are flagged; approval creates everything at once or nothing, and an import can be undone later.",
+    how: "The company's administrator uploads a CSV of customers, their contacts and job sites, materials, trucks, trailers or drivers, matches the columns, and reviews every row before anything is created. Duplicates and rows that need fixing are flagged; approval creates everything at once or nothing, and an import can be undone later.",
     value: "A new company is working with its own records on day one, without retyping.",
     points: ["Every row checked and reviewed before approval", "Possible duplicates flagged", "All at once or nothing", "Undo makes records inactive, never deletes them"],
     limitations: ["CSV files only", "Orders, tickets and history are not imported"],

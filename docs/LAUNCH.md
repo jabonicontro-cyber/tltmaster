@@ -151,7 +151,7 @@ change, listed in docs/SWITCH_ON.md).
 | Freight scope after MK2 (§9 Q28) | Proposal for the owner: docs/FREIGHT_SCOPE_PROPOSAL.md (2026-11-14) |
 | Detention proposals from recorded waits, off until set per customer (DT1) | Built |
 | Freight loads, rest of MK2 | Built: extra charges on the invoice (2026-11-06); rate confirmation, bills of lading and proof of delivery on the order or a stop, and brokers as customers (2026-11-09). Left: the driver adding proof of delivery from the phone at a stop |
-| Import ready for Top Line's files (LR3) | Customers, job sites, trucks, trailers, drivers with CDL and medical dates: built. Rates and open orders: built to match the files once they arrive |
+| Import ready for Top Line's files (LR3) | Customers, customer contacts, job sites, materials, trucks, trailers, drivers with CDL (endorsements too) and medical dates: built, dry-run tested 2026-11-14 with realistic fictional files (contacts and endorsements need migration 20261120021000). Rates and open orders: built to match the files once they arrive; options and the import-day steps in `docs/TOPLINE_IMPORT_PLAYBOOK.md` |
 | Demo data, small fixes, catalog honesty (UX13, UX15, LR2) | Built (portal ticket photos for demos still open) |
 | Truck-day dispatching (UX11), by January | Built: slice 1 (plan, assign, release, truck-hours for review) and slice 2 (**Add to order** puts the reviewed hours on the order as one hourly line, migration `20261120008700`). Open: different start times per truck in one step |
 
