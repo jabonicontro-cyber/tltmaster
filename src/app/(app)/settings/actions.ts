@@ -7,7 +7,7 @@ import { parseMoneyToCents } from "@/lib/money";
 import { companySettingsSchema, inviteSchema, sequenceSchema, userAccessSchema } from "@/lib/schemas/settings";
 import { uuid } from "@/lib/schemas/common";
 import { INDUSTRIES, INDUSTRY_LABELS, type Industry } from "@/lib/industry";
-import { hiddenAreasOf } from "@/lib/menu-areas";
+import { MODULE_KEYS, dependencyProblem, modulesOff, moduleInfo, type ModuleKey } from "@/lib/modules";
 import { PERMISSIONS, ROLES, type AppRole } from "@/lib/permissions";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
@@ -281,17 +281,22 @@ export async function setAiAssistantAllowed(allowed: boolean): Promise<ActionRes
   });
 }
 
-/** Simple mode (SF1; settings.manage, checked again by RLS): the optional areas hidden from the menu. Menu only. */
-export async function saveMenuAreas(formData: FormData): Promise<ActionResult> {
+/**
+ * What you use (MOD1, docs/MODULES.md; settings.manage here and in the database): the workflow modules switched off.
+ * Hidden only: nothing is deleted and no permission changes. The database keeps the dependencies and records the change.
+ */
+export async function saveModules(off: string[]): Promise<ActionResult<{ off: ModuleKey[] }>> {
   return guard(async () => {
-    const access = await assertPermission("settings.manage");
-    const shown = new Set(formData.getAll("show").map(String));
-    const hidden = hiddenAreasOf(formData.getAll("area").map(String).filter((a) => !shown.has(a)));
+    await assertPermission("settings.manage");
+    if (!Array.isArray(off) || off.some((k) => typeof k !== "string" || !(MODULE_KEYS as readonly string[]).includes(k))) return fail("Choose from the list.");
+    const list = modulesOff(off);
+    const problem = dependencyProblem(list);
+    if (problem) return fail(problem);
     const supabase = await createClient();
-    const { data, error } = await supabase.from("company_settings").update({ hidden_areas: hidden }).eq("company_id", access.companyId!).select("company_id");
-    if (error) return fail(error.code === "42703" || error.code === "PGRST204" ? "This setting needs a database update that has not been installed yet." : dbErrorMessage(error));
-    if (!data?.length) return fail("Settings could not be saved.");
+    const { data, error } = await supabase.rpc("set_company_modules", { p_off: list });
+    if (error) return fail(error.code === "PGRST202" || error.code === "42883" ? "This setting needs a database update that has not been installed yet." : dbErrorMessage(error));
+    const saved = modulesOff((data as { modules_off?: unknown } | null)?.modules_off);
     revalidatePath("/", "layout");
-    return ok(undefined, hidden.length ? `Menu saved: ${hidden.length} ${hidden.length === 1 ? "area" : "areas"} hidden.` : "Menu saved: every area shows.");
+    return ok({ off: saved }, saved.length ? `Saved. Switched off: ${saved.map((k) => moduleInfo(k).label).join(", ")}.` : "Saved. Everything is switched on.");
   });
 }

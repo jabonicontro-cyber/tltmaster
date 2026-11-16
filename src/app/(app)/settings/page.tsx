@@ -32,8 +32,8 @@ import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
 import { IndustryForm } from "@/components/settings/industry-form";
 import { AiAssistantForm } from "@/components/settings/ai-assistant-form";
-import { MenuAreasForm } from "@/components/settings/menu-areas-form";
-import { hiddenAreasOf } from "@/lib/menu-areas";
+import { ModulesForm } from "@/components/settings/modules-form";
+import { modulesOff } from "@/lib/modules";
 import { industryOf } from "@/lib/industry";
 import { summaryLines, type DailySummary } from "@/lib/summary/daily";
 import { parseRules } from "@/lib/fleet/health";
@@ -141,9 +141,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <IndustryForm industry={industryOf(settings.industry)} canEdit={can(access, "settings.manage")} />
           </div>
         )}
-        {"hidden_areas" in settings && (
-          <div className="border-t border-line">
-            <MenuAreasForm hidden={hiddenAreasOf(settings.hidden_areas)} canEdit={can(access, "settings.manage")} />
+        {/* What you use (MOD1): shown once the database update 20261120023000 is in. */}
+        {"modules_off" in settings && (
+          <div className="border-t border-line" id="modules">
+            <ModulesForm off={modulesOff(settings.modules_off)} canEdit={can(access, "settings.manage")} />
           </div>
         )}
         <div className="border-t border-line">

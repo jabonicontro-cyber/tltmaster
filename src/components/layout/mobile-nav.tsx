@@ -8,7 +8,7 @@ import { CompanyIdentity } from "./company-identity";
 import { SidebarNav } from "./sidebar-nav";
 import type { Permission } from "@/lib/permissions";
 
-export function MobileNav({ permissions, companyName, logoUrl, labels, hidden }: { permissions: Permission[]; companyName: string | null; logoUrl: string; labels?: Record<string, string>; hidden?: string[] }) {
+export function MobileNav({ permissions, companyName, logoUrl, labels, modulesOff }: { permissions: Permission[]; companyName: string | null; logoUrl: string; labels?: Record<string, string>; /** Workflow modules switched off (src/lib/modules.ts). */ modulesOff?: string[] }) {
   const [open, setOpen] = useState(false);
   return (
     <D.Root open={open} onOpenChange={setOpen}>
@@ -27,7 +27,7 @@ export function MobileNav({ permissions, companyName, logoUrl, labels, hidden }:
             </D.Close>
           </div>
           <div className="relative flex-1 overflow-y-auto py-3">
-            <SidebarNav permissions={permissions} onNavigate={() => setOpen(false)} labels={labels} hidden={hidden} />
+            <SidebarNav permissions={permissions} onNavigate={() => setOpen(false)} labels={labels} modulesOff={modulesOff} />
           </div>
           <div className="px-2 pb-2">
             <PoweredByTaviron className="px-2 py-2" />
