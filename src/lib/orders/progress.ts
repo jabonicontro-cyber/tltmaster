@@ -35,6 +35,8 @@ export interface ProgressInput {
   /** The order's billing readiness, or null when the viewer may not see billing. */
   billing: (ReadinessCounts & { readiness: Readiness }) | null;
   now: Date;
+  /** Workflow modules switched off (MOD1): their steps are left out; with Dispatch off tickets are entered per job. */
+  modulesOff?: readonly string[];
 }
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
@@ -72,8 +74,12 @@ export function orderProgress(i: ProgressInput): ProgressStep[] {
     steps.push({ key: "dispatch", label: "Dispatch", state: "done", summary: `${plural(planned.length, "load")}, all assigned.` });
   }
 
+  const off = i.modulesOff ?? [];
   // Delivery tickets
-  if (closed || planned.length === 0) {
+  if (off.includes("dispatch") && !closed && planned.length === 0) {
+    // Dispatch off (MOD1): each ticket is entered against the job and records its own delivery.
+    steps.push({ key: "tickets", label: "Delivery tickets", state: "not_started", summary: "No tickets yet. Enter each ticket as it comes in.", owner: "Office", next: { label: "Enter a ticket", href: "/tickets/new" } });
+  } else if (closed || planned.length === 0) {
     steps.push({ key: "tickets", label: "Delivery tickets", state: closed ? "unavailable" : "not_started", summary: closed ? "Order canceled." : "Tickets follow delivered loads." });
   } else if (missing.length > 0) {
     steps.push({
@@ -110,5 +116,5 @@ export function orderProgress(i: ProgressInput): ProgressStep[] {
       next: r === "handed_off" || r === "in_progress" ? undefined : { label: r === "ready" ? "Hand off" : "Open billing", href: `/billing/orders/${i.orderId}` },
     });
   }
-  return steps;
+  return steps.filter((st) => !off.includes(st.key));
 }

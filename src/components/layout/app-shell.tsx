@@ -79,7 +79,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
             <Sparkles className="size-5" aria-hidden />
           </Link>
         )}
-        <HelpPanel {...helpPanelData(access.permissions)} />
+        <HelpPanel {...helpPanelData(access.permissions, branding?.modulesOff)} />
         <UserMenu
           name={me?.name || access.fullName}
           email={access.email}

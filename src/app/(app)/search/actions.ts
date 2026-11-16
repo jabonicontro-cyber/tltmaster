@@ -3,6 +3,8 @@
 import { cleanQuery, type SearchGroupKey, type SearchHit } from "@/lib/search";
 import { can } from "@/lib/permissions";
 import { intentHits } from "@/lib/search-intents";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 import { getAccess } from "@/server/auth";
 import { mfaBlocks } from "@/server/mfa";
 import { globalSearch } from "@/server/data/global-search";
@@ -20,6 +22,7 @@ export async function quickSearch(raw: string): Promise<QuickResults | null> {
   if (!q) return { q: "", groups: [] };
   const groups = await globalSearch(access, q, 4);
   // Intent shortcuts first (B124): "overdue invoices", "trucks down"… open the page that answers them.
-  const goto = intentHits(q, (p) => can(access, p));
+  const off = await getModulesOff();
+  const goto = intentHits(q, (p) => can(access, p)).filter((h) => hrefShown(h.href, off));
   return { q, groups: [...(goto.length ? [{ key: "goto" as const, label: "Go to", hits: goto }] : []), ...groups.filter((g) => g.hits.length > 0)] };
 }

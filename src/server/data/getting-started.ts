@@ -5,6 +5,8 @@ import { can, type Access, type Permission } from "@/lib/permissions";
 import { PRESENTATION_COOKIE } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
 import { getSettings } from "./settings";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 
 export interface GettingStartedView {
   role: ChecklistRole;
@@ -71,7 +73,9 @@ export async function loadGettingStarted(access: Access, place: ChecklistPlace, 
     Object.assign(facts, { myTimerStarted: started, myTimerStopped: stopped });
   }
 
-  const items = gettingStartedItems(role, facts, has);
+  // Workflow modules (MOD1): no step leads to an area the company switched off.
+  const off = await getModulesOff();
+  const items = gettingStartedItems(role, facts, has).filter((i) => hrefShown(i.href, off));
   // Steps opened on this device (and a dismissal remembered only in this browser) are known there; the card checks them.
   if (!showChecklist(items, { dismissed: false, presentation: false })) return null;
   return { role, items, storageKey: checklistStorageKey(access.companyId, access.userId) };

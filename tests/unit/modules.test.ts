@@ -62,3 +62,47 @@ describe("workflow modules", () => {
     expect(dependencyProblem(STARTER_OFF)).toBe(null);
   });
 });
+
+describe("screens follow the modules", () => {
+  it("Command Center leaves out the items, counts and cards of switched-off areas, never safety", async () => {
+    const { summaryForModules, itemsForModules, kindShown } = await import("@/lib/command-center/modules");
+    const { metricCards } = await import("@/lib/command-center/rules");
+    const s = {
+      as_of: "", today: "2026-11-16", exceptions: { total: 9, urgent: 3, mine: 0 },
+      urgent_by_kind: { unassigned_load: 2, equipment_report: 1 }, by_kind: { unassigned_load: 4, ticket_review: 3, equipment_report: 2 },
+      orders_today: 1, orders_unscheduled: 2, urgent_orders: 0, loads_today: 5, loads_today_assigned: 1, unassigned_loads: 4, assignment_problems: 0,
+      trucks_out_of_service: 1, trailers_out_of_service: 0, tickets_to_review: 3, missing_tickets: 0, billing_blocked: 0, billing_ready: 1, driver_reports: 2,
+      can: { dispatch: true, fleet: true, billing: true, tickets: true, assign: true },
+    };
+    const f = summaryForModules(s, ["dispatch"]);
+    expect(f.exceptions).toMatchObject({ total: 5, urgent: 1 });
+    expect(f.by_kind.unassigned_load).toBeUndefined();
+    // Applying it twice changes nothing (the summary is shared by several pages).
+    expect(summaryForModules(f, ["dispatch"]).exceptions).toEqual(f.exceptions);
+    const keys = metricCards(f).map((c) => c.key);
+    expect(keys).not.toContain("loads_today");
+    expect(keys).toContain("out_of_service");
+    expect(keys).toContain("driver_reports");
+    expect(kindShown("equipment_report", [...MODULE_KEYS])).toBe(true);
+    const page = itemsForModules({ total: 3, items: [{ kind: "unassigned_load" }, { kind: "ticket_review" }, { kind: "delay_report" }] as never }, ["dispatch", "tickets"]);
+    expect((page.items as Array<{ kind: string }>).map((i) => i.kind)).toEqual(["delay_report"]);
+    expect(page.total).toBe(1);
+  });
+
+  it("order steps adapt: no dispatch step and ticket entry per job when Dispatch is off", async () => {
+    const { orderProgress } = await import("@/lib/orders/progress");
+    const steps = orderProgress({ orderId: "o", orderStatus: "in_progress", loads: [], billing: null, now: new Date(), modulesOff: ["dispatch"] });
+    expect(steps.map((s) => s.key)).toEqual(["tickets", "billing"]);
+    expect(steps[0].next?.href).toBe("/tickets/new");
+    expect(orderProgress({ orderId: "o", orderStatus: "in_progress", loads: [], billing: null, now: new Date() }).map((s) => s.key)).toEqual(["dispatch", "tickets", "billing"]);
+  });
+
+  it("help leaves out articles only about switched-off areas", async () => {
+    const { helpFor } = await import("@/server/help");
+    const { PERMISSIONS } = await import("@/lib/permissions");
+    const all = helpFor([...PERMISSIONS]);
+    const some = helpFor([...PERMISSIONS], ["dispatch"]);
+    expect(some.articles.length).toBeLessThan(all.articles.length);
+    for (const a of some.articles) expect(a.routes.length === 0 || a.routes.some((r) => hrefShown(r.replace(/\/\*$/, "") || "/", ["dispatch"]))).toBe(true);
+  });
+});

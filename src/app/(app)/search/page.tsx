@@ -7,6 +7,8 @@ import { cleanQuery, searchableGroups } from "@/lib/search";
 import { requireAccess } from "@/server/auth";
 import { globalSearch } from "@/server/data/global-search";
 import { intentHits } from "@/lib/search-intents";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 import { can } from "@/lib/permissions";
 
 export const metadata = { title: "Search" };
@@ -18,7 +20,8 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const q = cleanQuery(raw);
   const groups = searchableGroups(access.permissions);
   // Intent shortcuts first (B124), then records.
-  const goto = q ? intentHits(q, (p) => can(access, p)) : [];
+  const off = await getModulesOff();
+  const goto = q ? intentHits(q, (p) => can(access, p)).filter((h) => hrefShown(h.href, off)) : [];
   const results = q ? [...(goto.length ? [{ key: "goto" as const, label: "Go to", hits: goto }] : []), ...(await globalSearch(access, q))] : [];
   return (
     <>

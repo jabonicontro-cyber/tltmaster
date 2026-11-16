@@ -62,6 +62,25 @@ export function hrefShown(href: string, off: readonly string[]): boolean {
   return m === null || !off.includes(m);
 }
 
+/**
+ * The module whose screens a permission's content belongs to, for pages that gather several areas (Command Center,
+ * briefing): with the module off that content is left out. The permission itself never changes.
+ */
+const PERMISSION_MODULE: Array<[RegExp, ModuleKey]> = [
+  [/^quotes\./, "quotes"],
+  [/^orders\./, "orders"],
+  [/^dispatch\./, "dispatch"],
+  [/^tickets\./, "tickets"],
+  [/^billing\./, "billing"],
+  [/^payroll\./, "payroll"],
+  [/^maintenance\./, "maintenance"],
+];
+
+export function permissionModuleOn(permission: string, off: readonly string[]): boolean {
+  const hit = PERMISSION_MODULE.find(([re]) => re.test(permission));
+  return !hit || !off.includes(hit[1]);
+}
+
 /** Modules that need `key`, directly or through another. */
 function dependentsOf(key: ModuleKey): ModuleKey[] {
   const out = new Set<ModuleKey>();

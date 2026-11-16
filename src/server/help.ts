@@ -3,6 +3,7 @@ import { HELP_ARTICLES } from "@/lib/help/articles";
 import { GUIDES } from "@/lib/help/guides";
 import { visibleArticles } from "@/lib/help/search";
 import type { Permission } from "@/lib/permissions";
+import { hrefShown } from "@/lib/modules";
 import type { GuideEntry, HelpIndexEntry } from "@/components/help/help-panel";
 import { createClient } from "@/server/supabase/server";
 
@@ -10,15 +11,17 @@ import { createClient } from "@/server/supabase/server";
 // permissions from the session. Feedback, searches and support requests are stored by 20261120000400 when installed;
 // before that, Help still works and simply does not record them.
 
-export function helpFor(permissions: readonly Permission[]) {
-  const articles = visibleArticles(HELP_ARTICLES, permissions);
-  const guides = GUIDES.filter((g) => g.permissions.length === 0 || g.permissions.some((p) => permissions.includes(p)));
+/** `modulesOff` (MOD1): articles and guides about switched-off workflow modules only are left out. */
+export function helpFor(permissions: readonly Permission[], modulesOff: readonly string[] = []) {
+  const route = (r: string) => r.replace(/\/\*$/, "") || "/";
+  const articles = visibleArticles(HELP_ARTICLES, permissions).filter((a) => !a.routes.length || a.routes.some((r) => hrefShown(route(r), modulesOff)));
+  const guides = GUIDES.filter((g) => g.permissions.length === 0 || g.permissions.some((p) => permissions.includes(p))).filter((g) => hrefShown(g.steps[0].href ?? route(g.steps[0].route), modulesOff));
   return { articles, guides };
 }
 
 /** The compact index and guides the header Help panel needs (no article bodies). */
-export function helpPanelData(permissions: readonly Permission[]): { index: HelpIndexEntry[]; guides: GuideEntry[] } {
-  const { articles, guides } = helpFor(permissions);
+export function helpPanelData(permissions: readonly Permission[], modulesOff: readonly string[] = []): { index: HelpIndexEntry[]; guides: GuideEntry[] } {
+  const { articles, guides } = helpFor(permissions, modulesOff);
   return {
     index: articles.map((a) => ({ id: a.id, title: a.title, summary: a.summary, routes: a.routes, category: a.category, taskTitles: a.tasks.map((t) => t.title) })),
     guides: guides.map((g) => ({ id: g.id, title: g.title, summary: g.summary, start: g.steps[0].href ?? g.steps[0].route.replace(/\/\*$/, "") })),

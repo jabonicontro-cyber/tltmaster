@@ -43,6 +43,7 @@ import { OrderBase } from "@/components/bases/order-base-form";
 import { baseOptions, recordBase } from "@/server/data/bases";
 import { OrderTrackingCard } from "@/components/portal/order-tracking-card";
 import { getSay } from "@/server/industry";
+import { getModulesOff } from "@/server/modules";
 
 export const metadata = { title: "Order" };
 
@@ -73,7 +74,8 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
     loadsWithoutTicket: plannedLoads.filter((l) => new Date(l.ends_at) <= now && !loadTickets.some((t) => t.load_id === l.id)).length,
     ticketsAwaitingReview: loadTickets.filter((t) => t.status === "submitted" || t.status === "needs_review").length,
   };
-  const canDispatch = can(access, "dispatch.view");
+  // Dispatch links only while the company uses Dispatch (MOD1).
+  const canDispatch = can(access, "dispatch.view") && !(await getModulesOff()).includes("dispatch");
   const who = (uid: string | null) => (uid ? names[uid] ?? "Former user" : "System");
   // A typed price corrected while it was confirmed (20261120016400): said on the notice and next to the locked prices.
   const priceCorrection = lastPriceCorrection(audit);
@@ -102,7 +104,10 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const orderOpen = order.status !== "completed" && order.status !== "canceled";
   const late = isPastRequested(order, today);
   const scheduled = formatScheduleDates(order.scheduled_start, order.scheduled_end);
+  // Workflow modules (MOD1): steps and links of switched-off areas are left out.
+  const modulesOffList = await getModulesOff();
   const progress = orderProgress({
+    modulesOff: modulesOffList,
     orderId: order.id,
     orderStatus: order.status,
     loads: dispatch.loads.map((l) => ({

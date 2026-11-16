@@ -1,6 +1,8 @@
 import "server-only";
 import type { ConversationKind, Presence, Priority, WorkStatus } from "@/lib/communications";
 import { createClient } from "@/server/supabase/server";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 
 // Reads for Communications. Row-level security and the database functions decide
 // what each person may see; these loaders only shape the results. Every loader
@@ -95,7 +97,10 @@ export async function loadNotifications(limit = 30): Promise<Notification[] | nu
     if (missing(error)) return null;
     fail("notifications", error);
   }
-  return (data ?? []) as Notification[];
+  // Workflow modules (MOD1): a notice about a switched-off area stays (nothing is hidden from the person), without a
+  // link into a page the company does not use.
+  const off = await getModulesOff();
+  return ((data ?? []) as Notification[]).map((n) => (n.link && !hrefShown(n.link, off) ? { ...n, link: "" } : n));
 }
 
 export interface Conversation {
@@ -281,7 +286,10 @@ export async function loadAlerts(status: "open" | "resolved" | "all" = "open"): 
     fail("alerts", alerts.error);
   }
   const mine = new Set(((rec.data ?? []) as Array<{ alert_id: string }>).map((r) => r.alert_id));
-  return { alerts: (alerts.data ?? []) as AlertRow[], types: (types.data ?? []) as AlertType[], mine };
+  // Alerts always stay visible (safety first); only a link into a switched-off area (MOD1) is dropped.
+  const off = await getModulesOff();
+  const rows = ((alerts.data ?? []) as AlertRow[]).map((a) => (a.link && !hrefShown(a.link, off) ? { ...a, link: "" } : a));
+  return { alerts: rows, types: (types.data ?? []) as AlertType[], mine };
 }
 
 export async function loadAlert(id: string) {

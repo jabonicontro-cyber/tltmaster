@@ -24,6 +24,7 @@ import { listStopTimes, waitTimeSettings } from "@/server/data/wait-times";
 import { createClient } from "@/server/supabase/server";
 import { loadOutlook } from "@/server/data/live";
 import { getSay } from "@/server/industry";
+import { getModulesOff } from "@/server/modules";
 
 export const metadata = { title: "Morning briefing" };
 
@@ -39,7 +40,10 @@ export default async function BriefingPage() {
   if (!can(access, "dispatch.view") && !can(access, "billing.view")) redirect("/command-center");
   const { today, timezone } = await businessToday();
   const yesterday = addDays(today, -1);
-  const billing = can(access, "billing.view");
+  // Workflow modules (MOD1): nothing from an area the company switched off.
+  const off = await getModulesOff();
+  const billing = can(access, "billing.view") && !off.includes("billing");
+  const dispatchOn = can(access, "dispatch.view") && !off.includes("dispatch");
   const supabase = await createClient();
   const [name, summary, daily, ops, invoices, leaks, waits, waitCfg, outlook] = await Promise.all([
     shownName(access),
@@ -51,7 +55,7 @@ export default async function BriefingPage() {
     listStopTimes(yesterday, yesterday, timezone).catch(() => null),
     waitTimeSettings().catch(() => ({ installed: false, freeMinutes: null })),
     // Today's loads against the shared readiness rule (owner 2026-11-09, WK1), the same figures as the Command Center.
-    can(access, "dispatch.view") ? loadOutlook(today, false, 1).catch(() => null) : Promise.resolve(null),
+    dispatchOn ? loadOutlook(today, false, 1).catch(() => null) : Promise.resolve(null),
   ]);
   const s = summary.ok ? summary.data : null;
   // Loads today not yet ended: without a truck, and on a truck or trailer that cannot run today. "All covered" only
@@ -73,8 +77,8 @@ export default async function BriefingPage() {
     billingBlocked: s?.billing_blocked ?? null,
     overdueInvoices: overdue ? { count: overdue.length, cents: overdue.reduce((n, i) => n + balanceCents(i), 0) } : null,
     revenueToCheck: leaks ? { count: leaks.length, cents: missedTotal(leaks), heldCents: heldTotal(leaks) } : null,
-    tomorrowUnassigned: daily?.tomorrow_without_truck ?? null,
-    longWaitsYesterday: waits ? waits.filter((w) => isLong(waitMinutes(w), waitCfg.freeMinutes)).length : null,
+    tomorrowUnassigned: dispatchOn ? daily?.tomorrow_without_truck ?? null : null,
+    longWaitsYesterday: waits && dispatchOn ? waits.filter((w) => isLong(waitMinutes(w), waitCfg.freeMinutes)).length : null,
   });
   const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: timezone }).format(new Date()));
   const first = actions.slice(0, 3);
@@ -94,7 +98,7 @@ export default async function BriefingPage() {
             {say("Verified value of accepted tickets")}
           </StatTile>
         )}
-        <StatTile icon={<Truck />} tone={cannotRun ? "critical" : covered ? "green" : "amber"} label="Loads today" value={s?.loads_today ?? "–"}>
+        {dispatchOn && <StatTile icon={<Truck />} tone={cannotRun ? "critical" : covered ? "green" : "amber"} label="Loads today" value={s?.loads_today ?? "–"}>
           {s?.loads_today == null ? "Not available" : covered ? "All covered" : (
             <Link href={`/dispatch?date=${today}`} className="font-semibold underline-offset-2 hover:underline" data-testid="briefing-not-covered">
               {[
@@ -104,7 +108,7 @@ export default async function BriefingPage() {
               ].filter(Boolean).join(" · ")}
             </Link>
           )}
-        </StatTile>
+        </StatTile>}
         <StatTile icon={<Wrench />} tone={s?.trucks_out_of_service ? "amber" : "neutral"} label="Trucks down" value={s?.trucks_out_of_service ?? "–"} muted={!s?.trucks_out_of_service}>
           Out of service today
         </StatTile>
