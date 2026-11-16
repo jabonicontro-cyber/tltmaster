@@ -7,6 +7,7 @@ import { Camera, CheckCircle2, FileUp, Loader2, RotateCcw } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { FormError } from "@/components/ui/form";
 import { cn } from "@/lib/cn";
+import { UPLOAD_MAX_BYTES } from "@/lib/files/images";
 import { toJpeg } from "@/lib/files/to-jpeg";
 
 // Proof of delivery from the phone at a delivery stop (MK2, 20261120020800): a photo of the signed paperwork, or a PDF,
@@ -16,9 +17,14 @@ import { toJpeg } from "@/lib/files/to-jpeg";
 
 export interface SentProof { id: string; name: string; at: string }
 
-/** Proof-of-delivery limits shown and checked before anything is sent (the database checks the same). */
+/**
+ * Proof-of-delivery limits shown and checked before anything is sent (the server and the database check the same).
+ * 4 MB: the hosting platform refuses larger uploads, so photos are shrunk on the phone first (long edge 2000 px, JPEG).
+ */
 export const POD_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
-export const POD_MAX_BYTES = 10 * 1024 * 1024;
+export const POD_MAX_BYTES = UPLOAD_MAX_BYTES;
+const TOO_LARGE_PDF = "This PDF is larger than 4 MB, too large to send from the phone. Take a photo of the signed paper instead.";
+const TOO_LARGE_PHOTO = "This photo is larger than 4 MB and could not be made smaller here. Take the photo with the camera button instead.";
 
 type Waiting = { key: string; blob: Blob; name: string; reason: string };
 
@@ -48,6 +54,8 @@ export function StopProof({ assignmentId, stopId, stopName, sent, timeZone }: { 
       body.set("upload_key", w.key);
       const res = await fetch("/driver/proof", { method: "POST", body });
       const out = (await res.json().catch(() => ({}))) as { error?: string };
+      // The hosting platform answers a too-large upload itself (413, not JSON).
+      if (res.status === 413 && !out.error) out.error = w.blob.type === "application/pdf" ? TOO_LARGE_PDF : TOO_LARGE_PHOTO;
       if (!res.ok) {
         // Taviron answered: a retry is a new upload (the refused one was not kept).
         setWaiting(null);
@@ -79,9 +87,12 @@ export function StopProof({ assignmentId, stopId, stopName, sent, timeZone }: { 
     setError(null);
     let blob: Blob = file;
     let name = file.name || "proof-of-delivery";
-    if (file.type !== "application/pdf") {
+    if (file.type === "application/pdf") {
+      if (file.size > POD_MAX_BYTES) return setError(TOO_LARGE_PDF);
+    } else {
+      // Every photo is shrunk on the phone before it is sent (smaller and faster on weak signal, and under the limit).
       try {
-        blob = await toJpeg(file);
+        blob = await toJpeg(file, POD_MAX_BYTES);
         name = "proof-of-delivery.jpg";
       } catch {
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
@@ -91,7 +102,7 @@ export function StopProof({ assignmentId, stopId, stopName, sent, timeZone }: { 
       }
     }
     if (!POD_ACCEPT.split(",").includes(blob.type)) return setError("Send a photo (JPEG, PNG, WebP) or a PDF.");
-    if (blob.size > POD_MAX_BYTES) return setError("The file is larger than 10 MB. Take a photo instead.");
+    if (blob.size > POD_MAX_BYTES) return setError(blob.type === "application/pdf" ? TOO_LARGE_PDF : TOO_LARGE_PHOTO);
     await send({ key: crypto.randomUUID(), blob, name, reason: "" });
   }
 

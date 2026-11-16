@@ -44,7 +44,9 @@ repeats the same steps with new projects — never point staging at production d
    `<address>/auth/confirm**`.
 7. **Authentication → Email Templates**: paste `supabase/templates/confirmation.html`,
    `invite.html` and `recovery.html` into *Confirm signup*, *Invite user* and *Reset
-   password*.
+   password*. *Confirm signup* must show the 6-digit code (`{{ .Token }}`, added 2026-11-16):
+   a first-owner or Taviron team invitation link that was handed over instead of emailed
+   asks for that code before a password can be chosen (`src/server/invite-account.ts`).
 8. **Authentication → SMTP**: the built-in sender only sends a few emails per hour and is
    meant for testing. For invitations to real people, configure SMTP (e.g. Resend, which has
    a free tier) — optional for a first look.

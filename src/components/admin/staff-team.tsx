@@ -91,13 +91,17 @@ function Issued({ r, onDone }: { r: StaffInviteResult; onDone: () => void }) {
     <div className="space-y-3 rounded-xl border border-line bg-surface p-4" role="status" aria-label="Invitation link">
       <p className="font-semibold text-ink">Invitation for {r.fullName} ({LEVEL[r.level]})</p>
       <p className="text-sm text-muted">
-        {r.emailed === "sent" ? `Emailed to ${r.email}. ` : r.emailed === "test" ? "Sent to the test inbox (email test mode). " : `Not emailed${r.note ? `: ${r.note}` : "."} `}
-        You can also send this link yourself. It works once and expires {formatDateTime(r.expiresAt)}. It is shown only now.
+        {r.emailed === "sent"
+          ? `Emailed to ${r.email}. `
+          : `${r.emailed === "test" ? `Sent to the test inbox only (email test mode), not to ${r.email}.` : `Not emailed${r.note ? `: ${r.note}` : "."}`} Send ${r.email} this link yourself, privately. Because Taviron did not email it to them, they first confirm their email address with a code we email them. `}
+        It works once and expires {formatDateTime(r.expiresAt)}.{r.link ? " It is shown only now." : ""}
       </p>
-      <div className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2">
-        <code className="min-w-0 flex-1 truncate text-xs" aria-label="Invitation link">{r.link}</code>
-        <CopyReference value={r.link} label="invitation link" />
-      </div>
+      {r.link && (
+        <div className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2">
+          <code className="min-w-0 flex-1 truncate text-xs" aria-label="Invitation link">{r.link}</code>
+          <CopyReference value={r.link} label="invitation link" />
+        </div>
+      )}
       <Button type="button" variant="secondary" size="sm" onClick={onDone}>Done</Button>
     </div>
   );

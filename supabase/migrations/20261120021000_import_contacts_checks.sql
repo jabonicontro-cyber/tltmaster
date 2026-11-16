@@ -8,7 +8,8 @@
 --      materials, contacts and site names 120) and material codes. Before, such a row showed as "Ready" and the whole
 --      approval then failed with a technical message.
 --   4. The platform team's revert refuses job-site, trailer and contact batches in the database too (the console already
---      sends them to the company's Undo). Before, a direct call marked their rows "removed" without removing anything.
+--      sends them to the company's Undo), through a check on the batch (a trigger), not by recreating the revert.
+--      Before, a direct call marked their rows "removed" without removing anything.
 -- No existing rows change. Rollback: supabase/rollbacks/20261120021000_import_contacts_checks.down.sql
 
 alter table private.import_batches drop constraint if exists import_batches_entity_check;
@@ -373,92 +374,20 @@ begin
 end;
 $$;
 
--- The platform team's revert: unchanged, except that it refuses the kinds it cannot remove (see 4 above).
-CREATE OR REPLACE FUNCTION public.platform_import_revert(p_batch uuid, p_reason text)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-declare
-  v_me      uuid := private.require_platform_admin();
-  b         private.import_batches%rowtype;
-  r         private.import_rows%rowtype;
-  v_changed boolean;
-  v_used    boolean;
-  v_removed integer := 0;
-  v_kept    integer := 0;
+-- The platform team's revert refuses the kinds it cannot remove (see 4 above). Its own body is not recreated here
+-- (it stays as in 20261120008300): the refusal is a check on the batch itself, so whatever the revert did before
+-- setting the status is undone with it. A batch of job sites, trailers or contacts can be undone by the company
+-- (status 'deactivated', records made inactive) but never set to 'reverted'.
+create or replace function private.import_batch_revert_guard()
+returns trigger language plpgsql set search_path = '' as $$
 begin
-  select * into b from private.import_batches where id = p_batch for update;
-  if not found or b.status <> 'approved' then raise exception 'Only an approved batch can be reverted.' using errcode = '22023'; end if;
-  -- Job sites, trailers and contacts are undone from the company's own Import page (records made inactive).
-  if b.entity in ('sites', 'trailers', 'contacts') then
+  if new.status = 'reverted' and old.status is distinct from 'reverted' and new.entity in ('sites', 'trailers', 'contacts') then
     raise exception 'Undo job-site, trailer and contact imports from the company''s Settings, Import page (records are made inactive).' using errcode = '22023';
   end if;
-  if trim(coalesce(p_reason, '')) = '' then raise exception 'Give a reason for reverting.' using errcode = '22023'; end if;
-  perform set_config('tlt.platform_write', 'on', true);
-  for r in select * from private.import_rows where batch_id = p_batch and outcome = 'created' and target_id is not null loop
-    if b.entity = 'customers' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.customers c where c.id = r.target_id and c.company_id = b.company_id;
-      v_used := exists (select 1 from public.customer_contacts x where x.customer_id = r.target_id)
-             or exists (select 1 from public.customer_sites x where x.customer_id = r.target_id)
-             or exists (select 1 from public.quotes x where x.customer_id = r.target_id)
-             or exists (select 1 from public.orders x where x.customer_id = r.target_id);
-    elsif b.entity = 'materials' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.materials m where m.id = r.target_id and m.company_id = b.company_id;
-      v_used := exists (select 1 from public.price_list_entries x where x.material_id = r.target_id)
-             or exists (select 1 from public.quote_lines x where x.material_id = r.target_id)
-             or exists (select 1 from public.order_lines x where x.material_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.material_id = r.target_id);
-    elsif b.entity = 'trucks' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.trucks t where t.id = r.target_id and t.company_id = b.company_id;
-      v_used := exists (select 1 from public.equipment_status_events x where x.truck_id = r.target_id)
-             or exists (select 1 from public.trailers x where x.default_truck_id = r.target_id)
-             or exists (select 1 from public.dispatch_assignments x where x.truck_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.truck_id = r.target_id)
-             or exists (select 1 from public.field_reports x where x.truck_id = r.target_id);
-    else
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.drivers d where d.id = r.target_id and d.company_id = b.company_id;
-      v_used := exists (select 1 from public.driver_qualifications x where x.driver_id = r.target_id)
-             or exists (select 1 from public.dispatch_assignments x where x.driver_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.driver_id = r.target_id)
-             or exists (select 1 from public.field_reports x where x.driver_id = r.target_id)
-             or exists (select 1 from public.drivers x where x.id = r.target_id and x.user_id is not null);
-    end if;
-    if v_changed is null then
-      -- Already gone (removed by hand): nothing to do.
-      update private.import_rows set outcome = 'removed' where id = r.id;
-      continue;
-    end if;
-    if not v_changed and not v_used then
-      begin
-        if b.entity = 'customers' then delete from public.customers where id = r.target_id and company_id = b.company_id;
-        elsif b.entity = 'materials' then delete from public.materials where id = r.target_id and company_id = b.company_id;
-        elsif b.entity = 'trucks' then delete from public.trucks where id = r.target_id and company_id = b.company_id;
-        else delete from public.drivers where id = r.target_id and company_id = b.company_id;
-        end if;
-        update private.import_rows set outcome = 'removed' where id = r.id;
-        v_removed := v_removed + 1;
-        continue;
-      exception when foreign_key_violation or insufficient_privilege or raise_exception then
-        v_used := true;
-      end;
-    end if;
-    if b.entity = 'customers' then update public.customers set active = false where id = r.target_id and company_id = b.company_id;
-    elsif b.entity = 'materials' then update public.materials set active = false where id = r.target_id and company_id = b.company_id;
-    elsif b.entity = 'trucks' then update public.trucks set active = false where id = r.target_id and company_id = b.company_id;
-    else update public.drivers set active = false where id = r.target_id and company_id = b.company_id;
-    end if;
-    update private.import_rows set outcome = case when v_used then 'kept_in_use' else 'kept_changed' end where id = r.id;
-    v_kept := v_kept + 1;
-  end loop;
-  perform set_config('tlt.platform_write', 'off', true);
-  update private.import_batches set status = 'reverted', reverted_by = v_me, reverted_at = now(), revert_reason = trim(p_reason),
-         result = result || jsonb_build_object('removed', v_removed, 'kept_inactive', v_kept)
-  where id = p_batch;
-  perform private.platform_log('import_reverted', 'import', p_batch::text,
-    format('Reverted: removed %s, kept %s (deactivated)', v_removed, v_kept),
-    jsonb_build_object('company_id', b.company_id, 'removed', v_removed, 'kept_inactive', v_kept, 'reason', trim(p_reason)));
-  return jsonb_build_object('removed', v_removed, 'kept_inactive', v_kept);
+  return new;
 end;
-$function$;
+$$;
+revoke all on function private.import_batch_revert_guard() from public, anon, authenticated;
+drop trigger if exists import_batches_revert_guard on private.import_batches;
+create trigger import_batches_revert_guard before update of status on private.import_batches
+  for each row execute function private.import_batch_revert_guard();

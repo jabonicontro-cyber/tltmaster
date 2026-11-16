@@ -9,6 +9,7 @@ import { env } from "@/server/env";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { requirePlatformAdmin } from "@/server/platform";
 import { confirmPasswordAndCode } from "@/server/reauth";
+import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
 // The Taviron team (SA1, owner 2026-11-06: "invite from console", "two levels"). Only an Admin invites, changes levels
@@ -27,7 +28,7 @@ const inviteSchema = z.object({
   code: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code from your authenticator app."),
 });
 
-export interface StaffInviteResult { link: string; email: string; fullName: string; level: "admin" | "support"; expiresAt: string; emailed: "sent" | "test" | "not_sent"; note: string }
+export interface StaffInviteResult { link: string | null; email: string; fullName: string; level: "admin" | "support"; expiresAt: string; emailed: "sent" | "test" | "not_sent"; note: string }
 
 async function reauth(email: string, password: string, code: string): Promise<ReturnType<typeof fail> | null> {
   const r = await confirmPasswordAndCode(email, password, code);
@@ -50,7 +51,7 @@ export async function inviteStaff(formData: FormData): Promise<ActionResult<Staf
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("platform_staff_invite", { p_email: v.email, p_full_name: v.full_name, p_level: v.level });
     if (error) return fail(MISSING.has(error.code ?? "") ? NOT_INSTALLED : dbErrorMessage(error));
-    const inv = data as { token: string; expires_at: string; email: string; full_name: string; level: "admin" | "support" };
+    const inv = data as { id: string; token: string; expires_at: string; email: string; full_name: string; level: "admin" | "support" };
     const link = `${env().APP_BASE_URL}/join-team?token=${inv.token}`;
 
     // The invitation email (the owner's decision: the invitee gets a link). Without a configured provider nothing is
@@ -77,9 +78,16 @@ export async function inviteStaff(formData: FormData): Promise<ActionResult<Staf
       );
       if (result.ok) emailed = testing ? "test" : "sent";
       else note = "The email could not be sent. Copy the link and send it yourself.";
+      // Recorded only for an email to the invited address itself (service role): then the link alone confirms the
+      // address. A link that is handed over needs a code from an email to that address first (/join-team).
+      if (emailed === "sent") {
+        const marked = adminAvailable() ? await createAdminClient().rpc("platform_staff_invite_mark_emailed", { p_invite: inv.id }) : null;
+        if (!marked || marked.error || marked.data !== true) console.warn("Team invitation not recorded as emailed; the invitee will confirm the address with a code.");
+      }
     }
     revalidatePath("/admin/platform");
-    return ok({ link, email: inv.email, fullName: inv.full_name, level: inv.level, expiresAt: inv.expires_at, emailed, note }, "Invitation created.");
+    // The link is shown only when it was not emailed to the person: an emailed link stays in their mailbox.
+    return ok({ link: emailed === "sent" ? null : link, email: inv.email, fullName: inv.full_name, level: inv.level, expiresAt: inv.expires_at, emailed, note }, emailed === "sent" ? `Invitation emailed to ${inv.email}.` : "Invitation created.");
   });
 }
 

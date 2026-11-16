@@ -6,7 +6,8 @@
 --   * public.driver_pod_begin: the driver (private.portal_driver: driver.portal and a linked, active driver record)
 --     names their assignment and one of its order's delivery stops. The assignment must be theirs and active, the load
 --     from two days ago to today (the same window as ticket photos), the order not canceled. Photos (JPEG, PNG, WebP)
---     or PDFs, at most 10 MB, at most 5 per stop and load from drivers, and the order's 30-document limit still holds.
+--     or PDFs, at most 4 MB (the hosting platform refuses larger request bodies; the phone shrinks photos before
+--     sending), at most 5 per stop and load from drivers, and the order's 30-document limit still holds.
 --     The kind is always proof_of_delivery: a driver never adds a rate confirmation or any other document. Retrying
 --     with the same upload key returns the same record (a lost response at a stop with weak signal never adds a second
 --     copy). Returns the storage path; the server then stores the file there with the service role (the bucket keeps
@@ -90,8 +91,8 @@ begin
   if v_s.kind <> 'delivery' then
     raise exception 'Proof of delivery is added at a delivery stop.' using errcode = '22023';
   end if;
-  if p_mime is null or p_mime not in ('image/jpeg', 'image/png', 'image/webp', 'application/pdf') or p_size is null or p_size < 1 or p_size > 10485760 then
-    raise exception 'Proof of delivery must be a photo (JPEG, PNG, WebP) or a PDF, at most 10 MB.' using errcode = '22023';
+  if p_mime is null or p_mime not in ('image/jpeg', 'image/png', 'image/webp', 'application/pdf') or p_size is null or p_size < 1 or p_size > 4194304 then
+    raise exception 'Proof of delivery must be a photo (JPEG, PNG, WebP) or a PDF, at most 4 MB.' using errcode = '22023';
   end if;
   if (select count(*) from public.order_documents
        where company_id = v_d.company_id and load_id = v_l.id and stop_id = v_s.id and removed_at is null) >= 5 then

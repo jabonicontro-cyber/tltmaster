@@ -5,6 +5,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { signSiteAccess, verifySiteAccess } from "@/lib/site-access-token";
 import { isPublicSiteRequest } from "@/lib/site/paths";
 import { isAppPath } from "@/lib/app-roots";
+import { INVITE_TOKEN_PATTERN, inviteCookieName, inviteCookieOptions, inviteHandoffHtml, isInvitePage } from "@/lib/invite-cookie";
 import { OFFLINE_GRACE_SECONDS, accessCookieName, isGateExempt, publicSiteEnabled, revalidateGrant, revalidateSeconds, siteGate } from "@/server/site-access";
 
 // "/api/cron": scheduled jobs authenticate with CRON_SECRET, not a session. "/api/telematics/ingest": a GPS/ELD provider
@@ -31,6 +32,10 @@ const isHttps = (request: NextRequest) =>
  *    company, membership or permission.
  * 2. Refreshes the Supabase session cookie and sends anonymous visitors to sign in.
  *
+ * Before both: an invitation link (/join-company?token=…, /join-team?token=…) is answered at once: the token goes into
+ * an HttpOnly, SameSite=Strict cookie for that page only and the browser moves on to the clean address
+ * (src/lib/invite-cookie.ts). Nothing is checked or granted here; the page checks the invitation with the database.
+ *
  * Authorization is enforced again on the server for every page and action
  * (src/server/auth.ts) and by RLS in the database.
  */
@@ -39,6 +44,20 @@ export async function proxy(request: NextRequest) {
   if (gate.enabled && !gate.secret) {
     // Fail closed: never serve the app with a gate that cannot verify anything.
     return new NextResponse("Early access is not configured on this server.", { status: 503, headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" } });
+  }
+
+  const path = request.nextUrl.pathname;
+  if (isInvitePage(path) && request.method === "GET" && request.nextUrl.searchParams.has("token")) {
+    const token = request.nextUrl.searchParams.get("token") ?? "";
+    const secure = isHttps(request);
+    const handoff = new NextResponse(inviteHandoffHtml(path), {
+      status: 200,
+      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", "referrer-policy": "no-referrer" },
+    });
+    const name = inviteCookieName(path, secure);
+    if (INVITE_TOKEN_PATTERN.test(token)) handoff.cookies.set(name, token, inviteCookieOptions(path, secure));
+    else handoff.cookies.set(name, "", { ...inviteCookieOptions(path, secure), maxAge: 0 });
+    return handoff;
   }
 
   let response = NextResponse.next({ request });
@@ -69,7 +88,6 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const signedIn = Boolean(data?.claims?.sub);
 
-  const path = request.nextUrl.pathname;
   // Marketing pages never need an account; past the gate only with PUBLIC_SITE=on.
   const sitePage = isPublicSiteRequest(path, request.method);
   const publicSite = sitePage && publicSiteEnabled();

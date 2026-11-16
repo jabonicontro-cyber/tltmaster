@@ -1,30 +1,33 @@
 import Link from "next/link";
+import { InviteAcceptForm, InviteEmailCodeForm, InvitePasswordForm, InviteSignInForm } from "@/components/auth/invite-forms";
 import { buttonClasses } from "@/components/ui/button";
 import { formatDateTime } from "@/lib/dates";
+import { needsInvitedPassword } from "@/server/invite-account";
+import { readInviteToken } from "@/server/invite-token";
 import { mfaState } from "@/server/mfa";
 import { createClient } from "@/server/supabase/server";
-import { peekInvite } from "./actions";
-import { AcceptForm, CreateAccountForm } from "./join-forms";
+import { acceptTeamInvite, chooseTeamPassword, createTeamAccount, peekInvite, sendTeamEmailCode, signInToJoinTeam, verifyTeamEmailCode } from "./actions";
 
 export const metadata = { title: "Join the Taviron team" };
 export const dynamic = "force-dynamic";
 
+const HERE = "/join-team";
 const LEVEL = { admin: "Admin", support: "Support" } as const;
 const CLOSED: Record<string, string> = {
   used: "This invitation has already been used. Sign in as usual.",
   withdrawn: "This invitation was withdrawn. Ask the person who invited you for a new one.",
   expired: "This invitation has expired. Ask the person who invited you for a new one.",
-  invalid: "This invitation link is not valid. Open it again from the email, or ask for a new one.",
+  invalid: "This invitation link is not valid, or this browser has not opened it yet. Open the link from the email again, or ask for a new one.",
 };
 
 /**
- * Joining the Taviron team (SA1): three short steps from the invitation link. 1. Choose a password (or sign in if you
- * already have a Taviron sign-in). 2. Set up an authenticator app. 3. Join. The database checks each step again.
+ * Joining the Taviron team (SA1): three short steps from the invitation link. 1. Choose a password (or sign in with the
+ * Taviron sign-in you already have); when the link was not emailed to this address by Taviron, a code emailed to it
+ * confirms the address first. 2. Set up an authenticator app. 3. Join. The database checks each step again. The link's
+ * token is kept in a cookie for this page only (src/lib/invite-cookie.ts); this address never carries it.
  */
-export default async function JoinTeamPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {
-  const token = (await searchParams).token ?? "";
-  const inv = await peekInvite(token);
-  const here = `/join-team?token=${token}`;
+export default async function JoinTeamPage() {
+  const inv = await peekInvite(await readInviteToken(HERE));
   if (inv.status !== "open" || !inv.email) {
     return (
       <>
@@ -54,10 +57,12 @@ export default async function JoinTeamPage({ searchParams }: { searchParams: Pro
         {inv.has_account ? (
           <>
             <p className="mb-4 text-sm text-ink">You already have a Taviron sign-in for {inv.email}. Sign in with it to continue.</p>
-            <Link href={`/login?next=${encodeURIComponent(here)}`} className={buttonClasses("primary", "md", "w-full")}>Sign in</Link>
+            <InviteSignInForm id="jt-signin" email={inv.email} action={signInToJoinTeam} />
           </>
+        ) : inv.link_emailed ? (
+          <InvitePasswordForm id="jt" email={inv.email} action={createTeamAccount} />
         ) : (
-          <CreateAccountForm token={token} email={inv.email} />
+          <InviteEmailCodeForm id="jt" email={inv.email} send={sendTeamEmailCode} verify={verifyTeamEmailCode} />
         )}
       </>
     );
@@ -70,6 +75,16 @@ export default async function JoinTeamPage({ searchParams }: { searchParams: Pro
       </>
     );
   }
+  if (await needsInvitedPassword()) {
+    return (
+      <>
+        {intro}
+        <Steps at={1} />
+        <p className="mb-4 text-sm text-ink">Your email address is confirmed. Now choose your password.</p>
+        <InvitePasswordForm id="jt" email={inv.email} action={chooseTeamPassword} />
+      </>
+    );
+  }
   const mfa = await mfaState();
   const verified = mfa.aal === "aal2" && mfa.enrolled;
   return (
@@ -77,11 +92,17 @@ export default async function JoinTeamPage({ searchParams }: { searchParams: Pro
       {intro}
       <Steps at={verified ? 3 : 2} />
       {verified ? (
-        <AcceptForm token={token} />
+        <InviteAcceptForm action={acceptTeamInvite} label="Join the Taviron team" />
       ) : (
         <>
-          <p className="mb-4 text-sm text-ink">Next, protect your account with a code from an authenticator app on your phone (for example Google Authenticator or 1Password). It is required for the Taviron team.</p>
-          <Link href={`/mfa?next=${encodeURIComponent(here)}`} className={buttonClasses("primary", "md", "w-full")}>Set up the authenticator app</Link>
+          <p className="mb-4 text-sm text-ink">
+            {mfa.enrolled
+              ? "Next, enter the code from your authenticator app."
+              : "Next, protect your account with a code from an authenticator app on your phone (for example Google Authenticator or 1Password). It is required for the Taviron team."}
+          </p>
+          <Link href={`/mfa?next=${encodeURIComponent(HERE)}`} className={buttonClasses("primary", "md", "w-full")}>
+            {mfa.enrolled ? "Enter the authenticator code" : "Set up the authenticator app"}
+          </Link>
         </>
       )}
     </>

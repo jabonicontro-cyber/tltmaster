@@ -9,13 +9,16 @@ import { env } from "@/server/env";
 import { dbErrorMessage, guard } from "@/server/errors";
 import { requirePlatformAdmin } from "@/server/platform";
 import { confirmPasswordAndCode } from "@/server/reauth";
+import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { createClient } from "@/server/supabase/server";
 
 // Inviting a company's first owner (PC2, owner decision 2026-11-14: "Yes, Admin only"). This is a COMPANY membership,
 // never Taviron platform access. Only an Admin, with their password and authenticator code again; the database checks
 // all of it again (platform_owner_invite: Admin level, fresh re-authentication, a real company with no owner, not a
 // demo, not a Taviron team email) and records it in the platform audit and the company's history. The owner opens the
-// link, chooses their own password, sets up an authenticator app and accepts (/join-company).
+// link, chooses their own password, sets up an authenticator app and accepts (/join-company). Only when the provider
+// accepted the email to the invited address itself does the server record the link as emailed (service role,
+// owner_invite_mark_emailed); a link shown to the Admin to hand over needs a code from an email to that address first.
 
 const MISSING = new Set(["PGRST202", "42883"]);
 const NOT_INSTALLED = "Inviting an owner from here is not available on this database yet. Nothing was changed.";
@@ -55,7 +58,7 @@ export async function inviteOwner(formData: FormData): Promise<ActionResult<Owne
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("platform_owner_invite", { p_company: v.company, p_email: v.email, p_full_name: v.full_name });
     if (error) return fail(MISSING.has(error.code ?? "") ? NOT_INSTALLED : dbErrorMessage(error));
-    const inv = data as { token: string; expires_at: string; email: string; full_name: string; company_name: string };
+    const inv = data as { id: string; token: string; expires_at: string; email: string; full_name: string; company_name: string };
     const link = `${env().APP_BASE_URL}/join-company?token=${inv.token}`;
 
     // The invitation email. Without a configured provider nothing is sent and the link is shown to hand over instead;
@@ -67,7 +70,7 @@ export async function inviteOwner(formData: FormData): Promise<ActionResult<Owne
       const subject = `Set up ${inv.company_name} in Taviron`;
       const paragraphs = [
         `${inv.full_name}, Taviron set up ${inv.company_name} for you. You are invited to be its owner.`,
-        "Open the link to choose your password and set up an authenticator app. Then you can add your team. The link works once and expires in 7 days.",
+        "Open the link to choose your password and set up an authenticator app. Then you can add your team. The link works once and expires in 72 hours.",
       ];
       const testing = mode.mode === "test";
       const sent = await mode.provider.send(
@@ -82,6 +85,11 @@ export async function inviteOwner(formData: FormData): Promise<ActionResult<Owne
       );
       if (sent.ok) emailed = testing ? "test" : "sent";
       else note = "The email could not be sent. Copy the link and send it yourself.";
+      // Recorded only for an email to the invited address itself: then the link alone confirms the address.
+      if (emailed === "sent") {
+        const marked = adminAvailable() ? await createAdminClient().rpc("owner_invite_mark_emailed", { p_invite: inv.id }) : null;
+        if (!marked || marked.error || marked.data !== true) console.warn("Owner invitation not recorded as emailed; the owner will confirm the address with a code.");
+      }
     }
     revalidatePath(`/admin/companies/${v.company}`);
     return ok(

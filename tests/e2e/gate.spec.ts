@@ -4,6 +4,7 @@ import { expect, test, type APIRequestContext } from "@playwright/test";
 import pg from "pg";
 import { normalizeAccessCode } from "../../src/lib/early-access";
 import { passSecondFactor } from "./helpers";
+import { totp } from "./mfa";
 import { PASSWORD, USERS } from "./users";
 
 // The early-access gate on a production build (run with E2E_GATE=on against a
@@ -373,5 +374,60 @@ test("a driver's one-time QR code signs a brand-new phone in without early acces
   } finally {
     await sql("update public.drivers set active = false where id = $1", [driver]);
     await sql("update public.company_memberships set active = false where user_id = $1", [user]);
+  }
+});
+
+test("an invited first owner who already has a sign-in accepts with the gate on, without opening the gate elsewhere", async ({ browser }) => {
+  test.setTimeout(120_000);
+  // A company with no owner and an open invitation for an email that already has a confirmed Taviron sign-in (made
+  // straight in the database, as the console would leave it; only the SHA-256 of the token is stored).
+  const tag = randomUUID().slice(0, 8);
+  const email = `e2e-gate-owner-${tag}@tavirontest.example`;
+  const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data, error } = await admin.auth.admin.createUser({ email, password: PASSWORD, email_confirm: true, user_metadata: { full_name: "Gale Gate" } });
+  expect(error).toBeNull();
+  const user = data.user!.id;
+  const [{ id: company }] = await sql<{ id: string }>("select private.create_company($1, $2) id", [`Gate Owner Haul ${tag} (test)`, `gate-owner-${tag}`]);
+  const token = randomBytes(32).toString("hex");
+  await sql("insert into private.owner_invitations (company_id, email, full_name, token_hash, expires_at) values ($1, $2, 'Gale Gate', $3, now() + interval '72 hours')",
+    [company, email, createHash("sha256").update(token).digest("hex")]);
+  try {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto(`/join-company?token=${token}`);
+    await page.waitForURL((u) => u.pathname === "/join-company" && u.search === "");
+    await expect(page.getByText(`You already have a Taviron sign-in for ${email}`)).toBeVisible();
+    // The invitation does not open the gate: sign-in and the app still go to the Early Access page.
+    for (const path of ["/login", "/command-center"]) {
+      await page.goto(path);
+      await expect(page, path).toHaveURL(/\/early-access/);
+    }
+    // Signing in happens on the invitation page itself, only as the invited email.
+    await page.goto("/join-company");
+    const form = page.getByRole("form", { name: "Sign in to accept" });
+    await expect(form.getByLabel("Email")).toHaveValue(email);
+    await form.getByLabel("Password").fill("not-the-password");
+    await form.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByText("That password is not correct.").first()).toBeVisible();
+    await form.getByLabel("Password").fill(PASSWORD);
+    await form.getByRole("button", { name: "Sign in" }).click();
+    await expect(page.getByRole("link", { name: "Set up the authenticator app" })).toBeVisible();
+    expect((await ctx.cookies()).find((c) => c.name === "taviron-access")).toBeUndefined(); // signed in, not admitted
+    await page.getByRole("link", { name: "Set up the authenticator app" }).click();
+    await page.waitForURL((u) => u.pathname === "/mfa");
+    await page.getByRole("button", { name: "Set Up Authenticator App" }).click();
+    const secret = await page.getByLabel("Or type this key").inputValue();
+    await page.getByLabel("6-digit code from the app").fill(totp(secret));
+    await page.getByRole("button", { name: "Turn On Two-Step Verification" }).click();
+    await page.getByRole("button", { name: "Create Recovery Codes" }).click();
+    await page.getByRole("button", { name: "I Saved Them, Continue" }).click();
+    await page.waitForURL((u) => u.pathname === "/join-company");
+    await page.getByRole("button", { name: "Become the owner" }).click();
+    await page.waitForURL((u) => u.pathname !== "/join-company", { timeout: 60_000 });
+    expect(await sql("select role, active from public.company_memberships where company_id = $1 and user_id = $2", [company, user])).toEqual([{ role: "owner", active: true }]);
+    await ctx.close();
+  } finally {
+    await sql("update public.company_memberships set active = false where company_id = $1", [company]);
+    await sql("update public.companies set active = false, archived_at = now() where id = $1", [company]);
   }
 });

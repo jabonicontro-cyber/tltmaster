@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import pg from "pg";
 import { unique } from "./helpers";
+import { latestCode } from "./mailbox";
 import { totp } from "./mfa";
 import { PASSWORD } from "./users";
 
@@ -115,24 +116,44 @@ test("an Admin invites a company's first owner; the link works once and leads to
   await form.getByRole("button", { name: "Send invitation" }).click();
   const issued = page.getByRole("status", { name: "Owner invitation" });
   await expect(issued).toContainText(`Invitation for ${owner.name}, owner of ${company}`);
-  await expect(issued).toContainText("It works once and expires");
+  await expect(issued).toContainText("It works once and expires in 72 hours");
+  // Not emailed here (no email provider in tests): the Admin hands it over, so the owner confirms the address first.
+  await expect(issued).toContainText("they first confirm their email address with a code");
   const link = (await issued.getByLabel("Invitation link", { exact: true }).textContent())!.trim();
   expect(link).toMatch(/\/join-company\?token=[0-9a-f]{64}$/);
   await expect(panel.getByRole("list", { name: "Owner invitations" })).toContainText("Waiting to accept");
   await shot(page, "02-company-owner-invite-link");
   const path = link.replace(/^https?:\/\/[^/]+/, "");
 
-  // The owner: choose a password, set up an authenticator app, accept.
+  // The owner: the link moves its token into a cookie and opens the clean address (security review 2026-11-16).
   const oc = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 });
   const op = await oc.newPage();
   await op.goto(path);
+  await op.waitForURL((u) => u.pathname === "/join-company" && u.search === "");
   await expect(op.getByRole("heading", { name: `Set up ${company}` })).toBeVisible();
   await expect(op.getByText(`${owner.name}, you are invited to be the owner of ${company}`)).toBeVisible();
-  await shot(op, "03-join-company-password");
+  const kept = (await oc.cookies()).find((c) => c.name === "taviron-owner-invite")!;
+  expect(kept).toMatchObject({ httpOnly: true, sameSite: "Strict", path: "/join-company" });
+  expect(kept.value).toBe(path.split("token=")[1]);
+
+  // A handed-over link is not proof of the mailbox: a code emailed to the address comes first; a wrong code does nothing.
+  await expect(op.getByLabel("Choose a password")).toHaveCount(0);
+  await shot(op, "03-join-company-email-code");
+  const sentAt = Date.now();
+  await op.getByRole("button", { name: "Email me a code" }).click();
+  await expect(op.getByText(`We emailed a 6-digit code to ${owner.email}`)).toBeVisible();
+  const code = await latestCode(owner.email, sentAt);
+  await op.getByLabel("Code from the email").fill(code === "000000" ? "111111" : "000000");
   await op.getByLabel("Choose a password").fill(PASSWORD);
   await op.getByLabel("Type it again").fill(PASSWORD);
   await op.getByRole("button", { name: "Continue" }).click();
+  await expect(op.getByText(/That code is not correct or has expired/)).toBeVisible();
+  expect((await db(async (c) => (await c.query("select email_confirmed_at from auth.users where lower(email) = $1", [owner.email])).rows))[0].email_confirmed_at).toBeNull();
+  await op.getByLabel("Code from the email").fill(code);
+  await shot(op, "03b-join-company-code-and-password");
+  await op.getByRole("button", { name: "Continue" }).click();
   await op.waitForURL((u) => u.pathname === "/mfa");
+  expect(op.url()).not.toContain("token");
   await op.getByRole("button", { name: "Set Up Authenticator App" }).click();
   const secret = await op.getByLabel("Or type this key").inputValue();
   await op.getByLabel("6-digit code from the app").fill(totp(secret));
@@ -146,6 +167,8 @@ test("an Admin invites a company's first owner; the link works once and leads to
   await op.waitForURL((u) => u.pathname !== "/join-company", { timeout: 60_000 });
   const m = await db(async (c) => (await c.query("select m.role, m.active from public.company_memberships m join public.profiles p on p.id = m.user_id where m.company_id = $1 and lower(p.email) = $2", [id, owner.email])).rows);
   expect(m).toEqual([{ role: "owner", active: true }]);
+  // The token is forgotten once used.
+  expect((await oc.cookies()).find((c) => c.name === "taviron-owner-invite")).toBeUndefined();
 
   // The link works once: opened again (signed in or not) it says it was used.
   await op.goto(path);

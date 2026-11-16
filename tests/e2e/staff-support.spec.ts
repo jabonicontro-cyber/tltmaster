@@ -1,5 +1,6 @@
 import { expect, test, type Browser, type Page } from "@playwright/test";
 import { signIn, signInPlatform, unique, expectToast } from "./helpers";
+import { latestCode } from "./mailbox";
 import { platformTotpSecret, totp } from "./mfa";
 import { PASSWORD } from "./users";
 
@@ -14,12 +15,18 @@ async function freshCode(page: Page): Promise<string> {
   return totp(platformTotpSecret());
 }
 
-async function joinWithLink(browser: Browser, link: string) {
+async function joinWithLink(browser: Browser, link: string, email: string) {
   const ctx = await browser.newContext();
   const page = await ctx.newPage();
   await page.goto(link);
+  // The token moves into a cookie for this page; the address is clean (security review 2026-11-16).
+  await page.waitForURL((u) => u.pathname === "/join-team" && u.search === "");
   await expect(page.getByRole("heading", { name: "Join the Taviron team" })).toBeVisible();
   await expect(page.getByText(/invited as Support/)).toBeVisible();
+  // The link was not emailed (no provider in tests): a code emailed to the invited address comes first.
+  const sentAt = Date.now();
+  await page.getByRole("button", { name: "Email me a code" }).click();
+  await page.getByLabel("Code from the email").fill(await latestCode(email, sentAt));
   await page.getByLabel("Choose a password").fill(PASSWORD);
   await page.getByLabel("Type it again").fill(PASSWORD);
   await page.getByRole("button", { name: "Continue" }).click();
@@ -63,7 +70,7 @@ test("invite a Support team member, the owner lets Taviron in, staff go in and t
   expect(link).toMatch(/\/join-team\?token=[0-9a-f]{64}$/);
 
   // 2. The invitee joins: password, authenticator app, join. Support sees the company access desk only.
-  const staff = await joinWithLink(browser, link.replace(/^https?:\/\/[^/]+/, ""));
+  const staff = await joinWithLink(browser, link.replace(/^https?:\/\/[^/]+/, ""), email);
   const sp = staff.page;
   await expect(sp.getByRole("navigation", { name: "Platform" }).getByRole("link")).toHaveText(["Company access", "Support inbox", "My visits", "Search"]);
   await sp.goto("/admin");

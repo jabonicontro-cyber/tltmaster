@@ -179,15 +179,54 @@ describe("Top Line import dry run with realistic files (LR3)", () => {
       expect(err.message).toMatch(/Undo job-site, trailer and contact imports from the company's Settings/);
       await s.asAdmin();
       expect((await s.query("select 1 from public.customer_contacts where company_id = $1 and active", [company])).rowCount).toBe(1); // untouched
+      expect((await s.query<{ status: string }>("select status from private.import_batches where id = $1", [id])).rows[0].status).toBe("approved");
+      // The refusal is a check on the batch itself (a trigger), not a recreated revert: nothing can mark these kinds
+      // "reverted"; other kinds still can.
+      for (const entity of ["sites", "trailers", "contacts"]) {
+        const err = await pgError(s.query("update private.import_batches set entity = $2, status = 'reverted' where id = $1", [id, entity]));
+        expect(err.code).toBe("22023");
+        expect(err.message).toMatch(/Undo job-site, trailer and contact imports/);
+      }
+      expect((await s.query("update private.import_batches set entity = 'customers', status = 'reverted' where id = $1", [id])).rowCount).toBe(1);
     });
   });
 
   it("the rollback restores the previous functions and the migration applies again", { retry: 2 }, async () => {
     await withSession(async (s) => {
+      // A contact batch imported, and one still in review, before the rollback.
+      const company = await s.createCompany("Import Rollback Contacts (test)");
+      await s.asAdmin();
+      await s.query("insert into public.customers (company_id, name) values ($1, 'Rollback Customer (test)')", [company]);
+      const owner = await s.createUser("owner", { companyId: company });
+      await s.as(owner);
+      const contactRows = (name: string) => JSON.stringify([{ row: 2, data: { customer_name: "Rollback Customer (test)", name } }]);
+      const imported = (await s.query<{ r: string }>("select public.company_import_stage('contacts', 'c.csv', '{}', $1::jsonb) r", [contactRows("Pat Before")])).rows[0].r;
+      await approve(s, imported);
+      const waiting = (await s.query<{ r: string }>("select public.company_import_stage('contacts', 'd.csv', '{}', $1::jsonb) r", [contactRows("Sam Waiting")])).rows[0].r;
+
       await s.asAdmin();
       await s.query(readFileSync(join(__dirname, `../../supabase/rollbacks/${MIGRATION}.down.sql`), "utf8"));
       expect((await s.query<{ f: string[] | null }>("select private.import_fields('contacts') f")).rows[0].f).toBeNull();
       expect((await s.query<{ f: string[] }>("select private.import_fields('drivers') f")).rows[0].f).not.toContain("cdl_endorsements");
+
+      // Nothing about contacts is silently mis-handled after the rollback: the platform revert still refuses, the
+      // batch in review cannot be approved (no drivers made from contacts), and the company's undo still makes the
+      // contacts inactive.
+      const admin = await s.createUser(null, { membership: false });
+      const adminEmail = (await s.query<{ email: string }>("select email from auth.users where id = $1", [admin])).rows[0].email;
+      await s.query("set local role service_role");
+      await s.query("select public.platform_admin_grant($1, 'test')", [adminEmail]);
+      await s.as(admin);
+      expect((await pgError(s.query("select public.platform_import_revert($1, 'test')", [imported]))).message).toMatch(/Undo job-site, trailer and contact imports/);
+      await s.as(owner);
+      expect((await pgError(approve(s, waiting))).message).toMatch(/Contact imports are not available/);
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.drivers where company_id = $1", [company])).rowCount).toBe(0);
+      await s.as(owner);
+      expect((await s.query<{ r: { deactivated: number } }>("select public.company_import_undo($1, 'Rolled back (test)') r", [imported])).rows[0].r.deactivated).toBe(1);
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.customer_contacts where company_id = $1 and name = 'Pat Before' and not active", [company])).rowCount).toBe(1);
+
       await s.query(readFileSync(join(__dirname, `../../supabase/migrations/${MIGRATION}.sql`), "utf8"));
       expect((await s.query<{ f: string[] }>("select private.import_fields('contacts') f")).rows[0].f).toEqual(["customer_name", "name", "title", "email", "phone", "is_billing", "notes"]);
     });
