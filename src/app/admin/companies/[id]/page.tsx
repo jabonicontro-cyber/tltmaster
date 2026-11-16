@@ -9,6 +9,7 @@ import { SubscriptionCard } from "@/components/admin/subscription-card";
 import { PlanUsageCard, type SubscriptionState } from "@/components/admin/plan-usage-card";
 import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
 import { HiredTrucksCard, type HiredTrucksEntitlement } from "@/components/admin/hired-trucks-card";
+import { OwnerInviteCard, type OwnerInviteState } from "@/components/admin/owner-invite-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { activityText } from "@/lib/platform/launchpad";
@@ -89,6 +90,9 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const lifeData = (life?.data ?? null) as Lifecycle | null;
   const subRes = !c.is_demo && lifeData?.stage === "live" ? await supabase.rpc("platform_subscription_state", { p_company: id }) : null;
   const subState = subRes && !subRes.error ? (subRes.data as SubscriptionState | null) : null;
+  // The first owner's invitation (PC2, 20261120022300): real companies only; not shown before that update.
+  const oi = c.is_demo ? null : await supabase.rpc("platform_owner_invites", { p_company: id });
+  const ownerInvites = oi && !oi.error ? (oi.data as OwnerInviteState) : null;
   // Health, usage and the customer timeline (PC1, 20261120020300 and 20261120020400): counts and history only.
   const before = sp.before && !Number.isNaN(Date.parse(sp.before)) ? sp.before : undefined;
   const [health, usage, timeline] = await Promise.all([companyHealth(id), companyUsage(id), companyTimeline(id, before)]);
@@ -96,7 +100,7 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   const timelineItems = timeline.ok ? timeline.data : [];
   const olderHref = timeline.ok && timelineItems.length >= 60 ? `/admin/companies/${id}?before=${encodeURIComponent(timelineItems[timelineItems.length - 1].at)}#timeline` : null;
   const steps = [
-    { label: "Owner login", done: c.setup.owner_login, hint: "The Taviron operator adds the owner's sign-in; the owner then invites their team from People." },
+    { label: "Owner login", done: c.setup.owner_login, hint: c.is_demo ? "Demo owners are added from Demo management." : "Invite the owner below; they then invite their team from People." },
     { label: "Customers", done: c.setup.customers > 0, hint: `${c.setup.customers} active` },
     { label: "Trucks", done: c.setup.trucks > 0, hint: `${c.setup.trucks} active` },
     { label: "Drivers", done: c.setup.drivers > 0, hint: `${c.setup.drivers} active` },
@@ -157,6 +161,12 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
           )}
         </Panel>
       </div>
+
+      {ownerInvites && (!ownerInvites.has_owner || ownerInvites.invites.length > 0) ? (
+        <Panel className="mt-5" id="owner" aria-label="Owner">
+          <OwnerInviteCard companyId={c.id} companyName={c.name} state={ownerInvites} />
+        </Panel>
+      ) : null}
 
       {!c.is_demo && (lifecycleMissing ? (
         <div className="mt-5"><Notice title="Subscriptions are not available yet">Plans, onboarding fees and go-live dates cannot be recorded on this database yet.</Notice></div>

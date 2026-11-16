@@ -67,7 +67,7 @@ export default async function OnboardingPage({ searchParams }: { searchParams: P
           )}
         </div>
         <Panel className="self-start lg:sticky lg:top-36">
-          <PanelHeader title="New company" description="Created without users. A Taviron Admin adds its owner's login afterwards." />
+          <PanelHeader title="New company" description="Created without users. Then invite its owner from the company's page." />
           <PanelBody>
             <form action={createCompany} className="space-y-3">
               <Field label="Company name" htmlFor="name">

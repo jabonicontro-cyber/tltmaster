@@ -120,6 +120,9 @@ export const ACTIVITY_TEXT: Record<string, string> = {
   company_deleted: "Company permanently deleted",
   "portal.entitlement": "Customer portal entitlement changed",
   "hired_trucks.entitlement": "Hired trucks switched on or off",
+  owner_invited: "Owner invited",
+  owner_invite_withdrawn: "Owner invitation withdrawn",
+  owner_joined: "Owner accepted the invitation",
   // Imports and onboarding
   import_staged: "Import uploaded for review",
   import_approved: "Import approved",
