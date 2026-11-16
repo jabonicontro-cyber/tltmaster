@@ -211,13 +211,30 @@ export async function getOrderStops(id: string): Promise<{ installed: boolean; s
 }
 
 export type OrderDocumentKind = "rate_confirmation" | "bill_of_lading" | "proof_of_delivery" | "other";
-export interface OrderDocument { id: string; kind: OrderDocumentKind; stop_id: string | null; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string | null }
+export interface OrderDocument {
+  id: string; kind: OrderDocumentKind; stop_id: string | null; file_name: string; mime_type: string; size_bytes: number; created_at: string; uploaded_by: string | null;
+  /** The load a driver added it for from My Day (20261120020800); null for the office's documents and before that update. */
+  load_number: number | null;
+}
 
 /** An order's documents (MK2, 20261120009500), newest first; installed false before the migration. */
 export async function getOrderDocuments(id: string): Promise<{ installed: boolean; documents: OrderDocument[] }> {
   if (!uuid.safeParse(id).success) return { installed: false, documents: [] };
-  const { data, error } = await (await createClient()).from("order_documents")
-    .select("id, kind, stop_id, file_name, mime_type, size_bytes, created_at, uploaded_by").eq("order_id", id).is("removed_at", null).order("created_at", { ascending: false });
+  const sb = await createClient();
+  // Every column, so the load a driver's document belongs to (20261120020800) is read where that update is installed
+  // and the list still works where it is not; only the fields below leave the server.
+  const { data, error } = await sb.from("order_documents").select("*").eq("order_id", id).is("removed_at", null).order("created_at", { ascending: false });
   if (error) return { installed: false, documents: [] };
-  return { installed: true, documents: (data ?? []) as OrderDocument[] };
+  const rows = (data ?? []) as Array<Record<string, unknown>>;
+  const loadIds = [...new Set(rows.map((r) => r.load_id).filter((v): v is string => typeof v === "string"))];
+  const loads = loadIds.length ? (((await sb.from("order_loads").select("id, load_number").in("id", loadIds)).data ?? []) as Array<{ id: string; load_number: number }>) : [];
+  const numberOf = new Map(loads.map((l) => [l.id, l.load_number]));
+  return {
+    installed: true,
+    documents: rows.map((r) => ({
+      id: String(r.id), kind: r.kind as OrderDocumentKind, stop_id: (r.stop_id as string | null) ?? null, file_name: String(r.file_name), mime_type: String(r.mime_type),
+      size_bytes: Number(r.size_bytes), created_at: String(r.created_at), uploaded_by: (r.uploaded_by as string | null) ?? null,
+      load_number: typeof r.load_id === "string" ? numberOf.get(r.load_id) ?? null : null,
+    })),
+  };
 }

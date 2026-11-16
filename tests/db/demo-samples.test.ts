@@ -468,6 +468,28 @@ describe.skipIf(!available)("demo feature samples", () => {
               (select count(*) from public.ticket_locations where company_id = $1) placed`, [w.company]);
     expect(Number(pod.rows[0].placed)).toBe(Math.min(5, Number(pod.rows[0].located)));
 
+    // Sample ticket photos (UX13, 20261120020900): one stamped photo on each demo customer's latest confirmed ticket, at
+    // most 8, attached and stored in the private bucket, readable by the customer's portal function only for their own.
+    type Photo = { ticket_id: string; customer_id: string; path: string; stored: boolean; size: number; bytes: string | null };
+    const samplePhotos = async () => (await q<Photo>(
+      `select a.ticket_id, o.customer_id, a.object_path path, a.size_bytes size,
+              exists (select 1 from storage.objects so where so.bucket_id = 'ticket-photos' and so.name = a.object_path) stored,
+              (select so.metadata ->> 'size' from storage.objects so where so.bucket_id = 'ticket-photos' and so.name = a.object_path) bytes
+         from public.ticket_attachments a join public.delivery_tickets t on t.id = a.ticket_id join public.orders o on o.id = t.order_id
+        where a.company_id = $1 and a.status = 'attached' and a.upload_key = md5('demo-ticket-photo:' || a.ticket_id::text)::uuid`, [w.company])).rows;
+    const photos = await samplePhotos();
+    const confirmedCustomers = Number((await q<{ n: string }>(
+      "select count(distinct o.customer_id) n from public.delivery_tickets t join public.orders o on o.id = t.order_id where t.company_id = $1 and t.status = 'accepted'", [w.company])).rows[0].n);
+    expect(photos.length).toBe(Math.min(8, confirmedCustomers));
+    expect(photos.length).toBeGreaterThan(0);
+    expect(new Set(photos.map((p) => p.customer_id)).size).toBe(photos.length); // one per customer
+    expect(photos.every((p) => p.stored && Number(p.bytes) === p.size && p.path.startsWith(`${w.company}/ticket-photos/`))).toBe(true);
+    // The real file in local storage is the fictional JPEG (the owner's own session reads attached photos).
+    const file = await as(w.owner).storage.from("ticket-photos").download(photos[0].path);
+    expect(file.error).toBeNull();
+    const head = new Uint8Array(await file.data!.arrayBuffer()).slice(0, 3);
+    expect([...head]).toEqual([0xff, 0xd8, 0xff]);
+
     // Site notes from customers (B94): one pending note for the office.
     const notes = await q<{ n: string }>("select count(*) n from public.site_info_submissions where company_id = $1 and status = 'pending'", [w.company]);
     expect(Number(notes.rows[0].n)).toBe(1);
@@ -504,6 +526,7 @@ describe.skipIf(!available)("demo feature samples", () => {
     // A second run adds no places or routes.
     await ensureFeatureSamples(as(w.owner), todayIn(TZ));
     expect(await sampleReports()).toHaveLength(4); // and no second set of driver reports
+    expect((await samplePhotos()).map((p) => p.path).sort()).toEqual(photos.map((p) => p.path).sort()); // no second photo
     const partCostAgain = await q<{ n: string }>("select count(*) n from public.work_order_costs where company_id = $1 and kind = 'part'", [w.company]);
     expect(Number(partCostAgain.rows[0].n)).toBe(1);
     const onceEach = await q<{ price: string; drafts: string; limits: string }>(
@@ -755,5 +778,13 @@ describe.skipIf(!available)("demo feature samples", () => {
     const refused = await as(w.realOwner).rpc("demo_field_report_samples");
     expect(refused.error?.code).toBe("42501");
     expect(await reports()).toBe(n);
+    // Sample ticket photos (UX13): every step is refused for a real company's owner, even for its own confirmed ticket.
+    const photoCount = async () => Number((await q<{ n: string }>("select count(*) n from public.ticket_attachments where company_id = $1", [TOP_LINE])).rows[0].n);
+    const photosBefore = await photoCount();
+    const realTicket = (await q<{ id: string }>("select id from public.delivery_tickets where company_id = $1 and status = 'accepted' limit 1", [TOP_LINE])).rows[0]?.id ?? randomUUID();
+    expect((await as(w.realOwner).rpc("demo_ticket_photo_targets")).error?.code).toBe("42501");
+    expect((await as(w.realOwner).rpc("demo_ticket_photo_begin", { p_ticket: realTicket, p_mime: "image/jpeg", p_size: 100, p_sha256: "a".repeat(64) })).error?.code).toBe("42501");
+    expect((await as(w.realOwner).rpc("demo_ticket_photo_attach", { p_attachment: randomUUID() })).error?.code).toBe("42501");
+    expect(await photoCount()).toBe(photosBefore);
   }, 60_000);
 });

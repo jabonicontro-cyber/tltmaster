@@ -127,6 +127,11 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // verified authenticator app; revenue by month is Admin only and read only.
   "private.company_has_owner", "private.owner_invite_blocked", "public.platform_owner_invite", "public.platform_owner_invite_withdraw", "public.platform_owner_invites",
   "public.owner_invite_peek", "public.owner_invite_accept", "private.agreed_monthly_on", "public.platform_revenue_by_month",
+  // Driver proof of delivery (MK2, 20261120020800): private.portal_driver (driver.portal and the person's own linked
+  // driver record); only their own active assignment, a delivery stop of its order, kind fixed; lists only their own.
+  "public.driver_pod_begin", "public.driver_stop_proofs",
+  // Demo ticket photo samples (UX13, 20261120020900): the owner of a demo company only (private.demo_owner_company).
+  "public.demo_ticket_photo_targets", "public.demo_ticket_photo_begin", "public.demo_ticket_photo_attach",
   // Hauler settlements (20261120005700): payroll.manage for every change; totals recomputed in the database.
   "private.hauler_settlement_total", "private.hauler_settlement_draft", "public.hauler_set_commission", "public.hauler_settlement_create", "public.hauler_settlement_deduct", "public.hauler_settlement_remove_deduction", "public.hauler_settlement_set_status",
   // Fuel and IFTA (20261120005800): fleet.edit, or a driver for a truck they drove that day; demo sample for demo owners.

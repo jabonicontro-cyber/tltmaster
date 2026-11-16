@@ -37,6 +37,7 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
 | Dispatch updates (new load, changed date/time) | Working: in-app notices on My Day with **Got it** (20261114000500 triggers; Communications notifications) |
 | Acknowledgments | **Got it** marks the notice read on that account. It is *not* proof the driver read or understood it, and the screen says dispatch still confirms what matters |
 | Photos and digital tickets | Working (existing ticket form with photos; paper tickets supported) |
+| Proof of delivery at a stop (MK2) | Working once `20261120020800` is applied: each delivery stop of the driver's own load (today or the two days before) has Add proof of delivery (camera, or a photo or PDF file); the office sees it on the order and its billing page. Needs signal (section 4) |
 | Exceptions (delay, breakdown, equipment issue) | Working (existing field reports) |
 | Maintenance notices (truck and the trailer it usually pulls) | Working |
 | Messaging, announcements, critical alerts with acknowledgment | Working through Communications (same membership rules and acknowledgment audit); Messages tab when the login has `comms.message` |
@@ -78,7 +79,9 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
     many items will be deleted first. Items belong to the person who made them and are never sent under someone
     else's sign-in.
   - *Not offline.* Messages, photos, field reports, fuel and trip sheets, time off and anything for another day still
-    need signal.
+    need signal. Proof of delivery at a stop (MK2, 2026-11-14) too: without signal nothing is sent, the stop says
+    "Not sent: no signal", and the photo waits on that screen (not saved on the phone) to go with Retry or as soon as
+    the phone is back online; a retry reuses its upload key, so Taviron never keeps a second copy.
 - **Signing in without typing (DS1):** the office shows a one-time QR code (Fleet → a driver); the phone's camera opens
   it and the phone is signed in on My Day. My Day then offers face or fingerprint sign-in when the site has passkeys on
   (ACCOUNT_PROVISIONING §7). On iPhone a home-screen app keeps its own sign-in apart from Safari: a code opened from the

@@ -1,10 +1,11 @@
 import "server-only";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays } from "@/lib/dates";
 import { calculatePeriod, loadActiveRules } from "@/server/payroll/calculate";
 import { triageRules } from "@/lib/maintenance-triage";
 import { demoAssign, demoConfirmOffer } from "./assign";
+import { SAMPLE_TICKET_PHOTOS } from "./ticket-photo-images";
 
 // Feature sample data shared by every demo (presenter seed, prospect seed and Refresh demo data), so each
 // released feature is demonstrable in every demo mode and existing demos receive it without being recreated
@@ -134,6 +135,9 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("speed history", await speedHistory(db));
   // Proof of delivery (B98): some confirmed tickets placed at their job site, as a driver's phone would record them.
   note("proof of delivery positions", await ticketLocations(db));
+  // Ticket photos for demo customers (UX13, 20261120020900): one fictional photo stamped SAMPLE on each demo customer's
+  // latest confirmed ticket (at most 8), stored the way a driver's phone stores one, so the portal shows them.
+  note("sample ticket photos", await ticketPhotoSamples(db, result.notes));
   // Site notes from customers (B94): one pending note for the office to review.
   note("site note from a customer", await siteNote(db));
   // Safety incidents (B103): a closed near miss, an accident under investigation with an open action, a new spill.
@@ -2234,6 +2238,47 @@ async function ticketLocations(db: Db): Promise<number> {
   if (missing(error)) return 0;
   if (error) throw new Error(`Demo samples (proof of delivery): ${error.message}`);
   return Number(data ?? 0);
+}
+
+/** The refresh report's line when sample ticket photos could not be stored. */
+export const TICKET_PHOTOS_NOT_STORED = "Sample ticket photos not added: the photo files could not be stored. Try Refresh demo data again later.";
+
+/**
+ * Sample ticket photos (UX13): the database names the tickets that still need one (demo owner only), reserves each
+ * photo's path, the demo owner's own session uploads the file under the existing storage policy (only that reserved
+ * path), and the database attaches it after checking the stored size and type. The images are fictional and stamped
+ * SAMPLE; freight demos get bills of lading. A repeat adds nothing: each ticket's sample is recognised by its key.
+ */
+async function ticketPhotoSamples(db: Db, notes: string[]): Promise<number> {
+  const targets = await db.rpc("demo_ticket_photo_targets");
+  if (missing(targets.error)) return 0;
+  if (targets.error) throw new Error(`Demo samples (ticket photos): ${targets.error.message}`);
+  const list = (targets.data ?? []) as Array<{ ticket_id: string; ticket_number: string }>;
+  if (!list.length) return 0;
+  const images = SAMPLE_TICKET_PHOTOS[(await demoIndustry(db)) === "freight" ? "freight" : "aggregate"];
+  let added = 0;
+  for (const t of list) {
+    // The same image for the same ticket every time, so a retry declares the same file.
+    const bytes = Buffer.from(images[parseInt(t.ticket_id.slice(-2), 16) % images.length], "base64");
+    const sha256 = createHash("sha256").update(bytes).digest("hex");
+    const begin = await db.rpc("demo_ticket_photo_begin", { p_ticket: t.ticket_id, p_mime: "image/jpeg", p_size: bytes.length, p_sha256: sha256 });
+    // Another owner of this demo is adding this one at the same moment: theirs completes it.
+    if (begin.error?.code === "42501") continue;
+    if (begin.error) throw new Error(`Demo samples (ticket photo): ${begin.error.message}`);
+    const r = begin.data as { attachment_id: string | null; object_path: string | null; status: string };
+    if (!r.attachment_id || !r.object_path || (r.status !== "pending" && r.status !== "uploaded")) continue;
+    if (r.status === "pending") {
+      const up = await db.storage.from("ticket-photos").upload(r.object_path, bytes, { contentType: "image/jpeg", upsert: false, cacheControl: "private, max-age=0" });
+      if (up.error && !/exists|duplicate/i.test(up.error.message)) {
+        notes.push(TICKET_PHOTOS_NOT_STORED);
+        return added;
+      }
+    }
+    const attach = await db.rpc("demo_ticket_photo_attach", { p_attachment: r.attachment_id });
+    if (attach.error) throw new Error(`Demo samples (ticket photo): ${attach.error.message}`);
+    if (attach.data) added++;
+  }
+  return added;
 }
 
 async function speedHistory(db: Db): Promise<number> {
