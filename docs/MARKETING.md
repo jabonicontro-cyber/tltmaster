@@ -102,6 +102,24 @@ public page.
 - **Published, brief only:** none.
 - **Not published:** AI explanation of a plan (in development), Route planning (built and marked available in the catalog; not published — publishing is a person's decision).
 
+**2026-11-14:**
+- **Owner decision 2026-11-14 ("Yes, publish them"):** publish the ten built features truck-day-jobs, site-directions,
+  customer-crm, driver-payroll, dispatch-bases, ticket-payments, support-center, compliance-calendar, order-stops and
+  help-center, each once its screenshot passes the capture quality gate. Their shots are in `screenshots.json` (ready
+  texts chosen so an empty page fails the gate: for example `dispatch-bases` needs a demo with two bases and
+  `ticket-payments` a paid ticket). Not captured yet (no plain-named capture account in the local demo), so they stay
+  `published: false`; after `node scripts/capture-screenshots.mjs --only <ids>` passes, set `published: true` and
+  `verified` for the shots that passed, and leave the rest unpublished.
+- **Catalogued, not published (owner: they stay unpublished):** detention charges (DT1), typed prices checked before
+  billing (SEC4a M1), freight mode (MK1/MK4), a simpler menu for small fleets (SF1), accessibility settings (UX19),
+  driver sign-in by QR code (DS1). Fuel receipt amounts for people who can see billing (SEC5) is a point of Fuel and
+  IFTA. The platform console is staff-only and not in the catalog.
+- **Limitations corrected** against the code: wait times (detention is built), maintenance (parts are), route planning
+  (truck dimensions are recorded and used by Plan a route), driver portal (works without signal), inspections (defect
+  photos), dispatch bases (work orders filter by base), order to cash (invoicing is built), employees (payroll is).
+- **One load, start to finish** (UX16) on the home page: six steps from the quote to the invoice, each beside the real
+  screen of a published feature (`src/lib/site/load-story.ts`, `tests/unit/site-load-story.test.ts`).
+
 Next screenshots to add, if the demo data shows them well: Time off approvals (the demo has two pending requests), a
 richer Communications sample (the demo has one workspace conversation).
 

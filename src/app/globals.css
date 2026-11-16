@@ -484,6 +484,7 @@
      reverses on the way back); --i offsets items in a row so a grid arrives left to right.
    - .site-parallax / .site-parallax-fast: the hero product drifts up as the page scrolls, the phone a little faster.
    - .site-lift: cards rise slightly under a mouse (hover devices only).
+   - .site-story-fill: the path of "One load, start to finish" draws itself between steps (view timeline).
    One curve (ease-out-quint), short durations, nothing loops. Reduced motion: none of it runs. */
 @media (prefers-reduced-motion: no-preference) {
   .site-enter {
@@ -516,6 +517,18 @@
       from {
         opacity: 0;
         transform: translateY(22px) scale(0.985);
+      }
+    }
+    /* "One load, start to finish" (home page): the path between two steps draws itself as the step scrolls past.
+       Without this rule (reduced motion, no view timelines) the path is simply shown in full. */
+    .site-story-fill {
+      animation: site-story-fill linear both;
+      animation-timeline: view();
+      animation-range: cover 15% cover 60%;
+    }
+    @keyframes site-story-fill {
+      from {
+        transform: scaleY(0);
       }
     }
   }

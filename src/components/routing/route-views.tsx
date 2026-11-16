@@ -83,7 +83,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
         <Notice title="Straight-line distances">{status.reason} Straight lines are the shortest possible distance; trucks drive further.</Notice>
       ) : (
         <Notice title="Truck routing by HERE">
-          Road distances and driving times use HERE&apos;s standard truck profile (truck dimensions are not recorded in Taviron yet). Notices are
+          Road distances and driving times here use HERE&apos;s standard truck profile; Plan a route uses each truck&apos;s recorded dimensions. Notices are
           HERE&apos;s own; a route without notices is not a guarantee the road is clear. Check closures and seasonal limits.
           {usage?.capped && " Some legs were not routed on this page: choose one truck to route the rest."}
         </Notice>

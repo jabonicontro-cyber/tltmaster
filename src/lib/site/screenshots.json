@@ -434,6 +434,114 @@
       "ready": "Welcome,",
       "alt": "A customer's own portal in a demo company: account balance, today's deliveries, open orders with planned loads, and menus for booking loads, tickets, quotes, invoices and support",
       "caption": "Customer portal, as the customer sees it. Demo company, fictional data."
+    },
+    {
+      "id": "truck-day-jobs",
+      "file": "truck-day-jobs.png",
+      "feature": "truck-day-jobs",
+      "path": "/dispatch",
+      "viewport": "desktop",
+      "ready": "Trucks for the day",
+      "scroll": "Trucks for the day",
+      "alt": "The dispatch board in a demo company with an order that runs as trucks for the day: each truck assigned like a load and released when its day ends",
+      "caption": "Trucks for the day. Demo company, fictional data."
+    },
+    {
+      "id": "site-directions",
+      "file": "site-directions.png",
+      "feature": "site-directions",
+      "path": "/customers?q=Brightwater",
+      "open": "^Brightwater Landscapes \\(demo\\)$",
+      "viewport": "desktop",
+      "ready": "Checked ",
+      "scroll": "Checked ",
+      "scrollPartial": true,
+      "alt": "A customer's job sites in a demo company: safety and access directions marked verified, with who checked them and when",
+      "caption": "Checked job site directions. Demo company, fictional data."
+    },
+    {
+      "id": "customer-crm",
+      "file": "customer-crm.png",
+      "feature": "customer-crm",
+      "path": "/customers/pipeline",
+      "viewport": "desktop",
+      "ready": "Qualified",
+      "alt": "The sales pipeline in a demo company: open opportunities by stage with their values, and the follow-ups due this week",
+      "caption": "Sales pipeline. Demo company, fictional data."
+    },
+    {
+      "id": "driver-payroll",
+      "file": "driver-payroll.png",
+      "feature": "driver-payroll",
+      "path": "/payroll",
+      "open": "\\d{4} – ",
+      "viewport": "desktop",
+      "ready": "Earnings by driver",
+      "alt": "An approved payroll period in a demo company: gross earnings by driver calculated from accepted delivery tickets, with exceptions and adjustments",
+      "caption": "Driver payroll. Demo company, fictional data. Gross earnings only."
+    },
+    {
+      "id": "dispatch-bases",
+      "file": "dispatch-bases.png",
+      "feature": "dispatch-bases",
+      "path": "/reports",
+      "viewport": "desktop",
+      "ready": "By Dispatch Base",
+      "scroll": "By Dispatch Base",
+      "alt": "The per-base report in a demo company with more than one dispatch base: trucks, drivers, orders, loads and ordered value per base, with totals that add up",
+      "caption": "Multiple dispatch bases. Demo company, fictional data."
+    },
+    {
+      "id": "ticket-payments",
+      "file": "ticket-payments.png",
+      "feature": "ticket-payments",
+      "path": "/billing/payments",
+      "viewport": "desktop",
+      "ready": "Paid and part-paid tickets",
+      "alt": "Payments by ticket in a demo company: a customer's open tickets, a recorded payment applied to ticket numbers, and the credit left over",
+      "caption": "Payments by ticket. Demo company, fictional data."
+    },
+    {
+      "id": "support-center",
+      "file": "support-center.png",
+      "feature": "support-center",
+      "path": "/support?filter=all",
+      "viewport": "desktop",
+      "ready": "Load arrived after the crew left",
+      "alt": "The customer support center in a demo company: cases from the customer portal and from the office, each with its type, owner and status",
+      "caption": "Customer support center. Demo company, fictional data."
+    },
+    {
+      "id": "compliance-calendar",
+      "file": "compliance-calendar.png",
+      "feature": "compliance-calendar",
+      "path": "/fleet/compliance",
+      "viewport": "desktop",
+      "ready": "Next 30 days",
+      "alt": "The compliance calendar in a demo company: driver credentials, truck and trailer documents and preventive service, grouped as overdue, next 30 days and later",
+      "caption": "Compliance calendar. Demo company, fictional data."
+    },
+    {
+      "id": "order-stops",
+      "file": "order-stops.png",
+      "feature": "order-stops",
+      "path": "/dispatch",
+      "viewport": "desktop",
+      "ready": " → ",
+      "scroll": " → ",
+      "scrollPartial": true,
+      "alt": "The dispatch board in a demo company with a load that has stops: the route from the first pickup to the last delivery shown on the order",
+      "caption": "Stops on a load. Demo company, fictional data."
+    },
+    {
+      "id": "help-center",
+      "file": "help-center.png",
+      "feature": "help-center",
+      "path": "/help",
+      "viewport": "desktop",
+      "ready": "Show Me How",
+      "alt": "The Help Center in the app: step-by-step articles by topic and role, and guided how-tos that point at the next control",
+      "caption": "Help Center, inside the demo company."
     }
   ]
 }
