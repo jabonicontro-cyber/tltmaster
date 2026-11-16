@@ -23,6 +23,8 @@ interface Props {
   permissions: { edit: boolean; send: boolean; status: boolean; convert: boolean };
   /** Order created from this quote, when one exists and the user can see orders. */
   order: { id: string; order_number: string } | null;
+  /** Orders switched off (MOD1, quotes only): accepting a quote marks it won; no order is offered. */
+  quotesOnly?: boolean;
 }
 
 const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
@@ -32,7 +34,7 @@ const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
   canceled: "Cancel quote",
 };
 
-export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order }: Props) {
+export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, quotesOnly = false }: Props) {
   const router = useRouter();
   const [emailOpen, setEmailOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
@@ -56,7 +58,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
       icon={t === "accepted" ? <CheckCircle2 className="size-4" /> : t === "canceled" || t === "declined" ? <XCircle className="size-4" /> : undefined}
       onClick={() => { setNote(""); setStatusTarget(t); }}
     >
-      {STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
+      {t === "accepted" && quotesOnly ? "Mark won" : STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
     </Button>
   );
 
@@ -73,7 +75,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
           <ClipboardList className="size-4" aria-hidden /> Order {order.order_number}
         </Link>
       )}
-      {!order && status === "accepted" && permissions.convert && (
+      {!order && status === "accepted" && permissions.convert && !quotesOnly && (
         <Button icon={<ClipboardList className="size-4" />} onClick={() => setConvertOpen(true)}>
           Convert to order
         </Button>

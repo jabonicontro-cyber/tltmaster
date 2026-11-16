@@ -165,6 +165,8 @@ export interface QuoteRow {
   first_sent_at: string | null;
   last_sent_at: string | null;
   accepted_at: string | null;
+  /** Who marked it accepted (won), MOD1 (20261120023200); absent until installed. */
+  accepted_by?: string | null;
   closed_at: string | null;
   status_note: string;
   is_sample: boolean;

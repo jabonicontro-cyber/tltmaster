@@ -126,11 +126,12 @@ Today every ticket needs an order, a load, an assignment, a truck and a driver (
 
 ## 6. Quotes without Orders
 
-- Accepting a quote never created an order; that stays. With Orders off the quote shows **Won** with who and when
-  (`quotes.accepted_by`, new, filled from the status history for earlier quotes), and counts as won in the pipeline,
-  the Command Center and reports.
+- Today accepting a quote also creates its order automatically (trigger from `20261027000100`). With Orders switched
+  off it no longer does: the quote shows **Won** with who and when (`quotes.accepted_by`, new, filled from the status
+  history for earlier quotes) and counts as won in the pipeline, the Command Center and reports.
 - The database refuses `convert_quote_to_order` while Orders is off ("Orders are switched off …"), so no path creates
-  an order. When Orders is switched on, each won quote has its existing one-click **Convert to order**.
+  an order. When Orders is switched on, each won quote has its existing one-click **Convert to order**. Companies
+  with Orders on keep today's automatic order on acceptance.
 
 ## 7. Enforced in the database vs the app
 
@@ -140,7 +141,7 @@ Today every ticket needs an order, a load, an assignment, a truck and a driver (
 | Admin preset only before go-live (or for demos); Admin level only | Database (`platform_set_company_modules`) |
 | Every change audited | Database (audit log, platform activity) |
 | Ticket without a load assignment only while Dispatch is off; never on a dispatched load; ticket loads never assigned | Database |
-| No order from a quote while Orders is off | Database (`convert_quote_to_order`) |
+| No order from a quote while Orders is off | Database (`convert_quote_to_order`, the acceptance trigger) |
 | Hiding menus, pages, steps, lists and links | App (`src/lib/modules.ts`, `ModuleGate`) |
 | Creating orders, dispatching loads while switched off | App (pages and actions hidden and refused); the database keeps permissions as they are, because switching off changes no permission |
 

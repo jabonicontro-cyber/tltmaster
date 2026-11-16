@@ -7,12 +7,15 @@ import { activityLabel, type QuoteActivity } from "@/lib/quotes/activity";
 import { isPastExpiration } from "@/lib/quotes/status";
 import type { QuoteListRow } from "@/server/data/types";
 import { getSay } from "@/server/industry";
+import { moduleIsOn } from "@/server/modules";
 
 /**
  * Quotes as a table. Rows sorted by activity (the Quotes list, WK1) carry it, and the table then shows a "Last activity"
  * column so the order explains itself.
  */
 export async function QuoteTable({ rows, today, showCustomer = true, timezone }: { rows: Array<QuoteListRow & { activity?: QuoteActivity }>; today: string; showCustomer?: boolean; timezone?: string }) {
+  // Quotes only (MOD1): with Orders switched off an accepted quote reads "Won".
+  const won = !(await moduleIsOn("orders"));
   const say = await getSay();
   const showActivity = rows.some((r) => r.activity);
   return (
@@ -66,7 +69,7 @@ export async function QuoteTable({ rows, today, showCustomer = true, timezone }:
                   </Td>
                 )}
                 <Td>
-                  <QuoteStatusBadge status={q.status} />
+                  <QuoteStatusBadge status={q.status} won={won} />
                 </Td>
                 <Td align="right" className="font-semibold whitespace-nowrap">
                   {formatCents(q.total_cents)}
