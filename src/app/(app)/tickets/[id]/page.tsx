@@ -123,7 +123,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         }
         description={
           <>
-            <Link href={`/orders/${t.order_id}`} className="font-semibold text-ink hover:underline">{s.order_number}</Link> load {s.load_number} · {s.customer_name}
+            <Link href={`/orders/${t.order_id}`} className="font-semibold text-ink hover:underline">{s.order_number}</Link>{s.without_dispatch ? "" : ` load ${s.load_number}`} · {s.customer_name}
           </>
         }
         actions={

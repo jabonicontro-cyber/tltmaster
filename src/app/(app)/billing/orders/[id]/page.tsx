@@ -88,6 +88,8 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   const person = (uid: string | null) => people[uid ?? ""] ?? "Someone";
   // Detention proposals (DT1, 20261120008200): none before the migration or when the customer has no detention set.
   const detention = await (await createClient()).rpc("detention_proposals", { p_order: id });
+  // Deliveries recorded from their ticket while Dispatch was off (MOD1): no plan or truck to show; none before 20261120023100.
+  const fromTicket = new Set(((((await (await createClient()).from("order_loads").select("*").eq("order_id", id)).data ?? []) as Array<{ id: string; from_ticket?: boolean }>).filter((l) => l.from_ticket).map((l) => l.id)));
   const detentionRows = (detention.error ? [] : detention.data ?? []) as DetentionRow[];
   // Truck-day orders (UX11): truck-hours from the company's setting; absent before 20261120008600.
   const truckHoursRes = await (await createClient()).rpc("truck_day_hours", { p_order: id });
@@ -208,8 +210,14 @@ export default async function OrderBillingPage({ params, searchParams }: { param
                       <Tr key={l.load_id}>
                         <Td>
                           <span className="font-semibold">Load {l.load_number}</span> <Badge tone={st.tone}>{say(st.label)}</Badge>
-                          <div className="text-sm text-muted tabular">{formatDate(l.load_date)}, {formatTime(l.start_time)} – {formatTime(l.end_time)}</div>
-                          <div className="text-sm text-muted">{l.truck_id ? `${names.trucks.get(l.truck_id) ?? "–"} · ${l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : "–"}` : "Not assigned"}</div>
+                          {fromTicket.has(l.load_id) ? (
+                            <div className="text-sm text-muted tabular">{formatDate(l.load_date)}, entered from its ticket (no dispatch)</div>
+                          ) : (
+                            <>
+                              <div className="text-sm text-muted tabular">{formatDate(l.load_date)}, {formatTime(l.start_time)} – {formatTime(l.end_time)}</div>
+                              <div className="text-sm text-muted">{l.truck_id ? `${names.trucks.get(l.truck_id) ?? "–"} · ${l.driver_id ? names.drivers.get(l.driver_id) ?? "–" : "–"}` : "Not assigned"}</div>
+                            </>
+                          )}
                         </Td>
                         <Td>
                           {lt.length === 0 && <span className="text-sm text-muted">None</span>}
