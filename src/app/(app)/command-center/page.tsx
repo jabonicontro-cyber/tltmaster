@@ -33,6 +33,8 @@ import { priceCheckRow } from "@/lib/orders/price-check";
 import { timeOffWaitingRow } from "@/lib/time-off-waiting";
 import { timeOffWaitingForMe } from "@/server/data/time-off-waiting";
 import { requireAccess } from "@/server/auth";
+import { getModulesOff } from "@/server/modules";
+import { permissionModuleOn } from "@/lib/modules";
 import { ACTIVITY_PAGE_SIZE, QUEUE_PAGE_SIZE, loadActivity, loadAssigneeOptions, loadLayout, loadOverview, type Loaded, type QueuePage } from "@/server/data/command-center";
 import { listCustomerOptions } from "@/server/data/customers";
 import { loadQuoteDashboard } from "@/server/data/dashboard";
@@ -93,6 +95,9 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
   if (isAccountantOnly(access.permissions)) redirect("/accountant");
   const sp = await searchParams;
   const ops = OPERATIONS.some(has);
+  // Workflow modules (MOD1): an area the company switched off shows nothing here (its permission stays as it is).
+  const off = await getModulesOff();
+  const uses = (p: Permission) => has(p) && permissionModuleOn(p, off);
   const kind = sp.kind && (EXCEPTION_KINDS as readonly string[]).includes(sp.kind) ? (sp.kind as ExceptionKind) : undefined;
   const mine = sp.mine === "1";
   const hidden = sp.hidden === "1";
@@ -112,35 +117,35 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
 
   const none = Promise.resolve(null);
   // Taviron Live: the next 7 days for people who see dispatch; estimated value only for people who see billing.
-  const outlookP = has("dispatch.view") ? loadOutlook(today, has("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
-  const speedCan = { dispatch: has("dispatch.view"), tickets: has("tickets.view") };
+  const outlookP = uses("dispatch.view") ? loadOutlook(today, uses("billing.view")).then((d) => ({ ok: true as const, data: d }), () => ({ ok: false as const })) : none;
+  const speedCan = { dispatch: uses("dispatch.view"), tickets: uses("tickets.view") };
   // "Price to check" (financial review M1): typed prices the office confirms. Listed here from the orders themselves
   // (the database queue has no such kind), only for people who confirm prices; nothing shown if it cannot be read.
-  const priceChecksP = ops && canConfirmPrices(access) ? pendingPriceChecks() : Promise.resolve(null);
+  const priceChecksP = ops && canConfirmPrices(access) && !off.includes("orders") ? pendingPriceChecks() : Promise.resolve(null);
   // Time off waiting for this person's decision (O1): an app-level row in the queue for time_off.approve holders (the
-  // database-built queue has no such kind); nothing shown if it cannot be read.
-  const timeOffP = ops ? timeOffWaitingForMe(access).catch(() => null) : Promise.resolve(null);
+  // database-built queue has no such kind); nothing shown if it cannot be read, or while Time Off is switched off.
+  const timeOffP = ops && !off.includes("time_off") ? timeOffWaitingForMe(access).catch(() => null) : Promise.resolve(null);
   const [attention, activity, people, names, layout, quotes, customers, fleet, driver, outlook, speed, weather, leaks, support, money] = await Promise.all([
     ops ? loadOverview({ kind, mine, page, hidden, mineLimit: 5 }) : Promise.resolve(null),
     loadActivity(access, activityPage),
     canAssign ? loadAssigneeOptions() : Promise.resolve([]),
     getUserNames(),
     loadLayout(),
-    has("quotes.view") ? loadQuoteDashboard({ from, to, customer }, today, settings.quote_followup_days).catch(() => null) : none,
-    has("quotes.view") ? listCustomerOptions() : Promise.resolve([]),
+    uses("quotes.view") ? loadQuoteDashboard({ from, to, customer }, today, settings.quote_followup_days).catch(() => null) : none,
+    uses("quotes.view") ? listCustomerOptions() : Promise.resolve([]),
     has("fleet.view") ? fleetOverview().catch(() => null) : none,
     has("driver.portal") ? loadDriverHome() : none,
     outlookP,
     speedCan.dispatch || speedCan.tickets ? loadSpeed(timezone, speedCan).catch(() => null) : none,
     // Weather at job sites with loads (B92), for dispatch; a demo reads a sample forecast (DEMO_TENANTS §2).
-    has("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
+    uses("dispatch.view") ? loadSiteWeather(today, Boolean(access.isDemo)).catch(() => null) : none,
     // Revenue check (B110): open findings for people who see billing; nothing shown if it cannot be loaded.
-    has("billing.view") ? listLeaks().catch(() => null) : none,
+    uses("billing.view") ? listLeaks().catch(() => null) : none,
     // Support cases past the company's first-reply target (B138); off until the company sets a target.
-    has("customers.view") ? supportOverdue() : none,
+    uses("customers.view") && !off.includes("support") ? supportOverdue() : none,
     // Money owed (owner first): open receivables from issued invoices, for people who see billing; the same records and
     // rules as Billing → Invoices. installed false before the invoicing update; null when it cannot be read.
-    has("billing.view")
+    uses("billing.view")
       ? Promise.all([listInvoices(), invoicingSettings()]).then(([inv, set]) => ({ installed: Boolean(inv) && set.installed, issuer: set.issuer, owed: moneyOwed(inv ?? [], today) }), () => null)
       : none,
   ]);
@@ -165,10 +170,10 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     return `/command-center${s ? `?${s}` : ""}${anchor}`;
   };
   const back = href({ kind, mine, hidden, page });
-  const cardCan = { ticketsEdit: has("tickets.edit"), dispatch: has("dispatch.view"), assign: canAssign };
+  const cardCan = { ticketsEdit: uses("tickets.edit"), dispatch: uses("dispatch.view"), assign: canAssign };
   const s = summary?.ok ? summary.data : null;
   // Tiles in the pinned strip: three always, Loads today with dispatch, Money owed with billing.
-  const tileCount = 3 + (todayDay ? 1 : 0) + (has("billing.view") ? 1 : 0);
+  const tileCount = 3 + (todayDay ? 1 : 0) + (uses("billing.view") ? 1 : 0);
   const linkedDriver = driver?.ok ? driver.data : null;
 
   // ---------------------------------------------------------------------------
@@ -403,7 +408,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
     });
   }
 
-  if (has("quotes.view")) {
+  if (uses("quotes.view")) {
     sections.push({
       id: "sales",
       title: "Sales and quotes",
@@ -466,7 +471,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
         actions={
           <>
             <RefreshButton />
-            {has("quotes.edit") && <ButtonLink href="/quotes/new" icon={<Plus className="size-4" />}>New quote</ButtonLink>}
+            {uses("quotes.edit") && <ButtonLink href="/quotes/new" icon={<Plus className="size-4" />}>New quote</ButtonLink>}
           </>
         }
       />
@@ -539,7 +544,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
                     : <span className="font-semibold text-green-700">All covered</span>}
                 </StatTile>
               )}
-              {has("billing.view") && <MoneyOwedTile money={money} wide={tileCount % 2 === 1} />}
+              {uses("billing.view") && <MoneyOwedTile money={money} wide={tileCount % 2 === 1} />}
             </div>
             <p className="mt-3 px-1 text-xs text-muted">As of {formatDateTime(s.as_of, timezone)} · read live from the records</p>
           </section>
@@ -549,7 +554,7 @@ export default async function CommandCenterPage({ searchParams }: { searchParams
           </div>
         ))}
 
-      {!ops && !has("quotes.view") && !linkedDriver ? (
+      {!ops && !uses("quotes.view") && !linkedDriver ? (
         <EmptyState title="Nothing to coordinate for your role yet" description="Your role does not include orders, dispatch, tickets, billing, fleet or quotes. Use the menu for the modules you can open." />
       ) : (
         overview ? (

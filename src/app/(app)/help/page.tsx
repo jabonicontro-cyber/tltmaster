@@ -8,6 +8,7 @@ import { searchArticles } from "@/lib/help/search";
 import { requireAccess } from "@/server/auth";
 import { helpFor, logHelpSearch } from "@/server/help";
 import { GuideStart } from "@/components/help/guide-start";
+import { getModulesOff } from "@/server/modules";
 
 export const metadata = { title: "Help Center" };
 
@@ -15,7 +16,7 @@ export const metadata = { title: "Help Center" };
 export default async function HelpCenterPage({ searchParams }: { searchParams: Promise<{ q?: string; category?: string }> }) {
   const access = await requireAccess();
   const sp = await searchParams;
-  const { articles, guides } = helpFor(access.permissions);
+  const { articles, guides } = helpFor(access.permissions, await getModulesOff());
   const q = (sp.q ?? "").trim().slice(0, 120);
   const results = q ? searchArticles(articles, q) : [];
   if (q) await logHelpSearch(q, results.length).catch(() => undefined);

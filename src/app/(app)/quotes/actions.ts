@@ -19,6 +19,7 @@ import { loadQuoteDocument } from "@/server/quotes/document-loader";
 import { renderQuotePdf } from "@/server/pdf/quote-pdf";
 import type { EffectivePrice } from "@/server/data/types";
 import { deliveryProof, withProof } from "@/server/deliveries";
+import { moduleIsOn } from "@/server/modules";
 
 function revalidateQuote(id: string) {
   revalidatePath("/quotes");
@@ -257,7 +258,8 @@ export async function setQuoteStatus(quoteId: string, status: string, note: stri
       // Acceptance creates the Confirmed order in the same database transaction (N15).
       revalidatePath("/orders");
       const { data: order } = await supabase.from("orders").select("order_number").eq("source_quote_id", quoteId).maybeSingle();
-      return ok(undefined, order ? `Quote marked accepted. Order ${order.order_number} was created as Confirmed.` : "Quote marked accepted.");
+      // Quotes only (MOD1): with Orders switched off an accepted quote is won and no order is made.
+      return ok(undefined, order ? `Quote marked accepted. Order ${order.order_number} was created as Confirmed.` : (await moduleIsOn("orders")) ? "Quote marked accepted." : "Quote marked won. No order is made: your company doesn't use Orders.");
     }
     return ok(undefined, `Quote marked ${status}.`);
   });

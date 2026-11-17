@@ -8,6 +8,7 @@ import { ErrorState, Notice } from "@/components/ui/states";
 import { SubscriptionCard } from "@/components/admin/subscription-card";
 import { PlanUsageCard, type SubscriptionState } from "@/components/admin/plan-usage-card";
 import { PortalEntitlementCard, type PortalEntitlement } from "@/components/admin/portal-entitlement-card";
+import { StartingSetupCard, type CompanyModules } from "@/components/admin/starting-setup-card";
 import { HiredTrucksCard, type HiredTrucksEntitlement } from "@/components/admin/hired-trucks-card";
 import { OwnerInviteCard, type OwnerInviteState } from "@/components/admin/owner-invite-card";
 import type { Lifecycle, PlanVersion } from "@/lib/platform/lifecycle";
@@ -51,6 +52,7 @@ const SAVED: Record<string, string> = {
   hired_on: "Hired trucks switched on for this company.",
   hired_off: "Hired trucks switched off. Haulers and past offers are kept.",
   portal_off: "Customer portal entitlement removed. The portal is off; accounts and records are kept.",
+  modules: "Starting setup saved. The owner can adjust it in Settings → What you use.",
 };
 
 export default async function CompanyPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string; saved?: string; before?: string }> }) {
@@ -85,6 +87,9 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
   // Hired trucks add-on (20261120003700); not shown before that update.
   const he = await supabase.rpc("platform_hired_trucks_entitlement", { p_company: id });
   const hired = he.error ? null : (he.data as HiredTrucksEntitlement);
+  // Starting setup (MOD1, 20261120023000); not shown before that update.
+  const mo = await supabase.rpc("platform_company_modules", { p_company: id });
+  const modules = mo.error ? null : (mo.data as CompanyModules);
   const lifecycleMissing = life?.error?.code === "PGRST202" || plans?.error?.code === "PGRST202";
   // Subscription notices (20261120008800): live customer companies only; not shown before that update.
   const lifeData = (life?.data ?? null) as Lifecycle | null;
@@ -195,6 +200,12 @@ export default async function CompanyPage({ params, searchParams }: { params: Pr
           </DataTable>
         )}
       </Panel>
+
+      {modules ? (
+        <Panel className="mt-5">
+          <StartingSetupCard companyId={c.id} state={modules} />
+        </Panel>
+      ) : null}
 
       {portal ? (
         <Panel className="mt-5">

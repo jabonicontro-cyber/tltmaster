@@ -17,6 +17,7 @@ import { quantityError, unitRequiresWhole } from "@/lib/tickets/rules";
 import { adaptWording } from "@/lib/industry";
 import type { UnitRow } from "@/server/data/types";
 import { correctTicket, submitTicket, type TicketInput } from "@/app/(app)/tickets/actions";
+import { correctTicketWithoutDispatch } from "@/app/(app)/tickets/job-actions";
 
 export interface TicketFormValues {
   orderLineId: string;
@@ -48,9 +49,11 @@ interface Props {
   cancelHref: string;
   /** What the company hauls: a freight carrier reads "BOL number" and "Submit BOL" (T3). Missing means aggregate. */
   industry?: string;
+  /** A ticket entered without dispatch (MOD1): time, truck and driver are optional. */
+  withoutDispatch?: boolean;
 }
 
-export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, units, trucks, trailers, drivers, assignment, cancelHref, industry }: Props) {
+export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, units, trucks, trailers, drivers, assignment, cancelHref, industry, withoutDispatch = false }: Props) {
   const router = useRouter();
   const say = (text: string) => adaptWording(text, industry);
   const [v, setV] = useState(() => {
@@ -115,7 +118,12 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
       submissionKey,
       confirmDuplicate: confirmed,
     };
-    const r = mode === "new" ? await submitTicket(input) : await correctTicket(ticketId!, { ...input, reason });
+    const r =
+      mode === "new"
+        ? await submitTicket(input)
+        : withoutDispatch
+          ? await correctTicketWithoutDispatch(ticketId!, { ...input, externalReference: v.externalReference, notes: v.notes, trailerId: v.trailerId || null, truckId: v.truckId || null, driverId: v.driverId || null, reason })
+          : await correctTicket(ticketId!, { ...input, reason });
     setPending(false);
     if (!r.ok) {
       if ("needsConfirmation" in r) {
@@ -201,7 +209,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           <Field label="Delivery date" htmlFor="t-date" required error={fieldErrors.deliveredDate} className="sm:col-span-2">
             <DateInput id="t-date" value={v.deliveredDate} onChange={set("deliveredDate")} />
           </Field>
-          <Field label="Delivery time" htmlFor="t-time" required error={fieldErrors.deliveredTime} className="sm:col-span-2">
+          <Field label={withoutDispatch ? "Time (optional)" : "Delivery time"} htmlFor="t-time" required={!withoutDispatch} error={fieldErrors.deliveredTime} className="sm:col-span-2">
             <Input id="t-time" type="time" value={v.deliveredTime} onChange={set("deliveredTime")} />
           </Field>
           <Field label={say("Paper / scale ticket #")} htmlFor="t-ref" error={fieldErrors.externalReference} className="sm:col-span-2" hint="Leave blank only if there is none. It will be flagged.">
@@ -211,11 +219,14 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
       </Card>
 
       <Card>
-        <CardHeader title="Truck and driver" description={say("From the dispatch assignment. Change only if the paper ticket shows a different truck or driver.")} />
+        <CardHeader
+          title={withoutDispatch ? "Truck and driver (optional)" : "Truck and driver"}
+          description={withoutDispatch ? say("Pick them if the paper ticket shows them. Driver pay counts only tickets that name a driver.") : say("From the dispatch assignment. Change only if the paper ticket shows a different truck or driver.")}
+        />
         <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <Field label="Truck" htmlFor="t-truck" required error={fieldErrors.truckId}>
+          <Field label="Truck" htmlFor="t-truck" required={!withoutDispatch} error={fieldErrors.truckId}>
             <Select id="t-truck" value={v.truckId} onChange={set("truckId")}>
-              <option value="">Choose…</option>
+              <option value="">{withoutDispatch ? "Not recorded" : "Choose…"}</option>
               {trucks.map((t) => (
                 <option key={t.id} value={t.id}>{t.unit_number}{t.active ? "" : " (inactive)"}</option>
               ))}
@@ -229,9 +240,9 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
               ))}
             </Select>
           </Field>
-          <Field label="Driver" htmlFor="t-driver" required error={fieldErrors.driverId}>
+          <Field label="Driver" htmlFor="t-driver" required={!withoutDispatch} error={fieldErrors.driverId}>
             <Select id="t-driver" value={v.driverId} onChange={set("driverId")}>
-              <option value="">Choose…</option>
+              <option value="">{withoutDispatch ? "Not recorded" : "Choose…"}</option>
               {drivers.map((d) => (
                 <option key={d.id} value={d.id}>{d.display_name}{d.active ? "" : " (inactive)"}</option>
               ))}

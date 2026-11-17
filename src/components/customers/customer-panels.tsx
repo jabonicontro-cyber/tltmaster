@@ -14,6 +14,7 @@ import { useFormAction } from "@/components/ui/use-form-action";
 import { DirectionsRiskBadge, DirectionsStatusBadge } from "@/components/sites/directions-status";
 import { DIRECTIONS_RISK_LABELS, type DirectionsRisk, type DirectionsStatus } from "@/lib/sites";
 import type { ContactRow, SiteRow } from "@/server/data/types";
+import { adaptWording, industryOf } from "@/lib/industry";
 import {
   saveContact,
   saveSite,
@@ -164,7 +165,8 @@ function ContactDialog({ customerId, contact, onClose, onSaved }: { customerId: 
   );
 }
 
-export function SitesPanel({ customerId, sites, canEdit, verification }: { customerId: string; sites: SiteView[]; canEdit: boolean; verification: boolean }) {
+export function SitesPanel({ customerId, sites, canEdit, verification, industry }: { customerId: string; sites: SiteView[]; canEdit: boolean; verification: boolean; /** A freight carrier reads "delivery location" (T3). */ industry?: string }) {
+  const say = (text: string) => adaptWording(text, industry);
   const [editing, setEditing] = useState<SiteView | "new" | null>(null);
   const [verifying, setVerifying] = useState<SiteView | null>(null);
   const [showArchived, setShowArchived] = useState(false);
@@ -175,17 +177,17 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
   return (
     <Card>
       <CardHeader
-        title="Delivery / job sites"
+        title={industryOf(industry) === "freight" ? "Delivery locations" : "Delivery / job sites"}
         actions={
           canEdit && (
             <Button size="sm" variant="secondary" icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>
-              Add job site
+              {say("Add job site")}
             </Button>
           )
         }
       />
       {visible.length === 0 ? (
-        <EmptyState icon={<MapPin className="size-6" />} title="No job sites" description="Add delivery addresses so they can be picked on quotes." className="py-8" />
+        <EmptyState icon={<MapPin className="size-6" />} title={say("No job sites")} description="Add delivery addresses so they can be picked on quotes." className="py-8" />
       ) : (
         <ul className="divide-y divide-line">
           {visible.map((s) => (
@@ -270,6 +272,7 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
         <SiteDialog
           customerId={customerId}
           verification={verification}
+          say={say}
           site={editing === "new" ? null : editing}
           onClose={() => setEditing(null)}
           onSaved={() => {
@@ -282,7 +285,7 @@ export function SitesPanel({ customerId, sites, canEdit, verification }: { custo
   );
 }
 
-function SiteDialog({ customerId, site, verification, onClose, onSaved }: { customerId: string; site: SiteView | null; verification: boolean; onClose: () => void; onSaved: () => void }) {
+function SiteDialog({ customerId, site, verification, onClose, onSaved, say = (t: string) => t }: { customerId: string; site: SiteView | null; verification: boolean; onClose: () => void; onSaved: () => void; say?: (text: string) => string }) {
   const { pending, onSubmit, fieldError, formError } = useFormAction(saveSite.bind(null, customerId, site?.id ?? null), {
     onSuccess: (r) => {
       toast.success(r.message ?? "Saved");
@@ -291,7 +294,7 @@ function SiteDialog({ customerId, site, verification, onClose, onSaved }: { cust
   });
   const f = (name: string) => ({ id: `site-${name}`, name, ...describedBy(`site-${name}`, fieldError(name)) });
   return (
-    <Dialog open onOpenChange={(o) => !o && !pending && onClose()} title={site ? "Edit job site" : "Add job site"}>
+    <Dialog open onOpenChange={(o) => !o && !pending && onClose()} title={site ? say("Edit job site") : say("Add job site")}>
       <form onSubmit={onSubmit} className="space-y-4" noValidate>
         <FormError message={formError} />
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
@@ -337,7 +340,7 @@ function SiteDialog({ customerId, site, verification, onClose, onSaved }: { cust
             Cancel
           </Button>
           <Button type="submit" loading={pending}>
-            Save job site
+            {say("Save job site")}
           </Button>
         </div>
       </form>

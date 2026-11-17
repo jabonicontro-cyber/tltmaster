@@ -21,6 +21,7 @@ import { requirePagePermission } from "@/server/auth";
 import { businessToday, getSettings } from "@/server/data/settings";
 import { CHECK_FILTERS, listLoadsAwaitingTickets, listTickets, photoCounts, resourceNames, ticketCounts, ticketViewFromParams, TICKET_VIEWS, type CheckFilter, type TicketView } from "@/server/data/tickets";
 import { getSay } from "@/server/industry";
+import { moduleIsOn } from "@/server/modules";
 
 export async function generateMetadata() {
   const s = await getSettings().catch(() => null);
@@ -46,6 +47,8 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
   const photos = await photoCounts(tickets.map((t) => t.ticket_number));
   // The section's name follows what the company hauls (MK1): delivery tickets, bills of lading, or both.
   const words = vocabulary((await getSettings().catch(() => null))?.industry);
+  // Dispatch switched off (MOD1): tickets are entered against the customer's job, from here.
+  const withoutDispatch = !(await moduleIsOn("dispatch"));
   const viewLabel = (k: TicketView) => (k === "awaiting" ? `Loads awaiting a ${words.one}` : k === "all" ? `All ${words.many}` : TICKET_VIEWS[k]);
   // Narrow the current list by review reason and by whether a photo/scan is attached (shown list only).
   const reason = sp.reason && sp.reason in REVIEW_REASON_LABELS ? sp.reason : "";
@@ -66,6 +69,7 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title={words.documents}
         description={words.description}
+        actions={withoutDispatch && can(access, "tickets.edit") ? <ButtonLink href="/tickets/new" icon={<FilePlus2 className="size-4" aria-hidden />}>{words.enter}</ButtonLink> : undefined}
       />
       <nav aria-label={say("Ticket views")} className="mb-4 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full bg-ink/[0.05] p-1">
         {(Object.keys(TICKET_VIEWS) as TicketView[]).map((k) => (
@@ -188,14 +192,14 @@ export default async function TicketsPage({ searchParams }: { searchParams: Prom
                         <div className="text-sm text-muted sm:hidden">{t.snapshot.order_number} · load {t.snapshot.load_number}</div>
                       </Td>
                       <Td className="hidden sm:table-cell">
-                        <span className="tabular">{t.snapshot.order_number}</span> · load {t.snapshot.load_number}
+                        <span className="tabular">{t.snapshot.order_number}</span>{t.snapshot.without_dispatch ? "" : ` · load ${t.snapshot.load_number}`}
                         <div className="text-sm text-muted">{t.snapshot.customer_name}</div>
                       </Td>
                       <Td>
                         <div className="font-semibold tabular">{trimNumber(t.quantity)} {t.unit_code}</div>
                         <div className="text-sm text-muted">{formatDateTime(t.delivered_at, timezone)}</div>
                       </Td>
-                      <Td className="hidden md:table-cell">{t.snapshot.truck_unit}{t.snapshot.trailer_unit ? ` + ${t.snapshot.trailer_unit}` : ""} · {names.drivers.get(t.driver_id) ?? t.snapshot.driver_name}</Td>
+                      <Td className="hidden md:table-cell">{t.snapshot.truck_unit ? `${t.snapshot.truck_unit}${t.snapshot.trailer_unit ? ` + ${t.snapshot.trailer_unit}` : ""}` : "No truck"} · {(t.driver_id ? names.drivers.get(t.driver_id) : null) ?? t.snapshot.driver_name ?? "no driver"}</Td>
                       <Td>
                         <TicketStatusBadge status={t.status} />
                         {t.status === "needs_review" && t.review_reasons[0] && <div className="mt-1 max-w-56 text-xs text-muted">{say(reviewReasonLabel(t.review_reasons[0]))}{t.review_reasons.length > 1 ? ` (+${t.review_reasons.length - 1} more)` : ""}</div>}

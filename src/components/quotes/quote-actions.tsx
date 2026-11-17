@@ -25,6 +25,8 @@ interface Props {
   order: { id: string; order_number: string } | null;
   /** An email of this quote to the customer was attempted (sent or failed); a quote marked sent by hand was not (T5). */
   emailed?: boolean;
+  /** Orders switched off (MOD1, quotes only): accepting a quote marks it won; no order is offered. */
+  quotesOnly?: boolean;
 }
 
 const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
@@ -34,7 +36,7 @@ const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
   canceled: "Cancel quote",
 };
 
-export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, emailed = false }: Props) {
+export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, emailed = false, quotesOnly = false }: Props) {
   const router = useRouter();
   const [emailOpen, setEmailOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
@@ -59,7 +61,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
       icon={t === "accepted" ? <CheckCircle2 className="size-4" /> : t === "canceled" || t === "declined" ? <XCircle className="size-4" /> : undefined}
       onClick={() => { setNote(""); setStatusTarget(t); }}
     >
-      {STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
+      {t === "accepted" && quotesOnly ? "Mark won" : STATUS_ACTION_LABEL[t] ?? QUOTE_STATUS_LABELS[t]}
     </Button>
   );
 
@@ -76,7 +78,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
           <ClipboardList className="size-4" aria-hidden /> Order {order.order_number}
         </Link>
       )}
-      {!order && status === "accepted" && permissions.convert && (
+      {!order && status === "accepted" && permissions.convert && !quotesOnly && (
         <Button icon={<ClipboardList className="size-4" />} onClick={() => setConvertOpen(true)}>
           Convert to order
         </Button>
@@ -174,10 +176,12 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
       <ConfirmDialog
         open={Boolean(statusTarget)}
         onOpenChange={(o) => !o && setStatusTarget(null)}
-        title={statusTarget ? `${STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} · ${quoteNumber}` : ""}
+        title={statusTarget ? `${statusTarget === "accepted" && quotesOnly ? "Mark won" : STATUS_ACTION_LABEL[statusTarget] ?? QUOTE_STATUS_LABELS[statusTarget]} · ${quoteNumber}` : ""}
         description={
           statusTarget === "accepted"
-            ? "Records that the customer accepted the current revision and creates its order (status Confirmed) with the accepted prices. Scheduling the order stays a separate step."
+            ? quotesOnly
+              ? "Records that the customer accepted the current revision, so the quote counts as won. No order is created while Orders is switched off."
+              : "Records that the customer accepted the current revision and creates its order (status Confirmed) with the accepted prices. Scheduling the order stays a separate step."
             : statusTarget === "canceled"
               ? "Canceled quotes cannot be reopened. History is kept."
               : statusTarget === "declined"
@@ -186,7 +190,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
                   ? "Records that the customer did not answer before the quote ran out. You can still revise it and send a new revision."
                   : undefined
         }
-        confirmLabel={statusTarget ? STATUS_ACTION_LABEL[statusTarget] ?? "Confirm" : "Confirm"}
+        confirmLabel={statusTarget ? (statusTarget === "accepted" && quotesOnly ? "Mark won" : STATUS_ACTION_LABEL[statusTarget] ?? "Confirm") : "Confirm"}
         tone={statusTarget === "canceled" ? "danger" : "primary"}
         onConfirm={async () => {
           if (!statusTarget) return;

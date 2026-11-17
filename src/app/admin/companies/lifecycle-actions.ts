@@ -85,3 +85,18 @@ export async function setHiredTrucks(formData: FormData) {
   revalidatePath("/admin", "layout");
   redirect(`/admin/companies/${id}?saved=${entitled ? "hired_on" : "hired_off"}`);
 }
+
+/**
+ * Starting setup (MOD1, docs/MODULES.md): a Taviron Admin picks the preset a company starts from, while it is being set
+ * up (not live yet) or for a demo. The database checks the Admin level and the company's stage, and records the choice.
+ */
+export async function setCompanyPreset(formData: FormData) {
+  const id = idOf(formData);
+  const supabase = await db();
+  const preset = String(formData.get("preset") ?? "");
+  if (!["full", "tickets_to_billing", "quotes_only"].includes(preset)) to(id, "error", "Choose a starting point.");
+  const { error } = await supabase.rpc("platform_set_company_modules", { p_company: id, p_preset: preset });
+  if (error) to(id, "error", error.message);
+  revalidatePath("/admin", "layout");
+  redirect(`/admin/companies/${id}?saved=modules`);
+}

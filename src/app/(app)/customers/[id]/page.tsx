@@ -26,9 +26,12 @@ import { ActivityCard, HistoryCard, OpportunitiesCard, RelationshipCard, TasksCa
 import type { Relationship } from "@/lib/crm/labels";
 import { loadCustomerCrm } from "@/server/data/crm";
 import { DetentionPanel } from "@/components/customers/detention-panel";
+import { getModulesOff } from "@/server/modules";
 
 export default async function CustomerPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ error?: string }> }) {
   const access = await requirePagePermission("customers.view");
+  // Workflow modules (MOD1): no button into an area the company switched off.
+  const off = await getModulesOff();
   const { id } = await params;
   const sp = await searchParams;
   const detail = await getCustomerDetail(id);
@@ -106,12 +109,12 @@ export default async function CustomerPage({ params, searchParams }: { params: P
         description={`${customer.customer_number} · ${customer.customer_type === "commercial" ? "Commercial" : "Residential"} customer`}
         actions={
           <>
-            {can(access, "quotes.edit") && customer.active && (
+            {can(access, "quotes.edit") && customer.active && !off.includes("quotes") && (
               <ButtonLink href={`/quotes/new?customer=${customer.id}`} icon={<Plus className="size-4" />}>
                 New quote
               </ButtonLink>
             )}
-            {canCreateOrders(access) && customer.active && (
+            {canCreateOrders(access) && customer.active && !off.includes("orders") && (
               <ButtonLink href={`/orders/new?customer=${customer.id}`} variant="secondary" icon={<Plus className="size-4" />}>
                 New order
               </ButtonLink>
@@ -180,6 +183,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
           {crm && <HistoryCard history={crm.history} timezone={timezone} />}
           {crm && <OpportunitiesCard customerId={customer.id} opportunities={crm.opportunities} names={peopleNames} canEdit={canEdit} today={today} />}
 
+          {!off.includes("quotes") && (
           <Card>
             <CardHeader title="Quotes" description="Most recent 50 quotes for this customer." />
             {quotes.length === 0 ? (
@@ -187,7 +191,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
                 icon={<FileText className="size-6" />}
                 title="No quotes yet"
                 action={
-                  can(access, "quotes.edit") && customer.active ? (
+                  can(access, "quotes.edit") && customer.active && !off.includes("quotes") ? (
                     <ButtonLink href={`/quotes/new?customer=${customer.id}`} size="sm">
                       Create a quote
                     </ButtonLink>
@@ -199,6 +203,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
               <QuoteTable rows={quotes} today={today} showCustomer={false} />
             )}
           </Card>
+          )}
 
           {crm && <ActivityCard customerId={customer.id} activities={crm.activities} contacts={contacts} names={userNames} canEdit={canEdit} timezone={timezone} />}
         </div>
@@ -213,7 +218,7 @@ export default async function CustomerPage({ params, searchParams }: { params: P
             <Notice title="CRM needs a database update">Activities, follow-ups and opportunities appear once migration 20261119000100 is installed.</Notice>
           )}
           <ContactsPanel customerId={customer.id} contacts={contacts} canEdit={canEdit} />
-          <SitesPanel customerId={customer.id} sites={siteViews} canEdit={canEdit} verification={verification} />
+          <SitesPanel customerId={customer.id} sites={siteViews} canEdit={canEdit} verification={verification} industry={settings.industry ?? undefined} />
         </div>
       </div>
     </>

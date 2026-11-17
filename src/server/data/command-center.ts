@@ -3,6 +3,8 @@ import type { CommandSummary, ExceptionItem, ExceptionKind } from "@/lib/command
 import type { Access } from "@/lib/permissions";
 import { can } from "@/lib/permissions";
 import { createClient } from "@/server/supabase/server";
+import { itemsForModules, summaryForModules } from "@/lib/command-center/modules";
+import { getModulesOff } from "@/server/modules";
 
 /** A section's data, or the reason it could not be loaded (never a fake empty result). */
 export type Loaded<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -17,7 +19,8 @@ export async function loadSummary(): Promise<Loaded<CommandSummary>> {
   // update the strip shows the total only.
   const [{ data, error }, byKind] = await Promise.all([supabase.rpc("command_center_summary"), supabase.rpc("command_center_urgent_by_kind")]);
   if (error || !data) return { ok: false, error: "The overview could not be loaded." };
-  return { ok: true, data: { ...(data as CommandSummary), urgent_by_kind: byKind.error ? null : (byKind.data as Record<string, number>) } };
+  // Workflow modules (MOD1): counts of switched-off areas are left out (the same rule as the Command Center).
+  return { ok: true, data: summaryForModules({ ...(data as CommandSummary), urgent_by_kind: byKind.error ? null : (byKind.data as Record<string, number>) }, await getModulesOff()) };
 }
 
 export interface QueuePage {
@@ -49,7 +52,20 @@ export async function loadQueue(f: { kind?: ExceptionKind; mine?: boolean; page:
  * the queue page and the caller's top items, from one build of the exceptions list instead of four. Before that update
  * is installed it falls back to the separate calls, with the same results.
  */
+/** The overview without the items, counts and cards of switched-off workflow modules (MOD1). */
 export async function loadOverview(f: { kind?: ExceptionKind; mine?: boolean; page: number; hidden?: boolean; mineLimit: number }): Promise<{
+  summary: Loaded<CommandSummary>; queue: Loaded<QueuePage>; mineTop: Loaded<QueuePage>;
+}> {
+  const [r, off] = await Promise.all([loadOverviewAll(f), getModulesOff()]);
+  if (!off.length) return r;
+  return {
+    summary: r.summary.ok ? { ok: true, data: summaryForModules(r.summary.data, off) } : r.summary,
+    queue: r.queue.ok ? { ok: true, data: itemsForModules(r.queue.data, off) } : r.queue,
+    mineTop: r.mineTop.ok ? { ok: true, data: itemsForModules(r.mineTop.data, off) } : r.mineTop,
+  };
+}
+
+async function loadOverviewAll(f: { kind?: ExceptionKind; mine?: boolean; page: number; hidden?: boolean; mineLimit: number }): Promise<{
   summary: Loaded<CommandSummary>; queue: Loaded<QueuePage>; mineTop: Loaded<QueuePage>;
 }> {
   const supabase = await createClient();

@@ -24,6 +24,7 @@ import { createClient } from "@/server/supabase/server";
 
 import { baseSummary, listBases, type BaseSummary, type DispatchBase } from "@/server/data/bases";
 import { getSay } from "@/server/industry";
+import { getModulesOff } from "@/server/modules";
 export const metadata = { title: "Reports" };
 
 interface Ranked { name: string | null; tickets: number; value_cents: number; quantity?: number; unit?: string }
@@ -160,7 +161,10 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const prev = previous.r;
   const bases = await listBases();
   // Quote win/loss (B95) for people who can see quotes; a failure leaves the rest of the report standing.
-  const quoteOutcomes = can(access, "quotes.view") ? await loadQuoteOutcomes(from, to, timezone).catch(() => null) : null;
+  // Workflow modules (MOD1): sections about switched-off areas are left out.
+  const off = await getModulesOff();
+  const dispatchOn = !off.includes("dispatch");
+  const quoteOutcomes = can(access, "quotes.view") && !off.includes("quotes") ? await loadQuoteOutcomes(from, to, timezone).catch(() => null) : null;
   // Driver scorecard (B96): every driver, for people with dispatch or employee access (the database checks it again).
   const scorecard = can(access, "dispatch.view") || can(access, "employees.view") ? await loadScorecard(from, to).catch(() => null) : null;
   // Profit per load (B104) for people who see billing; missing before the update is installed.
@@ -182,7 +186,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <PageHeader
         title="Reports"
         description={`Measured from your own records, ${formatDate(from)} – ${formatDate(to)}. Nothing here is estimated; where data is missing, the report says so.`}
-        actions={<span className="flex flex-wrap gap-2"><ButtonLink href="/reports/customers" variant="secondary">Customer insights</ButtonLink>{can(access, "billing.view") && <ButtonLink href="/reports/what-if" variant="secondary">What if</ButtonLink>}<ButtonLink href="/reports/wait-times" variant="secondary">Wait times</ButtonLink></span>}
+        actions={<span className="flex flex-wrap gap-2"><ButtonLink href="/reports/customers" variant="secondary">Customer insights</ButtonLink>{can(access, "billing.view") && !off.includes("billing") && <ButtonLink href="/reports/what-if" variant="secondary">What if</ButtonLink>}{dispatchOn && <ButtonLink href="/reports/wait-times" variant="secondary">Wait times</ButtonLink>}</span>}
       />
       <form className="mb-6 flex flex-wrap items-end gap-x-3 gap-y-4" aria-label="Period">
         <nav aria-label="Periods" className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
@@ -313,7 +317,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
 
           {byBase.length > 1 ? <BaseReport rows={byBase} bases={bases ?? []} /> : null}
 
-          {r.fleet ? (
+          {r.fleet && dispatchOn ? (
             <section aria-label="Truck utilization">
               <Card>
                 <CardHeader title="Truck utilization and downtime" description={`Assigned loads and days with loads from dispatch; days out of service from each truck's service history. ${r.days} days in the period.`} />

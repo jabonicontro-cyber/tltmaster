@@ -13,6 +13,9 @@ export const USERS = {
   driver: { email: "e2e-driver@toplinetest.example", name: "Drew Driver", role: "driver", company: TOP_LINE_SLUG },
   pending: { email: "e2e-pending@toplinetest.example", name: "Pat Pending", role: null, company: TOP_LINE_SLUG },
   otherOwner: { email: "e2e-brookside-owner@brooksidetest.example", name: "Bea Brookside", role: "owner", company: OTHER_COMPANY.slug },
+  // Workflow modules (MOD1, tests/e2e/modules.spec.ts): a second owner of the second company, so switching its modules
+  // and its sessions never touch the users other specs sign in with at the same time.
+  modulesOwner: { email: "e2e-modules-owner@brooksidetest.example", name: "Mo Modules", role: "owner", company: OTHER_COMPANY.slug },
 } as const;
 
 export type UserKey = keyof typeof USERS;

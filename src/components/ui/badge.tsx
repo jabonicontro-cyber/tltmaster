@@ -39,10 +39,11 @@ const quoteTones: Record<QuoteStatus, Tone> = {
   canceled: "gray",
 };
 
-export function QuoteStatusBadge({ status }: { status: QuoteStatus }) {
+/** `won`: the company uses quotes without orders (MOD1), so an accepted quote reads "Won". */
+export function QuoteStatusBadge({ status, won = false }: { status: QuoteStatus; won?: boolean }) {
   return (
     <Badge tone={quoteTones[status]} className={status === "canceled" ? "line-through" : undefined}>
-      {QUOTE_STATUS_LABELS[status]}
+      {won && status === "accepted" ? "Won" : QUOTE_STATUS_LABELS[status]}
     </Badge>
   );
 }

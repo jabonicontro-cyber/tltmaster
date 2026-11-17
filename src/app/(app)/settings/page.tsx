@@ -32,8 +32,8 @@ import { TruckHealthForm } from "@/components/settings/truck-health-form";
 import { DailySummaryForm } from "@/components/settings/daily-summary-form";
 import { IndustryForm } from "@/components/settings/industry-form";
 import { AiAssistantForm } from "@/components/settings/ai-assistant-form";
-import { MenuAreasForm } from "@/components/settings/menu-areas-form";
-import { hiddenAreasOf } from "@/lib/menu-areas";
+import { ModulesForm } from "@/components/settings/modules-form";
+import { modulesOff } from "@/lib/modules";
 import { industryOf } from "@/lib/industry";
 import { summaryLines, type DailySummary } from "@/lib/summary/daily";
 import { parseRules } from "@/lib/fleet/health";
@@ -62,7 +62,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
 import { getSay } from "@/server/industry";
 import { settingsShownTo } from "@/components/layout/nav";
-import { isDriverOnly, signInHome } from "@/lib/companion";
+import { appHome } from "@/lib/companion";
 
 const BASE_SAVED: Record<string, string> = {
   created: "Base added.",
@@ -125,7 +125,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   if (rawTab === "account") redirect("/profile");
   // Not a driver's or a mechanic's page (walkthrough P14, owner 2026-11-12): a driver-only or mechanic-only login goes
   // to its own start page. This only narrows what is shown; database rules are unchanged.
-  if (!settingsShownTo(access.permissions)) redirect(isDriverOnly(access.permissions) ? "/driver" : (signInHome(access.permissions) ?? "/command-center"));
+  if (!settingsShownTo(access.permissions)) redirect(appHome(access.permissions));
   const tabs = TABS.filter((t) => t.visible(access));
   const tab = tabs.find((t) => t.key === rawTab)?.key ?? "company";
   const group = TABS.find((t) => t.key === tab)!.group;
@@ -146,9 +146,10 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <IndustryForm industry={industryOf(settings.industry)} canEdit={can(access, "settings.manage")} />
           </div>
         )}
-        {"hidden_areas" in settings && (
-          <div className="border-t border-line">
-            <MenuAreasForm hidden={hiddenAreasOf(settings.hidden_areas)} canEdit={can(access, "settings.manage")} />
+        {/* What you use (MOD1): shown once the database update 20261120023000 is in. */}
+        {"modules_off" in settings && (
+          <div className="border-t border-line" id="modules">
+            <ModulesForm off={modulesOff(settings.modules_off)} canEdit={can(access, "settings.manage")} />
           </div>
         )}
         <div className="border-t border-line">

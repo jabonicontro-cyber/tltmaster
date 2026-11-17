@@ -165,6 +165,8 @@ export interface QuoteRow {
   first_sent_at: string | null;
   last_sent_at: string | null;
   accepted_at: string | null;
+  /** Who marked it accepted (won), MOD1 (20261120023200); absent until installed. */
+  accepted_by?: string | null;
   closed_at: string | null;
   status_note: string;
   is_sample: boolean;
@@ -311,8 +313,10 @@ export interface CompanySettings {
   brand_sidebar_color: string;
   /** What the company hauls (20261120007600, master plan MK1); absent until installed (= aggregate). */
   industry?: string;
-  /** Optional areas hidden from the menu (20261120007700, SF1); absent until installed (= none). */
+  /** Optional areas hidden from the menu (20261120007700, SF1); kept in step with modules_off by the database. */
   hidden_areas?: string[];
+  /** Workflow modules switched off (20261120023000, MOD1, src/lib/modules.ts); absent until installed (= none). */
+  modules_off?: string[];
   /** Ask Taviron allowed for the company (20261120022000, master plan §11a); absent until installed (= off). */
   ai_assistant_allowed?: boolean;
   ai_assistant_changed_at?: string | null;

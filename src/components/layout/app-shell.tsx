@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { APP_CONTAINER } from "@/lib/layout";
 import { DriverTabBar } from "@/components/companion/driver-tab-bar";
 import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
-import { isDispatcherDriver, isDriverOnly, isMechanicOnly, signInHome } from "@/lib/companion";
+import { appHome, isDispatcherDriver, isDriverOnly, isMechanicOnly } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
@@ -29,8 +29,8 @@ export interface ShellBranding {
   logoUrl: string; // "" when the company has no logo
   /** Menu labels that follow what the company hauls (src/lib/industry.ts), by path. */
   navLabels?: Record<string, string>;
-  /** Optional areas the company hid from the menu (src/lib/menu-areas.ts). */
-  hiddenNav?: string[];
+  /** Workflow modules the company switched off (src/lib/modules.ts): their menu items are hidden. */
+  modulesOff?: string[];
 }
 
 /**
@@ -49,19 +49,19 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
   const mechanicOnly = !driverOnly && isMechanicOnly(navPermissions);
   // A dispatcher who also drives keeps the full menu and gets phone tabs for My Day and Dispatch (UX8).
   const dispatcherDriver = !driverOnly && !mechanicOnly && isDispatcherDriver(navPermissions);
-  const homeHref = driverOnly ? "/driver" : (signInHome(navPermissions) ?? "/command-center");
+  const homeHref = appHome(navPermissions);
   return (
     <div className="app-root min-h-dvh lg:pl-[5.25rem] lg:data-[sidebar=pinned]:pl-[16.75rem]" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
       <UnsavedChangesGuard />
       <ServiceWorkerRegistration />
-      <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} labels={branding?.navLabels} hidden={branding?.hiddenNav} />
+      <DesktopSidebar permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} initiallyPinned={sidebarPinned} labels={branding?.navLabels} modulesOff={branding?.modulesOff} homeHref={homeHref} />
 
       {access.isDemo ? <DemoWelcome initiallyOpen={welcome} companyName={access.companyName} /> : null}
       <header className="app-header no-print sticky top-0 z-20 bg-surface/80 backdrop-blur-md">
         <div className={cn(APP_CONTAINER, "flex h-14 items-center justify-between gap-3")}>
           <div className="flex min-w-0 items-center gap-1">
-            <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} labels={branding?.navLabels} hidden={branding?.hiddenNav} />
+            <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} labels={branding?.navLabels} modulesOff={branding?.modulesOff} />
             {/* Shrinks with the header on narrow phones instead of running under the icons on the right. */}
             {/* Home is each person's own start page (walkthrough P13): My Day for a driver, My jobs for a mechanic. The
                 link is named after the company, so it is not read out as ", home" when the logo is an image (P16). */}
@@ -81,7 +81,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
             <Sparkles className="size-5" aria-hidden />
           </Link>
         )}
-        <HelpPanel {...helpPanelData(access.permissions)} />
+        <HelpPanel {...helpPanelData(access.permissions, branding?.modulesOff)} />
         <UserMenu
           name={me?.name || access.fullName}
           email={access.email}
@@ -103,9 +103,9 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
       <main id="main" tabIndex={-1} className={cn(APP_CONTAINER, "outline-none py-6", (driverOnly || mechanicOnly || dispatcherDriver) && "pb-32 md:pb-6")}>
         {children}
       </main>
-      {driverOnly && <DriverTabBar permissions={navPermissions} />}
-      {mechanicOnly && <DriverTabBar permissions={navPermissions} kind="mechanic" />}
-      {dispatcherDriver && <DriverTabBar permissions={navPermissions} kind="dispatcher-driver" />}
+      {driverOnly && <DriverTabBar permissions={navPermissions} modulesOff={branding?.modulesOff} />}
+      {mechanicOnly && <DriverTabBar permissions={navPermissions} kind="mechanic" modulesOff={branding?.modulesOff} />}
+      {dispatcherDriver && <DriverTabBar permissions={navPermissions} kind="dispatcher-driver" modulesOff={branding?.modulesOff} />}
     </div>
   );
 }

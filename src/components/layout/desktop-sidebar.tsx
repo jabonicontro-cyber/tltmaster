@@ -22,7 +22,7 @@ const CLOSE_DELAY = 250;
  * and the page makes room. Hover is only a mouse convenience — every label is reachable without it. Narrower screens
  * (phones, tablets in portrait) use the menu button (MobileNav).
  */
-export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPinned, labels, hidden }: { permissions: Permission[]; companyName: string | null; logoUrl: string; initiallyPinned: boolean; labels?: Record<string, string>; hidden?: string[] }) {
+export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPinned, labels, modulesOff, homeHref = "/command-center" }: { permissions: Permission[]; companyName: string | null; logoUrl: string; initiallyPinned: boolean; labels?: Record<string, string>; /** Workflow modules switched off (src/lib/modules.ts). */ modulesOff?: string[]; /** Where the logo leads: the person's own start page (P13). */ homeHref?: string }) {
   const [pinned, setPinned] = useState(initiallyPinned);
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
@@ -100,7 +100,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
       )}
     >
       {/* Collapsed, the mark sits on the rail's icon line (36px from the edge, like every icon below). */}
-      <Link href="/command-center" className={cn("flex h-[5rem] shrink-0 items-center", expanded ? "px-3" : "px-4")}>
+      <Link href={homeHref} className={cn("flex h-[5rem] shrink-0 items-center", expanded ? "px-3" : "px-4")}>
         <SidebarLogo name={companyName} logoUrl={logoUrl} compact={!expanded} />
         {/* The name comes from what is shown (company name or its mark), so voice control matches it (WCAG 2.5.3). */}
         <span className="sr-only">, home</span>
@@ -119,7 +119,7 @@ export function DesktopSidebar({ permissions, companyName, logoUrl, initiallyPin
         </button>
       </div>
       <div id="sidebar-nav" className="relative flex-1 overflow-x-hidden overflow-y-auto py-3">
-        <SidebarNav permissions={permissions} collapsed={!expanded} onNavigate={close} labels={labels} hidden={hidden} />
+        <SidebarNav permissions={permissions} collapsed={!expanded} onNavigate={close} labels={labels} modulesOff={modulesOff} />
       </div>
       <div className="shrink-0 px-3 pt-1 pb-3">
         <button

@@ -10,13 +10,14 @@ import { requireAccess } from "@/server/auth";
 import { helpFor, myFeedback } from "@/server/help";
 import { GuideStart } from "@/components/help/guide-start";
 import { sendFeedback } from "../actions";
+import { getModulesOff } from "@/server/modules";
 
 /** One help article: what the page is for, who uses it, what it shows, how to do the common tasks, and what to do next. */
 export default async function HelpArticlePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ feedback?: string }> }) {
   const access = await requireAccess();
   const { id } = await params;
   const sp = await searchParams;
-  const { articles, guides } = helpFor(access.permissions);
+  const { articles, guides } = helpFor(access.permissions, await getModulesOff());
   const a = articles.find((x) => x.id === id);
   if (!a) notFound(); // not written, or not for this person's role
   const byId = new Map(articles.map((x) => [x.id, x]));

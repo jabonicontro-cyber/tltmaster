@@ -406,6 +406,12 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // 20261120022200: new Starter companies start with the essentials in the menu (trigger on the platform lifecycle only;
   // the lifecycle row's own company, created on or after 2026-11-14, not live, menu not yet set).
   "private.starter_default_hidden_areas",
+  // Workflow modules (MOD1, 20261120023000).
+  "public.set_company_modules", "public.platform_set_company_modules", "public.platform_company_modules",
+  "private.module_on", "private.modules_log", "private.modules_preset_allowed",
+  // Tickets without Dispatch (MOD1, 20261120023100).
+  "public.submit_ticket_without_dispatch", "public.create_ticket_job", "private.prepare_ticket_without_dispatch",
+  "private.refuse_assignment_on_ticket_load", "private.check_ticket_dispatch", "private.ticket_load_on_void", "private.ticket_load_follow",
 ];
 
 /**
@@ -417,7 +423,7 @@ const REVIEWED_DEFINER_FUNCTIONS = [
  */
 // platform_prospect_demo_add_owner (service role) and _retire (platform admins): refuse every company that is not an active prospect demo.
 // daily_summary_record: service role only (the scheduled job records each company's outcome; authenticated cannot execute it).
-const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.daily_summary_record", "public.platform_hired_trucks_set", "public.platform_hired_trucks_entitlement", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_subscription_state", "public.platform_set_renewal", "public.platform_support_enter", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo", "public.platform_onboarding_generate", "public.platform_onboarding", "public.platform_onboarding_kit", "public.platform_onboarding_form_save", "public.platform_onboarding_go_live_sign", "public.delivery_proof_issue",
+const COMPANY_ID_ARGUMENT_REVIEWED = ["public.switch_company", "public.platform_set_company_modules", "public.platform_company_modules", "public.daily_summary_record", "public.platform_hired_trucks_set", "public.platform_hired_trucks_entitlement", "public.platform_import_stage", "public.platform_import_batches", "public.platform_prospect_demo_add_owner", "public.platform_prospect_demo_retire", "public.platform_record_demo_refresh", "public.platform_lifecycle", "public.platform_subscription_state", "public.platform_set_renewal", "public.platform_support_enter", "public.platform_lifecycle_terms", "public.platform_lifecycle_fee", "public.platform_lifecycle_go_live_on", "public.platform_lifecycle_go_live_now", "public.platform_lifecycle_cancel", "public.platform_demo_set_plan", "public.platform_company_classify", "public.platform_company_archive", "public.platform_company_restore", "public.platform_company_delete_preview", "public.platform_company_delete", "public.platform_portal_set_entitlement", "public.platform_portal_entitlement", "public.platform_portal_preview_start", "public.platform_testing_record", "public.platform_testing_demo", "public.platform_onboarding_generate", "public.platform_onboarding", "public.platform_onboarding_kit", "public.platform_onboarding_form_save", "public.platform_onboarding_go_live_sign", "public.delivery_proof_issue",
   // PC1: the company the staff member picked (health, usage, timeline) or filters by (audit log); staff levels checked in each.
   "public.platform_company_health", "public.platform_company_timeline", "public.platform_company_usage", "public.platform_audit_search",
   // PC2: the company the Admin invites a first owner for, or whose invitations they read (Admin level checked in each).

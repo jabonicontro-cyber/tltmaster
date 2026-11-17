@@ -15,6 +15,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { useFormAction } from "@/components/ui/use-form-action";
 import type { ActionResult } from "@/lib/action-result";
 import { defaultLineUnit } from "@/lib/line-defaults";
+import { adaptWording } from "@/lib/industry";
 import { CHARGE_KIND_LABELS } from "@/lib/schemas/catalog";
 import type { ChargeItemRow, MaterialRow, PriceListRow, UnitRow } from "@/server/data/types";
 import {
@@ -87,24 +88,26 @@ const ctl = (id: string, err?: string) => ({ id, name: id, ...describedBy(id, er
 export function MaterialsTable({ rows, units, canEdit, industry }: { rows: MaterialRow[]; units: UnitRow[]; canEdit: boolean; industry?: string }) {
   const [editing, setEditing] = useState<MaterialRow | "new" | null>(null);
   // A new material starts with the unit the company's own materials use most, else what it hauls (MK1).
+  // A freight carrier reads "commodity" (T3).
+  const say = (text: string) => adaptWording(text, industry);
   const newUnit = defaultLineUnit({ kind: "material", industry, units, materials: rows }) ?? "";
   const unitLabel = (c: string) => units.find((u) => u.code === c)?.label ?? c;
   const m = editing === "new" ? null : editing;
   return (
     <>
       <CardHeader
-        title="Materials"
-        description="Materials you deliver. The default unit is suggested on quotes; quotes store their own snapshot."
-        actions={canEdit && <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>Add material</Button>}
+        title={say("Materials")}
+        description={say("Materials you deliver. The default unit is suggested on quotes; quotes store their own snapshot.")}
+        actions={canEdit && <Button size="sm" icon={<Plus className="size-4" />} onClick={() => setEditing("new")}>{say("Add material")}</Button>}
       />
       {rows.length === 0 ? (
-        <EmptyState title="No materials yet" description="Add the materials you haul so they can be picked on quotes." />
+        <EmptyState title={say("No materials yet")} description={say("Add the materials you haul so they can be picked on quotes.")} />
       ) : (
         <TableWrap>
           <Table>
             <thead>
               <tr>
-                <Th>Material</Th>
+                <Th>{say("Material")}</Th>
                 <Th className="hidden sm:table-cell">Code</Th>
                 <Th>Default unit</Th>
                 <Th className="hidden md:table-cell">Taxable</Th>
@@ -140,7 +143,7 @@ export function MaterialsTable({ rows, units, canEdit, industry }: { rows: Mater
         </TableWrap>
       )}
       {editing && (
-        <FormDialog title={m ? "Edit material" : "Add material"} action={saveMaterial.bind(null, m?.id ?? null)} onClose={() => setEditing(null)} submitLabel="Save material">
+        <FormDialog title={m ? say("Edit material") : say("Add material")} action={saveMaterial.bind(null, m?.id ?? null)} onClose={() => setEditing(null)} submitLabel={say("Save material")}>
           {(fe) => (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-6">
               <Field label="Name" htmlFor="name" required error={fe("name")} className="sm:col-span-4">

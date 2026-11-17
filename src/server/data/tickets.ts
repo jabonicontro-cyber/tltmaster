@@ -17,11 +17,16 @@ export interface TicketSnapshot {
   customer_name: string;
   line_description: string;
   line_unit_code: string | null;
-  truck_unit: string;
+  /** Empty (null) on a ticket entered without dispatch that names no truck or driver (MOD1). */
+  truck_unit: string | null;
   trailer_unit: string | null;
-  driver_name: string;
+  driver_name: string | null;
   planned_quantity: number | null;
   planned_unit_code: string | null;
+  /** Entered against the job while the company had Dispatch off (MOD1, 20261120023100). */
+  without_dispatch?: boolean;
+  /** false when the paper ticket showed no time (the date is what counts). */
+  time_entered?: boolean;
 }
 
 export interface TicketRow {
@@ -32,12 +37,13 @@ export interface TicketRow {
   status: TicketStatus;
   order_id: string;
   load_id: string;
-  assignment_id: string;
+  /** Empty for a ticket entered without dispatch (MOD1); truck and driver are then optional. */
+  assignment_id: string | null;
   order_line_id: string;
   material_id: string | null;
-  truck_id: string;
+  truck_id: string | null;
   trailer_id: string | null;
-  driver_id: string;
+  driver_id: string | null;
   delivered_at: string;
   quantity: number | string;
   unit_code: string;

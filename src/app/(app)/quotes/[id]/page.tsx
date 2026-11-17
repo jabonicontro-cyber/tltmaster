@@ -22,6 +22,7 @@ import { getQuoteDetail } from "@/server/data/quotes";
 import { getOrderForQuote } from "@/server/data/orders";
 import { loadPricingHelp } from "@/server/data/pricing-help";
 import { businessToday } from "@/server/data/settings";
+import { moduleIsOn } from "@/server/modules";
 
 export const metadata = { title: "Quote" };
 
@@ -38,7 +39,9 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
   const detail = await getQuoteDetail(id);
   if (!detail) notFound();
   const { quote, customer, versions, current, lines, events, deliveries, names, audit } = detail;
-  const [{ today, timezone }, order] = await Promise.all([businessToday(), can(access, "orders.view") ? getOrderForQuote(quote.id) : Promise.resolve(null)]);
+  const [{ today, timezone }, order, ordersOn] = await Promise.all([businessToday(), can(access, "orders.view") ? getOrderForQuote(quote.id) : Promise.resolve(null), moduleIsOn("orders")]);
+  // Quotes only (MOD1): with Orders switched off an accepted quote is won and no order is made.
+  const quotesOnly = !ordersOn;
   // Pricing help (B114) while the price can still change: drafts and quotes waiting on the customer.
   const pricing = quote.status === "draft" || quote.status === "sent"
     ? await loadPricingHelp(lines, current.site_id, today, timezone, can(access, "billing.view")).catch(() => null)
@@ -59,7 +62,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
         crumbs={[{ label: "Quotes", href: "/quotes" }, { label: quote.quote_number }]}
         badges={
           <>
-            <QuoteStatusBadge status={quote.status} />
+            <QuoteStatusBadge status={quote.status} won={quotesOnly && !order} />
             <CopyReference value={quote.quote_number} label="quote number" />
             <Badge tone="gray">Revision {current.version_no}</Badge>
             {current.locked_at && <Badge tone="dark">Issued</Badge>}
@@ -85,6 +88,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           permissions={{ edit: can(access, "quotes.edit"), send: can(access, "quotes.send"), status: can(access, "quotes.status"), convert: can(access, "orders.edit") }}
           order={order}
           emailed={deliveries.some((d) => d.channel !== "manual" && (d.status === "sent" || d.status === "failed"))}
+          quotesOnly={quotesOnly}
         />
       </div>
 
@@ -99,9 +103,22 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
             Reason: {current.revision_reason}. The customer still has revision {current.version_no - 1} until this one is sent.
           </Notice>
         )}
-        {quote.status === "accepted" && (
+        {quote.status === "accepted" && quotesOnly && !order && (
+          <Notice title="Won">
+            Won {quote.accepted_at ? formatDateTime(quote.accepted_at, timezone) : ""}
+            {quote.accepted_by ? ` by ${who(quote.accepted_by)}` : ""}
+            {quote.status_note ? `: ${quote.status_note}` : ""}. It counts as won in your quotes and reports. No order is made because your company doesn&apos;t use Orders;
+            {can(access, "settings.manage") ? (
+              <> if you switch Orders on in <Link href="/settings?tab=company#modules" className="font-semibold underline">Settings</Link>, it becomes an order with one click.</>
+            ) : (
+              " if your company switches Orders on, it becomes an order with one click."
+            )}
+          </Notice>
+        )}
+        {quote.status === "accepted" && !(quotesOnly && !order) && (
           <Notice title={order ? `Accepted: converted to order ${order.order_number}` : "Accepted"}>
             Accepted {quote.accepted_at ? formatDateTime(quote.accepted_at, timezone) : ""}
+            {quote.accepted_by ? ` by ${who(quote.accepted_by)}` : ""}
             {quote.status_note ? `: ${quote.status_note}` : ""}.{" "}
             {order ? (
               <>

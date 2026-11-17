@@ -9,6 +9,8 @@ import type { OrderStatus } from "@/server/data/types";
 import { QUOTE_STATUS_LABELS, type QuoteStatus } from "@/lib/quotes/status";
 import { TICKET_STATUS_LABELS, type TicketStatus } from "@/lib/tickets/rules";
 import { createClient } from "@/server/supabase/server";
+import { hrefShown } from "@/lib/modules";
+import { getModulesOff } from "@/server/modules";
 
 const LIMIT = 6;
 const INVOICE_STATUS: Record<string, string> = { draft: "Draft", issued: "Issued", void: "Void" };
@@ -78,5 +80,7 @@ export async function globalSearch(access: Access, q: string, limit = LIMIT): Pr
     }
   };
   const results = await Promise.all(groups.map(async (g) => ({ key: g.key, label: g.label, hits: await run(g.key).catch(() => []) })));
-  return results.filter((r) => r.hits.length);
+  // Workflow modules (MOD1): no result opens an area the company switched off.
+  const off = await getModulesOff();
+  return results.map((r) => ({ ...r, hits: r.hits.filter((h) => hrefShown(h.href, off)) })).filter((r) => r.hits.length);
 }

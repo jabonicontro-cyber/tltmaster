@@ -32,6 +32,12 @@ export function signInHome(permissions: readonly string[]): string | null {
   return isMechanicOnly(permissions) ? "/maintenance/my-jobs" : null;
 }
 
+/** Each person's own start page, where the company logo leads (walkthrough P13): My Day for a driver-only login, My jobs
+ * for a mechanic-only login, the Command Center for everyone else. */
+export function appHome(permissions: readonly string[]): string {
+  return isDriverOnly(permissions) ? "/driver" : (signInHome(permissions) ?? "/command-center");
+}
+
 export interface DriverTab { href: string; label: string; match: (path: string) => boolean }
 
 /**
