@@ -44,18 +44,27 @@ export function MoneyOwedTile({ money, wide = false }: { money: MoneyOwedState; 
       </StatTile>
     );
   }
+  // The whole tile is the way in (walkthrough M5: clicking the figure did nothing): the overdue invoices when some are
+  // late, otherwise the invoice list.
+  const href = o.overdueCents > 0 ? "/billing/invoices?view=overdue" : "/billing/invoices";
   return (
-    <StatTile icon={<Wallet />} tone={o.overdueCents > 0 ? "amber" : "brand"} label="Money owed" value={dollars(o.openCents)} muted={o.openCents === 0} className={cn(span)}>
-      {o.overdueCents > 0 ? (
-        <Link href="/billing/invoices?view=overdue" className="flex flex-col font-semibold underline-offset-2 hover:underline" data-testid="money-owed-overdue">
-          <span className="text-amber-700">{dollars(o.overdueCents)} overdue on {o.overdueCount} invoice{o.overdueCount === 1 ? "" : "s"}</span>
-          {o.oldestOverdueDays !== null && <span className="font-normal text-muted">Oldest {daysLateLabel(o.oldestOverdueDays)}</span>}
-        </Link>
-      ) : o.openCents > 0 ? (
-        <Link href="/billing/invoices" className="text-muted underline-offset-2 hover:underline">{o.openCount} open invoice{o.openCount === 1 ? "" : "s"} · nothing overdue</Link>
-      ) : (
-        <span className="text-muted">Every issued invoice is paid</span>
-      )}
-    </StatTile>
+    <Link
+      href={href}
+      className={cn("group block min-w-0 rounded-panel transition-shadow focus-visible:outline-2 focus-visible:outline-strong [&>div]:h-full [&>div]:transition-shadow hover:[&>div]:ring-line", span)}
+    >
+      <StatTile icon={<Wallet />} tone={o.overdueCents > 0 ? "amber" : "brand"} label="Money owed" value={dollars(o.openCents)} muted={o.openCents === 0}>
+        <span className="sr-only">{dollars(o.openCents)} owed in all. </span>
+        {o.overdueCents > 0 ? (
+          <span className="flex flex-col font-semibold underline-offset-2 group-hover:underline" data-testid="money-owed-overdue">
+            <span className="text-amber-700">{dollars(o.overdueCents)} overdue on {o.overdueCount} invoice{o.overdueCount === 1 ? "" : "s"}</span>
+            {o.oldestOverdueDays !== null && <span className="font-normal text-muted">Oldest {daysLateLabel(o.oldestOverdueDays)}</span>}
+          </span>
+        ) : o.openCents > 0 ? (
+          <span className="text-muted underline-offset-2 group-hover:underline">{o.openCount} open invoice{o.openCount === 1 ? "" : "s"} · nothing overdue</span>
+        ) : (
+          <span className="text-muted underline-offset-2 group-hover:underline">Every issued invoice is paid</span>
+        )}
+      </StatTile>
+    </Link>
   );
 }

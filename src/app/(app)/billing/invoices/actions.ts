@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { fail, type ActionResult } from "@/lib/action-result";
 import { parseAmountCents } from "@/lib/billing/invoices";
 import { isIsoDate } from "@/lib/dates";
 import { assertPermission } from "@/server/auth";
@@ -85,22 +86,47 @@ export async function voidInvoice(formData: FormData) {
   go(page(id), "saved", "voided");
 }
 
-export async function addPayment(formData: FormData) {
-  const id = uuid.parse(formData.get("invoice"));
+/**
+ * Record a payment on an issued invoice (B99; walkthrough M2). The same checks as before, in the same order: the
+ * amount, the date and the method, then billing.manage, then invoice_add_payment, which checks the permission, the
+ * company, the invoice's state and that the payment is not more than what is still owed again. A refusal now comes
+ * back to the form (useFormAction), which keeps what was typed (the check number above all) and shows the reason by
+ * the field it is about; a recorded payment returns to the invoice with "Payment recorded." and no leftover error.
+ */
+export async function addPayment(formData: FormData): Promise<ActionResult> {
+  const id = uuid.safeParse(formData.get("invoice"));
+  if (!id.success) return fail("Invoice not found.");
   const amount = parseAmountCents(String(formData.get("amount") ?? ""));
   const date = String(formData.get("received_on") ?? "");
   const method = z.enum(["check", "ach", "card", "cash", "other"]).safeParse(formData.get("method"));
-  if (!amount) go(page(id), "error", "Enter the amount received, like 1250.00.");
-  if (!isIsoDate(date)) go(page(id), "error", "Enter the date the payment was received.");
-  if (!method.success) go(page(id), "error", "Choose how it was paid.");
-  await manage(page(id));
+  if (!amount) return fail("Enter the amount received, like 1250.00.", { amount: "Enter the amount received, like 1250.00." });
+  if (!isIsoDate(date)) return fail("Enter the date the payment was received.", { received_on: "Enter the date the payment was received." });
+  if (!method.success) return fail("Choose how it was paid.", { method: "Choose how it was paid." });
+  try {
+    await assertPermission("billing.manage");
+  } catch {
+    return fail("You do not have permission to change invoices.");
+  }
   const { error } = await (await createClient()).rpc("invoice_add_payment", {
-    p_invoice: id, p_amount_cents: amount, p_received_on: date, p_method: method.data,
+    p_invoice: id.data, p_amount_cents: amount, p_received_on: date, p_method: method.data,
     p_reference: String(formData.get("reference") ?? "").trim().slice(0, 80), p_note: String(formData.get("note") ?? "").trim().slice(0, 300),
   });
-  if (error) go(page(id), "error", dbErrorMessage(error));
-  refresh(id);
-  go(page(id), "saved", "payment");
+  if (error) {
+    const message = dbErrorMessage(error);
+    const field = paymentErrorField(message);
+    return fail(message, field ? { [field]: message } : undefined);
+  }
+  refresh(id.data);
+  // A clean URL: "Payment recorded." and no ?error= left over from an earlier refusal on this page.
+  redirect(`${page(id.data)}?saved=payment`);
+}
+
+/** Which field a refusal from invoice_add_payment is about, so the form shows it there. */
+function paymentErrorField(message: string): "amount" | "received_on" | "method" | null {
+  if (/still owed|amount/i.test(message)) return "amount";
+  if (/date/i.test(message)) return "received_on";
+  if (/how it was paid/i.test(message)) return "method";
+  return null;
 }
 
 export async function voidPayment(formData: FormData) {

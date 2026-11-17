@@ -12,6 +12,7 @@ import { formatDate, formatDateTime } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
 import { requirePagePermission } from "@/server/auth";
 import { accountantMe, loadAccountingYear, recordAccountantVisit } from "@/server/data/accountant-view";
+import { invoicingSettings } from "@/server/data/invoices";
 import { businessToday } from "@/server/data/settings";
 import { getSay } from "@/server/industry";
 
@@ -33,8 +34,16 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
   const thisYear = Number(today.slice(0, 4));
   const year = Number.isInteger(y) && y >= 2000 && y <= thisYear ? y : defaultYear(today);
   const me = await accountantMe();
-  const [data] = await Promise.all([loadAccountingYear(year, today, Boolean(me?.payroll)), recordAccountantVisit(`year ${year}`).catch(() => undefined)]);
+  const [data, invoicing] = await Promise.all([
+    loadAccountingYear(year, today, Boolean(me?.payroll)),
+    invoicingSettings().catch(() => null),
+    recordAccountantVisit(`year ${year}`).catch(() => undefined),
+  ]);
   const s = data.summary;
+  // QuickBooks issues the invoices (M1): with no invoice issued in Taviron this year and nothing open, invoiced, tax and
+  // owed are kept in QuickBooks; the figures say so instead of "$0". Money received by ticket in Taviron still counts.
+  const quickbooks = invoicing?.issuer === "quickbooks";
+  const inQuickBooks = quickbooks && s.issued.length === 0 && s.outstandingCents === 0;
   const isAccountant = access.role === "accountant";
 
   return (
@@ -58,8 +67,10 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
         <>
           <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {/* Billed vs paid, each named for what it counts (WK1): invoiced is what was billed, collected is the money received. */}
-            <StatTile icon={<FileText />} label={`Invoiced in ${year}`} value={formatCents(s.invoicedCents)} muted={!s.invoicedCents}>{s.issued.length} invoice{s.issued.length === 1 ? "" : "s"} issued, paid or not</StatTile>
-            <StatTile icon={<Receipt />} label="Sales tax invoiced" value={formatCents(s.taxCents)} muted={!s.taxCents}>On those invoices</StatTile>
+            <StatTile icon={<FileText />} label={`Invoiced in ${year}`} value={inQuickBooks ? "–" : formatCents(s.invoicedCents)} muted={inQuickBooks || !s.invoicedCents}>
+              <span data-testid="invoiced-detail">{inQuickBooks ? "Kept in QuickBooks: the invoices are issued there" : `${s.issued.length} invoice${s.issued.length === 1 ? "" : "s"} issued, paid or not${quickbooks ? " (in Taviron only)" : ""}`}</span>
+            </StatTile>
+            <StatTile icon={<Receipt />} label="Sales tax invoiced" value={inQuickBooks ? "–" : formatCents(s.taxCents)} muted={inQuickBooks || !s.taxCents}>{inQuickBooks ? "Kept in QuickBooks" : "On those invoices"}</StatTile>
             <StatTile icon={<Banknote />} label={`Collected in ${year}`} value={formatCents(s.receivedCents)} muted={!s.receivedCents}>
               <span data-testid="collected-detail">
                 {s.received.length} payment{s.received.length === 1 ? "" : "s"} received
@@ -71,7 +82,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
                 </span>
               ) : null}
             </StatTile>
-            <StatTile icon={<Hourglass />} label="Still owed today" value={formatCents(s.outstandingCents)} muted={!s.outstandingCents}>All open invoices, any year</StatTile>
+            <StatTile icon={<Hourglass />} label="Still owed today" value={inQuickBooks ? "–" : formatCents(s.outstandingCents)} muted={inQuickBooks || !s.outstandingCents}>{inQuickBooks ? "Kept in QuickBooks" : `All open invoices, any year${quickbooks ? " (in Taviron only)" : ""}`}</StatTile>
           </div>
 
           <div className="mb-5 grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
@@ -81,7 +92,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
                 <a href={`/accountant/export?kind=invoices&year=${year}`} className="font-semibold text-brand-fg hover:underline">Download invoices (CSV)</a>
                 <a href={`/accountant/export?kind=payments&year=${year}`} className="font-semibold text-brand-fg hover:underline">Download payments (CSV)</a>
               </div>
-              {s.issued.length === 0 ? <CardBody><EmptyState title={`No invoices issued in ${year}`} /></CardBody> : (
+              {s.issued.length === 0 ? <CardBody><EmptyState title={`No invoices issued in ${year}`} description={quickbooks ? "This company's invoices are issued in QuickBooks, so they are listed there, not here." : undefined} /></CardBody> : (
                 <TableWrap className="max-h-[28rem] overflow-y-auto rounded-none border-0 border-t border-line">
                   <Table aria-label="Invoices issued">
                     <thead><tr><Th>Invoice</Th><Th>Issued</Th><Th>Customer</Th><Th align="right">Total</Th><Th>Status</Th></tr></thead>
@@ -102,6 +113,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
             </Card>
             <Card>
               <CardHeader title="Still owed, by age" description="Open balances today, by days past the due date." />
+              {inQuickBooks ? <CardBody><p className="text-sm text-muted">Kept in QuickBooks: the invoices, and what is still owed on them, are there.</p></CardBody> : (
               <ul className="divide-y divide-line border-t border-line" aria-label="Receivables aging">
                 {s.aging.map((a) => (
                   <li key={a.label} className="flex items-center justify-between px-5 py-2.5 text-sm sm:px-6">
@@ -110,6 +122,7 @@ export default async function AccountantPage({ searchParams }: { searchParams: P
                   </li>
                 ))}
               </ul>
+              )}
             </Card>
           </div>
         </>

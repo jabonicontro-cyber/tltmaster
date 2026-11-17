@@ -10,13 +10,13 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import { formatTime } from "@/lib/orders/schedule";
-import { can } from "@/lib/permissions";
+import { can, ROLE_LABELS, type AppRole } from "@/lib/permissions";
 import { calendarDays, STATUS_TONE, TIME_OFF_CATEGORIES, TIME_OFF_STATUSES, type WeekHours } from "@/lib/time-off";
 import { buttonClasses } from "@/components/ui/button";
 import { formatHours } from "@/lib/pto";
 import { requireAccess } from "@/server/auth";
 import { balancesFor, listBanks } from "@/server/data/pto";
-import { currentEmployees, employeeNames, listTimeOff, myEmployee, type TimeOffRow } from "@/server/data/time-off";
+import { approvalChain, currentEmployees, employeeNames, listTimeOff, myEmployee, type TimeOffRow } from "@/server/data/time-off";
 import { facesForEmployees, type Face } from "@/server/data/faces";
 import { Avatar } from "@/components/ui/avatar";
 import { createClient } from "@/server/supabase/server";
@@ -31,7 +31,7 @@ function when(r: TimeOffRow) {
   return r.start_date === r.end_date ? `${formatDate(r.start_date)} (full day)` : `${formatDate(r.start_date)} – ${formatDate(r.end_date)} (${days} calendar days)`;
 }
 
-function Requests({ rows, names, showEmployee, faces = {}, cancelable = false }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean; faces?: Record<string, Face>; /** Own requests: a Cancel button on each pending one. */ cancelable?: boolean }) {
+function Requests({ rows, names, showEmployee, faces = {}, cancelable = false, waitingFor }: { rows: TimeOffRow[]; names: Map<string, { name: string }>; showEmployee: boolean; faces?: Record<string, Face>; /** Own requests: a Cancel button on each pending one. */ cancelable?: boolean; /** Who decides a pending request (O2). */ waitingFor?: (r: TimeOffRow) => string | null }) {
   return (
     <TableWrap>
       <Table>
@@ -42,7 +42,10 @@ function Requests({ rows, names, showEmployee, faces = {}, cancelable = false }:
               {showEmployee && <Td className="font-medium"><span className="flex items-center gap-2.5"><Avatar name={names.get(r.employee_id)?.name ?? "Employee"} size={28} {...faces[r.employee_id]} />{names.get(r.employee_id)?.name ?? "Employee"}</span></Td>}
               <Td><Link href={`/time-off/${r.id}`} className="font-medium text-ink hover:underline">{when(r)}</Link></Td>
               <Td className="hidden sm:table-cell">{TIME_OFF_CATEGORIES[r.category]}</Td>
-              <Td><Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge></Td>
+              <Td>
+                <Badge tone={STATUS_TONE[r.status]}>{TIME_OFF_STATUSES[r.status]}</Badge>
+                {r.status === "pending" && waitingFor?.(r) && <span className="mt-1 block text-xs text-muted">{waitingFor(r)}</span>}
+              </Td>
               {cancelable && <Td className="text-right">{r.status === "pending" ? <CancelRequestButton id={r.id} /> : null}</Td>}
             </Tr>
           ))}
@@ -89,6 +92,31 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
     for (const c of b.categories) bankFor[c] = { name: b.name, available: mine ? mine.available : null };
   }
 
+  // Who decides a pending request (O2: the approver was never named). Roles, not names: everyone may read which roles
+  // approve time off (role_permissions), while the list of members is for people who manage users. With an approval
+  // chain, the role of the step the request waits for decides it.
+  const supabase = await createClient();
+  const [approverRoles, chain] = await Promise.all([
+    supabase.from("role_permissions").select("role").eq("permission", "time_off.approve").then((r) => (r.error ? [] : [...new Set((r.data ?? []).map((x) => String(x.role)))]), () => [] as string[]),
+    approvalChain().catch(() => null),
+  ]);
+  const roleWords = (roles: string[]) => {
+    const labels = roles.map((r) => ROLE_LABELS[r as AppRole] ?? r);
+    return labels.length <= 1 ? labels.join("") : `${labels.slice(0, -1).join(", ")} or ${labels[labels.length - 1]}`;
+  };
+  const waitingFor = (r: TimeOffRow) => {
+    const step = chain?.length ? chain.find((c) => c.step_no === (r.approval_step ?? 1)) : null;
+    const roles = step ? [step.role] : approverRoles;
+    return roles.length ? `Waiting for ${step && chain ? `step ${step.step_no} of ${chain.length}, ` : ""}${roleWords(roles)} to decide` : null;
+  };
+  // An approver's own request needs another approver (nobody decides their own). Someone who manages users can see
+  // whether anyone else holds an approving role; when nobody does, the request would wait for ever, so say so.
+  const ownPending = mine.some((r) => r.status === "pending");
+  const otherApprovers = canApprove && ownPending && can(access, "users.manage") && approverRoles.length
+    ? await supabase.from("company_memberships").select("user_id", { count: "exact", head: true }).eq("active", true).in("role", approverRoles).neq("user_id", access.userId)
+        .then((r) => (r.error ? null : r.count ?? 0), () => null)
+    : null;
+
   const q = (sp.q ?? "").trim().toLowerCase();
   const shown = (all ?? []).filter((r) => !q || (names.get(r.employee_id)?.name ?? "").toLowerCase().includes(q));
 
@@ -127,14 +155,36 @@ export default async function TimeOffPage({ searchParams }: { searchParams: Prom
         <Card>
           <CardHeader title={canApprove ? "Request or enter time off" : "Request time off"} />
           <CardBody>
-            {me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} bankFor={bankFor} schedule={mySchedule} /> : (
-              <p className="text-sm text-muted">Your login is not linked to an employee record, so you cannot request time off here yet. Ask the office to link it in Employees.</p>
+            {canApprove && !me && (
+              // O2: an owner without a People record hit "Ask the office to link it" with an empty list. Say what to do.
+              <div className="mb-4" data-testid="time-off-not-linked">
+                <Notice title="Your sign-in is not linked to a person in People">
+                  {can(access, "employees.view")
+                    ? <>To request time off for yourself, add yourself in <Link href="/employees" className="font-semibold underline">People</Link>, open your person and choose your sign-in under Link an existing login. You can still enter time off for anyone already in People.</>
+                    : "To request time off for yourself, ask someone who manages people to link your sign-in to your person in People. You can still enter time off for anyone already in People."}
+                </Notice>
+              </div>
+            )}
+            {canApprove && !me && employees?.length === 0 ? (
+              <EmptyState
+                icon={<CalendarOff className="size-6" />}
+                title="Nobody is in People yet"
+                description="Time off is recorded for a person in People. Add your team (and yourself) first."
+                action={can(access, "employees.view") ? <Link href="/employees/new" className={buttonClasses("primary", "md")}>Add a person</Link> : undefined}
+              />
+            ) : me || canApprove ? <TimeOffForm employees={employees} ownEmployeeId={me?.id ?? null} bankFor={bankFor} schedule={mySchedule} /> : (
+              <p className="text-sm text-muted">Your sign-in is not linked to a person in People, so you cannot request time off here yet. Ask whoever manages people at your company to link it.</p>
             )}
           </CardBody>
         </Card>
         <Card>
           <CardHeader title="My requests" />
-          {!me || mine.length === 0 ? <EmptyState icon={<CalendarOff className="size-6" />} title="No requests yet" /> : <Requests rows={mine} names={names} showEmployee={false} cancelable />}
+          {otherApprovers === 0 && (
+            <p className="border-b border-line px-5 py-3 text-sm text-amber-900 sm:px-6" role="status" data-testid="no-other-approver">
+              Nobody else can approve your request: nobody decides their own time off, and no one else has a role that approves it. Give another role time-off approval in Settings → Roles and permissions, or add a person with such a role.
+            </p>
+          )}
+          {!me || mine.length === 0 ? <EmptyState icon={<CalendarOff className="size-6" />} title="No requests yet" /> : <Requests rows={mine} names={names} showEmployee={false} cancelable waitingFor={waitingFor} />}
         </Card>
       </div>
 

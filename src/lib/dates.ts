@@ -25,6 +25,17 @@ export function isOperationalDate(value: string): boolean {
   return isIsoDate(value) && value >= "2000-01-01" && value <= "2099-12-31";
 }
 export const OPERATIONAL_DATE_MESSAGE = "Enter a full date with a 4-digit year (2000–2099).";
+/** A required date left empty: say what to do, not what is wrong with the year (walkthrough O2). */
+export const DATE_REQUIRED_MESSAGE = "Choose a date.";
+
+/**
+ * The refine options for a required operational date (zod `.refine(isOperationalDate, OPERATIONAL_DATE_ERROR)`): an
+ * empty field says "Choose a date.", anything else the 4-digit-year message.
+ */
+export const OPERATIONAL_DATE_ERROR = {
+  error: (issue: { input?: unknown }) =>
+    typeof issue.input === "string" && issue.input.trim() === "" ? DATE_REQUIRED_MESSAGE : OPERATIONAL_DATE_MESSAGE,
+};
 
 /** "0026-10-15" (a two-digit year typed into a date field) → "2026-10-15"; anything else unchanged. */
 export function normalizeTypedDate(value: string): string {

@@ -2,7 +2,7 @@
 // permission that opens its page, and the database's row-level security still decides which rows come back.
 import type { Permission } from "@/lib/permissions";
 
-export type SearchGroupKey = "goto" | "customers" | "orders" | "quotes" | "tickets" | "workOrders" | "trucks" | "trailers" | "drivers" | "people";
+export type SearchGroupKey = "goto" | "customers" | "orders" | "quotes" | "tickets" | "invoices" | "workOrders" | "trucks" | "trailers" | "drivers" | "people";
 
 export type SearchHit = { id: string; title: string; detail: string; href: string };
 
@@ -11,6 +11,8 @@ export const SEARCH_GROUPS: Array<{ key: SearchGroupKey; label: string; permissi
   { key: "orders", label: "Orders", permission: "orders.view" },
   { key: "quotes", label: "Quotes", permission: "quotes.view" },
   { key: "tickets", label: "Delivery Tickets", permission: "tickets.view" },
+  // Invoices are money: only with billing.view, and the database's row-level security checks it again (M8).
+  { key: "invoices", label: "Invoices", permission: "billing.view" },
   { key: "workOrders", label: "Work Orders", permission: "maintenance.view" },
   { key: "trucks", label: "Trucks", permission: "fleet.view" },
   { key: "trailers", label: "Trailers", permission: "fleet.view" },
@@ -37,6 +39,17 @@ export function cleanQuery(q: string | null | undefined): string | null {
 export function ilikePattern(q: string): string {
   const safe = q.replace(/[(),"'\\]/g, " ").replace(/[%_]/g, (c) => `\\${c}`).trim();
   return `%${safe}%`;
+}
+
+/**
+ * A reference as an `ilike` pattern that ignores the separators people leave out or add: "INV1001", "inv 1001" and
+ * "INV-1001" all find INV-1001 (the letters and digits stay in order, anything may sit between them). Null without a
+ * reference. Only letters, digits and % are in the result, so it is safe inside PostgREST's or=(...) filter.
+ */
+export function referencePattern(q: string | null | undefined): string | null {
+  const key = referenceKey(q);
+  if (!key) return null;
+  return `%${(key.match(/[A-Z]+|\d+/g) ?? [key]).join("%")}%`;
 }
 
 /**

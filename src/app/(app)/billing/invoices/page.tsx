@@ -8,7 +8,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
+import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, moneyOwed, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
 import { cn } from "@/lib/cn";
 import { formatDate, todayIn } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -54,6 +54,11 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   const paid30 = invoices.flatMap((i) => i.payments).filter((p) => !p.voided_at && daysBetween(p.received_on, today) <= 30).reduce((n, p) => n + p.amount_cents, 0);
   const shown = view === "all" ? states : states.filter((x) => x.state === view);
   const count = (k: "all" | InvoiceState) => (k === "all" ? states.length : states.filter((x) => x.state === k).length);
+  // QuickBooks issues the invoices (M1): with none issued in Taviron, what is owed and overdue is kept in QuickBooks, so
+  // the figures say so instead of "$0 owed, nothing past due". Invoices once issued here still count, named as such.
+  const quickbooks = settings.issuer === "quickbooks";
+  const inQuickBooks = quickbooks && moneyOwed(invoices, today).issuedCount === 0;
+  const kept = <span className="text-muted">Kept in QuickBooks</span>;
 
   return (
     <>
@@ -68,17 +73,17 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
         </div>
       )}
       <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Receivables at a glance">
-        <StatTile icon={<Wallet />} tone="brand" label="Owed to you" value={dollars(aging.totals.total)} muted={aging.totals.total === 0}>
-          <span className="text-muted">{aging.rows.length} customer{aging.rows.length === 1 ? "" : "s"}</span>
+        <StatTile icon={<Wallet />} tone="brand" label="Owed to you" value={inQuickBooks ? "–" : dollars(aging.totals.total)} muted={inQuickBooks || aging.totals.total === 0}>
+          {inQuickBooks ? kept : <span className="text-muted">{aging.rows.length} customer{aging.rows.length === 1 ? "" : "s"}{quickbooks ? " · Taviron invoices only" : ""}</span>}
         </StatTile>
-        <StatTile icon={<AlarmClock />} tone={overdue.length ? "critical" : "neutral"} label="Overdue" value={dollars(overdue.reduce((n, x) => n + balanceCents(x.i), 0))} muted={!overdue.length}>
-          {overdue.length ? <Link href="/billing/invoices?view=overdue" className="font-semibold text-critical underline-offset-2 hover:underline">{overdue.length} invoice{overdue.length === 1 ? "" : "s"} past due</Link> : <span className="text-muted">nothing past due</span>}
+        <StatTile icon={<AlarmClock />} tone={overdue.length ? "critical" : "neutral"} label="Overdue" value={inQuickBooks ? "–" : dollars(overdue.reduce((n, x) => n + balanceCents(x.i), 0))} muted={inQuickBooks || !overdue.length}>
+          {inQuickBooks ? kept : overdue.length ? <Link href="/billing/invoices?view=overdue" className="font-semibold text-critical underline-offset-2 hover:underline">{overdue.length} invoice{overdue.length === 1 ? "" : "s"} past due</Link> : <span className="text-muted">nothing past due</span>}
         </StatTile>
-        <StatTile icon={<FileText />} tone={dueSoon.length ? "amber" : "neutral"} label="Due in 7 days" value={dollars(dueSoon.reduce((n, x) => n + balanceCents(x.i), 0))} muted={!dueSoon.length}>
-          <span className="text-muted">{dueSoon.length} invoice{dueSoon.length === 1 ? "" : "s"}</span>
+        <StatTile icon={<FileText />} tone={dueSoon.length ? "amber" : "neutral"} label="Due in 7 days" value={inQuickBooks ? "–" : dollars(dueSoon.reduce((n, x) => n + balanceCents(x.i), 0))} muted={inQuickBooks || !dueSoon.length}>
+          {inQuickBooks ? kept : <span className="text-muted">{dueSoon.length} invoice{dueSoon.length === 1 ? "" : "s"}</span>}
         </StatTile>
-        <StatTile icon={<CircleDollarSign />} tone="green" label="Paid, last 30 days" value={dollars(paid30)} muted={paid30 === 0}>
-          <span className="text-muted">payments recorded</span>
+        <StatTile icon={<CircleDollarSign />} tone="green" label="Paid, last 30 days" value={inQuickBooks && paid30 === 0 ? "–" : dollars(paid30)} muted={paid30 === 0}>
+          <span className="text-muted">{inQuickBooks && paid30 === 0 ? "Payments entered in QuickBooks are not seen here" : "payments recorded in Taviron"}</span>
         </StatTile>
       </div>
 

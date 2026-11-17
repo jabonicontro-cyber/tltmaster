@@ -13,6 +13,7 @@ import { applicationsOf, canPayNow, matchRemittance, matchTickets, parseRemittan
 import { CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { formatDate } from "@/lib/dates";
+import { adaptWording } from "@/lib/industry";
 import { centsToInput, formatCents } from "@/lib/money";
 import { useFormAction } from "@/components/ui/use-form-action";
 
@@ -21,8 +22,19 @@ import { useFormAction } from "@/components/ui/use-form-action";
 
 type Mode = { kind: "record"; customerId: string; today: string } | { kind: "apply"; paymentId: string; creditCents: number };
 
-export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mode: Mode; tickets: BilledTicket[]; issuer?: TicketBalances["issuer"] }) {
+export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks", industry = null }: {
+  mode: Mode;
+  tickets: BilledTicket[];
+  issuer?: TicketBalances["issuer"];
+  /** What the company hauls (Settings): a freight carrier reads BOL where an aggregate hauler reads ticket (M10). */
+  industry?: string | null;
+}) {
   const router = useRouter();
+  const say = (text: string) => adaptWording(text, industry);
+  // The number on the paper copy: "Scale ticket S-4812" for aggregate, the BOL number as written for freight (it often
+  // already starts with "BOL"; never "Scale BOL 2611142").
+  const paperLabel = say("Scale ticket");
+  const paperRef = (ref: string) => (ref.toUpperCase().startsWith(paperLabel.toUpperCase()) ? ref : `${paperLabel} ${ref}`);
   // Only tickets the database will take a payment for: with Taviron invoices, a ticket must be on an issued invoice.
   const open = useMemo(() => tickets.filter((t) => canPayNow(t, issuer)), [tickets, issuer]);
   const waitingInvoice = useMemo(() => (issuer === "taviron" ? tickets.filter((t) => payableCents(t) > 0 && !t.invoice_number) : []), [tickets, issuer]);
@@ -86,8 +98,8 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
     const unmatchedTotal = m.notFound.reduce((t, l) => t + (l.amount_cents ?? 0), 0);
     if (mode.kind === "record" && !amount.trim() && matchedTotal > 0) setAmount(centsToInput(matchedTotal));
     const matchedCount = Object.keys(m.selected).length;
-    setReadNote(`${from}: ${r.lines.length} ${r.lines.length === 1 ? "line" : "lines"}, ${matchedCount} ${matchedCount === 1 ? "ticket" : "tickets"} selected for ${formatCents(matchedTotal)}.`
-      + (unmatchedTotal > 0 ? ` ${formatCents(unmatchedTotal)} is on lines that match no open ticket and is not included; check them before you change the amount.` : "")
+    setReadNote(say(`${from}: ${r.lines.length} ${r.lines.length === 1 ? "line" : "lines"}, ${matchedCount} ${matchedCount === 1 ? "ticket" : "tickets"} selected for ${formatCents(matchedTotal)}.`
+      + (unmatchedTotal > 0 ? ` ${formatCents(unmatchedTotal)} is on lines that match no open ticket and is not included; check them before you change the amount.` : ""))
       + (m.over.length ? ` More than is open on ${m.over.join(", ")}: check those amounts.` : "")
       + (mode.kind === "apply" ? "" : " Check everything before you record it."));
     return true;
@@ -113,7 +125,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
         return next;
       });
       setNotFound(missing);
-      setReadNote(`${file.name}: no amounts found, so each ticket is filled with what it has open. Check the amounts.`);
+      setReadNote(say(`${file.name}: no amounts found, so each ticket is filled with what it has open. Check the amounts.`));
     }
   }
 
@@ -127,7 +139,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
       return next;
     });
     setNotFound(missing);
-    if (matched.length === 0 && missing.length === 0) toast.message("Type or paste the ticket numbers first.");
+    if (matched.length === 0 && missing.length === 0) toast.message(say("Type or paste the ticket numbers first."));
   }
 
   // Oldest tickets first until the money runs out; the last one may be part paid.
@@ -175,11 +187,11 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
       <input type="hidden" name="tickets" value={JSON.stringify(apps)} />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-        <Field label="Ticket numbers from the check stub or remittance" htmlFor="tp-paste" hint="Type them, or paste rows copied from the customer's spreadsheet or email (with amounts, each ticket gets its amount). Scale ticket numbers work too.">
+        <Field label={say("Ticket numbers from the check stub or remittance")} htmlFor="tp-paste" hint={say("Type them, or paste rows copied from the customer's spreadsheet or email (with amounts, each ticket gets its amount). The paper or scale ticket number works too.")}>
           <Textarea id="tp-paste" rows={2} value={pasted} onChange={(e) => setPasted(e.target.value)} placeholder="TKT-1017, TKT-1018, 1019" />
         </Field>
         <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" onClick={findPasted}>Select these tickets</Button>
+          <Button variant="secondary" size="sm" onClick={findPasted}>{say("Select these tickets")}</Button>
           <Button variant="ghost" size="sm" onClick={fillOldestFirst} disabled={paymentCents <= 0}>Oldest first</Button>
         </div>
       </div>
@@ -195,7 +207,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
           <>
             {missing.length > 0 && (
               <p className="text-sm text-amber-800" role="status">
-                Not found among this customer&apos;s open tickets: {missing.join(", ")}. Check the number, or it may already be paid.
+                {say("Not found among this customer's open tickets:")} {missing.join(", ")}. Check the number, or it may already be paid.
               </p>
             )}
             {notInvoiced.length > 0 && (
@@ -208,18 +220,18 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
       })()}
       {waitingInvoice.length > 0 && (
         <p className="text-sm text-muted">
-          {waitingInvoice.length} billed {waitingInvoice.length === 1 ? "ticket is" : "tickets are"} not on an issued invoice yet ({formatCents(waitingInvoice.reduce((n, t) => n + payableCents(t), 0))}) and {waitingInvoice.length === 1 ? "is" : "are"} not listed: a payment applies to a ticket once its invoice is issued (Billing → Handed off → Create invoice, then Issue).
+          {say(`${waitingInvoice.length} billed ${waitingInvoice.length === 1 ? "ticket is" : "tickets are"} not on an issued invoice yet (${formatCents(waitingInvoice.reduce((n, t) => n + payableCents(t), 0))}) and ${waitingInvoice.length === 1 ? "is" : "are"} not listed: a payment applies to a ticket once its invoice is issued (Billing → Handed off → Create invoice, then Issue).`)}
         </p>
       )}
 
       {open.length === 0 ? (
-        <p className="text-sm text-muted">This customer has no open tickets that can be paid now.{mode.kind === "record" ? " A payment recorded now is kept as credit." : ""}</p>
+        <p className="text-sm text-muted">{say("This customer has no open tickets that can be paid now.")}{mode.kind === "record" ? " A payment recorded now is kept as credit." : ""}</p>
       ) : (
         <div className="space-y-2">
           {open.length > 8 && (
             <div className="max-w-xs">
-              <label className="sr-only" htmlFor="tp-filter">Filter tickets</label>
-              <Input id="tp-filter" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter by ticket, order or invoice" className="h-9 text-sm" />
+              <label className="sr-only" htmlFor="tp-filter">{say("Filter tickets")}</label>
+              <Input id="tp-filter" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={say("Filter by ticket, order or invoice")} className="h-9 text-sm" />
             </div>
           )}
           <TableWrap className="max-h-[28rem] overflow-y-auto">
@@ -227,7 +239,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
               <thead>
                 <tr>
                   <Th className="w-10"><span className="sr-only">Pay</span></Th>
-                  <Th>Ticket</Th>
+                  <Th>{say("Ticket")}</Th>
                   <Th>Delivered</Th>
                   <Th>Order</Th>
                   <Th>Invoice</Th>
@@ -247,7 +259,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
                       </Td>
                       <Td className="font-medium">
                         {t.ticket_number}
-                        {t.reference && <span className="block text-xs font-normal text-muted">Scale {t.reference}</span>}
+                        {t.reference && <span className="block text-xs font-normal text-muted">{paperRef(t.reference)}</span>}
                       </Td>
                       <Td className="text-muted">{t.delivered_at ? formatDate(t.delivered_at.slice(0, 10)) : "–"}</Td>
                       <Td className="text-muted">{t.order_number}</Td>
@@ -278,7 +290,7 @@ export function TicketPaymentForm({ mode, tickets, issuer = "quickbooks" }: { mo
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line bg-surface px-4 py-3 text-sm" aria-live="polite">
         <dl className="flex flex-wrap gap-x-6 gap-y-1">
           <div className="flex gap-1.5"><dt className="text-muted">{mode.kind === "apply" ? "Credit" : "Payment"}</dt><dd className="font-medium tabular-nums">{formatCents(paymentCents)}</dd></div>
-          <div className="flex gap-1.5"><dt className="text-muted">On {apps.length} {apps.length === 1 ? "ticket" : "tickets"}</dt><dd className="font-medium tabular-nums">{formatCents(appliedCents)}</dd></div>
+          <div className="flex gap-1.5"><dt className="text-muted">{say(`On ${apps.length} ${apps.length === 1 ? "ticket" : "tickets"}`)}</dt><dd className="font-medium tabular-nums">{formatCents(appliedCents)}</dd></div>
           <div className="flex gap-1.5">
             <dt className="text-muted">{leftCents < 0 ? "Over by" : mode.kind === "apply" ? "Credit left" : "Kept as credit"}</dt>
             <dd className={cn("font-medium tabular-nums", leftCents < 0 && "text-critical")}>{formatCents(Math.abs(leftCents))}</dd>

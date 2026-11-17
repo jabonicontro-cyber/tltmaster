@@ -6,7 +6,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState } from "@/components/ui/states";
-import { balanceCents, invoiceState } from "@/lib/billing/invoices";
+import { balanceCents, invoiceState, moneyOwed } from "@/lib/billing/invoices";
 import { heldTotal, missedTotal } from "@/lib/billing/leaks";
 import { briefingActions, greetingFor, type BriefingAction } from "@/lib/briefing";
 import { cn } from "@/lib/cn";
@@ -16,9 +16,10 @@ import { formatCents } from "@/lib/money";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { loadSummary } from "@/server/data/command-center";
-import { listInvoices } from "@/server/data/invoices";
+import { invoicingSettings, listInvoices } from "@/server/data/invoices";
 import { listLeaks } from "@/server/data/leaks";
 import { shownName } from "@/server/data/profile";
+import { timeOffWaitingForMe } from "@/server/data/time-off-waiting";
 import { businessToday } from "@/server/data/settings";
 import { listStopTimes, waitTimeSettings } from "@/server/data/wait-times";
 import { createClient } from "@/server/supabase/server";
@@ -41,7 +42,7 @@ export default async function BriefingPage() {
   const yesterday = addDays(today, -1);
   const billing = can(access, "billing.view");
   const supabase = await createClient();
-  const [name, summary, daily, ops, invoices, leaks, waits, waitCfg, outlook] = await Promise.all([
+  const [name, summary, daily, ops, invoices, leaks, waits, waitCfg, outlook, invoicing, timeOff] = await Promise.all([
     shownName(access),
     loadSummary(),
     supabase.rpc("my_daily_summary").then((r) => (r.error ? null : (r.data as { tomorrow_without_truck?: number; tomorrow_loads?: number } | null))),
@@ -52,6 +53,10 @@ export default async function BriefingPage() {
     waitTimeSettings().catch(() => ({ installed: false, freeMinutes: null })),
     // Today's loads against the shared readiness rule (owner 2026-11-09, WK1), the same figures as the Command Center.
     can(access, "dispatch.view") ? loadOutlook(today, false, 1).catch(() => null) : Promise.resolve(null),
+    // Who issues invoices (M1): when QuickBooks does, Taviron has no invoices to count, so no "$0 overdue" is shown.
+    billing ? invoicingSettings().catch(() => null) : Promise.resolve(null),
+    // Time off waiting for this person's decision (O1), for people who approve time off.
+    timeOffWaitingForMe(access).catch(() => null),
   ]);
   const s = summary.ok ? summary.data : null;
   // Loads today not yet ended: without a truck, and on a truck or trailer that cannot run today. "All covered" only
@@ -60,8 +65,10 @@ export default async function BriefingPage() {
   const needTruck = day ? day.unassigned : s?.unassigned_loads ?? 0;
   const cannotRun = day ? day.conflicts : null;
   const covered = needTruck === 0 && (cannotRun === null ? !s?.assignment_problems : cannotRun === 0);
-  const overdue = invoices ? invoices.filter((i) => invoiceState(i, today) === "overdue") : null;
-  const actions = briefingActions({
+  // QuickBooks issues the invoices and none were issued in Taviron: what is overdue is kept in QuickBooks, not zero.
+  const inQuickBooks = Boolean(invoices && invoicing?.issuer === "quickbooks" && moneyOwed(invoices, today).issuedCount === 0);
+  const overdue = invoices && !inQuickBooks ? invoices.filter((i) => invoiceState(i, today) === "overdue") : null;
+  const signals = briefingActions({
     urgentOrders: s?.urgent_orders ?? null,
     loadsTodayUnassigned: s?.unassigned_loads ?? null,
     assignmentProblems: s?.assignment_problems ?? null,
@@ -76,6 +83,15 @@ export default async function BriefingPage() {
     tomorrowUnassigned: daily?.tomorrow_without_truck ?? null,
     longWaitsYesterday: waits ? waits.filter((w) => isLong(waitMinutes(w), waitCfg.freeMinutes)).length : null,
   });
+  // Time off waiting for you (O1): an app-level item next to the database-built ones, ranked after uncovered loads.
+  const actions = timeOff?.length
+    ? [...signals, {
+        key: "time_off", tone: "info" as const, weight: 58,
+        title: `Time off waiting for you (${timeOff.length})`,
+        detail: `${timeOff[0].name}, ${timeOff[0].when}${timeOff.length > 1 ? `, and ${timeOff.length - 1} more` : ""}. Approved leave keeps a driver off dispatch for those days.`,
+        href: "/time-off?status=pending", cta: "Approve or deny",
+      }].sort((a, b) => b.weight - a.weight)
+    : signals;
   const hour = Number(new Intl.DateTimeFormat("en-US", { hour: "numeric", hourCycle: "h23", timeZone: timezone }).format(new Date()));
   const first = actions.slice(0, 3);
   const rest = actions.slice(3);
@@ -110,7 +126,14 @@ export default async function BriefingPage() {
         </StatTile>
         {billing && (
           <StatTile icon={<AlertTriangle />} tone={overdue?.length ? "amber" : "neutral"} label="Overdue" value={overdue ? formatCents(overdue.reduce((n, i) => n + balanceCents(i), 0)) : "–"} muted={!overdue?.length}>
-            {overdue ? `${overdue.length} invoice${overdue.length === 1 ? "" : "s"} past terms` : "Invoicing not in use"}
+            {inQuickBooks ? (
+              <span className="text-muted" data-testid="briefing-overdue-quickbooks">
+                Kept in QuickBooks: your invoices are issued there.{" "}
+                {can(access, "billing.manage") && <Link href="/settings?tab=invoicing" className="font-semibold text-brand-fg underline-offset-2 hover:underline">Settings → Invoicing</Link>}
+              </span>
+            ) : overdue ? (
+              overdue.length ? <Link href="/billing/invoices?view=overdue" className="font-semibold underline-offset-2 hover:underline">{overdue.length} invoice{overdue.length === 1 ? "" : "s"} past terms</Link> : "Nothing past terms"
+            ) : "Invoicing not in use"}
           </StatTile>
         )}
       </div>

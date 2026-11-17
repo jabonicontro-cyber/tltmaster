@@ -1,8 +1,9 @@
 import "server-only";
 import type { Access } from "@/lib/permissions";
-import { ilikePattern, referenceKey, searchableGroups, type SearchGroupKey, type SearchHit } from "@/lib/search";
+import { ilikePattern, referenceKey, referencePattern, searchableGroups, type SearchGroupKey, type SearchHit } from "@/lib/search";
 import { idsClause, REF_KEYS, referenceMatches } from "@/server/data/search";
 import { WO_STATUSES, type WoStatus } from "@/lib/maintenance";
+import { formatDate } from "@/lib/dates";
 import { ORDER_STATUS_LABELS } from "@/lib/orders/status";
 import type { OrderStatus } from "@/server/data/types";
 import { QUOTE_STATUS_LABELS, type QuoteStatus } from "@/lib/quotes/status";
@@ -10,6 +11,7 @@ import { TICKET_STATUS_LABELS, type TicketStatus } from "@/lib/tickets/rules";
 import { createClient } from "@/server/supabase/server";
 
 const LIMIT = 6;
+const INVOICE_STATUS: Record<string, string> = { draft: "Draft", issued: "Issued", void: "Void" };
 
 /**
  * Search the records this person may open. Every query runs with their own session, so row-level security keeps it
@@ -38,6 +40,20 @@ export async function globalSearch(access: Access, q: string, limit = LIMIT): Pr
       case "tickets": {
         const { data } = await supabase.from("delivery_tickets").select("id, ticket_number, external_reference, delivered_at, status").or(`ticket_number.ilike.${like},external_reference.ilike.${like}${idsClause(await referenceMatches(supabase, REF_KEYS.tickets, ref))}`).neq("status", "superseded").order("delivered_at", { ascending: false }).limit(limit);
         return ((data ?? []) as Array<{ id: string; ticket_number: string; external_reference: string; delivered_at: string; status: string }>).map((r) => ({ id: r.id, title: `Ticket ${r.ticket_number}`, detail: [r.external_reference, r.delivered_at?.slice(0, 10), TICKET_STATUS_LABELS[r.status as TicketStatus] ?? r.status].filter(Boolean).join(" · "), href: `/tickets/${r.id}` }));
+      }
+      case "invoices": {
+        // Invoice number (INV-1001, typed with or without the dash), order number, PO or the customer billed. Read with
+        // the person's session: invoices are visible only with billing.view (row-level security).
+        const refLike = referencePattern(q);
+        const { data } = await supabase.from("invoices").select("id, number, status, order_number, customer_po, due_date, customer:bill_to->>name")
+          .or(`number.ilike.${like},order_number.ilike.${like},customer_po.ilike.${like},bill_to->>name.ilike.${like}${refLike ? `,number.ilike.${refLike}` : ""}`)
+          .order("created_at", { ascending: false }).limit(limit);
+        return ((data ?? []) as Array<{ id: string; number: string | null; status: string; order_number: string; customer_po: string; due_date: string | null; customer: string | null }>).map((r) => ({
+          id: r.id,
+          title: r.number ? `Invoice ${r.number}` : "Draft invoice",
+          detail: [r.customer, r.order_number, INVOICE_STATUS[r.status] ?? r.status, r.due_date && r.status === "issued" ? `due ${formatDate(r.due_date)}` : ""].filter(Boolean).join(" · "),
+          href: `/billing/invoices/${r.id}`,
+        }));
       }
       case "workOrders": {
         const { data } = await supabase.from("work_orders").select("id, number, title, status").or(`number.ilike.${like},title.ilike.${like}${idsClause(await referenceMatches(supabase, REF_KEYS.workOrders, ref))}`).order("created_at", { ascending: false }).limit(limit);
