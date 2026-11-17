@@ -20,10 +20,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
     permissions: [],
     audience: "Everyone who signs in to a company workspace.",
     whatYouSee: [
-      "A menu on the left with the pages your role can open, grouped under Sales, Operations, Finance and Company. Pages your role cannot use are not listed.",
+      "A menu on the left with the pages your role can open, grouped under Sales, Operations, Finance and Company. Pages your role cannot use are not listed, and neither are areas your company switched off in Settings → What you use.",
       "On a computer the menu shows icons only until you point at it; **Keep sidebar open** pins it open and **Unpin sidebar** returns it to icons.",
       "On a phone or small screen, **Open menu** (top left) shows the same menu.",
-      "Your company's name or logo at the top of the menu; selecting it takes you home to the Command Center (drivers start on My Day).",
+      "Your company's name or logo at the top of the menu; selecting it takes you to your own start page: the Command Center, My Day for drivers, My jobs for mechanics.",
+      "**Search** at the top: customers, orders, quotes, delivery tickets, work orders, trucks, drivers and people you may see, and invoices for people who see billing (type the invoice number with or without the dash, such as INV-1001). Words such as \"fuel\" or \"IFTA\" open Fuel and IFTA. Areas your company switched off are not searched.",
       "Your name and role at the top right. Selecting them opens the profile menu: **My profile**, **Company setup** (administrators), the companies you belong to, **Appearance** and **Sign out**.",
       "In a demo company, a Demo label next to your name and the extra menu items **Change view**, **About this demo** and **Presentation mode**. Demo data is fictional and nothing is sent.",
     ],
@@ -68,7 +69,11 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       {
         problem: "A page you expect is missing from the menu.",
-        fix: "The menu only lists pages your role can use. An owner can change what each role can do in Settings → Roles and permissions.",
+        fix: "The menu only lists pages your role can use, in the areas your company uses. An owner can change what each role can do in Settings → Roles and permissions, and switch areas on in Settings → What you use.",
+      },
+      {
+        problem: "A page says “… is switched off for your company”.",
+        fix: "Your company does not use that area, so it is hidden. Nothing in it was deleted. The owner can switch it back on in Settings → What you use.",
       },
       {
         problem: "An action says “You do not have permission to perform this action”.",
@@ -77,7 +82,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["command-center", "profile"],
     related: ["company-setup", "settings-roles-permissions"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
   },
   {
     id: "command-center",
@@ -92,7 +97,9 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Weather** under the date: conditions now at your bases (or the yard) and official alerts in effect at today's delivery sites, from the US National Weather Service. Bases need a map position.",
       "**Your work**: items someone assigned to you and, if your sign-in is also linked to a driver, your own loads today.",
       "**Attention queue**: one item per open problem, most urgent and oldest first, such as Urgent order, Needs a delivery date, Load without a truck, Missing delivery ticket, Ticket to review, Billing blocked, Equipment out of service and driver reports.",
-      "**Operations today**, **Sales and quotes** (with quote access) and **Recent activity**, depending on your role.",
+      "**Time off waiting for you (n)** in the attention queue for people who approve time off, while your company uses Time Off.",
+      "**Money owed** (with billing access): select it to open the invoices, the overdue ones first when any are late.",
+      "**Operations today**, **Sales and quotes** (with quote access) and **Recent activity**, depending on your role. Areas your company switched off are left out.",
       "An item leaves the queue only when its record is fixed on its own page; hiding or assigning it never closes it.",
     ],
     tasks: [
@@ -145,7 +152,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["dispatch-board", "delivery-tickets"],
     related: ["getting-started", "order-to-cash", "driver-reports"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
   },
   {
     id: "company-setup",
@@ -691,8 +698,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     prerequisites: ["Scheduling needs the scheduling permission; status changes and details need the permission to edit orders; urgency actions need dispatch or order edit access. With the permission to create orders you can also flag your own order as urgent, change its stops, and confirm or cancel it while it is a draft."],
     troubleshooting: [
       {
-        problem: "“Add the delivery location to order … before scheduling it: a job-site address, or a site name such as “Customer pickup at the yard”.”",
-        fix: "Select **Edit details** and add a job site address or site name, then schedule again.",
+        problem: "“Add the delivery location to order … before scheduling it: a job-site address, a site name such as “Customer pickup at the yard”, or a delivery stop.”",
+        fix: "Select **Edit details** and add a job site address or site name, or list a delivery stop under **Stops**, then schedule again.",
       },
       { problem: "“The scheduled date cannot be in the past.”", fix: "Choose today or a later date." },
       { problem: "“Set a scheduled date before marking the order …”", fix: "Use **Set schedule** first." },
@@ -704,7 +711,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["load-build", "dispatch-board"],
     related: ["orders", "billing", "order-to-cash"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: ["Completed and canceled orders are final and can no longer be edited. History is kept."],
   },
   {
@@ -768,7 +775,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Dispatchers and owners.",
     whatYouSee: [
       "The day you are planning, with **Previous day**, **Next day** and **Go to date**.",
-      "**Urgent orders** and **Needs scheduling** (confirmed orders without a delivery date) at the top.",
+      "**Urgent orders** and **Needs scheduling** (confirmed orders without a delivery date) at the top. Once an urgent order you acknowledged has a truck on the board, **Mark truck assigned** is on its card.",
       "**Smart Dispatch** proposals for loads without a truck.",
       "Each scheduled order with its loads, and **Trucks today** and **Drivers today** with their bookings and eligibility.",
       "**Plan the day** and **Driver & truck availability** buttons.",
@@ -822,10 +829,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       { problem: "“A tractor needs a trailer for this load.”", fix: "Choose a trailer, or use a dump truck." },
       { problem: "“On hold: loads cannot be assigned until the hold is released.”", fix: "Release the hold on the order first." },
+      { problem: "“… is already assigned to … load … on … from … to ….”", fix: "The truck, trailer or driver is booked at that time; the message names the day so you can find the other load. Choose another, or move one of the loads." },
+      { problem: "“… load … is offered to a hired truck (…). Withdraw the offer in Hired trucks before giving the load to your own crew.”", fix: "Open **Hired trucks** and withdraw the offer (offered, or accepted and waiting for you), then assign your own truck." },
     ],
     next: ["smart-dispatch", "route-planner"],
     related: ["plan-the-day", "load-build", "fleet-drivers"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: ["Hours of service are not checked by Taviron. Confirm them yourself before assigning."],
   },
   {
@@ -837,7 +846,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     permissions: ["dispatch.view"],
     audience: "Dispatchers.",
     whatYouSee: [
-      "**Smart Dispatch** on the dispatch board, covering a period you choose (today, 3 days or 7 days ahead).",
+      "**Smart Dispatch** on the dispatch board, folded to one line and covering today; open it, or choose 3 or 7 days.",
+      "A load offered to a hired truck (offered, or accepted and waiting for you) is not proposed for your own crew; withdraw the offer in Hired trucks first.",
       "Each unassigned load with a **Proposed:** truck and driver, the reasons, and **Why trucks and drivers were ruled out**.",
       "**About these proposals** and the limits of what was checked.",
       "Proposals never change anything on their own; each one waits for your decision.",
@@ -886,7 +896,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["plan-the-day"],
     related: ["dispatch-board", "settings-dispatch-bases"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: ["Hours of service are not checked; you confirm them before each approval."],
   },
   {
@@ -900,7 +910,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "A **Day** from today to 14 days ahead and a **Planning mode**: Balanced, Service first, Revenue first or Efficiency first.",
       "**Adjust priorities** (collapsed; 0 = ignore, 5 = most important) for service reliability, revenue (estimate), truck utilization, fewer empty trips, driver workload balance and keeping crews together.",
-      "**Plans** with four measures (loads covered, estimated revenue, trucks and drivers used, assignments that need review), **More plan details** (urgent and overdue coverage, average truck fill, site changes, workload), and how other presets compare.",
+      "**Plans** with loads covered (out of every open load, including those left for you), trucks and drivers used, assignments that need review, and estimated revenue for people with billing access; **More plan details** (urgent and overdue coverage, average truck fill, site changes, workload), and how other presets compare.",
       "Each proposed assignment with a checkbox, a status (**Recommended**, **Needs review** or **Blocked**), what to check, and **View explanation** for the full reasons.",
       "**Missing or estimated information** that limits the plan, and **Unavailable resources** with the reason for each truck, trailer or driver.",
     ],
@@ -934,7 +944,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["dispatch-board"],
     related: ["smart-dispatch", "company-setup"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: [
       "Priorities only rank options that pass every safety, legal, qualification, capacity and maintenance rule.",
       "Margin is not evaluated without cost data, and revenue is an estimate.",
@@ -978,14 +988,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { problem: "“No assigned loads on this day”.", fix: "Routes appear once loads are assigned to trucks on the dispatch board." },
       { problem: "“Distance unknown: a location is missing”.", fix: "Add the missing site location on this page." },
       {
-        problem: "“Truck routing is not set up yet (the owner adds a HERE key). Distances below are straight lines.”",
-        fix: "Straight lines are the shortest possible distance; trucks drive further. The owner can set up truck routing.",
+        problem: "“Truck routing is not switched on yet; the Taviron team turns it on. Distances below are straight lines.”",
+        fix: "Straight lines are the shortest possible distance; trucks drive further. Ask the Taviron team to switch truck routing on.",
       },
       { problem: "“Truck routing is off in demo companies. Distances below are straight lines.”", fix: "This is expected in a demo." },
     ],
     next: ["dispatch-board"],
     related: ["customers", "my-day"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: [
       "Routes are read from the dispatch board; they change only when the board does.",
       "Each truck's day here uses a standard truck profile; Plan a route uses the truck's recorded height, width, length, weight and axles. A route without notices is not a guarantee the road is clear.",
@@ -1105,6 +1115,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
           "On the load, select **Report a problem**.",
           "Choose **What is happening?** and, for equipment, **Which equipment?**.",
           "Describe **What happened?** and select **Send report**. In an emergency, call 911 and dispatch first.",
+          "Without signal the report is saved on the phone and sends itself when there is signal.",
         ],
       },
       {
@@ -1131,7 +1142,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["time-off"],
     related: ["driver-reports", "delivery-tickets", "communications"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
   },
 
   // ---------------------------------------------------------------------------------------------------------------
@@ -1408,7 +1419,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "A list of work orders with filters for **Status**, **Truck**, **Category**, **Urgency** and **Mechanic**.",
       "On a work order: **The job**, **Findings and labor**, **Parts, labor and costs** (with cost access), **Linked** records and **History**.",
-      "Status buttons such as **Mark triaged**, **Mark scheduled**, **Start work**, **Waiting for parts**, **Send for inspection**, **Mark completed**, **Close** and **Cancel work order**.",
+      "Status buttons such as **Mark triaged**, **Mark scheduled**, **Start this job**, **Waiting for parts**, **Send for inspection**, **Mark completed**, **Close** and **Cancel work order**. **Waiting for parts** offers the parts already on order; **Part is in** / **Parts are in** marks them received.",
+      "Finishing a job with checklist steps not ticked or parts still on order shows a warning first; you can finish them first, or complete it (or send it for inspection) anyway when the work is really done.",
       "Drivers of the truck see scheduled shop appointments on My Day.",
     ],
     tasks: [
@@ -1447,7 +1459,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["maintenance-clearance"],
     related: ["maintenance-overview", "driver-reports", "fleet-trucks"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
   },
   {
     id: "maintenance-parts",
@@ -1677,7 +1689,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       { title: "Choose Taviron to issue invoices", steps: ["Open **Settings → Invoicing**.", "Choose **Taviron**, set the **Payment terms (days)** and an optional **Footer on invoices**.", "Select **Save**. Orders already sent to QuickBooks stay there."] },
       { title: "Create and issue an invoice", steps: ["Open **Billing → Handed off** and select **Create invoice** on the order.", "Check the draft, choose the **Issue date** and select **Issue invoice**. It gets the next invoice number and its due date."] },
       { title: "Email an invoice", steps: ["On an issued invoice, check **To**, **Subject** and **Message**.", "Select **Send invoice**. The PDF with your logo and colour is attached."] },
-      { title: "Record a payment", steps: ["Under **Record a payment**, enter the **Amount**, **Received** date, **Method** and the check or reference number.", "Select **Record payment**. A payment can never be more than what is still owed."] },
+      { title: "Record a payment", steps: ["Under **Record a payment**, enter the **Amount**, **Received** date, **Method** and the check or reference number.", "Select **Record payment**. A payment can never be more than what is still owed. If it is refused, what you typed stays in the form and the reason shows under **Amount**."] },
       { title: "Correct a mistake", steps: ["Void any payments first (each needs a reason).", "Under **Void this invoice**, give the **Reason** and select **Void invoice**. Create a new invoice from the same order."] },
     ],
     prerequisites: ["The order must be handed off for billing. Invoices are made only from handed-off orders, so they match verified deliveries."],
@@ -1688,7 +1700,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["billing"],
     related: ["billing"],
-    reviewed: "2026-11-01",
+    reviewed: "2026-11-17",
     limitations: ["No online card or bank payments; payments are recorded by hand.", "Taviron invoices are not sent to QuickBooks."],
   },
   {
@@ -1732,16 +1744,16 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Owners, office staff and dispatchers. Money figures need billing access.",
     whatYouSee: [
       "**Delivered yesterday**: the verified value of yesterday's accepted tickets.",
-      "**Loads today**, **Trucks down** and **Overdue** invoices.",
-      "**Do these first**: the three most urgent things, ranked by urgency and money at stake.",
+      "**Loads today**, **Trucks down** and **Overdue** invoices. When QuickBooks issues your invoices, Overdue says so instead of showing $0.",
+      "**Do these first**: the three most urgent things, ranked by urgency and money at stake, including **Time off waiting for you** for people who approve time off.",
       "**Also worth a look**: everything else that needs attention.",
     ],
     tasks: [{ title: "Start the day", steps: ["Open **Morning briefing** in the sidebar.", "Work through **Do these first** from the top; each button opens the place to fix it."] }],
     prerequisites: [],
-    troubleshooting: [{ problem: "A figure shows **–**.", fix: "You may not have access to it (for example money figures need billing access), or the feature is not set up yet." }],
+    troubleshooting: [{ problem: "A figure shows **–** or is missing.", fix: "You may not have access to it (for example money figures need billing access), the feature is not set up yet, or your company switched that area off in Settings → What you use." }],
     next: ["dispatch-board"],
     related: ["billing-revenue-check"],
-    reviewed: "2026-11-02",
+    reviewed: "2026-11-17",
     limitations: ["Nothing is done from this page; each action opens its own page."],
   },
   {
@@ -1839,7 +1851,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Recent long waits**, each linked to its order.",
     ],
     tasks: [
-      { title: "Record a stop (drivers)", steps: ["On **My Day**, on the load, tap **Arrived** at the pickup when you get there and **Left** when you leave.", "Do the same at the job site. The time is recorded when you tap."] },
+      { title: "Record a stop (drivers)", steps: ["On **My Day**, on the load, tap **Record arrival** at the pickup when you get there and **Record departure** when you leave.", "Do the same at the job site. The time is recorded when you tap."] },
       { title: "Set the free time", steps: ["Open **Settings → Dispatch rules**.", "Under **Wait times**, enter the minutes a truck may wait before it counts as long, and select **Save**."] },
     ],
     prerequisites: ["Drivers need a Taviron sign-in linked to their driver record to tap Arrived and Left."],
@@ -1958,7 +1970,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "offline",
     title: "Working without signal",
-    summary: "When the phone has no signal, the driver still sees today's loads as last loaded and can save tickets, inspections and Arrived/Left taps; they send by themselves when signal returns.",
+    summary: "When the phone has no signal, the driver still sees today's loads as last loaded and can save tickets (with their photos), problem reports, inspections and arrival and departure times; they send by themselves when signal returns.",
     category: "dispatch",
     routes: ["/driver"],
     permissions: ["driver.portal"],
@@ -1968,7 +1980,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Waiting to send** on My Day: what is saved on your phone and not yet with the office.",
     ],
     tasks: [
-      { title: "Send a ticket without signal", steps: ["Fill in the ticket as usual (without photos) and tap **Send ticket**.", "It says **Saved on this phone, not sent yet**. Keep the paper ticket; it sends by itself when you have signal."] },
+      { title: "Send a ticket without signal", steps: ["Fill in the ticket as usual, photo included, and tap **Send ticket**.", "It says **Saved on this phone, not sent yet**. Keep the paper ticket; it sends by itself when you have signal."] },
       { title: "If something was not accepted", steps: ["It stays under **Waiting to send** with the reason.", "Tell the office what it was, then tap **Delete**."] },
     ],
     prerequisites: ["Open My Day once with signal each day, so today's loads are saved on the phone."],
@@ -1978,8 +1990,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["my-day", "inspections"],
     related: [],
-    reviewed: "2026-11-02",
-    limitations: ["Photos, messages, breakdown reports, fuel and trip sheets still need signal.", "Not tested on every phone yet."],
+    reviewed: "2026-11-17",
+    limitations: ["Messages, fuel and trip sheets still need signal.", "Not tested on every phone yet."],
   },
   {
     id: "phone-setup",
@@ -2035,8 +2047,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
         title: "When you have no signal",
         steps: [
           "Open My Day once with signal at the start of each day, so today's loads are saved on your phone.",
-          "Without signal you still see today's loads, and you can send tickets (without photos), inspections and Arrived / Left taps. They show **Saved on this phone, not sent yet** and send by themselves when signal returns.",
-          "Keep the paper ticket. Photos, messages and breakdown reports need signal.",
+          "Without signal you still see today's loads, and you can send tickets (with their photos), problem reports, inspections and arrival and departure times. They show **Saved on this phone, not sent yet** and send by themselves when signal returns.",
+          "Keep the paper ticket. Messages need signal.",
         ],
       },
       {
@@ -2222,7 +2234,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "Views: **All orders**, **Missing tickets**, **Tickets to review**, **Exceptions**, **Ready to bill** and **Handed off**.",
       "Each order's status: Missing documentation, Tickets need review, Blocked: exceptions, Work not completed, Ready to bill or Handed off.",
-      "On an order: **Order lines** (ordered against delivered), **Loads**, exceptions, an **Invoice draft** preview and **Billing history**.",
+      "On an order: **Order lines** (ordered against delivered, plus charges billed per occurrence such as a lumper or truck ordered not used, and the tax), **Loads**, exceptions, an **Invoice draft** preview and **Billing history**.",
       "Handoff batches with **Download file (CSV)**.",
     ],
     tasks: [
@@ -2257,7 +2269,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     ],
     next: ["order-to-cash"],
     related: ["ticket-review", "order-detail", "reports"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: [
       "Billing Readiness is a checklist. It does not create invoices, change prices or mark anything paid; invoices are entered in your accounting system.",
       "The invoice draft is a computed preview from accepted tickets and the order's prices; nothing is issued, sent or exported to accounting.",
@@ -2484,7 +2496,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**My balances** (when balances are set up): available hours, which is the balance minus your pending requests.",
       "**Request time off** (or **Request or enter time off** for approvers) and **My requests**.",
       "**Everyone's requests** for people who can see or approve requests.",
-      "Statuses: Pending, Approved, Denied and Canceled.",
+      "Statuses: Pending, Approved, Denied and Canceled. A pending request says which role decides it (and which step, with an approval chain).",
     ],
     tasks: [
       {
@@ -2515,11 +2527,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
       },
       { problem: "“Approved time off that has started can only be canceled by an approver.”", fix: "Ask an approver to cancel it." },
       { problem: "“This request waits for step … (…): someone with the … role decides it.”", fix: "Your company uses an approval chain. Someone with that role decides this step." },
+      { problem: "“Your sign-in is not linked to a person in People”.", fix: "Add yourself in **People**, open your person and choose your sign-in under **Link an existing login**. Without that permission, ask whoever manages people to link it." },
       { problem: "“Time-off requests need a database update that has not been installed yet.”", fix: "Ask the owner to install the update." },
     ],
     next: ["time-off-balances"],
     related: ["settings-time-off-approval", "dispatch-board", "people"],
-    reviewed: REVIEWED,
+    reviewed: "2026-11-17",
     limitations: ["Approved leave makes a driver unavailable to dispatch for those dates and hours; loads already booked are not canceled automatically."],
   },
   {
@@ -2680,11 +2693,21 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Quote defaults**: **Default sales tax %**, **Quotes valid for (days)**, **Follow up after (days)**, **Default quote terms** and **Quote footer note**.",
       "**Delivery tickets** (require the paper or scale ticket number), **Urgent orders** (escalation time) and **Job site directions** (how often to review them).",
       "**Branding**: **Logo**, **Accent color** and **Document color**, with a preview.",
+      "**What you use**: the areas your company works with (Quotes, Orders and jobs, Dispatch, Delivery tickets, Billing, Payroll and more), with starting points **Full operations**, **Tickets to billing** and **Quotes only**. Safety, Driver Reports, Communications, Customers, Fleet, People and Settings are always on.",
+      "Drivers and mechanics do not see Settings; it is not part of their work.",
     ],
     tasks: [
       {
         title: "Change company details or defaults",
         steps: ["Open **Settings** → **Company and branding**.", "Change the fields.", "Select **Save settings** at the bottom, or **Save company details** right under the contact details."],
+      },
+      {
+        title: "Choose the areas your company uses",
+        steps: [
+          "Open **Settings** → **Company and branding** and go to **What you use**.",
+          "Pick a starting point under **Start from**, or tick and untick areas under **Areas**. An area that needs another (for example Billing needs Delivery tickets) switches it on or off with it.",
+          "Select **Save**. A switched-off area leaves the menu, search, help and the Command Center; nothing in it is deleted, and switching it back on brings everything back.",
+        ],
       },
       {
         title: "Add your logo and colors",
@@ -3197,7 +3220,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     whatYouSee: [
       "A **Stops** section on the order: each stop numbered in the order the truck makes it, marked **Pickup** or **Delivery**, with the place, address, appointment date and window, reference number and notes.",
       "On the dispatch board the order shows its route (for example Gary, IN → Joliet, IL (+1 stop)) instead of the job site.",
-      "On the driver's load card the stops replace the single pickup and job site, each with a **Go** button that opens directions and **Arrived** / **Left** buttons; the times show on Reports → Wait times by shipper and receiver.",
+      "On the driver's load card the stops replace the single pickup and job site, each with a **Go** button that opens directions and **Record arrival** / **Record departure** buttons; the times show on Reports → Wait times by shipper and receiver.",
     ],
     tasks: [
       {
