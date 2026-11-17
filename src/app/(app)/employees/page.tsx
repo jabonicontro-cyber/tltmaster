@@ -148,8 +148,10 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
         </FilterBar>
         {rows.length === 0 ? (
           <EmptyState
-            title={filtered ? "No one matches these filters" : "No people yet"}
-            description={filtered ? "Try a different search or clear the filters." : "Add the people who work for the company. People who use Taviron get a sign-in when you add them."}
+            title={filtered ? "No one matches these filters" : signIns.length ? "No one in the Directory yet" : "No people yet"}
+            description={filtered ? "Try a different search or clear the filters." : signIns.length
+              ? `${signIns.length} ${signIns.length === 1 ? "person can" : "people can"} sign in (see Sign-ins & roles), but nobody has a Directory record yet. Add each person here: time off, schedules and pay use the Directory record.`
+              : "Add the people who work for the company. People who use Taviron get a sign-in when you add them."}
             action={!filtered && can(access, "employees.edit") ? <ButtonLink href="/employees/new">Add person</ButtonLink> : undefined}
           />
         ) : (

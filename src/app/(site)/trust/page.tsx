@@ -26,7 +26,7 @@ const SECTIONS: Array<{ title: string; items: string[] }> = [
     title: "People see and do only what their role allows",
     items: [
       "Each company decides which permissions its roles have; every page and action checks them on the server and again in the database.",
-      "Two-step verification with an authenticator app is built and being rolled out, starting with Taviron's own platform staff.",
+      "Two-step verification with an authenticator app is required for Taviron's own staff and for anyone whose role can see or change money (invoices, payments, pay). A company can require it for everyone.",
     ],
   },
   {

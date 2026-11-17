@@ -44,12 +44,14 @@ export default async function PortalQuotes({ params }: { params: Promise<{ slug:
         </CardBody>
       </Card>
 
-      <Card>
-        <CardHeader title="Request a Quote" description="Tell us what you need. We reply with a priced quote; nothing is ordered until you accept one." />
-        <CardBody>
-          <QuoteRequestForm slug={slug} sites={c.sites} />
-        </CardBody>
-      </Card>
+      <div id="request-quote" className="scroll-mt-24">
+        <Card>
+          <CardHeader title="Request a Quote" description="Tell us what you need. We reply with a priced quote; nothing is ordered until you accept one." />
+          <CardBody>
+            <QuoteRequestForm slug={slug} sites={c.sites} />
+          </CardBody>
+        </Card>
+      </div>
 
       {requests.length ? (
         <Card>

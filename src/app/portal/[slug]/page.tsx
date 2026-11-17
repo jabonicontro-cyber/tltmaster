@@ -5,8 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { buttonClasses } from "@/components/ui/button";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { PortalUnavailable } from "@/components/portal/portal-unavailable";
-import { formatDay, formatMoney, formatWindow, QUOTE_STATUS_LABEL, scheduleText, SUPPORT_STATUS_LABEL, type PortalCompany, type PortalInvoices, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
-import { trimNumber } from "@/lib/fleet/labels";
+import { formatDay, formatMoney, formatQuantity, formatWindow, quantitiesByUnit, QUOTE_STATUS_LABEL, scheduleText, type PortalCompany, type PortalInvoices, type PortalOrder, type PortalOrderSummary, type PortalQuoteRow, type PortalSupportRow, portalIsPast } from "@/lib/portal";
+import { unitWord } from "@/lib/units";
 import { portalCall, portalGate } from "@/server/portal";
 import { previewPortalAs } from "@/app/admin/testing-lab/actions";
 import { Field, Select } from "@/components/ui/form";
@@ -35,7 +35,12 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
   // The company's today (its time zone), not the server's.
   const dayIn = (d: Date) => new Intl.DateTimeFormat("en-CA", { timeZone: c.timezone || "UTC", year: "numeric", month: "2-digit", day: "2-digit" }).format(d);
   const today = dayIn(new Date());
+  const nowTime = new Intl.DateTimeFormat("en-GB", { timeZone: c.timezone || "UTC", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date());
   const active = orders.filter((o) => !portalIsPast(o, today));
+  // W3: an open order whose planned dates are all over is not "upcoming"; it is listed apart until the company closes it.
+  const pastDate = (o: PortalOrderSummary) => Boolean((o.scheduled_end ?? o.scheduled_start) && (o.scheduled_end ?? o.scheduled_start)! < today && !(o.next_load && o.next_load.date >= today));
+  const upcomingOrders = active.filter((o) => !pastDate(o)).sort((a, b) => (a.scheduled_start ?? a.requested_date ?? "9999").localeCompare(b.scheduled_start ?? b.requested_date ?? "9999"));
+  const pastOpen = active.filter(pastDate);
   // Today (UX5): for orders scheduled today, the loads planned for today and the tickets delivered so far, from recorded
   // data only (no estimates). At most five orders.
   const todays = active.filter((o) => o.scheduled_start && o.scheduled_start <= today && (o.scheduled_end ?? o.scheduled_start) >= today).slice(0, 5);
@@ -44,14 +49,23 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
   const todayDetail = (await Promise.all(todays.map(async (o) => { const r = await sb.rpc("portal_order", { p_slug: slug, p_order: o.id }); return r.error ? null : (r.data as PortalOrder); })))
     .filter((d): d is PortalOrder => d !== null)
     .map((d) => {
-      const loads = d.loads.filter((l) => l.date === today && !l.canceled);
+      const loads = d.loads.filter((l) => l.date === today && !l.canceled).sort((a, b) => (a.start ?? "").localeCompare(b.start ?? ""));
       const delivered = d.tickets.filter((t) => dayIn(new Date(t.delivered_at)) === today);
-      const units = [...new Set(delivered.map((t) => t.unit))];
-      const qty = units.length === 1 ? `${trimNumber(String(delivered.reduce((n, t) => n + Number(t.quantity), 0)))} ${units[0].replace(/_/g, " ")}` : "";
-      // The next planned load (portal_orders: the earliest load still planned), when it is today and has a time.
-      const next = todays.find((o) => o.id === d.id)?.next_load;
-      const nextWindow = next && next.date === today ? formatWindow(next.start, next.end) : "";
-      return { id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty, nextWindow };
+      // Quantities in loads would repeat the load count ("1 of 1 load delivered · 1 load"): shown only for other units.
+      const qty = delivered.every((t) => unitWord(t.unit, 2) === "loads") ? "" : quantitiesByUnit(delivered);
+      // W2: only a window that has not passed yet is "next". When every planned time today has passed and fewer loads
+      // were delivered than planned, it says so, from recorded data only (which load is late is not guessed).
+      const passed = (l: { start: string | null; end: string | null }) => Boolean((l.end ?? l.start) && (l.end ?? l.start)!.slice(0, 5) <= nowTime);
+      const left = loads.length - delivered.length;
+      const upcoming = left > 0 ? loads.find((l) => l.start && !passed(l)) : undefined;
+      const late = left > 0 && !upcoming && loads.some((l) => l.start) ? `${left} ${unitWord("load", left)}` : "";
+      // Counted against the planned loads; an order in loads with more planned today than were ordered says how many.
+      const orderedLoads = d.lines.filter((l) => unitWord(l.unit, 2) === "loads").reduce((n, l) => n + Number(l.quantity ?? 0), 0);
+      return {
+        id: d.id, number: d.number, site: d.site, planned: loads.length, delivered: delivered.length, qty, late,
+        nextWindow: upcoming ? formatWindow(upcoming.start, upcoming.end) : "",
+        ordered: orderedLoads > 0 && loads.length > orderedLoads ? orderedLoads : 0,
+      };
     })
     .filter((d) => d.planned > 0 || d.delivered > 0);
   // Account balance (UX5 statement): only when the portal already shows invoices; a failed read leaves the card out.
@@ -102,9 +116,13 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
                     <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-3 gap-y-1">
                       <span className="min-w-0">
                         <span className="block font-semibold text-ink group-hover:underline">Order {d.number}{d.site ? <span className="font-normal text-muted"> · {d.site}</span> : null}</span>
-                        {d.nextWindow ? <span className="block text-sm text-muted">Next load today {d.nextWindow}</span> : null}
+                        {d.nextWindow ? <span className="block text-sm text-muted">Next load today {d.nextWindow}</span>
+                          : d.late ? <span className="block text-sm text-amber-800">Today&apos;s planned times have passed; {d.late} not recorded as delivered yet</span> : null}
                       </span>
-                      <span className="text-sm tabular text-ink">{d.delivered} of {d.planned || d.delivered} load{(d.planned || d.delivered) === 1 ? "" : "s"} delivered{d.qty ? ` · ${d.qty}` : ""}</span>
+                      <span className="text-sm tabular text-ink">
+                        {d.delivered} of {d.planned || d.delivered} planned {unitWord("load", d.planned || d.delivered)} delivered{d.qty ? ` · ${d.qty}` : ""}
+                        {d.ordered ? <span className="block text-xs text-muted sm:text-right">{formatQuantity(d.ordered, "load")} ordered</span> : null}
+                      </span>
                     </span>
                     <span className="flex shrink-0 items-center gap-0.5 text-sm font-semibold text-brand-fg">
                       <span className="hidden sm:inline">Open order</span>
@@ -122,23 +140,22 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
         <Card>
           <CardHeader title="Upcoming and Open Orders" actions={<Link href={`/portal/${slug}/orders`} className="text-sm font-semibold text-brand-fg hover:underline">All orders</Link>} />
           <CardBody>
-            {active.length ? (
-              <ul className="divide-y divide-line">
-                {active.slice(0, 5).map((o) => (
-                  <li key={o.id}>
-                    <Link href={`/portal/${slug}/orders/${o.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
-                      <span>
-                        <span className="block font-semibold text-ink">Order {o.number}{o.materials ? ` · ${o.materials}` : ""}</span>
-                        <span className="block text-sm text-muted">{scheduleText(o) ?? "Not scheduled yet"}{o.site ? ` · ${o.site}` : ""}</span>
-                      </span>
-                      <Badge tone="brand">{o.status_label}</Badge>
-                    </Link>
-                  </li>
-                ))}
+            {upcomingOrders.length ? (
+              <ul className="divide-y divide-line" aria-label="Upcoming and open orders">
+                {upcomingOrders.slice(0, 5).map((o) => <OrderRow key={o.id} slug={slug} o={o} />)}
               </ul>
             ) : (
-              <p className="text-sm text-muted">No open orders right now.</p>
+              <p className="text-sm text-muted">{pastOpen.length ? "Nothing upcoming right now." : "No open orders right now."}</p>
             )}
+            {pastOpen.length ? (
+              <div className="mt-4 border-t border-line pt-3" data-testid="portal-past-open">
+                <h3 className="text-sm font-semibold text-ink">Past date, not closed yet</h3>
+                <p className="text-sm text-muted">The planned dates have passed and {c.name} has not closed these orders yet. Ask us if something is still missing.</p>
+                <ul className="divide-y divide-line" aria-label="Past date, not closed yet">
+                  {pastOpen.slice(0, 5).map((o) => <OrderRow key={o.id} slug={slug} o={o} />)}
+                </ul>
+              </div>
+            ) : null}
           </CardBody>
         </Card>
       ) : null}
@@ -163,13 +180,27 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
 
       {answered.length ? (
         <p className="text-sm text-muted">
-          {answered.length} support {answered.length === 1 ? "request has" : "requests have"} a reply ({SUPPORT_STATUS_LABEL.answered.toLowerCase()}).{" "}
+          {answered.length} support {answered.length === 1 ? "request has" : "requests have"} a reply.{" "}
           <Link href={`/portal/${slug}/support`} className="font-semibold text-brand-fg hover:underline">Read</Link>
         </p>
       ) : null}
 
       <ContactCard company={c} />
     </div>
+  );
+}
+
+function OrderRow({ slug, o }: { slug: string; o: PortalOrderSummary }) {
+  return (
+    <li>
+      <Link href={`/portal/${slug}/orders/${o.id}`} className="flex flex-wrap items-center justify-between gap-2 py-3 hover:bg-surface focus-visible:outline-2 focus-visible:outline-strong">
+        <span>
+          <span className="block font-semibold text-ink">Order {o.number}{o.materials ? ` · ${o.materials}` : ""}</span>
+          <span className="block text-sm text-muted">{scheduleText(o) ?? "Not scheduled yet"}{o.site ? ` · ${o.site}` : ""}</span>
+        </span>
+        <Badge tone="brand">{o.status_label}</Badge>
+      </Link>
+    </li>
   );
 }
 

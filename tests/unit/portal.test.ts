@@ -26,15 +26,18 @@ describe("customer portal formatting", () => {
   });
 
   it("adds quantities up per unit, never across units (UX day-1)", () => {
-    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }])).toBe("22.1 Tons");
-    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }, { quantity: 21.8, unit: "Tons" }])).toBe("43.9 Tons");
-    expect(quantitiesByUnit([{ quantity: 10, unit: "Tons" }, { quantity: 2, unit: "cubic_yards" }])).toBe("10 Tons + 2 cubic yards");
+    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }])).toBe("22.1 tons");
+    expect(quantitiesByUnit([{ quantity: 22.1, unit: "Tons" }, { quantity: 21.8, unit: "Tons" }])).toBe("43.9 tons");
+    expect(quantitiesByUnit([{ quantity: 10, unit: "Tons" }, { quantity: 2, unit: "cubic_yards" }])).toBe("10 tons + 2 cubic yards");
+    // One sum per unit however it is spelled, matched to the number (W5).
+    expect(quantitiesByUnit([{ quantity: 1, unit: "Loads" }, { quantity: 1, unit: "load" }])).toBe("2 loads");
+    expect(quantitiesByUnit([{ quantity: 1, unit: "Loads" }])).toBe("1 load");
     expect(quantitiesByUnit([{ quantity: null, unit: "Tons" }])).toBe("");
     expect(quantitiesByUnit([])).toBe("");
   });
 
   it("labels a ticket in the support picker with what is known (UX day-1)", () => {
-    expect(ticketOptionLabel({ number: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" }, "America/Chicago")).toBe("TKT-1025 · Nov 8 · 14.1 Tons");
+    expect(ticketOptionLabel({ number: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" }, "America/Chicago")).toBe("TKT-1025 · Nov 8 · 14.1 tons");
     expect(ticketOptionLabel({ number: "TKT-1025" }, "America/Chicago")).toBe("TKT-1025");
   });
 
@@ -42,7 +45,7 @@ describe("customer portal formatting", () => {
     expect(ticketOptions([
       { id: "a", label: "TKT-1025", delivered_at: "2026-11-08T18:40:00Z", quantity: 14.1, unit: "Tons" },
       { id: "b", label: "TKT-1026" },
-    ], "America/Chicago")).toEqual([{ id: "a", label: "TKT-1025 · Nov 8 · 14.1 Tons" }, { id: "b", label: "TKT-1026" }]);
+    ], "America/Chicago")).toEqual([{ id: "a", label: "TKT-1025 · Nov 8 · 14.1 tons" }, { id: "b", label: "TKT-1026" }]);
   });
 
   it("lists a waiting site note's answers in the form's order, skipping empty ones", () => {

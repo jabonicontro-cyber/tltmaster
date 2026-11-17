@@ -7,6 +7,7 @@
 // Items need the permission for the action: a person never sees a step they cannot do.
 
 import type { AppRole, Permission } from "@/lib/permissions";
+import { adaptWording } from "@/lib/industry";
 
 export type ChecklistRole = "owner" | "office" | "dispatcher" | "driver" | "mechanic";
 export type ChecklistPlace = "command-center" | "my-day" | "my-jobs";
@@ -56,8 +57,11 @@ export interface GettingStartedItem {
 type Can = (p: Permission) => boolean;
 const tick = (v: boolean | null | undefined): boolean | null => (v === undefined || v === null ? null : v);
 
-/** The person's first steps, in order. 3–5 for every role whose permissions allow them. */
-export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts, can: Can): GettingStartedItem[] {
+/**
+ * The person's first steps, in order. 3–5 for every role whose permissions allow them. Worded for what the company
+ * hauls (T3): a freight carrier reviews "a bill of lading", as its menu says.
+ */
+export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts, can: Can, industry?: unknown): GettingStartedItem[] {
   const items: Array<GettingStartedItem & { allowed: boolean }> = [];
   const add = (allowed: boolean, item: GettingStartedItem) => items.push({ ...item, allowed });
   switch (role) {
@@ -66,7 +70,7 @@ export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts,
       add(can("settings.manage"), {
         key: "phone",
         label: "Add your company phone so drivers and customers can call you",
-        hint: f.companyLogo === false ? "Add your logo on the same page: it goes on quotes, invoices and the customer portal." : undefined,
+        hint: f.companyLogo === false ? "Add your logo on the same page: it goes on your invoices and the customer portal." : undefined,
         href: "/settings?tab=company#phone",
         done: tick(f.companyPhone),
       });
@@ -98,7 +102,8 @@ export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts,
       add(can("maintenance.view"), { key: "stop", label: "Stop the timer when you finish", href: "/maintenance/my-jobs", done: tick(f.myTimerStopped) });
       break;
   }
-  return items.filter((i) => i.allowed).map((i) => ({ key: i.key, label: i.label, hint: i.hint, href: i.href, done: i.done }));
+  const say = (text: string) => adaptWording(text, industry);
+  return items.filter((i) => i.allowed).map((i) => ({ key: i.key, label: say(i.label), hint: i.hint === undefined ? undefined : say(i.hint), href: i.href, done: i.done }));
 }
 
 /** Done on this device: recorded data, or opened here (items without a record). */

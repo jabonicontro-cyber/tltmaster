@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/states";
-import { formatQuantity, portalIsPast, portalStatusLabel, scheduleText, type PortalOrderSummary } from "@/lib/portal";
+import { poLabel, portalIsPast, portalStatusLabel, scheduleText, type PortalOrderSummary } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Orders" };
@@ -36,13 +36,13 @@ export default async function PortalOrders({ params, searchParams }: { params: P
                   <div>
                     <p className="font-semibold text-ink">Order {o.number}{o.materials ? ` · ${o.materials}` : ""}</p>
                     <p className="mt-0.5 text-sm text-muted">{scheduleText(o) ?? "Not scheduled yet"}{o.site ? ` · ${o.site}` : ""}</p>
-                    {o.po ? <p className="mt-0.5 text-sm text-muted">PO {o.po}</p> : null}
+                    {o.po ? <p className="mt-0.5 text-sm text-muted">{poLabel(o.po)}</p> : null}
                   </div>
                   <Badge tone={o.status === "canceled" ? "gray" : o.status === "on_hold" ? "amber" : portalIsPast(o, today) ? "green" : "brand"}>{portalStatusLabel(o, today)}</Badge>
                 </div>
                 {o.tickets_confirmed + o.tickets_reported > 0 ? (
                   <p className="mt-2 text-sm text-ink">
-                    {o.tickets_confirmed} {o.tickets_confirmed === 1 ? "delivery" : "deliveries"} confirmed{o.quantity_confirmed ? ` (${formatQuantity(o.quantity_confirmed)})` : ""}
+                    {o.tickets_confirmed} {o.tickets_confirmed === 1 ? "delivery" : "deliveries"} confirmed
                     {o.tickets_reported ? ` · ${o.tickets_reported} being checked` : ""}
                   </p>
                 ) : null}

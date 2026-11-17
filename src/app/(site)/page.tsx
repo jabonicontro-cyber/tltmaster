@@ -207,7 +207,7 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <p className="mt-6 text-sm text-silver">Shown in the demo company with fictional data. AI assistance is built but not switched on yet; everything above works without it.</p>
+            <p className="mt-6 text-sm text-silver">Shown in the demo company with fictional data. AI assistance is in development; everything above works without it.</p>
             <Link href="/platform/intelligence" className="mt-4 inline-block text-[15px] font-semibold text-electric hover:underline">How Taviron surfaces what needs attention</Link>
           </div>
           <CatalogShot id="command-center" />

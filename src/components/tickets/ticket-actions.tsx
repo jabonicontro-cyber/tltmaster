@@ -18,9 +18,11 @@ interface Props {
   permissions: { edit: boolean; review: boolean };
   /** Opened from the review queue: after a decision, go to the next ticket (or back to the queue when it is empty). */
   queue?: { nextHref: string | null; doneHref: string } | null;
+  /** The ticket has review reasons (T4): Correct leads and Accept is not the first choice. */
+  caution?: boolean;
 }
 
-export function TicketActions({ ticketId, ticketNumber, orderId, status, permissions, queue }: Props) {
+export function TicketActions({ ticketId, ticketNumber, orderId, status, permissions, queue, caution = false }: Props) {
   const router = useRouter();
   const [action, setAction] = useState<"accept" | "flag" | "void" | null>(null);
   const [note, setNote] = useState("");
@@ -31,12 +33,12 @@ export function TicketActions({ ticketId, ticketNumber, orderId, status, permiss
   return (
     <div className="flex flex-wrap gap-2">
       {permissions.review && status !== "accepted" && (
-        <Button data-accept-ticket icon={<CheckCircle2 className="size-4" />} onClick={() => { setNote(""); setAction("accept"); }}>
+        <Button data-accept-ticket variant={caution && canCorrect ? "secondary" : "primary"} icon={<CheckCircle2 className="size-4" />} onClick={() => { setNote(""); setAction("accept"); }}>
           {queue?.nextHref ? "Accept and next" : "Accept"}
         </Button>
       )}
       {canCorrect && (
-        <ButtonLink href={`/tickets/${ticketId}/correct`} variant="secondary" icon={<Pencil className="size-4" />}>
+        <ButtonLink href={`/tickets/${ticketId}/correct`} variant={caution && canCorrect ? "primary" : "secondary"} icon={<Pencil className="size-4" />}>
           Correct
         </ButtonLink>
       )}

@@ -23,6 +23,8 @@ interface Props {
   permissions: { edit: boolean; send: boolean; status: boolean; convert: boolean };
   /** Order created from this quote, when one exists and the user can see orders. */
   order: { id: string; order_number: string } | null;
+  /** An email of this quote to the customer was attempted (sent or failed); a quote marked sent by hand was not (T5). */
+  emailed?: boolean;
 }
 
 const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
@@ -32,7 +34,7 @@ const STATUS_ACTION_LABEL: Partial<Record<QuoteStatus, string>> = {
   canceled: "Cancel quote",
 };
 
-export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order }: Props) {
+export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionLocked, editSeq, permissions, order, emailed = false }: Props) {
   const router = useRouter();
   const [emailOpen, setEmailOpen] = useState(false);
   const [markOpen, setMarkOpen] = useState(false);
@@ -46,7 +48,8 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
 
   const [convertOpen, setConvertOpen] = useState(false);
   // A converted quote's status is fixed (enforced by the database).
-  const transitions = permissions.status && !order ? allowedTransitions(status) : [];
+  // Cancelling a quote the customer already declined changes nothing for anyone (T5): it is not offered.
+  const transitions = (permissions.status && !order ? allowedTransitions(status) : []).filter((t) => !(t === "canceled" && status === "declined"));
 
   const statusButton = (t: QuoteStatus, variant: "primary" | "ghost", className?: string) => (
     <Button
@@ -81,7 +84,7 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
       {transitions.includes("accepted") && statusButton("accepted", "primary")}
       {permissions.send && canSend(status) && (
         <Button variant={status === "draft" ? "dark" : "secondary"} icon={<Mail className="size-4" />} onClick={() => setEmailOpen(true)}>
-          {status === "sent" ? "Email again" : "Email quote"}
+          {status === "sent" && emailed ? "Email again" : "Email quote"}
         </Button>
       )}
       {permissions.send && status === "draft" && (
@@ -177,7 +180,11 @@ export function QuoteActions({ quoteId, quoteNumber, status, versionId, versionL
             ? "Records that the customer accepted the current revision and creates its order (status Confirmed) with the accepted prices. Scheduling the order stays a separate step."
             : statusTarget === "canceled"
               ? "Canceled quotes cannot be reopened. History is kept."
-              : undefined
+              : statusTarget === "declined"
+                ? "Records that the customer said no to this revision. The reason is kept in the quote history; you can still revise the quote and send a new revision."
+                : statusTarget === "expired"
+                  ? "Records that the customer did not answer before the quote ran out. You can still revise it and send a new revision."
+                  : undefined
         }
         confirmLabel={statusTarget ? STATUS_ACTION_LABEL[statusTarget] ?? "Confirm" : "Confirm"}
         tone={statusTarget === "canceled" ? "danger" : "primary"}

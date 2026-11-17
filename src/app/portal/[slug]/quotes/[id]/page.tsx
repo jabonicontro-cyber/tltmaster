@@ -64,8 +64,12 @@ export default async function PortalQuotePage({ params }: { params: Promise<{ sl
             <QuoteResponseForm slug={slug} quote={q.id} />
           </CardBody>
         </Card>
-      ) : q.status === "sent" && !q.response ? (
-        <p className="text-sm text-muted">This quote has expired. Request a new one from the Quotes page.</p>
+      ) : (q.status === "sent" || q.status === "expired") && !q.response ? (
+        // W7: an expired quote says what to do next, with the way to do it.
+        <p className="text-sm text-muted">
+          This quote has expired and can no longer be accepted.{" "}
+          <Link href={`/portal/${slug}/quotes#request-quote`} className="font-semibold text-brand-fg hover:underline">Ask for a new quote</Link>
+        </p>
       ) : null}
     </div>
   );

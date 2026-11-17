@@ -6,7 +6,7 @@ import { buttonClasses } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, Select } from "@/components/ui/form";
 import { EmptyState, Notice } from "@/components/ui/states";
-import { formatDay, formatMoment, formatQuantity, quantitiesByUnit } from "@/lib/portal";
+import { formatDay, formatMoment, formatQuantity, poLabel, portalWords, quantitiesByUnit } from "@/lib/portal";
 import { groupByDay, isFiltered, parseTicketFilter, ticketFilterQuery } from "@/lib/portal-tickets";
 import { portalTickets, requirePortalCustomer } from "@/server/portal";
 
@@ -25,15 +25,22 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
   const result = await portalTickets(slug, filter);
   const base = `/portal/${slug}/tickets`;
   const query = ticketFilterQuery(filter);
+  const { say, sites: sitesWord } = portalWords(c.industry);
+  // The site filter offers only the customer's sites its tickets were delivered to (W4): a freight delivery goes to a
+  // stop, not to a saved site, so offering every saved site gave filters that could never find a ticket. Read from the
+  // unfiltered list while a filter is on, so the choices stay the same.
+  const everything = isFiltered(filter) ? await portalTickets(slug, { from: null, to: null, site: null }) : result;
+  const usedSites = new Set((everything.ok ? everything.data.tickets : []).map((t) => t.site_id).filter(Boolean));
+  const siteOptions = c.sites.filter((s) => usedSites.has(s.id) || s.id === filter.site);
 
   const header = (
     <div>
-      <h1 className="text-2xl font-bold text-ink">Delivery tickets</h1>
-      <p className="mt-1 max-w-2xl text-sm text-muted">Every delivery to you, newest first. Open a ticket to see it, print it or ask us about it.</p>
+      <h1 className="text-2xl font-bold text-ink">{say("Delivery tickets")}</h1>
+      <p className="mt-1 max-w-2xl text-sm text-muted">{say("Every delivery to you, newest first. Open a ticket to see it, print it or ask us about it.")}</p>
     </div>
   );
   if (!result.ok && result.reason === "missing") {
-    return <div className="space-y-4">{header}<Notice title="Not available yet">The ticket list needs an update on our side. Your tickets are still on each order.</Notice></div>;
+    return <div className="space-y-4">{header}<Notice title="Not available yet">{say("The ticket list needs an update on our side. Your tickets are still on each order.")}</Notice></div>;
   }
   if (!result.ok && result.reason === "refused") notFound();
 
@@ -55,11 +62,11 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
           <Field label="To" htmlFor="tickets-to">
             <DateInput id="tickets-to" name="to" defaultValue={filter.to ?? ""} max={list?.today} className="h-12 sm:h-10" />
           </Field>
-          {c.sites.length > 0 ? (
-            <Field label="Job site" htmlFor="tickets-site">
+          {siteOptions.length > 1 || filter.site ? (
+            <Field label={say("Job site")} htmlFor="tickets-site">
               <Select id="tickets-site" name="site" defaultValue={filter.site ?? ""} className="h-12 sm:h-10">
-                <option value="">All job sites</option>
-                {c.sites.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                <option value="">All {sitesWord.toLowerCase()}</option>
+                {siteOptions.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </Select>
             </Field>
           ) : <span className="hidden sm:block" />}
@@ -74,15 +81,15 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
         <Notice tone="warning" title="Check the dates">{result.message ?? "Choose a start date before the end date."}</Notice>
       ) : rows.length === 0 ? (
         <EmptyState
-          title={filtered ? "No tickets for this filter" : "No delivery tickets yet"}
-          description={filtered ? "Try other dates or another job site, or choose Clear to see every ticket." : `Tickets appear here as soon as ${c.name} delivers to you.`}
+          title={say(filtered ? "No tickets for this filter" : "No delivery tickets yet")}
+          description={say(filtered ? "Try other dates or another job site, or choose Clear to see every ticket." : `Tickets appear here as soon as ${c.name} delivers to you.`)}
           action={filtered ? <Link href={base} className={buttonClasses("secondary", "md", "h-12 sm:h-10")}>Clear the filter</Link> : undefined}
         />
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink" data-testid="tickets-summary">
-              <span className="font-semibold tabular">{rows.length} ticket{rows.length === 1 ? "" : "s"}</span>
+              <span className="font-semibold tabular">{say(`${rows.length} ticket${rows.length === 1 ? "" : "s"}`)}</span>
               {quantitiesByUnit(rows) ? <span className="text-muted"> · {quantitiesByUnit(rows)}</span> : null}
               {filter.from || filter.to ? <span className="text-muted"> · {filter.from ? formatDay(filter.from) : "Any day"} to {filter.to ? formatDay(filter.to) : "today"}</span> : null}
             </p>
@@ -93,7 +100,7 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
             </a>
           </div>
           {list?.has_more ? (
-            <Notice title="Showing the newest 500">Choose a shorter date range to see older tickets. The download has the same 500.</Notice>
+            <Notice title="Showing the newest 500">{say("Choose a shorter date range to see older tickets. The download has the same 500.")}</Notice>
           ) : null}
 
           <div className="space-y-4" aria-label="Tickets">
@@ -115,11 +122,11 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
                           <span className="block text-xs whitespace-nowrap text-muted tabular">{formatMoment(t.delivered_at, c.timezone, false)} · Order {t.order_number}</span>
                         </span>
                         <span className="row-start-2 min-w-0 text-sm sm:row-start-auto">
-                          <span className="block truncate text-ink">{t.site || "Site not recorded"}</span>
-                          {t.project || t.po ? <span className="block truncate text-xs text-muted">{[t.project, t.po ? `PO ${t.po}` : ""].filter(Boolean).join(" · ")}</span> : null}
+                          <span className="block truncate text-ink">{t.site || say("Job site not recorded")}</span>
+                          {t.project || t.po ? <span className="block truncate text-xs text-muted">{[t.project, poLabel(t.po)].filter(Boolean).join(" · ")}</span> : null}
                         </span>
-                        <span className="row-start-3 min-w-0 truncate text-sm text-muted sm:row-start-auto">{t.material || "Material not recorded"}</span>
-                        <span className="text-right text-sm font-semibold whitespace-nowrap text-ink tabular">{formatQuantity(t.quantity === null ? null : Number(t.quantity), t.unit.replace(/_/g, " ")) || "–"}</span>
+                        <span className="row-start-3 min-w-0 truncate text-sm text-muted sm:row-start-auto">{t.material || say("Material not recorded")}</span>
+                        <span className="text-right text-sm font-semibold whitespace-nowrap text-ink tabular">{formatQuantity(t.quantity, t.unit) || "–"}</span>
                         <span className="hidden sm:block">
                           <Badge tone={t.confirmed ? "green" : "amber"}>{t.confirmed ? "Confirmed" : "Being checked"}</Badge>
                         </span>
@@ -134,7 +141,7 @@ export default async function PortalTicketsPage({ params, searchParams }: { para
               </section>
             ))}
           </div>
-          <p className="text-xs text-muted">&ldquo;Being checked&rdquo; means our office has not confirmed the ticket yet; its quantity can still change.</p>
+          <p className="text-xs text-muted">{say("“Being checked” means our office has not confirmed the ticket yet; its quantity can still change.")}</p>
         </>
       )}
     </div>

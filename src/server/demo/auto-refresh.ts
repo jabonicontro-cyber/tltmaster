@@ -34,9 +34,15 @@ export async function autoRefreshDemo(db: SupabaseClient): Promise<void> {
   ]);
   const c = company as { name: string; demo_kind: string | null; is_demo: boolean } | null;
   if (!c?.is_demo) return;
+  // A demo still being created has no customers yet: its first fill runs under the refresh lock (X1, admin actions)
+  // and adds everything, so an automatic refresh in the moment before that lock is taken would only add the same
+  // samples twice (walkthrough 2026-11-14: duplicate people and customers 2 to 3 seconds apart). Leave it alone.
+  const seeded = await db.from("customers").select("id").limit(1);
+  if (seeded.error || !(seeded.data ?? []).length) return;
   const timeZone = (settings as { timezone?: string | null } | null)?.timezone || PRAIRIE_LANTERN.timeZone;
   const day = todayIn(timeZone);
-  // The lock is shared with the manual refresh (withDemoRefreshLock), so the two never add the same samples at once.
+  // The lock is shared with the manual refresh and the first fill (withDemoRefreshLock), so none of them add the same
+  // samples at once.
   const key = refreshKey();
   const claim = await db.rpc("demo_auto_refresh_claim", { p_version: key, p_day: day });
   if (claim.error || claim.data !== true) return; // not installed, not an owner, already current, or running elsewhere

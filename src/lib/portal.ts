@@ -1,6 +1,9 @@
 // Customer portal (B66): shapes returned by the portal_* database functions and customer-facing formatting.
 // Everything a customer sees comes from these functions; nothing here invents a status, date or quantity.
 
+import { adaptWording, industryOf, vocabulary } from "@/lib/industry";
+import { formatUnitQuantity, unitWord } from "@/lib/units";
+
 export type PortalFeatures = { orders: boolean; quotes: boolean; documents: boolean; support: boolean; help: boolean; tracking: boolean; /** Customer self-booking (B115), from booking settings. */ booking?: boolean; /** Invoices and statements (UX5). */ invoices?: boolean };
 
 export type PortalCompany = {
@@ -15,6 +18,8 @@ export type PortalCompany = {
   /** The company's own time zone: every time in the portal is shown in it, never the server's. */
   timezone: string;
   is_demo: boolean;
+  /** What the company hauls (aggregate, freight or both), for its own words; absent before 20261120024300. */
+  industry?: string;
   features: PortalFeatures;
 };
 
@@ -200,10 +205,9 @@ export function formatMoney(cents: number | null | undefined): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format((cents ?? 0) / 100);
 }
 
-export function formatQuantity(q: number | null | undefined, unit?: string): string {
-  if (q === null || q === undefined) return "";
-  const n = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 }).format(Number(q));
-  return unit ? `${n} ${unit}` : n;
+/** A quantity with its unit, "1 load", "24 loads", "14.1 tons" (the shared formatter, src/lib/units.ts). */
+export function formatQuantity(q: number | string | null | undefined, unit?: string | null): string {
+  return formatUnitQuantity(q, unit);
 }
 
 /** Only an exact company slug (same rule as the database) reaches a portal function. */
@@ -237,7 +241,7 @@ export function formatWindow(start: string | null | undefined, end: string | nul
 }
 
 /**
- * Quantities added up per unit, "22.1 Tons" or "22.1 Tons + 2 Loads" (never one sum across different units).
+ * Quantities added up per unit, "22.1 tons" or "22.1 tons + 2 loads" (never one sum across different units).
  * "" when there is nothing to add up.
  */
 export function quantitiesByUnit(items: Array<{ quantity: number | string | null | undefined; unit: string | null | undefined }>): string {
@@ -246,13 +250,14 @@ export function quantitiesByUnit(items: Array<{ quantity: number | string | null
     if (i.quantity === null || i.quantity === undefined || i.quantity === "") continue;
     const n = Number(i.quantity);
     if (Number.isNaN(n)) continue;
-    const unit = (i.unit ?? "").replace(/_/g, " ").trim();
+    // One sum per unit, whatever its spelling ("Loads", "load"): the shared formatter's word for many.
+    const unit = unitWord(i.unit, 2);
     sums.set(unit, (sums.get(unit) ?? 0) + n);
   }
-  return [...sums].map(([unit, n]) => formatQuantity(Math.round(n * 100) / 100, unit || undefined)).join(" + ");
+  return [...sums].map(([unit, n]) => formatQuantity(Math.round(n * 1000) / 1000, unit || undefined)).join(" + ");
 }
 
-/** The ticket picker's label, "TKT-1025 · Nov 8 · 14.1 Tons", from what is known about the ticket. */
+/** The ticket picker's label, "TKT-1025 · Nov 8 · 14.1 tons", from what is known about the ticket. */
 export function ticketOptionLabel(t: { number: string; delivered_at?: string | null; quantity?: number | null; unit?: string | null }, timeZone: string): string {
   const day = t.delivered_at ? formatMoment(t.delivered_at, timeZone).split(",")[0] : "";
   return [t.number, day, formatQuantity(t.quantity, t.unit ?? undefined)].filter(Boolean).join(" · ");
@@ -298,4 +303,24 @@ export function supportFormErrors(v: { kind: string; subject: string; message: s
   if (!v.subject.trim()) errors.subject = "Enter a subject, a few words are enough.";
   if (v.message.trim().length < 5) errors.message = v.message.trim() ? "Write a little more (at least 5 characters)." : "Enter your message.";
   return errors;
+}
+
+/**
+ * The portal in the company's own words (W5): a freight carrier's customers read "Bills of Lading" and "Delivery
+ * locations", as its staff do. `say` rewords a fixed sentence (adaptWording); unknown or missing means aggregate.
+ */
+export function portalWords(industry: unknown): { say: (text: string) => string; tickets: string; sites: string } {
+  const ind = industryOf(industry);
+  return {
+    say: (text: string) => adaptWording(text, ind),
+    tickets: ind === "aggregate" ? "Tickets" : vocabulary(ind).documents,
+    sites: ind === "freight" ? "Delivery locations" : "Job sites",
+  };
+}
+
+/** A customer PO as a label, "PO 4702", without doubling a prefix the PO already has ("PO 4702" stays as it is; W7). */
+export function poLabel(po: string | null | undefined): string {
+  const p = (po ?? "").trim();
+  if (!p) return "";
+  return /^p\.?\s?o\.?(\s|#|:|-|\d|$)/i.test(p) ? p : `PO ${p}`;
 }

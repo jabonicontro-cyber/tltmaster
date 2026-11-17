@@ -14,7 +14,7 @@ import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { can } from "@/lib/permissions";
-import { reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
+import { OVER_ORDER, reviewReasonLabel, TICKET_STATUS_LABELS } from "@/lib/tickets/rules";
 import { requirePagePermission } from "@/server/auth";
 import { createClient } from "@/server/supabase/server";
 import { businessToday } from "@/server/data/settings";
@@ -88,6 +88,13 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
   const loadTickets = context.lineTickets.filter((x) => x.load_id === t.load_id && x.id !== t.id);
   const a = context.assignment;
   const differs = (field: "truck_id" | "trailer_id" | "driver_id") => Boolean(a && (a[field] ?? null) !== (t[field] ?? null));
+  // T4: more than the order line asks for is a reason to look before accepting, like the database's own flags.
+  const reasons = [...t.review_reasons, ...(live && t.status !== "accepted" && progress?.over && !t.review_reasons.includes(OVER_ORDER) ? [OVER_ORDER] : [])];
+  // The other ticket(s) a duplicate warning is about, linked inside the warning (T4).
+  const sameReference = t.review_reasons.includes("duplicate_external_reference") && t.external_reference
+    ? (((await (await createClient()).from("delivery_tickets").select("id, ticket_number").eq("external_reference", t.external_reference).neq("ticket_number", t.ticket_number).not("status", "in", "(voided,superseded)").limit(5)).data ?? []) as Array<{ id: string; ticket_number: string }>)
+    : [];
+  const others: Record<string, Array<{ id: string; ticket_number: string }>> = { additional_ticket_for_load: loadTickets, duplicate_external_reference: sameReference };
 
   return (
     <>
@@ -117,13 +124,14 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         badges={
           <>
             <TicketStatusBadge status={t.status} />
-            <CopyReference value={t.ticket_number} label={say("ticket number")} />
+            <CopyReference value={t.ticket_number} label="reference" />
             {t.revision > 1 && <span className="text-sm font-semibold text-muted">Revision {t.revision}</span>}
           </>
         }
         description={
           <>
             <Link href={`/orders/${t.order_id}`} className="font-semibold text-ink hover:underline">{s.order_number}</Link> load {s.load_number} · {s.customer_name}
+            {t.external_reference ? <> · {say("Paper / scale ticket #")} <span className="font-semibold text-ink">{t.external_reference}</span></> : null}
           </>
         }
         actions={
@@ -134,6 +142,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
               orderId={t.order_id}
               status={t.status}
               permissions={{ edit: can(access, "tickets.edit"), review: can(access, "tickets.review") }}
+              caution={reasons.length > 0 && t.status !== "accepted"}
               queue={queue ? { nextHref: queue.nextId && queue.nextId !== t.id ? queueHref(queue.nextId) : null, doneHref: returnTo ?? "/tickets?view=check" } : null}
             />
           ) : undefined
@@ -162,18 +171,25 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
             {t.void_reason} · {who(t.voided_by)}, {formatDateTime(t.voided_at, timezone)}. The ticket no longer counts for the load.
           </Notice>
         )}
-        {t.review_reasons.length > 0 && t.status !== "voided" && (
+        {reasons.length > 0 && t.status !== "voided" && (
           <Notice tone="warning" title={t.status === "accepted" ? "Flags raised when submitted (resolved: accepted by a reviewer)" : t.status === "superseded" ? "Flags on this revision" : "Needs office review before it counts as verified"}>
             <ul className="space-y-2" aria-label="Review reasons">
-              {t.review_reasons.map((r) => {
+              {reasons.map((r) => {
                 const help = REVIEW_REASON_HELP[r];
+                const linked = t.status !== "accepted" ? others[r] ?? [] : [];
                 return (
                   <li key={r}>
-                    <p className="flex gap-1.5 font-semibold"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {reviewReasonLabel(r)}</p>
+                    <p className="flex gap-1.5 font-semibold"><AlertTriangle className="mt-0.5 size-4 shrink-0" aria-hidden /> {say(reviewReasonLabel(r))}</p>
+                    {linked.length > 0 && (
+                      <p className="mt-0.5 ml-6 text-sm">
+                        {say(linked.length === 1 ? "The other ticket: " : "The other tickets: ")}
+                        {linked.map((x, i) => <span key={x.id}>{i > 0 ? ", " : ""}<Link href={`/tickets/${x.id}`} className="font-semibold underline">{x.ticket_number}</Link></span>)}
+                      </p>
+                    )}
                     {help && t.status !== "accepted" && (
                       <dl className="mt-0.5 ml-6 grid gap-0.5 text-sm">
-                        <div><dt className="inline font-semibold">Why it matters: </dt><dd className="inline">{help.why}</dd></div>
-                        <div><dt className="inline font-semibold">Next: </dt><dd className="inline">{help.next}</dd></div>
+                        <div><dt className="inline font-semibold">Why it matters: </dt><dd className="inline">{say(help.why)}</dd></div>
+                        <div><dt className="inline font-semibold">Next: </dt><dd className="inline">{say(help.next)}</dd></div>
                         <div><dt className="inline font-semibold">Handled by: </dt><dd className="inline">{help.who}</dd></div>
                       </dl>
                     )}
@@ -183,7 +199,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
             </ul>
           </Notice>
         )}
-        {t.status === "submitted" && t.review_reasons.length === 0 && (
+        {t.status === "submitted" && reasons.length === 0 && (
           <Notice title="Received, not verified yet">
             {say("Nothing was flagged. Compare it with the paper ticket or photo, then accept it. Until then it does not count as verified for billing.")}
           </Notice>

@@ -88,6 +88,7 @@ export default async function NewTicketPage({ searchParams }: { searchParams: Pr
             drivers={ctx.drivers}
             assignment={{ truckId: assignment.truck_id, trailerId: assignment.trailer_id ?? "", driverId: assignment.driver_id }}
             cancelHref="/tickets"
+            industry={(await getSettings().catch(() => null))?.industry}
           />
         </>
       )}

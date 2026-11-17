@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { formatMoment, formatQuantity } from "@/lib/portal";
+import { formatMoment, formatQuantity, portalWords } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { PrintButton } from "@/components/portal/print-button";
 
@@ -22,6 +22,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
   if (!c.features.documents || !UUID.test(ticketId)) notFound();
   const t = await portalCall<Ticket>("portal_ticket", { p_slug: slug, p_ticket: ticketId });
   const delivered = formatMoment(t.delivered_at, c.timezone);
+  const { say } = portalWords(c.industry);
   // Proof of delivery (B98): photos and where the ticket was submitted, for confirmed tickets only.
   const proof = t.confirmed ? await portalCall<Proof>("portal_ticket_proof", { p_slug: slug, p_ticket: ticketId }).catch(() => null) : null;
   return (
@@ -30,7 +31,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
       <div className="no-print flex flex-col gap-3 text-sm sm:flex-row sm:items-center sm:justify-between">
         <Link href={`/portal/${slug}/orders/${id}`} className="text-muted hover:text-ink hover:underline">← Order {t.order.number}</Link>
         <span className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          {c.features.support ? <Link href={`/portal/${slug}/support/new?order=${id}&ticket=${ticketId}`} className="font-semibold whitespace-nowrap text-brand-fg hover:underline">Question about this ticket?</Link> : null}
+          {c.features.support ? <Link href={`/portal/${slug}/support/new?order=${id}&ticket=${ticketId}`} className="font-semibold whitespace-nowrap text-brand-fg hover:underline">{say("Question about this ticket?")}</Link> : null}
           <PrintButton />
         </span>
       </div>
@@ -41,7 +42,7 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
             <p className="text-sm text-muted">{[t.company.contact_phone, t.company.contact_email].filter(Boolean).join(" · ")}</p>
           </div>
           <div className="text-right">
-            <p className="text-sm text-muted">Delivery ticket</p>
+            <p className="text-sm text-muted">{say("Delivery ticket")}</p>
             <p className="text-lg font-bold">{t.number}</p>
           </div>
         </header>
@@ -49,8 +50,8 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
           <Row label="Customer" value={t.customer} />
           <Row label="Order" value={t.order.number} />
           <Row label="Delivered" value={delivered} />
-          <Row label="Site" value={t.order.site} />
-          <Row label="Material" value={t.material ?? ""} />
+          <Row label={say("Job site")} value={t.order.site} />
+          <Row label={say("Material")} value={t.material ?? ""} />
           <Row label="Quantity" value={formatQuantity(t.quantity, t.unit)} />
           {t.order.po ? <Row label="PO" value={t.order.po} /> : null}
           {t.order.project ? <Row label="Project" value={t.order.project} /> : null}
@@ -65,13 +66,13 @@ export default async function PortalTicket({ params }: { params: Promise<{ slug:
                 {" · "}
                 <a className="no-print font-normal underline" href={`https://www.openstreetmap.org/?mlat=${proof.location.lat}&mlon=${proof.location.lng}#map=17/${proof.location.lat}/${proof.location.lng}`} target="_blank" rel="noopener noreferrer">Show on a map</a>
               </dd>
-              <dd className="text-xs text-muted">Recorded by the driver&apos;s phone when the ticket was sent.</dd>
+              <dd className="text-xs text-muted">{say("Recorded by the driver's phone when the ticket was sent.")}</dd>
             </div>
           ) : null}
         </dl>
         {proof && proof.photos.length > 0 ? (
-          <section aria-label="Ticket photos" className="mt-5 border-t border-line pt-4">
-            <h2 className="text-sm font-semibold text-muted">Ticket photos</h2>
+          <section aria-label={say("Ticket photos")} className="mt-5 border-t border-line pt-4">
+            <h2 className="text-sm font-semibold text-muted">{say("Ticket photos")}</h2>
             <div className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-3">
               {proof.photos.map((p, i) => (
                 <a key={p} href={`/portal/${slug}/ticket-photos/${p}`} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-lg border border-line">

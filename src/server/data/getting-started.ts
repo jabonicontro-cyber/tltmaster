@@ -4,7 +4,7 @@ import { checklistRole, checklistStorageKey, CHECKLIST_PLACE, gettingStartedItem
 import { can, type Access, type Permission } from "@/lib/permissions";
 import { PRESENTATION_COOKIE } from "@/lib/platform/preview";
 import { createClient } from "@/server/supabase/server";
-import { getSettings } from "./settings";
+import { businessToday, getSettings } from "./settings";
 
 export interface GettingStartedView {
   role: ChecklistRole;
@@ -61,8 +61,10 @@ export async function loadGettingStarted(access: Access, place: ChecklistPlace, 
   } else if (role === "dispatcher") {
     facts.myAssignment = has("dispatch.view") ? await any(supabase.from("dispatch_assignments").select("id").eq("created_by", me).limit(1)) : null;
   } else if (role === "driver") {
-    // The driver's own inspections are readable to them (row-level security); before the inspections update: null.
-    facts.myInspection = await any(supabase.from("vehicle_inspections").select("id").eq("created_by", me).limit(1));
+    // The driver's own pre-trip TODAY (P4: an inspection on an earlier day ticked the step while My Day said to do
+    // today's). Readable to them (row-level security); before the inspections update: null.
+    const today = await businessToday().then((d) => d.today).catch(() => null);
+    facts.myInspection = today ? await any(supabase.from("vehicle_inspections").select("id").eq("created_by", me).eq("kind", "pre_trip").eq("inspected_on", today).limit(1)) : null;
   } else if (role === "mechanic") {
     const [started, stopped] = await Promise.all([
       any(supabase.from("work_order_time_entries").select("id").eq("user_id", me).limit(1)),
@@ -71,7 +73,7 @@ export async function loadGettingStarted(access: Access, place: ChecklistPlace, 
     Object.assign(facts, { myTimerStarted: started, myTimerStopped: stopped });
   }
 
-  const items = gettingStartedItems(role, facts, has);
+  const items = gettingStartedItems(role, facts, has, (await getSettings().catch(() => null))?.industry);
   // Steps opened on this device (and a dismissal remembered only in this browser) are known there; the card checks them.
   if (!showChecklist(items, { dismissed: false, presentation: false })) return null;
   return { role, items, storageKey: checklistStorageKey(access.companyId, access.userId) };

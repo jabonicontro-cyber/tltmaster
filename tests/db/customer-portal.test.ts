@@ -343,4 +343,24 @@ describe("customer portal", () => {
       expect((await pgError(s.query("select public.platform_testing_checks()"))).code).toBe("42501");
     });
   });
+
+  it("the portal card says what the company hauls, for its own words (20261120024300), and nothing else changes", async () => {
+    await withSession(async (s) => {
+      const ids = await sampleIds(s);
+      const owner = await s.createUser("owner");
+      await openPortal(s, TOP_LINE);
+      const slug = await slugOf(s, TOP_LINE);
+      const alice = await enroll(s, owner, ids.customerId, `words-${randomUUID().slice(0, 6)}@cust.example`);
+      await s.asAdmin();
+      await s.query("update public.company_settings set industry = 'freight' where company_id = $1", [TOP_LINE]);
+      await s.as(alice);
+      const ctx = (await s.query<{ r: Record<string, unknown> }>("select public.portal_context($1) r", [slug])).rows[0].r;
+      expect(ctx.industry).toBe("freight");
+      expect(Object.keys(ctx).sort()).toEqual(["color", "contact_email", "contact_phone", "customer", "email", "features", "hours", "industry", "is_demo", "logo", "name", "sites", "slug", "timezone", "welcome"]);
+      // Still only for that customer's own portal account: someone without one is refused as before.
+      const stranger = await customerUser(s, `stranger-${randomUUID().slice(0, 6)}@cust.example`);
+      await asWithEmail(s, stranger);
+      expect((await pgError(s.query("select public.portal_context($1)", [slug]))).code).toBe("42501");
+    });
+  });
 });
