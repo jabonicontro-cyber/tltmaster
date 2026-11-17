@@ -20,7 +20,7 @@ function Unavailable({ what }: { what: string }) {
   return <p className="text-sm text-muted">{what} is not available yet: the database update that adds it has not been installed, or your role cannot see it.</p>;
 }
 
-export function AvailabilityCard({ a, timezone }: { a: Availability; timezone: string }) {
+export function AvailabilityCard({ a }: { a: Availability; /** Kept for callers; nothing here depends on it. */ timezone?: string }) {
   return (
     <Card>
       <CardHeader title="Availability" description="Mechanical availability only. Driver availability and hours of service are separate." />
@@ -41,7 +41,6 @@ export function AvailabilityCard({ a, timezone }: { a: Availability; timezone: s
             <p className="mt-1 text-xs text-muted">Smart Dispatch does not yet check future shop dates. Plan loads around them.</p>
           </div>
         )}
-        <span className="sr-only">{timezone}</span>
       </CardBody>
     </Card>
   );
@@ -67,7 +66,7 @@ export function AssignmentCard({ truckId, current, drivers, history, names, canA
         <div>
           <p className="text-sm font-semibold">Assignment history</p>
           {!history.available ? <Unavailable what="Assignment history" /> : history.rows.length === 0 ? (
-            <p className="text-sm text-muted">No changes recorded yet. History starts when the database update is installed.</p>
+            <p className="text-sm text-muted">No driver changes recorded yet.</p>
           ) : (
             <ul className="mt-1 space-y-1 text-sm">
               {history.rows.map((h) => (

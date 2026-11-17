@@ -1,9 +1,8 @@
 import { ordersWord } from "@/lib/billing/invoices";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
-import { formatDay, type PortalInvoice } from "@/lib/portal";
+import { formatDay, formatQuantity, poLabel, type PortalInvoice } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 import { PrintButton } from "@/components/portal/print-button";
 
@@ -43,7 +42,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
           </div>
           <div className="space-y-0.5 text-muted">
             {i.order_number && <p>{ordersWord(i.order_number, true)} {i.order_number}</p>}
-            {i.customer_po && <p>PO {i.customer_po}</p>}
+            {i.customer_po && <p>{poLabel(i.customer_po)}</p>}
             {i.project_name && <p>{i.project_name}</p>}
             {i.service_start && <p>Service {formatDay(i.service_start)}{i.service_end && i.service_end !== i.service_start ? ` – ${formatDay(i.service_end)}` : ""}</p>}
           </div>
@@ -54,7 +53,7 @@ export default async function PortalInvoicePage({ params }: { params: Promise<{ 
           <thead><tr className="border-b border-line text-left text-xs text-muted"><th className="py-2 font-medium">Description</th><th className="hidden py-2 pl-4 text-right font-medium sm:table-cell print:table-cell">Quantity</th><th className="hidden py-2 pl-4 text-right font-medium sm:table-cell print:table-cell">Rate</th><th className="py-2 pl-4 text-right font-medium">Amount</th></tr></thead>
           <tbody>
             {i.lines.map((l, n) => {
-              const qty = l.quantity != null ? `${trimNumber(String(l.quantity))} ${(l.unit_code ?? "").replace(/_/g, " ")}`.trim() : "";
+              const qty = formatQuantity(l.quantity, l.unit_code);
               const rate = l.unit_rate_cents != null ? formatCents(l.unit_rate_cents) : "";
               return (
                 <tr key={n} className="border-b border-line/60 align-top">

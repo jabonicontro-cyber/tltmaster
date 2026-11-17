@@ -22,7 +22,7 @@ export type LabView = {
 };
 
 /** Where a role view opens inside the demo, besides the role's usual start page. */
-export const LAB_DESTINATIONS = { help: "/help", setup: "/setup" } as const;
+export const LAB_DESTINATIONS = { help: "/help", setup: "/setup", "portal-admin": "/customer-portal" } as const;
 export type LabDestination = keyof typeof LAB_DESTINATIONS;
 export function labDestination(to: unknown): string | null {
   return typeof to === "string" && Object.hasOwn(LAB_DESTINATIONS, to) ? LAB_DESTINATIONS[to as LabDestination] : null;
@@ -56,7 +56,7 @@ export const LAB_VIEWS: LabView[] = [
   { key: "platform.help-support", audience: "platform", title: "Help support inbox", what: "Support requests and help feedback from companies.", open: { kind: "link", href: "/admin/support" }, implementation: "available", migration: "20261120000400" },
   { key: "company.owner", audience: "company", title: "Owner workspace", what: "Command Center, settings, people, billing. The owner's full view.", open: { kind: "role", role: "owner" }, implementation: "available" },
   { key: "company.help", audience: "company", title: "Business Help Center", what: "Articles, guides and support requests for company users.", open: { kind: "role", role: "owner", to: "help" }, implementation: "available", migration: "20261120000400" },
-  { key: "company.portal-admin", audience: "company", title: "Customer portal administration", what: "Requests inbox, customer access, help articles, portal settings.", open: { kind: "link", href: "/customer-portal" }, implementation: "available", migration: "20261120000700" },
+  { key: "company.portal-admin", audience: "company", title: "Customer portal administration", what: "Requests inbox, customer access, help articles, portal settings.", open: { kind: "role", role: "owner", to: "portal-admin" }, implementation: "available", migration: "20261120000700" },
   { key: "employee.dispatcher", audience: "employee", title: "Dispatcher", what: "Dispatch board, Plan the day, orders.", open: { kind: "role", role: "dispatcher" }, implementation: "available" },
   { key: "employee.multi", audience: "employee", title: "Dispatcher who also drives", what: "Dispatch plus the driver's own day.", open: { kind: "role", role: "multi" }, implementation: "available" },
   { key: "employee.office", audience: "employee", title: "Office", what: "Customers, quotes, tickets, billing.", open: { kind: "role", role: "office" }, implementation: "available" },
@@ -64,7 +64,7 @@ export const LAB_VIEWS: LabView[] = [
   { key: "employee.mechanic", audience: "employee", title: "Mechanic", what: "Maintenance, work orders, fleet.", open: { kind: "role", role: "mechanic" }, implementation: "available" },
   { key: "customer.portal", audience: "customer", title: "Customer portal", what: "Orders, deliveries, tickets, quotes, support and help, as one demo customer.", open: { kind: "portal" }, implementation: "available", migration: "20261120000700" },
   { key: "customer.tracking", audience: "customer", title: "Shared tracking link", what: "Create one from a demo order page (Customer Tracking), then open it signed out.", open: { kind: "none" }, implementation: "available", migration: "20261120000700" },
-  { key: "customer.invoices", audience: "customer", title: "Invoices and payments in the portal", what: "Customers see invoices and pay online.", open: { kind: "none" }, implementation: "blocked", note: "No issued invoices exist in Taviron (drafts only) and no payment provider is approved or connected." },
+  { key: "customer.invoices", audience: "customer", title: "Invoices in the portal", what: "Customers see their issued invoices, what is past due and their account balance, as one demo customer: open the Customer portal preview above and choose Invoices. There is no online payment: payment is arranged with the company.", open: { kind: "none" }, implementation: "available", note: "Shown when the company issues its invoices in Taviron and Documents is on in its portal settings.", migration: "20261120006900" },
   { key: "prospect.website", audience: "prospect", title: "Public website", what: "Home, platform, pricing (gated), demo request.", open: { kind: "link", href: "/", external: true }, implementation: "available" },
   { key: "prospect.demo", audience: "prospect", title: "Live demo request", what: "The demo request form and its (simulated) follow-up.", open: { kind: "link", href: "/demo", external: true }, implementation: "available" },
   { key: "onboarding.company", audience: "onboarding", title: "Company sign-up with access code", what: "A new company creates its account and starts setup.", open: { kind: "link", href: "/signup", external: true }, implementation: "available" },

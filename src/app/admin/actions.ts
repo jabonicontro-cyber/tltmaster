@@ -170,7 +170,8 @@ export async function startDemo(formData: FormData) {
   const { error } = await supabase.rpc("platform_demo_start", { p_timezone: timezone });
   if (error) back("/admin/demo", dbErrorMessage(error));
   try {
-    await seedDemoCompany(supabase, userData.user!.id, timezone);
+    // The first fill takes the refresh lock too (X1): an automatic refresh never adds the same samples meanwhile.
+    await withDemoRefreshLock(supabase, () => seedDemoCompany(supabase, userData.user!.id, timezone));
   } catch (e) {
     back("/admin/demo", e instanceof Error ? e.message : "The demo data could not be created.");
   }
@@ -191,7 +192,7 @@ export async function createProspectDemo() {
   });
   if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos are not available on this database yet. Nothing was changed." : dbErrorMessage(error));
   try {
-    await seedPrairieLantern(supabase);
+    await withDemoRefreshLock(supabase, () => seedPrairieLantern(supabase));
   } catch (e) {
     back("/admin/demo", e instanceof Error ? e.message : "The demo data could not be created.");
   }
@@ -211,7 +212,7 @@ export async function createFreightDemo() {
   });
   if (error) back("/admin/demo", error.code === "PGRST202" ? "Prospect demos are not available on this database yet. Nothing was changed." : dbErrorMessage(error));
   try {
-    await seedFreightDemo(supabase);
+    await withDemoRefreshLock(supabase, () => seedFreightDemo(supabase));
   } catch (e) {
     back("/admin/demo", e instanceof Error ? e.message : "The demo data could not be created.");
   }

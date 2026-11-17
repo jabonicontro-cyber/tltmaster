@@ -64,7 +64,7 @@ export default async function PortalLayout({ children, params }: { children: Rea
             </div>
           ) : null}
         </div>
-        {gate.kind === "customer" ? <div className="print:hidden"><PortalNav slug={slug} features={gate.context.features} /></div> : null}
+        {gate.kind === "customer" ? <div className="print:hidden"><PortalNav slug={slug} features={gate.context.features} industry={gate.context.industry} /></div> : null}
       </header>
       {preview ? (
         <div role="status" className="flex flex-wrap items-center justify-center gap-3 bg-strong px-4 py-2 text-center text-sm text-white print:hidden">

@@ -19,6 +19,24 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
   const [done, setDone] = useState(Boolean(sent));
   const [error, setError] = useState<string | null>(initialError ?? null);
   const [fields, setFields] = useState<Record<string, string>>({});
+  // On a phone the form is taller than the screen (W12): after a refused send the first field to fix gets the focus
+  // (or the message, when no field is named), and after a send the thank-you does, so neither is left off-screen.
+  const [refused, setRefused] = useState(0);
+  const [justSent, setJustSent] = useState(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const alertRef = useRef<HTMLParagraphElement>(null);
+  const doneRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!refused) return;
+    const el = formRef.current?.querySelector<HTMLElement>("[aria-invalid=\"true\"]") ?? alertRef.current;
+    el?.focus({ preventScroll: true });
+    el?.scrollIntoView({ block: "center" });
+  }, [refused]);
+  useEffect(() => {
+    if (!justSent) return;
+    doneRef.current?.focus({ preventScroll: true });
+    doneRef.current?.scrollIntoView({ block: "center" });
+  }, [justSent]);
 
   // Measured from when the form appeared (2026-11-09 hotfix): starting at the first focus made an autofilled form sent
   // within 2.5 s look automated, and it was dropped while the page said thank you.
@@ -69,12 +87,15 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
       const body = (await res.json().catch(() => null)) as { ok: boolean; error?: string; fieldErrors?: Record<string, string> } | null;
       if (body?.ok) {
         setDone(true);
+        setJustSent(true);
       } else {
         setError(body?.error ?? "Your message could not be sent. Please try again.");
         setFields(body?.fieldErrors ?? {});
+        setRefused((n) => n + 1);
       }
     } catch {
       setError("Your message could not be sent. Check your connection and try again.");
+      setRefused((n) => n + 1);
     } finally {
       setPending(false);
     }
@@ -82,7 +103,7 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
 
   if (done) {
     return (
-      <div role="status" className="rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-8 shadow-card">
+      <div ref={doneRef} tabIndex={-1} role="status" data-testid="lead-sent" className="scroll-mt-24 rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-8 shadow-card focus:outline-none">
         <CheckCircle2 className="size-8 text-brand" aria-hidden />
         <h2 className="mt-4 text-xl font-bold text-cloud">Thank you. Your message reached the Taviron team.</h2>
         <p className="mt-2 text-silver">{kind === "demo" ? "We will follow up by email to arrange the walkthrough." : "We will reply by email."}</p>
@@ -99,7 +120,7 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
   const aria = (name: string) => ({ "aria-invalid": Boolean(fields[name]) || undefined, "aria-describedby": fields[name] ? `${name}-error` : undefined });
 
   return (
-    <form action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} onBlur={onFieldBlur} onInput={onFieldInput} className="space-y-5 rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-6 shadow-card sm:p-8" noValidate>
+    <form ref={formRef} action="/api/leads" method="post" onSubmit={onSubmit} onFocus={begin} onBlur={onFieldBlur} onInput={onFieldInput} className="space-y-5 rounded-[1.75rem] border border-[#0c1a2b]/[0.06] bg-navy-2 p-6 shadow-card sm:p-8" noValidate>
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="source_path" value={kind === "demo" ? "/demo" : "/contact"} />
       {/* Left empty by people; filled in by form-filling bots. */}
@@ -110,7 +131,7 @@ export function LeadForm({ kind, initialError, sent, initialMessage }: { kind: K
         </label>
       </div>
       {error ? (
-        <p role="alert" className="rounded-xl border border-red-600/30 bg-red-50 px-4 py-3 text-sm text-red-800">
+        <p ref={alertRef} tabIndex={-1} role="alert" className="rounded-xl border border-red-600/30 bg-red-50 px-4 py-3 text-sm text-red-800 focus:outline-none">
           {error}
         </p>
       ) : null}

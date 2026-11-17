@@ -670,6 +670,12 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                 const override = isOverride(l);
                 const amount = totals.lineAmounts[i] ?? 0;
                 const isCharge = l.kind !== "material";
+                // T6: a hauling line started from the material's quantity; when the material quantity changes later, the
+                // hauling line is not changed silently, it says so here (with a one-click match).
+                const material = l.kind === "hauling" && l.calcMethod === "per_unit" && l.unitCode
+                  ? [...state.lines.slice(0, i)].reverse().find((x) => x.kind === "material" && x.unitCode === l.unitCode && parseQuantityToMilli(x.quantity) !== null)
+                  : undefined;
+                const haulDiffers = Boolean(material && parseQuantityToMilli(l.quantity) !== null && parseQuantityToMilli(material.quantity) !== parseQuantityToMilli(l.quantity));
                 return (
                   <li key={l.key} className="grid grid-cols-12 gap-x-3 gap-y-2 px-5 py-4 sm:px-6" aria-label={`Line ${i + 1}`}>
                     <div className="col-span-12 flex items-center gap-2 text-sm font-semibold text-muted lg:hidden">Line {i + 1}</div>
@@ -787,6 +793,13 @@ export function QuoteEditor({ industry, initial, initialContext, customers: init
                       <span className="mb-1 block text-xs font-medium text-muted">Amount</span>
                       <span className={cn("flex h-10 items-center text-lg font-bold tabular", amount < 0 && "text-green-800")}>{formatCents(amount)}</span>
                     </div>
+
+                    {haulDiffers && material && (
+                      <p className="col-span-12 flex flex-wrap items-center gap-x-2 text-sm text-amber-800" role="status" data-testid="haul-qty-differs">
+                        <span>This hauling line is {l.quantity} and the {material.description || words.material} line above is {material.quantity}, in the same unit. Check that both are right.</span>
+                        <button type="button" className="font-semibold underline" onClick={() => updateLine(l.key, { quantity: material.quantity })}>Use {material.quantity}</button>
+                      </p>
+                    )}
 
                     <div className="col-span-12 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                       <Checkbox checked={l.taxable} disabled={taxLocked} onChange={(e) => updateLine(l.key, { taxable: e.target.checked })} label="Taxable" />

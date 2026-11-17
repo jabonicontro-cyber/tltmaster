@@ -84,6 +84,7 @@ export default async function QuotePage({ params }: { params: Promise<{ id: stri
           editSeq={current.edit_seq}
           permissions={{ edit: can(access, "quotes.edit"), send: can(access, "quotes.send"), status: can(access, "quotes.status"), convert: can(access, "orders.edit") }}
           order={order}
+          emailed={deliveries.some((d) => d.channel !== "manual" && (d.status === "sent" || d.status === "failed"))}
         />
       </div>
 

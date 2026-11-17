@@ -30,8 +30,16 @@ export const REVIEW_REASON_LABELS: Record<string, string> = {
   duplicate_external_reference: "The paper / scale ticket number is already used on another ticket.",
 };
 
+/**
+ * Not stored by the database (so not a list filter): shown on the ticket page when the line's verified tickets plus
+ * this one come to more than was ordered (walkthrough 2026-11-14, T4: a BOL for 2 loads on an order for 1 said
+ * "Nothing was flagged" and offered Accept first).
+ */
+export const OVER_ORDER = "over_order_quantity";
+const PAGE_REASON_LABELS: Record<string, string> = { [OVER_ORDER]: "More than the order line asks for (over the order)." };
+
 export function reviewReasonLabel(code: string): string {
-  return REVIEW_REASON_LABELS[code] ?? code;
+  return REVIEW_REASON_LABELS[code] ?? PAGE_REASON_LABELS[code] ?? code;
 }
 
 export interface ReasonHelp {
@@ -48,12 +56,12 @@ export const REVIEW_REASON_HELP: Record<string, ReasonHelp> = {
   unit_differs_from_order_line: {
     why: "Billing compares and prices quantities only in the order line's unit; a ticket in another unit is never converted.",
     next: "Check the paper ticket. Correct the unit or quantity if it was typed wrong; otherwise accept it. Billing will show a difference to acknowledge.",
-    who: "Office reviewer (tickets.review)",
+    who: "Office reviewer",
   },
   delivered_on_other_day: {
     why: "The delivery may belong to another load or day; billing and future driver pay use the delivered date.",
     next: "Confirm the date on the paper ticket. Correct the date or the load if needed, then accept.",
-    who: "Office reviewer (tickets.review)",
+    who: "Office reviewer",
   },
   equipment_differs_from_assignment: {
     why: "The truck or driver on the ticket is not the one dispatch assigned; driver-pay inputs and equipment records follow the ticket.",
@@ -63,17 +71,22 @@ export const REVIEW_REASON_HELP: Record<string, ReasonHelp> = {
   missing_external_reference: {
     why: "Without the paper or scale ticket number, the ticket cannot be matched to the supplier's or customer's paperwork, and duplicates are harder to catch.",
     next: "Add the number from the paper ticket (Correct), or accept without it if the paper ticket has none.",
-    who: "Office reviewer (tickets.review)",
+    who: "Office reviewer",
   },
   additional_ticket_for_load: {
     why: "Two tickets on one load are added together for billing; a duplicate entry would bill twice.",
     next: "Compare with the load's other ticket. Void this one if it is the same delivery; accept it if it is a separate delivery.",
-    who: "Office reviewer (tickets.review)",
+    who: "Office reviewer",
   },
   duplicate_external_reference: {
     why: "The same paper ticket number on two tickets usually means the delivery was entered twice.",
     next: "Open the other ticket with that number. Void the duplicate, or correct the number if it was mistyped.",
-    who: "Office reviewer (tickets.review)",
+    who: "Office reviewer",
+  },
+  over_order_quantity: {
+    why: "Billing uses the delivered quantity; a typing mistake here bills the customer for more than they ordered.",
+    next: "Check the quantity on the paper ticket. Correct it if it was typed wrong; accept it only if more was really delivered.",
+    who: "Office reviewer",
   },
 };
 

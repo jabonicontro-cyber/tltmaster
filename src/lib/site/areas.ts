@@ -44,7 +44,7 @@ export const AREAS: PlatformArea[] = [
     controls: [
       "Suggestions never assign on their own: a dispatcher approves or rejects each one.",
       "A truck with an open safety-critical defect, a shop visit or an expired document is excluded, with the reason shown.",
-      "Hours of service are not tracked (no ELD connection), so every proposal says the dispatcher must confirm them.",
+      "Taviron does not calculate hours-of-service rules. Current hours from your own GPS or ELD provider count as verified; otherwise each proposal asks the dispatcher to confirm the driver's hours.",
     ],
     features: ["smart-dispatch", "plan-the-day", "delivery-tickets"],
     notYet: ["A built-in connection to a specific GPS or ELD brand (positions and hours come from your own provider feed or are entered by dispatch)", "Travel distance and drive time in plans"],
@@ -91,7 +91,7 @@ export const AREAS: PlatformArea[] = [
       "Invoices are issued and emailed only after a person approves them; nothing is sent on its own.",
     ],
     features: ["orders", "delivery-tickets", "billing", "invoicing"],
-    notYet: ["QuickBooks Online sync (coming soon)", "Online card or bank payments", "Quote emails until an email provider is configured"],
+    notYet: ["QuickBooks Online sync (coming soon)", "Online card or bank payments", "Emailing quotes before email sending is set up for your company (quotes can be printed or downloaded as a PDF meanwhile)"],
     connects: ["dispatch", "intelligence"],
   },
   {

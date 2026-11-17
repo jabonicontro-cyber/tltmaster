@@ -2,8 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { EmptyState } from "@/components/ui/states";
 import { ArticleVote } from "@/components/portal/portal-forms";
-import { PORTAL_GENERAL_HELP } from "@/lib/portal-help";
-import type { PortalHelpArticle } from "@/lib/portal";
+import { portalGeneralHelp } from "@/lib/portal-help";
+import { portalWords, type PortalHelpArticle } from "@/lib/portal";
 import { createClient } from "@/server/supabase/server";
 import { portalGate } from "@/server/portal";
 
@@ -29,7 +29,10 @@ export default async function PortalHelp({ params, searchParams }: { params: Pro
   const needle = q.trim().toLowerCase().slice(0, 100);
   const match = (a: { title: string; body: string; category: string }) => !needle || `${a.title} ${a.category} ${a.body}`.toLowerCase().includes(needle);
   const own = ((data as PortalHelpArticle[]) ?? []).filter(match);
-  const general = PORTAL_GENERAL_HELP.filter(match);
+  // W1: the general answers follow what this portal shows (its switches); signed out, only what the public card says.
+  const company = gate.kind === "customer" ? gate.context : gate.company;
+  const known = gate.kind === "customer" ? gate.context.features : company ? { orders: company.features.orders, quotes: company.features.quotes, documents: company.features.documents, support: company.features.support } : {};
+  const general = portalGeneralHelp(known, portalWords(company?.industry).say).filter(match);
   const categories = [...new Set(own.map((a) => a.category))];
 
   return (

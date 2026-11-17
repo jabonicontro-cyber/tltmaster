@@ -14,6 +14,7 @@ import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { toJpeg } from "@/lib/files/to-jpeg";
 import { trimNumber } from "@/lib/fleet/labels";
 import { quantityError, unitRequiresWhole } from "@/lib/tickets/rules";
+import { adaptWording } from "@/lib/industry";
 import type { UnitRow } from "@/server/data/types";
 import { correctTicket, submitTicket, type TicketInput } from "@/app/(app)/tickets/actions";
 
@@ -45,10 +46,13 @@ interface Props {
   /** Assignment at the time of the form, for the "differs" hint. */
   assignment: { truckId: string; trailerId: string; driverId: string } | null;
   cancelHref: string;
+  /** What the company hauls: a freight carrier reads "BOL number" and "Submit BOL" (T3). Missing means aggregate. */
+  industry?: string;
 }
 
-export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, units, trucks, trailers, drivers, assignment, cancelHref }: Props) {
+export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, units, trucks, trailers, drivers, assignment, cancelHref, industry }: Props) {
   const router = useRouter();
+  const say = (text: string) => adaptWording(text, industry);
   const [v, setV] = useState(() => {
     // A new ticket on a one-line order starts with that line's unit ("Order line is in tons" → Tons).
     if (mode !== "new" || initial.unitCode || !initial.orderLineId) return initial;
@@ -84,6 +88,10 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
 
   const line = lines.find((l) => l.id === v.orderLineId);
   const unitLabel = (code: string | null | undefined) => units.find((u) => u.code === code)?.label ?? code ?? "";
+  // Only the company's active units are offered (T1), plus the one already chosen or on an order line, so an older
+  // ticket or order in a unit that was switched off can still be read and corrected.
+  const lineUnits = new Set(lines.map((l) => l.unit_code));
+  const unitOptions = units.filter((u) => u.active !== false || u.code === v.unitCode || lineUnits.has(u.code));
   const qError = v.quantity ? quantityError(v.quantity, v.unitCode || null) : null;
   const differs = assignment && (assignment.truckId !== v.truckId || assignment.trailerId !== v.trailerId || assignment.driverId !== v.driverId);
 
@@ -147,11 +155,11 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
     <div className="space-y-5">
       <FormError message={error} />
       <Card>
-        <CardHeader title="What was delivered" description="Enter the figures from the paper or scale ticket. Only the unit starts as the order line's unit; change it if the paper says otherwise." />
+        <CardHeader title="What was delivered" description={say("Enter the figures from the paper or scale ticket. Only the unit starts as the order line's unit; change it if the paper says otherwise.")} />
         <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-6">
           <Field label="Order line" htmlFor="t-line" required error={fieldErrors.orderLineId} className="sm:col-span-6">
             <Select id="t-line" value={v.orderLineId} onChange={set("orderLineId")}>
-              <option value="">Choose the material or hauling line…</option>
+              <option value="">{say("Choose the material or hauling line…")}</option>
               {lines.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.description}
@@ -173,10 +181,11 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           >
             <Select id="t-unit" value={v.unitCode} onChange={set("unitCode")}>
               <option value="">Choose…</option>
-              {units.map((u) => (
+              {unitOptions.map((u) => (
                 <option key={u.code} value={u.code}>
                   {u.label}
                   {unitRequiresWhole(u.code) ? " (whole numbers)" : ""}
+                  {u.active === false ? " (inactive)" : ""}
                 </option>
               ))}
             </Select>
@@ -185,8 +194,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           {line?.unit_code && v.unitCode && v.unitCode !== line.unit_code && (
             <div className="sm:col-span-6">
               <Notice tone="warning" title="Different unit">
-                The order line is in {unitLabel(line.unit_code).toLowerCase()}; this ticket is in {unitLabel(v.unitCode).toLowerCase()}. No conversion is made. The ticket will be
-                flagged for office review.
+                The order line is in {unitLabel(line.unit_code).toLowerCase()}; this ticket is in {unitLabel(v.unitCode).toLowerCase()}. No conversion is made. {say("The ticket will be flagged for office review.")}
               </Notice>
             </div>
           )}
@@ -196,14 +204,14 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           <Field label="Delivery time" htmlFor="t-time" required error={fieldErrors.deliveredTime} className="sm:col-span-2">
             <Input id="t-time" type="time" value={v.deliveredTime} onChange={set("deliveredTime")} />
           </Field>
-          <Field label="Paper / scale ticket #" htmlFor="t-ref" error={fieldErrors.externalReference} className="sm:col-span-2" hint="Leave blank only if there is none. It will be flagged.">
+          <Field label={say("Paper / scale ticket #")} htmlFor="t-ref" error={fieldErrors.externalReference} className="sm:col-span-2" hint="Leave blank only if there is none. It will be flagged.">
             <Input id="t-ref" maxLength={60} value={v.externalReference} onChange={set("externalReference")} autoComplete="off" />
           </Field>
         </CardBody>
       </Card>
 
       <Card>
-        <CardHeader title="Truck and driver" description="From the dispatch assignment. Change only if the paper ticket shows a different truck or driver." />
+        <CardHeader title="Truck and driver" description={say("From the dispatch assignment. Change only if the paper ticket shows a different truck or driver.")} />
         <CardBody className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Truck" htmlFor="t-truck" required error={fieldErrors.truckId}>
             <Select id="t-truck" value={v.truckId} onChange={set("truckId")}>
@@ -229,7 +237,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
               ))}
             </Select>
           </Field>
-          {differs && <p className="text-sm text-amber-900 sm:col-span-3">Differs from the dispatch assignment. The ticket will be flagged for review.</p>}
+          {differs && <p className="text-sm text-amber-900 sm:col-span-3">{say("Differs from the dispatch assignment. The ticket will be flagged for review.")}</p>}
           <Field label="Notes" htmlFor="t-notes" error={fieldErrors.notes} className="sm:col-span-3">
             <Textarea id="t-notes" rows={2} maxLength={2000} value={v.notes} onChange={set("notes")} />
           </Field>
@@ -241,14 +249,14 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
           <CardBody>
             <PhotoPicker
               id="t-photos"
-              label="Paper ticket photo or scan (optional)"
+              label={say("Paper ticket photo or scan (optional)")}
               files={photos}
               onChange={setPhotos}
               max={4}
               camera={false}
               accept="image/jpeg,image/png,image/webp,image/heic"
-              empty="Choose a photo or scan of the paper ticket"
-              hint="Attached to the ticket right after you submit it (location data removed). If it cannot be attached, the ticket is still saved and says so; add it from the ticket page."
+              empty={say("Choose a photo or scan of the paper ticket")}
+              hint={say("Attached to the ticket right after you submit it (location data removed). If it cannot be attached, the ticket is still saved and says so; add it from the ticket page.")}
             />
           </CardBody>
         </Card>
@@ -276,7 +284,7 @@ export function TicketForm({ mode, ticketId, loadId, orderId, initial, lines, un
       <div className="flex justify-end gap-2">
         <Link href={cancelHref} className={buttonClasses("ghost")}>Cancel</Link>
         <Button onClick={submit} loading={pending} disabled={Boolean(confirmMessage && !confirmed)}>
-          {mode === "new" ? "Submit ticket" : "Save correction"}
+          {mode === "new" ? say("Submit ticket") : "Save correction"}
         </Button>
       </div>
     </div>

@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/states";
 import { formatCents } from "@/lib/money";
-import { formatDay, type PortalInvoices } from "@/lib/portal";
+import { formatDay, poLabel, type PortalInvoices } from "@/lib/portal";
 import { portalCall, requirePortalCustomer } from "@/server/portal";
 
 export const metadata = { title: "Invoices" };
@@ -49,7 +49,7 @@ export default async function PortalInvoicesPage({ params }: { params: Promise<{
               <Link href={`/portal/${slug}/invoices/${i.id}`} className="flex flex-wrap items-center justify-between gap-3 rounded-panel border border-line/70 bg-card p-4 shadow-card hover:border-strong">
                 <span>
                   <span className="block font-semibold text-ink">Invoice {i.number}</span>
-                  <span className="block text-sm text-muted">{[`Issued ${formatDay(i.issue_date)}`, `due ${formatDay(i.due_date)}`, i.order_number ? `${ordersWord(i.order_number, true)} ${i.order_number}` : "", i.customer_po ? `PO ${i.customer_po}` : ""].filter(Boolean).join(" · ")}</span>
+                  <span className="block text-sm text-muted">{[`Issued ${formatDay(i.issue_date)}`, `due ${formatDay(i.due_date)}`, i.order_number ? `${ordersWord(i.order_number, true)} ${i.order_number}` : "", poLabel(i.customer_po)].filter(Boolean).join(" · ")}</span>
                 </span>
                 <span className="flex items-center gap-3">
                   <span className="text-right tabular">

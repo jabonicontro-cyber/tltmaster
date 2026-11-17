@@ -64,6 +64,7 @@ export default async function CorrectTicketPage({ params }: { params: Promise<{ 
         drivers={ctx.drivers}
         assignment={ctx.assignment ? { truckId: ctx.assignment.truck_id, trailerId: ctx.assignment.trailer_id ?? "", driverId: ctx.assignment.driver_id } : null}
         cancelHref={`/tickets/${id}`}
+        industry={(await getSettings().catch(() => null))?.industry}
       />
     </>
   );

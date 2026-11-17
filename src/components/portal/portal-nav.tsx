@@ -3,19 +3,20 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/cn";
-import type { PortalFeatures } from "@/lib/portal";
+import { portalWords, type PortalFeatures } from "@/lib/portal";
 
 /** Customer portal sections; only the ones the company turned on. */
-export function PortalNav({ slug, features }: { slug: string; features: PortalFeatures }) {
+export function PortalNav({ slug, features, industry }: { slug: string; features: PortalFeatures; industry?: string }) {
   const path = usePathname();
+  const words = portalWords(industry);
   const base = `/portal/${slug}`;
   const items = [
     { href: base, label: "Overview", on: true },
     { href: `${base}/orders`, label: "Orders", on: features.orders },
     { href: `${base}/book`, label: "Book loads", on: Boolean(features.booking) },
     { href: `${base}/quotes`, label: "Quotes", on: features.quotes },
-    { href: `${base}/tickets`, label: "Tickets", on: features.documents },
-    { href: `${base}/sites`, label: "Job sites", on: features.orders },
+    { href: `${base}/tickets`, label: words.tickets, on: features.documents },
+    { href: `${base}/sites`, label: words.sites, on: features.orders },
     { href: `${base}/invoices`, label: "Invoices", on: Boolean(features.invoices) },
     { href: `${base}/support`, label: "Support", on: features.support },
     { href: `${base}/help`, label: "Help", on: features.help },

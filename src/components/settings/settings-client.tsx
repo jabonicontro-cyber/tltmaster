@@ -3,7 +3,7 @@
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Avatar } from "@/components/ui/avatar";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Pencil, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { toastActionError } from "@/lib/toast-result";
@@ -47,7 +47,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
   const logo = removeLogo ? "" : preview ?? (settings.has_logo ? `/brand/logo?c=${companyId}&v=${encodeURIComponent(settings.updated_at)}` : "");
   return (
     <>
-      <CardHeader title="Branding" description="Your logo and colors in the app, for everyone in your company. Other companies never see them. Quotes and the public website are not changed." />
+      <CardHeader title="Branding" description="Your logo and colors for everyone in your company: in the app, on your invoices and in your customer portal. Other companies never see them. The public website is not changed." />
       <CardBody>
         <form onSubmit={onSubmit} className="space-y-4" noValidate>
           <FormError message={formError} />
@@ -76,7 +76,7 @@ export function BrandingForm({ settings, canEdit, companyId }: { settings: Compa
                 <Input {...ctl("brand_color", fe("brand_color") ?? live.brand_color)} value={color} onChange={(e) => setColor(e.target.value.trim())} placeholder="#0f6fd6" maxLength={7} />
               </div>
             </Field>
-            <Field label="Document color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="Headings on printed quotes. The menu follows light or dark mode and marks the current page with the accent color. Leave empty for the default navy.">
+            <Field label="Document color" htmlFor="brand_sidebar_color" error={fe("brand_sidebar_color") ?? live.brand_sidebar_color} className="sm:col-span-3" hint="Table headings on printed quotes and selected items in the app. The menu follows light or dark mode and marks the current page with the accent color. Leave empty for the default navy.">
               <div className="flex gap-2">
                 <input type="color" aria-label="Pick the document color" value={sidebarColor || "#0c1a2b"} onChange={(e) => setSidebarColor(e.target.value)} className="h-11 w-12 rounded-xl border border-line" />
                 <Input {...ctl("brand_sidebar_color", fe("brand_sidebar_color") ?? live.brand_sidebar_color)} value={sidebarColor} onChange={(e) => setSidebarColor(e.target.value.trim())} placeholder="#0c1a2b" maxLength={7} />
@@ -118,6 +118,13 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
       router.refresh();
     },
   });
+  // Opened from Getting started ("#phone", T8): the field gets the focus, clear of the sticky header (scroll-mt).
+  useEffect(() => {
+    if (window.location.hash !== "#phone") return;
+    const el = document.getElementById("phone");
+    el?.scrollIntoView({ block: "center" });
+    el?.focus({ preventScroll: true });
+  }, []);
   return (
     <>
       <CardHeader title="Company" description="Shown on quotes and other documents. Already-sent quotes keep the details they were sent with." />
@@ -129,7 +136,7 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
               <Input {...ctl("company_name", fe("company_name"))} defaultValue={settings.company_name} />
             </Field>
             <Field label="Phone" htmlFor="phone" error={fe("phone")} className="sm:col-span-3">
-              <PhoneInput {...ctl("phone", fe("phone"))} defaultValue={settings.phone} />
+              <PhoneInput {...ctl("phone", fe("phone"))} defaultValue={settings.phone} className="scroll-mt-32" />
             </Field>
             <Field label="Street address" htmlFor="address_line1" error={fe("address_line1")} className="sm:col-span-4">
               <Input {...ctl("address_line1", fe("address_line1"))} defaultValue={settings.address_line1} />
@@ -152,6 +159,12 @@ export function CompanySettingsForm({ settings, canEdit }: { settings: CompanySe
             <Field label="Website" htmlFor="website" error={fe("website")} className="sm:col-span-3">
               <Input {...ctl("website", fe("website"))} defaultValue={settings.website} />
             </Field>
+            {canEdit ? (
+              // A save right under the contact details (T8): the main Save is far below, after unrelated sections.
+              <div className="flex justify-end sm:col-span-6">
+                <Button type="submit" variant="secondary" loading={pending}>Save company details</Button>
+              </div>
+            ) : null}
           </fieldset>
           <fieldset disabled={!canEdit} className="grid grid-cols-1 gap-4 sm:grid-cols-6">
             <legend className="mb-2 text-[15px] font-semibold text-ink sm:col-span-6">Quote defaults</legend>
@@ -315,7 +328,7 @@ export function UsersPanel({ users, currentUserId, inviteAvailable, isOwner = fa
     <>
       <CardHeader
         title="Sign-ins & roles"
-        description="Everyone who can sign in to this company, and their role. Each sign-in also has a record in the Directory. Accounts without a role see no data until you assign one."
+        description="Everyone who can sign in to this company, and their role. People you add or invite get a Directory record too; a sign-in made another way may not have one yet (add it with Add person). Accounts without a role see no data until you assign one."
         actions={<Button size="sm" icon={<UserPlus className="size-4" />} onClick={() => setInviting(true)}>Invite user</Button>}
       />
       {!inviteAvailable && (

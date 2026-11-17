@@ -130,9 +130,15 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
       </fieldset>
 
       {kind === "truck" && dimensions && (
-        <fieldset className="grid grid-cols-2 gap-4 sm:grid-cols-6">
-          <legend className="mb-1 text-[15px] font-semibold text-ink sm:col-span-6">Routing dimensions</legend>
-          <p className="col-span-2 -mt-1 text-sm text-muted sm:col-span-6">
+        // Folded away until wanted (T9): open when something is recorded or needs fixing.
+        <details
+          className="group rounded-xl border border-line px-4 py-3"
+          open={["height_cm", "width_cm", "length_cm", "gross_weight_kg", "axle_count"].some((k) => dimensions[k as keyof typeof dimensions] != null || Boolean(fieldError(k)))}
+        >
+        <summary className="cursor-pointer text-[15px] font-semibold text-ink">Routing dimensions <span className="font-normal text-muted">(optional)</span></summary>
+        <fieldset className="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-6">
+          <legend className="sr-only">Routing dimensions</legend>
+          <p className="col-span-2 text-sm text-muted sm:col-span-6">
             Used by route planning on Dispatch to avoid low bridges and weight limits. Measure loaded, including the body; leave blank if not known.
           </p>
           <input type="hidden" name="routing_dimensions" value="1" />
@@ -152,6 +158,7 @@ export function EquipmentForm({ kind, initial, action, cancelHref, submitLabel, 
             <Input {...f("axle_count")} defaultValue={dimensions.axle_count ?? ""} inputMode="numeric" maxLength={2} className="text-right tabular" placeholder="Unknown" />
           </Field>
         </fieldset>
+        </details>
       )}
 
       {kind === "trailer" && (

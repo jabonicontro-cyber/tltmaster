@@ -529,7 +529,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     audience: "Office staff, sales and owners.",
     whatYouSee: [
       "Statuses: Draft, Sent, Accepted, Declined, Expired and Canceled.",
-      "Buttons that depend on the status and your role: **Edit draft**, **Email quote** (or **Email again**), **Mark as sent**, **Preview / print**, **PDF**, **Revise**, **Mark accepted**, **Mark declined**, **Mark expired**, **Cancel quote** and **Convert to order**.",
+      "Buttons that depend on the status and your role: **Edit draft**, **Email quote** (or **Email again** once it was emailed), **Mark as sent**, **Preview / print**, **PDF**, **Revise**, **Mark accepted**, **Mark declined**, **Mark expired**, **Cancel quote** and **Convert to order**.",
       "**Revisions**: every revision is kept; sent revisions are never changed.",
       "**Emails and deliveries**: every send attempt, including failures and previews.",
       "**History** of status changes.",
@@ -2670,7 +2670,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "settings-company",
     title: "Settings: Company and branding",
-    summary: "Your company details, quote defaults, ticket and urgency rules, and your logo and colors in the app.",
+    summary: "Your company details, quote defaults, ticket and urgency rules, and your logo and colors in the app, on invoices and in the customer portal.",
     category: "settings",
     routes: ["/settings"],
     permissions: [],
@@ -2679,18 +2679,18 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "**Company**: name, address, phone, email, website and **Business timezone** (decides what “today” means for loads, tickets and the Command Center).",
       "**Quote defaults**: **Default sales tax %**, **Quotes valid for (days)**, **Follow up after (days)**, **Default quote terms** and **Quote footer note**.",
       "**Delivery tickets** (require the paper or scale ticket number), **Urgent orders** (escalation time) and **Job site directions** (how often to review them).",
-      "**Branding**: **Logo**, **Accent color** and **Navigation color**, with a preview.",
+      "**Branding**: **Logo**, **Accent color** and **Document color**, with a preview.",
     ],
     tasks: [
       {
         title: "Change company details or defaults",
-        steps: ["Open **Settings** → **Company and branding**.", "Change the fields.", "Select **Save settings**."],
+        steps: ["Open **Settings** → **Company and branding**.", "Change the fields.", "Select **Save settings** at the bottom, or **Save company details** right under the contact details."],
       },
       {
         title: "Add your logo and colors",
         steps: [
           "Under **Branding**, choose a **Logo** (PNG, JPEG or WebP, at most 250 KB).",
-          "Pick the **Accent color** and **Navigation color**; leave empty for the defaults.",
+          "Pick the **Accent color** and **Document color**; leave empty for the defaults.",
           "Select **Save branding**. Everyone in your company sees it on their next page.",
         ],
       },
@@ -2705,7 +2705,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     next: ["settings-numbering"],
     related: ["company-setup", "settings-email"],
     reviewed: REVIEWED,
-    limitations: ["Branding changes the app for your company only. Quotes and the public website are not changed."],
+    limitations: ["Your logo and colors appear in the app, on your invoices and in your customer portal, for your company only. The quote PDF does not show your logo, and the public website is not changed."],
   },
   {
     id: "settings-numbering",
