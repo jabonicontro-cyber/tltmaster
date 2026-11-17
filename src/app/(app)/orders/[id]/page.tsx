@@ -81,9 +81,15 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
   const billing = billTo
     ? [billTo.name, billTo.line1, billTo.line2, [billTo.city, billTo.state, billTo.postal_code].filter(Boolean).join(" ")].filter(Boolean).join("\n")
     : customer.name;
-  const site = [order.site_label, order.site_line1, order.site_line2, [order.site_city, order.site_state, order.site_postal_code].filter(Boolean).join(" ")]
-    .filter(Boolean)
-    .join("\n");
+  // A state or ZIP alone is not a place (walkthrough D9: "Delivery location: IN"). With stops, the last delivery stop is
+  // where the load goes, as scheduling counts it (20261120024110).
+  const sitePlace = [order.site_label, order.site_line1, order.site_city].some((x) => (x ?? "").trim());
+  const lastDrop = [...stops.stops].reverse().find((s) => s.kind === "delivery");
+  const site = sitePlace
+    ? [order.site_label, order.site_line1, order.site_line2, [order.site_city, order.site_state, order.site_postal_code].filter(Boolean).join(" ")].filter(Boolean).join("\n")
+    : lastDrop
+      ? [`Last delivery stop: ${lastDrop.name}`, [lastDrop.address_line1, [lastDrop.city, lastDrop.state, lastDrop.postal_code].filter(Boolean).join(" ")].filter(Boolean).join(", ")].filter(Boolean).join("\n")
+      : "";
   // Directions verification of the saved site (B51; absent before 20261115000200 is installed).
   const settings = savedSite?.directions_risk ? await getSettings() : null;
   const siteRisk = savedSite?.directions_risk ?? "standard";
@@ -146,6 +152,7 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
             editSeq={order.edit_seq}
             lineCount={lines.length}
             orderDate={order.order_date}
+            requestedDate={order.requested_date}
             schedule={{ start: order.scheduled_start, end: order.scheduled_end, windowStart: order.window_start, windowEnd: order.window_end, notes: order.scheduling_notes }}
             permissions={{
               edit: can(access, "orders.edit"),

@@ -28,8 +28,16 @@ describe("order progress (dispatch → tickets → billing)", () => {
     expect(received[1]).toMatchObject({ state: "attention", owner: "Office (ticket review)" });
     expect(received[1].next!.href).toBe("/tickets/t1?queue=review&order=o1");
     const missing = orderProgress({ orderId: "o1", orderStatus: "in_progress", loads: [load(), load({ id: "l2", tickets: [{ id: "t2", status: "needs_review" }] })], billing: billing("missing_documentation"), now: NOW });
-    expect(missing[1].summary).toMatch(/1 delivered load without a ticket\. 1 ticket to review/);
+    expect(missing[1].summary).toMatch(/1 load past its window without a ticket\. 1 ticket to review/);
     expect(missing[1].next!.label).toBe("Enter the ticket");
+  });
+
+  it("a load whose window passed without a truck is not asked for a ticket (walkthrough D10)", () => {
+    const steps = orderProgress({ orderId: "o1", orderStatus: "in_progress", loads: [load({ assigned: false })], billing: null, now: NOW });
+    expect(steps[0]).toMatchObject({ state: "attention", next: { label: "Assign" } });
+    expect(steps[1]).toMatchObject({ state: "waiting" });
+    expect(steps[1].summary).toBe("0 tickets verified; 1 load not delivered yet.");
+    expect(steps[1].summary).not.toMatch(/delivered load|past its window/);
   });
 
   it("uses the billing view's own due rule (completed orders are due) and never calls billing done before handoff", () => {

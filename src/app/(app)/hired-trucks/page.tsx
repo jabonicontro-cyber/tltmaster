@@ -40,6 +40,39 @@ const SAVED = {
 const SETTLEMENT_STATUS = { draft: { label: "Draft", tone: "gray" }, approved: { label: "Approved", tone: "blue" }, paid: { label: "Paid", tone: "green" }, void: { label: "Void", tone: "red" } } as const;
 
 /**
+ * Open offers whose hired truck or driver already has an active assignment at an overlapping time (walkthrough D2): the
+ * clash used to show only at "Confirm and assign". Read with the person's own session; nothing is decided here (the
+ * database checks again when the offer is confirmed). Offer id -> one plain sentence.
+ */
+async function offerClashes(open: Array<{ id: string; load_id: string; truck_id: string; driver_id: string }>): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (!open.length) return out;
+  const supabase = await createClient();
+  const [loads, booked] = await Promise.all([
+    supabase.from("order_loads").select("id, starts_at, ends_at").in("id", open.map((o) => o.load_id)),
+    supabase.from("dispatch_assignments")
+      .select("load_id, truck_id, driver_id, starts_at, ends_at, order_loads(load_number, load_date, start_time, end_time, orders(order_number))")
+      .eq("status", "active")
+      .or(`truck_id.in.(${[...new Set(open.map((o) => o.truck_id))].join(",")}),driver_id.in.(${[...new Set(open.map((o) => o.driver_id))].join(",")})`),
+  ]);
+  if (loads.error || booked.error) return out;
+  const at = new Map(((loads.data ?? []) as Array<{ id: string; starts_at: string; ends_at: string }>).map((l) => [l.id, l]));
+  type Booking = { load_id: string; truck_id: string; driver_id: string; starts_at: string; ends_at: string; order_loads: { load_number: number; load_date: string; start_time: string; end_time: string; orders: { order_number: string } | null } | null };
+  const bookings = (booked.data ?? []) as unknown as Booking[];
+  for (const o of open) {
+    const l = at.get(o.load_id);
+    if (!l) continue;
+    const s = Date.parse(l.starts_at), e = Date.parse(l.ends_at);
+    const clash = bookings.find((b) => b.load_id !== o.load_id && (b.truck_id === o.truck_id || b.driver_id === o.driver_id) && Date.parse(b.starts_at) < e && s < Date.parse(b.ends_at));
+    if (!clash?.order_loads) continue;
+    const other = clash.order_loads;
+    const who = clash.truck_id === o.truck_id ? "This hired truck" : "This hired driver";
+    out.set(o.id, `${who} is already on ${other.orders?.order_number ?? "another order"} load ${other.load_number} on ${formatDate(other.load_date)}, ${formatTime(other.start_time)} to ${formatTime(other.end_time)}.`);
+  }
+  return out;
+}
+
+/**
  * Hired trucks (B83): owner-operators and subcontracted haulers. Offers go out only when the hauler's documents are on
  * file and current; an accepted offer becomes an assignment only when dispatch confirms it (assign_load). Pay is
  * computed from accepted tickets at the offered rate and is a statement only: nothing is paid or exported.
@@ -81,6 +114,7 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
   // Credit holds (B128, financial review L2): confirming an accepted offer for a customer on hold asks why (recorded).
   const holds = await creditHolds([...new Set(open.filter((o) => o.status === "accepted").map((o) => o.load.customer_id).filter((c): c is string => Boolean(c)))]);
   const when = (o: (typeof data.offers)[number]) => `${formatDate(o.load.load_date)} ${formatTime(o.load.start_time)}`;
+  const clashes = await offerClashes(open);
 
   return (
     <>
@@ -101,6 +135,13 @@ export default async function HiredTrucksPage({ searchParams }: { searchParams: 
                     <p className="font-semibold text-ink">{o.load.order_number} load {o.load.load_number} · {when(o)}</p>
                     <p className="text-sm text-muted">{haulerName.get(o.hauler_id)} · Truck {truckName.get(o.truck_id)} · {driverName.get(o.driver_id)} · {formatCents(o.rate_cents)} {RATE_UNIT_LABELS[o.rate_unit]}{o.load.site ? ` · ${o.load.site}` : ""}</p>
                   </div>
+                  {/* D2: the hired truck or driver is already booked at that time, so confirming would be refused. Said here,
+                      before "Accepted by phone" and "Confirm and assign", with the day of the other booking. */}
+                  {clashes.get(o.id) && (
+                    <p role="note" className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                      {clashes.get(o.id)} Confirming will be refused until that load moves to another truck or this offer is withdrawn.
+                    </p>
+                  )}
                   <div className="flex flex-wrap items-center gap-2">
                   <Badge tone={OFFER_STATUS[o.status].tone}>{OFFER_STATUS[o.status].label}</Badge>
                   {dispatchEdit && (

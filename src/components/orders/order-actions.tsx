@@ -22,7 +22,7 @@ import {
   scheduleRequired,
 } from "@/lib/orders/status";
 import type { OrderStatus } from "@/server/data/types";
-import { setOrderStatus, updateOrderSchedule } from "@/app/(app)/orders/actions";
+import { scheduleOrderThenStatus, setOrderStatus, updateOrderSchedule } from "@/app/(app)/orders/actions";
 
 interface Props {
   orderId: string;
@@ -33,6 +33,8 @@ interface Props {
   lineCount: number;
   schedule: { start: string | null; end: string | null; windowStart: string | null; windowEnd: string | null; notes: string };
   orderDate: string;
+  /** The customer's requested delivery date: the schedule form starts with it when the order has no date yet. */
+  requestedDate?: string | null;
   /** ownNewOrder: orders.create and this is the person's own direct order; they edit, confirm or cancel it while a draft. */
   permissions: { edit: boolean; schedule: boolean; ownNewOrder?: boolean };
   /** Facts shown before completing the order (completing never waits for tickets; billing readiness does). */
@@ -64,7 +66,7 @@ function iconFor(to: OrderStatus) {
 /** "HH:MM:SS" → "HH:MM" for <input type="time">. */
 const hhmm = (t: string | null) => (t ? t.slice(0, 5) : "");
 
-export function OrderActions({ orderId, orderNumber, status: shownStatus, sourceQuoteId, editSeq: shownSeq, lineCount, schedule, orderDate, permissions, completionCheck }: Props) {
+export function OrderActions({ orderId, orderNumber, status: shownStatus, sourceQuoteId, editSeq: shownSeq, lineCount, schedule, orderDate, requestedDate = null, permissions, completionCheck }: Props) {
   const router = useRouter();
   // The server returns the new status and edit counter immediately; the page
   // props catch up after router.refresh(). Use whichever is newer so a quick
@@ -156,7 +158,7 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
             <p className="font-semibold">Before you complete it:</p>
             <ul className="list-disc pl-5">
               {completionCheck.loadsStillToRun > 0 && <li>{completionCheck.loadsStillToRun} planned load(s) have not run yet.</li>}
-              {completionCheck.loadsWithoutTicket > 0 && <li>{completionCheck.loadsWithoutTicket} delivered load(s) have no delivery ticket.</li>}
+              {completionCheck.loadsWithoutTicket > 0 && <li>{completionCheck.loadsWithoutTicket} load(s) past their window have no delivery ticket.</li>}
               {completionCheck.ticketsAwaitingReview > 0 && <li>{completionCheck.ticketsAwaitingReview} ticket(s) are received but not verified.</li>}
             </ul>
             <p className="mt-1">You can still complete it (paper tickets often arrive later); billing stays blocked until every load has a verified ticket.</p>
@@ -188,23 +190,13 @@ export function OrderActions({ orderId, orderNumber, status: shownStatus, source
           editSeq={editSeq}
           orderDate={orderDate}
           initial={schedule}
+          requestedDate={requestedDate}
           then={scheduleThen}
           onClose={() => setScheduleOpen(false)}
-          onSaved={(newSeq) => {
+          onSaved={(next) => {
             setScheduleOpen(false);
-            setLatest({ status, editSeq: newSeq });
-            if (scheduleThen) {
-              // Continue with the status change the user asked for.
-              void setOrderStatus({ orderId, from: status, status: scheduleThen, note: "", expectedEditSeq: newSeq }).then((r) => {
-                if (r.ok) {
-                  setLatest(r.data);
-                  toast.success(r.message ?? "Status updated");
-                } else toast.error(r.error);
-                router.refresh();
-              });
-            } else {
-              router.refresh();
-            }
+            setLatest(next);
+            router.refresh();
           }}
         />
       )}
@@ -247,6 +239,7 @@ function ScheduleDialog({
   editSeq,
   orderDate,
   initial,
+  requestedDate,
   then,
   onClose,
   onSaved,
@@ -257,11 +250,13 @@ function ScheduleDialog({
   editSeq: number;
   orderDate: string;
   initial: Props["schedule"];
+  requestedDate: string | null;
   then: OrderStatus | null;
   onClose: () => void;
-  onSaved: (editSeq: number) => void;
+  onSaved: (next: { status: OrderStatus; editSeq: number }) => void;
 }) {
-  const [start, setStart] = useState(initial.start ?? "");
+  // No date yet: start with the customer's requested date when it is not before the order date (walkthrough D9, F6).
+  const [start, setStart] = useState(initial.start ?? (requestedDate && requestedDate >= orderDate ? requestedDate : ""));
   const [end, setEnd] = useState(initial.end ?? "");
   const [windowStart, setWindowStart] = useState(hhmm(initial.windowStart));
   const [windowEnd, setWindowEnd] = useState(hhmm(initial.windowEnd));
@@ -282,13 +277,25 @@ function ScheduleDialog({
           setErrors({ scheduledStart: "Choose a date." });
           return "A scheduled date is required.";
         }
-        const r = await updateOrderSchedule({ orderId, expectedEditSeq: editSeq, scheduledStart: start, scheduledEnd: end, windowStart, windowEnd, schedulingNotes: notes });
+        const form = { orderId, expectedEditSeq: editSeq, scheduledStart: start, scheduledEnd: end, windowStart, windowEnd, schedulingNotes: notes };
+        if (then) {
+          // The schedule and the status change go together: a refusal for a missing delivery location saves nothing.
+          const r = await scheduleOrderThenStatus({ ...form, from: status, then });
+          if (!r.ok) {
+            setErrors(r.fieldErrors ?? {});
+            return r.error;
+          }
+          toast.success(r.message ?? "Schedule saved");
+          onSaved(r.data);
+          return;
+        }
+        const r = await updateOrderSchedule(form);
         if (!r.ok) {
           setErrors(r.fieldErrors ?? {});
           return r.error;
         }
-        if (!then) toast.success(r.message ?? "Schedule saved");
-        onSaved(r.data.editSeq);
+        toast.success(r.message ?? "Schedule saved");
+        onSaved({ status, editSeq: r.data.editSeq });
       }}
     >
       <div className="grid grid-cols-2 gap-3">

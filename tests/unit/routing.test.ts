@@ -128,6 +128,12 @@ describe("configuration and limits", () => {
     expect(routingStatus({ isDemo: true }, parseRoutingConfig(env)).state).toBe("demo_off");
     expect(routingStatus({ isDemo: true }, parseRoutingConfig({ ...env, ROUTING_IN_DEMOS: "on" })).state).toBe("ready");
     expect(routingStatus({ isDemo: false }, parseRoutingConfig(env)).state).toBe("ready");
+    // Without a key a demo still says it is a demo (D13), and nobody is told about keys or providers.
+    const none = parseRoutingConfig({});
+    expect(routingStatus({ isDemo: true }, none)).toMatchObject({ state: "demo_off", reason: expect.stringMatching(/off in demo companies/) });
+    const off = routingStatus({ isDemo: false }, none);
+    expect(off.state).toBe("not_configured");
+    expect(off.state !== "ready" && off.reason).not.toMatch(/HERE|key/);
   });
 
   it("road estimates are cached and capped per page; failures are shown, not hidden", async () => {

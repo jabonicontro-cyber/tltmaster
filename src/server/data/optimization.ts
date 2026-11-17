@@ -3,6 +3,8 @@ import { explainLoad, unavailableResources } from "@/lib/optimization/availabili
 import { optimizeWithAlternatives, type OptimizationInput, type Priorities } from "@/lib/optimization/plan";
 import { createClient } from "@/server/supabase/server";
 import { estimateLoadRevenueCents } from "@/lib/orders/load-revenue";
+import { can } from "@/lib/permissions";
+import { getAccess } from "@/server/auth";
 import { DISPATCHABLE, getSmartDispatchInput } from "./smart-dispatch";
 import { getTrailerInput } from "./trailer-input";
 
@@ -10,12 +12,15 @@ import { getTrailerInput } from "./trailer-input";
  * Everything the optimization core reads for one day, from the caller's own company (RLS): the Smart Dispatch input
  * (loads, fleet, drivers, bookings, maintenance, time off) plus a revenue estimate per load from its order's own
  * material and hauling line rates in the load's unit × its planned quantity. No rate, no estimate (null) — never guessed.
+ * Revenue is money: it is estimated only for people with billing access (walkthrough D11, as the Command Center hides
+ * estimated value); for everyone else the plan neither weighs nor shows it (revenueHidden).
  */
 export async function getOptimizationInput(date: string): Promise<OptimizationInput> {
   const smart = await getSmartDispatchInput(date, date);
   const orderIds = [...new Set(smart.loads.map((l) => l.order_id))];
   const revenueCents: Record<string, number | null> = {};
-  if (orderIds.length) {
+  const revenueHidden = !can(await getAccess(), "billing.view");
+  if (orderIds.length && !revenueHidden) {
     const db = await createClient();
     const { data, error } = await db
       .from("order_lines")
@@ -45,6 +50,7 @@ export async function getOptimizationInput(date: string): Promise<OptimizationIn
     loads: smart.loads.filter((l) => !l.hold),
     held: smart.loads.filter((l) => l.hold),
     revenueCents,
+    revenueHidden,
     hoursOfServiceVerified: false,
     // The company's document rules (20261112000200) when installed: every expired document, with whether it blocks.
     // Before that, the latest documents read directly (fleet.view) give review notes only.

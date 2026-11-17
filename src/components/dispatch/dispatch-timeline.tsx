@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ScrollRegion } from "@/components/ui/scroll-region";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Truck } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -63,13 +63,28 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
     return { left: `min(${((s - from) / span) * 100}%, calc(100% - 5.25rem))`, width: `${((e - s) / span) * 100}%` };
   };
   const now = nowMinutes !== null && nowMinutes >= from && nowMinutes <= to ? `${((nowMinutes - from) / span) * 100}%` : null;
+
+  // A narrow screen shows only part of the day (walkthrough D15: cut at noon at 1024 px). Open it at the current time
+  // on today, or at the first load on another day, an hour before, so the loads that matter are in view.
+  const inner = useRef<HTMLDivElement>(null);
+  const focusMinute = now !== null ? nowMinutes : starts.length ? Math.min(...starts) : null;
+  useEffect(() => {
+    const box = inner.current?.parentElement;
+    if (!box || focusMinute === null || box.scrollWidth <= box.clientWidth + 1) return;
+    const header = 224; // the w-56 truck column
+    const track = box.scrollWidth - header;
+    const x = ((Math.max(focusMinute - 60, from) - from) / span) * track;
+    box.scrollLeft = Math.max(0, Math.min(x, box.scrollWidth - box.clientWidth));
+  }, [focusMinute, from, span]);
   const dayHref = (d: string) => `/dispatch?view=timeline&date=${d}${day.base ? `&base=${day.base}` : ""}`;
 
   const bar = (l: OrderLoadRow, tone: "assigned" | "open") => {
     const o = orders.get(l.order_id);
     const urgent = urgentOrderIds.includes(l.order_id);
     const site = o ? o.site_label || o.site_line1 || o.site_city : "";
-    const label = `${o?.order_number ?? "Order"} load ${l.load_number}, ${formatTime(l.start_time)} to ${formatTime(l.end_time)}${site ? `, ${site}` : ""}${tone === "open" ? ", needs a truck" : ""}`;
+    const a = byLoad.get(l.id);
+    const who = a ? drivers.get(a.driver_id) ?? "" : "";
+    const label = `${o?.order_number ?? "Order"} load ${l.load_number}, ${formatTime(l.start_time)} to ${formatTime(l.end_time)}${site ? `, ${site}` : ""}${who ? `, ${who}` : ""}${tone === "open" ? ", needs a truck" : ""}`;
     return (
       <button
         key={l.id}
@@ -88,7 +103,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
       >
         {/* The full order number on its own line (UX8): the load number and time move to the second line. */}
         <span className="truncate font-semibold tabular">{o?.order_number ?? "Order"}</span>
-        <span className="truncate text-[11px] opacity-75">Load {l.load_number} · {formatTime(l.start_time)}<span className="sr-only"> to {formatTime(l.end_time)}</span>{site ? ` · ${site}` : ""}{tone === "open" ? <span className="sr-only">, needs a truck</span> : null}</span>
+        <span className="truncate text-[11px] opacity-75">Load {l.load_number} · {formatTime(l.start_time)}<span className="sr-only"> to {formatTime(l.end_time)}</span>{who ? ` · ${who}` : ""}{site ? ` · ${site}` : ""}{tone === "open" ? <span className="sr-only">, needs a truck</span> : null}</span>
       </button>
     );
   };
@@ -118,9 +133,10 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
       ) : (
         <ScrollRegion className="rounded-panel border border-line/70 bg-card shadow-card" label="Trucks by hour">
           {/* At least 5.5rem per hour so a one-hour load shows its whole order number; wider days scroll sideways. */}
-          <div className="min-w-[56rem]" style={{ minWidth: `max(56rem, calc(14rem + ${span / 60} * 5.5rem))` }} role="table" aria-label="Trucks by hour">
+          <div ref={inner} className="min-w-[56rem]" style={{ minWidth: `max(56rem, calc(14rem + ${span / 60} * 5.5rem))` }} role="table" aria-label="Trucks by hour">
             <div role="row" className="sticky top-0 z-10 flex border-b border-line/70 bg-card">
-              <div role="columnheader" className="w-56 shrink-0 px-4 py-2.5 text-xs font-semibold text-muted">Truck and driver</div>
+              {/* The truck column stays in place while the hours scroll sideways (D15). */}
+              <div role="columnheader" className="sticky left-0 z-20 w-56 shrink-0 bg-card px-4 py-2.5 text-xs font-semibold text-muted">Truck and drivers</div>
               <div role="columnheader" className="relative h-10 flex-1">
                 {hours.map((h, i) => (
                   <span key={h} className={cn("absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[11px] font-semibold text-muted tabular", i === 0 ? "pl-1" : i === hours.length - 1 ? "-translate-x-full pr-1" : "-translate-x-1/2")} style={{ left: `${((h * 60 - from) / span) * 100}%` }}>
@@ -132,7 +148,7 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
 
             {open.length > 0 && (
               <div role="row" className="flex border-b border-line/70 bg-amber-50/40">
-                <div role="rowheader" className="flex w-56 shrink-0 items-center gap-2 px-4 py-2">
+                <div role="rowheader" className="sticky left-0 z-[5] flex w-56 shrink-0 items-center gap-2 bg-card px-4 py-2">
                   <span className="grid size-8 place-items-center rounded-full bg-amber-100 text-amber-900"><Truck className="size-4" aria-hidden /></span>
                   <span>
                     <span className="block text-sm font-semibold text-ink">Needs a truck</span>
@@ -151,16 +167,19 @@ export function DispatchTimeline({ day, faces = {}, urgentOrderIds = [], nowMinu
             {rows.map(({ truck, loads }) => {
               const first = loads[0] ? byLoad.get(loads[0].id) : null;
               const driverId = first?.driver_id ?? null;
-              const driver = driverId ? drivers.get(driverId) ?? "" : "";
+              // Every driver of the truck's day, in load order (walkthrough D16: one name hid the second driver).
+              const ordered = [...loads].sort((x, y) => x.start_time.localeCompare(y.start_time));
+              const driverIds = [...new Set(ordered.map((l) => byLoad.get(l.id)?.driver_id).filter((x): x is string => Boolean(x)))];
+              const driver = driverIds.map((id) => drivers.get(id) ?? "").filter(Boolean).join(", ");
               const trailer = first?.trailer_id ? trailers.get(first.trailer_id) : null;
               const out = truck.service_status === "out_of_service";
               return (
                 <div key={truck.id} role="row" className="flex border-b border-line/50 last:border-b-0">
-                  <div role="rowheader" className="flex w-56 shrink-0 items-center gap-2.5 px-4 py-2">
+                  <div role="rowheader" className="sticky left-0 z-[5] flex w-56 shrink-0 items-center gap-2.5 bg-card px-4 py-2">
                     {driverId ? <Avatar name={driver} src={faces[driverId]?.src} fallbackSrc={faces[driverId]?.fallbackSrc} size={32} /> : <span className="grid size-8 shrink-0 place-items-center rounded-full bg-surface text-muted"><Truck className="size-4" aria-hidden /></span>}
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-semibold text-ink">Truck {truck.unit_number}{trailer ? <span className="font-normal text-muted"> + {trailer}</span> : null}</span>
-                      <span className="block truncate text-xs text-muted">{out ? "Out of service" : driver || (loads.length ? "" : "Free all day")}</span>
+                      <span className="block truncate text-xs text-muted" title={driver || undefined}>{out ? "Out of service" : driver || (loads.length ? "" : "Free all day")}</span>
                     </span>
                   </div>
                   <div role="cell" className="relative h-14 flex-1">

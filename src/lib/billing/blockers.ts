@@ -47,7 +47,8 @@ export function billingBlockers(o: BlockerInput, extra: { unassignedMissing?: nu
     out.push({
       key: "missing_tickets",
       actionable: true,
-      title: `${plural(assigned, "delivered load")} without a delivery ticket`,
+      // "Past its window", not "delivered": the load's time passed with a truck, which does not prove it ran (D10).
+      title: `${assigned === 1 ? "1 load past its window" : `${assigned} loads past their window`} without a delivery ticket`,
       detail: "Enter each ticket from the paper copy (Enter ticket, under Loads below), or cancel the load if it did not run.",
     });
   }

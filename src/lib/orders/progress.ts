@@ -45,7 +45,11 @@ export function orderProgress(i: ProgressInput): ProgressStep[] {
   // Same rule as billing readiness (billing_load_status.is_due): the load has ended, or the order is completed.
   const due = planned.filter((l) => i.orderStatus === "completed" || new Date(l.ends_at).getTime() <= i.now.getTime());
   const live = (l: ProgressLoad) => l.tickets.filter((t) => t.status !== "voided" && t.status !== "superseded");
-  const missing = due.filter((l) => live(l).length === 0);
+  // A load past its window with no truck never ran as far as anyone knows: dispatch assigns or cancels it (the Dispatch
+  // step says so). Only loads that had a truck are asked for a ticket, and they are called "past their window", not
+  // "delivered": a breakdown can stop a load too (walkthrough D10, honest data).
+  const ran = due.filter((l) => l.assigned || live(l).length > 0);
+  const missing = ran.filter((l) => live(l).length === 0);
   const pending = planned.flatMap(live).filter((t) => t.status === "submitted" || t.status === "needs_review");
   const accepted = planned.flatMap(live).filter((t) => t.status === "accepted");
   const closed = i.orderStatus === "canceled";
@@ -78,7 +82,7 @@ export function orderProgress(i: ProgressInput): ProgressStep[] {
   } else if (missing.length > 0) {
     steps.push({
       key: "tickets", label: "Delivery tickets", state: "attention",
-      summary: `${plural(missing.length, "delivered load")} without a ticket.${pending.length ? ` ${plural(pending.length, "ticket")} to review.` : ""}`,
+      summary: `${missing.length === 1 ? "1 load past its window" : `${missing.length} loads past their window`} without a ticket.${pending.length ? ` ${plural(pending.length, "ticket")} to review.` : ""}`,
       owner: "Office or dispatch", next: { label: "Enter the ticket", href: `/tickets/new?load=${missing[0].id}` },
     });
   } else if (pending.length > 0) {
@@ -87,10 +91,10 @@ export function orderProgress(i: ProgressInput): ProgressStep[] {
       summary: `${plural(pending.length, "ticket")} received, not verified yet (accept, correct or void).`,
       owner: "Office (ticket review)", next: { label: "Review", href: `/tickets/${pending[0].id}?queue=review&order=${i.orderId}` },
     });
-  } else if (due.length < planned.length) {
+  } else if (ran.length < planned.length) {
     steps.push({
       key: "tickets", label: "Delivery tickets", state: "waiting",
-      summary: `${plural(accepted.length, "ticket")} verified; ${plural(planned.length - due.length, "load")} not delivered yet.`,
+      summary: `${plural(accepted.length, "ticket")} verified; ${plural(planned.length - ran.length, "load")} not delivered yet.`,
     });
   } else {
     steps.push({ key: "tickets", label: "Delivery tickets", state: "done", summary: `All ${plural(planned.length, "load")} have verified tickets.` });

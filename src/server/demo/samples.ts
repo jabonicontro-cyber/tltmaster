@@ -2341,8 +2341,10 @@ async function hiredTrucks(db: Db, today: string, companyId: string): Promise<nu
     const sent = await db.rpc("hauler_offer_send", { p_load: l.id, p_truck: ready.truck, p_trailer: null, p_driver: ready.d, p_rate_cents: freight ? (i === 0 ? 85000 : 95000) : i === 0 ? 1450 : 9500, p_rate_unit: freight || i !== 0 ? "load" : "ton", p_note: "Demo offer (nothing is texted)." });
     if (sent.error) continue; // the rules refused this load (overlap, eligibility): try the next one
     offers++;
-    if (offers === 2) {
-      // The second: accepted by phone and confirmed by dispatch, so the board and hauler pay show a hired load.
+    if (offers === 1) {
+      // The first: accepted by phone and confirmed by dispatch, so the board and hauler pay show a hired load. Confirmed
+      // before the open offer is sent, so the open offer's own checks skip a load that overlaps it (walkthrough D2: the
+      // open offer used to clash with the confirmed one and could never be confirmed).
       const answered = await db.rpc("hauler_offer_respond", { p_offer: sent.data, p_accept: true, p_note: "Answered by phone (demo)" });
       if (!answered.error) await demoConfirmOffer(db, sent.data);
     }

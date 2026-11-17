@@ -234,7 +234,7 @@ function PlanCard({ plan, canEdit, timezone, back, faces, hoursLink, approvers }
  */
 const FOLD_KEY = "taviron.smart-dispatch";
 
-export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {}, hoursLink = false, approvers = "the Dispatcher role" }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face>; /** The viewer may open Fleet → Locations and hours: the hours confirmation links to it. */ hoursLink?: boolean; /** Who may approve, for viewers who cannot ("the Owner / Administrator and Dispatcher roles"). */ approvers?: string }) {
+export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, back, faces = {}, hoursLink = false, approvers = "the Dispatcher role", defaultOpen = true }: { plans: BoardPlan[]; from: string; to: string; horizon: number; canEdit: boolean; timezone: string; back: string; /** Driver pictures by driver id. */ faces?: Record<string, Face>; /** The viewer may open Fleet → Locations and hours: the hours confirmation links to it. */ hoursLink?: boolean; /** Who may approve, for viewers who cannot ("the Owner / Administrator and Dispatcher roles"). */ approvers?: string; /** Folded to its one-line summary unless asked for (walkthrough D6: today's loads first); a remembered choice wins. */ defaultOpen?: boolean }) {
   const feasible = plans.filter((p) => p.proposal).length;
   // Loads left to the dispatcher (credit hold, offered to a hired truck): listed with their reason, never proposed.
   const held = plans.filter((p) => p.load.hold).length;
@@ -243,18 +243,23 @@ export function SmartDispatch({ plans, from, to, horizon, canEdit, timezone, bac
   const FIRST = 6;
   const shown = all ? plans : plans.slice(0, FIRST);
   // Open or folded is remembered per browser (UX8): a dispatcher who works from the board's suggested crews can keep it
-  // folded. Storage can be missing (private window); then it simply opens.
+  // folded. Storage can be missing (private window); then the default applies: folded on the board (D6), open when the
+  // dispatcher picked a period (a link inside the section).
   const fold = useRef<HTMLDetailsElement>(null);
   useEffect(() => {
-    try { if (window.localStorage.getItem(FOLD_KEY) === "closed" && fold.current) fold.current.open = false; } catch { /* storage unavailable */ }
-  }, []);
+    try {
+      const saved = window.localStorage.getItem(FOLD_KEY);
+      if (fold.current && saved === "closed" && defaultOpen) fold.current.open = false;
+      if (fold.current && saved === "open" && !defaultOpen) fold.current.open = true;
+    } catch { /* storage unavailable */ }
+  }, [defaultOpen]);
   return (
-    <details open ref={fold} onToggle={(e) => { try { window.localStorage.setItem(FOLD_KEY, (e.currentTarget as HTMLDetailsElement).open ? "open" : "closed"); } catch { /* storage unavailable */ } }} className="mb-4 rounded-panel border border-line/70 bg-card shadow-card" aria-label="Smart Dispatch">
+    <details open={defaultOpen} ref={fold} onToggle={(e) => { try { window.localStorage.setItem(FOLD_KEY, (e.currentTarget as HTMLDetailsElement).open ? "open" : "closed"); } catch { /* storage unavailable */ } }} className="mb-4 rounded-panel border border-line/70 bg-card shadow-card" aria-label="Smart Dispatch">
       <summary className="flex cursor-pointer flex-wrap items-center gap-2 border-b border-line px-4 py-2">
         <Lightbulb className="size-5 text-brand-fg" aria-hidden />
         <span className="font-bold">Smart Dispatch</span>
         <span className="text-sm text-muted">
-          {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal${held ? ` · ${held} need your decision (credit hold or offered)` : ""}${plans.length - feasible - held ? ` · ${plans.length - feasible - held} without an option` : ""}`} · {formatDate(from)}–{formatDate(to)}
+          {plans.length === 0 ? "No unassigned loads" : `${plans.length} unassigned load${plans.length === 1 ? "" : "s"} · ${feasible} with a proposal${held ? ` · ${held} need your decision (credit hold or offered)` : ""}${plans.length - feasible - held ? ` · ${plans.length - feasible - held} without an option` : ""}`} · {from === to ? formatDate(from) : `${formatDate(from)}–${formatDate(to)}`}
         </span>
       </summary>
       {/* Outside the summary: links inside it would also toggle the section (nested interactive controls). */}

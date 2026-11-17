@@ -95,6 +95,7 @@ export default async function ConversationPage({ params, searchParams }: { param
             canManage={canManage && Boolean(mine)}
             canPost={blocked === null}
             postBlockedReason={blocked}
+            othersCount={active.filter((m) => m.user_id !== access.userId).length}
           />
         </Card>
         <div className="space-y-5">

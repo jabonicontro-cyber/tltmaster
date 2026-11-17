@@ -1,6 +1,8 @@
 // Hired trucks (B83, migration 20261120003700): the add-on switch, haulers and their documents, offers sent only when
 // documents are current, answers by the hired driver (or recorded by dispatch), confirmation through assign_load, the
 // guard that keeps hired trucks off every other assignment path, and company isolation.
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { addDays } from "@/lib/dates";
 import { assign, businessToday, fleet, planLoad, scheduledOrder } from "./fixtures";
@@ -119,6 +121,66 @@ describe("hired trucks", () => {
       expect((await pgError(s.query("select public.hauler_offer_confirm($1)", [o2]))).message).toMatch(/certificate of insurance expired/);
       await s.query("select public.hauler_offer_withdraw($1, 'Insurance lapsed')", [o2]);
       expect((await s.query("select status from public.hauler_offers where id = $1", [o2])).rows[0].status).toBe("withdrawn");
+    });
+  });
+
+  // D1 (walkthrough 2026-11-14, migration 20261120024100): an open offer holds its load. Before, an accepted offer did
+  // not stop the company's own crew, so the hauler and the own truck could both go.
+  it("an open offer (offered or accepted) holds the load: the own crew is refused until it is withdrawn", async () => {
+    await withSession(async (s) => {
+      await entitle(s);
+      const owner = await s.createUser("owner");
+      const on = addDays(await businessToday(s), 3);
+      const order = await scheduledOrder(s, owner, on);
+      const load = await planLoad(s, order.id, on, "08:00", "10:00");
+      const free = await planLoad(s, order.id, on, "13:00", "14:00");
+      const h = await hauler(s, owner, on);
+      const own = await fleet(s, owner, on);
+      await s.as(owner);
+      const offer = await one<string>(s, "select public.hauler_offer_send($1, $2, null, $3, 9000, 'load', '') as r", [load.load_id, h.truck, h.driver]);
+      const held = new RegExp(`${order.number} load 1 is offered to a hired truck \\(Ridgeline Hauling \\(test\\)\\)\\. Withdraw the offer in Hired trucks`);
+      // Waiting for the hauler: held.
+      const offered = await pgError(assign(s, load.load_id, own.t1, null, own.d1));
+      expect(offered.message).toMatch(held);
+      // Accepted by phone, not yet confirmed: still held (this was the double-dispatch hole).
+      await s.query("select public.hauler_offer_respond($1, true, 'By phone')", [offer]);
+      expect((await pgError(assign(s, load.load_id, own.t1, null, own.d1))).message).toMatch(held);
+      expect((await s.query("select count(*)::int as n from public.dispatch_assignments where load_id = $1", [load.load_id])).rows[0].n).toBe(0);
+      // Another load without an offer is assigned as before.
+      await assign(s, free.load_id, own.t1, null, own.d1);
+      // Confirming the offer still assigns the hired truck.
+      const assignment = await one<string>(s, "select public.hauler_offer_confirm($1) as r", [offer]);
+      expect((await s.query("select truck_id from public.dispatch_assignments where id = $1", [assignment])).rows[0].truck_id).toBe(h.truck);
+      // A confirmed offer no longer holds the load: dispatch may reassign it to its own crew (the usual reassignment).
+      await assign(s, load.load_id, own.t2, null, own.d2, assignment);
+
+      // Withdrawn: the own crew may take the load.
+      const later = await planLoad(s, order.id, on, "15:00", "16:00");
+      const o2 = await one<string>(s, "select public.hauler_offer_send($1, $2, null, $3, 9000, 'load', '') as r", [later.load_id, h.truck, h.driver]);
+      expect((await pgError(assign(s, later.load_id, own.t2, null, own.d2))).message).toMatch(/is offered to a hired truck/);
+      await s.query("select public.hauler_offer_withdraw($1, 'Using our own truck')", [o2]);
+      await assign(s, later.load_id, own.t2, null, own.d2);
+    });
+  });
+
+  it("rollback 20261120024100 restores the earlier guard (own crew no longer held by an offer)", async () => {
+    await withSession(async (s) => {
+      await entitle(s);
+      const owner = await s.createUser("owner");
+      const on = addDays(await businessToday(s), 3);
+      const order = await scheduledOrder(s, owner, on);
+      const load = await planLoad(s, order.id, on, "08:00", "10:00");
+      const h = await hauler(s, owner, on);
+      const own = await fleet(s, owner, on);
+      await s.as(owner);
+      await s.query("select public.hauler_offer_send($1, $2, null, $3, 9000, 'load', '')", [load.load_id, h.truck, h.driver]);
+      await s.asAdmin();
+      await s.query(readFileSync(join(__dirname, "../../supabase/rollbacks/20261120024100_hired_offer_holds_load.down.sql"), "utf8").replace(/^\s*begin;\s*$/m, "").replace(/^\s*commit;\s*$/m, ""));
+      await s.as(owner);
+      await assign(s, load.load_id, own.t1, null, own.d1);
+      // A hired truck is still assigned only through an accepted offer.
+      const other = await planLoad(s, order.id, on, "13:00", "14:00");
+      expect((await pgError(assign(s, other.load_id, h.truck, null, h.driver))).message).toMatch(/only through an accepted offer/);
     });
   });
 

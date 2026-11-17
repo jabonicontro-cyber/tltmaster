@@ -9,13 +9,14 @@ import { SmartDispatch } from "@/components/dispatch/smart-dispatch";
 import { getSmartDispatchPlan } from "@/server/data/smart-dispatch";
 import { ReturnLink } from "@/components/ui/return-link";
 import { ButtonLink } from "@/components/ui/button";
-import { CalendarRange, GanttChart, MapPinned, Plus, Route, Sparkles, Truck, Users } from "lucide-react";
+import { CalendarClock, CalendarRange, GanttChart, MapPinned, Plus, Route, Sparkles, Truck, Users } from "lucide-react";
 import { creditHolds, holdSummary } from "@/server/credit";
 import { createClient } from "@/server/supabase/server";
 import { cn } from "@/lib/cn";
 import { listOpenUrgencies } from "@/server/data/urgency";
 import { PageHeader } from "@/components/ui/page-header";
-import { formatDateLong, isIsoDate } from "@/lib/dates";
+import { addDays, formatDate, formatDateLong, isIsoDate } from "@/lib/dates";
+import { formatTime } from "@/lib/orders/schedule";
 import { can, canCreateOrders } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { unitsBackFromShop } from "@/server/data/fleet";
@@ -62,6 +63,32 @@ function ViewTabs({ view, date }: { view: View; date: string }) {
   );
 }
 
+/** Each urgent order's active assignments, as "Truck 101 · Daniel Ruiz (load 1, Nov 15, 8:00 AM)". */
+async function loadUrgentCrews(orderIds: string[]): Promise<Record<string, string[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("dispatch_assignments")
+    .select("order_id, truck_id, driver_id, order_loads(load_number, load_date, start_time)")
+    .eq("status", "active")
+    .in("order_id", orderIds);
+  if (error || !data?.length) return {};
+  type Row = { order_id: string; truck_id: string; driver_id: string; order_loads: { load_number: number; load_date: string; start_time: string } | null };
+  const rows = data as unknown as Row[];
+  const [trucks, drivers] = await Promise.all([
+    supabase.from("trucks").select("id, unit_number").in("id", [...new Set(rows.map((r) => r.truck_id))]),
+    supabase.from("driver_list").select("id, display_name").in("id", [...new Set(rows.map((r) => r.driver_id))]),
+  ]);
+  const truck = new Map(((trucks.data ?? []) as Array<{ id: string; unit_number: string }>).map((t) => [t.id, t.unit_number]));
+  const driver = new Map(((drivers.data ?? []) as Array<{ id: string; display_name: string }>).map((d) => [d.id, d.display_name]));
+  const out: Record<string, string[]> = {};
+  for (const r of rows.sort((a, b) => `${a.order_loads?.load_date}${a.order_loads?.start_time}`.localeCompare(`${b.order_loads?.load_date}${b.order_loads?.start_time}`))) {
+    const l = r.order_loads;
+    const when = l ? ` (load ${l.load_number}, ${formatDate(l.load_date)}, ${formatTime(l.start_time)})` : "";
+    (out[r.order_id] ??= []).push(`Truck ${truck.get(r.truck_id) ?? "?"} · ${driver.get(r.driver_id) ?? "driver"}${when}`);
+  }
+  return out;
+}
+
 export default async function DispatchPage({ searchParams }: { searchParams: Promise<{ date?: string; load?: string; back?: string; horizon?: string; base?: string; view?: string; truck?: string; route?: string }> }) {
   const access = await requirePagePermission("dispatch.view");
   const sp = await searchParams;
@@ -99,7 +126,9 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       </>
     );
   }
-  const horizon = [1, 3, 7].includes(Number(h)) ? Number(h) : 3;
+  // Today first (walkthrough D6): Smart Dispatch covers today and stays folded to one line unless a period was picked.
+  const horizon = [1, 3, 7].includes(Number(h)) ? Number(h) : 1;
+  const smartOpen = h !== undefined && [1, 3, 7].includes(Number(h));
   // The base filter applies only where the company has bases to choose from (and the bases update is installed).
   const bases = await baseOptions();
   const base = bases.length > 1 ? parseBaseFilter(baseParam) : null;
@@ -107,7 +136,8 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     getDispatchDay(date, base),
     listOpenUrgencies(),
     view === "board" ? listUnscheduledOrders() : Promise.resolve([]),
-    view !== "board" ? Promise.resolve({ error: "" }) : getSmartDispatchPlan(today, horizon).catch((e: unknown) => {
+    // Three days at least, as before, so the board keeps its suggested crews on the next days; the panel shows `horizon`.
+    view !== "board" ? Promise.resolve({ error: "" }) : getSmartDispatchPlan(today, Math.max(horizon, 3)).catch((e: unknown) => {
       // Details go to the server log; the board shows a plain message (no table or query names).
       console.error("Smart Dispatch failed", e);
       return { error: "Smart Dispatch suggestions are unavailable right now. The board below still works; try again in a moment." };
@@ -141,6 +171,11 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
   const dayOrders = day.orders as Array<{ id: string; customer_id?: string | null }>;
   const holds = await creditHolds([...new Set(dayOrders.map((o) => o.customer_id).filter((c): c is string => Boolean(c)))]);
   const creditHoldByOrder = Object.fromEntries(dayOrders.flatMap((o) => { const h = o.customer_id ? holds.get(o.customer_id) : undefined; return h ? [[o.id, creditHoldSentence(`${h.name} is ${holdSummary(h)}`)]] : []; }));
+  // Smart Dispatch's panel covers today through the chosen period (the plans above may reach further for the board).
+  const smartTo = addDays(today, horizon - 1);
+  // The urgent orders' trucks and drivers already on the board (walkthrough D7), so the card says it and offers
+  // "Mark truck assigned" without leaving the board. Read with the person's session; empty when it cannot be read.
+  const urgentCrews = urgent?.length ? await loadUrgentCrews(urgent.map((u) => u.order_id)).catch(() => ({})) : {};
   const weekday = new Intl.DateTimeFormat("en-US", { weekday: "long", timeZone: "UTC" }).format(new Date(`${date}T00:00:00Z`));
   const description = `${weekday}, ${formatDateLong(date)}${date === today ? ", today" : ""}. Plan loads for scheduled orders and assign a truck, trailer and driver to each.`;
 
@@ -150,7 +185,7 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
     return (
       <>
         {header(description)}
-        {urgent !== null && <UrgentOrders items={urgent} canAcknowledge={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?view=timeline&date=${date}`} now={new Date().toISOString()} />}
+        {urgent !== null && <UrgentOrders items={urgent} canAcknowledge={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?view=timeline&date=${date}`} now={new Date().toISOString()} assignments={urgentCrews} />}
         <DispatchTimeline day={day} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} nowMinutes={nowMinutes} />
       </>
     );
@@ -162,18 +197,22 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
       {urgent === null ? (
         <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Urgent orders could not be loaded. Check the Command Center before planning.</p>
       ) : (
-        <UrgentOrders items={urgent} canAcknowledge={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} now={new Date().toISOString()} />
+        <UrgentOrders items={urgent} canAcknowledge={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} now={new Date().toISOString()} assignments={urgentCrews} />
       )}
-      {unscheduled === null ? (
-        <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
-      ) : (
-        <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} schedulers={can(access, "orders.schedule") ? undefined : rolesPhrase(await rolesWith("orders.schedule"))} />
-      )}
+      {/* The day's loads come right after urgent orders (walkthrough D6): Smart Dispatch is one line until opened, and the
+          orders waiting for a date are listed under the board, with a one-line pointer here. */}
       {"error" in smart ? (
         <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">{smart.error}</p>
       ) : (
-        <SmartDispatch plans={smart.plans} from={smart.from} to={smart.to} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces}
-          hoursLink={can(access, "fleet.view")} approvers={can(access, "dispatch.edit") ? undefined : rolesPhrase(await rolesWith("dispatch.edit"))} />
+        <SmartDispatch plans={smart.plans.filter((p) => p.load.load_date <= smartTo)} from={smart.from} to={smartTo} horizon={horizon} canEdit={can(access, "dispatch.edit")} timezone={timezone} back={`/dispatch?date=${date}`} faces={faces}
+          hoursLink={can(access, "fleet.view")} approvers={can(access, "dispatch.edit") ? undefined : rolesPhrase(await rolesWith("dispatch.edit"))} defaultOpen={smartOpen} />
+      )}
+      {unscheduled !== null && unscheduled.length > 0 && (
+        <p className="mb-4 flex flex-wrap items-center gap-x-2 rounded-panel border border-amber-300 bg-card px-4 py-2 text-sm">
+          <CalendarClock className="size-4 text-amber-600" aria-hidden />
+          <span className="font-semibold text-ink">{unscheduled.length} confirmed order{unscheduled.length === 1 ? "" : "s"} without a delivery date.</span>
+          <a href="#needs-scheduling" className="font-semibold text-brand-fg underline">Schedule {unscheduled.length === 1 ? "it" : "them"} below the board</a>
+        </p>
       )}
       <div data-guide="dispatch-board">
         {(() => {
@@ -194,6 +233,13 @@ export default async function DispatchPage({ searchParams }: { searchParams: Pro
           </p>
         )}
         <DispatchBoard enterLabel={(await getWords()).enter} day={day} restrictions={restrictions} suggestions={suggestions} creditHolds={creditHoldByOrder} health={Object.fromEntries((health?.rows ?? []).filter((r) => r.level !== "good").map((r) => [r.truck_id, { level: r.level as "watch" | "at_risk", reasons: r.reasons }]))} bases={bases} faces={faces} urgentOrderIds={urgent?.map((u) => u.order_id) ?? []} canEdit={can(access, "dispatch.edit")} canEnterTickets={can(access, "tickets.edit")} hoursLink={can(access, "fleet.view")} focusLoadId={load && /^[0-9a-f-]{36}$/i.test(load) ? load : null} />
+      </div>
+      <div className="mt-5">
+        {unscheduled === null ? (
+          <p role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm">Orders waiting for a delivery date could not be loaded.</p>
+        ) : (
+          <NeedsScheduling items={unscheduled} canSchedule={can(access, "orders.schedule")} today={today} back={`/dispatch?date=${date}`} schedulers={can(access, "orders.schedule") ? undefined : rolesPhrase(await rolesWith("orders.schedule"))} />
+        )}
       </div>
     </>
   );

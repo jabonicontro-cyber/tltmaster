@@ -12,12 +12,14 @@ import type { Person } from "@/server/data/communications";
 import { PresenceDot, WorkStatusBadge } from "./status";
 
 /** Search and choose coworkers. Shows presence and work status (never as availability). */
-export function PeoplePicker({ people, selected, onChange, multiple = true, exclude = [] }: {
+export function PeoplePicker({ people, selected, onChange, multiple = true, exclude = [], noSignIn = [] }: {
   people: Person[];
   selected: string[];
   onChange: (ids: string[]) => void;
   multiple?: boolean;
   exclude?: string[];
+  /** Drivers without a Taviron sign-in, with the phone number on their driver record: call or text them instead (D14). */
+  noSignIn?: Array<{ name: string; phone: string }>;
 }) {
   const [q, setQ] = useState("");
   const shown = useMemo(() => {
@@ -37,6 +39,17 @@ export function PeoplePicker({ people, selected, onChange, multiple = true, excl
           <li className="px-3 py-3 text-sm text-muted">
             {/* Only people with a Taviron sign-in can be messaged (first-day dispatcher walkthrough 2026-11-09). */}
             {q.trim() ? "Nobody matches." : "Nobody to message yet. Only people with a Taviron sign-in get messages here; call drivers who have none, or give them a sign-in on their People page."}
+            {/* D14 (walkthrough 2026-11-14): the numbers to call, right where the dead end was. */}
+            {!q.trim() && noSignIn.length > 0 && (
+              <span className="mt-2 block">
+                <span className="block font-semibold text-ink">Drivers without a sign-in</span>
+                {noSignIn.map((d) => (
+                  <span key={`${d.name}-${d.phone}`} className="block">
+                    {d.name}: {d.phone ? <a href={`tel:${d.phone.replace(/[^0-9+]/g, "")}`} className="font-semibold text-brand-fg underline">{d.phone}</a> : "no phone number on file"}
+                  </span>
+                ))}
+              </span>
+            )}
           </li>
         )}
         {shown.map((p) => {

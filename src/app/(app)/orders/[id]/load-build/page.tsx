@@ -9,6 +9,7 @@ import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { buttonClasses } from "@/components/ui/button";
 import { formatDate } from "@/lib/dates";
+import { formatTime } from "@/lib/orders/schedule";
 import { draftKey, truckCapacity, truckExclusion } from "@/lib/dispatch/load-build";
 import { trimNumber } from "@/lib/fleet/labels";
 import { requirePagePermission } from "@/server/auth";
@@ -60,7 +61,7 @@ export default async function LoadBuildPage({ params, searchParams }: { params: 
                     { label: "On planned loads", value: `${trimNumber(ctx.plannedQty)} ${u}` },
                     { label: "Left to plan", value: <strong className="tabular">{trimNumber(left)} {u}</strong> },
                     { label: "Scheduled days from today", value: ctx.days.length ? `${ctx.days.length} (${formatDate(ctx.days[0])} – ${formatDate(ctx.days[ctx.days.length - 1])})` : "None" },
-                    { label: "Daily time window", value: hasWindow ? `${ctx.order.window_start?.slice(0, 5)}–${ctx.order.window_end?.slice(0, 5)}` : "Not set on the order" },
+                    { label: "Daily time window", value: hasWindow ? `${formatTime(ctx.order.window_start)} to ${formatTime(ctx.order.window_end)}` : "Not set on the order" },
                   ]}
                 />
                 {ctx.loadsWithoutQuantity > 0 && (

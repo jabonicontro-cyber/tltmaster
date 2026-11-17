@@ -59,7 +59,7 @@ function HeldLoads({ held, date, timezone }: { held: SmartLoad[]; date: string; 
   );
 }
 
-function Summary({ plan, held }: { plan: Plan; held: number }) {
+function Summary({ plan, held, showRevenue }: { plan: Plan; held: number; showRevenue: boolean }) {
   const m = plan.metrics;
   const review = plan.assignments.filter((a) => a.status === "needs_review").length;
   const details: Array<[string, string]> = [
@@ -71,11 +71,15 @@ function Summary({ plan, held }: { plan: Plan; held: number }) {
   ];
   return (
     <>
-      <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Loads covered" value={`${m.covered} of ${m.loads}`}
+      <dl className={`grid grid-cols-2 gap-3 ${showRevenue ? "lg:grid-cols-4" : "lg:grid-cols-3"}`}>
+        {/* Out of every open load, including the ones left for you (walkthrough D5: "3 of 3 · 1 left" with 4 open). */}
+        <Stat label="Loads covered" value={`${m.covered} of ${m.loads + held}`}
           note={[plan.uncovered.length ? `${plan.uncovered.length} blocked` : null, held ? `${held} left for you (listed below)` : null].filter(Boolean).join(" · ") || "Every open load"} />
-        <Stat label="Estimated revenue" value={money(m.revenueCoveredCents)}
-          note={`${m.revenueUnknownLoads ? `+ ${m.revenueUnknownLoads} without a rate · ` : ""}Margin: not evaluated (no cost data)`} />
+        {/* Money only with billing access (D11). */}
+        {showRevenue && (
+          <Stat label="Estimated revenue" value={money(m.revenueCoveredCents)}
+            note={`${m.revenueUnknownLoads ? `+ ${m.revenueUnknownLoads} without a rate · ` : ""}Margin: not evaluated (no cost data)`} />
+        )}
         <Stat label="Trucks / drivers used" value={`${m.trucksUsed} / ${m.driversUsed}`} />
         <Stat label="Need review" value={String(review)} note={review ? "Check before approving" : "None"} />
       </dl>
@@ -121,7 +125,10 @@ const STATUS = {
 } as const;
 
 export function OptimizationPlanner({ date, timezone, loads, held = [], revenueCents, result, canEdit, ai, preset, priorities, explanations = [], unavailable = [], upcoming = [], hoursLink = false, approvers = "the Dispatcher role" }: {
-  date: string; timezone: string; loads: SmartLoad[]; revenueCents: Record<string, number | null>; result: Optimization; canEdit: boolean;
+  date: string; timezone: string; loads: SmartLoad[];
+  /** Estimated revenue per load; null when the viewer may not see money (no billing access, D11): nothing about revenue is shown. */
+  revenueCents: Record<string, number | null> | null;
+  result: Optimization; canEdit: boolean;
   /** Open loads left to the dispatcher (credit hold, offered to a hired truck), listed with their reason. */
   held?: SmartLoad[];
   /** The viewer may open Fleet → Locations and hours (recorded hours): the hours confirmation links to it. */
@@ -228,13 +235,13 @@ export function OptimizationPlanner({ date, timezone, loads, held = [], revenueC
               <button key={p.key} role="tab" aria-selected={i === active} onClick={() => choose(i)}
                 className={`rounded-xl border px-3 py-1.5 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-brand ${i === active ? "border-strong bg-surface" : "border-line hover:bg-surface"}`}>
                 <span className="block font-semibold text-ink">{p.label}{i === 0 ? " (your priorities)" : ""}</span>
-                <span className="block text-xs text-muted">{p.metrics.covered} of {p.metrics.loads} loads · {money(p.metrics.revenueCoveredCents)} est.</span>
+                <span className="block text-xs text-muted">{p.metrics.covered} of {p.metrics.loads + held.length} loads{revenueCents !== null ? ` · ${money(p.metrics.revenueCoveredCents)} est.` : ""}</span>
               </button>
             ))}
           </div>
         </div>
         <div className="mt-4" role="tabpanel" aria-label={plan.label}>
-          <Summary plan={plan} held={held.length} />
+          <Summary plan={plan} held={held.length} showRevenue={revenueCents !== null} />
           {active > 0 && (
             <p className="mt-3 text-sm text-ink">
               <span className="font-semibold">Compared with your priorities:</span> {result.tradeoffs[active - 1]?.differences.join(" · ")}
@@ -280,7 +287,7 @@ export function OptimizationPlanner({ date, timezone, loads, held = [], revenueC
           {plan.assignments.map((a) => {
             const l = byId.get(a.loadId)!;
             const outcome = outcomes?.find((o) => o.loadId === a.loadId);
-            const rev = revenueCents[a.loadId];
+            const rev = revenueCents?.[a.loadId];
             const status = STATUS[a.status];
             return (
               <li key={a.loadId} className="flex gap-3 px-4 py-3">
@@ -302,7 +309,7 @@ export function OptimizationPlanner({ date, timezone, loads, held = [], revenueC
                     {l.customer_name ?? "Customer"} → Truck {a.truckLabel}{a.trailerLabel ? ` + trailer ${a.trailerLabel}` : ""} · {a.driverLabel}
                   </p>
                   <p className="text-xs text-muted">
-                    {l.planned_quantity !== null ? `${l.planned_quantity} ${l.unit_code ?? ""} · ` : ""}{rev === null || rev === undefined ? "No rate to estimate revenue" : `${money(rev)} estimated revenue`}
+                    {[l.planned_quantity !== null ? `${l.planned_quantity} ${l.unit_code ?? ""}` : null, revenueCents === null ? null : rev === null || rev === undefined ? "No rate to estimate revenue" : `${money(rev)} estimated revenue`].filter(Boolean).join(" · ")}
                   </p>
                   {a.review.length > 0 && (
                     <p className="mt-1 text-sm text-amber-900">

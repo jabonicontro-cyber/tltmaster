@@ -157,12 +157,15 @@ export async function getSmartDispatchInput(from: string, to: string): Promise<S
   const [holds, offers] = await Promise.all([
     creditHolds([...new Set(smartLoads.map((l) => l.customer_id).filter((x): x is string => Boolean(x)))]).catch(() => new Map<string, { name: string }>()),
     heldIds.length
-      ? supabase.from("hauler_offers").select("load_id").in("load_id", heldIds).in("status", ["offered", "confirmed"]).then((r) => (r.error ? [] : (r.data ?? []) as Array<{ load_id: string }>))
-      : Promise.resolve([] as Array<{ load_id: string }>),
+      // Accepted counts too (D1, walkthrough 2026-11-14): an accepted offer waits for dispatch to confirm it, and the
+      // database refuses the own crew meanwhile (20261120024100).
+      ? supabase.from("hauler_offers").select("load_id, status").in("load_id", heldIds).in("status", ["offered", "accepted", "confirmed"]).then((r) => (r.error ? [] : (r.data ?? []) as Array<{ load_id: string; status: string }>))
+      : Promise.resolve([] as Array<{ load_id: string; status: string }>),
   ]);
-  const offered = new Set(offers.map((o) => o.load_id));
+  const offered = new Map(offers.map((o) => [o.load_id, o.status]));
   for (const l of smartLoads) {
-    if (offered.has(l.id)) l.hold = "This load is offered to a hired truck. Withdraw the offer before giving it to your own crew.";
+    if (offered.get(l.id) === "accepted") l.hold = "A hired truck accepted this load. Confirm it in Hired trucks, or withdraw the offer there before giving it to your own crew.";
+    else if (offered.has(l.id)) l.hold = "This load is offered to a hired truck. Withdraw the offer before giving it to your own crew.";
     else if (l.customer_id && holds.has(l.customer_id)) l.hold = `${holds.get(l.customer_id)!.name} is on credit hold. Billing decides on the hold.`;
   }
 
