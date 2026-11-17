@@ -38,7 +38,7 @@ test("a safety-critical defect restricts the truck until an authorized inspectio
 
   // One start rule (I1): starting work makes the mechanic the lead and starts their timer; sending it for inspection
   // stops that timer first.
-  await page.getByRole("button", { name: "Start work" }).click();
+  await page.getByRole("button", { name: "Start this job" }).click();
   await expectToast(page, "Job started. You are the lead mechanic. Your timer is running.");
   await expect(page.getByRole("button", { name: "Mark completed" })).toHaveCount(0); // never directly for safety work
   // Send for inspection asks for an optional note for the inspector (WK1); it shows in the job's Activity.
@@ -138,7 +138,7 @@ test("costs are visible only to people with cost access", async ({ page, browser
   await page.getByRole("button", { name: "Add cost" }).click();
   await expect(page.locator("[data-sonner-toast]").filter({ hasText: "Cost added." }).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("Total $415.00")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Start work" })).toHaveCount(0); // office records costs, not shop work
+  await expect(page.getByRole("button", { name: "Start this job" })).toHaveCount(0); // office records costs, not shop work
 
   const mech = await browser.newPage();
   await signIn(mech, "mechanic");
@@ -193,7 +193,7 @@ test("dispatchers read only; drivers and other companies get no access", async (
   await expect(page.getByRole("link", { name: /^(MWO|WO)-/ })).toBeVisible();
   await expect(page.getByRole("link", { name: "New work order" })).toHaveCount(0);
   await page.goto(`/maintenance/work-orders/${wo.id}`);
-  await expect(page.getByRole("button", { name: "Start work" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Start this job" })).toHaveCount(0);
   await page.goto("/maintenance/work-orders/new");
   await expect(page).toHaveURL(/\/no-access/);
 

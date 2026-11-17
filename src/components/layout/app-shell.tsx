@@ -9,7 +9,7 @@ import { cn } from "@/lib/cn";
 import { APP_CONTAINER } from "@/lib/layout";
 import { DriverTabBar } from "@/components/companion/driver-tab-bar";
 import { ServiceWorkerRegistration } from "@/components/companion/service-worker";
-import { isDispatcherDriver, isDriverOnly, isMechanicOnly } from "@/lib/companion";
+import { isDispatcherDriver, isDriverOnly, isMechanicOnly, signInHome } from "@/lib/companion";
 import { UserMenu } from "./user-menu";
 import type { Presence } from "@/lib/communications";
 import { DemoWelcome } from "./demo-welcome";
@@ -49,6 +49,7 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
   const mechanicOnly = !driverOnly && isMechanicOnly(navPermissions);
   // A dispatcher who also drives keeps the full menu and gets phone tabs for My Day and Dispatch (UX8).
   const dispatcherDriver = !driverOnly && !mechanicOnly && isDispatcherDriver(navPermissions);
+  const homeHref = driverOnly ? "/driver" : (signInHome(navPermissions) ?? "/command-center");
   return (
     <div className="app-root min-h-dvh lg:pl-[5.25rem] lg:data-[sidebar=pinned]:pl-[16.75rem]" data-sidebar={sidebarPinned ? "pinned" : "rail"} style={style}>
       <Suspense fallback={null}><ListViewRecorder /></Suspense>
@@ -62,9 +63,10 @@ export function AppShell({ access, companies = [], platformAdmin = false, roleTi
           <div className="flex min-w-0 items-center gap-1">
             <MobileNav permissions={navPermissions} companyName={access.companyName} logoUrl={logoUrl} labels={branding?.navLabels} hidden={branding?.hiddenNav} />
             {/* Shrinks with the header on narrow phones instead of running under the icons on the right. */}
-            <Link href="/command-center" className="block min-w-0 max-w-40 lg:hidden">
+            {/* Home is each person's own start page (walkthrough P13): My Day for a driver, My jobs for a mechanic. The
+                link is named after the company, so it is not read out as ", home" when the logo is an image (P16). */}
+            <Link href={homeHref} aria-label={`${access.companyName || "Your company"}, home`} className="block min-w-0 max-w-40 lg:hidden">
               <CompanyIdentity name={access.companyName} logoUrl={logoUrl} tone="dark" className="max-w-full" />
-              <span className="sr-only">, home</span>
             </Link>
         </div>
         <div className="flex shrink-0 items-center gap-0 sm:gap-1">

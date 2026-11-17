@@ -14,6 +14,7 @@ import { Field, Input } from "@/components/ui/form";
 import { VerifyDocumentButton } from "./vehicle-panels";
 import { parkedAfterJobMessage } from "@/lib/maintenance";
 import { markReadingWrong, returnUnitAfterShop } from "@/app/(app)/fleet/actions";
+import { refreshAfterAction } from "@/lib/refresh-after-action";
 
 export interface BackFromShopUnit {
   kind: "truck" | "trailer";
@@ -32,24 +33,32 @@ export function BackFromShopPrompt({ units, canReturn, wording = "done" }: { uni
   const router = useRouter();
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
-  if (!units.length) return null;
+  // Units put back in service here: gone from the list at once, before the page is read again (walkthrough P9).
+  const [returned, setReturned] = useState<string[]>([]);
+  const shown = units.filter((u) => !returned.includes(u.id));
+  if (!shown.length) return null;
   const put = (u: BackFromShopUnit) => {
     setBusy(u.id);
     start(async () => {
       const r = await returnUnitAfterShop({ kind: u.kind, id: u.id });
       setBusy(null);
       if (!r.ok) toast.error(r.error);
-      else { toast.success(r.message ?? "Back in service."); router.refresh(); }
+      else {
+        toast.success(r.message ?? "Back in service.");
+        setReturned((x) => [...x, u.id]);
+        refreshAfterAction(router);
+      }
     });
   };
   return (
     <section aria-label="Shop work done" className="mb-5 space-y-2" data-testid="back-from-shop">
-      {units.map((u) => {
+      {shown.map((u) => {
         const name = `${u.kind === "truck" ? "truck" : "trailer"} ${u.unit_number}`;
         return (
           <div key={u.id} className="flex flex-wrap items-center gap-3 rounded-2xl bg-card px-4 py-3.5 text-sm text-ink shadow-card ring-1 ring-line/60">
             <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-brand-light text-brand-fg" aria-hidden><Truck className="size-4" /></span>
-            <div className="min-w-0 flex-1">
+            {/* At least 12rem wide: on a phone the button wraps below instead of squeezing the text (walkthrough P15). */}
+            <div className="min-w-48 flex-1">
               <p className="font-semibold">{wording === "parked"
                 ? parkedAfterJobMessage(u.kind, u.unit_number, canReturn)
                 : `All shop work on ${name} is done. Put it back in service?`}</p>

@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type SyntheticEvent } from "react";
 import { DriverTicketForm } from "@/components/driver/driver-ticket-form";
+import { FieldReportForm } from "@/components/driver/field-report-form";
 import { StopButtons } from "@/components/driver/stop-buttons";
 import { InspectionForm } from "@/components/fleet/inspection-form";
-import { rawStored, readDay } from "@/lib/offline/store";
+import { rawStored, readDay, readOutbox, sentSummary } from "@/lib/offline/store";
 import { OutboxList, useOutbox, useOutboxFlush } from "./offline-support";
 
 /** How long to wait before trying again when the signal is back but Taviron still cannot be reached. */
@@ -26,13 +27,15 @@ export function OfflineDay() {
   // eslint-disable-next-line react-hooks/purity -- the age check needs the current time when the saved day is read
   const day = useMemo(() => (raw === undefined ? undefined : raw ? readDay(Date.now()) : null), [raw]);
   const [ticketFor, setTicketFor] = useState<string | null>(null);
+  // A problem report without signal (walkthrough P1): a breakdown where there is no coverage waits on the phone too.
+  const [reportFor, setReportFor] = useState<string | null>(null);
   const items = useOutbox(day?.userId ?? null);
   const { flush, sending } = useOutboxFlush(day?.userId ?? null);
   const [back, setBack] = useState<null | "connecting" | "ready">(null);
   // Something half filled in on this page (an open ticket, a started inspection): never thrown away by leaving.
   const busyWithForm = useRef(false);
   const editingRef = useRef(false);
-  useEffect(() => { editingRef.current = ticketFor !== null; }, [ticketFor]);
+  useEffect(() => { editingRef.current = ticketFor !== null || reportFor !== null; }, [ticketFor, reportFor]);
   const markBusy = (e: SyntheticEvent) => {
     if (e.type === "input" || (e.target as HTMLElement).closest?.("button[aria-pressed]")) busyWithForm.current = true;
   };
@@ -46,14 +49,21 @@ export function OfflineDay() {
     const attempt = async () => {
       if (stopped || navigator.onLine === false) return;
       setBack("connecting");
+      const userId = readDay(Date.now())?.userId ?? null;
+      const before = userId ? readOutbox(userId).filter((i) => i.status === "waiting") : [];
       const r = await flush();
-      if (stopped) return;
+      // Another attempt is already sending (two "online" events), or the phone went offline again: that one decides.
+      if (stopped || r.skipped) return;
       if (r.network) { retry = window.setTimeout(() => void attempt(), RECONNECT_RETRY_MS); return; }
       if (busyWithForm.current || editingRef.current) { setBack("ready"); return; }
+      // What went out is said on My Day (walkthrough P3): the items that were waiting and are no longer on the phone.
+      const left = new Set(userId ? readOutbox(userId).map((i) => i.id) : []);
+      const sent = sentSummary(before.filter((i) => !left.has(i.id)).map((i) => i.label));
       // A full load on purpose: the service worker serves this page under whatever address failed (often /driver
       // itself), so a client-side navigation could treat it as the same page and never fetch My Day.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign("/driver");
+      // Leaving: a later "online" event must not start again and replace this address with a plain one.
+      stopped = true;
+      window.location.assign(sent ? `/driver?sent=${encodeURIComponent(sent)}` : "/driver");
     };
     const online = () => { window.clearTimeout(retry); void attempt(); };
     window.addEventListener("online", online);
@@ -79,6 +89,7 @@ export function OfflineDay() {
   }
   const saved = new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: day.timezone }).format(new Date(day.savedAt));
   const editing = day.loads.find((l) => l.assignmentId === ticketFor);
+  const reporting = day.loads.find((l) => l.assignmentId === reportFor);
   return (
     <div className="w-full max-w-xl space-y-4 text-left">
       <p role="status" className="rounded-xl bg-amber-50 px-4 py-3 text-[15px] font-semibold text-amber-950 ring-1 ring-amber-200">
@@ -86,7 +97,18 @@ export function OfflineDay() {
       </p>
       {backNote}
       <OutboxList items={items} timeZone={day.timezone} sending={sending} />
-      {editing ? (
+      {reporting ? (
+        <section aria-label="Report a problem" className="rounded-panel bg-card p-4 ring-1 ring-line">
+          <h2 className="mb-1 text-xl font-black">Report a problem</h2>
+          <p className="mb-4 text-muted">{reporting.orderNumber} · load {reporting.loadNumber} · saved on this phone until you have signal</p>
+          <FieldReportForm
+            assignmentId={reporting.assignmentId} truck={reporting.truck} trailer={reporting.trailer}
+            queue={{ userId: day.userId, label: `${reporting.orderNumber} load ${reporting.loadNumber}`, timeZone: day.timezone }}
+            onQueued={() => window.setTimeout(() => setReportFor(null), 2500)}
+            onBack={() => setReportFor(null)}
+          />
+        </section>
+      ) : editing ? (
         <section aria-label="Delivery ticket" className="rounded-panel bg-card p-4 ring-1 ring-line">
           <h2 className="mb-1 text-xl font-black">Delivery ticket</h2>
           <p className="mb-4 text-muted">{editing.orderNumber} · load {editing.loadNumber} · saved on this phone until you have signal</p>
@@ -123,6 +145,9 @@ export function OfflineDay() {
                         {day.enterLabel ?? "Enter delivery ticket"}
                       </button>
                     )}
+                    <button type="button" onClick={() => setReportFor(l.assignmentId)} className="min-h-12 w-full rounded-xl bg-card px-4 text-base font-semibold text-ink ring-1 ring-line">
+                      Report a problem
+                    </button>
                   </li>
                 ))}
               </ul>

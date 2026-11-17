@@ -7,6 +7,10 @@ import { Check, ChevronRight, Hand, PackageX, Play, Square } from "lucide-react"
 import { toast } from "sonner";
 import { addMechanic, finishJob, startJob, startTimer, stopTimer, waitForPart } from "@/app/(app)/maintenance/crew-actions";
 import { returnUnitAfterShop } from "@/app/(app)/fleet/actions";
+import { finishCheck } from "@/app/(app)/maintenance/actions";
+import { AlreadyOnOrder, PartsInButton, useWaitingParts } from "@/components/maintenance/parts-on-order";
+import { cn } from "@/lib/cn";
+import { refreshAfterAction } from "@/lib/refresh-after-action";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Field, Input, Textarea } from "@/components/ui/form";
@@ -27,7 +31,8 @@ function useRun() {
       if (r.ok) {
         toast.success(r.message ?? "Saved.");
         after?.();
-        router.refresh();
+        // After the action, not inside it (walkthrough P9): the buttons free up at once and the list follows.
+        refreshAfterAction(router);
       } else toast.error(r.error);
     });
   return { pending, run, start, router };
@@ -106,9 +111,13 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
   const [fixed, setFixed] = useState("");
   const [odometer, setOdometer] = useState("");
   const [hours, setHours] = useState("");
+  // Steps not ticked and parts still on order (walkthrough P12): said before the job is finished, then asked again.
+  const [warning, setWarning] = useState<{ openSteps: string[]; partsOnOrder: string[] } | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const show = (o: boolean) => {
     // No double entry (I8): the notes kept with the timer start the answer; the person reads and changes them.
     if (o && !fixed.trim() && suggested.trim()) setFixed(suggested.trim());
+    if (!o) setWarning(null);
     setOpen(o);
     onOpenChange?.(o);
   };
@@ -122,12 +131,18 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
       </div>
     );
   }
+  if (done) return <p role="status" className="flex items-center gap-1.5 text-sm font-semibold text-ink"><Check className="size-4" aria-hidden /> {done}</p>;
   if (!open) {
     return <Button size={size} className={big} disabled={pending} onClick={() => show(true)} icon={<Check className="size-4" aria-hidden />}>Finish the job</Button>;
   }
   const id = `fixed-${workOrderId}`;
   // A unit parked by hand whose last job this was: the toast asks to put it back in service, with the button there.
-  const finish = () => start(async () => {
+  const finish = (anyway = false) => start(async () => {
+    if (!anyway) {
+      const c = await finishCheck(workOrderId).catch(() => null);
+      if (c?.ok && (c.data.openSteps.length || c.data.partsOnOrder.length)) { setWarning(c.data); return; }
+    }
+    setWarning(null);
     const r = await finishJob({ workOrderId, findings: fixed, timerNote, odometer, engineHours: hours });
     if (!r.ok) { toast.error(r.error); return; }
     const parked = r.data?.parked;
@@ -137,14 +152,19 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
         action: { label: "Put back in service", onClick: () => { void returnUnitAfterShop({ kind: parked.kind, id: parked.id }).then((x) => { if (x.ok) toast.success(x.message ?? "Back in service."); else toast.error(x.error); router.refresh(); }); } },
       });
     } else toast.success(r.message ?? "Saved.");
-    show(false);
-    router.refresh();
+    // What was done stays on the screen until the page is read again (walkthrough P9), so "Finish the job" is not
+    // offered again in the meantime.
+    // The card's other buttons stay hidden (the parent still sees the finish step open) until the list is read again.
+    setDone(safetyCritical ? "Sent for inspection." : "Marked completed.");
+    setWarning(null);
+    setOpen(false);
+    refreshAfterAction(router);
   });
   return (
     <form
       aria-label="Finish the job"
       className="basis-full space-y-3 rounded-xl bg-surface p-3 ring-1 ring-line/60"
-      onSubmit={(e) => { e.preventDefault(); finish(); }}
+      onSubmit={(e) => { e.preventDefault(); finish(Boolean(warning)); }}
     >
       <Field label={inspection ? "What did you inspect or fix?" : "What did you fix?"} htmlFor={id} required hint={suggested.trim() && fixed.trim() === suggested.trim() ? "Filled in from your timer notes. Change it if needed. Saved in the work order's Findings." : "Saved in the work order's Findings."}>
         <Textarea id={id} rows={3} maxLength={2000} value={fixed} onChange={(e) => setFixed(e.target.value)} placeholder={inspection ? "e.g. Annual inspection passed: brakes, lights, tires OK; replaced a marker light" : "e.g. Replaced the leaking rear brake chamber, checked for air leaks"} autoFocus />
@@ -164,8 +184,18 @@ export function FinishJob({ workOrderId, finisher, safetyCritical, unit = "truck
           ? `Safety-critical: the job then waits for an authorized inspection, and the ${unit} stays out of service until someone authorized records a passed inspection.`
           : "The job is then marked completed: the repair is done. The office closes it after checking the time, parts and costs."}
       </p>
+      {warning && (
+        <div role="alert" data-testid="finish-warning" className={cn("space-y-1 rounded-xl px-3 py-2.5 text-sm ring-1", safetyCritical ? "bg-red-50 text-red-950 ring-red-200" : "bg-amber-50 text-amber-950 ring-amber-200")}>
+          <p className="font-semibold">{safetyCritical ? "This is safety-critical work, and it does not look finished:" : "This job does not look finished:"}</p>
+          <ul className="list-disc pl-5">
+            {warning.openSteps.length > 0 && <li>{warning.openSteps.length === 1 ? "1 checklist step is" : `${warning.openSteps.length} checklist steps are`} not ticked: {warning.openSteps.join(", ")}.</li>}
+            {warning.partsOnOrder.length > 0 && <li>{warning.partsOnOrder.length === 1 ? "1 part is" : `${warning.partsOnOrder.length} parts are`} still on order: {warning.partsOnOrder.join(", ")}.</li>}
+          </ul>
+          <p>{safetyCritical ? "Finish them first, or send it for inspection anyway if the work is really done." : "Finish them first, or mark it completed anyway if the work is really done."}</p>
+        </div>
+      )}
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" size={size} className={big} loading={pending} disabled={fixed.trim().length < 3}>{safetyCritical ? "Send for inspection" : "Mark completed"}</Button>
+        <Button type="submit" size={size} className={big} loading={pending} disabled={fixed.trim().length < 3}>{safetyCritical ? (warning ? "Send for inspection anyway" : "Send for inspection") : (warning ? "Mark completed anyway" : "Mark completed")}</Button>
         <Button size={size} variant="ghost" className={big} disabled={pending} onClick={() => show(false)}>Not yet</Button>
       </div>
     </form>
@@ -180,6 +210,8 @@ export function WaitForPart({ workOrderId, editSeq, size = "lg", initialPart = "
   const [open, setOpen] = useState(false);
   const [part, setPart] = useState(initialPart);
   const show = (o: boolean) => { setOpen(o); onOpenChange?.(o); };
+  // Parts already on order are offered first (walkthrough P11), so the same part is not added a second time.
+  const onOrder = useWaitingParts(workOrderId, open);
   const big = size === "lg" ? "min-h-12" : undefined;
   if (!open) return <Button size={size} variant="secondary" className={big} disabled={pending} onClick={() => show(true)} icon={<PackageX className="size-4" aria-hidden />}>Waiting for parts</Button>;
   const id = `part-${workOrderId}`;
@@ -189,6 +221,7 @@ export function WaitForPart({ workOrderId, editSeq, size = "lg", initialPart = "
       className="basis-full space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line/60"
       onSubmit={(e) => { e.preventDefault(); run(() => waitForPart({ workOrderId, part, editSeq }), () => show(false)); }}
     >
+      {onOrder && onOrder.length > 0 && <AlreadyOnOrder workOrderId={workOrderId} editSeq={editSeq} parts={onOrder} onDone={() => show(false)} big={size === "lg"} />}
       <Field label="Which part is missing?" htmlFor={id} required>
         <Input id={id} value={part} maxLength={300} onChange={(e) => setPart(e.target.value)} placeholder="e.g. Rear brake chamber, type 30/30" autoFocus />
       </Field>
@@ -208,7 +241,9 @@ export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: 
   // A quick note when the timer stops (what was found or done); it is kept with the time entry on the work order.
   const [note, setNote] = useState("");
   // While the finish or parts question is open, the other buttons step aside.
-  const [asking, setAsking] = useState<"finish" | "parts" | null>(null);
+  const [askingState, setAsking] = useState<"finish" | "parts" | "parts-in" | null>(null);
+  // "Part is in" ends once the job is read back no longer waiting for parts.
+  const asking = askingState === "parts-in" && job.status !== "awaiting_parts" ? null : askingState;
   const showHelperDone = working && !job.finisher && job.myStatus !== "done";
   return (
     <li className="relative rounded-panel border border-line/70 bg-card shadow-card p-4">
@@ -230,9 +265,13 @@ export function MyJobCard({ job, timerHere, timerElsewhere, partsText = null }: 
         </label>
       )}
       <div className="relative z-10 mt-3 flex flex-wrap items-start gap-2">
-        {canStart && !asking && (
+        {canStart && job.status === "awaiting_parts" && (!asking || asking === "parts-in") && (
+          // The parts on order are marked received in the same step (walkthrough P11).
+          <PartsInButton workOrderId={job.id} editSeq={job.editSeq} then="start" label="Part is in: start again" className="min-h-12" onOpenChange={(o) => setAsking(o ? "parts-in" : null)} />
+        )}
+        {canStart && job.status !== "awaiting_parts" && !asking && (
           <Button size="lg" className="min-h-12" disabled={pending} onClick={() => run(() => startJob({ workOrderId: job.id, editSeq: job.editSeq }))} icon={<Play className="size-4" aria-hidden />}>
-            {job.status === "awaiting_parts" ? "Part is in: start again" : "Start this job"}
+            Start this job
           </Button>
         )}
         {working && !timerHere && !asking && (

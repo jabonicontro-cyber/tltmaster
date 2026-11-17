@@ -13,7 +13,7 @@ import { COMPLETED_VS_CLOSED, COST_KINDS, nextStatuses, STATUS_ACTION_LABELS, ty
 import { addCost, generateDueWorkOrders, recordClearance, removeCost, setWorkOrderStatus, startInspection } from "@/app/(app)/maintenance/actions";
 import { startJob } from "@/app/(app)/maintenance/crew-actions";
 import { cn } from "@/lib/cn";
-import { PartOnOrderDialog } from "@/components/maintenance/parts-on-order";
+import { PartOnOrderDialog, PartsInButton } from "@/components/maintenance/parts-on-order";
 
 /** Lifecycle buttons: only the moves the database allows from here. Cancel asks for a reason. */
 export function StatusActions({ id, status, safetyCritical, editSeq, canClear, unit = "truck", canCosts = false }: { id: string; status: WoStatus; safetyCritical: boolean; editSeq: number; canClear: boolean; unit?: "truck" | "trailer"; canCosts?: boolean }) {
@@ -35,13 +35,17 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
       router.refresh();
     });
 
-  if (status === "awaiting_inspection") return <p className="text-sm text-muted">Waiting for an authorized inspection. Someone allowed to clear vehicles for service records the result.</p>;
+  // The inspection card below already explains the wait; this only says there is nothing for the shop to do (P15).
+  if (status === "awaiting_inspection") return <p className="text-sm text-muted">Nothing for the shop to do now. The inspection result is recorded below.</p>;
   if (!options.length) return null;
   // Cancel sits on its own line, away from the step that moves the job forward (first-day review 2026-11-09).
   // The step that moves the job forward comes first.
   const primary = (s: WoStatus) => (s === "in_progress" || s === "awaiting_inspection" || s === "completed" ? 0 : 1);
   const forward = options.filter((s) => s !== "canceled").sort((a, b) => primary(a) - primary(b));
-  const button = (to: WoStatus) => (
+  const button = (to: WoStatus) => to === "triaged" && status === "awaiting_parts" ? (
+    // The parts on order are marked received in the same step (walkthrough P11), not left "on order".
+    <PartsInButton key={to} workOrderId={id} editSeq={editSeq} then="queue" label="Parts are in: back to the queue" size="md" className="min-h-12 sm:min-h-0" />
+  ) : (
     <Button
       key={to}
       variant={to === "canceled" ? "ghost" : to === "awaiting_inspection" || to === "completed" || to === "in_progress" ? "primary" : "secondary"}
@@ -63,7 +67,8 @@ export function StatusActions({ id, status, safetyCritical, editSeq, canClear, u
         }
       }}
     >
-      {to === "in_progress" && status === "completed" ? "Reopen" : to === "triaged" && status === "awaiting_parts" ? "Parts are in: back to the queue" : STATUS_ACTION_LABELS[to]}
+      {/* The same words as on My jobs (P15): "Start this job" starts it there and here. */}
+      {to === "in_progress" && status === "completed" ? "Reopen" : to === "in_progress" ? "Start this job" : STATUS_ACTION_LABELS[to]}
     </Button>
   );
   return (

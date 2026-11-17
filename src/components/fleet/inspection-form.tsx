@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { submitInspection } from "@/app/(app)/fleet/inspections/actions";
 import { announceOutbox, enqueue, isNetworkError } from "@/lib/offline/store";
 import { pickInspectionTruck } from "@/lib/driver/my-day";
+import { refreshAfterAction } from "@/lib/refresh-after-action";
 
 type Truck = { id: string; label: string; pending: InspectionKind[]; /** Dump trucks also check the dump body (UX9). */ dump?: boolean };
 type Mark = { ok: boolean | null; note: string };
@@ -30,6 +31,10 @@ export function InspectionForm({ trucks: given, queue, preferredTruckId, neededT
   const router = useRouter();
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Save was tapped with items still unmarked: the count by the button stays until every item is marked.
+  const [tried, setTried] = useState(false);
+  // Unique per form, so every picker and item keeps its own label even with two forms on one page (walkthrough P16).
+  const uid = useId().replace(/:/g, "");
   // Inspections saved on this phone without signal (B133) count as done here, so the same one is not entered twice.
   const [kept, setKept] = useState<string[]>([]);
   const trucks = given.map((t) => ({ ...t, pending: t.pending.filter((k) => !kept.includes(`${t.id}:${k}`)) }));
@@ -55,9 +60,30 @@ export function InspectionForm({ trucks: given, queue, preferredTruckId, neededT
   const safetyDefect = items.some((i) => i.safety && marks[i.key].ok === false);
   const anyDefect = items.some((i) => marks[i.key].ok === false);
 
+  // Walkthrough P5: what is left is said next to Save (where the driver is looking), counts down as items are marked,
+  // and the screen moves to the first item still to mark.
+  const goTo = (key: string, what: "item" | "note") => window.requestAnimationFrame(() => {
+    const el = document.getElementById(`${uid}-${what}-${key}`);
+    if (!el) return;
+    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    (what === "note" ? el : el.querySelector("button"))?.focus({ preventScroll: true });
+  });
   const submit = () => start(async () => {
     setError(null);
-    if (unchecked > 0) return setError(`Mark every item OK or Defect (${unchecked} left).`);
+    if (unchecked > 0) {
+      setTried(true);
+      const first = items.find((i) => marks[i.key].ok === null);
+      if (first) goTo(first.key, "item");
+      return;
+    }
+    const undescribed = items.find((i) => marks[i.key].ok === false && marks[i.key].note.trim().length < 3);
+    if (undescribed) {
+      setError(`Say what is wrong with ${undescribed.label.toLowerCase()}.`);
+      goTo(undescribed.key, "note");
+      return;
+    }
+    setTried(false);
     setSavedOffline(false);
     const input = { truckId, kind, odometer, remarks, items: items.map((i) => ({ key: i.key, ok: marks[i.key].ok === true, note: marks[i.key].note })) };
     const keep = () => {
@@ -92,39 +118,41 @@ export function InspectionForm({ trucks: given, queue, preferredTruckId, neededT
     setMarks(blank());
     setOdometer("");
     setRemarks("");
+    // Counted as done here at once, so the form moves on before My Day is read again (walkthrough P9).
+    setKept((k) => [...k, `${truckId}:${kind}`]);
     setTruckId(null);
     setKind("pre_trip");
-    router.refresh();
+    refreshAfterAction(router);
   });
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-4" aria-label="Vehicle inspection">
-      <FormError message={error} />
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {trucks.length > 1 && (
-          <Field label="Truck" htmlFor="insp-truck">
-            <Select id="insp-truck" value={truckId} onChange={(e) => setTruckId(e.target.value)}>
+          <Field label="Truck" htmlFor={`${uid}-truck`}>
+            <Select id={`${uid}-truck`} value={truckId} onChange={(e) => setTruckId(e.target.value)}>
               {trucks.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
             </Select>
           </Field>
         )}
-        <Field label="Inspection" htmlFor="insp-kind">
-          <Select id="insp-kind" value={kind} onChange={(e) => setKind(e.target.value as InspectionKind)}>
+        <Field label="Inspection" htmlFor={`${uid}-kind`}>
+          <Select id={`${uid}-kind`} value={kind} onChange={(e) => setKind(e.target.value as InspectionKind)}>
             {(["pre_trip", "post_trip"] as const).map((k) => <option key={k} value={k} disabled={truck ? !truck.pending.includes(k) : false}>{KIND_LABEL[k]}{truck && !truck.pending.includes(k) ? " (done)" : ""}</option>)}
           </Select>
         </Field>
-        <Field label="Odometer" htmlFor="insp-odo" hint="Optional"><Input id="insp-odo" inputMode="numeric" value={odometer} onChange={(e) => setOdometer(e.target.value)} /></Field>
+        <Field label="Odometer" htmlFor={`${uid}-odo`} hint="Optional"><Input id={`${uid}-odo`} aria-describedby={`${uid}-odo-hint`} inputMode="numeric" value={odometer} onChange={(e) => setOdometer(e.target.value)} /></Field>
       </div>
 
       <ul className="divide-y divide-line rounded-xl border border-line" aria-label="Inspection items">
         {items.map((i) => {
           const m = marks[i.key];
           return (
-            <li key={i.key} className="px-4 py-3">
+            <li key={i.key} id={`${uid}-item-${i.key}`} className={cn("scroll-mt-20 px-4 py-3", tried && m.ok === null && "bg-amber-50/60")}>
               <div className="flex items-center gap-3">
                 <span className="min-w-0 flex-1 text-sm font-semibold text-ink">
                   {i.label}
                   {i.safety && <span className="ml-2 text-xs font-medium text-muted">Safety</span>}
+                  {tried && m.ok === null && <span className="block text-xs font-semibold text-amber-900">Not marked yet</span>}
                 </span>
                 <div role="group" aria-label={i.label} className="flex gap-1 rounded-full bg-ink/[0.05] p-1">
                   <button type="button" aria-pressed={m.ok === true} onClick={() => mark(i.key, { ok: true, note: "" })}
@@ -134,7 +162,7 @@ export function InspectionForm({ trucks: given, queue, preferredTruckId, neededT
                 </div>
               </div>
               {m.ok === false && (
-                <Input aria-label={`What is wrong with ${i.label.toLowerCase()}`} placeholder="What is wrong?" className="mt-2" maxLength={300} value={m.note} onChange={(e) => mark(i.key, { note: e.target.value })} />
+                <Input id={`${uid}-note-${i.key}`} aria-label={`What is wrong with ${i.label.toLowerCase()}`} placeholder="What is wrong?" className="mt-2" maxLength={300} value={m.note} onChange={(e) => mark(i.key, { note: e.target.value })} />
               )}
             </li>
           );
@@ -147,6 +175,13 @@ export function InspectionForm({ trucks: given, queue, preferredTruckId, neededT
       <Field label="Remarks" htmlFor="insp-remarks" hint="Optional"><Textarea id="insp-remarks" rows={2} maxLength={1000} value={remarks} onChange={(e) => setRemarks(e.target.value)} /></Field>
       {savedOffline && <p className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200" role="status">Saved on this phone, not sent yet. It sends by itself when you have signal. Tell dispatch now about any safety defect.</p>}
       {safetyDefect && <p className="text-sm font-semibold text-critical" role="status">A safety defect takes this truck out of service until the shop clears it.</p>}
+      {/* Next to Save, where the driver is looking; it counts down as items are marked (walkthrough P5). */}
+      {tried && unchecked > 0 && (
+        <p role="alert" data-testid="inspection-left" className="rounded-xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-950 ring-1 ring-amber-200">
+          {unchecked === 1 ? "1 item is" : `${unchecked} items are`} not marked yet. Mark each one OK or Defect, then tap Save inspection.
+        </p>
+      )}
+      <FormError message={error} />
       <Button type="submit" loading={busy} disabled={!truckId || (truck ? !truck.pending.includes(kind) : false)}>Save inspection</Button>
     </form>
   );

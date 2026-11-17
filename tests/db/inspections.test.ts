@@ -51,8 +51,13 @@ describe("vehicle inspections", () => {
       expect((await pgError(submit(f.t1, "pre_trip", items()))).message).toMatch(/already has a pre-trip/);
       await s.asAdmin();
       expect((await s.query("select service_status from public.trucks where id = $1", [f.t1])).rows[0].service_status).toBe("in_service");
-      const wo = (await s.query("select source, safety_critical, urgency, description from public.work_orders where number = $1 and company_id = (select company_id from public.trucks where id = $2)", [pre.work_order, f.t1])).rows[0];
-      expect(wo).toEqual({ source: "inspection", safety_critical: false, urgency: "normal", description: "mirrors: Cracked passenger mirror" });
+      const woOf = async (num: string | null) => (await s.query("select w.title, w.category, w.source, w.safety_critical, w.urgency, w.description, t.unit_number from public.work_orders w join public.trucks t on t.id = w.truck_id where w.number = $1 and w.company_id = (select company_id from public.trucks where id = $2)", [num, f.t1])).rows[0];
+      const wo = await woOf(pre.work_order);
+      // The work order says what is broken and is a repair, not an "inspection" job (walkthrough P10, 20261120024200).
+      expect(wo).toEqual({
+        title: `Rear-view mirrors: Cracked passenger mirror (pre-trip, truck ${wo.unit_number})`, category: "body",
+        source: "inspection", safety_critical: false, urgency: "normal", description: "Rear-view mirrors: Cracked passenger mirror", unit_number: wo.unit_number,
+      });
 
       // A safety defect after the shift: a safety-critical work order and the truck is out of service.
       await s.as(driverUser);
@@ -60,6 +65,7 @@ describe("vehicle inspections", () => {
       expect([post.defects, post.safety]).toEqual([1, true]);
       await s.asAdmin();
       expect((await s.query("select service_status from public.trucks where id = $1", [f.t1])).rows[0].service_status).toBe("out_of_service");
+      expect(await woOf(post.work_order)).toMatchObject({ title: expect.stringMatching(/^Service brakes: Air leak at rear chamber \(post-trip, truck .+\)$/), category: "brakes", safety_critical: true, urgency: "immediate" });
 
       // The pre-trip is in, so the office list no longer shows the truck.
       await s.as(owner);
@@ -78,6 +84,24 @@ describe("vehicle inspections", () => {
       await s.as(outsider);
       expect((await s.query("select 1 from public.vehicle_inspections where truck_id = $1", [f.t1])).rowCount).toBe(0);
       expect((await pgError(submit(f.t1, "post_trip", items()))).code).toBe("P0002");
+    });
+  });
+
+  it("a defect's work order title names the item, keeps the truck within 120 characters, and mixed repairs are 'repair'", async () => {
+    await withSession(async (s) => {
+      await s.asAdmin();
+      const title = async (defects: unknown, kind = "pre_trip") => (await s.query<{ t: string }>("select private.inspection_defect_title($1::jsonb, $2, '103') t", [JSON.stringify(defects), kind])).rows[0].t;
+      expect(await title([{ key: "tarp", note: "torn at front corner" }])).toBe("Tarp: Torn at front corner (pre-trip, truck 103)");
+      expect(await title([{ key: "tires", note: "x" }, { key: "horn", note: "y" }], "post_trip")).toBe("Tires, horn: 2 defects (post-trip, truck 103)");
+      const long = await title([{ key: "tarp", note: "long words ".repeat(40) }]);
+      expect(long.length).toBeLessThanOrEqual(120);
+      expect(long).toMatch(/^Tarp: Long words .*\.\.\. \(pre-trip, truck 103\)$/);
+      const cats = (await s.query<{ c: string }>("select private.inspection_defect_category(k) c from unnest(array['service_brakes','tires','horn','pto','tarp','steering','emergency_equipment']) k")).rows.map((r) => r.c);
+      expect(cats).toEqual(["brakes", "tires", "electrical", "hydraulics", "body", "repair", "other"]);
+      // Signed-in people cannot call the helpers directly.
+      const owner = await s.createUser("owner");
+      await s.as(owner);
+      expect((await pgError(s.query("select private.inspection_item_label('tarp')"))).code).toBe("42501");
     });
   });
 

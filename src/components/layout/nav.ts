@@ -4,6 +4,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Permission } from "@/lib/permissions";
+import { isDriverOnly, isMechanicOnly } from "@/lib/companion";
 
 export interface NavItem {
   href: string;
@@ -19,7 +20,16 @@ export interface NavItem {
   group?: NavGroup;
   /** Shown to an outside accountant's sign-in (B134); every other item is hidden from it. */
   accountant?: boolean;
+  /** An extra rule on the login's permissions (menu only; the page checks again on the server). */
+  showFor?: (permissions: readonly string[]) => boolean;
 }
+
+/**
+ * Company settings are not a driver's or a mechanic's work (walkthrough P14, owner 2026-11-12): a driver-only or
+ * mechanic-only login does not get Settings in the menu, and the page sends them to their own start page. This only
+ * narrows what is shown; database rules are unchanged.
+ */
+export const settingsShownTo = (permissions: readonly string[]) => !isDriverOnly(permissions) && !isMechanicOnly(permissions);
 
 export type NavGroup = "Sales" | "Operations" | "Finance" | "Company";
 
@@ -52,5 +62,5 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/schedule", label: "Schedule", icon: CalendarClock, anyOf: ["employees.view", "dispatch.view", "schedules.manage"], group: "Company" },
   // Everyone may request their own time off; the page shows more with time_off.view / time_off.approve.
   { href: "/time-off", label: "Time Off", icon: CalendarOff, group: "Company" },
-  { href: "/settings", label: "Settings", icon: Settings, group: "Company" },
+  { href: "/settings", label: "Settings", icon: Settings, group: "Company", showFor: settingsShownTo },
 ];

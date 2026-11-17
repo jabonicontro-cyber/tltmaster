@@ -21,6 +21,8 @@ import { Fuel, Gauge, Route } from "lucide-react";
 export const metadata = { title: "Fuel and IFTA" };
 
 const fmt = (n: number, d = 1) => n.toLocaleString("en-US", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+/** "1 trip sheet", "3 trip sheets" (walkthrough P7). */
+const count = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 /**
  * Fuel and IFTA (B130): fuel purchases and drivers' daily trip sheets per truck, and the quarter's IFTA summary — miles
@@ -63,9 +65,9 @@ export default async function FuelPage({ searchParams }: { searchParams: Promise
         <a href={`/fleet/fuel/ifta.csv?q=${year}-${quarter}`} className="ml-auto text-sm font-semibold text-brand-fg hover:underline">Download IFTA summary (CSV)</a>
       </div>
       <div className="mb-5 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatTile icon={<Route />} label="Miles" value={fmt(data.summary.miles, 0)} muted={!data.summary.miles}>From {data.sheets.filter((s) => !s.voided).length} trip sheets</StatTile>
-        <StatTile icon={<Fuel />} label="Gallons bought" value={fmt(data.summary.gallons)} muted={!data.summary.gallons}>{data.purchases.filter((p) => !p.voided).length} purchases</StatTile>
-        <StatTile icon={<Gauge />} label="Fleet MPG" value={data.summary.mpg === null ? "–" : fmt(data.summary.mpg, 2)} muted={data.summary.mpg === null}>{data.summary.mpg === null ? "Needs fuel and miles" : "Miles ÷ gallons, this quarter"}</StatTile>
+        <StatTile icon={<Route />} label="Miles" value={fmt(data.summary.miles, 0)} muted={!data.summary.miles}>From {count(data.sheets.filter((s) => !s.voided).length, "trip sheet")}</StatTile>
+        <StatTile icon={<Fuel />} label="Gallons bought" value={fmt(data.summary.gallons)} muted={!data.summary.gallons}>{count(data.purchases.filter((p) => !p.voided).length, "fuel purchase")}</StatTile>
+        <StatTile icon={<Gauge />} label="Fleet MPG" value={data.summary.mpg === null ? "–" : fmt(data.summary.mpg, 2)} muted={data.summary.mpg === null}>{data.summary.mpg === null ? "Shown once this quarter has both fuel and trip sheet miles" : "Miles ÷ gallons, this quarter"}</StatTile>
       </div>
 
       <Card className="mb-5">

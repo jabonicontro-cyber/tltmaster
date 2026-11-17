@@ -55,8 +55,11 @@ test("a mechanic takes a job on a phone, starts it, waits for a part, times it a
   await expect(mine.getByTestId("next-step")).toHaveText("Waiting for parts: Steer tire 315/80R22.5. Start the job again when it is in.");
   await expect(mine.getByRole("button", { name: "My part is done" })).toHaveCount(0);
   await expect(mine.getByRole("button", { name: "Finish the job" })).toHaveCount(0);
+  // The part on order is received in the same step (walkthrough P11).
   await mine.getByRole("button", { name: "Part is in: start again" }).click();
-  await expectToast(page, "Job started. Your timer is running.");
+  await expect(mine.getByRole("form", { name: "Which parts are in?" }).getByLabel("Steer tire 315/80R22.5")).toBeChecked();
+  await mine.getByRole("button", { name: "Received, start again" }).click();
+  await expectToast(page, "Part received: Steer tire 315/80R22.5. Job started. Your timer is running.");
 
   // A quick note of what was found, kept with the time entry.
   await mine.getByLabel(/What you found or did/).fill("Cut sidewall, left steer tire");
@@ -112,7 +115,7 @@ test("a fresh driver defect (Reported) needs a mechanic, safety-critical first, 
 
   // One start rule (I1): Start work on the work order makes the mechanic the lead and starts the timer.
   await page.goto(`/maintenance/work-orders/${id}`);
-  await page.getByRole("button", { name: "Start work" }).click();
+  await page.getByRole("button", { name: "Start this job" }).click();
   await expectToast(page, "Job started. You are the lead mechanic. Your timer is running.");
   await asUser(USERS.mechanic.email, async (q) => {
     const r = await q("select w.status, w.assigned_to = auth.uid() as lead, (select count(*)::int from public.work_order_time_entries e where e.work_order_id = w.id and e.user_id = auth.uid() and e.ended_at is null and e.voided_at is null) as running from public.work_orders w where w.id = $1", [id]);
