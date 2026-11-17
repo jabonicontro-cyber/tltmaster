@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { can } from "@/lib/permissions";
+import { UPLOAD_MAX_BYTES } from "@/lib/files/images";
 import { uuid } from "@/lib/schemas/common";
 import { getAccess } from "@/server/auth";
 import { dbErrorMessage } from "@/server/errors";
@@ -10,6 +11,8 @@ import { createClient } from "@/server/supabase/server";
 export const runtime = "nodejs";
 
 const BUCKET = "order-documents";
+/** 4 MB, as driver_pod_begin: the hosting platform refuses request bodies over about 4.5 MB anyway. */
+const TOO_LARGE = "The file is larger than 4 MB. Take a photo of the signed paper instead (photos are made smaller on the phone).";
 
 function reply(status: number, body: Record<string, unknown>) {
   return NextResponse.json(body, { status, headers: { "Cache-Control": "no-store" } });
@@ -37,6 +40,10 @@ export async function POST(request: NextRequest) {
   if (!access) return reply(401, { error: "Sign in again." });
   if (!access.active || !can(access, "driver.portal")) return reply(403, { error: "Not permitted." });
 
+  // Refuse an oversized body before reading it (the form adds a little to the file itself).
+  const declared = Number(request.headers.get("content-length") ?? "0");
+  if (declared > UPLOAD_MAX_BYTES + 64 * 1024) return reply(413, { error: TOO_LARGE });
+
   let form: FormData;
   try {
     form = await request.formData();
@@ -49,7 +56,9 @@ export async function POST(request: NextRequest) {
   const key = String(form.get("upload_key") ?? "");
   if (!(file instanceof File)) return reply(400, { error: "No photo was sent." });
   if (![assignment, stop, key].every((v) => uuid.safeParse(v).success)) return reply(400, { error: "Invalid upload." });
+  if (file.size > UPLOAD_MAX_BYTES) return reply(413, { error: TOO_LARGE });
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes.length > UPLOAD_MAX_BYTES) return reply(413, { error: TOO_LARGE });
   const check = checkSupportFile(bytes, file.type);
   if (!check.ok) return reply(check.status, { error: check.status === 415 ? "Send a photo (JPEG, PNG, WebP) or a PDF." : check.error });
   if (!adminAvailable()) return reply(503, { error: "Proof of delivery cannot be stored right now. Keep the paper copy for the office." });

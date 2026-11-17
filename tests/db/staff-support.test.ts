@@ -2,6 +2,8 @@
 // password and code, customer grants of 1/3/7 days, and support visits that act with owner permissions without ever
 // becoming a membership (not listed, not counted, ended with the grant, by the owner, or when staff are removed).
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
 import { pgError, pool, withSession, type Session } from "./helpers";
 
@@ -269,6 +271,15 @@ describe("staff invites", () => {
       await s.asAdmin();
       const invitee = randomUUID();
       await s.query("insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')", [invitee, email]);
+      // An unconfirmed address (a handed-over link, code not entered) is refused (security review 2026-11-16).
+      await s.as(invitee);
+      expect((await pgError(s.query("select public.platform_staff_accept($1)", [inv.token]))).message).toMatch(/Confirm your email address first/);
+      await s.as(null);
+      expect((await s.query<{ r: { has_account: boolean; link_emailed: boolean } }>("select public.staff_invite_peek($1) r", [inv.token])).rows[0].r).toMatchObject({ has_account: false, link_emailed: false });
+      await s.asAdmin();
+      await s.query("update auth.users set email_confirmed_at = now() where id = $1", [invitee]);
+      await s.as(null);
+      expect((await s.query<{ r: { has_account: boolean } }>("select public.staff_invite_peek($1) r", [inv.token])).rows[0].r.has_account).toBe(true);
       await s.as(invitee);
       expect((await pgError(s.query("select public.platform_staff_accept($1)", [inv.token]))).message).toMatch(/authenticator app/);
       await s.asAdmin();
@@ -319,6 +330,51 @@ describe("staff invites", () => {
       expect((await pgError(s.query("select public.platform_staff_invite_revoke($1)", [second.id]))).code).toBe("P0002");
       const rows = (await s.query<{ status: string }>("select status from public.platform_staff_invites() where email = $1", [email])).rows;
       expect(rows.map((r) => r.status)).toEqual(["withdrawn", "withdrawn"]);
+    });
+  });
+});
+
+// Security review 2026-11-16 (20261120022500): a handed-over team invitation link proves nothing about the mailbox. Only
+// the server (service role), right after its provider accepted the email to the invited address, records it as emailed.
+describe("team invitations: emailed or not (20261120022500)", () => {
+  it("only the service role records an invitation as emailed, once, while it is new and open", async () => {
+    await withSession(async (s) => {
+      const adm = await staff(s, "admin");
+      await freshReauth(s, adm);
+      await s.as(adm);
+      const email = `mailed-${randomUUID().slice(0, 8)}@test.example`;
+      const inv = (await s.query<{ r: { token: string; id: string } }>("select public.platform_staff_invite($1, 'Mae Mailed', 'support') r", [email])).rows[0].r;
+      for (const who of [adm, null]) {
+        await s.as(who);
+        expect((await pgError(s.query("select public.platform_staff_invite_mark_emailed($1)", [inv.id]))).code).toBe("42501");
+      }
+      await s.asAdmin();
+      await s.query("set local role service_role");
+      expect((await s.query<{ r: boolean }>("select public.platform_staff_invite_mark_emailed($1) r", [inv.id])).rows[0].r).toBe(true);
+      expect((await s.query<{ r: boolean }>("select public.platform_staff_invite_mark_emailed($1) r", [inv.id])).rows[0].r).toBe(false);
+      await s.as(null);
+      expect((await s.query<{ r: { link_emailed: boolean } }>("select public.staff_invite_peek($1) r", [inv.token])).rows[0].r.link_emailed).toBe(true);
+      // An old invitation cannot be marked later.
+      await s.as(adm);
+      const later = (await s.query<{ r: { token: string; id: string } }>("select public.platform_staff_invite($1, 'Lee Later', 'support') r", [`later-${randomUUID().slice(0, 8)}@test.example`])).rows[0].r;
+      await s.asAdmin();
+      await s.query("update private.platform_staff_invites set created_at = now() - interval '1 hour' where id = $1", [later.id]);
+      await s.query("set local role service_role");
+      expect((await s.query<{ r: boolean }>("select public.platform_staff_invite_mark_emailed($1) r", [later.id])).rows[0].r).toBe(false);
+    });
+  });
+
+  it("the rollback restores the earlier page and acceptance, and the migration applies again", async () => {
+    await withSession(async (s) => {
+      await s.asAdmin();
+      const file = (dir: string, suffix: string) => readFileSync(join(__dirname, `../../supabase/${dir}/20261120022500_staff_invite_email_proof${suffix}.sql`), "utf8");
+      await s.query(file("rollbacks", ".down").replace(/^\s*begin;\s*$/m, "").replace(/^\s*commit;\s*$/m, ""));
+      expect((await s.query("select to_regprocedure('public.platform_staff_invite_mark_emailed(uuid)') r")).rows[0].r).toBeNull();
+      expect((await s.query("select 1 from information_schema.columns where table_schema = 'private' and table_name = 'platform_staff_invites' and column_name = 'link_emailed_at'")).rowCount).toBe(0);
+      expect((await s.query<{ d: string }>("select pg_get_functiondef('public.platform_staff_accept(text)'::regprocedure) d")).rows[0].d).not.toMatch(/email_confirmed_at/);
+      await s.query(file("migrations", ""));
+      expect((await s.query<{ d: string }>("select pg_get_functiondef('public.platform_staff_accept(text)'::regprocedure) d")).rows[0].d).toMatch(/email_confirmed_at/);
+      expect((await s.query("select to_regprocedure('public.platform_staff_invite_mark_emailed(uuid)') r")).rows[0].r).not.toBeNull();
     });
   });
 });

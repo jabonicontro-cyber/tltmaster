@@ -1,15 +1,23 @@
 -- Invite a company's first owner from the platform console (PC2, owner decision 2026-11-14: "Yes, Admin only").
 --   * Only an Admin of the Taviron team (never Support) who has just entered their password and authenticator code
 --     again (private.require_fresh_reauth), from the company page.
---   * Only for a real customer company that is open (not archived, not canceled) and has no active owner yet. Demo
+--   * Only for a real customer company that is open (not archived, not canceled, not yet live) and has never had an
+--     owner: no owner membership, active or not, and no accepted owner invitation. A company that lost its owner is
+--     recovered by Taviron through scripts/platform-admin.mjs, never by a new invitation. Demo
 --     companies are refused: prospect demos get their owner through scripts/platform-admin.mjs demo-owner, and a demo
 --     never sends anything. An email that belongs to the Taviron team is refused (and refused again on accepting): staff
 --     enter companies only as support visits with the owner's grant, never as members.
---   * The invitation is a single-use link: only the SHA-256 hash of its token is stored, it expires after 7 days, a new
+--   * The invitation is a single-use link: only the SHA-256 hash of its token is stored, it expires after 72 hours, a new
 --     invitation for the same company withdraws the open one, and it can be withdrawn. The person opens the link,
 --     chooses their own password (or signs in with the Taviron sign-in they already have for that email), sets up an
---     authenticator app and accepts; the database checks the email, the verified authenticator (aal2) and that the
---     company still has no owner, then makes them its owner.
+--     authenticator app and accepts; the database checks the email, that the email address is confirmed, the verified
+--     authenticator (aal2) and that the company still has no owner, then makes them its owner. It never re-activates
+--     or changes a membership the person already has (or had) in the company.
+--   * Holding the link does not prove the mailbox (security review 2026-11-16): the link may have been handed over
+--     instead of emailed. Only the server, after its provider accepted the email to the invited address itself (not
+--     test mode), marks the invitation as emailed (public.owner_invite_mark_emailed, service role only). For an
+--     invitation that was not emailed, the invitation page first has the person confirm the address with a code from
+--     Supabase Auth's own email; owner_invite_accept refuses any sign-in whose email is not confirmed.
 --   * Every invitation, withdrawal and acceptance is in the platform audit (private.platform_log) and in the company's
 --     own history (public.audit_events).
 -- No email is sent by the database: the console's server action emails the link through the configured provider or
@@ -27,7 +35,9 @@ create table private.owner_invitations (
   accepted_at timestamptz,
   accepted_by uuid references auth.users (id) on delete set null,
   revoked_at  timestamptz,
-  revoked_by  uuid references auth.users (id) on delete set null
+  revoked_by  uuid references auth.users (id) on delete set null,
+  -- Set only by the server once the link was emailed to the invited address itself (owner_invite_mark_emailed).
+  link_emailed_at timestamptz
 );
 create unique index owner_invitations_open on private.owner_invitations (company_id) where accepted_at is null and revoked_at is null;
 create index owner_invitations_company on private.owner_invitations (company_id, created_at desc);
@@ -39,6 +49,14 @@ returns boolean language sql stable security definer set search_path = '' as $$
 $$;
 revoke all on function private.company_has_owner(uuid) from public, anon, authenticated;
 
+-- Whether the company has ever had an owner: an owner membership (active or deactivated) or an accepted invitation.
+create or replace function private.company_had_owner(p_company uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select exists (select 1 from public.company_memberships m where m.company_id = p_company and m.role = 'owner')
+      or exists (select 1 from private.owner_invitations i where i.company_id = p_company and i.accepted_at is not null)
+$$;
+revoke all on function private.company_had_owner(uuid) from public, anon, authenticated;
+
 -- Why a company cannot get an owner invitation now, or null when it can.
 create or replace function private.owner_invite_blocked(p_company uuid)
 returns text language sql stable security definer set search_path = '' as $$
@@ -48,6 +66,8 @@ returns text language sql stable security definer set search_path = '' as $$
     when c.archived_at is not null or not c.active then 'This company is archived. Restore it first.'
     when l.stage = 'canceled' then 'This company''s subscription is canceled.'
     when private.company_has_owner(c.id) then 'This company already has an owner. The owner adds everyone else from People.'
+    when private.company_had_owner(c.id) then 'This company had an owner before. Taviron restores an owner''s sign-in through the platform-admin script, not with an invitation.'
+    when l.stage = 'live' then 'This company is already live. Its owner adds everyone else from People.'
   end
   from (select 1) x
   left join public.companies c on c.id = p_company
@@ -65,7 +85,7 @@ declare
   v_company text;
   v_token   text;
   v_id      uuid;
-  v_exp     timestamptz := now() + interval '7 days';
+  v_exp     timestamptz := now() + interval '72 hours';
 begin
   v_admin := private.require_platform_admin();
   perform private.require_fresh_reauth();
@@ -120,6 +140,23 @@ $$;
 revoke all on function public.platform_owner_invite_withdraw(uuid) from public, anon;
 grant execute on function public.platform_owner_invite_withdraw(uuid) to authenticated;
 
+-- The server marks an invitation as emailed only after its provider accepted the email to the invited address itself
+-- (never test mode, never a link shown to the Admin). Service role only, within minutes of the invitation, once.
+create or replace function public.owner_invite_mark_emailed(p_invite uuid)
+returns boolean language plpgsql security definer set search_path = '' as $$
+declare
+  v_n integer;
+begin
+  update private.owner_invitations set link_emailed_at = now()
+   where id = p_invite and accepted_at is null and revoked_at is null and link_emailed_at is null
+     and expires_at > now() and created_at > now() - interval '10 minutes';
+  get diagnostics v_n = row_count;
+  return v_n = 1;
+end;
+$$;
+revoke all on function public.owner_invite_mark_emailed(uuid) from public, anon, authenticated;
+grant execute on function public.owner_invite_mark_emailed(uuid) to service_role;
+
 -- The company page: whether an owner can be invited now, and the invitations (open, and settled in the last 90 days).
 create or replace function public.platform_owner_invites(p_company uuid)
 returns jsonb language plpgsql stable security definer set search_path = '' as $$
@@ -131,6 +168,7 @@ begin
     'has_owner', private.company_has_owner(p_company),
     'invites', (select coalesce(jsonb_agg(jsonb_build_object(
         'id', i.id, 'email', i.email, 'full_name', i.full_name, 'created_at', i.created_at, 'expires_at', i.expires_at,
+        'emailed', i.link_emailed_at is not null,
         'status', case when i.accepted_at is not null then 'accepted' when i.revoked_at is not null then 'withdrawn'
                        when i.expires_at <= now() then 'expired' else 'open' end,
         'invited_by', coalesce(private.person_name(i.invited_by), 'Operator')) order by i.open desc, i.created_at desc), '[]'::jsonb)
@@ -142,7 +180,8 @@ $$;
 revoke all on function public.platform_owner_invites(uuid) from public, anon;
 grant execute on function public.platform_owner_invites(uuid) to authenticated;
 
--- What the invitation page shows to whoever holds the link (the token is the secret).
+-- What the invitation page shows to whoever holds the link (the token is the secret). has_account: a CONFIRMED sign-in
+-- exists for the email (an unconfirmed one proves nothing). link_emailed: false means the page asks for an email code.
 create or replace function public.owner_invite_peek(p_token text)
 returns jsonb language sql stable security definer set search_path = '' as $$
   select coalesce(
@@ -151,7 +190,8 @@ returns jsonb language sql stable security definer set search_path = '' as $$
                       when i.expires_at <= now() then 'expired'
                       when private.owner_invite_blocked(i.company_id) is not null then 'closed' else 'open' end,
        'email', i.email, 'full_name', i.full_name, 'company_name', c.name, 'expires_at', i.expires_at,
-       'has_account', exists (select 1 from auth.users u where lower(u.email) = i.email))
+       'link_emailed', i.link_emailed_at is not null,
+       'has_account', exists (select 1 from auth.users u where lower(u.email) = i.email and u.email_confirmed_at is not null))
      from private.owner_invitations i join public.companies c on c.id = i.company_id
      where i.token_hash = private.staff_token_hash(p_token)),
     jsonb_build_object('status', 'invalid'))
@@ -159,13 +199,15 @@ $$;
 revoke all on function public.owner_invite_peek(text) from public;
 grant execute on function public.owner_invite_peek(text) to anon, authenticated;
 
--- Accept: signed in as the invited email, with an authenticator app verified in this session; the company still has
--- no owner. Returns the company id (now the person's current company).
+-- Accept: signed in as the invited email, whose address is confirmed, with an authenticator app verified in this
+-- session; the company has never had an owner; the person has no membership in it yet. Returns the company id (now the
+-- person's current company).
 create or replace function public.owner_invite_accept(p_token text)
 returns uuid language plpgsql security definer set search_path = '' as $$
 declare
   v private.owner_invitations;
   v_email   text;
+  v_confirmed timestamptz;
   v_blocked text;
   v_emp     uuid;
 begin
@@ -174,9 +216,12 @@ begin
   if v.id is null or v.accepted_at is not null or v.revoked_at is not null or v.expires_at <= now() then
     raise exception 'This invitation is no longer valid. Ask Taviron for a new one.' using errcode = 'P0002';
   end if;
-  select lower(u.email) into v_email from auth.users u where u.id = auth.uid();
+  select lower(u.email), u.email_confirmed_at into v_email, v_confirmed from auth.users u where u.id = auth.uid();
   if v_email is distinct from v.email then
     raise exception 'This invitation is for %. Sign in with that email.', v.email using errcode = '42501';
+  end if;
+  if v_confirmed is null then
+    raise exception 'Confirm your email address first with the code Taviron emails you.' using errcode = '42501';
   end if;
   if not exists (select 1 from auth.mfa_factors f where f.user_id = auth.uid() and f.status = 'verified' and f.factor_type = 'totp') or not private.aal2() then
     raise exception 'Set up an authenticator app and enter its code first.' using errcode = '42501';
@@ -190,8 +235,11 @@ begin
     raise exception 'This invitation can no longer be used: %', v_blocked using errcode = 'P0001';
   end if;
 
-  insert into public.company_memberships (company_id, user_id, role, active) values (v.company_id, auth.uid(), 'owner', true)
-  on conflict (company_id, user_id) do update set role = 'owner', active = true;
+  -- Never re-activate or change a membership the person has or had here (it may have been ended on purpose).
+  if exists (select 1 from public.company_memberships m where m.company_id = v.company_id and m.user_id = auth.uid()) then
+    raise exception 'You already have, or had, a sign-in for this company, so this invitation cannot be used. Ask Taviron.' using errcode = 'P0001';
+  end if;
+  insert into public.company_memberships (company_id, user_id, role, active) values (v.company_id, auth.uid(), 'owner', true);
   update private.owner_invitations set accepted_at = now(), accepted_by = auth.uid() where id = v.id;
   update public.profiles set full_name = v.full_name where id = auth.uid() and coalesce(full_name, '') = '' and v.full_name <> '';
   update public.profiles set active_company_id = v.company_id where id = auth.uid();

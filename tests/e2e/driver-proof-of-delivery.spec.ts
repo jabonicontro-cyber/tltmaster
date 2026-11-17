@@ -1,4 +1,5 @@
 import { mkdirSync } from "node:fs";
+import { crc32, deflateSync } from "node:zlib";
 import { expect, test, type Page } from "@playwright/test";
 import pg from "pg";
 import { asUser } from "./db";
@@ -117,6 +118,84 @@ test("a driver on a phone adds proof of delivery at a stop; the office sees it o
       // An order not yet in billing's list opens no billing page for it; the order page is where it shows.
       test.info().annotations.push({ type: "note", description: "Billing page not shown for this order state" });
     }
+  } finally {
+    await asUser(USERS.office.email, (q) => q("select public.save_order_stops($1, '[]'::jsonb)", [fx.orderId])).catch(() => {});
+  }
+});
+
+/** A camera-sized photo far over the 4 MB upload limit: a noisy RGB PNG (noise does not compress). */
+function largePhoto(width = 3000, height = 2200): Buffer {
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(body));
+    return Buffer.concat([len, body, crc]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(width, 0);
+  header.writeUInt32BE(height, 4);
+  header.set([8, 2, 0, 0, 0], 8); // 8-bit RGB
+  const raw = Buffer.alloc((width * 3 + 1) * height);
+  let x = 0x2545f491;
+  for (let y = 0; y < height; y++) {
+    const row = y * (width * 3 + 1);
+    for (let i = 1; i <= width * 3; i++) {
+      x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+      // A gradient with noise on top, roughly like a photo of paper in poor light.
+      raw[row + i] = ((i / 3 + y) / 20 + (x & 0x3f)) & 0xff;
+    }
+  }
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", header), chunk("IDAT", deflateSync(raw, { level: 1 })), chunk("IEND", Buffer.alloc(0))]);
+}
+
+test("a large phone photo is made smaller on the phone and sent; a too-large PDF gets a plain message (4 MB limit)", async ({ browser }) => {
+  test.setTimeout(180_000);
+  const fx = await driverFixture();
+  const installed = (await sql<{ ok: boolean }>("select to_regprocedure('public.driver_pod_begin(uuid, uuid, uuid, text, integer, text)') is not null ok"))[0].ok;
+  test.skip(!installed, "Needs migration 20261120020800.");
+  await asUser(USERS.office.email, (q) => q("select public.save_order_stops($1, $2::jsonb)", [fx.orderId, JSON.stringify([
+    { kind: "pickup", name: "Acme Steel (e2e)", city: "Gary", state: "IN" },
+    { kind: "delivery", name: "Lakeside Build (e2e)", city: "Joliet", state: "IL", reference: "PO 4472" },
+  ])]));
+  const [late] = await sql<{ load_number: number; stop_id: string }>(
+    `select l.load_number, (select id from public.order_stops s where s.order_id = l.order_id and s.kind = 'delivery' and s.removed_at is null) stop_id
+       from public.dispatch_assignments a join public.order_loads l on l.id = a.load_id where a.id = $1`, [fx.late]);
+  const big = largePhoto();
+  expect(big.length).toBeGreaterThan(4 * 1024 * 1024);
+  try {
+    const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+    const driver = await phone.newPage();
+    await signIn(driver, "driver");
+    await driver.goto("/driver");
+    const card = driver.getByRole("listitem", { name: `Load ${late.load_number}, ${fx.orderNumber}` });
+    const stop = card.getByLabel("Proof of delivery, stop 2, Lakeside Build (e2e)");
+
+    // The photo is shrunk on the phone (long edge 2000 px, JPEG) before it is sent, so it fits the upload limit.
+    const sent = driver.waitForRequest((r) => r.url().endsWith("/driver/proof") && r.method() === "POST");
+    await card.getByTestId(`pod-camera-${late.stop_id}`).setInputFiles({ name: "IMG_2001.png", mimeType: "image/png", buffer: big });
+    expect(Number((await (await sent).allHeaders())["content-length"] ?? 0)).toBeLessThan(4 * 1024 * 1024);
+    await expectToast(driver, "Proof of delivery sent for stop 2, Lakeside Build (e2e).");
+    const [doc] = await sql<{ mime_type: string; size_bytes: number }>(
+      "select mime_type, size_bytes from public.order_documents where order_id = $1 and stop_id = $2 and removed_at is null order by created_at desc limit 1", [fx.orderId, late.stop_id]);
+    expect(doc.mime_type).toBe("image/jpeg");
+    expect(doc.size_bytes).toBeLessThanOrEqual(4 * 1024 * 1024);
+
+    // A PDF cannot be made smaller on the phone: a plain message where the driver is looking, nothing sent.
+    const pdf = Buffer.concat([Buffer.from("%PDF-1.4\n"), Buffer.alloc(4 * 1024 * 1024 + 10, 0x20)]);
+    await stop.getByLabel("Choose a file as proof of delivery for stop 2, Lakeside Build (e2e)").setInputFiles({ name: "scan.pdf", mimeType: "application/pdf", buffer: pdf });
+    await expect(stop.getByText(/This PDF is larger than 4 MB/)).toBeVisible();
+
+    // The server refuses anything over 4 MB too (the hosting platform would refuse it anyway).
+    const refused = await driver.request.post("/driver/proof", {
+      headers: { origin: new URL(driver.url()).origin },
+      multipart: { file: { name: "big.pdf", mimeType: "application/pdf", buffer: pdf }, assignment_id: fx.late, stop_id: late.stop_id, upload_key: crypto.randomUUID() },
+    });
+    expect(refused.status()).toBe(413);
+    expect((await refused.json()).error).toMatch(/larger than 4 MB/);
+    expect((await sql<{ n: string }>("select count(*) n from public.order_documents where order_id = $1 and stop_id = $2 and removed_at is null", [fx.orderId, late.stop_id]))[0].n).toBe("1");
+    await phone.close();
   } finally {
     await asUser(USERS.office.email, (q) => q("select public.save_order_stops($1, '[]'::jsonb)", [fx.orderId])).catch(() => {});
   }

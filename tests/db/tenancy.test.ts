@@ -127,6 +127,9 @@ const REVIEWED_DEFINER_FUNCTIONS = [
   // verified authenticator app; revenue by month is Admin only and read only.
   "private.company_has_owner", "private.owner_invite_blocked", "public.platform_owner_invite", "public.platform_owner_invite_withdraw", "public.platform_owner_invites",
   "public.owner_invite_peek", "public.owner_invite_accept", "private.agreed_monthly_on", "public.platform_revenue_by_month",
+  // Security review 2026-11-16: whether a company ever had an owner (owner_invite_blocked); recording that the server
+  // emailed an owner or team invitation to the invited address itself (service role only, once, within minutes).
+  "private.company_had_owner", "public.owner_invite_mark_emailed", "public.platform_staff_invite_mark_emailed",
   // Driver proof of delivery (MK2, 20261120020800): private.portal_driver (driver.portal and the person's own linked
   // driver record); only their own active assignment, a delivery stop of its order, kind fixed; lists only their own.
   "public.driver_pod_begin", "public.driver_stop_proofs",

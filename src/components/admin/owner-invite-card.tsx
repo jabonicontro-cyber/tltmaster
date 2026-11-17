@@ -49,9 +49,10 @@ function Issued({ r, onDone }: { r: OwnerInviteResult; onDone: () => void }) {
         {r.emailed === "sent"
           ? `Emailed to ${r.email}. They open it, choose a password and set up an authenticator app.`
           : r.emailed === "test"
-            ? `Sent to the test inbox only (email test mode), not to ${r.email}. Send them this link yourself.`
+            ? `Sent to the test inbox only (email test mode), not to ${r.email}. Send them this link yourself, privately.`
             : `Not emailed${r.note ? `: ${r.note}` : "."} Send ${r.email} this link yourself, privately.`}
-        {" "}It works once and expires {formatDateTime(r.expiresAt)}.{r.link ? " It is shown only now." : ""}
+        {r.emailed !== "sent" ? " Because Taviron did not email it to them, they first confirm their email address with a code we email them." : ""}
+        {" "}It works once and expires in 72 hours ({formatDateTime(r.expiresAt)}).{r.link ? " It is shown only now." : ""}
       </p>
       {r.link && (
         <div className="flex items-center gap-2 rounded-lg border border-line bg-card px-3 py-2">

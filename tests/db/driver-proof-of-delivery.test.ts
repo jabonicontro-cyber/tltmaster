@@ -77,7 +77,7 @@ describe("proof of delivery from the driver's phone", () => {
       expect((await pgError(begin(s, w.aOld, w.drop1))).message).toMatch(/two days ago to today/);
       expect((await pgError(begin(s, w.aLater, w.drop1))).message).toMatch(/two days ago to today/);
       expect((await pgError(begin(s, w.a1, w.drop1, randomUUID(), "application/zip"))).message).toMatch(/photo .* or a PDF/);
-      expect((await pgError(begin(s, w.a1, w.drop1, randomUUID(), "image/jpeg", 10_485_761))).message).toMatch(/10 MB/);
+      expect((await pgError(begin(s, w.a1, w.drop1, randomUUID(), "image/jpeg", 4_194_305))).message).toMatch(/4 MB/);
       expect((await pgError(s.query("select public.driver_pod_begin($1, $2, null, 'image/jpeg', 10, 'x')", [w.a1, w.drop1]))).message).toMatch(/upload key/);
       // At most 5 per stop and load.
       for (let i = 0; i < 4; i++) await begin(s, w.a1, w.drop1);

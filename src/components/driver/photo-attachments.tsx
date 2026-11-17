@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Camera, CheckCircle2, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
-import { MAX_PHOTOS_PER_TICKET } from "@/lib/files/images";
+import { MAX_PHOTOS_PER_TICKET, UPLOAD_MAX_BYTES } from "@/lib/files/images";
 import { toJpeg } from "@/lib/files/to-jpeg";
 
 type Photo = {
@@ -68,6 +68,11 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
     } catch {
       if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
         setError("This photo format cannot be read here. Take the photo with the camera button.");
+        return;
+      }
+      // Could not be made smaller here: a photo over the upload limit would be refused on the way.
+      if (file.size > UPLOAD_MAX_BYTES) {
+        setError("This photo is larger than 4 MB and could not be made smaller here. Take the photo with the camera button.");
         return;
       }
       blob = file;

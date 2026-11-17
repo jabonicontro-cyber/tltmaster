@@ -1,11 +1,16 @@
 -- Rollback of 20261120021000_import_contacts_checks (by hand, owner approval only): the import functions as they were
--- after 20261120008300 (definitions taken from the database before the migration). Contact batches already staged or
--- approved stay as history (the entity check is restored NOT VALID so they remain readable); contacts already
--- imported stay. CDL endorsements already imported stay on their qualification.
+-- after 20261120008300 (definitions taken from the database before the migration). No new contact import can be
+-- staged (the restored field list has no contacts). Contact batches already staged or approved stay as history and
+-- stay valid rows (the entity check keeps "contacts"); contacts already imported stay. CDL endorsements already
+-- imported stay on their qualification.
+-- Never silently mis-handled after the rollback: the company's Undo keeps its contacts branch (contacts made inactive),
+-- the platform revert (never recreated by the migration) still cannot set a job-site, trailer or contact batch to
+-- "reverted", and a contact batch still in review cannot be approved (the restored approval has no contacts branch and
+-- would otherwise make drivers of them): the batch check (private.import_batch_revert_guard) stays, in a stricter form.
 
 alter table private.import_batches drop constraint if exists import_batches_entity_check;
 alter table private.import_batches add constraint import_batches_entity_check
-  check (entity in ('customers', 'materials', 'trucks', 'drivers', 'sites', 'trailers')) not valid;
+  check (entity in ('customers', 'materials', 'trucks', 'drivers', 'sites', 'trailers', 'contacts'));
 
 CREATE OR REPLACE FUNCTION private.import_fields(p_entity text)
  RETURNS text[]
@@ -294,6 +299,8 @@ begin
     elsif b.entity = 'materials' then update public.materials set active = false where id = r.target_id and company_id = b.company_id;
     elsif b.entity = 'trucks' then update public.trucks set active = false where id = r.target_id and company_id = b.company_id;
     elsif b.entity = 'sites' then update public.customer_sites set active = false where id = r.target_id and company_id = b.company_id;
+    -- Kept on rollback: contact batches imported before it must still undo their own records (never drivers).
+    elsif b.entity = 'contacts' then update public.customer_contacts set active = false, is_primary = false where id = r.target_id and company_id = b.company_id;
     elsif b.entity = 'trailers' then update public.trailers set active = false where id = r.target_id and company_id = b.company_id;
     else update public.drivers set active = false where id = r.target_id and company_id = b.company_id;
     end if;
@@ -311,90 +318,20 @@ $function$
 
 ;
 
-CREATE OR REPLACE FUNCTION public.platform_import_revert(p_batch uuid, p_reason text)
- RETURNS jsonb
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO ''
-AS $function$
-declare
-  v_me      uuid := private.require_platform_admin();
-  b         private.import_batches%rowtype;
-  r         private.import_rows%rowtype;
-  v_changed boolean;
-  v_used    boolean;
-  v_removed integer := 0;
-  v_kept    integer := 0;
+-- The batch check stays (the restored functions cannot handle these kinds); contact batches in review cannot be approved.
+create or replace function private.import_batch_revert_guard()
+returns trigger language plpgsql set search_path = '' as $$
 begin
-  select * into b from private.import_batches where id = p_batch for update;
-  if not found or b.status <> 'approved' then raise exception 'Only an approved batch can be reverted.' using errcode = '22023'; end if;
-  if trim(coalesce(p_reason, '')) = '' then raise exception 'Give a reason for reverting.' using errcode = '22023'; end if;
-  perform set_config('tlt.platform_write', 'on', true);
-  for r in select * from private.import_rows where batch_id = p_batch and outcome = 'created' and target_id is not null loop
-    if b.entity = 'customers' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.customers c where c.id = r.target_id and c.company_id = b.company_id;
-      v_used := exists (select 1 from public.customer_contacts x where x.customer_id = r.target_id)
-             or exists (select 1 from public.customer_sites x where x.customer_id = r.target_id)
-             or exists (select 1 from public.quotes x where x.customer_id = r.target_id)
-             or exists (select 1 from public.orders x where x.customer_id = r.target_id);
-    elsif b.entity = 'materials' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.materials m where m.id = r.target_id and m.company_id = b.company_id;
-      v_used := exists (select 1 from public.price_list_entries x where x.material_id = r.target_id)
-             or exists (select 1 from public.quote_lines x where x.material_id = r.target_id)
-             or exists (select 1 from public.order_lines x where x.material_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.material_id = r.target_id);
-    elsif b.entity = 'trucks' then
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.trucks t where t.id = r.target_id and t.company_id = b.company_id;
-      v_used := exists (select 1 from public.equipment_status_events x where x.truck_id = r.target_id)
-             or exists (select 1 from public.trailers x where x.default_truck_id = r.target_id)
-             or exists (select 1 from public.dispatch_assignments x where x.truck_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.truck_id = r.target_id)
-             or exists (select 1 from public.field_reports x where x.truck_id = r.target_id);
-    else
-      select exists (select 1 from public.audit_events a where a.entity_id = r.target_id and a.action like '%.updated') into v_changed from public.drivers d where d.id = r.target_id and d.company_id = b.company_id;
-      v_used := exists (select 1 from public.driver_qualifications x where x.driver_id = r.target_id)
-             or exists (select 1 from public.dispatch_assignments x where x.driver_id = r.target_id)
-             or exists (select 1 from public.delivery_tickets x where x.driver_id = r.target_id)
-             or exists (select 1 from public.field_reports x where x.driver_id = r.target_id)
-             or exists (select 1 from public.drivers x where x.id = r.target_id and x.user_id is not null);
-    end if;
-    if v_changed is null then
-      -- Already gone (removed by hand): nothing to do.
-      update private.import_rows set outcome = 'removed' where id = r.id;
-      continue;
-    end if;
-    if not v_changed and not v_used then
-      begin
-        if b.entity = 'customers' then delete from public.customers where id = r.target_id and company_id = b.company_id;
-        elsif b.entity = 'materials' then delete from public.materials where id = r.target_id and company_id = b.company_id;
-        elsif b.entity = 'trucks' then delete from public.trucks where id = r.target_id and company_id = b.company_id;
-        else delete from public.drivers where id = r.target_id and company_id = b.company_id;
-        end if;
-        update private.import_rows set outcome = 'removed' where id = r.id;
-        v_removed := v_removed + 1;
-        continue;
-      exception when foreign_key_violation or insufficient_privilege or raise_exception then
-        v_used := true;
-      end;
-    end if;
-    if b.entity = 'customers' then update public.customers set active = false where id = r.target_id and company_id = b.company_id;
-    elsif b.entity = 'materials' then update public.materials set active = false where id = r.target_id and company_id = b.company_id;
-    elsif b.entity = 'trucks' then update public.trucks set active = false where id = r.target_id and company_id = b.company_id;
-    else update public.drivers set active = false where id = r.target_id and company_id = b.company_id;
-    end if;
-    update private.import_rows set outcome = case when v_used then 'kept_in_use' else 'kept_changed' end where id = r.id;
-    v_kept := v_kept + 1;
-  end loop;
-  perform set_config('tlt.platform_write', 'off', true);
-  update private.import_batches set status = 'reverted', reverted_by = v_me, reverted_at = now(), revert_reason = trim(p_reason),
-         result = result || jsonb_build_object('removed', v_removed, 'kept_inactive', v_kept)
-  where id = p_batch;
-  perform private.platform_log('import_reverted', 'import', p_batch::text,
-    format('Reverted: removed %s, kept %s (deactivated)', v_removed, v_kept),
-    jsonb_build_object('company_id', b.company_id, 'removed', v_removed, 'kept_inactive', v_kept, 'reason', trim(p_reason)));
-  return jsonb_build_object('removed', v_removed, 'kept_inactive', v_kept);
+  if new.status = 'reverted' and old.status is distinct from 'reverted' and new.entity in ('sites', 'trailers', 'contacts') then
+    raise exception 'Undo job-site, trailer and contact imports from the company''s Settings, Import page (records are made inactive).' using errcode = '22023';
+  end if;
+  if new.status = 'approved' and old.status is distinct from 'approved' and new.entity = 'contacts' then
+    raise exception 'Contact imports are not available on this database. Nothing was imported.' using errcode = '22023';
+  end if;
+  return new;
 end;
-$function$
-
-;
-
+$$;
+revoke all on function private.import_batch_revert_guard() from public, anon, authenticated;
+drop trigger if exists import_batches_revert_guard on private.import_batches;
+create trigger import_batches_revert_guard before update of status on private.import_batches
+  for each row execute function private.import_batch_revert_guard();

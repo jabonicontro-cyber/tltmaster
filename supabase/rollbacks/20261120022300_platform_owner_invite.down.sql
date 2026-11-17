@@ -6,9 +6,11 @@ begin;
 drop function if exists public.owner_invite_accept(text);
 drop function if exists public.owner_invite_peek(text);
 drop function if exists public.platform_owner_invites(uuid);
+drop function if exists public.owner_invite_mark_emailed(uuid);
 drop function if exists public.platform_owner_invite_withdraw(uuid);
 drop function if exists public.platform_owner_invite(uuid, text, text);
 drop function if exists private.owner_invite_blocked(uuid);
+drop function if exists private.company_had_owner(uuid);
 drop function if exists private.company_has_owner(uuid);
 drop table if exists private.owner_invitations;
 

@@ -33,11 +33,11 @@ async function freshReauth(s: Session, user: string) {
   await s.query("insert into auth.mfa_challenges (id, factor_id, created_at, verified_at, ip_address) values (gen_random_uuid(), $1, now(), now(), '127.0.0.1')", [factor]);
 }
 
-/** A sign-in for the invited email, optionally with a verified authenticator app. */
-async function signInFor(s: Session, email: string, withApp: boolean) {
+/** A sign-in for the invited email (address confirmed unless said otherwise), optionally with a verified authenticator app. */
+async function signInFor(s: Session, email: string, withApp: boolean, confirmed = true) {
   await s.asAdmin();
   const id = randomUUID();
-  await s.query("insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')", [id, email]);
+  await s.query("insert into auth.users (id, email, aud, role, email_confirmed_at) values ($1, $2, 'authenticated', 'authenticated', case when $3 then now() end)", [id, email, confirmed]);
   if (withApp) await s.query("insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at) values (gen_random_uuid(), $1, 'app', 'totp', 'verified', now(), now())", [id]);
   return id;
 }
@@ -49,7 +49,7 @@ async function addApp(s: Session, user: string) {
 
 const invite = (s: Session, company: string, email: string, name = "Riley Owner") =>
   one<{ id: string; token: string; email: string; expires_at: string; company_name: string }>(s, "select public.platform_owner_invite($1, $2, $3) r", [company, email, name]);
-const peek = (s: Session, token: string) => one<{ status: string; email?: string; company_name?: string; has_account?: boolean }>(s, "select public.owner_invite_peek($1) r", [token]);
+const peek = (s: Session, token: string) => one<{ status: string; email?: string; company_name?: string; has_account?: boolean; link_emailed?: boolean }>(s, "select public.owner_invite_peek($1) r", [token]);
 
 describe("owner invitations from the console", () => {
   it("only an Admin with a fresh password and code invites; the owner accepts once, as that email, with an authenticator app", async () => {
@@ -95,7 +95,7 @@ describe("owner invitations from the console", () => {
       expect(inv.email).toBe(email);
       await s.asAdmin();
       expect((await s.query("select 1 from private.owner_invitations where token_hash in ($1, $2)", [first.token, inv.token])).rowCount).toBe(0);
-      expect(Date.parse((await s.query<{ e: string }>("select expires_at e from private.owner_invitations where id = $1", [inv.id])).rows[0].e) - Date.now()).toBeLessThanOrEqual(7 * 86_400_000 + 60_000);
+      expect(Date.parse((await s.query<{ e: string }>("select expires_at e from private.owner_invitations where id = $1", [inv.id])).rows[0].e) - Date.now()).toBeLessThanOrEqual(72 * 3_600_000 + 60_000);
 
       // The link holder (signed out) sees who it is for; the replaced and made-up links show nothing to accept.
       await s.as(null);
@@ -188,23 +188,133 @@ describe("owner invitations from the console", () => {
       const email3 = `slow-${randomUUID().slice(0, 8)}@test.example`;
       const inv3 = await invite(s, c, email3);
       const slow = await signInFor(s, email3, true);
-      const owner = await s.createUser("owner", { companyId: c });
+      await s.createUser("owner", { companyId: c });
       await s.as(slow);
       expect((await peek(s, inv3.token)).status).toBe("closed");
       expect((await pgError(s.query("select public.owner_invite_accept($1)", [inv3.token]))).message).toMatch(/already has an owner/);
 
       // A person who joined the Taviron team after being invited cannot accept.
-      await s.asAdmin();
-      await s.query("update public.company_memberships set active = false where user_id = $1", [owner]);
+      const c4 = await s.createCompany(`Turned Staff Haul ${randomUUID().slice(0, 6)} (test)`);
       await freshReauth(s, adm);
       await s.as(adm);
       const email4 = `turned-staff-${randomUUID().slice(0, 8)}@test.example`;
-      const inv4 = await invite(s, c, email4);
+      const inv4 = await invite(s, c4, email4);
       const turned = await signInFor(s, email4, true);
       await s.asAdmin();
       await s.query("insert into private.platform_admins (user_id, note, level) values ($1, 'test', 'support')", [turned]);
       await s.as(turned);
       expect((await pgError(s.query("select public.owner_invite_accept($1)", [inv4.token]))).message).toMatch(/Taviron team sign-in cannot be a customer's owner/);
+    });
+  });
+});
+
+// Security review 2026-11-16: a link that was handed over proves nothing about the mailbox; only a first owner, never a
+// replacement for an owner the company had; never re-activating a membership the person had.
+describe("owner invitations: confirmed email, first owner only", () => {
+  it("accepting needs a confirmed email; only the service role records the link as emailed; has_account means confirmed", async () => {
+    await withSession(async (s) => {
+      const adm = await staff(s, "admin");
+      const c = await s.createCompany(`Handed Over Haul ${randomUUID().slice(0, 6)} (test)`);
+      await freshReauth(s, adm);
+      await s.as(adm);
+      const email = `handed-${randomUUID().slice(0, 8)}@test.example`;
+      const inv = await invite(s, c, email);
+      expect(Date.parse(inv.expires_at) - Date.now()).toBeGreaterThan(71 * 3_600_000);
+      expect(Date.parse(inv.expires_at) - Date.now()).toBeLessThanOrEqual(72 * 3_600_000 + 60_000);
+
+      // Not emailed: the page will ask for an email code.
+      await s.as(null);
+      expect(await peek(s, inv.token)).toMatchObject({ status: "open", link_emailed: false, has_account: false });
+      // Only the server (service role) records the email, once.
+      for (const who of [adm, null]) {
+        await s.as(who);
+        expect((await pgError(s.query("select public.owner_invite_mark_emailed($1)", [inv.id]))).code).toBe("42501");
+      }
+
+      // A sign-in whose address is not confirmed (the code was never entered) cannot accept, even with an authenticator.
+      const invitee = await signInFor(s, email, true, false);
+      await s.as(null);
+      expect((await peek(s, inv.token)).has_account).toBe(false);
+      await s.as(invitee);
+      expect((await pgError(s.query("select public.owner_invite_accept($1)", [inv.token]))).message).toMatch(/Confirm your email address first/);
+      await s.asAdmin();
+      expect((await s.query("select 1 from public.company_memberships where company_id = $1", [c])).rowCount).toBe(0);
+      await s.query("update auth.users set email_confirmed_at = now() where id = $1", [invitee]);
+      await s.as(null);
+      expect((await peek(s, inv.token)).has_account).toBe(true);
+      await s.as(invitee);
+      expect(await one<string>(s, "select public.owner_invite_accept($1) r", [inv.token])).toBe(c);
+
+      // Marking: service role, a new open invitation, once.
+      const c2 = await s.createCompany(`Mailed Haul ${randomUUID().slice(0, 6)} (test)`);
+      await freshReauth(s, adm);
+      await s.as(adm);
+      const mailed = await invite(s, c2, `mailed-${randomUUID().slice(0, 8)}@test.example`);
+      await s.asAdmin();
+      await s.query("set local role service_role");
+      expect(await one<boolean>(s, "select public.owner_invite_mark_emailed($1) r", [mailed.id])).toBe(true);
+      expect(await one<boolean>(s, "select public.owner_invite_mark_emailed($1) r", [mailed.id])).toBe(false);
+      expect(await one<boolean>(s, "select public.owner_invite_mark_emailed($1) r", [inv.id])).toBe(false); // already accepted
+      await s.as(null);
+      expect((await peek(s, mailed.token)).link_emailed).toBe(true);
+    });
+  });
+
+  it("never for a company that had an owner, that is live, or to re-activate a membership the person had", async () => {
+    await withSession(async (s) => {
+      const adm = await staff(s, "admin");
+      await freshReauth(s, adm);
+
+      // Had an owner (deactivated): refused, and an open invitation stops working.
+      const had = await s.createCompany(`Had Owner Haul ${randomUUID().slice(0, 6)} (test)`);
+      await s.as(adm);
+      const email = `late-${randomUUID().slice(0, 8)}@test.example`;
+      const open = await invite(s, had, email);
+      const former = await s.createUser("owner", { companyId: had });
+      await s.asAdmin();
+      await s.query("update public.company_memberships set active = false where user_id = $1 and company_id = $2", [former, had]);
+      await s.as(adm);
+      expect((await pgError(s.query("select public.platform_owner_invite($1, $2, 'Riley Owner')", [had, email]))).message).toMatch(/had an owner before/);
+      expect((await one<{ blocked: string }>(s, "select public.platform_owner_invites($1) r", [had])).blocked).toMatch(/had an owner before/);
+      const late = await signInFor(s, email, true);
+      await s.as(late);
+      expect((await peek(s, open.token)).status).toBe("closed");
+      expect((await pgError(s.query("select public.owner_invite_accept($1)", [open.token]))).message).toMatch(/had an owner before/);
+      await s.asAdmin();
+      expect((await s.query("select active from public.company_memberships where user_id = $1 and company_id = $2", [former, had])).rows).toEqual([{ active: false }]);
+
+      // Had an owner by an accepted invitation, who is no longer an owner there: still refused.
+      const viaInvite = await s.createCompany(`Invited Before Haul ${randomUUID().slice(0, 6)} (test)`);
+      await s.as(adm);
+      const first = await invite(s, viaInvite, `first-${randomUUID().slice(0, 8)}@test.example`);
+      const firstOwner = await signInFor(s, first.email, true);
+      await s.as(firstOwner);
+      await s.query("select public.owner_invite_accept($1)", [first.token]);
+      await s.asAdmin();
+      await s.query("update public.company_memberships set role = 'dispatcher', active = false where user_id = $1 and company_id = $2", [firstOwner, viaInvite]);
+      await s.as(adm);
+      expect((await pgError(s.query("select public.platform_owner_invite($1, 'second@test.example', 'Second Owner')", [viaInvite]))).message).toMatch(/had an owner before/);
+
+      // Live: refused.
+      const live = await s.createCompany(`Live Haul ${randomUUID().slice(0, 6)} (test)`);
+      await s.asAdmin();
+      await s.query("insert into private.company_lifecycle (company_id, stage, live_at) values ($1, 'live', now())", [live]);
+      await s.as(adm);
+      expect((await pgError(s.query("select public.platform_owner_invite($1, 'live@test.example', 'Live Owner')", [live]))).message).toMatch(/already live/);
+
+      // A person with an ended (non-owner) membership is not re-activated: refused, nothing changed.
+      const ended = await s.createCompany(`Ended Member Haul ${randomUUID().slice(0, 6)} (test)`);
+      const emailE = `ended-${randomUUID().slice(0, 8)}@test.example`;
+      const person = await signInFor(s, emailE, true);
+      await s.asAdmin();
+      await s.query("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, 'dispatcher', false)", [ended, person]);
+      await s.as(adm);
+      const invE = await invite(s, ended, emailE);
+      await s.as(person);
+      expect((await pgError(s.query("select public.owner_invite_accept($1)", [invE.token]))).message).toMatch(/already have, or had, a sign-in for this company/);
+      await s.asAdmin();
+      expect((await s.query("select role, active from public.company_memberships where user_id = $1 and company_id = $2", [person, ended])).rows).toEqual([{ role: "dispatcher", active: false }]);
+      expect((await s.query<{ a: string | null }>("select accepted_at a from private.owner_invitations where id = $1", [invE.id])).rows[0].a).toBeNull();
     });
   });
 });
@@ -319,7 +429,8 @@ describe("rollbacks", () => {
       for (const n of [...MIGRATIONS].reverse()) await s.query(rollback(n)).catch((e: Error) => { throw new Error(`${n}: ${e.message}`); });
       const left = (await s.query(`select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
         where n.nspname in ('public', 'private') and p.proname in ('platform_owner_invite', 'platform_owner_invite_withdraw', 'platform_owner_invites',
-          'owner_invite_peek', 'owner_invite_accept', 'owner_invite_blocked', 'company_has_owner', 'platform_revenue_by_month', 'agreed_monthly_on')`)).rows;
+          'owner_invite_peek', 'owner_invite_accept', 'owner_invite_blocked', 'company_has_owner', 'company_had_owner', 'owner_invite_mark_emailed',
+          'platform_revenue_by_month', 'agreed_monthly_on')`)).rows;
       expect(left).toEqual([]);
       expect((await s.query("select to_regclass('private.owner_invitations') r")).rows[0].r).toBeNull();
       const adm = await staff(s, "admin");
