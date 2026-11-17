@@ -53,6 +53,13 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
   const day = await getRouteDay(date);
   const status = routingStatus(access);
   let routes = buildRoutes(day.assignments, day.yard);
+  // Every driver on a truck's day, in load order (walkthrough D16: a truck can run with two drivers in one day).
+  const driversOf = new Map<string, string[]>();
+  for (const a of [...day.assignments].sort((x, y) => x.stop.start.localeCompare(y.stop.start))) {
+    const list = driversOf.get(a.truckId) ?? [];
+    if (!list.includes(a.driver)) list.push(a.driver);
+    driversOf.set(a.truckId, list);
+  }
   const trucks = routes.map((r) => ({ id: r.truckId, unit: r.unit }));
   if (sp.truck) routes = routes.filter((r) => r.truckId === sp.truck);
   const usage = status.state === "ready" ? await addRoadEstimates(routes, status.provider) : null;
@@ -76,7 +83,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
             {trucks.map((t) => <option key={t.id} value={t.id}>Truck {t.unit}</option>)}
           </select>
         </label>
-        <button className="h-10 rounded-xl bg-action px-4 text-sm font-semibold text-white hover:opacity-90">Show routes</button>
+        <button className="h-10 rounded-xl bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark">Show routes</button>
       </form>
 
       {status.state !== "ready" ? (
@@ -140,7 +147,7 @@ export async function RouteViews({ access, view, sp, date: boardDate }: { access
                     <span className="grid size-9 place-items-center rounded-2xl bg-surface text-ink"><Truck className="size-4" aria-hidden /></span>
                     <div>
                       <h2 className="font-semibold text-ink">Truck {r.unit}{r.trailer ? ` + ${r.trailer}` : ""}</h2>
-                      <p className="text-xs text-muted">{r.driver} · {r.stops.length} load{r.stops.length === 1 ? "" : "s"}</p>
+                      <p className="text-xs text-muted">{(driversOf.get(r.truckId) ?? [r.driver]).join(", ")} · {r.stops.length} load{r.stops.length === 1 ? "" : "s"}</p>
                     </div>
                   </div>
                   <div className="text-right text-sm">

@@ -76,6 +76,11 @@ export interface OptimizationInput extends SmartInput {
   trailerShopVisits?: TrailerShopVisit[];
   /** Estimated revenue per load in cents (order line rate × planned quantity); null when it cannot be estimated. */
   revenueCents: Record<string, number | null>;
+  /**
+   * The viewer may not see money (no billing access; walkthrough D11): revenueCents is empty, and the plan neither
+   * weighs nor mentions revenue. Absent or false: revenue is estimated as usual.
+   */
+  revenueHidden?: boolean;
   /** Hours of service from an ELD or driver logs. Not connected yet: always false. */
   hoursOfServiceVerified?: boolean;
   /**
@@ -442,7 +447,7 @@ function metricsOf(input: OptimizationInput, assignments: PlannedAssignment[], l
   let unknown = 0;
   for (const a of assignments) {
     const r = input.revenueCents[a.loadId];
-    if (r === null || r === undefined) unknown++;
+    if (r === null || r === undefined) { if (!input.revenueHidden) unknown++; }
     else revenue += r;
   }
   const fills: number[] = [];
@@ -714,6 +719,17 @@ export function optimize(input: OptimizationInput, priorities: Priorities, key =
     final.push(rebuilt);
     addToIndex(finalIdx, rebuilt, l);
   }
+  // "has no other load that day" was decided in time order, before the driver's later loads in this same plan were
+  // placed (walkthrough D5: said of Theo, whom the plan also gave load 4). Said only when it is true of the whole plan.
+  const perDriverDay = new Map<string, number>();
+  for (const a of final) {
+    const k = dayKey(a.driverId, loads.get(a.loadId)!.load_date);
+    perDriverDay.set(k, (perDriverDay.get(k) ?? 0) + 1);
+  }
+  for (const a of final) {
+    if ((perDriverDay.get(dayKey(a.driverId, loads.get(a.loadId)!.load_date)) ?? 0) < 2) continue;
+    a.reasons = a.reasons.map((r) => (r === `${a.driverLabel} has no other load that day` ? `${a.driverLabel} has no earlier load that day` : r));
+  }
   const covered = new Set(final.map((a) => a.loadId));
   const uncovered = orderLoads(input.loads, input.today)
     .filter((l) => !covered.has(l.id))
@@ -761,7 +777,9 @@ export function optimizeWithAlternatives(input: OptimizationInput, priorities: P
   const dataNotes = [
     input.hoursOfServiceVerified ? null : HOS_NOTE,
     "Travel distance and drive time are not calculated: no truck locations or routing provider are connected. “Fewer empty trips” counts site changes instead.",
-    "Operating costs (fuel, wages, maintenance) are not recorded, so margin is not evaluated. Revenue is an estimate from each order's rate × planned quantity.",
+    input.revenueHidden
+      ? "Revenue is not part of this plan: it is shown to people with billing access."
+      : "Operating costs (fuel, wages, maintenance) are not recorded, so margin is not evaluated. Revenue is an estimate from each order's rate × planned quantity.",
     Object.values(input.revenueCents).some((v) => v === null) ? (() => { const n = Object.values(input.revenueCents).filter((v) => v === null).length; return `${n} ${n === 1 ? "load has" : "loads have"} no rate to estimate revenue from.`; })() : null,
     input.maintenanceChecked === false ? "Maintenance shop dates were not checked (database update not installed)." : null,
     input.timeOffChecked === false ? "Driver time off was not checked (database update not installed)." : null,

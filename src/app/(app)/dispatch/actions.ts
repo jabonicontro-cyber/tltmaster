@@ -9,6 +9,7 @@ import { loadHosProvider } from "@/server/data/telematics";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { deliveryLocationMessage, orderHasDeliveryLocation } from "@/server/orders/delivery-location";
 import { creditGate, creditHolds, holdSummary, orderCustomer, recordCreditOverride, rpcWithCreditReason } from "@/server/credit";
 import { checkPair } from "@/lib/dispatch/smart";
 import { creditHoldSentence } from "@/lib/dispatch/board";
@@ -176,6 +177,9 @@ export async function scheduleOrderFromQueue(input: z.input<typeof scheduleInput
     if (!parsed.success) return validationFailure(parsed.error);
     const { orderId, expectedEditSeq, start, end } = parsed.data;
     const supabase = await createClient();
+    // The delivery location first (walkthrough D9), so a refusal never leaves the dates saved on an unscheduled order.
+    const where = await orderHasDeliveryLocation(supabase, orderId);
+    if (where && !where.has) return fail(deliveryLocationMessage(where.orderNumber));
     const { data, error } = await supabase.rpc("update_order_schedule", {
       p_order_id: orderId,
       p_expected_edit_seq: expectedEditSeq,

@@ -50,6 +50,8 @@ export function ConversationView(props: {
   canManage: boolean;
   canPost: boolean;
   postBlockedReason: string | null;
+  /** Active members other than the viewer; 0 means nobody else reads what is sent here (walkthrough D14). */
+  othersCount?: number;
 }) {
   const { conversationId, me, names, receipts } = props;
   const router = useRouter();
@@ -264,6 +266,11 @@ export function ConversationView(props: {
           <p className="text-sm text-muted">{props.postBlockedReason ?? "You cannot post in this conversation."}</p>
         ) : (
           <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void send(); }}>
+            {props.othersCount === 0 && (
+              <p role="note" className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950">
+                You are the only member, so nobody else will read what you send here. Add people under Members; drivers without a Taviron sign-in can&apos;t be added, so call them instead.
+              </p>
+            )}
             {replyTo && (
               <div className="flex items-center gap-2 rounded-xl bg-surface px-3 py-1.5 text-xs text-muted">
                 <CornerDownRight className="size-3.5" aria-hidden />

@@ -31,6 +31,7 @@ import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
 import { creditGate, creditHolds, holdSummary, recordCreditOverride } from "@/server/credit";
 import { creditHoldSentence } from "@/lib/dispatch/board";
+import { deliveryLocationMessage, orderHasDeliveryLocation } from "@/server/orders/delivery-location";
 import type { EffectivePrice, OrderStatus } from "@/server/data/types";
 
 function revalidateOrder(id: string) {
@@ -203,6 +204,43 @@ export async function updateOrderSchedule(input: OrderScheduleInput): Promise<Ac
     const r = data as { edit_seq: number; changed: boolean };
     revalidateOrder(parsed.data.orderId);
     return ok({ editSeq: r.edit_seq }, r.changed ? "Schedule saved." : "No changes to save.");
+  });
+}
+
+/**
+ * Set the schedule and then move the order on ("Mark scheduled" on an order without a date). The delivery location is
+ * checked first, by the database's rule, so a refusal never leaves the date saved while the status stays behind
+ * (walkthrough D9). The two database calls keep their own checks; if the status change is still refused, the result
+ * says plainly that the schedule was saved.
+ */
+export async function scheduleOrderThenStatus(input: OrderScheduleInput & { from: OrderStatus; then: OrderStatus }): Promise<ActionResult<{ status: OrderStatus; editSeq: number }>> {
+  return guard(async () => {
+    await assertPermission("orders.schedule");
+    const parsed = orderScheduleInput.safeParse(input);
+    if (!parsed.success) return validationFailure(parsed.error);
+    const then = orderStatusInput.shape.status.safeParse(input.then);
+    if (!then.success) return fail("Invalid status.");
+    const to = then.data as OrderStatus;
+    await assertAnyPermission(...orderTransitionPermissions(input.from, to));
+    if (!parsed.data.scheduledStart) return fail("Choose a date.", { scheduledStart: "Choose a date." });
+    const supabase = await createClient();
+    if (to === "scheduled") {
+      const where = await orderHasDeliveryLocation(supabase, parsed.data.orderId);
+      if (where && !where.has) return fail(deliveryLocationMessage(where.orderNumber));
+    }
+    const saved = await supabase.rpc("update_order_schedule", {
+      p_order_id: parsed.data.orderId,
+      p_expected_edit_seq: parsed.data.expectedEditSeq,
+      p_payload: toOrderSchedulePayload(parsed.data),
+    });
+    if (saved.error) return fail(dbErrorMessage(saved.error));
+    const seq = (saved.data as { edit_seq: number }).edit_seq;
+    const { data, error } = await supabase.rpc("set_order_status", { p_order_id: parsed.data.orderId, p_status: to, p_note: "", p_expected_edit_seq: seq });
+    revalidateOrder(parsed.data.orderId);
+    revalidatePath("/dispatch");
+    if (error) return fail(`The schedule was saved, but the order was not marked ${ORDER_STATUS_LABELS[to].toLowerCase()}: ${dbErrorMessage(error)}`);
+    const r = data as { status: OrderStatus; edit_seq: number };
+    return ok({ status: r.status, editSeq: r.edit_seq }, `Schedule saved. Order marked ${ORDER_STATUS_LABELS[r.status].toLowerCase()}.`);
   });
 }
 

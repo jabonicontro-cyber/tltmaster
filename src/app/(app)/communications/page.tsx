@@ -21,6 +21,7 @@ import { personPhoto } from "@/lib/people/avatars";
 import { can } from "@/lib/permissions";
 import { requireAccess } from "@/server/auth";
 import { isCommunicationsInstalled, loadAlertCounts, loadCommunicationsHome, loadMyPresence, type InboxItem, type Person } from "@/server/data/communications";
+import { createClient } from "@/server/supabase/server";
 
 export const metadata = { title: "Communications" };
 
@@ -73,6 +74,10 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
   }
   const home = await loadCommunicationsHome();
   if (!home) return <CommunicationsUnavailable />;
+  // Active drivers without a sign-in, with the phone on their driver record (walkthrough D14): offered to call when nobody
+  // can be messaged. Read with the person's own session (driver records are visible to dispatch and fleet roles only).
+  const noSignIn = await (await createClient()).from("driver_list").select("display_name, phone").eq("active", true).is("user_id", null).order("display_name").limit(40)
+    .then((r) => (r.error ? [] : ((r.data ?? []) as Array<{ display_name: string; phone: string | null }>).map((d) => ({ name: d.display_name, phone: d.phone ?? "" }))), () => []);
   const [counts, presence] = await Promise.all([loadAlertCounts(), loadMyPresence()]);
   const sp = await searchParams;
   const view: View = sp.view && sp.view in VIEWS ? (sp.view as View) : "all";
@@ -91,7 +96,7 @@ export default async function CommunicationsPage({ searchParams }: { searchParam
         description="Messages, groups and operational workspaces for your company. Everything stays inside Taviron. Nothing is sent by email or text."
         actions={<div className="flex flex-wrap items-center gap-3">
           <PresencePicker value={presence} />
-          <NewConversation people={home.directory} canGroup={can(access, "comms.groups")} me={access.userId} />
+          <NewConversation people={home.directory} canGroup={can(access, "comms.groups")} me={access.userId} noSignIn={noSignIn} />
           {can(access, "comms.operations") && <ButtonLink href="/communications/workspaces/new" variant="secondary" icon={<Briefcase className="size-4" />}>New workspace</ButtonLink>}
         </div>}
       />

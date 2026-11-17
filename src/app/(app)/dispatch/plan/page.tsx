@@ -103,7 +103,8 @@ export default async function PlanTheDayPage({ searchParams }: { searchParams: P
           held={plan.input.held ?? []}
           hoursLink={can(access, "fleet.view")}
           approvers={can(access, "dispatch.edit") ? undefined : rolesPhrase(await rolesWith("dispatch.edit"))}
-          revenueCents={plan.input.revenueCents}
+          // Money only with billing access (walkthrough D11): the server did not estimate it otherwise.
+          revenueCents={plan.input.revenueHidden ? null : plan.input.revenueCents}
           result={plan.result}
           canEdit={can(access, "dispatch.edit")}
           ai={ai}

@@ -64,7 +64,7 @@ export function AddressSearch({
           </Button>
         </div>
       ) : (
-        <p className="text-sm text-muted">Address search needs truck routing (the owner adds a HERE key). Enter coordinates instead; any map shows them.</p>
+        <p className="text-sm text-muted">Address search needs truck routing, which is not switched on here. Enter the coordinates instead (latitude, longitude); any map app shows them.</p>
       )}
       <div className="flex flex-wrap gap-2">
         <Input aria-label="Coordinates" placeholder="Latitude, longitude" value={coords} onChange={(e) => setCoords(e.target.value)} onKeyDown={onEnter(() => coords.trim() && applyCoords())} className="h-10 w-56" inputMode="decimal" />

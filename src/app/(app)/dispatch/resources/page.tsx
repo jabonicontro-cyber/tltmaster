@@ -7,7 +7,7 @@ import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { FilterBar, FilterSelect } from "@/components/ui/filter-bar";
 import { PageHeader } from "@/components/ui/page-header";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { HOS_NOTE } from "@/lib/dispatch/smart";
+import { HOS_NOTE, shiftProblem } from "@/lib/dispatch/smart";
 import { addDays, formatDateLong, isIsoDate } from "@/lib/dates";
 import { eligibilityMessage } from "@/lib/fleet/eligibility";
 import { TRUCK_TYPE_LABELS } from "@/lib/fleet/labels";
@@ -16,6 +16,7 @@ import { requirePagePermission } from "@/server/auth";
 import { getDispatchResources, type ResourceBooking } from "@/server/data/dispatch-resources";
 import { businessToday } from "@/server/data/settings";
 import type { TruckType } from "@/server/data/types";
+import { loadDayRestrictions } from "../day-restrictions";
 
 export const metadata = { title: "Driver & truck availability" };
 
@@ -44,7 +45,11 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
   const sp = await searchParams;
   const { today } = await businessToday();
   const date = sp.date && isIsoDate(sp.date) ? sp.date : today;
-  const r = await getDispatchResources(date);
+  const [r, restrictions] = await Promise.all([getDispatchResources(date), loadDayRestrictions(date).catch(() => null)]);
+  // Scheduled off on this date (walkthrough D8): the same shift rule as the board and Smart Dispatch. A driver who is
+  // qualified and has no time off but no shift that day is not counted as ready. No schedule recorded: no change.
+  const dayOff = new Map(r.drivers.map((d) => [d.id, shiftProblem(d.id, { load_date: date, starts_at: null, ends_at: null }, restrictions?.shifts)]));
+  const ready = (d: (typeof r.drivers)[number]) => d.ready.ready && !dayOff.get(d.id);
   const q = (sp.q ?? "").trim().toLowerCase();
   const show = sp.show ?? "";
   const trucks = r.trucks
@@ -52,7 +57,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
     .filter((t) => show === "" || (show === "available" ? t.availability.ready && !t.shopToday : !(t.availability.ready && !t.shopToday)));
   const drivers = r.drivers
     .filter((d) => !q || d.name.toLowerCase().includes(q) || (d.primaryTruck?.unit ?? "").toLowerCase().includes(q))
-    .filter((d) => show === "" || (show === "available" ? d.ready.ready : !d.ready.ready));
+    .filter((d) => show === "" || (show === "available" ? ready(d) : !ready(d)));
   const readyTrucks = r.trucks.filter((t) => t.availability.ready && !t.shopToday).length;
   // A driver keeps their primary truck through a repair; on a day it cannot run, say so next to it so dispatch
   // pairs them with another truck (the truck's own row has the details).
@@ -66,7 +71,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
   // The shared driver rule (src/lib/fleet/readiness.ts): own drivers ready; hired-truck drivers counted apart.
   const own = r.drivers.filter((d) => !d.hired);
   const hiredDrivers = r.drivers.filter((d) => d.hired);
-  const readyDrivers = own.filter((d) => d.ready.ready).length;
+  const readyDrivers = own.filter(ready).length;
   const leaveConflicts = r.drivers.flatMap((d) => d.leaveConflicts.map((b) => ({ driver: d, booking: b })));
   const href = (d: string) => `/dispatch/resources?date=${d}${sp.q ? `&q=${encodeURIComponent(sp.q)}` : ""}${show ? `&show=${show}` : ""}`;
 
@@ -89,9 +94,9 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
       <section aria-label="Summary" className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Card><CardBody><p className="text-sm text-muted">Trucks mechanically ready</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{readyTrucks} / {r.trucks.length}</p></CardBody></Card>
         <Card><CardBody>
-          <p className="text-sm text-muted">Drivers ready (qualified, not on time off)</p>
+          <p className="text-sm text-muted">Drivers ready (qualified, working that day, not on time off)</p>
           <p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular">{readyDrivers} / {own.length}</p>
-          {hiredDrivers.length > 0 && <p className="mt-1 text-xs text-muted">Hired trucks: <span className="tabular">{hiredDrivers.filter((d) => d.ready.ready).length} of {hiredDrivers.length}</span> drivers ready, counted apart.</p>}
+          {hiredDrivers.length > 0 && <p className="mt-1 text-xs text-muted">Hired trucks: <span className="tabular">{hiredDrivers.filter(ready).length} of {hiredDrivers.length}</span> drivers ready, counted apart.</p>}
         </CardBody></Card>
         <Card><CardBody><p className="text-sm text-muted">Loads without a truck</p><p className="text-[1.875rem] leading-tight font-semibold tracking-[-0.03em] tabular"><Link href={`/dispatch?date=${date}`} className="hover:underline">{r.unassignedLoads}</Link></p></CardBody></Card>
       </section>
@@ -149,7 +154,7 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
         <CardHeader title="Drivers" description="Qualification = verified, unexpired CDL (class B or higher) and medical card on this date. Approved leave blocks assignments in the database; pending requests only warn. None of this means the driver is within hours of service." />
         <TableWrap>
           <Table>
-            <thead><tr><Th>Driver</Th><Th>Qualification</Th><Th>Time off</Th><Th>Bookings</Th><Th className="hidden md:table-cell">Hours of service</Th><Th className="hidden lg:table-cell">Primary truck</Th></tr></thead>
+            <thead><tr><Th>Driver</Th><Th>Qualification</Th><Th>Time off and shifts</Th><Th>Bookings</Th><Th className="hidden md:table-cell">Hours of service</Th><Th className="hidden lg:table-cell">Primary truck</Th></tr></thead>
             <tbody>
               {drivers.map((d) => (
                 <Tr key={d.id}>
@@ -161,7 +166,10 @@ export default async function DispatchResourcesPage({ searchParams }: { searchPa
                     )}
                   </Td>
                   <Td className="text-sm">
-                    {d.timeOff.length === 0 ? <span className="text-muted">–</span> : (
+                    {dayOff.get(d.id) && (
+                      <div className="mb-1"><Badge tone="gray">Day off</Badge><span className="ml-1 text-xs text-muted">Scheduled off on this date.</span></div>
+                    )}
+                    {d.timeOff.length === 0 ? (dayOff.get(d.id) ? null : <span className="text-muted">–</span>) : (
                       <ul className="space-y-1">
                         {d.timeOff.map((t, i) => (
                           <li key={i}>

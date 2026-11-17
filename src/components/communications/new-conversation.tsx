@@ -13,7 +13,7 @@ import { createGroup, openDirect } from "@/app/(app)/communications/actions";
 import { PeoplePicker } from "./people-picker";
 import { DrivingNotice } from "./status";
 
-export function NewConversation({ people, canGroup, me }: { people: Person[]; canGroup: boolean; me: string }) {
+export function NewConversation({ people, canGroup, me, noSignIn = [] }: { people: Person[]; canGroup: boolean; me: string; /** Drivers to call instead (no sign-in), shown when nobody can be messaged. */ noSignIn?: Array<{ name: string; phone: string }> }) {
   const router = useRouter();
   const [mode, setMode] = useState<"direct" | "group" | null>(null);
   const [selected, setSelected] = useState<string[]>([]);
@@ -54,7 +54,7 @@ export function NewConversation({ people, canGroup, me }: { people: Person[]; ca
               <Input id="group-title" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
           )}
-          <PeoplePicker people={people} selected={selected} onChange={setSelected} multiple={mode === "group"} exclude={[me]} />
+          <PeoplePicker people={people} selected={selected} onChange={setSelected} multiple={mode === "group"} exclude={[me]} noSignIn={noSignIn} />
           <DrivingNotice names={driving} />
           <p className="text-xs text-muted">{STATUS_DISCLAIMER}</p>
           <FormError message={error} />

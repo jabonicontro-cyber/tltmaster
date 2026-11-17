@@ -51,11 +51,13 @@ export function setRoutingProviderForTests(f: ((c: RoutingConfig) => RoutingProv
 /** The one place routing branches on demo companies (DEMO_TENANTS §2): pass the caller's access. */
 export function routingStatus(access: { isDemo?: boolean }, config = parseRoutingConfig(process.env)): RoutingStatus {
   const isDemo = Boolean(access.isDemo);
-  if (config.provider !== "here" || !config.key) {
-    return { state: "not_configured", reason: "Truck routing is not set up yet (the owner adds a HERE key). Distances below are straight lines." };
-  }
-  if (isDemo && !config.inDemos) {
+  // A demo says so first, whether or not this server has a routing key (walkthrough D13: a demo read the setup message).
+  if (isDemo && !(config.inDemos && config.provider === "here" && config.key)) {
     return { state: "demo_off", reason: "Truck routing is off in demo companies. Distances below are straight lines." };
+  }
+  if (config.provider !== "here" || !config.key) {
+    // Plain words (D13): no provider or key names. Switching routing on is a Taviron setup step, not the company's.
+    return { state: "not_configured", reason: "Truck routing is not switched on yet; the Taviron team turns it on. Distances below are straight lines." };
   }
   return { state: "ready", provider: providerFactory(config) };
 }

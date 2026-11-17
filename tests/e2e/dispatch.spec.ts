@@ -138,7 +138,7 @@ test("dispatcher plans loads, assigns, sees conflicts and unavailable resources,
   await dialog.getByRole("button", { name: "Cancel" }).click();
 
   // Remove load 1's assignment with a reason → history kept.
-  await load1.getByRole("button", { name: "Remove assignment from load 1" }).click();
+  await load1.getByRole("button", { name: /^Remove assignment from .* load 1$/ }).click();
   dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Remove assignment" }).click();
   await expect(dialog.getByText(/reason/i).first()).toBeVisible();

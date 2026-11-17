@@ -155,7 +155,9 @@ describe("assignments", () => {
       await s.as(office);
       const trailer2 = await insert(s, "trailers", { unit_number: "RL-2", trailer_type: "end_dump", compatible_truck_types: "{tractor}" });
       const truckErr = await pgError(assign(s, b.load_id, f.tractor, trailer2, f.d2));
-      expect(truckErr.message).toMatch(new RegExp(`^Truck TR-\\w+ is already assigned to ${o1.number} load 1 from 7:00 AM to 11:00 AM\\.$`));
+      // The day is named (D2, 20261120024120), so a clash on another day can be found on the board.
+      const day = new Date(`${on}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+      expect(truckErr.message).toMatch(new RegExp(`^Truck TR-\\w+ is already assigned to ${o1.number} load 1 on ${day} from 7:00 AM to 11:00 AM\\.$`));
       await s.as(office);
       const otherTractor = await insert(s, "trucks", { unit_number: "TR-X", truck_type: "tractor" });
       expect((await pgError(assign(s, b.load_id, otherTractor, f.trailer, f.d2))).message).toMatch(/^Trailer RL-\w+ is already assigned/);

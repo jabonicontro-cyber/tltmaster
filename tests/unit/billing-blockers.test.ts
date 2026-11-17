@@ -19,7 +19,7 @@ describe("billingBlockers", () => {
   it("lists every blocker at once, in the order a person fixes them", () => {
     const b = billingBlockers({ ...base, loads_missing: 3, tickets_pending: 2, exceptions_count: 1 }, { unassignedMissing: 1 });
     expect(b.map((x) => x.key)).toEqual(["missing_tickets", "unassigned_loads", "tickets_to_check", "not_completed", "exceptions"]);
-    expect(b[0].title).toBe("2 delivered loads without a delivery ticket");
+    expect(b[0].title).toBe("2 loads past their window without a delivery ticket");
     expect(b[1].title).toBe("1 load never assigned a truck");
     expect(b[1].detail).toMatch(/Dispatch assigns/);
     expect(b[2].title).toBe("2 tickets not accepted yet");

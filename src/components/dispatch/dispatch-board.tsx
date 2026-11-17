@@ -372,7 +372,7 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
         open={Boolean(suggest)}
         onOpenChange={(o) => !o && setSuggest(null)}
         title="Confirm hours of service"
-        description={suggest ? `Assign ${lk.orders.get(suggest.load.order_id)?.order_number ?? "this order"} load ${suggest.load.load_number} to ${suggest.s.driverLabel} with truck ${suggest.s.truckLabel}${suggest.s.trailerLabel ? ` and trailer ${suggest.s.trailerLabel}` : ""}. ${HOS_CONFIRMATION}` : ""}
+        description={suggest ? `Assign ${lk.orders.get(suggest.load.order_id)?.order_number ?? "this order"} load ${suggest.load.load_number} to ${suggest.s.driverLabel} with ${equipmentWords(suggest.s)}. ${HOS_CONFIRMATION}` : ""}
         confirmLabel="I checked, assign"
         onConfirm={async () => {
           if (!suggest) return;
@@ -392,7 +392,7 @@ export function DispatchBoard({ day, restrictions = null, enterLabel = "Enter de
             setAssignDialog({ load, current: activeByLoad.get(load.id) ?? null, initial: { truckId: sug.truckId, trailerId: sug.trailerId ?? undefined, driverId: sug.driverId } });
             return;
           }
-          assignedToast(`Load ${load.load_number} assigned to truck ${sug.truckLabel} and ${sug.driverLabel}.${r.data.notice ? ` ${r.data.notice}` : ""}`, load, { truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId });
+          assignedToast(`Load ${load.load_number} assigned to ${equipmentWords(sug)} and ${sug.driverLabel}.${r.data.notice ? ` ${r.data.notice}` : ""}`, load, { truckId: sug.truckId, trailerId: sug.trailerId, driverId: sug.driverId });
           if (r.data.warnings.length) toast.warning(r.data.warnings.map(eligibilityMessage).join(" "));
           refresh();
         }}
@@ -709,13 +709,14 @@ function OrderCard({
                       <ReleaseTruckButton loadId={l.id} orderId={o.id} label="Release" />
                     )}
                     {current && !ticketed && (
-                      <Button size="sm" variant="ghost" aria-label={`Remove assignment from load ${l.load_number}`} onClick={() => onUnassign(current, l)}>
-                        <XCircle className="size-4 text-red-700" />
+                      // D16: visible words, and a screen-reader name that says which order (not "Edit load 1" three times).
+                      <Button size="sm" variant="ghost" icon={<XCircle className="size-4 text-red-700" />} aria-label={`Remove assignment from ${o.order_number} load ${l.load_number}`} onClick={() => onUnassign(current, l)}>
+                        Unassign
                       </Button>
                     )}
                     {dispatchable && (
-                      <Button size="sm" variant="ghost" aria-label={`Edit load ${l.load_number}`} onClick={() => onEditLoad(l)}>
-                        <Pencil className="size-4" />
+                      <Button size="sm" variant="ghost" icon={<Pencil className="size-4" />} aria-label={`Edit ${o.order_number} load ${l.load_number}`} onClick={() => onEditLoad(l)}>
+                        Edit
                       </Button>
                     )}
                     <Button size="sm" variant="ghost" onClick={() => onCancelLoad(l)}>
@@ -730,6 +731,16 @@ function OrderCard({
       )}
     </Card>
   );
+}
+
+/**
+ * "truck 108 and trailer B-31" for a suggested crew. Smart Dispatch's truck label already names a paired trailer
+ * ("108 + B-31"), so the trailer is said once (walkthrough D3b: "truck 108 + B-31 and trailer B-31").
+ */
+function equipmentWords(s: Pick<CrewSuggestion, "truckLabel" | "trailerLabel">): string {
+  const paired = s.trailerLabel ? ` + ${s.trailerLabel}` : null;
+  const truck = paired && s.truckLabel.endsWith(paired) ? s.truckLabel.slice(0, -paired.length) : s.truckLabel;
+  return `truck ${truck}${s.trailerLabel ? ` and trailer ${s.trailerLabel}` : ""}`;
 }
 
 function assignmentText(a: Pick<AssignmentRow, "truck_id" | "trailer_id" | "driver_id">, lk: Lookup) {
@@ -1016,6 +1027,7 @@ function AssignDialog({
   const ctx: DayContext = { load, restrictions: lk.restrictions };
   const check = truck || trailer || driver ? combinationCheck({ truck, trailer, driver }, interval, active, on, except, ctx) : null;
   const unchanged = current && current.truck_id === truckId && (current.trailer_id ?? "") === trailerId && current.driver_id === driverId;
+  const complete = Boolean(truck && driver);
 
   // Group options: available, already assigned at this time, unavailable.
   function grouped<T extends { id: string }>(items: T[], state: (item: T) => ResourceState, label: (item: T) => string) {
@@ -1131,9 +1143,12 @@ function AssignDialog({
 
         {/* The board's pre-check; hidden once the server answered with an error or a shift question: its answer counts. */}
         {check && !error && !offShift && (
-          <div role="status" className={cn("rounded-xl border p-3 text-sm", !check.eligible ? "border-red-200 bg-red-50" : (check.needsReason || creditHold || checkFirst(check.warnings)) && !unchanged ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50")}>
+          <div role="status" className={cn("rounded-xl border p-3 text-sm", !check.eligible ? "border-red-200 bg-red-50" : !complete ? "border-line bg-surface" : (check.needsReason || creditHold || checkFirst(check.warnings)) && !unchanged ? "border-amber-200 bg-amber-50" : "border-green-200 bg-green-50")}>
             {!check.eligible ? (
               <p className="font-semibold text-red-900">This combination cannot be assigned:</p>
+            ) : !complete ? (
+              // D3 (walkthrough 2026-11-14): no verdict, green or otherwise, until both a truck and a driver are chosen.
+              <p className="font-semibold text-ink">Choose {truck ? "a driver" : driver ? "a truck" : "a truck and a driver"} to see whether this combination can be assigned.</p>
             ) : unchanged ? (
               <p className="font-semibold text-green-900">This is the current assignment.</p>
             ) : check.needsReason ? (

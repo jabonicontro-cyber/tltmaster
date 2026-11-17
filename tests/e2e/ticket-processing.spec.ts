@@ -116,7 +116,7 @@ test("a paper ticket is received, explained, scanned, corrected and verified; th
     await expect(page.getByRole("list", { name: "Order progress" })).toContainText("Billing readiness");
     // Completing warns about the delivered loads that still have no ticket.
     await page.getByRole("button", { name: /Mark completed|Complete/ }).first().click();
-    await expect(page.getByRole("dialog").getByRole("note")).toContainText("2 delivered load(s) have no delivery ticket");
+    await expect(page.getByRole("dialog").getByRole("note")).toContainText("2 load(s) past their window have no delivery ticket");
     await page.getByRole("dialog").getByRole("button", { name: "Cancel" }).click();
 
     // Another company: no ticket by URL, no upload into it.
