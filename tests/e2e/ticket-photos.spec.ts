@@ -34,7 +34,7 @@ function png(width = 64, height = 48) {
 
 test.use({ viewport: { width: 390, height: 844 } });
 
-test("a driver attaches paper-ticket photos (with a failed upload and a retry) and the office views them", async ({ page }) => {
+test("a driver attaches paper-ticket photos (one taken without signal, sent once it is back) and the office views them", async ({ page }) => {
   const f = await driverFixture();
   await signIn(page, "driver");
   await page.goto(`/driver/assignments/${f.past}/ticket`);
@@ -48,15 +48,13 @@ test("a driver attaches paper-ticket photos (with a failed upload and a retry) a
   const photos = page.getByRole("list", { name: "Ticket photos" });
   await expect(photos.getByRole("listitem", { name: "Photo 1" })).toContainText("Uploaded");
 
-  // Second photo without signal: clearly not uploaded, and the ticket cannot be sent until fixed.
+  // Second photo without signal (walkthrough P2, 2026-11-16): it stays on the phone, clearly not uploaded yet, and
+  // uploads by itself (same upload key) once signal is back.
   await page.context().setOffline(true);
   await page.locator("#ticket-photo").setInputFiles({ name: "back.png", mimeType: "image/png", buffer: png(40, 40) });
   const second = photos.getByRole("listitem", { name: "Photo 2" });
-  await expect(second.getByRole("alert")).toContainText("Not uploaded: no connection");
-  await page.getByRole("button", { name: "Send ticket" }).click();
-  await expect(page.getByText("A photo did not upload. Tap Retry, or remove it.")).toBeVisible();
+  await expect(second.getByRole("status")).toContainText("No signal. The photo stays on this phone and goes with the ticket.");
   await page.context().setOffline(false);
-  await second.getByRole("button", { name: "Retry" }).click();
   await expect(second).toContainText("Uploaded");
 
   await page.getByRole("button", { name: "Send ticket" }).click();

@@ -192,6 +192,27 @@ export async function recordReading(formData: FormData): Promise<ActionResult> {
   });
 }
 
+/**
+ * Before a job is finished (walkthrough P12): checklist steps not done and parts still on order, so "Send for inspection"
+ * or "Mark completed" can warn and ask first. Read only, with the person's own session; nothing is blocked here.
+ */
+export async function finishCheck(workOrderId: string): Promise<ActionResult<{ openSteps: string[]; partsOnOrder: string[] }>> {
+  return guard(async () => {
+    await assertPermission("maintenance.view");
+    if (!uuid.safeParse(workOrderId).success) return fail("Invalid work order.");
+    const supabase = await createClient();
+    const [tasks, parts] = await Promise.all([
+      supabase.from("work_order_tasks").select("title").eq("work_order_id", workOrderId).eq("status", "open").order("position"),
+      supabase.from("work_order_part_waits").select("description").eq("work_order_id", workOrderId).eq("status", "waiting").order("created_at"),
+    ]);
+    // Before the crew or parts updates are installed there is simply nothing to warn about.
+    return ok({
+      openSteps: tasks.error ? [] : (tasks.data ?? []).map((t) => t.title as string),
+      partsOnOrder: parts.error ? [] : (parts.data ?? []).map((p) => p.description as string),
+    });
+  }) as Promise<ActionResult<{ openSteps: string[]; partsOnOrder: string[] }>>;
+}
+
 /** Create work orders for due preventive schedules (maintenance.manage). Running it twice creates nothing new. */
 export async function generateDueWorkOrders(): Promise<ActionResult<{ created: number }>> {
   return guard(async () => {

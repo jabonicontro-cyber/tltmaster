@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { Camera, CheckCircle2, CloudOff, Loader2, RotateCcw, Trash2 } from "lucide-react";
 import { buttonClasses } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
 import { MAX_PHOTOS_PER_TICKET, UPLOAD_MAX_BYTES } from "@/lib/files/images";
@@ -11,7 +11,8 @@ type Photo = {
   key: string;
   blob: Blob;
   preview: string;
-  status: "uploading" | "uploaded" | "failed";
+  /** kept: no signal, so the photo stays on this phone and goes with the ticket (walkthrough P2). */
+  status: "uploading" | "uploaded" | "failed" | "kept";
   progress: number;
   attachmentId?: string;
   error?: string;
@@ -21,9 +22,18 @@ export interface PhotoState {
   ids: string[];
   busy: boolean;
   failed: boolean;
+  /** Photos waiting on this phone for signal (each with the upload key it keeps when it is sent). */
+  kept: Array<{ key: string; blob: Blob }>;
 }
 
-export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignmentId: string; onChange: (s: PhotoState) => void; disabled?: boolean }) {
+const offlineNow = () => typeof navigator !== "undefined" && navigator.onLine === false;
+
+/**
+ * Photos of the paper ticket, uploaded as soon as they are taken. With `keepOffline` (the ticket can wait on the phone),
+ * a photo taken without signal is kept on the phone and sent with the ticket instead of blocking it; it uploads by
+ * itself if signal returns while the form is open.
+ */
+export function PhotoAttachments({ assignmentId, onChange, disabled, keepOffline = false }: { assignmentId: string; onChange: (s: PhotoState) => void; disabled?: boolean; keepOffline?: boolean }) {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -34,6 +44,7 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
       ids: photos.filter((p) => p.status === "uploaded" && p.attachmentId).map((p) => p.attachmentId!),
       busy: photos.some((p) => p.status === "uploading"),
       failed: photos.some((p) => p.status === "failed"),
+      kept: photos.filter((p) => p.status === "kept").map((p) => ({ key: p.key, blob: p.blob })),
     });
   }, [photos, onChange]);
   useEffect(() => () => urls.current.forEach((u) => URL.revokeObjectURL(u)), []);
@@ -41,6 +52,10 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
   const update = (key: string, patch: Partial<Photo>) => setPhotos((ps) => ps.map((p) => (p.key === key ? { ...p, ...patch } : p)));
 
   function upload(p: Pick<Photo, "key" | "blob">) {
+    if (keepOffline && offlineNow()) {
+      update(p.key, { status: "kept", progress: 0, error: undefined });
+      return;
+    }
     update(p.key, { status: "uploading", progress: 0, error: undefined });
     const body = new FormData();
     body.set("file", new File([p.blob], "ticket.jpg", { type: p.blob.type }));
@@ -55,9 +70,22 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
       if (xhr.status === 200 && json.attachmentId) update(p.key, { status: "uploaded", progress: 100, attachmentId: json.attachmentId });
       else update(p.key, { status: "failed", error: json.error ?? "The photo was not saved. Try again." });
     };
-    xhr.onerror = () => update(p.key, { status: "failed", error: "Not uploaded: no connection. Nothing was saved. Tap Retry when you have signal." });
+    xhr.onerror = () => update(p.key, keepOffline
+      ? { status: "kept", error: undefined }
+      : { status: "failed", error: "Not uploaded: no connection. Nothing was saved. Tap Retry when you have signal." });
     xhr.send(body);
   }
+
+  // Signal back while the form is open: photos kept on the phone upload by themselves (same keys).
+  const latest = useRef(photos);
+  useEffect(() => { latest.current = photos; }, [photos]);
+  useEffect(() => {
+    if (!keepOffline) return;
+    const online = () => latest.current.filter((p) => p.status === "kept").forEach((p) => upload(p));
+    window.addEventListener("online", online);
+    return () => window.removeEventListener("online", online);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- upload only reads stable props and the setter
+  }, [keepOffline, assignmentId]);
 
   async function add(file: File | undefined) {
     if (!file) return;
@@ -89,26 +117,37 @@ export function PhotoAttachments({ assignmentId, onChange, disabled }: { assignm
       <p className="mb-2 text-base font-bold">Photo of the paper ticket (optional)</p>
       <ul className="space-y-2" aria-label="Ticket photos">
         {photos.map((p, i) => (
-          <li key={p.key} className={cn("flex items-center gap-3 rounded-2xl border-2 bg-card p-2", p.status === "failed" ? "border-red-300" : "border-line")} aria-label={`Photo ${i + 1}`}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- local preview of the photo being sent */}
-            <img src={p.preview} alt={`Photo ${i + 1} preview`} className="size-16 rounded object-cover" />
-            <div className="min-w-0 flex-1 text-sm">
-              {p.status === "uploading" && (
-                <>
-                  <p className="flex items-center gap-1 font-semibold"><Loader2 className="size-4 animate-spin" aria-hidden /> Uploading… {p.progress}%</p>
-                  <div className="mt-1 h-2 rounded bg-surface" role="progressbar" aria-label={`Photo ${i + 1} upload`} aria-valuenow={p.progress} aria-valuemin={0} aria-valuemax={100}>
-                    <div className="h-2 rounded bg-strong" style={{ width: `${p.progress}%` }} />
-                  </div>
-                </>
+          <li key={p.key} className={cn("rounded-2xl border-2 bg-card p-2", p.status === "failed" ? "border-red-300" : p.status === "kept" ? "border-amber-300" : "border-line")} aria-label={`Photo ${i + 1}`}>
+            <div className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element -- local preview of the photo being sent */}
+              <img src={p.preview} alt={`Photo ${i + 1} preview`} className="size-16 shrink-0 rounded object-cover" />
+              <div className="min-w-0 flex-1 text-sm">
+                {p.status === "uploading" && (
+                  <>
+                    <p className="flex items-center gap-1 font-semibold"><Loader2 className="size-4 animate-spin" aria-hidden /> Uploading… {p.progress}%</p>
+                    <div className="mt-1 h-2 rounded bg-surface" role="progressbar" aria-label={`Photo ${i + 1} upload`} aria-valuenow={p.progress} aria-valuemin={0} aria-valuemax={100}>
+                      <div className="h-2 rounded bg-strong" style={{ width: `${p.progress}%` }} />
+                    </div>
+                  </>
+                )}
+                {p.status === "uploaded" && <p className="flex items-center gap-1 font-semibold text-green-800"><CheckCircle2 className="size-4" aria-hidden /> Uploaded</p>}
+                {p.status === "kept" && (
+                  <p role="status" className="font-semibold text-amber-900">
+                    <CloudOff className="mr-1 inline size-4 align-[-3px]" aria-hidden />No signal. The photo stays on this phone and goes with the ticket.
+                  </p>
+                )}
+                {p.status === "failed" && <p role="alert" className="font-semibold text-red-800">{p.error}</p>}
+              </div>
+              {p.status === "uploaded" && (
+                <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => setPhotos((ps) => ps.filter((x) => x.key !== p.key))} className={buttonClasses("ghost", "sm", "min-h-11 shrink-0")}><Trash2 className="size-4" aria-hidden /></button>
               )}
-              {p.status === "uploaded" && <p className="flex items-center gap-1 font-semibold text-green-800"><CheckCircle2 className="size-4" aria-hidden /> Uploaded</p>}
-              {p.status === "failed" && <p role="alert" className="font-semibold text-red-800">{p.error}</p>}
             </div>
-            {p.status === "failed" && (
-              <button type="button" onClick={() => upload(p)} className={buttonClasses("secondary", "sm", "min-h-11")}><RotateCcw className="size-4" aria-hidden /> Retry</button>
-            )}
-            {p.status !== "uploading" && (
-              <button type="button" aria-label={`Remove photo ${i + 1}`} onClick={() => setPhotos((ps) => ps.filter((x) => x.key !== p.key))} className={buttonClasses("ghost", "sm", "min-h-11")}><Trash2 className="size-4" aria-hidden /></button>
+            {/* On their own line, so the message keeps the full width on a phone (walkthrough P2). */}
+            {(p.status === "failed" || p.status === "kept") && (
+              <div className="mt-2 flex flex-wrap justify-end gap-2">
+                <button type="button" onClick={() => upload(p)} className={buttonClasses("secondary", "sm", "min-h-11")}><RotateCcw className="size-4" aria-hidden /> {p.status === "kept" ? "Try now" : "Retry"}</button>
+                <button type="button" onClick={() => setPhotos((ps) => ps.filter((x) => x.key !== p.key))} className={buttonClasses("ghost", "sm", "min-h-11")}><Trash2 className="size-4" aria-hidden /> Remove</button>
+              </div>
             )}
           </li>
         ))}

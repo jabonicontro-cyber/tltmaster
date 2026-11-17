@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { DateInput } from "@/components/ui/date-input";
 import { Field, FormError, Input, Select } from "@/components/ui/form";
 import { JURISDICTIONS } from "@/lib/fuel/ifta";
+import { refreshAfterAction } from "@/lib/refresh-after-action";
 import { recordFuel, recordTripSheet, voidFuelEntry } from "@/app/(app)/fleet/fuel/actions";
 
 type Truck = { id: string; label: string };
@@ -21,8 +23,30 @@ function StateSelect({ id, value, onChange, label = "State" }: { id: string; val
   );
 }
 
+/**
+ * No active truck yet (walkthrough P7): Save used to be greyed out with no reason. Says what to do first, with the way
+ * there for people who can add one.
+ */
+function NoTruckYet({ what }: { what: string }) {
+  return (
+    <div className="rounded-xl bg-surface px-4 py-3 text-sm text-ink" data-testid="fuel-no-truck">
+      <p className="font-semibold">Add a truck first.</p>
+      <p className="mt-0.5 text-muted">{what} is recorded for a truck, and this company has no active truck yet.</p>
+      <Link href="/fleet/trucks/new" className="mt-2 inline-flex min-h-11 items-center font-semibold text-brand-fg hover:underline">Add a truck</Link>
+    </div>
+  );
+}
+
+/** "184,250" or "184 250" → 184250 for the miles shown while typing; NaN when it is not a number. */
+const typedNumber = (v: string) => (v.trim() ? Number(v.replace(/[,\s]/g, "")) : NaN);
+
 /** Fuel bought for a truck (B130): the state, gallons and total from the receipt. */
 export function FuelForm({ trucks, today, homeState, compact = false }: { trucks: Truck[]; today: string; homeState: string; compact?: boolean }) {
+  if (!trucks.length) return <NoTruckYet what="Fuel" />;
+  return <FuelFormFields trucks={trucks} today={today} homeState={homeState} compact={compact} />;
+}
+
+function FuelFormFields({ trucks, today, homeState, compact }: { trucks: Truck[]; today: string; homeState: string; compact: boolean }) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +58,7 @@ export function FuelForm({ trucks, today, homeState, compact = false }: { trucks
     if (!r.ok) return setError(r.error);
     toast.success(r.message ?? "Saved.");
     setV((s) => ({ ...s, gallons: "", total: "", odometer: "", vendor: "", receipt: "" }));
-    router.refresh();
+    refreshAfterAction(router);
   });
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-3" aria-label="Record fuel">
@@ -58,6 +82,11 @@ export function FuelForm({ trucks, today, homeState, compact = false }: { trucks
 
 /** A day's trip sheet (B130): odometer at the start and end and the miles in each state, which must add up. */
 export function TripSheetForm({ trucks, today, homeState }: { trucks: Truck[]; today: string; homeState: string }) {
+  if (!trucks.length) return <NoTruckYet what="A trip sheet" />;
+  return <TripSheetFields trucks={trucks} today={today} homeState={homeState} />;
+}
+
+function TripSheetFields({ trucks, today, homeState }: { trucks: Truck[]; today: string; homeState: string }) {
   const router = useRouter();
   const [busy, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -65,9 +94,9 @@ export function TripSheetForm({ trucks, today, homeState }: { trucks: Truck[]; t
   const [day, setDay] = useState(today);
   const [odo, setOdo] = useState({ start: "", end: "" });
   const [legs, setLegs] = useState([{ jurisdiction: homeState, miles: "" }]);
-  const driven = Number(odo.end) - Number(odo.start);
+  const driven = typedNumber(odo.end) - typedNumber(odo.start);
   const oneState = legs.length === 1;
-  const sum = legs.reduce((n, l) => n + (Number(l.miles) || 0), 0);
+  const sum = legs.reduce((n, l) => n + (typedNumber(l.miles) || 0), 0);
   const submit = () => start(async () => {
     setError(null);
     // One state: all the day's miles are in it.
@@ -77,7 +106,7 @@ export function TripSheetForm({ trucks, today, homeState }: { trucks: Truck[]; t
     toast.success(r.message ?? "Saved.");
     setOdo({ start: "", end: "" });
     setLegs([{ jurisdiction: homeState, miles: "" }]);
-    router.refresh();
+    refreshAfterAction(router);
   });
   return (
     <form onSubmit={(e) => { e.preventDefault(); submit(); }} className="space-y-3" aria-label="Trip sheet">

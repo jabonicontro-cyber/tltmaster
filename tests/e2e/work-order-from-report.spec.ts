@@ -107,7 +107,7 @@ test.describe("on a phone", () => {
     const row = page.getByRole("list", { name: "Checklist" }).getByRole("button").first();
     await expect(row).toBeVisible();
     expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    for (const name of ["Start work", "Waiting for parts"]) {
+    for (const name of ["Start this job", "Waiting for parts"]) {
       const b = page.getByRole("button", { name, exact: true });
       await expect(b).toBeVisible();
       expect((await b.boundingBox())!.height, name).toBeGreaterThanOrEqual(44);

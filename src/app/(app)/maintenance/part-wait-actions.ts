@@ -9,6 +9,8 @@ import { uuid } from "@/lib/schemas/common";
 import { assertPermission } from "@/server/auth";
 import { dbErrorMessage, guard, validationFailure } from "@/server/errors";
 import { createClient } from "@/server/supabase/server";
+import { businessToday } from "@/server/data/settings";
+import { startJob } from "./crew-actions";
 
 // Parts on order (20261120012300). Each action checks maintenance.manage here and calls one database function that
 // checks the permission, the company and the work order again. Stock and costs change only through the parts ledger
@@ -130,5 +132,103 @@ export async function setPartWaitDate(input: z.input<typeof dateInput>): Promise
     if (error) return fail(dbErrorMessage(error));
     refresh(p.data.workOrderId);
     return ok(undefined, "Expected date saved.");
+  });
+}
+
+export interface WaitingPart { id: string; description: string; quantity: number }
+
+/**
+ * The parts still on order for a job (walkthrough P11): "Waiting for parts" offers them instead of asking for the part
+ * again, and "Part is in" receives them. Read with the person's own session (company rules apply); empty before the
+ * update is installed.
+ */
+export async function waitingParts(workOrderId: string): Promise<ActionResult<WaitingPart[]>> {
+  return guard(async () => {
+    await assertPermission("maintenance.view");
+    if (!uuid.safeParse(workOrderId).success) return fail("Invalid work order.");
+    const { data, error } = await (await createClient()).from("work_order_part_waits")
+      .select("id, description, quantity").eq("work_order_id", workOrderId).eq("status", "waiting").order("created_at");
+    if (error) return MISSING.has(error.code ?? "") || error.code === "42P01" ? ok([]) : fail(dbErrorMessage(error));
+    return ok((data ?? []).map((r) => ({ id: r.id as string, description: r.description as string, quantity: Number(r.quantity) })));
+  }) as Promise<ActionResult<WaitingPart[]>>;
+}
+
+const waitOnOrderInput = z.object({ workOrderId: uuid, editSeq: z.number().int().nullable().default(null) });
+
+/**
+ * "Waiting for parts" for parts already on order (walkthrough P11): the job waits for them, and no second line is added
+ * for the same part. The person's own running timer on the job is stopped first, as for any status change.
+ */
+export async function waitForPartsOnOrder(input: z.input<typeof waitOnOrderInput>): Promise<ActionResult> {
+  return guard(async () => {
+    const access = await assertPermission("maintenance.manage");
+    const p = waitOnOrderInput.safeParse(input);
+    if (!p.success) return fail("Invalid work order.");
+    const id = p.data.workOrderId;
+    const supabase = await createClient();
+    const { data: rows, error: readError } = await supabase.from("work_order_part_waits").select("description").eq("work_order_id", id).eq("status", "waiting").order("created_at");
+    if (readError) return fail(dbErrorMessage(readError));
+    const names = (rows ?? []).map((r) => r.description as string);
+    if (!names.length) return fail("No part is on order for this job. Say which part is missing.");
+    const running = await supabase.from("work_order_time_entries").select("id").eq("work_order_id", id).eq("user_id", access.userId).is("ended_at", null).is("voided_at", null).maybeSingle();
+    if (running.data) {
+      const stop = await supabase.rpc("maintenance_stop_timer", { p_note: "" });
+      if (stop.error) return fail(dbErrorMessage(stop.error));
+    }
+    const note = `Waiting for parts on order: ${names.join(", ")}`.slice(0, 2000);
+    const { error } = await supabase.rpc("maintenance_set_status", { p_id: id, p_status: "awaiting_parts", p_note: note, p_expected_seq: p.data.editSeq });
+    refresh(id);
+    if (error) return fail(dbErrorMessage(error));
+    return ok(undefined, `Waiting for parts.${running.data ? " Your timer is stopped." : ""}`);
+  });
+}
+
+const partsInInput = z.object({
+  workOrderId: uuid,
+  waitIds: z.array(uuid).max(50),
+  then: z.enum(["queue", "start"]),
+  editSeq: z.number().int(),
+});
+
+/**
+ * "Part is in" from the job's next step (walkthrough P11): the chosen parts on order are received through the same
+ * database function as the Parts on order tab (part_wait_receive: stock, and the cost line when a price was recorded),
+ * then the job goes back to the shop queue or starts again. A part already received is skipped, never received twice.
+ */
+export async function partsIn(input: z.input<typeof partsInInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("maintenance.manage");
+    const p = partsInInput.safeParse(input);
+    if (!p.success) return fail("Invalid request.");
+    const { workOrderId: id, waitIds, then, editSeq } = p.data;
+    const supabase = await createClient();
+    // Only this job's parts still on order: ids from the page are never trusted to belong to it.
+    const { data: rows, error: readError } = waitIds.length
+      ? await supabase.from("work_order_part_waits").select("id, description").eq("work_order_id", id).eq("status", "waiting").in("id", waitIds)
+      : { data: [], error: null };
+    if (readError) return fail(dbErrorMessage(readError));
+    const received: string[] = [];
+    for (const r of rows ?? []) {
+      const { error } = await supabase.rpc("part_wait_receive", { p_wait: r.id, p_to_queue: false });
+      if (error) {
+        refresh(id);
+        return fail(`${received.length ? `Received: ${received.join(", ")}. ` : ""}${r.description as string} could not be marked received: ${dbErrorMessage(error)}`);
+      }
+      received.push(r.description as string);
+    }
+    const got = received.length ? `Part received: ${received.join(", ")}. ` : "";
+    if (then === "start") {
+      const started = await startJob({ workOrderId: id, editSeq });
+      refresh(id);
+      return started.ok ? ok(undefined, `${got}${started.message ?? "Job started."}`) : fail(`${got}${started.error}`);
+    }
+    const { data: wo } = await supabase.from("work_orders").select("scheduled_for").eq("id", id).maybeSingle();
+    const { today } = await businessToday();
+    const scheduled = (wo as { scheduled_for: string | null } | null)?.scheduled_for;
+    const to = scheduled && scheduled >= today ? "scheduled" : "triaged";
+    const { error } = await supabase.rpc("maintenance_set_status", { p_id: id, p_status: to, p_note: "Parts are in.", p_expected_seq: editSeq });
+    refresh(id);
+    if (error) return fail(`${got}${dbErrorMessage(error)}`);
+    return ok(undefined, `${got}The job is back in the shop queue.`);
   });
 }

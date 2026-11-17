@@ -406,13 +406,13 @@ export default async function DriverHomePage({ searchParams }: { searchParams: P
         {/* Each figure goes to its list (a real link, so a tap does what the card suggests). */}
         <Link href="#today-loads" className="block rounded-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
           <StatTile icon={<Truck />} tone="brand" label="Loads today" value={today.length} muted={today.length === 0} className="h-full">
-            <span className="text-muted"><span className="sr-only">{today.length} loads today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
+            <span className="text-muted"><span className="sr-only">{today.length} {today.length === 1 ? "load" : "loads"} today. </span>{later.length ? `${later.length} tomorrow` : "none tomorrow yet"}</span>
           </StatTile>
         </Link>
         {earlier.length > 0 ? (
           <Link href="#tickets-needed" className="block rounded-panel focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-strong">
-            <StatTile icon={<ClipboardCheck />} tone="amber" label="Tickets to enter" value={earlier.length} className="h-full">
-              <span className="text-muted"><span className="sr-only">{earlier.length} {words.many} to enter. </span>from earlier days</span>
+            <StatTile icon={<ClipboardCheck />} tone="amber" label={earlier.length === 1 ? "Ticket to enter" : "Tickets to enter"} value={earlier.length} className="h-full">
+              <span className="text-muted"><span className="sr-only">{earlier.length} {earlier.length === 1 ? words.one : words.many} to enter. </span>from earlier days</span>
             </StatTile>
           </Link>
         ) : (

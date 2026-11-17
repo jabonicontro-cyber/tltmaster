@@ -16,23 +16,23 @@ test("a driver records arrival and departure; dispatch sees the wait", async ({ 
   const site = card.getByRole("form", { name: "Job site times" });
   await expect(pickup).toContainText("Not arrived");
 
-  await pickup.getByRole("button", { name: "Arrived at pickup" }).click();
-  await expectToast(page, "Arrived pickup recorded.");
+  await pickup.getByRole("button", { name: "Record arrival at the pickup" }).click();
+  await expectToast(page, /^Arrival at the pickup saved: \d/);
   await expect(pickup).toContainText(/Arrived \d/);
-  await pickup.getByRole("button", { name: "Leaving pickup" }).click();
-  await expectToast(page, "Left pickup recorded.");
+  await pickup.getByRole("button", { name: "Record departure from the pickup" }).click();
+  await expectToast(page, /^Departure from the pickup saved: \d/);
   await expect(pickup).toContainText(/waited \d+ min/);
   await expect(pickup.getByRole("button")).toHaveCount(0);
-  await site.getByRole("button", { name: "Arrived at site" }).click();
-  await expectToast(page, "Arrived job site recorded.");
-  await expect(site.getByRole("button", { name: "Leaving site" })).toBeVisible();
+  await site.getByRole("button", { name: "Record arrival at the job site" }).click();
+  await expectToast(page, /^Arrival at the job site saved: \d/);
+  await expect(site.getByRole("button", { name: "Record departure from the job site" })).toBeVisible();
   // A wrong tap is taken back with Undo on the confirmation (10 seconds; 20261120011000), then tapped again.
-  await page.locator("[data-sonner-toast]").filter({ hasText: "Arrived job site recorded." }).getByRole("button", { name: "Undo" }).click();
+  await page.locator("[data-sonner-toast]").filter({ hasText: "Arrival at the job site saved" }).getByRole("button", { name: "Undo" }).click();
   await expectToast(page, "Arrived taken back.");
   await expect(site).toContainText("Not arrived");
-  await site.getByRole("button", { name: "Arrived at site" }).click();
-  await expectToast(page, "Arrived job site recorded.");
-  await expect(site.getByRole("button", { name: "Leaving site" })).toBeVisible();
+  await site.getByRole("button", { name: "Record arrival at the job site" }).click();
+  await expectToast(page, /^Arrival at the job site saved: \d/);
+  await expect(site.getByRole("button", { name: "Record departure from the job site" })).toBeVisible();
 
   const office = await browser.newPage();
   await signIn(office, "dispatcher");

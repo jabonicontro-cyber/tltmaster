@@ -11,7 +11,7 @@ import { cn } from "@/lib/cn";
 import { STOP_LABEL, minutesLabel, waitMinutes, type Stop } from "@/lib/dispatch/wait-times";
 import { announceOutbox, enqueue, isNetworkError, takeBackQueued } from "@/lib/offline/store";
 import { useOutbox } from "@/components/companion/offline-support";
-import { stopButtonLabel } from "@/lib/driver/my-day";
+import { refreshAfterAction } from "@/lib/refresh-after-action";
 
 // Wait times (B111) on My Day: Arrived / Left at the pickup and the job site. Times are recorded when tapped.
 // A wrong tap can be taken back for 10 seconds (Undo on the confirmation): a tap still waiting on the phone is simply
@@ -23,6 +23,16 @@ export const STOP_UNDO_MS = 10_000;
 export interface StopState { stop: Stop; arrivedAt: string | null; departedAt: string | null; /** Shown for an order's stops (MK2), e.g. "1. Acme Steel". */ label?: string }
 
 const labelOf = (s: { stop: Stop; label?: string }) => s.label ?? (s.stop === "pickup" || s.stop === "site" ? STOP_LABEL[s.stop] : "Stop");
+
+/** The place in a sentence: "the pickup", "the job site", "stop 1. Acme Steel". */
+const placeOf = (s: { stop: Stop; label?: string }) => (s.label ? `stop ${s.label}` : s.stop === "pickup" ? "the pickup" : s.stop === "site" ? "the job site" : "this stop");
+
+/** The button says what tapping it does (walkthrough P8): "Record arrival", then "Record departure". */
+export const actionLabel = (event: "arrive" | "depart") => (event === "arrive" ? "Record arrival" : "Record departure");
+
+/** "Arrival at the pickup saved: 2:23 PM." */
+export const savedMessage = (event: "arrive" | "depart", place: string, at: string) =>
+  `${event === "arrive" ? "Arrival at" : "Departure from"} ${place} saved: ${at}.`;
 
 function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopState; timeZone: string; queue?: { userId: string; label: string } }) {
   const router = useRouter();
@@ -85,8 +95,13 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
     const u = last.current;
     const action = u ? { label: "Undo", onClick: () => void undo(u) } : undefined;
     if (r.message?.startsWith("Saved on this phone")) { toast.warning(r.message, { duration: STOP_UNDO_MS, action }); return; }
-    toast.success(r.message ?? "Recorded.", { duration: STOP_UNDO_MS, action });
-    router.refresh();
+    // Says what was saved and when (walkthrough P8), rather than "Arrived pickup recorded."
+    const at = new Date().toISOString();
+    toast.success(u ? savedMessage(u.event, placeOf(given), time(at)) : (r.message ?? "Saved."), { duration: STOP_UNDO_MS, action });
+    // Taviron confirmed it: the row shows it now, before My Day has been read again (walkthrough P9: a refresh of a
+    // long page can take seconds, and the row kept saying "Not arrived yet"). The time read back replaces it.
+    if (u) setKept((k) => ({ ...k, [u.event === "arrive" ? "arrivedAt" : "departedAt"]: at }));
+    refreshAfterAction(router);
   } });
   const time = (iso: string) => new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone }).format(new Date(iso));
   const event = !s.arrivedAt ? "arrive" : !s.departedAt ? "depart" : null;
@@ -101,7 +116,8 @@ function StopRow({ load, s: given, timeZone, queue }: { load: string; s: StopSta
         {s.departedAt ? ` · left ${time(s.departedAt)} · waited ${minutesLabel(waitMinutes(s))}` : ""}
       </span>
       {/* Glove-size target (UX6): at least 48 px tall and wide enough to hit from a cab. */}
-      {event && <Button type="submit" variant={event === "arrive" ? "secondary" : "primary"} loading={pending} className="min-h-12 min-w-28 text-base">{stopButtonLabel(s.stop, event)}</Button>}
+      {/* Worded as the action to take, not a status (walkthrough P8); the place is in the button's name too. */}
+      {event && <Button type="submit" variant={event === "arrive" ? "secondary" : "primary"} loading={pending} className="min-h-12 min-w-28 text-base" aria-label={`${actionLabel(event)} ${event === "arrive" ? "at" : "from"} ${placeOf(s)}`}>{actionLabel(event)}</Button>}
       <FormError message={formError} />
     </form>
   );

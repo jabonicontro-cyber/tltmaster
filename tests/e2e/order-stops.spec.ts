@@ -70,10 +70,10 @@ test("the office lists stops and the driver and dispatcher see them", async ({ b
     // Arrived and Left are recorded at each stop (MK2 slice 2), not just at the pickup and job site.
     await expect(driver.getByRole("form", { name: "Job site times" })).toHaveCount(0);
     const first = driver.getByRole("form", { name: "1. Acme Steel (e2e) times" }).first();
-    await first.getByRole("button", { name: "Arrived" }).click();
-    await expectToast(driver, "Arrived stop recorded.");
+    await first.getByRole("button", { name: /^Record arrival/ }).click();
+    await expectToast(driver, /^Arrival at stop 1\. Acme Steel \(e2e\) saved: \d/);
     await expect(first.getByText(/^Arrived \d/)).toBeVisible();
-    await expect(driver.getByRole("form", { name: "2. Lakeside Build (e2e) times" }).first().getByRole("button", { name: "Arrived" })).toBeVisible();
+    await expect(driver.getByRole("form", { name: "2. Lakeside Build (e2e) times" }).first().getByRole("button", { name: /^Record arrival/ })).toBeVisible();
 
     // Removing them all brings the job site back on the driver's card.
     await office.getByRole("button", { name: "Edit stops" }).click();

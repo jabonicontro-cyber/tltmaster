@@ -3,13 +3,16 @@ import type { Stop } from "@/lib/dispatch/wait-times";
 //
 // Two things are kept on the driver's phone, both under the signed-in person's id and both removed at sign-out:
 //   * the day: today's loads as last read from Taviron, shown offline with the time they were read;
-//   * the outbox: tickets, inspections and Arrived/Left taps made without signal, sent in order once signal returns.
+//   * the outbox: tickets, inspections, problem reports and Arrived/Left taps made without signal, sent in order once
+//     signal returns (problem reports: walkthrough P1, 2026-11-16).
 // Nothing here is trusted by the server: every queued item goes through the same server action and database checks as
-// a live one, with an idempotency key so a retry never records twice. Photos are never queued (they need signal).
+// a live one, with an idempotency key so a retry never records twice. Photos of a queued ticket or report (P2) are kept
+// beside the queue as small JPEGs under the same person, uploaded before their item is sent (a ticket's with its own
+// upload key, so a retry never stores a second copy), and removed at sign-out with everything else.
 //
 // Browser storage can be missing or refuse writes (private mode, full disk); every call is wrapped and reports it.
 
-export type OutboxKind = "ticket" | "inspection" | "stop";
+export type OutboxKind = "ticket" | "inspection" | "stop" | "report";
 
 export interface OutboxItem {
   /** Also the idempotency key sent with the item. */
@@ -19,6 +22,8 @@ export interface OutboxItem {
   /** What the driver sees in the list, e.g. "Ticket for ORD-1042 load 2". */
   label: string;
   payload: Record<string, unknown>;
+  /** Photos kept on the phone for this item (keys into the photo store), still to be uploaded. */
+  photos?: string[];
   createdAt: string;
   /** waiting: sends when signal returns; failed: Taviron refused it (message kept), the driver decides. */
   status: "waiting" | "failed";
@@ -61,6 +66,7 @@ export interface DaySnapshot {
 
 const DAY_KEY = "taviron-offline-day";
 const OUTBOX_KEY = "taviron-offline-outbox";
+const PHOTOS_KEY = "taviron-offline-photos";
 /** A saved day is not shown after this long: it would mislead more than it helps. */
 export const SNAPSHOT_MAX_AGE_MS = 18 * 60 * 60_000;
 
@@ -127,14 +133,74 @@ export function enqueue(item: Omit<OutboxItem, "status" | "createdAt"> & { creat
   return write(OUTBOX_KEY, [...all, { ...item, createdAt: item.createdAt ?? new Date().toISOString(), status: "waiting" }], s);
 }
 
+/** A photo kept on the phone for a queued item: a JPEG as a data URL, for the person who took it. */
+export interface StoredPhoto { key: string; userId: string; data: string }
+
+function readPhotos(s?: Store): StoredPhoto[] {
+  return read<StoredPhoto[]>(PHOTOS_KEY, s) ?? [];
+}
+
+/** One kept photo by its key, for this person only; null when it is gone. */
+export function readPhoto(key: string, userId: string, s?: Store): StoredPhoto | null {
+  return readPhotos(s).find((p) => p.key === key && p.userId === userId) ?? null;
+}
+
+function dropPhotos(keys: readonly string[], s?: Store): void {
+  if (!keys.length) return;
+  const all = readPhotos(s);
+  if (!all.some((p) => keys.includes(p.key))) return;
+  const left = all.filter((p) => !keys.includes(p.key));
+  if (left.length) {
+    write(PHOTOS_KEY, left, s);
+    return;
+  }
+  try {
+    storage(s)?.removeItem(PHOTOS_KEY);
+  } catch {
+    /* nothing stored */
+  }
+}
+
+/**
+ * Queue an item with its photos (P2): the photos are kept first, then the item. If the phone refuses either (storage
+ * full, private mode) nothing is kept and false is returned, so the form says so instead of losing them quietly.
+ */
+export function enqueueWithPhotos(
+  item: Omit<OutboxItem, "status" | "createdAt" | "photos"> & { createdAt?: string },
+  photos: ReadonlyArray<{ key: string; data: string }>,
+  s?: Store,
+): boolean {
+  if (!photos.length) return enqueue(item, s);
+  const outbox = read<OutboxItem[]>(OUTBOX_KEY, s) ?? [];
+  if (outbox.some((i) => i.id === item.id)) return true; // the same form twice: one item
+  const all = readPhotos(s);
+  const fresh = photos.filter((p) => !all.some((x) => x.key === p.key));
+  if (!write(PHOTOS_KEY, [...all, ...fresh.map((p) => ({ key: p.key, userId: item.userId, data: p.data }))], s)) return false;
+  const ok = write(OUTBOX_KEY, [...outbox, { ...item, photos: photos.map((p) => p.key), createdAt: item.createdAt ?? new Date().toISOString(), status: "waiting" }], s);
+  if (!ok) dropPhotos(fresh.map((p) => p.key), s);
+  return ok;
+}
+
 export function updateItem(id: string, patch: Partial<Pick<OutboxItem, "status" | "error">>, s?: Store): void {
   const all = read<OutboxItem[]>(OUTBOX_KEY, s) ?? [];
   write(OUTBOX_KEY, all.map((i) => (i.id === id ? { ...i, ...patch } : i)), s);
 }
 
+/** Removes the item and the photos kept for it (sent, or deleted by the driver). */
 export function removeItem(id: string, s?: Store): void {
   const all = read<OutboxItem[]>(OUTBOX_KEY, s) ?? [];
   write(OUTBOX_KEY, all.filter((i) => i.id !== id), s);
+  dropPhotos(all.find((i) => i.id === id)?.photos ?? [], s);
+}
+
+/**
+ * Photos of a queued item that reached Taviron (P2): they leave the phone, and the item keeps what Taviron gave back
+ * (the ticket's photo ids, in its payload), so a retry after a lost connection never uploads them again.
+ */
+export function photosSent(id: string, keys: readonly string[], payload: Record<string, unknown>, s?: Store): void {
+  const all = read<OutboxItem[]>(OUTBOX_KEY, s) ?? [];
+  write(OUTBOX_KEY, all.map((i) => (i.id === id ? { ...i, payload, photos: (i.photos ?? []).filter((k) => !keys.includes(k)) } : i)), s);
+  dropPhotos(keys, s);
 }
 
 /**
@@ -153,6 +219,7 @@ export function clearOffline(s?: Store): void {
     const st = storage(s);
     st?.removeItem(DAY_KEY);
     st?.removeItem(OUTBOX_KEY);
+    st?.removeItem(PHOTOS_KEY);
   } catch {
     /* nothing stored */
   }
@@ -180,6 +247,17 @@ export function outboxTime(iso: string, timeZone?: string | null): string {
 }
 
 export type SendOutcome = { sent: true } | { sent: false; network: true } | { sent: false; network: false; error: string };
+
+/**
+ * What the driver is told once queued items reach the office (P3), e.g. "Sent to the office: Ticket for ORD-1042
+ * load 2." Several at once are counted, with the first three named.
+ */
+export function sentSummary(labels: readonly string[]): string {
+  if (!labels.length) return "";
+  if (labels.length === 1) return `Sent to the office: ${labels[0]}.`;
+  const more = labels.length > 3 ? `, and ${labels.length - 3} more` : "";
+  return `${labels.length} items saved on this phone were sent to the office: ${labels.slice(0, 3).join("; ")}${more}.`;
+}
 
 /**
  * Send what is waiting for this person, oldest first, through `send` (the same server actions as a live item). Stops at

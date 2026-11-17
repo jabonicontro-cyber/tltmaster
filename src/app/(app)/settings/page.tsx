@@ -61,6 +61,8 @@ import { Field, Input, Select, Textarea } from "@/components/ui/form";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { ShiftOfferModeForm } from "@/components/schedule/shift-offers";
 import { getSay } from "@/server/industry";
+import { settingsShownTo } from "@/components/layout/nav";
+import { isDriverOnly, signInHome } from "@/lib/companion";
 
 const BASE_SAVED: Record<string, string> = {
   created: "Base added.",
@@ -121,6 +123,9 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   if (rawTab === "users") redirect("/employees?view=access");
   // My account is the profile page now (the profile menu's My profile).
   if (rawTab === "account") redirect("/profile");
+  // Not a driver's or a mechanic's page (walkthrough P14, owner 2026-11-12): a driver-only or mechanic-only login goes
+  // to its own start page. This only narrows what is shown; database rules are unchanged.
+  if (!settingsShownTo(access.permissions)) redirect(isDriverOnly(access.permissions) ? "/driver" : (signInHome(access.permissions) ?? "/command-center"));
   const tabs = TABS.filter((t) => t.visible(access));
   const tab = tabs.find((t) => t.key === rawTab)?.key ?? "company";
   const group = TABS.find((t) => t.key === tab)!.group;

@@ -19,8 +19,13 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   const truck = form.getByLabel("Truck");
   if (await truck.count()) await truck.selectOption({ label: `Truck ${f.myTruck}` });
   await form.getByRole("button", { name: "Save inspection" }).click();
-  await expect(form.getByText(/Mark every item OK or Defect \(16 left\)/)).toBeVisible();
+  // Walkthrough P5: what is left is said next to Save, in view, counts down, and the screen goes to the first item.
+  const left = form.getByTestId("inspection-left");
+  await expect(left).toHaveText(/^16 items are not marked yet/);
+  await expect(form.getByRole("group", { name: "Service brakes" }).getByRole("button", { name: "OK" })).toBeFocused();
+  await expect(form.getByRole("listitem").filter({ hasText: "Service brakes" }).getByText("Not marked yet")).toBeInViewport();
   await form.getByRole("group", { name: "Windshield wipers" }).getByRole("button", { name: "Defect" }).click();
+  await expect(left).toHaveText(/^15 items are not marked yet/);
   await form.getByLabel("What is wrong with windshield wipers").fill("Driver-side blade streaking (test)");
   // UX9: a dump truck also checks the dump body, and a defect can carry photos for the shop.
   await expect(form.getByRole("group", { name: "Hoist and dump body" })).toBeVisible();
@@ -34,7 +39,7 @@ test("a driver records a pre-trip and a post-trip; defects reach the shop and th
   await expect(page.getByText("Post-trip inspection", { exact: true })).toBeVisible({ timeout: 20_000 });
   await page.getByText("Post-trip inspection", { exact: true }).click();
   const post = page.getByRole("form", { name: "Vehicle inspection" });
-  await expect(post.locator("#insp-kind")).toHaveValue("post_trip");
+  await expect(post.getByLabel("Inspection", { exact: true })).toHaveValue("post_trip");
   await post.getByRole("group", { name: "Service brakes" }).getByRole("button", { name: "Defect" }).click();
   await post.getByLabel("What is wrong with service brakes").fill("Air leak at the rear chamber (test)");
   await expect(post.getByText("A safety defect takes this truck out of service")).toBeVisible();

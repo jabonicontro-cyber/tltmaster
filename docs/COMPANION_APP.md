@@ -66,20 +66,26 @@ bar in `src/components/layout/app-shell.tsx`, and the My Day additions in `src/a
     `/offline`, which shows that day headed "Your day as of 9:42. No connection: this may be out of date — check with
     dispatch before acting on it". A saved day older than 18 hours is not shown. The service worker never stores it;
     the page as served carries no company data.
-  - *Queued sends.* Without signal, a delivery ticket (without photos — photos need signal), an inspection and an
-    Arrived/Left tap are saved on the phone ("Saved on this phone — not sent yet") and listed under **Waiting to send**.
-    They are sent, oldest first, as soon as there is signal (on My Day: on load, when the phone comes back online, and
-    every 20 seconds). Each goes through the same server action and database checks as a live one. Tickets keep their
-    submission key, so a retry never creates a second ticket. Taps keep the time they were tapped
-    (`load_stop_mark_at`: at most 16 hours back, never in the future, Left never before Arrived). Inspections keep
-    their day (today or yesterday only).
+  - *Queued sends.* Without signal, a delivery ticket, a problem report (breakdown, delay and the other report kinds;
+    walkthrough P1, 2026-11-16), an inspection and an Arrived/Left tap are saved on the phone ("Saved on this phone,
+    not sent yet") and listed under **Waiting to send**. The offline page offers **Report a problem** on each saved
+    load. Photos of a queued ticket or report wait with it (P2): shrunk to a small JPEG (`src/lib/files/phone-photo.ts`)
+    and kept beside the queue under the same person; if the phone has no room, the driver is told (a report is then
+    kept without its photos). They are sent, oldest first, as soon as there is signal (on My Day: on load, when the
+    phone comes back online, and every 20 seconds); a ticket's photos are uploaded first with their own upload keys,
+    a report's right after the report, so a retry never stores a second copy. Each goes through the same server action
+    and database checks as a live one. Tickets and reports keep their submission key, so a retry never creates a second
+    one; a queued report says when it was written. Taps keep the time they were tapped (`load_stop_mark_at`: at most
+    16 hours back, never in the future, Left never before Arrived). Inspections keep their day (today or yesterday
+    only). Once items reach the office the driver is told what was sent (P3: a message on My Day, or the banner when
+    the offline page reopens My Day).
   - *Refusals.* If Taviron refuses an item (for example a delivery time in the future), it stays under Waiting to send
     with the reason until the driver deletes it. It is never dropped silently.
-  - *Sign-out.* Sign-out removes the saved day and the queue. If anything is still waiting, the driver is told how
+  - *Sign-out.* Sign-out removes the saved day, the queue and the photos kept with it. If anything is still waiting, the driver is told how
     many items will be deleted first. Items belong to the person who made them and are never sent under someone
     else's sign-in.
-  - *Not offline.* Messages, photos, field reports, fuel and trip sheets, time off and anything for another day still
-    need signal. Proof of delivery at a stop (MK2, 2026-11-14) too: without signal nothing is sent, the stop says
+  - *Not offline.* Messages, inspection defect photos, fuel and trip sheets, time off and anything for another day
+    still need signal. Proof of delivery at a stop (MK2, 2026-11-14) too: without signal nothing is sent, the stop says
     "Not sent: no signal", and the photo waits on that screen (not saved on the phone) to go with Retry or as soon as
     the phone is back online; a retry reuses its upload key, so Taviron never keeps a second copy.
 - **Signing in without typing (DS1):** the office shows a one-time QR code (Fleet → a driver); the phone's camera opens

@@ -11,7 +11,7 @@ import { ticketRef } from "@/lib/driver/my-day";
 export const metadata = { title: "Report a problem" };
 
 export default async function DriverReportPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ ticket?: string }> }) {
-  await requirePagePermission("driver.portal");
+  const access = await requirePagePermission("driver.portal");
   const { id } = await params;
   // "Something wrong? Tell the office" on a sent ticket: the ticket number is filled in, only if it is on this load.
   const form = await loadAssignmentForm(id);
@@ -30,7 +30,9 @@ export default async function DriverReportPage({ params, searchParams }: { param
     <div className="mx-auto max-w-xl">
       <h1 className="text-2xl font-black">{ticket ? `Problem with ticket ${ticket}` : "Report a problem"}</h1>
       <p className="mb-4 text-muted">{f.order.number} · load {f.load.number} · {formatDate(f.load.date)}</p>
-      <FieldReportForm assignmentId={f.assignment_id} truck={f.truck} trailer={f.trailer} ticket={ticket} />
+      {/* Without signal the report waits on the phone and sends itself later (walkthrough P1). */}
+      <FieldReportForm assignmentId={f.assignment_id} truck={f.truck} trailer={f.trailer} ticket={ticket}
+        queue={{ userId: access.userId, label: `${f.order.number} load ${f.load.number}`, timeZone: f.timezone }} />
     </div>
   );
 }
