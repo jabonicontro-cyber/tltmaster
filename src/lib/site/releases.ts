@@ -28,6 +28,47 @@ export interface ReleaseHighlight {
 
 export const RELEASES: ReleaseHighlight[] = [
   {
+    id: "portal-delivery-tickets",
+    title: "Delivery tickets in the customer portal",
+    summary: "Your customers find their own delivery tickets in the portal, grouped by day, and download them as a spreadsheet.",
+    benefits: [
+      "Every ticket of the customer's own orders, newest first, by delivery day",
+      "Job site, material, quantity and whether the office has confirmed it",
+      "Filter by dates or job site, then download exactly that list as CSV",
+      "Each ticket opens a printable customer copy, with its photos once confirmed",
+    ],
+    limitations: [
+      "Shown when the company turns on documents in its portal",
+      "Up to 500 tickets per view; the page says when there are more",
+      "No driver, truck or review details are shown to customers",
+    ],
+    releasedOn: "2026-11-09",
+    evidence: ["/customer-portal"],
+    image: null,
+    status: "published",
+    approval: { by: "Owner", on: "2026-11-17" },
+  },
+  {
+    id: "portal-invoices-and-statement",
+    title: "Invoices and a statement in the customer portal",
+    summary: "Customers read their issued invoices, what was paid and what is still owed, with a statement by age.",
+    benefits: [
+      "The customer's own issued invoices, with payments and the balance",
+      "A printable copy of each invoice",
+      "A statement with the balance by age: not yet due, 1 to 30, 31 to 60, 61 to 90 and over 90 days",
+      "Today's planned loads and delivered tickets on the portal home",
+    ],
+    limitations: [
+      "Read-only: no online payment",
+      "Only when the company issues its invoices in Taviron and turns on documents in its portal",
+    ],
+    releasedOn: "2026-11-04",
+    evidence: ["/customer-portal"],
+    image: null,
+    status: "published",
+    approval: { by: "Owner", on: "2026-11-17" },
+  },
+  {
     id: "weather-at-bases-and-sites",
     title: "Weather where your trucks are going",
     summary: "The Command Center opens with the weather now at your bases and any National Weather Service alert at today's delivery sites.",

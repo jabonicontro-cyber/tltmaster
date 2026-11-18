@@ -11,11 +11,11 @@ import { adminAvailable, createAdminClient } from "@/server/supabase/admin";
 import { safeNextPath } from "@/lib/safe-redirect";
 import { fail, ok, type ActionResult } from "@/lib/action-result";
 import { isPortalSlug, isPortalToken, supportFormErrors } from "@/lib/portal";
-import { signInAddress } from "@/lib/usernames";
-import { portalError } from "@/server/portal";
+import { isUsernameEmail, signInAddress } from "@/lib/usernames";
+import { portalError, portalPublic } from "@/server/portal";
 import { getEmailMode } from "@/server/email/provider";
 import { env } from "@/server/env";
-import { forgetPendingPortalInvite, rememberPendingPortalInvite } from "@/server/portal-invite";
+import { PORTAL_RETURN, forgetPendingPortalInvite, rememberPendingPortalInvite } from "@/server/portal-invite";
 
 // Customer portal actions (B66). Each one passes only the slug and the record the customer chose; the database
 // functions decide whether this signed-in customer may act on it. A refusal returns the database's own message only
@@ -57,6 +57,62 @@ export async function signInToPortal(formData: FormData): Promise<ActionResult> 
   const base = `/portal/${slug}`;
   const next = safeNextPath(String(formData.get("next") ?? ""), base);
   redirect(next === base || next.startsWith(`${base}/`) ? next : base);
+}
+
+const resetEmail = z.email("Enter the email address you sign in with.");
+
+/**
+ * "Forgot your password?" on a portal's sign-in page (owner 2026-11-17, master plan §12 PR1): for accounts invited by
+ * email. Supabase Auth emails its own reset link (the same template and link as the app's reset); the person chooses
+ * a new password and comes back to this portal. The answer is the same whether or not the address has a sign-in here,
+ * and a failed send is only logged, so nobody can learn who has an account. A username has no mailbox: it keeps
+ * "ask the company", with that reason. Requests per address are limited like failed sign-ins (8 in 15 minutes).
+ * Portal accounts stay what they are (not memberships); only the password changes.
+ */
+export async function requestPortalPasswordReset(formData: FormData): Promise<ActionResult> {
+  const slug = slugOf(formData);
+  const card = await portalPublic(slug);
+  if (!card) return fail("This portal is not available.");
+  const raw = String(formData.get("email") ?? "").trim();
+  const usernameReason = `A username has no email address, so no reset link can be sent to it. Ask ${card.name} for a new sign-in. Nobody there can see your password.`;
+  if (raw && !raw.includes("@")) return fail(usernameReason, { email: "This looks like a username." });
+  const parsed = resetEmail.safeParse(raw);
+  if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the email address.", { email: "Enter an email address." });
+  const email = parsed.data.toLowerCase();
+  if (isUsernameEmail(email)) return fail(usernameReason);
+  if (card.is_demo) return fail("This is a demo company: its portal does not send email. Nothing was sent.");
+  const limitKey = `portal-reset:${email}`;
+  if (!(await signInAllowed(limitKey))) return fail("Too many reset requests for this email. Wait 15 minutes and try again.");
+  await recordSignInFailure(limitKey);
+  // Back to this portal after the new password is saved (same browser). Set for every request, so the answer never
+  // differs between an address with a sign-in and one without.
+  (await cookies()).set(PORTAL_RETURN, slug, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 3600, path: "/" });
+  if (await hasPortalSignIn(slug, email)) {
+    const supabase = await createClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${env().APP_BASE_URL}/auth/confirm?next=/update-password` });
+    if (error) console.warn("Portal password reset email failed", { status: error.status, code: error.code });
+  }
+  return ok(undefined, `If ${email} has a sign-in for this portal, a link to choose a new password is on its way. It can take a few minutes; check the spam folder too.`);
+}
+
+/**
+ * Does this portal have an active sign-in for this email (invited by email and accepted)? Read with the service key
+ * because the person is signed out; only a yes or no is used, and it is never shown. Without the key the reset is sent
+ * as the app's own reset does (Supabase sends nothing to an address without an account).
+ */
+async function hasPortalSignIn(slug: string, email: string): Promise<boolean> {
+  if (!adminAvailable()) return true;
+  const admin = createAdminClient();
+  const { data: company } = await admin.from("companies").select("id").eq("slug", slug).eq("active", true).maybeSingle();
+  if (!company) return false;
+  const { data } = await admin
+    .from("portal_accounts")
+    .select("email, user_id")
+    .eq("company_id", (company as { id: string }).id)
+    .eq("status", "active")
+    .not("user_id", "is", null)
+    .ilike("email", email.replace(/[\\%_]/g, (c) => `\\${c}`));
+  return ((data ?? []) as Array<{ email: string }>).some((a) => a.email.toLowerCase() === email);
 }
 
 export async function signOutOfPortal(formData: FormData) {

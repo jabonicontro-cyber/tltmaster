@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { useFormAction } from "@/components/ui/use-form-action";
 import { PhotoPicker, uploadPhotos } from "@/components/ui/photo-picker";
 import { checkSupportFiles, SUPPORT_ACCEPT, SUPPORT_KINDS, SUPPORT_MAX_FILES } from "@/lib/support";
 import { supportFormErrors } from "@/lib/portal";
-import { acceptPortalInvite, requestPortalAccount, createSupportRequest, replyToSupport, releasePortalTruck, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
+import { acceptPortalInvite, requestPortalAccount, requestPortalPasswordReset, createSupportRequest, replyToSupport, releasePortalTruck, requestQuote, respondToQuote, signInToPortal, voteOnArticle } from "@/app/portal/actions";
 
 export function PortalLoginForm({ slug, next, company }: { slug: string; next?: string; company: string }) {
   const { pending, onSubmit, formError } = useFormAction(signInToPortal);
@@ -34,13 +35,45 @@ export function PortalLoginForm({ slug, next, company }: { slug: string; next?: 
       <Button type="submit" className="w-full" size="lg" loading={pending}>
         {pending ? "Signing in…" : "Sign In"}
       </Button>
+      <p className="text-center text-sm">
+        <Link href={`/portal/${slug}/forgot-password`} className="inline-flex min-h-11 items-center font-semibold text-brand-fg hover:underline">
+          Forgot your password?
+        </Link>
+      </p>
       <details className="rounded-xl bg-surface p-3 text-sm text-ink">
-        <summary className="cursor-pointer font-semibold">First time signing in, or forgot your password?</summary>
+        <summary className="cursor-pointer font-semibold">First time signing in, or signing in with a username?</summary>
         <ul className="mt-2 list-disc space-y-1 pl-5 text-muted">
           <li>If {company} gave you a username and a temporary password, type them here. You will then create your own password.</li>
-          <li>Forgot your password, or the temporary one expired? Ask {company} for a new sign-in. Nobody there can see your password.</li>
+          <li>Forgot the password of a username, or the temporary one expired? Ask {company} for a new sign-in: a username has no email address to send a reset link to. Nobody there can see your password.</li>
         </ul>
       </details>
+    </form>
+  );
+}
+
+/** Portal "Forgot your password?" (PR1): an email gets a reset link; a username is told to ask the company, and why. */
+export function PortalForgotPasswordForm({ slug, company }: { slug: string; company: string }) {
+  const { pending, onSubmit, formError, fieldError, result } = useFormAction(requestPortalPasswordReset);
+  return (
+    <form onSubmit={onSubmit} className="space-y-4" noValidate>
+      <FormError message={formError} />
+      {result?.ok ? (
+        <div role="status" className="rounded-xl bg-surface px-3 py-2 text-sm text-ink">
+          {result.message}
+        </div>
+      ) : null}
+      <input type="hidden" name="slug" value={slug} />
+      <Field label="Email" htmlFor="email" error={fieldError("email")} hint={`The email ${company} invited you with.`}>
+        <Input id="email" name="email" type="text" inputMode="email" autoComplete="email" autoCapitalize="none" autoCorrect="off" spellCheck={false} required autoFocus className="h-12 text-base" />
+      </Field>
+      <Button type="submit" className="w-full" size="lg" loading={pending}>
+        {pending ? "Sending…" : "Email Me a Reset Link"}
+      </Button>
+      <p className="text-center text-sm">
+        <Link href={`/portal/${slug}/login`} className="inline-flex min-h-11 items-center text-muted hover:text-ink hover:underline">
+          Back to sign in
+        </Link>
+      </p>
     </form>
   );
 }

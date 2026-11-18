@@ -1,7 +1,8 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { addDays, todayIn } from "@/lib/dates";
-import { ensureColbySamples } from "./prairie-lantern-colby";
+import { CAM_WEBSTER, COLBY_CUSTOMERS, ensureColbySamples } from "./prairie-lantern-colby";
+import { duplicateNotes, removeDuplicateSamples } from "./duplicates";
 import { PRAIRIE_LANTERN_LOCATIONS, ensureDemoLocations } from "./locations";
 import { ensureFeatureSamples } from "./samples";
 import { CUSTOMERS, DRIVERS, PRAIRIE_LANTERN, seedCommunicationSamples, STAFF, TRAILERS, TRUCKS } from "./prairie-lantern";
@@ -50,6 +51,13 @@ export interface RefreshResult { added: number; loads: number; notes?: string[] 
 export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.timeZone): Promise<RefreshResult> {
   const today = todayIn(timeZone);
   let added = 0;
+
+  // Exact copies of sample customers and people left by an early first-fill race (DP2, owner 2026-11-17): removed first,
+  // keeping the older row; a copy with records of its own stays. Demo companies only (the database refuses others).
+  const duplicates = await removeDuplicateSamples(db, {
+    customers: [...CUSTOMERS, ...COLBY_CUSTOMERS].map((c) => c.name),
+    people: [...STAFF.map((s) => s.full_name), ...DRIVERS, CAM_WEBSTER.name],
+  });
 
   // --- Sample records missing from the current set -------------------------------------------
   const existingCustomers = (await must("customers", db.from("customers").select("id, name"))) as Array<{ id: string; name: string }>;
@@ -180,5 +188,5 @@ export async function refreshPrairieLantern(db: Db, timeZone = PRAIRIE_LANTERN.t
   // Existing demos receive every released feature's samples (only those the demo has none of yet).
   const samples = await ensureFeatureSamples(db, today);
   added += samples.added;
-  return { added, loads, notes: samples.notes };
+  return { added, loads, notes: [...duplicateNotes(duplicates), ...(samples.notes ?? [])] };
 }
