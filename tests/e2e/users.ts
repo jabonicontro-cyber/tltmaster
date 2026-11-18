@@ -16,6 +16,8 @@ export const USERS = {
   // Workflow modules (MOD1, tests/e2e/modules.spec.ts): a second owner of the second company, so switching its modules
   // and its sessions never touch the users other specs sign in with at the same time.
   modulesOwner: { email: "e2e-modules-owner@brooksidetest.example", name: "Mo Modules", role: "owner", company: OTHER_COMPANY.slug },
+  // Office staff of the second company: enters tickets there while it runs "Tickets to billing" (modules.spec.ts).
+  modulesOffice: { email: "e2e-modules-office@brooksidetest.example", name: "Olive Office", role: "office", company: OTHER_COMPANY.slug },
 } as const;
 
 export type UserKey = keyof typeof USERS;

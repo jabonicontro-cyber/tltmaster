@@ -150,6 +150,91 @@ describe("tickets without dispatch", () => {
     });
   });
 
+  // Financial review 2026-11-18 (M): with Dispatch on, every delivery for a customer on credit hold goes through
+  // assign_load, which needs a reason and records it (20261120016300). Without Dispatch the job and each ticket do.
+  it("a customer on credit hold needs a reason for a new job and for each ticket, recorded with the audit event", async () => {
+    await withSession(async (s) => {
+      const owner = await s.createUser("owner");
+      const office = await s.createUser("office");
+      const dispatcher = await s.createUser("dispatcher");
+      const today = await businessToday(s);
+      const ids = await sampleIds(s);
+      await s.as(owner);
+      await s.query("select public.set_company_modules(private.module_preset('tickets_to_billing'))");
+      const holdError = async (p: Promise<unknown>) => {
+        try {
+          await p;
+        } catch (e) {
+          const err = e as { code?: string; hint?: string; message?: string };
+          return { code: err.code, hint: err.hint, message: err.message ?? "" };
+        }
+        throw new Error("Expected the query to fail, but it succeeded");
+      };
+      const overrides = async () => {
+        await s.asAdmin();
+        return (await s.query<{ context: string; entity_id: string; reason: string; hold_reasons: string[]; created_by: string }>(
+          "select context, entity_id, reason, hold_reasons, created_by from public.credit_hold_overrides where company_id = $1 and customer_id = $2 order by created_at, reason",
+          [TOP_LINE, ids.customerId])).rows;
+      };
+
+      // Not on hold: unchanged, no reason asked and nothing recorded.
+      const plain = await job(s, office, today);
+      await s.as(office);
+      await rpc(s, "submit_ticket_without_dispatch", ticket(plain.order_id, plain.order_line_id, today));
+      expect(await overrides()).toEqual([]);
+
+      await s.query("update public.customers set credit_hold = true, credit_hold_reason = 'Two invoices late (test)' where id = $1", [ids.customerId]);
+
+      // A new job: refused without a reason (or with one under 3 characters), and for someone who cannot change orders.
+      const newJob = (reason?: string) => rpc<{ order_id: string; order_line_id: string; order_number: string }>(s, "create_ticket_job", JSON.stringify({
+        customer_id: ids.customerId, site_label: "Held job (test)", project_name: "Held job", delivered_date: today,
+        lines: [{ kind: "material", calc_method: "per_unit", material_id: ids.gravelId, description: "Gravel #53", unit_code: "ton", quantity: "30", unit_rate_cents: 1000, taxable: true }],
+        ...(reason === undefined ? {} : { credit_reason: reason }),
+      }));
+      await s.as(office);
+      expect(await holdError(newJob())).toMatchObject({ code: "22023", hint: "credit_hold" });
+      expect(await holdError(newJob("ok"))).toMatchObject({ code: "22023", hint: "credit_hold" });
+      await s.as(dispatcher);
+      expect((await holdError(newJob("Owner approved by phone"))).code).toBe("42501");
+      await s.as(office);
+      const held = await newJob("Owner approved by phone");
+      expect(await overrides()).toEqual([
+        { context: "order", entity_id: held.order_id, reason: "Owner approved by phone", hold_reasons: ["manual"], created_by: office },
+      ]);
+
+      // Each ticket: refused without a reason, entered with one; the reason and the audit event are written with it.
+      await s.as(dispatcher);
+      expect(await holdError(rpc(s, "submit_ticket_without_dispatch", ticket(held.order_id, held.order_line_id, today)))).toMatchObject({ code: "22023", hint: "credit_hold" });
+      expect(await holdError(rpc(s, "submit_ticket_without_dispatch", ticket(plain.order_id, plain.order_line_id, today, { credit_reason: "  " })))).toMatchObject({ code: "22023", hint: "credit_hold" });
+      const key = randomUUID();
+      const t = await rpc<{ ticket_id: string; created: boolean }>(s, "submit_ticket_without_dispatch",
+        ticket(held.order_id, held.order_line_id, today, { submission_key: key, credit_reason: "Payment promised Friday" }));
+      expect(t.created).toBe(true);
+      const recorded = await overrides();
+      expect(recorded).toHaveLength(2);
+      expect(recorded[1]).toEqual({ context: "order", entity_id: held.order_id, reason: "Payment promised Friday", hold_reasons: ["manual"], created_by: dispatcher });
+      const events = (await s.query<{ actor_id: string; summary: string; details: J }>(
+        "select actor_id, summary, details from public.audit_events where action = 'customer.credit_override' and entity_id = $1", [ids.customerId])).rows;
+      expect(events).toHaveLength(2);
+      expect(events.map((e) => e.actor_id).sort()).toEqual([office, dispatcher].sort());
+      const ticketEvent = events.find((e) => e.actor_id === dispatcher)!;
+      expect(ticketEvent.summary).toMatch(/Payment promised Friday/);
+      expect(ticketEvent.details).toMatchObject({ context: "order", entity_id: held.order_id, ticket_id: t.ticket_id, source: "without_dispatch", hold_reasons: ["manual"] });
+
+      // A retry of the same submission returns the ticket without recording the reason again.
+      await s.as(dispatcher);
+      const again = await rpc<{ ticket_id: string; created: boolean }>(s, "submit_ticket_without_dispatch", ticket(held.order_id, held.order_line_id, today, { submission_key: key }));
+      expect(again).toMatchObject({ ticket_id: t.ticket_id, created: false });
+      expect(await overrides()).toHaveLength(2);
+
+      // Released: no reason needed again, nothing more recorded.
+      await s.query("update public.customers set credit_hold = false where id = $1", [ids.customerId]);
+      await s.as(office);
+      await rpc(s, "submit_ticket_without_dispatch", ticket(held.order_id, held.order_line_id, today));
+      expect(await overrides()).toHaveLength(2);
+    });
+  });
+
   it("needs tickets.edit, stays in the caller's company, and a ticket without a driver is not payable", async () => {
     await withSession(async (s) => {
       const owner = await s.createUser("owner");

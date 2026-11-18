@@ -13,12 +13,19 @@
 --     empty (check constraint): every ticket of a company that dispatches keeps every existing rule. A new one is
 --     written only by submit_ticket_without_dispatch, and the database refuses it while the company has Dispatch on.
 --   * Payroll pays tickets with a driver only (unchanged query): a ticket without a driver is simply not payable.
+--   * Credit holds (B128, financial review L2) apply as with Dispatch on, where every delivery for a customer on hold
+--     goes through assign_load: submit_ticket_without_dispatch and create_ticket_job refuse a customer on hold without
+--     a reason of at least 3 characters (payload credit_reason; hint 'credit_hold'), and with one they write the
+--     credit_hold_overrides row (context 'order', the job) and the customer.credit_override audit event themselves,
+--     in the same transaction. A new job for a customer on hold also needs orders.edit, as for any new order.
 --     The profit report groups such a ticket by its own load (no truck time to cost).
 --
 -- Functions and who may call them:
---   public.submit_ticket_without_dispatch(jsonb)  tickets.edit, own company, Dispatch off (Tickets and Orders on)
+--   public.submit_ticket_without_dispatch(jsonb)  tickets.edit, own company, Dispatch off (Tickets and Orders on);
+--                                                 a reason for a customer on credit hold
 --   public.create_ticket_job(jsonb)               tickets.edit plus the order permissions of save_order_draft,
---                                                 update_order_schedule and set_order_status (one transaction)
+--                                                 update_order_schedule and set_order_status (one transaction); for a
+--                                                 customer on credit hold, orders.edit and a reason
 --   public.correct_delivery_ticket (replaced)     unchanged rules; a ticket entered without dispatch is rechecked the
 --                                                 same way as at entry and keeps its own load
 --   public.report_profit (replaced)               unchanged permission; groups a ticket without an assignment by load
@@ -322,6 +329,9 @@ declare
   v_no      integer;
   v_tz      text;
   v_date    date;
+  v_customer uuid;
+  v_hold    text[];
+  v_reason  text := private.clean_text(coalesce(p_payload ->> 'credit_reason', ''), 500, 'Reason');
 begin
   perform private.require_permission('tickets.edit');
   v_company := private.require_company();
@@ -336,6 +346,16 @@ begin
   end if;
   if not private.module_on(v_company, 'tickets') or not private.module_on(v_company, 'orders') then
     raise exception 'Delivery tickets are switched off for your company. The owner can switch them on in Settings.' using errcode = '42501';
+  end if;
+  -- Credit hold (B128, financial review L2), as assign_load does for every dispatched delivery: going ahead for a
+  -- customer on hold needs a reason, recorded with the ticket below.
+  select o.customer_id into v_customer from public.orders o
+   where o.id = nullif(p_payload ->> 'order_id', '')::uuid and o.company_id = v_company;
+  select h.reasons into v_hold from private.credit_holds(v_company, array[v_customer]) h;
+  if v_hold is not null and length(v_reason) < 3 then
+    raise exception '% is on credit hold. To go ahead, give a reason; it is recorded.',
+      coalesce((select c.name from public.customers c where c.id = v_customer and c.company_id = v_company), 'This customer')
+      using errcode = '22023', hint = 'credit_hold';
   end if;
 
   v_p := private.prepare_ticket_without_dispatch(v_company, p_payload, null, null);
@@ -373,6 +393,14 @@ begin
     format('Ticket %s for %s (entered without dispatch): %s %s%s', v_t.ticket_number, v_p ->> 'order_number',
            trim_scale(v_t.quantity), v_t.unit_code, case when v_t.status = 'needs_review' then ' (needs review)' else '' end),
     jsonb_build_object('ticket_id', v_t.id, 'ticket_number', v_t.ticket_number, 'load_id', v_t.load_id, 'source', 'without_dispatch'));
+  if v_hold is not null then
+    insert into public.credit_hold_overrides (company_id, customer_id, context, entity_id, reason, hold_reasons, created_by)
+    values (v_company, v_customer, 'order', v_t.order_id, v_reason, v_hold, auth.uid());
+    perform private.log_event('customer.credit_override', 'customer', v_customer,
+      format('Entered ticket %s for a customer on credit hold: %s', v_t.ticket_number, v_reason),
+      jsonb_build_object('context', 'order', 'entity_id', v_t.order_id, 'order_id', v_t.order_id, 'ticket_id', v_t.id,
+                         'load_id', v_load.id, 'source', 'without_dispatch', 'hold_reasons', v_hold));
+  end if;
 
   return jsonb_build_object('ticket_id', v_t.id, 'ticket_number', v_t.ticket_number, 'status', v_t.status, 'created', true, 'load_id', v_load.id);
 end;
@@ -380,8 +408,9 @@ $$;
 revoke all on function public.submit_ticket_without_dispatch(jsonb) from public, anon;
 grant execute on function public.submit_ticket_without_dispatch(jsonb) to authenticated;
 
--- A new job in one step from the ticket screen, through the order functions themselves (prices, price checks, credit
--- holds, tax and every order permission apply unchanged), in one transaction.
+-- A new job in one step from the ticket screen, through the order functions themselves (prices, price checks, tax and
+-- every order permission apply unchanged), in one transaction. A customer on credit hold needs orders.edit and a
+-- reason, recorded here as for a new order (the Orders page records it through record_credit_override).
 create or replace function public.create_ticket_job(p_payload jsonb)
 returns jsonb
 language plpgsql
@@ -395,6 +424,9 @@ declare
   v_order   uuid;
   v_seq     integer;
   v_line    uuid;
+  v_customer uuid := nullif(p_payload ->> 'customer_id', '')::uuid;
+  v_hold    text[];
+  v_reason  text := private.clean_text(coalesce(p_payload ->> 'credit_reason', ''), 500, 'Reason');
 begin
   perform private.require_permission('tickets.edit');
   v_company := private.require_company();
@@ -404,6 +436,21 @@ begin
   if not private.module_on(v_company, 'tickets') or not private.module_on(v_company, 'orders') then
     raise exception 'Delivery tickets are switched off for your company. The owner can switch them on in Settings.' using errcode = '42501';
   end if;
+  -- Credit hold (B128, financial review L2): a new job for a customer on hold needs someone who can change orders and a
+  -- reason, recorded with the job below.
+  select h.reasons into v_hold from private.credit_holds(v_company, array[v_customer]) h;
+  if v_hold is not null then
+    if not private.has_permission('orders.edit') then
+      raise exception '% is on credit hold. A new job for them needs someone who can change orders: they decide whether to go ahead and record why.',
+        coalesce((select c.name from public.customers c where c.id = v_customer and c.company_id = v_company), 'This customer')
+        using errcode = '42501';
+    end if;
+    if length(v_reason) < 3 then
+      raise exception '% is on credit hold. To go ahead, give a reason; it is recorded.',
+        coalesce((select c.name from public.customers c where c.id = v_customer and c.company_id = v_company), 'This customer')
+        using errcode = '22023', hint = 'credit_hold';
+    end if;
+  end if;
   if v_date is null then raise exception 'Enter the delivery date.'; end if;
   if jsonb_typeof(p_payload -> 'lines') is distinct from 'array' or jsonb_array_length(p_payload -> 'lines') <> 1 then
     raise exception 'A new job starts with one material.';
@@ -412,7 +459,7 @@ begin
     raise exception 'Enter where the job delivers (a site or job name).';
   end if;
 
-  v_r := public.save_order_draft((p_payload - 'delivered_date' - 'order_id') || jsonb_build_object('order_date', v_date));
+  v_r := public.save_order_draft((p_payload - 'delivered_date' - 'order_id' - 'credit_reason') || jsonb_build_object('order_date', v_date));
   v_order := (v_r ->> 'order_id')::uuid;
   perform public.set_order_status(v_order, 'confirmed'::public.order_status, 'Job created from the ticket screen');
   select edit_seq into v_seq from public.orders where id = v_order;
@@ -420,6 +467,13 @@ begin
   perform public.set_order_status(v_order, 'scheduled'::public.order_status, '');
   perform public.set_order_status(v_order, 'in_progress'::public.order_status, 'Deliveries are entered from their tickets');
   select id into v_line from public.order_lines where order_id = v_order and company_id = v_company order by line_no limit 1;
+  if v_hold is not null then
+    insert into public.credit_hold_overrides (company_id, customer_id, context, entity_id, reason, hold_reasons, created_by)
+    values (v_company, v_customer, 'order', v_order, v_reason, v_hold, auth.uid());
+    perform private.log_event('customer.credit_override', 'customer', v_customer,
+      format('Created job %s for a customer on credit hold: %s', v_r ->> 'order_number', v_reason),
+      jsonb_build_object('context', 'order', 'entity_id', v_order, 'order_id', v_order, 'source', 'without_dispatch', 'hold_reasons', v_hold));
+  end if;
   return jsonb_build_object('order_id', v_order, 'order_number', v_r ->> 'order_number', 'order_line_id', v_line);
 end;
 $$;
@@ -624,6 +678,20 @@ begin
     if not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
                    where n.nspname = 'private' and p.proname = f and p.prosecdef and 'search_path=""' = any (p.proconfig)) then
       raise exception 'private.% is not installed as expected', f;
+    end if;
+  end loop;
+end;
+$$;
+
+-- Both entry points check and record credit holds themselves (financial review L2), as pinned definer functions.
+do $$
+declare
+  f text;
+begin
+  foreach f in array array['public.submit_ticket_without_dispatch(jsonb)', 'public.create_ticket_job(jsonb)'] loop
+    if position('insert into public.credit_hold_overrides' in pg_get_functiondef(f::regprocedure)) = 0
+       or not exists (select 1 from pg_proc p where p.oid = f::regprocedure and p.prosecdef and 'search_path=""' = any (p.proconfig)) then
+      raise exception '% does not record credit hold reasons as expected', f;
     end if;
   end loop;
 end;

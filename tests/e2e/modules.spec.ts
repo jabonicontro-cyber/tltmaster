@@ -131,6 +131,59 @@ test("Tickets to billing: enter a ticket against a new job, review it, and billi
   }
 });
 
+// Financial review 2026-11-18 (M): without Dispatch, a customer on credit hold needs a reason for the new job and for
+// the ticket, as every dispatched delivery does; office staff see the hold and the reason field before they start.
+test("Tickets to billing: a customer on credit hold needs a reason for the job and the ticket, and it is recorded", async ({ page }) => {
+  test.slow();
+  const tag = unique();
+  const { customer, material } = await basics();
+  await setModules("tickets_to_billing");
+  await asUser(OWNER, (q) => q("select public.set_customer_credit_hold($1, true, 'Two invoices late (e2e)')", [customer.id]));
+  const since = new Date().toISOString();
+  try {
+    await signIn(page, "modulesOffice");
+    await page.goto(`/tickets/new?customer=${customer.id}`);
+    await expect(page.getByRole("heading", { level: 1, name: "Enter delivery ticket" })).toBeVisible();
+    const hold = page.getByRole("alert").filter({ hasText: "on credit hold" });
+    await expect(hold).toBeVisible();
+    await expect(hold).toContainText("give a reason; it is recorded with the ticket");
+    const reason = page.getByLabel("Reason for going ahead");
+    await expect(reason).toBeVisible();
+    await shot(page, "ticket-entry-credit-hold", hold);
+
+    await page.getByLabel("Quantity").fill("12");
+    await page.getByRole("button", { name: "New job for this customer" }).click();
+    const job = page.getByRole("group", { name: "New job" });
+    await job.getByLabel("Job or site name").fill(`Held drive ${tag} (e2e)`);
+    await job.getByLabel("Material").selectOption(material);
+    await job.getByLabel(/Agreed price/).fill("12.50");
+    // No reason yet: neither the job nor the ticket can go ahead.
+    await expect(job.getByRole("button", { name: "Create job" })).toBeDisabled();
+    await reason.fill("Owner approved by phone (e2e)");
+    await job.getByRole("button", { name: "Create job" }).click();
+    await expectToast(page, /Job ORD-\d+ created\./);
+    await expect(page.getByLabel("Job")).not.toHaveValue("");
+
+    await page.getByLabel("Ticket number").fill(`H-${tag}`);
+    await reason.fill("");
+    await expect(page.getByRole("button", { name: "Submit ticket" })).toBeDisabled();
+    await reason.fill("Payment promised Friday (e2e)");
+    await page.getByRole("button", { name: "Submit ticket" }).click();
+    await page.waitForURL(/\/tickets\/[0-9a-f-]{36}/);
+
+    const recorded = await asUser(OWNER, async (q) => (await q(
+      "select o.context, o.reason, o.entity_id = t.order_id as for_job from public.credit_hold_overrides o join public.delivery_tickets t on t.external_reference = $2 where o.customer_id = $1 and o.created_at >= $3 order by o.created_at",
+      [customer.id, `H-${tag}`, since])).rows);
+    expect(recorded).toEqual([
+      { context: "order", reason: "Owner approved by phone (e2e)", for_job: true },
+      { context: "order", reason: "Payment promised Friday (e2e)", for_job: true },
+    ]);
+  } finally {
+    await asUser(OWNER, (q) => q("select public.set_customer_credit_hold($1, false, '')", [customer.id]));
+    await setModules("full");
+  }
+});
+
 test("Quotes only: an accepted quote is marked won, with who and when, and no order is made", async ({ page }) => {
   test.slow();
   await setModules("quotes_only");
