@@ -193,12 +193,21 @@ describe.skipIf(!restUp)("order and quote totals through the REST API (SEC7)", (
     const people: Record<string, string> = {};
     const client = await pool.connect();
     try {
-      for (const role of ["dispatcher", "office"]) {
+      for (const role of ["dispatcher", "office", "owner"]) {
         const id = randomUUID();
         await client.query("insert into auth.users (id, email, aud, role) values ($1, $2, 'authenticated', 'authenticated')", [id, `order-totals-${role}-${id.slice(0, 8)}@test.example`]);
         await client.query("insert into public.company_memberships (company_id, user_id, role, active) values ($1, $2, $3, true)", [TOP_LINE, id, role]);
         people[role] = id;
       }
+      // The test's own committed order (a freshly built database has no Top Line orders yet), entered by an owner (who
+      // may type a price that differs from the price list).
+      const cust = (await client.query<{ id: string }>("select id from public.customers where company_id = $1 and active order by created_at limit 1", [TOP_LINE])).rows[0].id;
+      const mat = (await client.query<{ id: string }>("select id from public.materials where company_id = $1 and active order by created_at limit 1", [TOP_LINE])).rows[0].id;
+      const created = await rest(people.owner).rpc("save_order_draft", { p_payload: {
+        customer_id: cust, site_line1: "9 Rest Rd (test)", order_date: new Date().toISOString().slice(0, 10),
+        lines: [{ kind: "material", calc_method: "per_unit", material_id: mat, description: "Gravel (test)", unit_code: "ton", quantity: "10", unit_rate_cents: 1200, taxable: true }],
+      } });
+      expect(created.error).toBeNull();
       const d = rest(people.dispatcher);
       for (const [table, cols] of [["orders", "id, total_cents"], ["orders", "*"], ["order_lines", "id, amount_cents"], ["quote_versions", "id, total_cents"], ["quote_lines", "*"]] as const) {
         expect((await d.from(table).select(cols).limit(1)).error?.code, `${table} ${cols}`).toBe("42501");
@@ -220,10 +229,8 @@ describe.skipIf(!restUp)("order and quote totals through the REST API (SEC7)", (
       const officeList = await o.from("order_list").select("id, total_cents").in("id", ids);
       expect((officeList.data ?? []).every((r) => r.total_cents !== null)).toBe(true);
     } finally {
-      for (const id of Object.values(people)) {
-        await client.query("delete from public.company_memberships where user_id = $1", [id]);
-        await client.query("delete from auth.users where id = $1", [id]);
-      }
+      // The test people stay as inactive members: the order the owner created still names them in its history.
+      for (const id of Object.values(people)) await client.query("update public.company_memberships set active = false where user_id = $1", [id]);
       client.release();
     }
   });

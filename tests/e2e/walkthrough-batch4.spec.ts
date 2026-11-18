@@ -174,9 +174,17 @@ test.describe("customer portal", () => {
         await cust.getByRole("button", { name: "Save My Password" }).click();
         await cust.waitForURL(new RegExp(`/portal/${TOP_LINE_SLUG}$`));
 
-        // W3: the past-dated open order is listed apart, not as upcoming.
-        await expect(cust.getByTestId("portal-past-open").getByText(`Order ${past.orderNumber}`)).toBeVisible();
+        // W3: the past-dated open order is listed apart, not as upcoming. The section shows the five most recent; other
+        // tests leave more past-dated orders for this customer, so an older one is reached through "N more in Orders".
+        const pastSection = cust.getByTestId("portal-past-open");
+        await expect(pastSection).toBeVisible();
         await expect(cust.getByRole("list", { name: "Upcoming and open orders" }).getByText(`Order ${past.orderNumber}`)).toHaveCount(0);
+        if ((await pastSection.getByText(`Order ${past.orderNumber}`).count()) === 0) {
+          await pastSection.getByRole("link", { name: /more in Orders$/ }).click();
+          await cust.waitForURL(new RegExp(`/portal/${TOP_LINE_SLUG}/orders`));
+          await expect(cust.getByText(past.orderNumber).first()).toBeVisible();
+          await cust.goto(`/portal/${TOP_LINE_SLUG}`);
+        }
         // W2: a window that has passed is never "next"; it says it is not recorded as delivered yet.
         const todayCard = cust.getByRole("list", { name: "Today" });
         const row = todayCard.getByRole("listitem").filter({ hasText: `Order ${passed.orderNumber}` });

@@ -40,7 +40,8 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
   // W3: an open order whose planned dates are all over is not "upcoming"; it is listed apart until the company closes it.
   const pastDate = (o: PortalOrderSummary) => Boolean((o.scheduled_end ?? o.scheduled_start) && (o.scheduled_end ?? o.scheduled_start)! < today && !(o.next_load && o.next_load.date >= today));
   const upcomingOrders = active.filter((o) => !pastDate(o)).sort((a, b) => (a.scheduled_start ?? a.requested_date ?? "9999").localeCompare(b.scheduled_start ?? b.requested_date ?? "9999"));
-  const pastOpen = active.filter(pastDate);
+  // Most recent first: the orders that just passed are the ones the customer is asking about.
+  const pastOpen = active.filter(pastDate).sort((a, b) => (b.scheduled_end ?? b.scheduled_start ?? "").localeCompare(a.scheduled_end ?? a.scheduled_start ?? ""));
   // Today (UX5): for orders scheduled today, the loads planned for today and the tickets delivered so far, from recorded
   // data only (no estimates). At most five orders.
   const todays = active.filter((o) => o.scheduled_start && o.scheduled_start <= today && (o.scheduled_end ?? o.scheduled_start) >= today).slice(0, 5);
@@ -154,6 +155,11 @@ export default async function PortalHome({ params }: { params: Promise<{ slug: s
                 <ul className="divide-y divide-line" aria-label="Past date, not closed yet">
                   {pastOpen.slice(0, 5).map((o) => <OrderRow key={o.id} slug={slug} o={o} />)}
                 </ul>
+                {pastOpen.length > 5 ? (
+                  <Link href={`/portal/${slug}/orders`} className="mt-2 inline-block text-sm font-semibold text-brand-fg hover:underline">
+                    {pastOpen.length - 5} more in Orders
+                  </Link>
+                ) : null}
               </div>
             ) : null}
           </CardBody>
