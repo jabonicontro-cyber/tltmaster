@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { partsSummaryFor, partWaits } from "@/server/data/parts";
 import { partsWaitingText, summarizePartsWaiting } from "@/lib/maintenance/parts-waiting";
+import { partArrivalConflicts } from "@/lib/maintenance/part-arrival";
+import { PartArrivalWarning } from "@/components/maintenance/part-arrival-warning";
 import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { CalendarClock, Plus, Wrench } from "lucide-react";
 import { SafetyBadge, UrgencyBadge, WoStatusBadge } from "@/components/maintenance/bits";
@@ -131,6 +133,8 @@ export default async function MaintenancePage() {
   const weekEnd = addDays(today, 7);
   const upcoming = open.filter((w) => w.scheduled_for && w.scheduled_for >= today && w.scheduled_for <= weekEnd)
     .sort((a, b) => (a.scheduled_for ?? "").localeCompare(b.scheduled_for ?? ""));
+  // Jobs scheduled before a part they wait for is expected (WK3): warned here with a move offer.
+  const arrivals = partArrivalConflicts(upcoming, onOrder.rows, today);
   // Possible replacements: active, in-service trucks that are nobody's primary truck. A hint, not an assignment.
   const spares = trucks.filter((t) => t.active && t.service_status === "in_service" && !heldTrucks.has(t.id));
 
@@ -303,14 +307,18 @@ export default async function MaintenancePage() {
               <CardBody><p className="text-sm text-muted">Nothing scheduled.</p></CardBody>
             ) : (
               <ul className="divide-y divide-line">
-                {upcoming.map((w) => (
-                  <li key={w.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 sm:px-6">
-                    <CalendarClock className="size-4 text-muted" aria-hidden />
-                    <span className="font-medium tabular">{formatDate(w.scheduled_for)}</span>
-                    <Link href={`/maintenance/work-orders/${w.id}`} className="text-ink hover:underline">{w.number} · {w.title}</Link>
-                    <span className="text-sm text-muted">{workOrderUnit(w, truckUnits, trailerUnits)}</span>
-                  </li>
-                ))}
+                {upcoming.map((w) => {
+                  const arrival = arrivals.get(w.id);
+                  return (
+                    <li key={w.id} className="flex flex-wrap items-center gap-2 px-5 py-2.5 sm:px-6">
+                      <CalendarClock className="size-4 text-muted" aria-hidden />
+                      <span className="font-medium tabular">{formatDate(w.scheduled_for)}</span>
+                      <Link href={`/maintenance/work-orders/${w.id}`} className="text-ink hover:underline">{w.number} · {w.title}</Link>
+                      <span className="text-sm text-muted">{workOrderUnit(w, truckUnits, trailerUnits)}</span>
+                      {arrival && <PartArrivalWarning conflict={arrival} canMove={can(access, "maintenance.manage")} className="basis-full pl-6" />}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </Card>

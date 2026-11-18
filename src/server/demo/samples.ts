@@ -229,6 +229,12 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // note), a wrong reading with a correct one the feed did not use, an inspection certificate the shop recorded and the
   // office has not checked, and a truck parked by hand whose shop work is done.
   note("shop decisions", await rpcCount(db, "demo_shop_decision_samples"));
+  // A shop job scheduled before its ordered part arrives (WK3, 20261120024630): the schedule warns and offers to move it.
+  note("job scheduled before its part arrives", await rpcCount(db, "demo_part_arrival_sample"));
+  // Realistic repair history (owner 2026-11-16/17, WK3; 20261120024620), last of all: the sample completed jobs move back
+  // over the past months, so only one or two demo trucks read At risk and the rest Watch or Good. Times only, sample
+  // jobs only; a second run moves nothing.
+  note("repair history spread over months", await rpcCount(db, "demo_repair_history"));
   return result;
 }
 

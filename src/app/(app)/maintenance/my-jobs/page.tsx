@@ -6,7 +6,9 @@ import { EmptyState, Notice } from "@/components/ui/states";
 import { can } from "@/lib/permissions";
 import { requirePagePermission } from "@/server/auth";
 import { listMyJobs } from "@/server/data/maintenance-crew";
-import { partsSummaryFor } from "@/server/data/parts";
+import { partsSummaryFor, partWaits } from "@/server/data/parts";
+import { partArrivalConflicts } from "@/lib/maintenance/part-arrival";
+import { businessToday } from "@/server/data/settings";
 import { partsSummaryText } from "@/lib/maintenance/parts-summary";
 import { myShiftOffers } from "@/server/data/shift-offers";
 import { MyShiftOffers } from "@/components/schedule/shift-offers";
@@ -30,7 +32,13 @@ export default async function MyJobsPage() {
     can(access, "fleet.view") ? unitsBackFromShop() : Promise.resolve([]),
   ]);
   // Parts used on each of my jobs (UX20); the cost only for people who see maintenance costs.
-  const parts = await partsSummaryFor(jobs.mine.map((j) => j.id), can(access, "maintenance.costs")).catch(() => new Map());
+  const [parts, onOrder, { today }] = await Promise.all([
+    partsSummaryFor(jobs.mine.map((j) => j.id), can(access, "maintenance.costs")).catch(() => new Map()),
+    // A job of mine scheduled before its part is expected (WK3): said on its card; moving it is for maintenance.manage.
+    jobs.mine.some((j) => j.scheduledFor) ? partWaits().catch(() => ({ installed: false, rows: [] })) : Promise.resolve({ installed: false, rows: [] }),
+    businessToday(),
+  ]);
+  const arrivals = partArrivalConflicts(jobs.mine.map((j) => ({ id: j.id, status: j.status, scheduled_for: j.scheduledFor })), onOrder.rows, today);
 
   return (
     <>
@@ -54,7 +62,7 @@ export default async function MyJobsPage() {
           {jobs.mine.length ? (
             <ul className="space-y-3">
               {jobs.mine.map((j) => (
-                <MyJobCard key={j.id} job={j} partsText={partsSummaryText(parts.get(j.id))} timerHere={jobs.myTimer?.workOrderId === j.id} timerElsewhere={Boolean(jobs.myTimer && jobs.myTimer.workOrderId !== j.id)} />
+                <MyJobCard key={j.id} job={j} partsText={partsSummaryText(parts.get(j.id))} arrival={arrivals.get(j.id) ?? null} canMove={manage} timerHere={jobs.myTimer?.workOrderId === j.id} timerElsewhere={Boolean(jobs.myTimer && jobs.myTimer.workOrderId !== j.id)} />
               ))}
             </ul>
           ) : (

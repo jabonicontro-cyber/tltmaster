@@ -17,7 +17,13 @@ describe("truck health", () => {
 
   it("follows the default rules for repairs, open work and overdue service", () => {
     expect(truckHealth(f({ repairs90: 1 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "watch", reasons: ["1 unplanned repair in 90 days"] });
-    expect(truckHealth(f({ repairs90: 2 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "at_risk", reasons: ["2 unplanned repairs in 90 days"] });
+    // Default 3 (owner 2026-11-16/17, WK3): two repairs are Watch, three are At risk.
+    expect(DEFAULT_HEALTH_RULES).toEqual({ at_risk_repairs: 3, watch_repairs: 1, watch_open: 2, service_overdue: "watch" });
+    expect(truckHealth(f({ repairs90: 2 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "watch", reasons: ["2 unplanned repairs in 90 days"] });
+    expect(truckHealth(f({ repairs90: 3 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "at_risk", reasons: ["3 unplanned repairs in 90 days"] });
+    // A safety defect or Out of service stays At risk with no repairs at all.
+    expect(truckHealth(f({ openSafety: 1 }), DEFAULT_HEALTH_RULES).level).toBe("at_risk");
+    expect(truckHealth(f({ outOfService: true, repairs90: 1 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "at_risk", reasons: ["Out of service", "1 unplanned repair in 90 days"] });
     expect(truckHealth(f({ serviceOverdue: 1, openOther: 2 }), DEFAULT_HEALTH_RULES)).toEqual({ level: "watch", reasons: ["1 service overdue", "2 open repairs"] });
     expect(truckHealth(f({ openOther: 1 }), DEFAULT_HEALTH_RULES).level).toBe("good");
   });
@@ -29,6 +35,8 @@ describe("truck health", () => {
 
   it("reads stored rules safely", () => {
     expect(parseRules(null)).toEqual(DEFAULT_HEALTH_RULES);
-    expect(parseRules({ at_risk_repairs: "3", watch_repairs: -1, service_overdue: "nope" })).toEqual({ ...DEFAULT_HEALTH_RULES, at_risk_repairs: 3 });
+    expect(parseRules({ at_risk_repairs: "4", watch_repairs: -1, service_overdue: "nope" })).toEqual({ ...DEFAULT_HEALTH_RULES, at_risk_repairs: 4 });
+    // A company that set 2 keeps 2.
+    expect(parseRules({ at_risk_repairs: 2, watch_repairs: 1, watch_open: 2, service_overdue: "watch" }).at_risk_repairs).toBe(2);
   });
 });

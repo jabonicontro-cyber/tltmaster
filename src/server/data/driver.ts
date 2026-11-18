@@ -89,10 +89,17 @@ export async function loadMaintenanceNotices(): Promise<MaintenanceNotice[]> {
   return data as MaintenanceNotice[];
 }
 
-export interface DispatchUpdate { id: string; title: string; created_at: string }
+export interface DispatchUpdate {
+  id: string;
+  title: string;
+  created_at: string;
+  /** Which stops were added ("Delivery at Acme Dock (Joliet, IL), Thu Nov 20 2:00 PM–4:00 PM"): stop notices only. */
+  detail?: string;
+}
 
 // dispatch.assignment_truck: the truck or trailer changed, same load and times (20261120011400).
-const DISPATCH_EVENTS = ["dispatch.assignment_new", "dispatch.assignment_changed", "dispatch.assignment_truck"];
+// dispatch.stop_added: a pickup or delivery was added to the order of a load they are on (20261120024600, WK3).
+const DISPATCH_EVENTS = ["dispatch.assignment_new", "dispatch.assignment_changed", "dispatch.assignment_truck", "dispatch.stop_added"];
 
 /**
  * Unread notices from dispatch about the driver's own loads (new load, date or time changed; 20261114000500): the
@@ -109,9 +116,11 @@ export async function loadDispatchUpdates(): Promise<DispatchUpdate[]> {
   const rows = data as Array<DispatchUpdate & { source_id: string | null }>;
   const sources = [...new Set(rows.map((r) => r.source_id).filter((x): x is string => Boolean(x)))];
   if (!sources.length) return [];
-  const alerts = await supabase.from("alerts").select("id, entity_id").in("id", sources).in("event_type", DISPATCH_EVENTS);
+  const alerts = await supabase.from("alerts").select("id, entity_id, event_type, detail").in("id", sources).in("event_type", DISPATCH_EVENTS);
   if (alerts.error) return [];
-  const list = (alerts.data ?? []) as Array<{ id: string; entity_id: string | null }>;
+  const list = (alerts.data ?? []) as Array<{ id: string; entity_id: string | null; event_type: string; detail: string | null }>;
+  // A stop notice names the new stops; the others say everything in their title.
+  const stopDetail = new Map(list.filter((a) => a.event_type === "dispatch.stop_added" && a.detail).map((a) => [a.id, twelveHour(a.detail!.replace(/\. Check My Day\.$/, ""))]));
   // Notices about loads whose day is over are not news any more (UX15).
   const loadIds = [...new Set(list.map((a) => a.entity_id).filter((x): x is string => Boolean(x)))];
   const [{ today }, loads] = await Promise.all([
@@ -120,6 +129,9 @@ export async function loadDispatchUpdates(): Promise<DispatchUpdate[]> {
   ]);
   const dateOf = new Map(((loads.data ?? []) as Array<{ id: string; load_date: string }>).map((l) => [l.id, l.load_date]));
   const ours = new Set(list.filter((a) => !a.entity_id || !dateOf.has(a.entity_id) || dateOf.get(a.entity_id)! >= today).map((a) => a.id));
-  return rows.filter((r) => r.source_id && ours.has(r.source_id)).slice(0, 5).map(({ id, title, created_at }) => ({ id, title: twelveHour(title), created_at }));
+  return rows.filter((r) => r.source_id && ours.has(r.source_id)).slice(0, 5).map(({ id, title, created_at, source_id }) => {
+    const detail = source_id ? stopDetail.get(source_id) : undefined;
+    return detail ? { id, title: twelveHour(title), created_at, detail } : { id, title: twelveHour(title), created_at };
+  });
 }
 

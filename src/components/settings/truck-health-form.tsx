@@ -20,7 +20,7 @@ export function TruckHealthForm({ rules, canEdit }: { rules: HealthRules; canEdi
   return (
     <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 sm:grid-cols-4" noValidate data-guard-unsaved aria-label="Truck health rules">
       <div className="sm:col-span-4"><FormError message={formError} /></div>
-      <Field label="At risk from this many repairs" htmlFor="th-at-risk" hint="Unplanned repairs in 90 days. Default 2; 0 turns it off.">
+      <Field label="At risk from this many repairs" htmlFor="th-at-risk" hint="Unplanned repairs in 90 days. Default 3; 0 turns it off. A safety defect or Out of service is always At risk.">
         <Input id="th-at-risk" name="at_risk_repairs" type="number" min={0} max={99} defaultValue={rules.at_risk_repairs} disabled={!canEdit} />
       </Field>
       <Field label="Watch from this many repairs" htmlFor="th-watch" hint="Default 1; 0 turns it off.">
