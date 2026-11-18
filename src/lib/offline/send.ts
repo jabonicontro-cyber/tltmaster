@@ -1,7 +1,7 @@
 "use client";
 
 import { toast } from "sonner";
-import { submitDriverTicket, submitFieldReport } from "@/app/(app)/driver/actions";
+import { reportTicketMistake, submitDriverTicket, submitFieldReport } from "@/app/(app)/driver/actions";
 import { submitInspection } from "@/app/(app)/fleet/inspections/actions";
 import { markStopAt } from "@/app/(app)/reports/wait-times/actions";
 import { dataUrlToBlob } from "@/lib/files/phone-photo";
@@ -110,6 +110,21 @@ export async function sendQueued(item: OutboxItem, opts: { quiet?: boolean } = {
         const photos = await reportPhotos(item, rep.data.reportId);
         if ("network" in photos) return { sent: false, network: true };
         if (photos.refused) note = `${plural(photos.refused, "photo")} could not be added to the report.`;
+      }
+      r = rep;
+    } else if (item.kind === "mistake") {
+      // "Mistake on my ticket" (TM1): the report first (its submission key makes a retry record nothing twice), then its
+      // one kept photo; a refused photo never undoes the report.
+      const rep = await reportTicketMistake(p as Parameters<typeof reportTicketMistake>[0]);
+      if (rep.ok) {
+        for (const key of item.photos ?? []) {
+          const kept = readPhoto(key, item.userId);
+          if (!kept) continue;
+          const up = await upload("/driver/mistake-photo", { report: rep.data.reportId }, kept.data);
+          if (!up.ok && up.network) return { sent: false, network: true };
+          if (!up.ok) note = "The photo could not be added: show the paper ticket to the office.";
+          photosSent(item.id, [key], item.payload);
+        }
       }
       r = rep;
     } else if (item.kind === "inspection") {

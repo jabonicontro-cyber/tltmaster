@@ -22,7 +22,7 @@ import { NOTE_REQUIRED, URGENCY_LABELS, URGENCY_STATES } from "@/lib/orders/urge
 import { zonedTimeToUtc } from "@/lib/dates";
 import { priceConfirmedMessage } from "@/lib/orders/price-check";
 import { businessToday } from "@/server/data/settings";
-import { can } from "@/lib/permissions";
+import { can, canSeeSalesTotals } from "@/lib/permissions";
 import { rolesPhrase } from "@/lib/permission-words";
 import { assertAnyPermission, assertPermission } from "@/server/auth";
 import { rolesWith } from "@/server/permission-holders";
@@ -88,7 +88,7 @@ async function creditHoldDecider(): Promise<string> {
  * and the person's own draft only, never for a customer on credit hold (checked again in the database,
  * private.require_order_draft_save).
  */
-export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResult<{ orderId: string; editSeq: number; orderNumber: string; totalCents: number }>> {
+export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResult<{ orderId: string; editSeq: number; orderNumber: string; totalCents: number | null }>> {
   return guard(async () => {
     const access = await assertAnyPermission("orders.create", "orders.edit");
     const parsed = orderDraftInput.safeParse(input);
@@ -106,11 +106,13 @@ export async function saveOrderDraft(input: OrderDraftInput): Promise<ActionResu
     const supabase = await createClient();
     const { data, error } = await supabase.rpc("save_order_draft", { p_payload: toOrderDraftPayload(parsed.data) });
     if (error) return fail(dbErrorMessage(error));
-    const r = data as { order_id: string; edit_seq: number; order_number: string; total_cents: number };
+    // The total comes back only for billing or pricing access (SEC7); a demo role preview without it gets none either.
+    const r = data as { order_id: string; edit_seq: number; order_number: string; total_cents: number | null };
+    if (!canSeeSalesTotals(access)) r.total_cents = null;
     if (isNew && mayGoAhead && parsed.data.creditReason) await recordCreditOverride(parsed.data.customerId, "order", r.order_id, parsed.data.creditReason);
     revalidateOrder(r.order_id);
     if (parsed.data.saveSite) revalidatePath(`/customers/${parsed.data.customerId}`);
-    return ok({ orderId: r.order_id, editSeq: r.edit_seq, orderNumber: r.order_number, totalCents: r.total_cents }, `Order ${r.order_number} saved.`);
+    return ok({ orderId: r.order_id, editSeq: r.edit_seq, orderNumber: r.order_number, totalCents: r.total_cents === null ? null : Number(r.total_cents) }, `Order ${r.order_number} saved.`);
   });
 }
 

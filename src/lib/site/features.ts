@@ -381,11 +381,11 @@ export const FEATURES: Feature[] = [
     points: ["One step for N trucks for the day, each assigned with the usual checks", "Release by dispatch, the driver or the site contact, recorded with who and when", "Truck-hours from the scheduled start or the recorded arrival, with an optional minimum per truck"],
     limitations: ["Truck-hours go on the order only when billing selects Add to order", "Off until the company chooses which hours count"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/dispatch", "/orders", "/driver"],
     screenshots: ["truck-day-jobs"],
     related: ["driver-portal", "orders"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   {
     id: "site-directions",
@@ -397,11 +397,11 @@ export const FEATURES: Feature[] = [
     points: ["Verified by whom and when, recorded in the audit log", "Changed directions need a new check", "Unverified critical or overdue directions flagged on the order and the driver's My Day"],
     limitations: ["No reminders are sent; the status is shown where the directions are read"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/customers", "/driver", "/settings"],
     screenshots: ["site-directions"],
     related: ["driver-portal", "orders"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   {
     id: "delivery-tickets",
@@ -461,11 +461,11 @@ export const FEATURES: Feature[] = [
     points: ["Prospects become customers on the same record", "Follow-ups with owners and due dates", "History from orders, accepted tickets and quotes"],
     limitations: ["Emails are logged, not sent from here yet", "Pipeline stages are fixed for now"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/customers/pipeline"],
     screenshots: ["customer-crm"],
     related: ["orders"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   {
     id: "driver-payroll",
@@ -477,11 +477,11 @@ export const FEATURES: Feature[] = [
     points: ["Company-specific, versioned pay rules", "Exceptions instead of guessed amounts", "Owner approval locks the period before export"],
     limitations: ["Gross earnings only: no taxes, withholding or payments", "Export is a CSV file; no payroll provider integration yet"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/payroll"],
     screenshots: ["driver-payroll"],
     related: ["billing"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   {
     id: "maintenance",
@@ -654,11 +654,11 @@ export const FEATURES: Feature[] = [
     points: ["Bases within the plan (Starter and Essential 1, Growth 2, Professional 3, Enterprise 5)", "Per-person base access", "Smart Dispatch respects bases and says why", "Per-base report"],
     limitations: ["Assignments made by hand on the board are not checked against the order's base; people limited to some bases still cannot reach the others"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/settings"],
     screenshots: ["dispatch-bases"],
     related: ["smart-dispatch", "route-planner"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   {
     id: "company-import",
@@ -702,11 +702,11 @@ export const FEATURES: Feature[] = [
     points: ["Ticket numbers matched from a stub, scale ticket numbers included", "A customer's remittance file fills in the tickets and amounts", "Pay a ticket in full or in part", "Leftover money kept as visible credit and applied later", "Voiding a payment reopens its tickets"],
     limitations: ["Payments are not sent to QuickBooks yet", "Remittances are read from CSV files or pasted spreadsheet rows; PDFs are not read"],
     status: "available",
-    published: false, // built 2026-11-09; publishing is the owner's decision
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/billing/payments"],
     screenshots: ["ticket-payments"],
     related: ["invoicing", "billing"],
-    verified: "2026-11-09",
+    verified: "2026-11-18",
   },
   {
     id: "morning-briefing",
@@ -814,11 +814,11 @@ export const FEATURES: Feature[] = [
     points: ["Cases from the portal or opened by the office", "Assigned per case, with internal notes", "Photos and PDFs on both sides", "First-reply target the company sets", "Customer can reopen within 14 days"],
     limitations: ["Email notices need the company's email sending set up; demos never send", "No text-message notices yet"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/support"],
     screenshots: ["support-center"],
     related: ["customer-portal"],
-    verified: "2026-11-04",
+    verified: "2026-11-18",
   },
   {
     id: "pay-statements",
@@ -862,11 +862,11 @@ export const FEATURES: Feature[] = [
     points: ["Driver credentials, truck and trailer documents", "Preventive service by date", "IFTA quarter for companies that keep trip sheets", "Overdue, next 30 days and the 90 days after"],
     limitations: ["Shows dates already recorded; it doesn't send reminders by itself", "Service by miles or hours shows on the Maintenance page"],
     status: "available",
-    published: false, // publishing is the owner's decision
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/fleet/compliance"],
     screenshots: ["compliance-calendar"],
     related: ["fuel-ifta"],
-    verified: "2026-11-05",
+    verified: "2026-11-18",
   },
   {
     id: "order-stops",
@@ -878,11 +878,11 @@ export const FEATURES: Feature[] = [
     points: ["Pickups and deliveries in order", "Appointment windows and reference numbers", "Route on the dispatch board", "Directions and Arrived / Left at each stop on the driver's phone", "Rate confirmation, bills of lading and proof of delivery kept on the load and its stops", "Drivers add proof of delivery from the phone at each delivery stop", "Freight brokers as customers, with their load number on the invoice"],
     limitations: ["Proof of delivery from the phone needs signal: without it the photo waits on that screen to be sent and is not saved on the phone"],
     status: "available",
-    published: false, // publishing is the owner's decision
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/orders"],
     screenshots: ["order-stops"],
     related: ["compliance-calendar"],
-    verified: "2026-11-14",
+    verified: "2026-11-18",
   },
   {
     id: "accountant-view",
@@ -990,11 +990,11 @@ export const FEATURES: Feature[] = [
     points: ["Help for the page you are on", "Searchable articles by role", "Guided how-tos that never act for you", "Support requests with a review step"],
     limitations: ["No AI answers: Help shows the written articles", "Support replies are by email or phone outside Taviron for now"],
     status: "available",
-    published: false,
+    published: true, // owner 2026-11-14 ("Yes, publish them"); screenshot passed the capture gate 2026-11-18
     routes: ["/help"],
     screenshots: ["help-center"],
     related: ["smart-dispatch"],
-    verified: "2026-11-06",
+    verified: "2026-11-18",
   },
   // Built and released, not published (2026-11-14): publishing is the owner's decision (docs/MARKETING.md).
   {

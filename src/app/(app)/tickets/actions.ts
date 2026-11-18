@@ -251,3 +251,21 @@ export async function readTicketPhoto(input: z.input<typeof readInput>): Promise
     return ok({ reading: run.value, checks, model: run.model, tokens: { input: run.usage.inputTokens, output: run.usage.outputTokens }, estimatedCostUsd: run.estimatedCostUsd });
   });
 }
+
+const mistakeResolveInput = z.object({ reportId: z.uuid(), note: z.string().trim().min(1, "Say what you did, for example: corrected the quantity, or the ticket was right.").max(500) });
+
+/**
+ * A driver's "Mistake on my ticket" report handled (TM1, 20261120024720): tickets.review, with what was done. A correction
+ * of the ticket (a new revision) marks its open reports handled by itself.
+ */
+export async function resolveTicketMistake(input: z.input<typeof mistakeResolveInput>): Promise<ActionResult> {
+  return guard(async () => {
+    await assertPermission("tickets.review");
+    const parsed = mistakeResolveInput.safeParse(input);
+    if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "Check the note.");
+    const { error } = await (await createClient()).rpc("ticket_mistake_resolve", { p_report: parsed.data.reportId, p_note: parsed.data.note });
+    if (error) return fail(dbErrorMessage(error));
+    revalidatePath("/tickets");
+    return ok(undefined, "Marked as handled.");
+  });
+}

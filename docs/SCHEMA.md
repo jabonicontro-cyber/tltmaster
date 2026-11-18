@@ -639,6 +639,28 @@ accountant). Never `select("*")` on fuel_purchases (the database refuses it); us
 `grant select (column) on public.fuel_purchases to authenticated`** (`tests/db/fuel-dollars.test.ts` lists the columns
 signed-in people cannot read).
 
+**Order and quote totals (20261120024700, SEC7):** `orders`, `order_lines`, `quote_versions` and `quote_lines` are
+readable **column by column**: every column except the totals (`subtotal_cents`, `discount_cents`, `taxable_cents`,
+`tax_cents`, `total_cents`) and each line's `amount_cents`. People with billing or pricing access
+(`private.sales_money_ok()`: billing.view, billing.manage, pricing.edit, pricing.override) read them through
+`order_totals(orders)`, `order_line_amounts(orders)`, `quote_totals(versions)`, `quote_line_amounts(versions)`; the views
+`order_list`, `quote_list`, `billing_order_status` and `billing_line_status` keep their total columns, empty without money
+access. Order and quote history entries that carry a total are read through `sales_history(type, id)`. Never
+`select("*")` on these four tables; use `ORDER_COLUMNS` and the like (`src/server/data/sales-money.ts`). **A column added to
+them later needs its own `grant select (column) ... to authenticated`** (`tests/db/order-totals-money.test.ts` lists the
+closed columns). `crm_opportunities.value_cents` follows the same rule (owner 2026-11-18): read through
+`crm_opportunity_values(ids)`, set only with money access (`private.crm_value_guard`).
+
+**Invoicing choice (20261120024710, INV1):** `invoicing_settings.issuer_chosen_at` / `issuer_chosen_by`: when and by whom
+the company answered "Who sends your invoices?"; empty (or no row) = never chosen. Written by `invoicing_choose_issuer`
+(billing.manage); `invoicing_save_details` saves terms and footer without answering it.
+
+**Ticket mistake reports (20261120024720, TM1):** `ticket_mistake_reports` (ticket, ticket number, driver, `field`
+ticket_number/quantity/material/other, `correct_value`, `note`, one optional photo path, `status` open/resolved, who and
+when). Read by tickets.view in the company and by the reporting driver (own only); written only through
+`ticket_mistake_report` (the driver, own sent ticket), `ticket_mistake_photo_begin`, `ticket_mistake_resolve`
+(tickets.review) and the correction trigger (a new revision handles open reports). Removed with its ticket.
+
 ## Vehicle inspections (20261120006000)
 
 `vehicle_inspections` (truck, driver, kind `pre_trip`/`post_trip`, day, odometer, `items` = every DVIR item with OK and

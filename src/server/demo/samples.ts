@@ -95,6 +95,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   note("time off on the schedule", await scheduleTimeOff(db, today));
   note("quotes", await quotes(db, today));
   note("issued quote", await issuedQuote(db, today));
+  // Accepting it asks for the customer's PO (BL1): a sent quote for a customer marked "PO required", without one.
+  note("quote waiting for a PO", await poQuote(db, today));
   // Decided quotes for Reports → Quotes won and lost (B95): wins, losses with reasons, across materials and customers.
   note("quote history", await quoteHistory(db, today));
   // More decided quotes on the open draft's item, so Pricing help (B114) shows a suggestion on it.
@@ -193,6 +195,8 @@ export async function ensureFeatureSamples(db: Db, today: string): Promise<Sampl
   // the load" from an earlier day still open), once per demo; and one open equipment problem for each demo owner who
   // drives relief and has none, so the driver modes see it under My reports.
   note("driver reports", await rpcCount(db, "demo_field_report_samples"));
+  // A driver's "Mistake on my ticket" (TM1): after the driver samples, in the office's ticket review and on the phone.
+  note("ticket mistake report", await ticketMistake(db));
   // Truck-day job (UX11): one of today's orders runs as trucks for the day, billed by truck-hours; two trucks from
   // 06:30, the first released. Aggregate demos only; once per demo (any truck-day order counts).
   note("truck-day job", await truckDaySample(db, today));
@@ -353,9 +357,11 @@ async function guidedOnboarding(db: Db): Promise<number> {
 async function crm(db: Db, today: string, me: string): Promise<number> {
   const n = await count(db, "crm_opportunities");
   if (n === null || n > 0) return 0;
-  const orders = ((await db.from("orders").select("customer_id, total_cents, order_date").neq("status", "canceled").order("order_date", { ascending: false }).limit(200)).data ?? []) as Array<{ customer_id: string; total_cents: number }>;
+  const orders = ((await db.from("orders").select("id, customer_id, order_date").neq("status", "canceled").order("order_date", { ascending: false }).limit(200)).data ?? []) as Array<{ id: string; customer_id: string }>;
+  // Order totals through order_totals (SEC7, 20261120024700): the demo owner running the samples has money access.
+  const totals = new Map((((await db.rpc("order_totals", { p_orders: orders.map((o) => o.id) })).data ?? []) as Array<{ order_id: string; total_cents: number | string }>).map((t) => [t.order_id, Number(t.total_cents)]));
   const latest = new Map<string, number>();
-  for (const o of orders) if (!latest.has(o.customer_id)) latest.set(o.customer_id, o.total_cents);
+  for (const o of orders) if (!latest.has(o.customer_id) && totals.has(o.id)) latest.set(o.customer_id, totals.get(o.id)!);
   const customers = [...latest.keys()].slice(0, 3);
   if (customers.length === 0) return 0;
   let added = 0;
@@ -1266,6 +1272,37 @@ async function issuedQuote(db: Db, today: string): Promise<number> {
   } }))) as { quote_id: string; edit_seq: number };
   await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: printed and handed to the customer at the yard (fictional. Nothing was sent)." }));
   return 1;
+}
+
+/**
+ * "PO required" on acceptance (owner 2026-11-17, BL1): one sent quote for a demo customer marked "PO required", without a
+ * PO, so Mark accepted asks for it. Issued through the manual path (nothing is sent); added once (marked by its project
+ * name). None when the demo has no such customer.
+ */
+async function poQuote(db: Db, today: string): Promise<number> {
+  const done = await db.from("quote_versions").select("id").eq("project_name", "PO needed on acceptance (demo)").limit(1);
+  if (missing(done.error)) return 0;
+  if (done.error) throw new Error(`Demo samples (PO quote): ${done.error.message}`);
+  if ((done.data ?? []).length) return 0;
+  const customer = ((await db.from("customers").select("id").eq("po_required", true).eq("active", true).order("name").limit(1)).data ?? [])[0] as { id: string } | undefined;
+  const line = ((await db.from("order_lines").select("kind, calc_method, material_id, charge_item_id, description, unit_code, quantity, unit_rate_cents, taxable").eq("calc_method", "per_unit").or("material_id.not.is.null,charge_item_id.not.is.null").order("line_no").limit(1)).data ?? [])[0] as Record<string, unknown> | undefined;
+  if (!customer || !line) return 0;
+  const base = Object.fromEntries(Object.entries(line).filter(([, v]) => v !== null));
+  const saved = (await must("PO quote", db.rpc("save_quote_draft", { p_payload: {
+    customer_id: customer.id, quote_date: addDays(today, -2), valid_until: addDays(today, 28), tax_rate_bp: 0,
+    project_name: "PO needed on acceptance (demo)",
+    lines: [{ ...base, quantity: String(Number(base.quantity ?? 1) * 4) }],
+  } }))) as { quote_id: string; edit_seq: number };
+  await must("mark sent", db.rpc("mark_quote_sent", { p_quote_id: saved.quote_id, p_expected_edit_seq: saved.edit_seq, p_note: "Demo: emailed from the office's own inbox (fictional. Nothing was sent)." }));
+  return 1;
+}
+
+/** One open "Mistake on my ticket" report on a demo driver's ticket (TM1, 20261120024720); added once. */
+async function ticketMistake(db: Db): Promise<number> {
+  const r = await db.rpc("demo_ticket_mistake_sample");
+  if (missing(r.error)) return 0;
+  if (r.error) throw new Error(`Demo samples (ticket mistake): ${r.error.message}`);
+  return Number(r.data ?? 0);
 }
 
 /**

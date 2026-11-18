@@ -96,7 +96,7 @@ describe("order to cash, end to end", () => {
       expect(st.readiness).toBe("ready");
 
       // 8. The invoice draft bills what was delivered and accepted, at the quote's price — half the ordered total.
-      const lines = (await s.query<Row>("select id, line_no, kind, calc_method, description, unit_code, quantity::text as quantity, unit_rate_cents::int as unit_rate_cents, percent_bp::int as percent_bp, taxable, amount_cents::int as amount_cents from public.order_lines where order_id = $1", [orderId])).rows as unknown as DraftOrderLine[];
+      const lines = (await s.query<Row>("select l.id, l.line_no, l.kind, l.calc_method, l.description, l.unit_code, l.quantity::text as quantity, l.unit_rate_cents::int as unit_rate_cents, l.percent_bp::int as percent_bp, l.taxable, a.amount_cents::int as amount_cents from public.order_lines l join public.order_line_amounts(array[$1::uuid]) a on a.line_id = l.id where l.order_id = $1", [orderId])).rows as unknown as DraftOrderLine[];
       const tickets = (await s.query<Row>("select order_line_id, status, quantity::text as quantity, unit_code from public.delivery_tickets where order_id = $1", [orderId])).rows as unknown as DraftTicket[];
       const draft = buildInvoiceDraft({ lines, tickets, taxRateBp: 700, orderTotalCents: Number(order.total_cents), readiness: "ready" });
       expect(draft.stage).toBe("draft");

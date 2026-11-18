@@ -10,6 +10,8 @@ import { requirePagePermission } from "@/server/auth";
 import { getAccountingSetup, type AccountingConnection } from "@/server/data/accounting";
 import { getIndustry } from "@/server/industry";
 import { haulsAggregate } from "@/lib/industry";
+import { InvoicingChoice } from "@/components/billing/invoicing-choice";
+import { invoicingSettings } from "@/server/data/invoices";
 
 export const metadata = { title: "Businesses and QuickBooks" };
 
@@ -24,6 +26,16 @@ export default async function BillingSetupPage({ searchParams }: { searchParams:
   // billing split stay editable.
   const manageQbo = manage && !access.support;
   const sp = await searchParams;
+  // Never answered "Who sends your invoices?" (INV1): the question first, not empty QuickBooks screens.
+  const invoicing = await invoicingSettings();
+  if (invoicing.installed && !invoicing.chosen) {
+    return (
+      <>
+        <PageHeader title="Businesses and QuickBooks" crumbs={[{ label: "Billing", href: "/billing" }, { label: "Businesses and QuickBooks" }]} />
+        <InvoicingChoice canChoose={manage} back="/billing/setup" />
+      </>
+    );
+  }
   const setup = await getAccountingSetup();
   const configured = qboConfigured();
 

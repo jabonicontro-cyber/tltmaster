@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { pgError, pool, sampleIds, saveQuote, TOP_LINE, withSession, type Session, withoutPermission } from "./helpers";
+import { pgError, pool, readAsAdmin, sampleIds, saveQuote, TOP_LINE, withSession, type Session, withoutPermission } from "./helpers";
 
 afterAll(() => pool.end());
 
@@ -69,7 +69,7 @@ describe("converting accepted quotes into orders", () => {
       expect(r.created).toBe(false);
       expect(r.order_number).toMatch(/^ORD-\d{4,}$/);
 
-      const order = (await s.query("select * from public.orders where id = $1", [r.order_id])).rows[0];
+      const order = (await readAsAdmin(s, office, "select * from public.orders where id = $1", [r.order_id])).rows[0];
       const version = versionsBefore.rows[0];
       expect(order).toMatchObject({
         status: "confirmed",
@@ -95,7 +95,7 @@ describe("converting accepted quotes into orders", () => {
       expect(order.bill_to_snapshot).toEqual(version.bill_to_snapshot);
       expect(Number(order.discount_cents)).toBeGreaterThan(0);
 
-      const orderLines = await s.query("select * from public.order_lines where order_id = $1 order by line_no", [r.order_id]);
+      const orderLines = await readAsAdmin(s, office, "select * from public.order_lines where order_id = $1 order by line_no", [r.order_id]);
       const pick = (l: Record<string, unknown>) => ({
         line_no: l.line_no, kind: l.kind, calc_method: l.calc_method, material_id: l.material_id, charge_item_id: l.charge_item_id,
         description: l.description, unit_code: l.unit_code, unit_label: l.unit_label, quantity: l.quantity,
@@ -111,10 +111,10 @@ describe("converting accepted quotes into orders", () => {
 
       // The quote and its revisions are untouched.
       await s.asAdmin();
-      const quoteAfter = await s.query("select * from public.quotes where id = $1", [q.quote_id]);
+      const quoteAfter = await readAsAdmin(s, office, "select * from public.quotes where id = $1", [q.quote_id]);
       expect(quoteAfter.rows[0]).toEqual(quoteBefore.rows[0]);
-      expect((await s.query("select * from public.quote_versions where quote_id = $1 order by version_no", [q.quote_id])).rows).toEqual(versionsBefore.rows);
-      expect((await s.query("select * from public.quote_lines where quote_version_id = $1 order by line_no", [q.version_id])).rows).toEqual(linesBefore.rows);
+      expect((await readAsAdmin(s, office, "select * from public.quote_versions where quote_id = $1 order by version_no", [q.quote_id])).rows).toEqual(versionsBefore.rows);
+      expect((await readAsAdmin(s, office, "select * from public.quote_lines where quote_version_id = $1 order by line_no", [q.version_id])).rows).toEqual(linesBefore.rows);
 
       // History and audit
       const events = await s.query("select from_status, to_status, note from public.order_status_events where order_id = $1", [r.order_id]);
@@ -139,7 +139,7 @@ describe("converting accepted quotes into orders", () => {
       await s.query("select public.mark_quote_sent($1, $2, 'Emailed')", [q.quote_id, v2.edit_seq]);
       await s.query("select public.set_quote_status($1, 'accepted', '')", [q.quote_id]);
       const r = await convert(s, q.quote_id);
-      const order = (await s.query("select source_quote_version_id, total_cents from public.orders where id = $1", [r.order_id])).rows[0];
+      const order = (await s.query("select source_quote_version_id, (select total_cents from public.order_totals(array[$1::uuid])) as total_cents from public.orders where id = $1", [r.order_id])).rows[0];
       expect(order.source_quote_version_id).toBe(v2.version_id);
       expect(order.total_cents).toBe("36000");
     });
@@ -235,7 +235,7 @@ describe("converting accepted quotes into orders", () => {
 
       const pending = await s.createUser(null);
       await s.as(pending);
-      expect((await s.query("select * from public.orders")).rowCount).toBe(0);
+      expect((await s.query("select id from public.orders")).rowCount).toBe(0);
     });
   });
 

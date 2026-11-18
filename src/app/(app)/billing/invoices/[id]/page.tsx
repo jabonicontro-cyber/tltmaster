@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/states";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { PAYMENT_METHODS, STATE_LABEL, balanceCents, defaultInvoiceEmail, invoiceState, ordersWord, paidCents } from "@/lib/billing/invoices";
+import { PAYMENT_METHODS, STATE_LABEL, balanceCents, defaultInvoiceEmail, invoiceState, ordersWord, overdueNeverSent, paidCents } from "@/lib/billing/invoices";
 import { formatDate, formatDateTime } from "@/lib/dates";
 import { trimNumber } from "@/lib/fleet/labels";
 import { formatCents } from "@/lib/money";
@@ -73,6 +73,17 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           </>
         }
       />
+      {/* Overdue but never sent (owner 2026-11-17, BL1): a warning with the next steps; nothing is sent by itself. */}
+      {overdueNeverSent(inv, today) && (
+        <div className="mb-5" data-testid="never-sent-warning">
+          <Notice tone="warning" title="Overdue, but never sent">
+            This invoice was due {inv.due_date ? formatDate(inv.due_date) : ""} and the customer may never have received it: no email went out and no one marked it as sent.
+            {manage ? (
+              <> <a href="#send-email" className="font-semibold underline">Send it now</a>{sentHow.available && <> or, if it went out another way, <a href="#mark-sent" className="font-semibold underline">mark it as sent</a></>}.</>
+            ) : " Someone who manages billing can send it or mark it as sent."}
+          </Notice>
+        </div>
+      )}
       {(sp.saved === "previewed" || sp.saved === "previewed_demo") && !sp.error ? (
         // A preview is not a success: nothing left Taviron and the invoice is still not marked sent.
         <div className="mb-4" role="status">
@@ -198,6 +209,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
           )}
 
           {manage && inv.status === "issued" && (
+            <div id="send-email" className="scroll-mt-20">
             <Card>
               <CardHeader title="Email to the customer" description="Sends the PDF from your company's email setup. Demo companies and servers without email set up only preview." />
               <CardBody>
@@ -210,9 +222,11 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 </form>
               </CardBody>
             </Card>
+            </div>
           )}
 
           {manage && inv.status === "issued" && !inv.sent_at && sentHow.available && (
+            <div id="mark-sent" className="scroll-mt-20">
             <Card>
               <CardHeader title="Sent it yourself?" description="If you mailed the PDF, emailed it from your own inbox or handed it over, record it here. Taviron sends nothing and does not call it emailed." />
               <CardBody>
@@ -229,6 +243,7 @@ export default async function InvoicePage({ params, searchParams }: { params: Pr
                 </form>
               </CardBody>
             </Card>
+            </div>
           )}
 
           {manage && inv.status === "issued" && owed > 0 && (

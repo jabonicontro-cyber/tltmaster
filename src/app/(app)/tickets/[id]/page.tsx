@@ -9,6 +9,8 @@ import { TicketStatusBadge } from "@/components/tickets/ticket-badge";
 import { Card, CardBody, CardHeader } from "@/components/ui/card";
 import { DescriptionList } from "@/components/ui/description-list";
 import { PageHeader } from "@/components/ui/page-header";
+import { MistakeReports } from "@/components/tickets/mistake-reports";
+import { mistakesForTicket } from "@/server/data/ticket-mistakes";
 import { Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
 import { formatDate, formatDateTime } from "@/lib/dates";
@@ -73,7 +75,7 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
     ? { label: DONE_LABELS[sp.done as keyof typeof DONE_LABELS], id: sp.doneId, number: sp.doneNo, flagged: sp.done === "flagged" }
     : null;
   const { ticket: t, revisions, events, units, people, photos, names } = detail;
-  const { timezone } = await businessToday();
+  const [{ timezone }, mistakes] = await Promise.all([businessToday(), mistakesForTicket(t.ticket_number)]);
   // Where the driver's phone was when the ticket was sent (B98); missing update or none recorded: nothing shown.
   const located = (await (await createClient()).from("ticket_locations").select("latitude, longitude, accuracy_m, recorded_at").in("ticket_id", revisions.map((r) => r.id)).limit(1).maybeSingle()).data as { latitude: number; longitude: number; accuracy_m: number | null; recorded_at: string } | null;
   // B84: reading the photo with AI is offered to reviewers of live tickets that have a photo; the gate decides if it runs.
@@ -149,6 +151,17 @@ export default async function TicketPage({ params, searchParams }: { params: Pro
         }
       />
 
+      {/* The driver's "Mistake on my ticket" reports (TM1): the office corrects the ticket; the driver never does. */}
+      <MistakeReports
+        reports={mistakes}
+        driverName={(id) => names.drivers.get(id) ?? "the driver"}
+        timeZone={timezone}
+        canReview={can(access, "tickets.review")}
+        title={mistakes.some((m) => m.status === "open") ? "The driver says this ticket has a mistake" : "Driver reports on this ticket"}
+        description="Check the paper ticket or the photo. Correct the ticket if it is wrong; the report is then marked handled."
+        ticketLinks={false}
+        correctHref={can(access, "tickets.edit") && live && current ? `/tickets/${current.id}/correct` : null}
+      />
       <div className="mb-5 space-y-3">
         {sp.saved === "submitted" && (
           <p role="status" className="rounded-xl border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-900">

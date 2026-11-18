@@ -42,6 +42,7 @@ export async function loadOfflineDay(): Promise<DaySnapshot | null> {
         project: a.order.project_name, site, instructions: [a.order.job_instructions, a.load.notes, a.assignment_note].filter(Boolean).join("\n"),
         truck: a.truck, trailer: a.trailer, canSubmitTicket: Boolean(a.can_submit_ticket && f?.ok),
         tickets: a.tickets.map((t) => t.number),
+        ticketRefs: a.tickets.filter((t) => t.status !== "voided" && t.status !== "superseded").map((t) => ({ id: t.id, number: t.number, paper: t.paper_number || null })),
         lines: f?.ok ? f.data.lines.map((l) => ({ id: l.id, description: l.description, unit_code: l.unit_code })) : [],
         stops: (routeRes[a.load.id]?.length && routeRes[a.load.id].every((r) => r.id)
           ? routeRes[a.load.id].map((r) => ({ stop: `stop:${r.id}` as const, label: `${r.seq}. ${r.name}` }))

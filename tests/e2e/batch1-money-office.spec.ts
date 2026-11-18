@@ -89,7 +89,9 @@ test.describe("batch 1 walkthrough fixes", () => {
 
   test("M3 and M4: an added charge shows in the lines and the total without a reload", async ({ page }) => {
     const [order] = await sql<{ order_id: string; total_cents: number }>(
-      `select order_id, total_cents from public.billing_order_status where company_id = $1 and readiness = 'ready' order by order_number limit 1`, [ctx!.companyId]);
+      // The total from the order itself: the billing view leaves totals empty outside a signed-in money session (SEC7).
+      `select s.order_id, o.total_cents from public.billing_order_status s join public.orders o on o.id = s.order_id
+        where s.company_id = $1 and s.readiness = 'ready' order by s.order_number limit 1`, [ctx!.companyId]);
     test.skip(!order, "needs an order ready to bill");
     await signInAs(page, ctx!.office);
     await page.goto(`/billing/orders/${order.order_id}`);

@@ -4,6 +4,13 @@ import { Check, Info } from "lucide-react";
 import { Container, CtaLink, FinalCta, PageIntro, order } from "@/components/site/ui";
 import { CUSTOM, EXTRA_TRAINING_CENTS, TIERS, annualMonthlyCents, usd } from "@/lib/site/pricing";
 import { PRICING_FAQ as FAQ, SWITCHING_FAQ } from "@/lib/site/pricing-faq";
+import { FEATURES } from "@/lib/site/features";
+
+/**
+ * Multiple dispatch bases are described only once the feature is published (owner 2026-11-14): until then the tiers that
+ * cover more than one base say "multiple bases: ask us".
+ */
+const basesPublished = Boolean(FEATURES.find((f) => f.id === "dispatch-bases")?.published);
 
 export const metadata: Metadata = {
   title: "Pricing",
@@ -52,7 +59,7 @@ export default function PricingPage() {
               <li key={t.key} aria-label={t.name} style={order(n % 5)} className="site-reveal site-lift row-span-6 grid grid-rows-subgrid gap-y-0 rounded-xl border border-silver/15 bg-navy-2 p-6">
                 <h3 className="text-lg font-semibold text-cloud">{t.name}</h3>
                 <p className="mt-1 text-sm text-silver">
-                  Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : `up to ${t.bases} dispatch bases`}
+                  Up to {t.trucks} hauling trucks and {t.bases === 1 ? "1 dispatch base" : basesPublished ? `up to ${t.bases} dispatch bases` : "multiple bases: ask us"}
                 </p>
                 <p className="mt-6 flex flex-wrap items-baseline gap-x-1.5 self-end">
                   {t.from ? <span className="w-full text-sm text-silver">From</span> : null}

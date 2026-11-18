@@ -114,8 +114,8 @@ export default async function OrderBillingPage({ params, searchParams }: { param
   // Order lines that are not compared with tickets (charges billed per occurrence, percentages, discounts) and the tax
   // the accepted total includes: from the same order lines as the invoice draft, at their accepted amounts.
   const comparedIds = new Set(lines.map((l) => l.line_id));
-  const otherLines = draft.lines.filter((l) => !comparedIds.has(l.lineId));
-  const orderTaxCents = Math.max(0, o.total_cents - draft.lines.reduce((n, l) => n + l.orderedAmountCents, 0));
+  const otherLines = (draft?.lines ?? []).filter((l) => !comparedIds.has(l.lineId));
+  const orderTaxCents = draft && o.total_cents !== null ? Math.max(0, o.total_cents - draft.lines.reduce((n, l) => n + l.orderedAmountCents, 0)) : 0;
 
   return (
     <>
@@ -339,11 +339,15 @@ export default async function OrderBillingPage({ params, searchParams }: { param
             </Table>
           </TableWrap>
           <CardBody className="border-t border-line text-sm">
-            Order total <span className="font-semibold tabular">{formatCents(o.total_cents)}</span> (as accepted; the lines above{orderTaxCents > 0 ? " and tax" : ""}).
+            {o.total_cents !== null
+              ? <>Order total <span className="font-semibold tabular">{formatCents(o.total_cents)}</span> (as accepted; the lines above{orderTaxCents > 0 ? " and tax" : ""}).</>
+              : <>Order total not available: it couldn&apos;t be read. Try again in a moment.</>}
           </CardBody>
         </Card>
 
-        <InvoiceDraftCard draft={draft} />
+        {draft ? <InvoiceDraftCard draft={draft} /> : (
+          <Notice tone="warning" title="Invoice draft not available">The order&apos;s amounts couldn&apos;t be read, so no draft is shown rather than one with wrong figures. Try again in a moment.</Notice>
+        )}
 
         <Card>
           <CardHeader

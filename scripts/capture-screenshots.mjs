@@ -28,8 +28,9 @@ function totp(secret) {
 }
 
 const args = process.argv.slice(2);
-const outDir = args.find((a) => !a.startsWith("--")) ?? "public/site";
 const onlyArg = args.find((a) => a.startsWith("--only"));
+// The folder is the one argument that is neither an option nor the list after "--only" (which took it for the folder).
+const outDir = args.find((a, i) => !a.startsWith("--") && !(onlyArg === "--only" && args[i - 1] === "--only")) ?? "public/site";
 const only = onlyArg ? (onlyArg.includes("=") ? onlyArg.split("=")[1] : args[args.indexOf(onlyArg) + 1]).split(",") : null;
 const base = process.env.CAPTURE_BASE_URL ?? "http://localhost:3001";
 const { CAPTURE_EMAIL: email, CAPTURE_PASSWORD: password } = process.env;
@@ -120,7 +121,8 @@ async function siteStyle() {
 async function gate(shot) {
   const failed = [];
   // The page's own content, not the navigation (which repeats page names).
-  await page.locator("main").getByText(shot.ready, { exact: false }).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => failed.push(`ready text "${shot.ready}" not shown`));
+  // The first VISIBLE match: a hidden copy of the text (a closed dialog's keyboard help, an sr-only label) is not "shown".
+  await page.locator("main").getByText(shot.ready, { exact: false }).filter({ visible: true }).first().waitFor({ state: "visible", timeout: 30_000 }).catch(() => failed.push(`ready text "${shot.ready}" not shown`));
   await page.waitForFunction(() => !document.querySelector(".animate-spin") && ![...document.querySelectorAll("[role=status]")].some((e) => /loading|planning/i.test(e.textContent ?? "")), null, { timeout: 30_000 }).catch(() => failed.push("still loading"));
   await page.evaluate(() => document.fonts.ready);
   const facts = await page.evaluate(() => ({
@@ -156,7 +158,7 @@ for (const s of selected) {
     await page.waitForLoadState("networkidle", { timeout: 10_000 }).catch(() => undefined);
   }
   if (s.scroll) {
-    await page.locator("main").getByText(s.scroll, { exact: !s.scrollPartial }).first().evaluate((el) => {
+    await page.locator("main").getByText(s.scroll, { exact: !s.scrollPartial }).filter({ visible: true }).first().evaluate((el) => {
       const top = el.getBoundingClientRect().top + window.scrollY - 72; // below the sticky header
       window.scrollTo(0, top);
     });

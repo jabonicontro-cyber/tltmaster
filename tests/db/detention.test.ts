@@ -27,7 +27,7 @@ describe("detention", () => {
 
       // Off until both are set for the customer (no default rate).
       await s.as(office);
-      const customer = (await s.query<{ customer_id: string; total_cents: string }>("select customer_id, total_cents from public.orders where id = $1", [order.id])).rows[0];
+      const customer = (await s.query<{ customer_id: string; total_cents: string }>("select customer_id, (select total_cents from public.order_totals(array[$1::uuid])) as total_cents from public.orders where id = $1", [order.id])).rows[0];
       expect((await s.query("select * from public.detention_proposals($1)", [order.id])).rowCount).toBe(0);
       await s.as(owner);
       expect((await pgError(s.query("update public.customers set detention_free_minutes = 60 where id = $1", [customer.customer_id]))).code).toBe("23514");
@@ -48,11 +48,12 @@ describe("detention", () => {
       expect((await pgError(s.query("select public.detention_apply($1)", [rows[0].stop_time_id]))).code).toBe("PT409");
       expect((await pgError(s.query("select public.detention_dismiss($1, 'no')", [rows[0].stop_time_id]))).code).toBe("PT409");
       const added = (await s.query<{ description: string; unit_code: string; quantity: string; amount_cents: string; ticket_required: boolean; code: string }>(
-        `select ol.description, ol.unit_code, ol.quantity::text, ol.amount_cents::text, ci.ticket_required, ci.code
-         from public.order_lines ol join public.charge_items ci on ci.id = ol.charge_item_id where ol.id = $1`, [line])).rows[0];
+        `select ol.description, ol.unit_code, ol.quantity::text, a.amount_cents::text, ci.ticket_required, ci.code
+         from public.order_lines ol join public.charge_items ci on ci.id = ol.charge_item_id
+         join public.order_line_amounts(array[ol.order_id]) a on a.line_id = ol.id where ol.id = $1`, [line])).rows[0];
       expect(added).toMatchObject({ unit_code: "hour", quantity: "1.500", amount_cents: "11250", ticket_required: false, code: "DETENTION" });
       expect(added.description).toMatch(/^Detention: .+, waited 2 h 30 min \(60 min free\)$/);
-      const after = (await s.query<{ total_cents: string }>("select total_cents from public.orders where id = $1", [order.id])).rows[0];
+      const after = (await s.query<{ total_cents: string }>("select total_cents from public.order_totals(array[$1::uuid])", [order.id])).rows[0];
       expect(Number(after.total_cents)).toBe(Number(customer.total_cents) + 11250);
       // Billing doesn't wait for a ticket on it, and the decision is shown.
       expect((await s.query("select 1 from public.billing_line_status where line_id = $1", [line])).rowCount).toBe(0);
@@ -92,11 +93,11 @@ describe("extra charges after the work (MK2 accessorials, 20261120008400)", () =
       const lumper = (await s.query<{ id: string }>("insert into public.charge_items (code, name, kind, calc_method, default_unit_code, ticket_required) values ('LUMPER-T', 'Lumper (test)', 'service', 'per_unit', 'each', false) returning id")).rows[0].id;
       const ticketed = (await s.query<{ id: string }>("insert into public.charge_items (code, name, kind, calc_method, default_unit_code) values ('HAUL-T', 'Haul (test)', 'hauling', 'per_unit', 'ton') returning id")).rows[0].id;
       await s.as(office);
-      const before = Number((await s.query<{ total_cents: string }>("select total_cents from public.orders where id = $1", [order.id])).rows[0].total_cents);
+      const before = Number((await s.query<{ total_cents: string }>("select total_cents from public.order_totals(array[$1::uuid])", [order.id])).rows[0].total_cents);
       const line = (await s.query<{ id: string }>("select public.order_add_charge($1, $2, 1, 8500, 'Receiver unload fee') as id", [order.id, lumper])).rows[0].id;
-      const added = (await s.query<{ description: string; amount_cents: string }>("select description, amount_cents::text from public.order_lines where id = $1", [line])).rows[0];
+      const added = (await s.query<{ description: string; amount_cents: string }>("select l.description, a.amount_cents::text from public.order_lines l join public.order_line_amounts(array[l.order_id]) a on a.line_id = l.id where l.id = $1", [line])).rows[0];
       expect(added).toEqual({ description: "Lumper (test): Receiver unload fee", amount_cents: "8500" });
-      expect(Number((await s.query<{ total_cents: string }>("select total_cents from public.orders where id = $1", [order.id])).rows[0].total_cents)).toBe(before + 8500);
+      expect(Number((await s.query<{ total_cents: string }>("select total_cents from public.order_totals(array[$1::uuid])", [order.id])).rows[0].total_cents)).toBe(before + 8500);
       expect((await s.query("select 1 from public.billing_line_status where line_id = $1", [line])).rowCount).toBe(0);
 
       expect((await pgError(s.query("select public.order_add_charge($1, $2, 1, 100)", [order.id, ticketed]))).message).toMatch(/per occurrence/);

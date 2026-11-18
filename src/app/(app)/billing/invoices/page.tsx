@@ -8,7 +8,8 @@ import { PageHeader } from "@/components/ui/page-header";
 import { StatTile } from "@/components/ui/stat-tile";
 import { EmptyState, Notice } from "@/components/ui/states";
 import { Table, TableWrap, Td, Th, Tr } from "@/components/ui/table";
-import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, moneyOwed, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
+import { AGING_BUCKETS, AGING_LABEL, STATE_LABEL, balanceCents, ordersWord, daysBetween, invoiceState, moneyOwed, overdueNeverSent, receivablesAging, type InvoiceState } from "@/lib/billing/invoices";
+import { InvoicingChoice } from "@/components/billing/invoicing-choice";
 import { cn } from "@/lib/cn";
 import { formatDate, todayIn } from "@/lib/dates";
 import { formatCents } from "@/lib/money";
@@ -47,12 +48,19 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
   if (!invoices || !settings.installed) {
     return <>{header}<Notice title="Not available yet">Invoicing needs a database update that has not been installed yet.</Notice></>;
   }
+  // Never answered "Who sends your invoices?" (INV1): the question, not empty QuickBooks figures.
+  if (!settings.chosen && invoices.length === 0) {
+    return <>{header}<AdminFlash error={sp.error} /><InvoicingChoice canChoose={can(access, "billing.manage")} back="/billing/invoices" /></>;
+  }
   const states = invoices.map((i) => ({ i, state: invoiceState(i, today) }));
   const aging = receivablesAging(invoices, today);
   const overdue = states.filter((x) => x.state === "overdue");
   const dueSoon = states.filter((x) => (x.state === "open" || x.state === "partly_paid") && x.i.due_date && daysBetween(today, x.i.due_date) <= 7);
   const paid30 = invoices.flatMap((i) => i.payments).filter((p) => !p.voided_at && daysBetween(p.received_on, today) <= 30).reduce((n, p) => n + p.amount_cents, 0);
-  const shown = view === "all" ? states : states.filter((x) => x.state === view);
+  // Overdue but never sent (BL1): flagged on the list and on the invoice, with the next step there.
+  const neverSent = states.filter((x) => overdueNeverSent(x.i, today));
+  const neverSentView = sp.view === "never_sent";
+  const shown = neverSentView ? neverSent : view === "all" ? states : states.filter((x) => x.state === view);
   const count = (k: "all" | InvoiceState) => (k === "all" ? states.length : states.filter((x) => x.state === k).length);
   // QuickBooks issues the invoices (M1): with none issued in Taviron, what is owed and overdue is kept in QuickBooks, so
   // the figures say so instead of "$0 owed, nothing past due". Invoices once issued here still count, named as such.
@@ -64,7 +72,16 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
     <>
       {header}
       <AdminFlash error={sp.error} />
-      {settings.issuer === "quickbooks" && (
+      {!settings.chosen && <div className="mb-5"><InvoicingChoice canChoose={can(access, "billing.manage")} back="/billing/invoices" /></div>}
+      {neverSent.length > 0 && (
+        <div className="mb-5" data-testid="never-sent-notice">
+          <Notice tone="warning" title={`${neverSent.length} overdue invoice${neverSent.length === 1 ? " was" : "s were"} never sent`}>
+            The customer may never have received {neverSent.length === 1 ? "it" : "them"}: no email went out and no one marked {neverSent.length === 1 ? "it" : "them"} as sent. Open each one to send it now, or mark it as sent if it went out another way.{" "}
+            {!neverSentView && <Link href="/billing/invoices?view=never_sent" className="font-semibold underline">Show {neverSent.length === 1 ? "it" : "them"}</Link>}
+          </Notice>
+        </div>
+      )}
+      {settings.chosen && settings.issuer === "quickbooks" && (
         <div className="mb-5">
           <Notice title="QuickBooks issues your invoices">
             Handed-off orders are sent to QuickBooks from Billing. To issue invoices from Taviron instead, with your own logo and colour,
@@ -143,7 +160,9 @@ export default async function InvoicesPage({ searchParams }: { searchParams: Pro
                     <Td align="right" className="font-semibold tabular">{i.status === "issued" ? formatCents(balanceCents(i)) : "–"}</Td>
                     <Td>
                       <Badge tone={STATE_LABEL[state].tone}>{STATE_LABEL[state].label}</Badge>
-                      {i.status === "issued" && <div className={cn("mt-1 text-xs", i.sent_at ? "text-muted" : "font-semibold text-ink")}>{i.sent_at ? `Sent ${formatDate(todayIn(timezone, new Date(i.sent_at)))}` : "Not sent yet"}</div>}
+                      {i.status === "issued" && (overdueNeverSent(i, today)
+                        ? <div className="mt-1"><Badge tone="critical-soft">Overdue, never sent</Badge></div>
+                        : <div className={cn("mt-1 text-xs", i.sent_at ? "text-muted" : "font-semibold text-ink")}>{i.sent_at ? `Sent ${formatDate(todayIn(timezone, new Date(i.sent_at)))}` : "Not sent yet"}</div>)}
                     </Td>
                   </Tr>
                 ))}

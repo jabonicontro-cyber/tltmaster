@@ -377,6 +377,96 @@
       "capturedAt": "2026-11-11T13:40:28.628Z",
       "source": "localhost:3112",
       "checks": "passed"
+    },
+    "truck-day-jobs": {
+      "file": "truck-day-jobs.png",
+      "feature": "truck-day-jobs",
+      "path": "/dispatch",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:00.172Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "site-directions": {
+      "file": "site-directions.png",
+      "feature": "site-directions",
+      "path": "/customers?q=Brightwater",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:21.226Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "customer-crm": {
+      "file": "customer-crm.png",
+      "feature": "customer-crm",
+      "path": "/customers/pipeline",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:22.937Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "driver-payroll": {
+      "file": "driver-payroll.png",
+      "feature": "driver-payroll",
+      "path": "/payroll",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:24.985Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "dispatch-bases": {
+      "file": "dispatch-bases.png",
+      "feature": "dispatch-bases",
+      "path": "/reports",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:28.664Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "ticket-payments": {
+      "file": "ticket-payments.png",
+      "feature": "ticket-payments",
+      "path": "/billing/payments",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:30.470Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "support-center": {
+      "file": "support-center.png",
+      "feature": "support-center",
+      "path": "/support?filter=all",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:32.323Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "compliance-calendar": {
+      "file": "compliance-calendar.png",
+      "feature": "compliance-calendar",
+      "path": "/fleet/compliance",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:34.179Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "order-stops": {
+      "file": "order-stops.png",
+      "feature": "order-stops",
+      "path": "/dispatch",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:36.681Z",
+      "source": "localhost:3323",
+      "checks": "passed"
+    },
+    "help-center": {
+      "file": "help-center.png",
+      "feature": "help-center",
+      "path": "/help",
+      "viewport": "desktop",
+      "capturedAt": "2026-11-18T04:27:38.653Z",
+      "source": "localhost:3323",
+      "checks": "passed"
     }
   }
 }

@@ -17,7 +17,8 @@ export interface DriverAssignment {
     directions_status?: DirectionsStatus; directions_risk?: DirectionsRisk; directions_verified_at?: string | null };
   truck: string | null;
   trailer: string | null;
-  tickets: Array<{ id: string; number: string; status: TicketStatus; quantity: number | string; unit_code: string }>;
+  /** paper_number: the number on the paper ticket the driver typed (TM1, 20261120024720); absent before that update. */
+  tickets: Array<{ id: string; number: string; status: TicketStatus; quantity: number | string; unit_code: string; paper_number?: string }>;
   can_submit_ticket: boolean;
 }
 
@@ -26,7 +27,8 @@ export interface DriverHome {
   today: string;
   timezone: string;
   assignments: DriverAssignment[];
-  tickets: Array<{ id: string; number: string; revision: number; status: TicketStatus; quantity: number | string; unit_code: string; delivered_at: string; order_number: string; load_number: string; review_reasons: string[] }>;
+  /** paper_number and mistake_reported (an open "Mistake on my ticket" report): TM1, 20261120024720; absent before it. */
+  tickets: Array<{ id: string; number: string; revision: number; status: TicketStatus; quantity: number | string; unit_code: string; delivered_at: string; order_number: string; load_number: string; review_reasons: string[]; paper_number?: string; mistake_reported?: boolean }>;
   qualifications: DriverQualification[];
   reports: Array<{ id: string; kind: ReportKind; status: string; created_at: string; order_number: string; load_number: string; equipment_unit: string | null }>;
 }

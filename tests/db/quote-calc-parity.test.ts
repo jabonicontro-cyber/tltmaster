@@ -56,8 +56,8 @@ describe("TypeScript and database quote calculations agree", () => {
             taxable: l.taxable,
           })),
         });
-        const v = await s.query("select subtotal_cents, discount_cents, taxable_cents, tax_cents, total_cents from public.quote_versions where id = $1", [r.version_id]);
-        const dbLines = await s.query<{ amount_cents: string }>("select amount_cents from public.quote_lines where quote_version_id = $1 order by line_no", [r.version_id]);
+        const v = await s.query("select subtotal_cents, discount_cents, taxable_cents, tax_cents, total_cents from public.quote_totals(array[$1::uuid])", [r.version_id]);
+        const dbLines = await s.query<{ amount_cents: string }>("select a.amount_cents from public.quote_line_amounts(array[$1::uuid]) a join public.quote_lines l on l.id = a.line_id order by l.line_no", [r.version_id]);
         expect(dbLines.rows.map((l) => Number(l.amount_cents)), `quote ${q}`).toEqual(expected.lineAmounts);
         expect({
           subtotal: Number(v.rows[0].subtotal_cents),

@@ -9,6 +9,7 @@ import { referenceKey } from "@/lib/search";
 import type { OrderStop } from "@/lib/orders/stops";
 import { idsClause, ilikePattern, PAGE_SIZE, REF_KEYS, referenceMatches } from "./search";
 import { getUserNames } from "./quotes";
+import { ORDER_COLUMNS, ORDER_LINE_COLUMNS, orderLineAmounts, orderTotals, salesHistory, withAmounts, withTotals, type SalesTotalsOrNull } from "./sales-money";
 import { businessToday } from "./settings";
 import type { AuditEventRow, CustomerRow, OrderLineRow, OrderListRow, OrderRow, OrderStatusEventRow, OrderStatus, SiteRow } from "./types";
 
@@ -119,15 +120,17 @@ export async function getOrderForQuote(quoteId: string) {
 export async function getOrderDetail(id: string) {
   if (!uuid.safeParse(id).success) return null;
   const supabase = await createClient();
-  const { data: order, error } = await supabase.from("orders").select("*").eq("id", id).maybeSingle();
+  const { data: order, error } = await supabase.from("orders").select(ORDER_COLUMNS).eq("id", id).maybeSingle();
   if (error) throw new Error(`Could not load order: ${error.message}`);
   if (!order) return null;
-  const o = order as OrderRow;
+  // Totals and line amounts only for billing or pricing access (SEC7); everyone sees the per-unit rates.
+  const [totals, amounts] = await Promise.all([orderTotals([id]), orderLineAmounts([id])]);
+  const o = withTotals(order as unknown as Omit<OrderRow, keyof SalesTotalsOrNull>, totals) as OrderRow;
   const [customer, lines, events, audit, quote, version, names, site] = await Promise.all([
     supabase.from("customers").select(CUSTOMER_COLUMNS).eq("id", o.customer_id).single(),
-    supabase.from("order_lines").select("*").eq("order_id", id).order("line_no"),
+    supabase.from("order_lines").select(ORDER_LINE_COLUMNS).eq("order_id", id).order("line_no"),
     supabase.from("order_status_events").select("*").eq("order_id", id).order("occurred_at", { ascending: false }),
-    supabase.from("audit_events").select("*").eq("entity_type", "order").eq("entity_id", id).order("occurred_at", { ascending: false }).limit(100),
+    salesHistory("order", id).then((data) => ({ data, error: null })),
     o.source_quote_id ? supabase.from("quotes").select("id, quote_number, accepted_at").eq("id", o.source_quote_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     o.source_quote_version_id ? supabase.from("quote_versions").select("id, version_no").eq("id", o.source_quote_version_id).maybeSingle() : Promise.resolve({ data: null, error: null }),
     getUserNames(),
@@ -139,7 +142,7 @@ export async function getOrderDetail(id: string) {
   return {
     order: o,
     customer: customer.data as unknown as CustomerRow,
-    lines: (lines.data ?? []) as OrderLineRow[],
+    lines: withAmounts((lines.data ?? []) as unknown as Array<Omit<OrderLineRow, "amount_cents">>, amounts) as OrderLineRow[],
     events: (events.data ?? []) as OrderStatusEventRow[],
     // Edits and status changes recorded in the audit log (status changes also appear in events).
     audit: (audit.data ?? []) as AuditEventRow[],

@@ -145,7 +145,9 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
         description={
           <>
             <Link href={`/customers/${customer.id}`} className="font-semibold text-ink hover:underline">{customer.name}</Link>
-            {order.project_name ? ` · ${order.project_name}` : ""} · Total <strong className="text-ink">{formatCents(order.total_cents)}</strong>
+            {order.project_name ? ` · ${order.project_name}` : ""}
+            {/* Totals only for billing or pricing access (SEC7); the rates are on the lines for everyone. */}
+            {order.total_cents !== null && <> · Total <strong className="text-ink">{formatCents(order.total_cents)}</strong></>}
           </>
         }
         actions={
@@ -444,16 +446,22 @@ export default async function OrderPage({ params, searchParams }: { params: Prom
                 <p className="mt-1 text-xs text-muted">{say("From delivery tickets in each line's unit. Only verified (accepted) tickets count as delivered; prices are not changed by deliveries.")}</p>
               </div>
             )}
-            <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
-              <dl className="w-full max-w-xs space-y-1 text-[15px]">
-                <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(order.subtotal_cents)}</dd></div>
-                {order.discount_cents > 0 && (
-                  <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(order.discount_cents)}</dd></div>
-                )}
-                <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(order.tax_rate_bp)})</dt><dd className="tabular">{formatCents(order.tax_cents)}</dd></div>
-                <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(order.total_cents)}</dd></div>
-              </dl>
-            </div>
+            {order.total_cents !== null ? (
+              <div className="flex justify-end border-t border-line px-5 py-3 sm:px-6">
+                <dl className="w-full max-w-xs space-y-1 text-[15px]">
+                  <div className="flex justify-between"><dt className="text-muted">Subtotal</dt><dd className="tabular">{formatCents(order.subtotal_cents ?? 0)}</dd></div>
+                  {(order.discount_cents ?? 0) > 0 && (
+                    <div className="flex justify-between"><dt className="text-muted">Discounts</dt><dd className="text-green-800 tabular">-{formatCents(order.discount_cents ?? 0)}</dd></div>
+                  )}
+                  <div className="flex justify-between"><dt className="text-muted">Tax ({formatBp(order.tax_rate_bp)})</dt><dd className="tabular">{formatCents(order.tax_cents ?? 0)}</dd></div>
+                  <div className="flex justify-between border-t-2 border-strong pt-1 text-lg font-black"><dt>Total</dt><dd className="tabular">{formatCents(order.total_cents)}</dd></div>
+                </dl>
+              </div>
+            ) : (
+              <p className="border-t border-line px-5 py-3 text-sm text-muted sm:px-6" data-testid="totals-hidden">
+                Order totals are shown to the office. You see the price per unit on each line.
+              </p>
+            )}
           </Card>
           <OrderTrackingCard orderId={order.id} canEdit={can(access, "orders.edit")} />
         </div>

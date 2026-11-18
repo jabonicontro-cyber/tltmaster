@@ -31,6 +31,11 @@ export interface GettingStartedFacts {
   trucks?: boolean | null;
   /** Someone besides the person signs in, or an invitation is waiting. */
   teamInvited?: boolean | null;
+  /**
+   * The company answered "Who sends your invoices: Taviron or QuickBooks?" (INV1). undefined: not asked here (Billing
+   * switched off, or no permission to read it); the step is then left out.
+   */
+  invoicingChosen?: boolean | null;
   customers?: boolean | null;
   orders?: boolean | null;
   myOrder?: boolean | null;
@@ -73,6 +78,14 @@ export function gettingStartedItems(role: ChecklistRole, f: GettingStartedFacts,
         hint: f.companyLogo === false ? "Add your logo on the same page: it goes on your invoices and the customer portal." : undefined,
         href: "/settings?tab=company#phone",
         done: tick(f.companyPhone),
+      });
+      // Early (owner 2026-11-17, INV1): until it is answered, billing shows the question instead of empty QuickBooks screens.
+      add(can("settings.manage") && can("billing.manage") && f.invoicingChosen !== undefined, {
+        key: "invoicing",
+        label: "Who sends your invoices: Taviron or QuickBooks?",
+        hint: "Choose one. You can change it later in Settings.",
+        href: "/settings?tab=invoicing#issuer",
+        done: tick(f.invoicingChosen),
       });
       add(can("fleet.edit"), { key: "truck", label: "Add a truck", href: "/fleet/trucks/new", done: tick(f.trucks) });
       add(can("users.manage") || can("employees.edit"), { key: "person", label: "Invite a person to your team", hint: "Drivers do not need an email: give them a username sign-in.", href: "/employees", done: tick(f.teamInvited) });

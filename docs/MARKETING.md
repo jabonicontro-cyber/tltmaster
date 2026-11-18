@@ -107,9 +107,12 @@ public page.
   customer-crm, driver-payroll, dispatch-bases, ticket-payments, support-center, compliance-calendar, order-stops and
   help-center, each once its screenshot passes the capture quality gate. Their shots are in `screenshots.json` (ready
   texts chosen so an empty page fails the gate: for example `dispatch-bases` needs a demo with two bases and
-  `ticket-payments` a paid ticket). Not captured yet (no plain-named capture account in the local demo), so they stay
-  `published: false`; after `node scripts/capture-screenshots.mjs --only <ids>` passes, set `published: true` and
-  `verified` for the shots that passed, and leave the rest unpublished.
+  `ticket-payments` a paid ticket). **Captured and published 2026-11-18:** all ten passed the quality gate from a local
+  production build of a fresh presenter demo shown as Growth (two bases), signed in as a plain-named local capture owner
+  ("Morgan Reyes", shown as the demo's owner persona; local only); `published: true` and `verified: "2026-11-18"`. The
+  capture script now waits for a *visible* ready text (a hidden copy, such as the dispatch board's keyboard help, no
+  longer fails a shot) and reads `--only id,id` without taking the list for the output folder. Multiple dispatch bases
+  being published, the pricing page names each tier's bases (until then it said "multiple bases: ask us").
 - **Catalogued, not published (owner: they stay unpublished):** detention charges (DT1), typed prices checked before
   billing (SEC4a M1), freight mode (MK1/MK4), a simpler menu for small fleets (SF1), accessibility settings (UX19),
   driver sign-in by QR code (DS1). Fuel receipt amounts for people who can see billing (SEC5) is a point of Fuel and

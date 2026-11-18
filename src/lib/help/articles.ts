@@ -2225,8 +2225,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "billing",
-    title: "Billing Readiness",
-    summary: "See which delivered work is documented, reviewed and ready to invoice, and hand orders off to your accounting system.",
+    title: "Billing",
+    summary: "The office's daily billing work: what is ready to bill, what still needs a ticket or a check, and handing orders off to be invoiced.",
     category: "tickets-billing",
     routes: ["/billing", "/billing/*"],
     permissions: ["billing.view"],
@@ -2236,6 +2236,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       "Each order's status: Missing documentation, Tickets need review, Blocked: exceptions, Work not completed, Ready to bill or Handed off.",
       "On an order: **Order lines** (ordered against delivered, plus charges billed per occurrence such as a lumper or truck ordered not used, and the tax), **Loads**, exceptions, an **Invoice draft** preview and **Billing history**.",
       "Handoff batches with **Download file (CSV)**.",
+      "Until your company answers **Who sends your invoices: Taviron or QuickBooks?**, Billing shows that question at the top (the owner or the office answers it once).",
+      "**See all orders from delivery to payment** opens Order to Cash, the read-only overview.",
     ],
     tasks: [
       {
@@ -2271,20 +2273,22 @@ export const HELP_ARTICLES: HelpArticle[] = [
     related: ["ticket-review", "order-detail", "reports"],
     reviewed: "2026-11-17",
     limitations: [
-      "Billing Readiness is a checklist. It does not create invoices, change prices or mark anything paid; invoices are entered in your accounting system.",
+      "Billing is a work list. It does not change prices or mark anything paid. Invoices are made in Billing → Invoices when Taviron sends them, or in QuickBooks.",
       "The invoice draft is a computed preview from accepted tickets and the order's prices; nothing is issued, sent or exported to accounting.",
     ],
   },
   {
     id: "order-to-cash",
-    title: "Order to cash",
-    summary: "Follow every open order from confirmation to billing handoff and see which team acts next.",
+    title: "Order to Cash",
+    summary: "A read-only overview of every order from delivery to payment, and which team acts next. Your daily billing work is in Billing.",
     category: "tickets-billing",
     routes: ["/order-to-cash"],
     permissions: ["billing.view"],
     audience: "Owners and office staff.",
     whatYouSee: [
-      "Stage counts: Needs scheduling, Needs loads, In delivery, Tickets, Billing review, Ready to bill and Handed off, with how many need attention and their value.",
+      "Stage counts: Needs scheduling, Needs loads, In delivery, Tickets, Billing review, Ready to bill, Handed off, Invoiced and Paid, with how many need attention and their value.",
+      "Invoiced and Paid come from the invoices Taviron sends. When QuickBooks sends your invoices, an order's path ends at Handed off.",
+      "Nothing here changes an order: each next step opens the page where the work is done.",
       "A list of orders that need someone to act, oldest first within each stage, with the reason and the team that acts next.",
       "Filters for **Stage** and **Show** (Needs attention or Everything), and a search.",
     ],
